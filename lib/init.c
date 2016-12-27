@@ -1,3 +1,4 @@
+/* -*-  mode:c; tab-width:8; c-basic-offset:8; indent-tabs-mode:nil;  -*- */
 /*
    Copyright (C) 2016 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
 
@@ -22,3 +23,182 @@
 #define _GNU_SOURCE
 #endif
 
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
+#endif
+
+#ifdef HAVE_STDLIB_H
+#include <stdlib.h>
+#endif
+
+#ifdef HAVE_STRING_H
+#include <string.h>
+#endif
+
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
+#include <stdarg.h>
+#include <stdio.h>
+
+#include "smb2.h"
+#include "libsmb2.h"
+#include "libsmb2-private.h"
+
+#define MAX_URL_SIZE 256
+
+struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url)
+{
+        struct smb2_url *u;
+        char *ptr, *tmp, str[MAX_URL_SIZE];
+
+        if (strncmp(url, "smb2://", 7)) {
+                smb2_set_error(smb2, "URL does not start with 'smb2://'");
+                return NULL;
+        }
+        if (strlen(url + 7) >= MAX_URL_SIZE) {
+                smb2_set_error(smb2, "URL is too long");
+                return NULL;
+        }
+	strncpy(str, url + 7, MAX_URL_SIZE);
+
+        u = malloc(sizeof(struct smb2_url));
+        if (u == NULL) {
+                smb2_set_error(smb2, "Failed to allocate smb2_url");
+                return NULL;
+        }
+        memset(u, 0, sizeof(struct smb2_url));
+        
+        ptr = str;
+
+        /* domain */
+        if ((tmp = strchr(ptr, ';')) != NULL) {
+                *(tmp++) = '\0';
+                u->domain = strdup(ptr);
+                ptr = tmp;
+        }
+        /* user */
+        if ((tmp = strchr(ptr, '@')) != NULL) {
+                *(tmp++) = '\0';
+                u->user = strdup(ptr);
+                ptr = tmp;
+        }
+        /* server */
+        if ((tmp = strchr(ptr, '/')) != NULL) {
+                *(tmp++) = '\0';
+                u->server = strdup(ptr);
+                ptr = tmp;
+        }
+        /* share */
+        if ((tmp = strchr(ptr, '/')) != NULL) {
+                *(tmp++) = '\0';
+                u->share = strdup(ptr);
+                ptr = tmp;
+        }
+        /* path */
+        if (*ptr != '\0') {
+                u->path = strdup(ptr);
+        }
+
+        return u;
+}
+
+void smb2_destroy_url(struct smb2_url *url)
+{
+        if (url == NULL) {
+                return;
+        }
+        free(url->domain);
+        free(url->user);
+        free(url->server);
+        free(url->share);
+        free(url->path);
+        free(url);
+}
+
+struct smb2_context *smb2_init_context(void)
+{
+        struct smb2_context *smb2;
+        
+        smb2 = malloc(sizeof(struct smb2_context));
+        if (smb2 == NULL) {
+                return NULL;
+        }
+        memset(smb2, 0, sizeof(struct smb2_context));
+
+        smb2->fd = -1;
+        
+        memcpy(smb2->client_guid, "libnfs", 6);
+        
+        return smb2;
+}
+
+void smb2_destroy_context(struct smb2_context *smb2)
+{
+        if (smb2 == NULL) {
+                return;
+        }
+
+        if (smb2->fd != -1) {
+                close(smb2->fd);
+                smb2->fd = -1;
+        }
+
+        while (smb2->outqueue) {
+                struct smb2_pdu *pdu = smb2->outqueue;
+
+                smb2->outqueue = pdu->next;
+                smb2_free_pdu(smb2, pdu);
+        }
+        while (smb2->waitqueue) {
+                struct smb2_pdu *pdu = smb2->waitqueue;
+
+                smb2->waitqueue = pdu->next;
+                smb2_free_pdu(smb2, pdu);
+        }
+        if (smb2->pdu) {
+                smb2_free_pdu(smb2, smb2->pdu);
+                smb2->pdu = NULL;
+        }
+
+        free(smb2);
+}
+
+void smb2_free_iovector(struct smb2_context *smb2, struct smb2_io_vectors *v)
+{
+        int i;
+        
+        for (i = 0; i < v->niov; i++) {
+                if (v->iov[i].free) {
+                        v->iov[i].free(v->iov[i].buf);
+                }
+        }
+        v->niov = 0;
+}
+
+void smb2_set_error(struct smb2_context *smb2, const char *error_string, ...)
+{
+	va_list ap;
+	char errstr[MAX_ERROR_SIZE] = {0};
+
+	va_start(ap, error_string);
+	if (vsnprintf(errstr, MAX_ERROR_SIZE, error_string, ap) < 0) {
+		strncpy(errstr, "could not format error string!",
+                        MAX_ERROR_SIZE);
+	}
+	va_end(ap);
+	if (smb2 != NULL) {
+		strncpy(smb2->error_string, errstr, MAX_ERROR_SIZE);
+	}
+}
+
+const char *smb2_get_error(struct smb2_context *smb2)
+{
+	return smb2 ? smb2->error_string : "";
+}
+        
+const char *smb2_get_client_guid(struct smb2_context *smb2)
+{
+        return smb2->client_guid;
+}
