@@ -141,6 +141,7 @@ struct session_setup_reply {
         char *security_buffer;
 };
 
+
 #ifdef __cplusplus
 }
 #endif

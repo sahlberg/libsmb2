@@ -322,6 +322,10 @@ int smb2_process_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
         smb2->credits += pdu->header.credit_request_response;
         
         switch (pdu->header.command) {
+        case SMB2_ECHO:
+                return smb2_process_echo_reply(smb2, pdu);
+        case SMB2_LOGOFF:
+                return smb2_process_logoff_reply(smb2, pdu);
         case SMB2_NEGOTIATE:
                 return smb2_process_negotiate_reply(smb2, pdu);
         case SMB2_SESSION_SETUP:

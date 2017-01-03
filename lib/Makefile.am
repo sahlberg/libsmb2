@@ -9,6 +9,8 @@ libsmb2_la_CPPFLAGS = -I$(abs_top_srcdir)/include \
 libsmb2_la_SOURCES = \
 	init.c \
 	pdu.c \
+	smb2-echo.c \
+	smb2-logoff.c \
 	smb2-negotiate.c \
 	smb2-session-setup.c \
 	socket.c

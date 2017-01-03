@@ -153,6 +153,44 @@ int smb2_negotiate_async(struct smb2_context *smb2,
 int smb2_session_setup_async(struct smb2_context *smb2,
                              struct session_setup_request *req,
                              smb2_command_cb cb, void *cb_data);
+
+/*
+ * Asynchronous SMB2 Echo
+ *
+ * Returns:
+ *  0 if the call was initiated and a connection will be attempted. Result of
+ * the connection will be reported through the callback function.
+ * <0 if there was an error. The callback function will not be invoked.
+ *
+ * Callback parameters :
+ * status can be either of :
+ *    0     : Echo was successful.
+ *
+ *   <0     : Echo failed.
+ *
+ * command_data is always NULL.
+ */
+int smb2_echo_async(struct smb2_context *smb2,
+                    smb2_command_cb cb, void *cb_data);
+
+/*
+ * Asynchronous SMB2 Logoff
+ *
+ * Returns:
+ *  0 if the call was initiated and a connection will be attempted. Result of
+ * the connection will be reported through the callback function.
+ * <0 if there was an error. The callback function will not be invoked.
+ *
+ * Callback parameters :
+ * status can be either of :
+ *    0     : Logoff was successful.
+ *
+ *   <0     : Logoff failed.
+ *
+ * command_data is always NULL.
+ */
+int smb2_logoff_async(struct smb2_context *smb2,
+                      smb2_command_cb cb, void *cb_data);
         
 #ifdef __cplusplus
 }
