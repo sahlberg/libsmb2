@@ -43,7 +43,7 @@ void session_setup_cb(struct smb2_context *smb2, int status,
 	printf("Security buffer offset:0x%08x\n", rep->security_buffer_offset);
 	printf("Security buffer length:%d\n", rep->security_buffer_length);
 
-        printf("Sec blob [%02x][%02x][%02x]\n",
+        printf("SESSION SETUP Sec blob [%02x][%02x][%02x]...\n",
                (unsigned char)rep->security_buffer[0],
                (unsigned char)rep->security_buffer[1],
                (unsigned char)rep->security_buffer[2]);
@@ -102,13 +102,18 @@ void negotiate_cb(struct smb2_context *smb2, int status,
         
 	printf("Negotiate status:0x%08x\n", status);
         printf("max transaction size:%d\n", rep->max_transact_size);
-               
+
 	if (status != STATUS_SUCCESS) {
 		printf("negotiate_cb: connection failed : %s\n",
                        smb2_get_error(smb2));
 		exit(10);
 	}
 
+        printf("NEGOTIATE Sec blob [%02x][%02x][%02x]...\n",
+               (unsigned char)rep->security_buffer[0],
+               (unsigned char)rep->security_buffer[1],
+               (unsigned char)rep->security_buffer[2]);
+        
         /* Session setup request. */
         memset(&req, 0, sizeof(struct session_setup_request));
         req.struct_size = SESSION_SETUP_REQUEST_SIZE;

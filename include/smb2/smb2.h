@@ -104,6 +104,7 @@ struct negotiate_reply {
         uint64_t server_start_time;
         uint16_t security_buffer_offset;
         uint16_t security_buffer_length;
+        char *security_buffer;
 };
 
 /* session setup flags */

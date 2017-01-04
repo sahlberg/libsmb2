@@ -98,7 +98,8 @@ smb2_decode_negotiate_reply(struct smb2_context *smb2,
         smb2_get_uint16(&pdu->in.iov[0], 56, &rep->security_buffer_offset);
         smb2_get_uint16(&pdu->in.iov[0], 58, &rep->security_buffer_length);
 
-        /* TODO The context list */
+        /* We do not have header in the reply iovectors */
+        rep->security_buffer = &pdu->in.iov[0].buf[rep->security_buffer_offset - SMB2_HEADER_SIZE];
         return 0;
 }
                                       
