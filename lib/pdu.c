@@ -23,10 +23,6 @@
 #define _GNU_SOURCE
 #endif
 
-#ifndef _BSD_SOURCE
-#define _BSD_SOURCE
-#endif
-
 #include <stdio.h>
 
 #ifdef HAVE_STDINT_H
