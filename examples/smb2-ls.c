@@ -52,6 +52,9 @@ struct private_auth_data {
     uint32_t req_flags;
 };
 
+int want_sign = 1;
+int want_seal = 1;
+
 static char *display_status(int type, uint32_t err)
 {
     gss_buffer_desc text;
@@ -94,7 +97,7 @@ void session_setup_cb(struct smb2_context *smb2, int status,
         gss_buffer_desc output_token = GSS_C_EMPTY_BUFFER;
         uint32_t maj, min;
 
-	printf("Session Setup:0x%08x\n", status);
+	printf("Session Setup COMPLETED:0x%08x\n", status);
 
 	printf("Security buffer offset:0x%08x\n", rep->security_buffer_offset);
 	printf("Security buffer length:%d\n", rep->security_buffer_length);
@@ -111,10 +114,11 @@ void session_setup_cb(struct smb2_context *smb2, int status,
                                    &auth_data->context,
                                    auth_data->target_name,
                                    auth_data->mech_type,
-                                   GSS_C_SEQUENCE_FLAG | GSS_C_MUTUAL_FLAG |
+                                   GSS_C_SEQUENCE_FLAG |
+                                   GSS_C_MUTUAL_FLAG |
                                    GSS_C_REPLAY_FLAG |
-                                   /* TODO: sign/seal ito be set as needed */
-                                   GSS_C_CONF_FLAG | GSS_C_INTEG_FLAG,
+                                   (want_sign?GSS_C_INTEG_FLAG:0) |
+                                   (want_seal?GSS_C_CONF_FLAG:0),
                                    GSS_C_INDEFINITE,
                                    GSS_C_NO_CHANNEL_BINDINGS,
                                    &input_token,
@@ -136,6 +140,8 @@ void session_setup_cb(struct smb2_context *smb2, int status,
                 /* Session setup request. */
                 memset(&req, 0, sizeof(struct session_setup_request));
                 req.struct_size = SESSION_SETUP_REQUEST_SIZE;
+                req.security_mode =
+                        want_sign ? SMB2_NEGOTIATE_SIGNING_ENABLED : 0;
                 req.security_buffer_offset = 0x58;
                 req.security_buffer_length = output_token.length;
                 req.security_buffer = output_token.value;
@@ -162,7 +168,8 @@ void negotiate_cb(struct smb2_context *smb2, int status,
         gss_buffer_desc target = GSS_C_EMPTY_BUFFER;
         gss_buffer_desc output_token = GSS_C_EMPTY_BUFFER;
         uint32_t maj, min;
-
+        uint32_t foo;
+        
         auth_data = calloc(1, sizeof(*auth_data));
 
         target.value = g_server;
@@ -171,6 +178,11 @@ void negotiate_cb(struct smb2_context *smb2, int status,
         maj = gss_import_name(&min, &target, GSS_C_NT_HOSTBASED_SERVICE,
                               &auth_data->target_name);
         if (maj != GSS_S_COMPLETE) {
+                char *err_maj = display_status(GSS_C_GSS_CODE, maj);
+                char *err_min = display_status(GSS_C_MECH_CODE, min);
+                printf("gss_import_name: (%s, %s)\n", err_maj, err_min);
+                free(err_min);
+                free(err_maj);
                 /* FIXME: print error with gss_display_status wrapper */
                 exit(55);
         }
@@ -190,10 +202,11 @@ void negotiate_cb(struct smb2_context *smb2, int status,
                                    &auth_data->context,
                                    auth_data->target_name,
                                    auth_data->mech_type,
-                                   GSS_C_SEQUENCE_FLAG | GSS_C_MUTUAL_FLAG |
+                                   GSS_C_SEQUENCE_FLAG |
+                                   GSS_C_MUTUAL_FLAG |
                                    GSS_C_REPLAY_FLAG |
-                                   /* TODO: sign/seal ito be set as needed */
-                                   GSS_C_CONF_FLAG | GSS_C_INTEG_FLAG,
+                                   (want_sign?GSS_C_INTEG_FLAG:0) |
+                                   (want_seal?GSS_C_CONF_FLAG:0),
                                    GSS_C_INDEFINITE,
                                    GSS_C_NO_CHANNEL_BINDINGS,
                                    NULL,
@@ -227,6 +240,8 @@ void negotiate_cb(struct smb2_context *smb2, int status,
         /* Session setup request. */
         memset(&req, 0, sizeof(struct session_setup_request));
         req.struct_size = SESSION_SETUP_REQUEST_SIZE;
+        req.security_mode =
+                want_sign ? SMB2_NEGOTIATE_SIGNING_ENABLED : 0;
         req.security_buffer_offset = 0x58;
         req.security_buffer_length = output_token.length;
         req.security_buffer = output_token.value;
@@ -256,7 +271,8 @@ void connect_cb(struct smb2_context *smb2, int status,
         memset(&req, 0, sizeof(struct negotiate_request));
         req.struct_size = NEGOTIATE_REQUEST_SIZE;
         req.dialect_count = NUM_DIALECTS;
-        req.security_mode = SMB2_NEGOTIATE_SIGNING_ENABLED;
+        req.security_mode =
+                want_sign ? SMB2_NEGOTIATE_SIGNING_ENABLED : 0;
         req.dialects[0] = SMB2_VERSION_0202;
         req.dialects[1] = SMB2_VERSION_0210;
         memcpy(req.client_guid, smb2_get_client_guid(smb2), 16);
@@ -272,6 +288,7 @@ int main(int argc, char *argv[])
         struct smb2_context *smb2;
         struct smb2_url *url;
 	struct pollfd pfd;
+        int ret;
 
         if (argc < 2) {
                 usage();
@@ -297,7 +314,11 @@ int main(int argc, char *argv[])
         printf("Path:%s\n", url->path);
 
         /* FIXME: move in negotiate_cb */
-        asprintf(&g_server, "cifs@%s", url->server);
+        ret = asprintf(&g_server, "cifs@%s", url->server);
+        if (ret < 0) {
+		printf("asprintf failed.\n");
+		exit(10);
+	}
 
 	if (smb2_connect_async(smb2, url->server, connect_cb, NULL) != 0) {
 		printf("smb2_connect failed. %s\n", smb2_get_error(smb2));
