@@ -131,10 +131,13 @@ int smb2_process_session_setup_reply(struct smb2_context *smb2,
                                      struct smb2_pdu *pdu)
 {
         struct session_setup_reply reply;
-        
+
+        /* Update session ID to use for future PDUs */
+        smb2->session_id = pdu->header.session_id;
+
         smb2_decode_session_setup_reply(smb2, pdu, &reply);
 
         pdu->cb(smb2, pdu->header.status, &reply, pdu->cb_data);
-        
+
         return 0;
 }
