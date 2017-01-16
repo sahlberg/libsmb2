@@ -53,7 +53,7 @@ struct private_auth_data {
 };
 
 int want_sign = 1;
-int want_seal = 1;
+int want_seal = 0;
 
 static char *display_status(int type, uint32_t err)
 {
