@@ -97,66 +97,67 @@ void session_setup_cb(struct smb2_context *smb2, int status,
         gss_buffer_desc output_token = GSS_C_EMPTY_BUFFER;
         uint32_t maj, min;
 
-	printf("Session Setup COMPLETED:0x%08x\n", status);
+        if (status == STATUS_MORE_PROCESSING_REQUIRED) {
+                input_token.length = rep->security_buffer_length;
+                input_token.value = rep->security_buffer;
 
-	printf("Security buffer offset:0x%08x\n", rep->security_buffer_offset);
-	printf("Security buffer length:%d\n", rep->security_buffer_length);
-
-        printf("SESSION SETUP Sec blob [%02x][%02x][%02x]...\n",
-               (unsigned char)rep->security_buffer[0],
-               (unsigned char)rep->security_buffer[1],
-               (unsigned char)rep->security_buffer[2]);
-
-        input_token.length = rep->security_buffer_length;
-        input_token.value = rep->security_buffer;
-
-        maj = gss_init_sec_context(&min, auth_data->cred,
-                                   &auth_data->context,
-                                   auth_data->target_name,
-                                   auth_data->mech_type,
-                                   GSS_C_SEQUENCE_FLAG |
-                                   GSS_C_MUTUAL_FLAG |
-                                   GSS_C_REPLAY_FLAG |
-                                   (want_sign?GSS_C_INTEG_FLAG:0) |
-                                   (want_seal?GSS_C_CONF_FLAG:0),
-                                   GSS_C_INDEFINITE,
-                                   GSS_C_NO_CHANNEL_BINDINGS,
-                                   &input_token,
-                                   NULL,
-                                   &output_token,
-                                   NULL,
-                                   NULL);
-        if (GSS_ERROR(maj)) {
-                char *err_maj = display_status(GSS_C_GSS_CODE, maj);
-                char *err_min = display_status(GSS_C_MECH_CODE, min);
-                printf("init_sec_context: (%s, %s)\n", err_maj, err_min);
-                free(err_min);
-                free(err_maj);
-                exit(55);
-        }
-
-        if (maj == GSS_S_CONTINUE_NEEDED) {
-                struct session_setup_request req;
-                /* Session setup request. */
-                memset(&req, 0, sizeof(struct session_setup_request));
-                req.struct_size = SESSION_SETUP_REQUEST_SIZE;
-                req.security_mode =
-                        want_sign ? SMB2_NEGOTIATE_SIGNING_ENABLED : 0;
-                req.security_buffer_offset = 0x58;
-                req.security_buffer_length = output_token.length;
-                req.security_buffer = output_token.value;
-
-                /* TODO: need to free output_token */
-
-	        if (smb2_session_setup_async(smb2, &req, session_setup_cb,
-                                             auth_data) != 0) {
-                        printf("smb2_session_setup failed. %s\n",
-                               smb2_get_error(smb2));
-                        exit(10);
+                maj = gss_init_sec_context(&min, auth_data->cred,
+                                           &auth_data->context,
+                                           auth_data->target_name,
+                                           auth_data->mech_type,
+                                           GSS_C_SEQUENCE_FLAG |
+                                           GSS_C_MUTUAL_FLAG |
+                                           GSS_C_REPLAY_FLAG |
+                                           (want_sign?GSS_C_INTEG_FLAG:0) |
+                                           (want_seal?GSS_C_CONF_FLAG:0),
+                                           GSS_C_INDEFINITE,
+                                           GSS_C_NO_CHANNEL_BINDINGS,
+                                           &input_token,
+                                           NULL,
+                                           &output_token,
+                                           NULL,
+                                           NULL);
+                if (GSS_ERROR(maj)) {
+                        char *err_maj = display_status(GSS_C_GSS_CODE, maj);
+                        char *err_min = display_status(GSS_C_MECH_CODE, min);
+                        printf("init_sec_context: (%s, %s)\n", err_maj, err_min);
+                        free(err_min);
+                        free(err_maj);
+                        exit(55);
                 }
-        } else {
-            /* TODO: cleanup auth_data and buffers */
+
+                if (maj == GSS_S_CONTINUE_NEEDED) {
+                        struct session_setup_request req;
+                        /* Session setup request. */
+                        memset(&req, 0, sizeof(struct session_setup_request));
+                        req.struct_size = SESSION_SETUP_REQUEST_SIZE;
+                        req.security_mode =
+                                want_sign ? SMB2_NEGOTIATE_SIGNING_ENABLED : 0;
+                        req.security_buffer_offset = 0x58;
+                        req.security_buffer_length = output_token.length;
+                        req.security_buffer = output_token.value;
+                        
+                        /* TODO: need to free output_token */
+                        
+                        if (smb2_session_setup_async(smb2, &req, session_setup_cb,
+                                                     auth_data) != 0) {
+                                printf("smb2_session_setup failed. %s\n",
+                                       smb2_get_error(smb2));
+                                exit(10);
+                        }
+                        return;
+                } else {
+                        /* TODO: cleanup auth_data and buffers */
+                }
         }
+
+        if (status != STATUS_SUCCESS) {
+                printf("smb2_session_setup failed. %s\n",
+                       smb2_get_error(smb2));
+                exit(10);
+        }
+
+        printf("SUCCESS\n");
 }
 
 void negotiate_cb(struct smb2_context *smb2, int status,
@@ -223,20 +224,12 @@ void negotiate_cb(struct smb2_context *smb2, int status,
                 exit(55);
         }
 
-	printf("Negotiate status:0x%08x\n", status);
-        printf("max transaction size:%d\n", rep->max_transact_size);
-
 	if (status != STATUS_SUCCESS) {
 		printf("negotiate_cb: connection failed : %s\n",
                        smb2_get_error(smb2));
 		exit(10);
 	}
 
-        printf("NEGOTIATE Sec blob [%02x][%02x][%02x]...\n",
-               (unsigned char)rep->security_buffer[0],
-               (unsigned char)rep->security_buffer[1],
-               (unsigned char)rep->security_buffer[2]);
-        
         /* Session setup request. */
         memset(&req, 0, sizeof(struct session_setup_request));
         req.struct_size = SESSION_SETUP_REQUEST_SIZE;
