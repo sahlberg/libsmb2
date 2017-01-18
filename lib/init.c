@@ -90,16 +90,20 @@ struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url)
                 u->server = strdup(ptr);
                 ptr = tmp;
         }
-        /* share */
-        if ((tmp = strchr(ptr, '/')) != NULL) {
-                *(tmp++) = '\0';
+
+        /* Do we just have a share or do we have both a share and an object */
+        tmp = strchr(ptr, '/');
+        
+        /* We only have a share */
+        if (tmp == NULL) {
                 u->share = strdup(ptr);
-                ptr = tmp;
+                return u;
         }
-        /* path */
-        if (*ptr != '\0') {
-                u->path = strdup(ptr);
-        }
+
+        /* we have both share and object path */
+        *(tmp++) = '\0';
+        u->share = strdup(ptr);
+        u->path = strdup(tmp);
 
         return u;
 }
@@ -162,6 +166,8 @@ void smb2_destroy_context(struct smb2_context *smb2)
                 smb2->pdu = NULL;
         }
 
+        free(smb2->server);
+        free(smb2->share);
         free(smb2);
 }
 
@@ -201,4 +207,9 @@ const char *smb2_get_error(struct smb2_context *smb2)
 const char *smb2_get_client_guid(struct smb2_context *smb2)
 {
         return smb2->client_guid;
+}
+
+void smb2_set_security_mode(struct smb2_context *smb2, uint16_t security_mode)
+{
+        smb2->security_mode = security_mode;
 }

@@ -27,6 +27,10 @@
 extern "C" {
 #endif
 
+#ifndef discard_const
+#define discard_const(ptr) ((void *)((intptr_t)(ptr)))
+#endif
+
 #define MAX_ERROR_SIZE 256
 
 #define PAD_TO_32BIT(len) ((len + 0x03) & 0xfffffffc)
@@ -79,6 +83,11 @@ struct smb2_header {
 struct smb2_context {
         int fd;
         int is_connected;
+
+        uint16_t security_mode;
+
+        char *server;
+        char *share;
 
         smb2_command_cb connect_cb;
         void *connect_data;
@@ -138,6 +147,16 @@ struct smb2_pdu {
         struct smb2_io_vectors in;
 };
 
+struct ucs2 {
+        int len;
+        uint16_t val[1];
+};
+
+/* Returns a string converted to UCS2 format. Use free() to release
+ * the ucs2 string.
+ */
+struct ucs2 *utf8_to_ucs2(char *utf8);
+        
 void smb2_set_error(struct smb2_context *smb2, const char *error_string,
                     ...) __attribute__((format(printf, 2, 3)));
 
@@ -175,6 +194,8 @@ int smb2_process_negotiate_reply(struct smb2_context *smb2,
                                  struct smb2_pdu *pdu);
 int smb2_process_session_setup_reply(struct smb2_context *smb2,
                                      struct smb2_pdu *pdu);
+int smb2_process_tree_connect_reply(struct smb2_context *smb2,
+                                    struct smb2_pdu *pdu);
         
 #ifdef __cplusplus
 }

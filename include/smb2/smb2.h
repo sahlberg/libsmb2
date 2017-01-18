@@ -63,6 +63,7 @@ enum smb2_command {
 #define SMB2_NEGOTIATE_SIGNING_ENABLED  0x0001
 #define SMB2_NEGOTIATE_SIGNING_REQUIRED 0x0002
 
+#define SMB2_NUM_DIALECTS 2
 #define SMB2_VERSION_0202     0x0202
 #define SMB2_VERSION_0210     0x0210
 #define SMB2_VERSION_WILDCARD 0x02FF
@@ -142,7 +143,51 @@ struct session_setup_reply {
         char *security_buffer;
 };
 
+#define TREE_CONNECT_REQUEST_SIZE 9
+        
+#define SMB2_SHAREFLAG_CLUSTER_RECONNECT 0x0001
 
+struct tree_connect_request {
+        uint16_t struct_size;
+        uint16_t flags;
+        uint16_t path_offset;
+        uint16_t path_length;
+        uint16_t *path;
+};
+
+#define SMB2_SHARE_TYPE_DISK  0x01
+#define SMB2_SHARE_TYPE_PIPE  0x02
+#define SMB2_SHARE_TYPE_PRINT 0x03
+
+#define SMB2_SHAREFLAG_MANUAL_CACHING              0x00000000
+#define SMB2_SHAREFLAG_DFS                         0x00000001
+#define SMB2_SHAREFLAG_DFS_ROOT                    0x00000002
+#define SMB2_SHAREFLAG_AUTO_CACHING                0x00000010
+#define SMB2_SHAREFLAG_VDO_CACHING                 0x00000020
+#define SMB2_SHAREFLAG_NO_CACHING                  0x00000030
+#define SMB2_SHAREFLAG_RESTRICT_EXCLUSIVE_OPENS    0x00000100
+#define SMB2_SHAREFLAG_FORCE_SHARED_DELETE         0x00000200
+#define SMB2_SHAREFLAG_ALLOW_NAMESPACE_CACHING     0x00000400  
+#define SMB2_SHAREFLAG_ACCESS_BASED_DIRECTORY_ENUM 0x00000800
+#define SMB2_SHAREFLAG_FORCE_LEVELII_OPLOCK        0x00001000
+#define SMB2_SHAREFLAG_ENABLE_HASH_V1              0x00002000
+#define SMB2_SHAREFLAG_ENABLE_HASH_V2              0x00004000
+#define SMB2_SHAREFLAG_ENCRYPT_DATA                0x00008000
+
+#define SMB2_SHARE_CAP_DFS                         0x00000008
+#define SMB2_SHARE_CAP_CONTINUOUS_AVAILABILITY     0x00000010
+#define SMB2_SHARE_CAP_SCALEOUT                    0x00000020
+#define SMB2_SHARE_CAP_CLUSTER                     0x00000040
+#define SMB2_SHARE_CAP_ASYMMETRIC                  0x00000080
+
+struct tree_connect_reply {
+        uint16_t struct_size;
+        uint8_t share_type;
+        uint32_t share_flags;
+        uint32_t capabilities;
+        uint32_t maximal_access;
+};
+        
 #ifdef __cplusplus
 }
 #endif

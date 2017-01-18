@@ -70,6 +70,14 @@ int smb2_which_events(struct smb2_context *smb2);
 int smb2_service(struct smb2_context *smb2, int revents);
 
 /*
+ * Set the security mode for the connection.
+ * This is a combination of the flags SMB2_NEGOTIATE_SIGNING_ENABLED
+ * and  SMB2_NEGOTIATE_SIGNING_REQUIRED
+ * Default is 0.
+ */
+void smb2_set_security_mode(struct smb2_context *smb2, uint16_t security_mode);
+
+/*
  * Returns the client_guid for this context.
  */
 const char *smb2_get_client_guid(struct smb2_context *smb2);
@@ -91,6 +99,24 @@ const char *smb2_get_client_guid(struct smb2_context *smb2);
 int smb2_connect_async(struct smb2_context *smb2, const char *server,
                        smb2_command_cb cb, void *private_data);
 
+/*
+ * Asynchronous call to connect to a share/
+ *
+ * Returns:
+ *  0 if the call was initiated and a connection will be attempted. Result of
+ * the connection will be reported through the callback function.
+ * <0 if there was an error. The callback function will not be invoked.
+ *
+ * Callback parameters :
+ * status can be either of :
+ *    0     : Connection was successful. Command_data is NULL.
+ *
+ *   <0     : Failed to connect to the share. Command_data is NULL.
+ */
+int smb2_connect_share_async(struct smb2_context *smb2,
+                             const char *server, const char *share,
+                             smb2_command_cb cb, void *private_data);
+        
 /*
  * This function returns a description of the last encountered error.
  */
@@ -145,14 +171,33 @@ int smb2_negotiate_async(struct smb2_context *smb2,
  *
  * Callback parameters :
  * status can be either of :
- *    0     : Negotiate was successful.
+ *    0     : Session Setup was successful.
  *            Command_data is a struct negotiate_reply.
  *
- *   <0     : Negotiate failed. Command_data is NULL.
+ *   <0     : Session Setup failed. Command_data is NULL.
  */
 int smb2_session_setup_async(struct smb2_context *smb2,
                              struct session_setup_request *req,
                              smb2_command_cb cb, void *cb_data);
+
+/*
+ * Asynchronous SMB2 Tree Connect
+ *
+ * Returns:
+ *  0 if the call was initiated and a connection will be attempted. Result of
+ * the connection will be reported through the callback function.
+ * <0 if there was an error. The callback function will not be invoked.
+ *
+ * Callback parameters :
+ * status can be either of :
+ *    0     : Tree Connect was successful.
+ *            Command_data is a struct tree_connect_reply.
+ *
+ *   <0     : Tree Connect failed. Command_data is NULL.
+ */
+int smb2_tree_connect_async(struct smb2_context *smb2,
+                            struct tree_connect_request *req,
+                            smb2_command_cb cb, void *cb_data);
 
 /*
  * Asynchronous SMB2 Echo
