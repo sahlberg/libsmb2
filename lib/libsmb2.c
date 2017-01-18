@@ -132,6 +132,13 @@ static void free_auth_data(struct private_auth_data *auth)
         }
         /* Free output_token */
         gss_release_buffer(&min, &auth->output_token);
+
+        /* Free the target name */
+        if (auth->target_name) {
+                gss_release_name(&min, &auth->target_name);
+        }
+
+        free(auth);
 }
 
 static void free_c_data(struct connect_data *c_data)
@@ -215,8 +222,6 @@ void session_setup_cb(struct smb2_context *smb2, int status,
                         req.security_buffer_offset = 0x58;
                         req.security_buffer_length = c_data->auth_data->output_token.length;
                         req.security_buffer = c_data->auth_data->output_token.value;
-                        
-                        /* TODO: need to free output_token */
                         
                         if (smb2_session_setup_async(smb2, &req, session_setup_cb,
                                                      c_data) != 0) {
