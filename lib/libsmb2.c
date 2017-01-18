@@ -52,11 +52,12 @@ static gss_OID_desc gss_mech_spnego = {
 };
 
 struct private_auth_data {
-    gss_ctx_id_t context;
-    gss_cred_id_t cred;
-    gss_name_t target_name;
-    gss_OID mech_type;
-    uint32_t req_flags;
+        gss_ctx_id_t context;
+        gss_cred_id_t cred;
+        gss_name_t target_name;
+        gss_OID mech_type;
+        uint32_t req_flags;
+        gss_buffer_desc output_token;
 };
 
 struct connect_data {
@@ -129,6 +130,8 @@ static void free_auth_data(struct private_auth_data *auth)
                         /* No logging, yet. Do we care? */
                 }
         }
+        /* Free output_token */
+        gss_release_buffer(&min, &auth->output_token);
 }
 
 static void free_c_data(struct connect_data *c_data)
@@ -169,9 +172,13 @@ void session_setup_cb(struct smb2_context *smb2, int status,
         struct session_setup_reply *rep = command_data;
         struct tree_connect_request tcreq;
         gss_buffer_desc input_token = GSS_C_EMPTY_BUFFER;
-        gss_buffer_desc output_token = GSS_C_EMPTY_BUFFER;
         uint32_t maj, min;
 
+        /* release the previous token */
+        gss_release_buffer(&min, &c_data->auth_data->output_token);
+        c_data->auth_data->output_token.length = 0;
+        c_data->auth_data->output_token.value = NULL;
+        
         if (status == STATUS_MORE_PROCESSING_REQUIRED) {
                 input_token.length = rep->security_buffer_length;
                 input_token.value = rep->security_buffer;
@@ -188,7 +195,7 @@ void session_setup_cb(struct smb2_context *smb2, int status,
                                            GSS_C_NO_CHANNEL_BINDINGS,
                                            &input_token,
                                            NULL,
-                                           &output_token,
+                                           &c_data->auth_data->output_token,
                                            NULL,
                                            NULL);
                 if (GSS_ERROR(maj)) {
@@ -206,8 +213,8 @@ void session_setup_cb(struct smb2_context *smb2, int status,
                         req.struct_size = SESSION_SETUP_REQUEST_SIZE;
                         req.security_mode = smb2->security_mode;
                         req.security_buffer_offset = 0x58;
-                        req.security_buffer_length = output_token.length;
-                        req.security_buffer = output_token.value;
+                        req.security_buffer_length = c_data->auth_data->output_token.length;
+                        req.security_buffer = c_data->auth_data->output_token.value;
                         
                         /* TODO: need to free output_token */
                         
@@ -252,7 +259,6 @@ void negotiate_cb(struct smb2_context *smb2, int status,
         struct connect_data *c_data = private_data;
         struct session_setup_request req;
         gss_buffer_desc target = GSS_C_EMPTY_BUFFER;
-        gss_buffer_desc output_token = GSS_C_EMPTY_BUFFER;
         uint32_t maj, min;
         
         if (status != STATUS_SUCCESS) {
@@ -271,7 +277,7 @@ void negotiate_cb(struct smb2_context *smb2, int status,
         memset(c_data->auth_data, 0, sizeof(struct private_auth_data));
         c_data->auth_data->context = GSS_C_NO_CONTEXT;
                 
-        if (asprintf(&c_data->g_server, "cifs@%s", c_data->server) < 0){
+        if (asprintf(&c_data->g_server, "cifs@%s", c_data->server) < 0) {
                 smb2_set_error(smb2, "Failed to allocate server string\n");
                 c_data->cb(smb2, -1, NULL, c_data->cb_data);
                 free_c_data(c_data);
@@ -314,7 +320,7 @@ void negotiate_cb(struct smb2_context *smb2, int status,
                                    GSS_C_NO_CHANNEL_BINDINGS,
                                    NULL,
                                    NULL,
-                                   &output_token,
+                                   &c_data->auth_data->output_token,
                                    NULL,
                                    NULL);
         if (GSS_ERROR(maj)) {
@@ -329,10 +335,8 @@ void negotiate_cb(struct smb2_context *smb2, int status,
         req.struct_size = SESSION_SETUP_REQUEST_SIZE;
         req.security_mode = smb2->security_mode;
         req.security_buffer_offset = 0x58;
-        req.security_buffer_length = output_token.length;
-        req.security_buffer = output_token.value;
-
-        /* TODO: need to free output_token */
+        req.security_buffer_length = c_data->auth_data->output_token.length;
+        req.security_buffer = c_data->auth_data->output_token.value;
 
         if (smb2_session_setup_async(smb2, &req, session_setup_cb,
                                      c_data) != 0) {
@@ -412,7 +416,7 @@ int smb2_connect_share_async(struct smb2_context *smb2,
                 
         c_data->cb = cb;
         c_data->cb_data = private_data;
-        
+ 
         if (smb2_connect_async(smb2, server, connect_cb, c_data) != 0) {
                 free_c_data(c_data);
                 return -1;
