@@ -1,3 +1,4 @@
+smb2_create_async
 smb2_connect_async
 smb2_connect_share_async
 smb2_destroy_context

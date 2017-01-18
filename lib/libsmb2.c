@@ -167,7 +167,7 @@ tree_connect_cb(struct smb2_context *smb2, int status,
 {
         struct connect_data *c_data = private_data;
 
-        if (status != STATUS_SUCCESS) {
+        if (status != SMB2_STATUS_SUCCESS) {
                 smb2_set_error(smb2, "Session setup failed.\n");
                 c_data->cb(smb2, -1, NULL, c_data->cb_data);
                 free_c_data(c_data);
@@ -183,8 +183,8 @@ session_setup_cb(struct smb2_context *smb2, int status,
                  void *command_data, void *private_data)
 {
         struct connect_data *c_data = private_data;
-        struct session_setup_reply *rep = command_data;
-        struct tree_connect_request req;
+        struct smb2_session_setup_reply *rep = command_data;
+        struct smb2_tree_connect_request req;
         gss_buffer_desc input_token = GSS_C_EMPTY_BUFFER;
         uint32_t min;
 
@@ -193,7 +193,7 @@ session_setup_cb(struct smb2_context *smb2, int status,
         c_data->auth_data->output_token.length = 0;
         c_data->auth_data->output_token.value = NULL;
         
-        if (status == STATUS_MORE_PROCESSING_REQUIRED) {
+        if (status == SMB2_STATUS_MORE_PROCESSING_REQUIRED) {
                 input_token.length = rep->security_buffer_length;
                 input_token.value = rep->security_buffer;
 
@@ -206,15 +206,15 @@ session_setup_cb(struct smb2_context *smb2, int status,
                 return;
         }
 
-        if (status != STATUS_SUCCESS) {
+        if (status != SMB2_STATUS_SUCCESS) {
                 smb2_set_error(smb2, "Session setup failed.\n");
                 c_data->cb(smb2, -1, NULL, c_data->cb_data);
                 free_c_data(c_data);
                 return;
         }
 
-        memset(&req, 0, sizeof(struct tree_connect_request));
-        req.struct_size = TREE_CONNECT_REQUEST_SIZE;
+        memset(&req, 0, sizeof(struct smb2_tree_connect_request));
+        req.struct_size = SMB2_TREE_CONNECT_REQUEST_SIZE;
         req.flags       = 0;
         req.path_offset = 0x48;
         req.path_length = 2 * c_data->ucs2_unc->len;
@@ -235,7 +235,7 @@ send_session_setup_request(struct smb2_context *smb2,
                            gss_buffer_desc *input_token)
 {
         uint32_t maj, min;
-        struct session_setup_request req;
+        struct smb2_session_setup_request req;
         
         /* NOTE: this call is not async, a helper thread should be used if that
          * is an issue */
@@ -261,8 +261,8 @@ send_session_setup_request(struct smb2_context *smb2,
 
         if (maj == GSS_S_CONTINUE_NEEDED) {
                 /* Session setup request. */
-                memset(&req, 0, sizeof(struct session_setup_request));
-                req.struct_size = SESSION_SETUP_REQUEST_SIZE;
+                memset(&req, 0, sizeof(struct smb2_session_setup_request));
+                req.struct_size = SMB2_SESSION_SETUP_REQUEST_SIZE;
                 req.security_mode = smb2->security_mode;
                 req.security_buffer_offset = 0x58;
                 req.security_buffer_length = c_data->auth_data->output_token.length;
@@ -287,7 +287,7 @@ negotiate_cb(struct smb2_context *smb2, int status,
         gss_buffer_desc target = GSS_C_EMPTY_BUFFER;
         uint32_t maj, min;
         
-        if (status != STATUS_SUCCESS) {
+        if (status != SMB2_STATUS_SUCCESS) {
                 c_data->cb(smb2, -1, NULL, c_data->cb_data);
                 free_c_data(c_data);
                 return;
@@ -344,7 +344,7 @@ connect_cb(struct smb2_context *smb2, int status,
            void *command_data _U_, void *private_data)
 {
         struct connect_data *c_data = private_data;
-        struct negotiate_request req;
+        struct smb2_negotiate_request req;
 
         if (status != 0) {
                 smb2_set_error(smb2, "Failed to connect socket. errno:%d\n",
@@ -354,8 +354,8 @@ connect_cb(struct smb2_context *smb2, int status,
                 return;
         }
         
-        memset(&req, 0, sizeof(struct negotiate_request));
-        req.struct_size = NEGOTIATE_REQUEST_SIZE;
+        memset(&req, 0, sizeof(struct smb2_negotiate_request));
+        req.struct_size = SMB2_NEGOTIATE_REQUEST_SIZE;
         req.dialect_count = SMB2_NUM_DIALECTS;
         req.security_mode = smb2->security_mode;
         req.dialects[0] = SMB2_VERSION_0202;

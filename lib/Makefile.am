@@ -10,6 +10,7 @@ libsmb2_la_SOURCES = \
 	init.c \
 	pdu.c \
 	libsmb2.c \
+	smb2-create.c \
 	smb2-echo.c \
 	smb2-logoff.c \
 	smb2-negotiate.c \

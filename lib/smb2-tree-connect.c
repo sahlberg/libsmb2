@@ -39,8 +39,6 @@
 #include <stddef.h>
 #endif
 
-#include <stdio.h>
-
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-private.h"
@@ -48,12 +46,12 @@
 static int
 smb2_encode_tree_connect_request(struct smb2_context *smb2,
                                  struct smb2_pdu *pdu,
-                                 struct tree_connect_request *req)
+                                 struct smb2_tree_connect_request *req)
 {
         int len;
         char *buf;
         
-        len = TREE_CONNECT_REQUEST_SIZE & 0xfffffffe;
+        len = SMB2_TREE_CONNECT_REQUEST_SIZE & 0xfffffffe;
         buf = malloc(len);
         if (buf == NULL) {
                 smb2_set_error(smb2, "Failed to allocate tree connect setup "
@@ -86,7 +84,7 @@ smb2_encode_tree_connect_request(struct smb2_context *smb2,
 static int
 smb2_decode_tree_connect_reply(struct smb2_context *smb2,
                                struct smb2_pdu *pdu,
-                               struct tree_connect_reply *rep)
+                               struct smb2_tree_connect_reply *rep)
 {
         
         smb2_get_uint16(&pdu->in.iov[0], 0, &rep->struct_size);
@@ -99,7 +97,7 @@ smb2_decode_tree_connect_reply(struct smb2_context *smb2,
 }
 
 int smb2_tree_connect_async(struct smb2_context *smb2,
-                            struct tree_connect_request *req,
+                            struct smb2_tree_connect_request *req,
                             smb2_command_cb cb, void *cb_data)
 {
         struct smb2_pdu *pdu;
@@ -125,7 +123,7 @@ int smb2_tree_connect_async(struct smb2_context *smb2,
 int smb2_process_tree_connect_reply(struct smb2_context *smb2,
                                     struct smb2_pdu *pdu)
 {
-        struct tree_connect_reply reply;
+        struct smb2_tree_connect_reply reply;
 
         /* Update tree ID to use for future PDUs */
         smb2->tree_id = pdu->header.sync.tree_id;

@@ -39,8 +39,6 @@
 #include <stddef.h>
 #endif
 
-#include <stdio.h>
-
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-private.h"
@@ -48,12 +46,12 @@
 static int
 smb2_encode_negotiate_request(struct smb2_context *smb2,
                               struct smb2_pdu *pdu,
-                              struct negotiate_request *req)
+                              struct smb2_negotiate_request *req)
 {
         char *buf;
         int i, len;
         
-        len = NEGOTIATE_REQUEST_SIZE + req->dialect_count * sizeof(uint16_t);
+        len = SMB2_NEGOTIATE_REQUEST_SIZE + req->dialect_count * sizeof(uint16_t);
         len = PAD_TO_32BIT(len);
         buf = malloc(len);
         if (buf == NULL) {
@@ -83,7 +81,7 @@ smb2_encode_negotiate_request(struct smb2_context *smb2,
 static int
 smb2_decode_negotiate_reply(struct smb2_context *smb2,
                             struct smb2_pdu *pdu,
-                            struct negotiate_reply *rep)
+                            struct smb2_negotiate_reply *rep)
 {
         smb2_get_uint16(&pdu->in.iov[0], 0, &rep->struct_size);
         smb2_get_uint16(&pdu->in.iov[0], 2, &rep->security_mode);
@@ -104,7 +102,7 @@ smb2_decode_negotiate_reply(struct smb2_context *smb2,
 }
                                       
 int smb2_negotiate_async(struct smb2_context *smb2,
-                         struct negotiate_request *req,
+                         struct smb2_negotiate_request *req,
                          smb2_command_cb cb, void *cb_data)
 {
         struct smb2_pdu *pdu;
@@ -130,7 +128,7 @@ int smb2_negotiate_async(struct smb2_context *smb2,
 int smb2_process_negotiate_reply(struct smb2_context *smb2,
                                  struct smb2_pdu *pdu)
 {
-        struct negotiate_reply reply;
+        struct smb2_negotiate_reply reply;
         
         smb2_decode_negotiate_reply(smb2, pdu, &reply);
 

@@ -40,12 +40,37 @@ void lo_cb(struct smb2_context *smb2, int status,
         is_finished = 1;
 }
 
+void cr_cb(struct smb2_context *smb2, int status,
+                void *command_data _U_, void *private_data)
+{
+	printf("Create status:0x%08x\n", status);
+        if (smb2_logoff_async(smb2, lo_cb, NULL) < 0) {
+                printf("Failed to send LOGOFF command\n");
+                exit(10);
+        }
+}
+
 void cf_cb(struct smb2_context *smb2, int status,
                 void *command_data _U_, void *private_data)
 {
+        struct smb2_create_request req;
+
+        memset(&req, 0, sizeof(struct smb2_create_request));
+        req.struct_size = SMB2_CREATE_REQUEST_SIZE;
+        req.requested_oplock_level = SMB2_OPLOCK_LEVEL_NONE;
+        req.impersonation_level = SMB2_IMPERSONATION_IMPERSONATION;
+        req.desired_access = SMB2_FILE_LIST_DIRECTORY | SMB2_FILE_READ_ATTRIBUTES;
+        req.file_attributes = SMB2_FILE_ATTRIBUTE_DIRECTORY;
+        req.share_access = SMB2_FILE_SHARE_READ | SMB2_FILE_SHARE_WRITE;
+        req.create_disposition = SMB2_FILE_OPEN;
+        req.create_options = SMB2_FILE_DIRECTORY_FILE;
+        req.name_offset = 0x78;
+        req.name_length = 0;
+        req.name = NULL;
+        
 	printf("Connected to SMB2 share status:0x%08x\n", status);
-        if (smb2_logoff_async(smb2, lo_cb, NULL) < 0) {
-                printf("Failed to send LOGOFF command\n");
+        if (smb2_create_async(smb2, &req, cr_cb, NULL) < 0) {
+                printf("Failed to send Create command\n");
                 exit(10);
         }
 }

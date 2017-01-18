@@ -39,8 +39,6 @@
 #include <stddef.h>
 #endif
 
-#include <stdio.h>
-
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-private.h"
@@ -48,12 +46,12 @@
 static int
 smb2_encode_session_setup_request(struct smb2_context *smb2,
                                   struct smb2_pdu *pdu,
-                                  struct session_setup_request *req)
+                                  struct smb2_session_setup_request *req)
 {
         int len;
         char *buf;
         
-        len = SESSION_SETUP_REQUEST_SIZE & 0xfffffffe;
+        len = SMB2_SESSION_SETUP_REQUEST_SIZE & 0xfffffffe;
         buf = malloc(len);
         if (buf == NULL) {
                 smb2_set_error(smb2, "Failed to allocate session "
@@ -90,7 +88,7 @@ smb2_encode_session_setup_request(struct smb2_context *smb2,
 static int
 smb2_decode_session_setup_reply(struct smb2_context *smb2,
                                 struct smb2_pdu *pdu,
-                                struct session_setup_reply *rep)
+                                struct smb2_session_setup_reply *rep)
 {
         
         smb2_get_uint16(&pdu->in.iov[0], 0, &rep->struct_size);
@@ -104,7 +102,7 @@ smb2_decode_session_setup_reply(struct smb2_context *smb2,
 }
 
 int smb2_session_setup_async(struct smb2_context *smb2,
-                             struct session_setup_request *req,
+                             struct smb2_session_setup_request *req,
                              smb2_command_cb cb, void *cb_data)
 {
         struct smb2_pdu *pdu;
@@ -130,7 +128,7 @@ int smb2_session_setup_async(struct smb2_context *smb2,
 int smb2_process_session_setup_reply(struct smb2_context *smb2,
                                      struct smb2_pdu *pdu)
 {
-        struct session_setup_reply reply;
+        struct smb2_session_setup_reply reply;
 
         /* Update session ID to use for future PDUs */
         smb2->session_id = pdu->header.session_id;

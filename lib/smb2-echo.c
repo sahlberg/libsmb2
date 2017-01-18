@@ -39,8 +39,6 @@
 #include <stddef.h>
 #endif
 
-#include <stdio.h>
-
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-private.h"

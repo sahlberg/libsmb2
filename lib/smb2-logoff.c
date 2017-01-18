@@ -39,8 +39,6 @@
 #include <stddef.h>
 #endif
 
-#include <stdio.h>
-
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-private.h"
@@ -56,7 +54,7 @@ smb2_encode_logoff_request(struct smb2_context *smb2,
 
         buf = malloc(len);
         if (buf == NULL) {
-                smb2_set_error(smb2, "Failed to allocate echo buffer");
+                smb2_set_error(smb2, "Failed to allocate logoff buffer");
                 return -1;
         }
         memset(buf, 0, len);
