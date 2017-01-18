@@ -222,6 +222,25 @@ int smb2_create_async(struct smb2_context *smb2,
                       smb2_command_cb cb, void *cb_data);
 
 /*
+ * Asynchronous SMB2 Close
+ *
+ * Returns:
+ *  0 if the call was initiated and a create will be attempted. The result 
+ *    of the close will be reported through the callback function.
+ * <0 if there was an error. The callback function will not be invoked.
+ *
+ * Callback parameters :
+ * status can be either of :
+ *    0     : Close was successful.
+ *            Command_data is a struct smb2_close_reply.
+ *
+ *   !0     : Status is NT status code. Command_data is NULL.
+ */
+int smb2_close_async(struct smb2_context *smb2,
+                     struct smb2_close_request *req,
+                     smb2_command_cb cb, void *cb_data);
+
+/*
  * Asynchronous SMB2 Echo
  *
  * Returns:

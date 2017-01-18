@@ -221,8 +221,6 @@ session_setup_cb(struct smb2_context *smb2, int status,
         req.path        = c_data->ucs2_unc->val;
         if (smb2_tree_connect_async(smb2, &req, tree_connect_cb,
                                     c_data) != 0) {
-                printf("smb2_tree_connect failed. %s\n",
-                       smb2_get_error(smb2));
                 c_data->cb(smb2, -1, NULL, c_data->cb_data);
                 free_c_data(c_data);
                 return;

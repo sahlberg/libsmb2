@@ -39,8 +39,6 @@
 #include <stddef.h>
 #endif
 
-#include <stdio.h>
-
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-private.h"
@@ -102,7 +100,6 @@ smb2_encode_create_request(struct smb2_context *smb2,
          * and there is no create context.
          */
         if (!req->name_length && !req->create_context_length) {
-                printf("add zro \n");
                 pdu->out.iov[pdu->out.niov].len = 1;
                 pdu->out.iov[pdu->out.niov].buf = &zero;
                 pdu->out.iov[pdu->out.niov].free = NULL;

@@ -324,7 +324,29 @@ struct smb2_create_reply {
         uint32_t create_context_length;
         char *create_context;
 };
-        
+
+#define SMB2_CLOSE_REQUEST_SIZE 24
+
+#define SMB2_CLOSE_FLAG_POSTQUERY_ATTRIB 0x0001
+
+struct smb2_close_request {
+        uint16_t struct_size;
+        uint16_t flags;
+        smb2_file_id file_id;
+};
+
+struct smb2_close_reply {
+        uint16_t struct_size;
+        uint16_t flags;
+        uint64_t creation_time;
+        uint64_t last_access_time;
+        uint64_t last_write_time;
+        uint64_t change_time;
+        uint64_t allocation_size;
+        uint64_t end_of_file;
+        uint32_t file_attributes;
+};
+
 #ifdef __cplusplus
 }
 #endif

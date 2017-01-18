@@ -40,12 +40,40 @@ void lo_cb(struct smb2_context *smb2, int status,
         is_finished = 1;
 }
 
-void cr_cb(struct smb2_context *smb2, int status,
+void cl_cb(struct smb2_context *smb2, int status,
                 void *command_data _U_, void *private_data)
 {
-	printf("Create status:0x%08x\n", status);
+	printf("Close status:0x%08x\n", status);
+        if (status) {
+                printf("failed to close\n");
+                exit(10);
+        }
+
         if (smb2_logoff_async(smb2, lo_cb, NULL) < 0) {
                 printf("Failed to send LOGOFF command\n");
+                exit(10);
+        }
+}
+
+void cr_cb(struct smb2_context *smb2, int status,
+                void *command_data, void *private_data)
+{
+        struct smb2_create_reply *rep = command_data;
+        struct smb2_close_request req;
+
+        printf("Create status:0x%08x\n", status);
+        if (status) {
+                printf("failed to create/open\n");
+                exit(10);
+        }
+        
+        memset(&req, 0, sizeof(struct smb2_close_request));
+        req.struct_size = SMB2_CLOSE_REQUEST_SIZE;
+        req.flags = SMB2_CLOSE_FLAG_POSTQUERY_ATTRIB;
+        memcpy(req.file_id, rep->file_id, SMB2_FD_SIZE);
+        
+        if (smb2_close_async(smb2, &req, cl_cb, NULL) < 0) {
+                printf("Failed to send Close command\n");
                 exit(10);
         }
 }
@@ -54,6 +82,12 @@ void cf_cb(struct smb2_context *smb2, int status,
                 void *command_data _U_, void *private_data)
 {
         struct smb2_create_request req;
+
+	printf("Connected to SMB2 share status:0x%08x\n", status);
+        if (status) {
+                printf("failed to connect share\n");
+                exit(10);
+        }
 
         memset(&req, 0, sizeof(struct smb2_create_request));
         req.struct_size = SMB2_CREATE_REQUEST_SIZE;
@@ -68,7 +102,6 @@ void cf_cb(struct smb2_context *smb2, int status,
         req.name_length = 0;
         req.name = NULL;
         
-	printf("Connected to SMB2 share status:0x%08x\n", status);
         if (smb2_create_async(smb2, &req, cr_cb, NULL) < 0) {
                 printf("Failed to send Create command\n");
                 exit(10);
