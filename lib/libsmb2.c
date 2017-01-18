@@ -253,7 +253,8 @@ void negotiate_cb(struct smb2_context *smb2, int status,
                 return;
         }
         memset(c_data->auth_data, 0, sizeof(struct private_auth_data));
-
+        c_data->auth_data->context = GSS_C_NO_CONTEXT;
+                
         if (asprintf(&c_data->g_server, "cifs@%s", c_data->server) < 0){
                 smb2_set_error(smb2, "Failed to allocate server string\n");
                 c_data->cb(smb2, -1, NULL, c_data->cb_data);
