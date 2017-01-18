@@ -33,10 +33,21 @@ int usage(void)
         exit(1);
 }
 
+void lo_cb(struct smb2_context *smb2, int status,
+                void *command_data _U_, void *private_data)
+{
+	printf("Logged off status:0x%08x\n", status);
+        is_finished = 1;
+}
+
 void cf_cb(struct smb2_context *smb2, int status,
                 void *command_data _U_, void *private_data)
 {
 	printf("Connected to SMB2 share status:0x%08x\n", status);
+        if (smb2_logoff_async(smb2, lo_cb, NULL) < 0) {
+                printf("Failed to send LOGOFF command\n");
+                exit(10);
+        }
 }
 
 int main(int argc, char *argv[])
