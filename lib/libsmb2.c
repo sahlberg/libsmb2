@@ -74,19 +74,6 @@ struct connect_data {
         struct private_auth_data *auth_data;
 };
 
-static void free_c_data(struct connect_data *c_data)
-{
-        /* TODO: How do we free auth_data ? */
-        free(c_data->auth_data);
-
-        free(c_data->utf8_unc);
-        free(c_data->ucs2_unc);
-        free(c_data->g_server);
-        free(discard_const(c_data->server));
-        free(discard_const(c_data->share));
-        free(c_data);
-}
-
 static char *display_status(int type, uint32_t err)
 {
         gss_buffer_desc text;
@@ -129,6 +116,35 @@ static void set_gss_error(struct smb2_context *smb2, char *func,
         free(err_min);
         free(err_maj);
 }
+
+static void free_auth_data(struct private_auth_data *auth)
+{
+        uint32_t maj, min;
+
+        /* Delete context */
+        if (auth->context) {
+                maj = gss_delete_sec_context(&min, &auth->context,
+                                             GSS_C_NO_BUFFER);
+                if (maj != GSS_S_COMPLETE) {
+                        /* No logging, yet. Do we care? */
+                }
+        }
+}
+
+static void free_c_data(struct connect_data *c_data)
+{
+        if (c_data->auth_data) {
+                free_auth_data(c_data->auth_data);
+        }
+
+        free(c_data->utf8_unc);
+        free(c_data->ucs2_unc);
+        free(c_data->g_server);
+        free(discard_const(c_data->server));
+        free(discard_const(c_data->share));
+        free(c_data);
+}
+
 
 void tree_connect_cb(struct smb2_context *smb2, int status,
                 void *command_data, void *private_data)
