@@ -39,7 +39,7 @@
 #include <stddef.h>
 #endif
 
-#include <stdio.h>
+#include <endian.h>
 
 #include "smb2.h"
 #include "libsmb2.h"
@@ -112,6 +112,7 @@ static int validate_utf8_str(char *utf8)
         return i;
 }
 
+/* Convert a UTF8 string into UCS2 Little Endian */
 struct ucs2 *utf8_to_ucs2(char *utf8)
 {
         struct ucs2 *ucs2;
@@ -130,6 +131,7 @@ struct ucs2 *utf8_to_ucs2(char *utf8)
         ucs2->len = len;
         for (i = 0; i < len; i++) {
                 validate_utf8_cp(&utf8, &ucs2->val[i]);
+                ucs2->val[i] = htole32(ucs2->val[i]);
         }
         
         return ucs2;

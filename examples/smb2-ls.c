@@ -33,21 +33,6 @@ int usage(void)
         exit(1);
 }
 
-#if 0
-        memset(&tcreq, 0, sizeof(struct tree_connect_request));
-        tcreq.struct_size = TREE_REQUEST_SIZE;
-        tcreq.flags       = 0;
-        tcreq.path_offset = 0x48;
-        tcreq.path_length = ;
-        tcreq.path        = ;
-        if (smb2_tree_connect_async(smb2, &tcreq, tree_connect_cb,
-                                    auth_data) != 0) {
-                printf("smb2_tree_connect failed. %s\n",
-                       smb2_get_error(smb2));
-                exit(10);
-        }
-#endif
-
 void cf_cb(struct smb2_context *smb2, int status,
                 void *command_data _U_, void *private_data)
 {
