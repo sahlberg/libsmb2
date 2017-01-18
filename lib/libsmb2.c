@@ -75,6 +75,11 @@ struct connect_data {
         struct private_auth_data *auth_data;
 };
 
+static int
+send_session_setup_request(struct smb2_context *smb2,
+                           struct connect_data *c_data,
+                           gss_buffer_desc *input_token);
+
 static char *display_status(int type, uint32_t err)
 {
         gss_buffer_desc text;
@@ -156,7 +161,8 @@ static void free_c_data(struct connect_data *c_data)
 }
 
 
-void tree_connect_cb(struct smb2_context *smb2, int status,
+static void
+tree_connect_cb(struct smb2_context *smb2, int status,
                 void *command_data, void *private_data)
 {
         struct connect_data *c_data = private_data;
@@ -172,14 +178,15 @@ void tree_connect_cb(struct smb2_context *smb2, int status,
         free_c_data(c_data);
 }
 
-void session_setup_cb(struct smb2_context *smb2, int status,
-                void *command_data, void *private_data)
+static void
+session_setup_cb(struct smb2_context *smb2, int status,
+                 void *command_data, void *private_data)
 {
         struct connect_data *c_data = private_data;
         struct session_setup_reply *rep = command_data;
-        struct tree_connect_request tcreq;
+        struct tree_connect_request req;
         gss_buffer_desc input_token = GSS_C_EMPTY_BUFFER;
-        uint32_t maj, min;
+        uint32_t min;
 
         /* release the previous token */
         gss_release_buffer(&min, &c_data->auth_data->output_token);
@@ -190,49 +197,13 @@ void session_setup_cb(struct smb2_context *smb2, int status,
                 input_token.length = rep->security_buffer_length;
                 input_token.value = rep->security_buffer;
 
-                maj = gss_init_sec_context(&min, c_data->auth_data->cred,
-                                           &c_data->auth_data->context,
-                                           c_data->auth_data->target_name,
-                                           c_data->auth_data->mech_type,
-                                           GSS_C_SEQUENCE_FLAG |
-                                           GSS_C_MUTUAL_FLAG |
-                                           GSS_C_REPLAY_FLAG |
-                                           ((smb2->security_mode & SMB2_NEGOTIATE_SIGNING_ENABLED)?GSS_C_INTEG_FLAG:0),
-                                           GSS_C_INDEFINITE,
-                                           GSS_C_NO_CHANNEL_BINDINGS,
-                                           &input_token,
-                                           NULL,
-                                           &c_data->auth_data->output_token,
-                                           NULL,
-                                           NULL);
-                if (GSS_ERROR(maj)) {
-                        set_gss_error(smb2, "gss_init_sec_context", maj, min);
+                if (send_session_setup_request(smb2, c_data,
+                                               &input_token) < 0) {
                         c_data->cb(smb2, -1, NULL, c_data->cb_data);
                         free_c_data(c_data);
                         return;
                 }
-
-                if (maj == GSS_S_CONTINUE_NEEDED) {
-                        struct session_setup_request req;
-                        /* Session setup request. */
-                        memset(&req, 0, sizeof(struct session_setup_request));
-                        // TODO this should be set from smb2-*.c
-                        req.struct_size = SESSION_SETUP_REQUEST_SIZE;
-                        req.security_mode = smb2->security_mode;
-                        req.security_buffer_offset = 0x58;
-                        req.security_buffer_length = c_data->auth_data->output_token.length;
-                        req.security_buffer = c_data->auth_data->output_token.value;
-                        
-                        if (smb2_session_setup_async(smb2, &req, session_setup_cb,
-                                                     c_data) != 0) {
-                                c_data->cb(smb2, -1, NULL, c_data->cb_data);
-                                free_c_data(c_data);
-                                return;
-                        }
-                        return;
-                } else {
-                        /* TODO: cleanup auth_data and buffers */
-                }
+                return;
         }
 
         if (status != STATUS_SUCCESS) {
@@ -242,13 +213,13 @@ void session_setup_cb(struct smb2_context *smb2, int status,
                 return;
         }
 
-        memset(&tcreq, 0, sizeof(struct tree_connect_request));
-        tcreq.struct_size = TREE_CONNECT_REQUEST_SIZE;
-        tcreq.flags       = 0;
-        tcreq.path_offset = 0x48;
-        tcreq.path_length = 2 * c_data->ucs2_unc->len;
-        tcreq.path        = c_data->ucs2_unc->val;
-        if (smb2_tree_connect_async(smb2, &tcreq, tree_connect_cb,
+        memset(&req, 0, sizeof(struct tree_connect_request));
+        req.struct_size = TREE_CONNECT_REQUEST_SIZE;
+        req.flags       = 0;
+        req.path_offset = 0x48;
+        req.path_length = 2 * c_data->ucs2_unc->len;
+        req.path        = c_data->ucs2_unc->val;
+        if (smb2_tree_connect_async(smb2, &req, tree_connect_cb,
                                     c_data) != 0) {
                 printf("smb2_tree_connect failed. %s\n",
                        smb2_get_error(smb2));
@@ -258,11 +229,61 @@ void session_setup_cb(struct smb2_context *smb2, int status,
         }
 }
 
-void negotiate_cb(struct smb2_context *smb2, int status,
-                void *command_data, void *private_data)
+static int
+send_session_setup_request(struct smb2_context *smb2,
+                           struct connect_data *c_data,
+                           gss_buffer_desc *input_token)
+{
+        uint32_t maj, min;
+        struct session_setup_request req;
+        
+        /* NOTE: this call is not async, a helper thread should be used if that
+         * is an issue */
+        maj = gss_init_sec_context(&min, c_data->auth_data->cred,
+                                   &c_data->auth_data->context,
+                                   c_data->auth_data->target_name,
+                                   c_data->auth_data->mech_type,
+                                   GSS_C_SEQUENCE_FLAG |
+                                   GSS_C_MUTUAL_FLAG |
+                                   GSS_C_REPLAY_FLAG |
+                                   ((smb2->security_mode & SMB2_NEGOTIATE_SIGNING_ENABLED)?GSS_C_INTEG_FLAG:0),
+                                   GSS_C_INDEFINITE,
+                                   GSS_C_NO_CHANNEL_BINDINGS,
+                                   input_token,
+                                   NULL,
+                                   &c_data->auth_data->output_token,
+                                   NULL,
+                                   NULL);
+        if (GSS_ERROR(maj)) {
+                set_gss_error(smb2, "gss_init_sec_context", maj, min);
+                return -1;
+        }
+
+        if (maj == GSS_S_CONTINUE_NEEDED) {
+                /* Session setup request. */
+                memset(&req, 0, sizeof(struct session_setup_request));
+                req.struct_size = SESSION_SETUP_REQUEST_SIZE;
+                req.security_mode = smb2->security_mode;
+                req.security_buffer_offset = 0x58;
+                req.security_buffer_length = c_data->auth_data->output_token.length;
+                req.security_buffer = c_data->auth_data->output_token.value;
+                
+                if (smb2_session_setup_async(smb2, &req, session_setup_cb,
+                                             c_data) != 0) {
+                        return -1;
+                }
+        } else {
+                /* TODO: cleanup and fail */
+        }
+        
+        return 0;
+}
+
+static void
+negotiate_cb(struct smb2_context *smb2, int status,
+             void *command_data, void *private_data)
 {
         struct connect_data *c_data = private_data;
-        struct session_setup_request req;
         gss_buffer_desc target = GSS_C_EMPTY_BUFFER;
         uint32_t maj, min;
         
@@ -311,48 +332,16 @@ void negotiate_cb(struct smb2_context *smb2, int status,
          * selected based on the SMB negotiation flags */
         c_data->auth_data->mech_type = &gss_mech_spnego;
 
-        /* NOTE: this call is not async, a helper thread should be used if that
-         * is an issue */
-        maj = gss_init_sec_context(&min, c_data->auth_data->cred,
-                                   &c_data->auth_data->context,
-                                   c_data->auth_data->target_name,
-                                   c_data->auth_data->mech_type,
-                                   GSS_C_SEQUENCE_FLAG |
-                                   GSS_C_MUTUAL_FLAG |
-                                   GSS_C_REPLAY_FLAG |
-                                   ((smb2->security_mode & SMB2_NEGOTIATE_SIGNING_ENABLED)?GSS_C_INTEG_FLAG:0),
-                                   GSS_C_INDEFINITE,
-                                   GSS_C_NO_CHANNEL_BINDINGS,
-                                   NULL,
-                                   NULL,
-                                   &c_data->auth_data->output_token,
-                                   NULL,
-                                   NULL);
-        if (GSS_ERROR(maj)) {
-                set_gss_error(smb2, "gss_init_sec_context", maj, min);
-                c_data->cb(smb2, -1, NULL, c_data->cb_data);
-                free_c_data(c_data);
-                return;
-        }
-
-        /* Session setup request. */
-        memset(&req, 0, sizeof(struct session_setup_request));
-        req.struct_size = SESSION_SETUP_REQUEST_SIZE;
-        req.security_mode = smb2->security_mode;
-        req.security_buffer_offset = 0x58;
-        req.security_buffer_length = c_data->auth_data->output_token.length;
-        req.security_buffer = c_data->auth_data->output_token.value;
-
-        if (smb2_session_setup_async(smb2, &req, session_setup_cb,
-                                     c_data) != 0) {
+        if (send_session_setup_request(smb2, c_data, NULL) < 0) {
                 c_data->cb(smb2, -1, NULL, c_data->cb_data);
                 free_c_data(c_data);
                 return;
         }
 }
 
-static void connect_cb(struct smb2_context *smb2, int status,
-                       void *command_data _U_, void *private_data)
+static void
+connect_cb(struct smb2_context *smb2, int status,
+           void *command_data _U_, void *private_data)
 {
         struct connect_data *c_data = private_data;
         struct negotiate_request req;
