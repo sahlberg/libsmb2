@@ -125,7 +125,7 @@ static void free_auth_data(struct private_auth_data *auth)
         /* Delete context */
         if (auth->context) {
                 maj = gss_delete_sec_context(&min, &auth->context,
-                                             GSS_C_NO_BUFFER);
+                                             &auth->output_token);
                 if (maj != GSS_S_COMPLETE) {
                         /* No logging, yet. Do we care? */
                 }
