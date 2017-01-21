@@ -1,0 +1,186 @@
+/* -*-  mode:c; tab-width:8; c-basic-offset:8; indent-tabs-mode:nil;  -*- */
+/*
+   Copyright (C) 2016 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
+
+   This program is free software; you can redistribute it and/or modify
+   it under the terms of the GNU Lesser General Public License as published by
+   the Free Software Foundation; either version 2.1 of the License, or
+   (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU Lesser General Public License for more details.
+
+   You should have received a copy of the GNU Lesser General Public License
+   along with this program; if not, see <http://www.gnu.org/licenses/>.
+*/
+
+#ifndef _LIBSMB2_RAW_H_
+#define _LIBSMB2_RAW_H_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/*
+ * Low level RAW SMB2 interface
+ */
+/*
+ * Asynchronous SMB2 Negotiate
+ *
+ * Returns:
+ *  0 if the call was initiated and a connection will be attempted. Result of
+ * the negotiate will be reported through the callback function.
+ * <0 if there was an error. The callback function will not be invoked.
+ *
+ * Callback parameters :
+ * status can be either of :
+ *    0     : Negotiate was successful.
+ *            Command_data is a struct smb2_negotiate_reply.
+ *
+ *   !0     : Status is NT status code. Command_data is NULL.
+ */
+int smb2_negotiate_async(struct smb2_context *smb2,
+                         struct smb2_negotiate_request *req,
+                         smb2_command_cb cb, void *cb_data);
+
+
+/*
+ * Asynchronous SMB2 Session Setup
+ *
+ * Returns:
+ *  0 if the call was initiated and a connection will be attempted. Result of
+ * the session setup will be reported through the callback function.
+ * <0 if there was an error. The callback function will not be invoked.
+ *
+ * Callback parameters :
+ * status can be either of :
+ *    0     : Session setup was successful.
+ *            Command_data is a struct smb2_session_setup_reply.
+ *
+ *   !0     : Status is NT status code.
+ */
+int smb2_session_setup_async(struct smb2_context *smb2,
+                             struct smb2_session_setup_request *req,
+                             smb2_command_cb cb, void *cb_data);
+
+/*
+ * Asynchronous SMB2 Tree Connect
+ *
+ * Returns:
+ *  0 if the call was initiated and a connection will be attempted. Result of
+ * the tree connect will be reported through the callback function.
+ * <0 if there was an error. The callback function will not be invoked.
+ *
+ * Callback parameters :
+ * status can be either of :
+ *    0     : Tree Connect was successful.
+ *            Command_data is a struct smb2_tree_connect_reply.
+ *
+ *   !0     : Status is NT status code. Command_data is NULL.
+ */
+int smb2_tree_connect_async(struct smb2_context *smb2,
+                            struct smb2_tree_connect_request *req,
+                            smb2_command_cb cb, void *cb_data);
+
+/*
+ * Asynchronous SMB2 Create
+ *
+ * Returns:
+ *  0 if the call was initiated and a create will be attempted. The result 
+ *    of the create will be reported through the callback function.
+ * <0 if there was an error. The callback function will not be invoked.
+ *
+ * Callback parameters :
+ * status can be either of :
+ *    0     : Create was successful.
+ *            Command_data is a struct smb2_create_reply.
+ *
+ *   !0     : Status is NT status code. Command_data is NULL.
+ */
+int smb2_create_async(struct smb2_context *smb2,
+                      struct smb2_create_request *req,
+                      smb2_command_cb cb, void *cb_data);
+
+/*
+ * Asynchronous SMB2 Close
+ *
+ * Returns:
+ *  0 if the call was initiated and a create will be attempted. The result 
+ *    of the close will be reported through the callback function.
+ * <0 if there was an error. The callback function will not be invoked.
+ *
+ * Callback parameters :
+ * status can be either of :
+ *    0     : Close was successful.
+ *            Command_data is a struct smb2_close_reply.
+ *
+ *   !0     : Status is NT status code. Command_data is NULL.
+ */
+int smb2_close_async(struct smb2_context *smb2,
+                     struct smb2_close_request *req,
+                     smb2_command_cb cb, void *cb_data);
+
+/*
+ * Asynchronous SMB2 Query Directory
+ *
+ * Returns:
+ *  0 if the call was initiated and a create will be attempted. The result 
+ *    of the query will be reported through the callback function.
+ * <0 if there was an error. The callback function will not be invoked.
+ *
+ * Callback parameters :
+ * status can be either of :
+ *    0     : Query was successful.
+ *            Command_data is a struct smb2_query_directory_reply.
+ *
+ *   !0     : Status is NT status code. Command_data is NULL.
+ */
+int smb2_query_directory_async(struct smb2_context *smb2,
+                               struct smb2_query_directory_request *req,
+                               smb2_command_cb cb, void *cb_data);
+
+/*
+ * Asynchronous SMB2 Echo
+ *
+ * Returns:
+ *  0 if the call was initiated and a connection will be attempted. Result of
+ * the echo will be reported through the callback function.
+ * <0 if there was an error. The callback function will not be invoked.
+ *
+ * Callback parameters :
+ * status can be either of :
+ *    0     : Echo was successful.
+ *
+ *   !0     : Status is NT status code.
+ *
+ * command_data is always NULL.
+ */
+int smb2_echo_async(struct smb2_context *smb2,
+                    smb2_command_cb cb, void *cb_data);
+
+/*
+ * Asynchronous SMB2 Logoff
+ *
+ * Returns:
+ *  0 if the call was initiated and a connection will be attempted. Result of
+ * the logoff will be reported through the callback function.
+ * <0 if there was an error. The callback function will not be invoked.
+ *
+ * Callback parameters :
+ * status can be either of :
+ *    0     : Logoff was successful.
+ *
+ *   !0     : Status is NT status code.
+ *
+ * command_data is always NULL.
+ */
+int smb2_logoff_async(struct smb2_context *smb2,
+                      smb2_command_cb cb, void *cb_data);
+        
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* !_LIBSMB2_RAW_H_ */
