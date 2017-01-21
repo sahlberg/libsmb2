@@ -30,7 +30,7 @@ struct smb2_context;
  * command_data depends on status.
  */
 typedef void (*smb2_command_cb)(struct smb2_context *smb2, int status,
-                                void *command_data, void *private_data);
+                                void *command_data, void *cb_data);
 
 /*
  * Create an SMB2 context.
@@ -97,7 +97,7 @@ const char *smb2_get_client_guid(struct smb2_context *smb2);
  *   <0     : Failed to establish the connection. Command_data is NULL.
  */
 int smb2_connect_async(struct smb2_context *smb2, const char *server,
-                       smb2_command_cb cb, void *private_data);
+                       smb2_command_cb cb, void *cb_data);
 
 /*
  * Asynchronous call to connect to a share/
@@ -115,7 +115,7 @@ int smb2_connect_async(struct smb2_context *smb2, const char *server,
  */
 int smb2_connect_share_async(struct smb2_context *smb2,
                              const char *server, const char *share,
-                             smb2_command_cb cb, void *private_data);
+                             smb2_command_cb cb, void *cb_data);
         
 /*
  * This function returns a description of the last encountered error.
@@ -144,6 +144,32 @@ struct smb2_url {
 struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url);
 void smb2_destroy_url(struct smb2_url *url);
 
+
+/*
+ * OPENDIR
+ */
+struct smb2dir;
+/*
+ * Async opendir()
+ *
+ * Returns
+ *  0 : The operation was initiated. Result of the operation will be reported
+ * through the callback function.
+ * <0 : There was an error. The callback function will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ *          Command_data is struct smb2dir.
+ *          This structure is freed using smb2_closedir().
+ * -errno : An error occured.
+ *          Command_data is NULL.
+ */       
+int smb2_opendir_async(struct smb2_context *smb2, const char *path,
+                       smb2_command_cb cb, void *cb_data);
+
+/*
+ * Low level RAW SMB2 interface
+ */
 /*
  * Asynchronous SMB2 Negotiate
  *
@@ -239,6 +265,25 @@ int smb2_create_async(struct smb2_context *smb2,
 int smb2_close_async(struct smb2_context *smb2,
                      struct smb2_close_request *req,
                      smb2_command_cb cb, void *cb_data);
+
+/*
+ * Asynchronous SMB2 Query Directory
+ *
+ * Returns:
+ *  0 if the call was initiated and a create will be attempted. The result 
+ *    of the query will be reported through the callback function.
+ * <0 if there was an error. The callback function will not be invoked.
+ *
+ * Callback parameters :
+ * status can be either of :
+ *    0     : Query was successful.
+ *            Command_data is a struct smb2_query_directory_reply.
+ *
+ *   !0     : Status is NT status code. Command_data is NULL.
+ */
+int smb2_query_directory_async(struct smb2_context *smb2,
+                               struct smb2_query_directory_request *req,
+                               smb2_command_cb cb, void *cb_data);
 
 /*
  * Asynchronous SMB2 Echo

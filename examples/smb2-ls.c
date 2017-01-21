@@ -33,6 +33,7 @@ int usage(void)
         exit(1);
 }
 
+#if 0
 void lo_cb(struct smb2_context *smb2, int status,
                 void *command_data _U_, void *private_data)
 {
@@ -40,70 +41,31 @@ void lo_cb(struct smb2_context *smb2, int status,
         is_finished = 1;
 }
 
-void cl_cb(struct smb2_context *smb2, int status,
-                void *command_data _U_, void *private_data)
-{
-	printf("Close status:0x%08x\n", status);
-        if (status) {
-                printf("failed to close\n");
-                exit(10);
-        }
+#endif
 
-        if (smb2_logoff_async(smb2, lo_cb, NULL) < 0) {
-                printf("Failed to send LOGOFF command\n");
-                exit(10);
-        }
-}
-
-void cr_cb(struct smb2_context *smb2, int status,
+void od_cb(struct smb2_context *smb2, int status,
                 void *command_data, void *private_data)
 {
-        struct smb2_create_reply *rep = command_data;
-        struct smb2_close_request req;
+        struct smb2dir *dir = command_data;
 
-        printf("Create status:0x%08x\n", status);
+        printf("OpenDir status:0x%08x %p\n", status, dir);
         if (status) {
                 printf("failed to create/open\n");
-                exit(10);
-        }
-        
-        memset(&req, 0, sizeof(struct smb2_close_request));
-        req.struct_size = SMB2_CLOSE_REQUEST_SIZE;
-        req.flags = SMB2_CLOSE_FLAG_POSTQUERY_ATTRIB;
-        memcpy(req.file_id, rep->file_id, SMB2_FD_SIZE);
-        
-        if (smb2_close_async(smb2, &req, cl_cb, NULL) < 0) {
-                printf("Failed to send Close command\n");
                 exit(10);
         }
 }
 
 void cf_cb(struct smb2_context *smb2, int status,
-                void *command_data _U_, void *private_data)
+                void *command_data, void *private_data)
 {
-        struct smb2_create_request req;
-
 	printf("Connected to SMB2 share status:0x%08x\n", status);
         if (status) {
                 printf("failed to connect share\n");
                 exit(10);
         }
 
-        memset(&req, 0, sizeof(struct smb2_create_request));
-        req.struct_size = SMB2_CREATE_REQUEST_SIZE;
-        req.requested_oplock_level = SMB2_OPLOCK_LEVEL_NONE;
-        req.impersonation_level = SMB2_IMPERSONATION_IMPERSONATION;
-        req.desired_access = SMB2_FILE_LIST_DIRECTORY | SMB2_FILE_READ_ATTRIBUTES;
-        req.file_attributes = SMB2_FILE_ATTRIBUTE_DIRECTORY;
-        req.share_access = SMB2_FILE_SHARE_READ | SMB2_FILE_SHARE_WRITE;
-        req.create_disposition = SMB2_FILE_OPEN;
-        req.create_options = SMB2_FILE_DIRECTORY_FILE;
-        req.name_offset = 0x78;
-        req.name_length = 0;
-        req.name = NULL;
-        
-        if (smb2_create_async(smb2, &req, cr_cb, NULL) < 0) {
-                printf("Failed to send Create command\n");
+        if (smb2_opendir_async(smb2, private_data, od_cb, NULL) < 0) {
+                printf("Failed to call opendir_async()\n");
                 exit(10);
         }
 }
@@ -141,7 +103,7 @@ int main(int argc, char *argv[])
         smb2_set_security_mode(smb2, SMB2_NEGOTIATE_SIGNING_ENABLED);
 
 	if (smb2_connect_share_async(smb2, url->server, url->share,
-                                     cf_cb, NULL) != 0) {
+                                     cf_cb, url->path) != 0) {
 		printf("smb2_connect_full failed. %s\n", smb2_get_error(smb2));
 		exit(10);
 	}

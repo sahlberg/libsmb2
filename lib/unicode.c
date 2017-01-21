@@ -41,8 +41,8 @@
 
 #include <endian.h>
 
-#include "smb2.h"
-#include "libsmb2.h"
+#include <smb2.h>
+#include <libsmb2.h>
 #include "libsmb2-private.h"
 
 /* Count number of leading 1 bits in the char */
@@ -62,7 +62,7 @@ static int l1(char c)
  * -1 if not.
  * If the encoding is valid the codepoint will be returned in *cp.
  */
-static int validate_utf8_cp(char **utf8, uint16_t *cp)
+static int validate_utf8_cp(const char **utf8, uint16_t *cp)
 {
         int c = *(*utf8)++;
         int l = l1(c);
@@ -97,9 +97,9 @@ static int validate_utf8_cp(char **utf8, uint16_t *cp)
 /* Validate that the given string is properly formated UTF8.
  * Returns >=0 if valid UTF8 and -1 if not.
  */
-static int validate_utf8_str(char *utf8)
+static int validate_utf8_str(const char *utf8)
 {
-        char *u = utf8;
+        const char *u = utf8;
         int i = 0;
         uint16_t cp;
         
@@ -113,7 +113,7 @@ static int validate_utf8_str(char *utf8)
 }
 
 /* Convert a UTF8 string into UCS2 Little Endian */
-struct ucs2 *utf8_to_ucs2(char *utf8)
+struct ucs2 *utf8_to_ucs2(const char *utf8)
 {
         struct ucs2 *ucs2;
         int i, len;
@@ -137,3 +137,55 @@ struct ucs2 *utf8_to_ucs2(char *utf8)
         return ucs2;
 }
 
+/* Returns how many bytes we need to store a UCS2 codepoint
+ */
+static int ucs2_cp_size(uint16_t cp)
+{
+        if (cp > 0x07ff) {
+                return 3;
+        }
+        if (cp > 0x007f) {
+                return 2;
+        }
+        return 1;
+}
+
+/* Convert a UCS2 string into UTF8
+ */
+char *ucs2_to_utf8(const uint16_t *ucs2, int ucs2_len)
+{
+        int i, utf8_len = 1;
+        char *str, *tmp;
+
+        /* How many bytes do we need for utf8 ? */
+        for (i = 0; i < ucs2_len; i++) {
+                utf8_len += ucs2_cp_size(ucs2[i]);
+        }
+        str = tmp = malloc(utf8_len);
+        if (str == NULL) {
+                return NULL;
+        }
+        str[utf8_len] = 0;
+
+        for (i = 0; i < ucs2_len; i++) {
+                uint16_t c = le32toh(ucs2[i]);
+                int l = ucs2_cp_size(c);
+
+                switch (l) {
+                case 3:
+                        *tmp++ = 0xe0 | ((c >> 12) & 0x0f);
+                        *tmp++ = 0x80 | ((c >>  6) & 0x3f);
+                        *tmp++ = 0x80 | ((c      ) & 0x3f);
+                        break;
+                case 2:
+                        *tmp++ = 0xc0 | ((c >> 6) & 0x0f);
+                        *tmp++ = 0x80 | ((c     ) & 0x3f);
+                        break;
+                case 1:
+                        *tmp++ = c;
+                        break;
+                }
+        }
+
+        return str;
+}

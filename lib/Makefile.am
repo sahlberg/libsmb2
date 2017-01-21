@@ -15,9 +15,11 @@ libsmb2_la_SOURCES = \
 	smb2-echo.c \
 	smb2-logoff.c \
 	smb2-negotiate.c \
+	smb2-query-directory.c \
 	smb2-session-setup.c \
 	smb2-tree-connect.c \
 	socket.c \
+	timestamps.c \
 	unicode.c
 
 SOCURRENT=1

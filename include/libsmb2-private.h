@@ -147,16 +147,33 @@ struct smb2_pdu {
         struct smb2_io_vectors in;
 };
 
+/* UCS2 is always in Little Endianness */
 struct ucs2 {
         int len;
         uint16_t val[1];
 };
 
+struct smb2_dirent_internal {
+        struct smb2_dirent_internal *next;
+        struct smb2_dirent dirent;
+};
+        
 /* Returns a string converted to UCS2 format. Use free() to release
  * the ucs2 string.
  */
-struct ucs2 *utf8_to_ucs2(char *utf8);
+struct ucs2 *utf8_to_ucs2(const char *utf8);
         
+/* Returns a string converted to UTF8 format. Use free() to release
+ * the utf8 string.
+ */
+char *ucs2_to_utf8(const uint16_t *str, int len);
+
+/* Convert a win timestamp to a unix timeval */
+void win_to_timeval(uint64_t smb2_time, struct smb2_timeval *tv);
+
+/* Covnert unit timeval to a win timestamp */
+uint64_t timeval_to_win(struct smb2_timeval *tv);
+
 void smb2_set_error(struct smb2_context *smb2, const char *error_string,
                     ...) __attribute__((format(printf, 2, 3)));
 
@@ -198,6 +215,8 @@ int smb2_process_negotiate_reply(struct smb2_context *smb2,
                                  struct smb2_pdu *pdu);
 int smb2_process_session_setup_reply(struct smb2_context *smb2,
                                      struct smb2_pdu *pdu);
+int smb2_process_query_directory_reply(struct smb2_context *smb2,
+                                       struct smb2_pdu *pdu);
 int smb2_process_tree_connect_reply(struct smb2_context *smb2,
                                     struct smb2_pdu *pdu);
         

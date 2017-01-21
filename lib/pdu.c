@@ -328,6 +328,8 @@ int smb2_process_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
                 return smb2_process_negotiate_reply(smb2, pdu);
         case SMB2_SESSION_SETUP:
                 return smb2_process_session_setup_reply(smb2, pdu);
+        case SMB2_QUERY_DIRECTORY:
+                return smb2_process_query_directory_reply(smb2, pdu);
         case SMB2_TREE_CONNECT:
                 return smb2_process_tree_connect_reply(smb2, pdu);
         default:

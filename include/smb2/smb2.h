@@ -24,6 +24,7 @@ extern "C" {
 #endif
 
 #define SMB2_STATUS_SUCCESS                  0x00000000
+#define SMB2_STATUS_NO_MORE_FILES            0x80000006
 #define SMB2_STATUS_MORE_PROCESSING_REQUIRED 0xC0000016
 
 
@@ -296,8 +297,7 @@ struct smb2_create_request {
         uint32_t create_disposition;
         uint32_t create_options;
         uint16_t name_offset;
-        uint16_t name_length;
-        char *name;
+        const char *name;       /* name in UTF8 */
         uint32_t create_context_offset;
         uint32_t create_context_length;
         char *create_context;
@@ -345,6 +345,64 @@ struct smb2_close_reply {
         uint64_t allocation_size;
         uint64_t end_of_file;
         uint32_t file_attributes;
+};
+
+#define SMB2_QUERY_DIRECTORY_REQUEST_SIZE 33
+
+/* File information class */
+#define SMB2_FILE_DIRECTORY_INFORMATION         0x01
+#define SMB2_FILE_FULL_DIRECTORY_INFORMATION    0x02
+#define SMB2_FILE_BOTH_DIRECTORY_INFORMATION    0x03
+#define SMB2_FILE_NAMES_INFORMATION             0x0c
+#define SMB2_FILE_ID_BOTH_DIRECTORY_INFORMATION 0x25
+#define SMB2_FILE_ID_FULL_DIRECTORY_INFORMATION 0x26
+
+/* query flags */
+#define SMB2_RESTART_SCANS       0x01
+#define SMB2_RETURN_SINGLE_ENTRY 0x02
+#define SMB2_INDEX_SPECIFIED     0x04
+#define SMB2_REOPEN              0x10
+
+struct smb2_timeval {
+        uint32_t tv_sec;
+        uint32_t tv_usec;
+};
+
+/* Structure for SMB2_FILE_ID_FULL_DIRECTORY_INFORMATION.
+ * This is also used as the dirent content.
+ */
+struct smb2_fileidfulldirectoryinformation {
+        uint32_t file_index;
+        struct smb2_timeval creation_time;
+        struct smb2_timeval last_access_time;
+        struct smb2_timeval last_write_time;
+        struct smb2_timeval change_time;
+        uint64_t end_of_file;
+        uint64_t allocation_size;
+        uint32_t file_attributes;
+        uint32_t ea_size;
+        uint64_t file_id;
+        char *name;
+};
+
+#define smb2_dirent smb2_fileidfulldirectoryinformation
+
+struct smb2_query_directory_request {
+        uint16_t struct_size;
+        uint8_t file_information_class;
+        uint8_t flags;
+        uint32_t file_index;
+        smb2_file_id file_id;
+        uint16_t name_offset;
+        char *name;       /* name in UTF8 */
+        uint32_t output_buffer_length;
+};
+
+struct smb2_query_directory_reply {
+        uint16_t struct_size;
+        uint16_t output_buffer_offset;
+        uint32_t output_buffer_length;
+        char *output_buffer;
 };
 
 #ifdef __cplusplus

@@ -11,7 +11,10 @@ smb2_get_fd
 smb2_init_context
 smb2_logoff_async
 smb2_negotiate_async
+smb2_opendir_async
+smb2_query_directory_async
 smb2_parse_url
+smb2_query_directory_async
 smb2_service
 smb2_session_setup_async
 smb2_set_security_mode

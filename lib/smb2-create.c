@@ -50,8 +50,8 @@ smb2_encode_create_request(struct smb2_context *smb2,
 {
         int len;
         char *buf;
-        static char zero;
-
+        struct ucs2 *name = NULL;
+        
         len = SMB2_CREATE_REQUEST_SIZE & 0xfffffffe;
         buf = malloc(len);
         if (buf == NULL) {
@@ -63,6 +63,18 @@ smb2_encode_create_request(struct smb2_context *smb2,
         pdu->out.iov[pdu->out.niov].len = len;
         pdu->out.iov[pdu->out.niov].buf = buf;
         pdu->out.iov[pdu->out.niov].free = free;
+
+        /* Name */
+        if (req->name && req->name[0]) {
+                name = utf8_to_ucs2(req->name);
+                if (name == NULL) {
+                        smb2_set_error(smb2, "Could not convert name into UCS2");
+                        free(buf);
+                        return -1;
+                }
+                smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 46, 2 * name->len);
+        }
+        
         
         smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 0, req->struct_size);
         smb2_set_uint8(&pdu->out.iov[pdu->out.niov], 2, req->security_flags);
@@ -75,20 +87,20 @@ smb2_encode_create_request(struct smb2_context *smb2,
         smb2_set_uint32(&pdu->out.iov[pdu->out.niov], 36, req->create_disposition);
         smb2_set_uint32(&pdu->out.iov[pdu->out.niov], 40, req->create_options);
         smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 44, req->name_offset);
-        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 46, req->name_length);
         smb2_set_uint32(&pdu->out.iov[pdu->out.niov], 48, req->create_context_offset);
         smb2_set_uint32(&pdu->out.iov[pdu->out.niov], 52, req->create_context_length);
         pdu->out.niov++;
 
         /* Name */
-        if (req->name_length) {
-                pdu->out.iov[pdu->out.niov].len = req->name_length;
-                pdu->out.iov[pdu->out.niov].buf = malloc(req->name_length);
-                memcpy(pdu->out.iov[pdu->out.niov].buf, req->name,
-                       req->name_length);
+        if (name) {
+                pdu->out.iov[pdu->out.niov].len = 2 * name->len;
+                pdu->out.iov[pdu->out.niov].buf = malloc(2 * name->len);
+                memcpy(pdu->out.iov[pdu->out.niov].buf, &name->val[0],
+                       2 * name->len);
                 pdu->out.iov[pdu->out.niov].free = free;
                 pdu->out.niov++;
         }
+        free(name);
 
         /* Create Context */
         if (req->create_context_length) {
@@ -99,7 +111,9 @@ smb2_encode_create_request(struct smb2_context *smb2,
         /* The buffer must contain at least one byte, even if name is "" 
          * and there is no create context.
          */
-        if (!req->name_length && !req->create_context_length) {
+        if (name == NULL && !req->create_context_length) {
+                static char zero;
+
                 pdu->out.iov[pdu->out.niov].len = 1;
                 pdu->out.iov[pdu->out.niov].buf = &zero;
                 pdu->out.iov[pdu->out.niov].free = NULL;
