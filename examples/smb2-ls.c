@@ -21,6 +21,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 #include "smb2.h"
 #include "libsmb2.h"
+#include "libsmb2-raw.h"
 
 int is_finished;
 
@@ -33,7 +34,6 @@ int usage(void)
         exit(1);
 }
 
-#if 0
 void lo_cb(struct smb2_context *smb2, int status,
                 void *command_data _U_, void *private_data)
 {
@@ -41,13 +41,12 @@ void lo_cb(struct smb2_context *smb2, int status,
         is_finished = 1;
 }
 
-#endif
-
 void od_cb(struct smb2_context *smb2, int status,
                 void *command_data, void *private_data)
 {
         struct smb2dir *dir = command_data;
         struct smb2dirent *ent;
+
         printf("OpenDir status:0x%08x %p\n", status, dir);
         if (status) {
                 printf("failed to create/open\n");
@@ -109,7 +108,7 @@ void od_cb(struct smb2_context *smb2, int status,
         }
         
         smb2_closedir(smb2, dir);
-        is_finished = 1;
+        smb2_logoff_async(smb2, lo_cb, NULL);
 }
 
 void cf_cb(struct smb2_context *smb2, int status,
