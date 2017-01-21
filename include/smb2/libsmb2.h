@@ -168,12 +168,46 @@ int smb2_opendir_async(struct smb2_context *smb2, const char *path,
                        smb2_command_cb cb, void *cb_data);
 
 /*
- * CLOSEDIR()
+ * closedir()
  */
 /*
  * smb2_closedir() never blocks, thus no async version is needed.
  */
 void smb2_closedir(struct smb2_context *smb2, struct smb2dir *smb2dir);
+
+/*
+ * readdir()
+ */
+/*
+ * smb2_readdir() never blocks, thus no async version is needed.
+ */
+struct smb2dirent *smb2_readdir(struct smb2_context *smb2,
+                                struct smb2dir *smb2dir);
+
+/*
+ * rewinddir()
+ */
+/*
+ * smb2_rewinddir() never blocks, thus no async version is needed.
+ */
+void smb2_rewinddir(struct smb2_context *smb2, struct smb2dir *smb2dir);
+
+/*
+ * telldir()
+ */
+/*
+ * smb2_telldir() never blocks, thus no async version is needed.
+ */
+long smb2_telldir(struct smb2_context *smb2, struct smb2dir *smb2dir);
+
+/*
+ * seekdir()
+ */
+/*
+ * smb2_seekdir() never blocks, thus no async version is needed.
+ */
+void smb2_seekdir(struct smb2_context *smb2, struct smb2dir *smb2dir,
+                  long loc);
 
 #ifdef __cplusplus
 }

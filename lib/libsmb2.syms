@@ -16,8 +16,12 @@ smb2_opendir_async
 smb2_query_directory_async
 smb2_parse_url
 smb2_query_directory_async
+smb2_readdir
+smb2_rewinddir
+smb2_seekdir
 smb2_service
 smb2_session_setup_async
 smb2_set_security_mode
+smb2_telldir
 smb2_tree_connect_async
 smb2_which_events

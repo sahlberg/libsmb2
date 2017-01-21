@@ -155,7 +155,7 @@ struct ucs2 {
 
 struct smb2_dirent_internal {
         struct smb2_dirent_internal *next;
-        struct smb2_dirent dirent;
+        struct smb2dirent dirent;
 };
         
 /* Returns a string converted to UCS2 format. Use free() to release

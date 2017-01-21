@@ -83,6 +83,8 @@ struct smb2dir {
         smb2_file_id file_id;
         
         struct smb2_dirent_internal *entries;
+        struct smb2_dirent_internal *current_entry;
+        int index;
 };
       
 static int
@@ -103,9 +105,49 @@ static void free_smb2dir(struct smb2dir *dir)
         free(dir);
 }
 
-void smb2_closedir(struct smb2_context *smb2, struct smb2dir *smb2dir)
+void smb2_seekdir(struct smb2_context *smb2, struct smb2dir *dir,
+                  long loc)
 {
-        free_smb2dir(smb2dir);
+        dir->current_entry = dir->entries;
+        dir->index = 0;
+
+        while (dir->current_entry && loc--) {
+                dir->current_entry = dir->current_entry->next;
+                dir->index++;
+        }
+}
+
+long smb2_telldir(struct smb2_context *smb2, struct smb2dir *dir)
+{
+        return dir->index;
+}
+
+void smb2_rewinddir(struct smb2_context *smb2,
+                    struct smb2dir *dir)
+{
+        dir->current_entry = dir->entries;
+        dir->index = 0;
+}
+
+struct smb2dirent *smb2_readdir(struct smb2_context *smb2,
+                                struct smb2dir *dir)
+{
+        struct smb2dirent *ent;
+
+        if (dir->current_entry == NULL) {
+                return NULL;
+        }
+
+        ent = &dir->current_entry->dirent;
+        dir->current_entry = dir->current_entry->next;
+        dir->index++;
+
+        return ent;
+}
+
+void smb2_closedir(struct smb2_context *smb2, struct smb2dir *dir)
+{
+        free_smb2dir(dir);
 }
 
 static int
@@ -190,7 +232,10 @@ close_cb(struct smb2_context *smb2, int status,
                 free_smb2dir(dir);
                 return;
         }
-        
+
+        dir->current_entry = dir->entries;
+        dir->index = 0;
+
         /* dir will be freed in smb2_closedir() */
         dir->cb(smb2, 0, dir, dir->cb_data);
 }

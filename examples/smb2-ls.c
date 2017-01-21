@@ -47,13 +47,67 @@ void od_cb(struct smb2_context *smb2, int status,
                 void *command_data, void *private_data)
 {
         struct smb2dir *dir = command_data;
-
+        struct smb2dirent *ent;
         printf("OpenDir status:0x%08x %p\n", status, dir);
         if (status) {
                 printf("failed to create/open\n");
                 exit(10);
         }
 
+        while (ent = smb2_readdir(smb2, dir)) {
+                printf("%s ", ent->name);
+
+                printf("[");
+                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_READONLY) {
+                        printf("READ-ONLY,");
+                }
+                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_HIDDEN) {
+                        printf("HIDDEN,");
+                }
+                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_SYSTEM) {
+                        printf("SYSTEM,");
+                }
+                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_DIRECTORY) {
+                        printf("DIRECTORY,");
+                }
+                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_ARCHIVE) {
+                        printf("ARCHIVE,");
+                }
+                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_NORMAL) {
+                        printf("NORMAL,");
+                }
+                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_TEMPORARY) {
+                        printf("TEMPORARY,");
+                }
+                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_SPARSE_FILE) {
+                        printf("SPARSE_FILE,");
+                }
+                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_REPARSE_POINT) {
+                        printf("REPARSE_POINT,");
+                }
+                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_COMPRESSED) {
+                        printf("COMPRESSED,");
+                }
+                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_OFFLINE) {
+                        printf("OFFLINE,");
+                }
+                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_NOT_CONTENT_INDEXED) {
+                        printf("NOT_CONTENT_INDEXED,");
+                }
+                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_ENCRYPTED) {
+                        printf("ENCREYPTED,");
+                }
+                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_INTEGRITY_STREAM) {
+                        printf("INTEGRITY_STREAM,");
+                }
+                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_NO_SCRUB_DATA) {
+                        printf("NO_SCRUP_DATA,");
+                }
+                printf("]");
+                
+                printf("\n");
+        }
+        
         smb2_closedir(smb2, dir);
         is_finished = 1;
 }
