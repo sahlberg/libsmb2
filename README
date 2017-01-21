@@ -1,0 +1,57 @@
+Libsmb2 is a userspace client library for accessing SMB2 shares on a network.
+It depends on both MIT Kerberos as well as GSS-NTLMSSP
+[https://github.com/simo5/gss-ntlmssp] for authenticateion.
+
+Libsmb2 is distributed under the LGPLv2.1 licence.
+
+THIS IS A WORK IN PROGRESS
+
+
+Libsmb2 implements two diddefent APIs for accessing a remote SMB share :
+
+1, High level async posix-like API.
+This is a fully async API for accessing a share and provides an API that
+is similar to the normal posix operations such as open()/read()/close().
+This is the recommended API.
+This API is described in libsmb.h
+
+2, Low level async RAW API.
+This is a low level API that provides direct access to the SMB2 PDUs
+and data structures.
+This API is described in libsmb-raw.h
+
+
+Authentication
+==============
+Authentication is implemented using MIT Kerberos as well as the GSS-NTLMSSP
+mech plugin. This allows NTLM authentication to modern Windows versions
+as well as Samba. Kerberos implementation is planned but not yet implemented.
+No other authentication mechanisms are planned.
+
+To build libsmb2 you will need to have MIT Kerberos as well as its development
+libraries installed.
+You will also need to build and install GSS-NTLMSSP from
+[https://github.com/simo5/gss-ntlmssp]
+
+NTLM Authentication
+-------------------
+NTLM credentials are stored in a text file of the form :
+DOMAIN:USERNAME:PASSWORD
+with one line per username.
+You need to set up the environment variable NTLM_USER_FILE to point to this
+file.
+You need one entry in this file for each local user account you want to be able
+to use libsmb2 for accessing a remote share.
+
+
+SMB URL Format
+==============
+The SMB URL format is currently a small subset of the URL format that is
+defined/used by the Samba project.
+The goal is to eventually support the full URL format, thus making URLs
+interchangable between Samba utilities and Libsmb2 but we are not there yet.
+
+smb://[<domain>;][<user>@]<server>/<share>[/path/to/object]
+
+<server> is either a hostname, an IPv4 or an IPv6 address.
+
