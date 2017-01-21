@@ -7,9 +7,10 @@ libsmb2_la_CPPFLAGS = -I$(abs_top_srcdir)/include \
 		      "-D_U_=__attribute__((unused))"
 
 libsmb2_la_SOURCES = \
+	errors.c \
 	init.c \
-	pdu.c \
 	libsmb2.c \
+	pdu.c \
 	smb2-close.c \
 	smb2-create.c \
 	smb2-echo.c \

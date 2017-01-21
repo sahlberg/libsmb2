@@ -356,7 +356,7 @@ smb2_service(struct smb2_context *smb2, int revents)
 					"%s(%d) while connecting.",
 					strerror(err), err);
 			if (smb2->connect_cb) {
-				smb2->connect_cb(smb2, -1,
+				smb2->connect_cb(smb2, err,
                                                  NULL, smb2->connect_data);
 				smb2->connect_cb = NULL;
 			}

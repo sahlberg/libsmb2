@@ -37,7 +37,6 @@ int usage(void)
 void lo_cb(struct smb2_context *smb2, int status,
                 void *command_data _U_, void *private_data)
 {
-	printf("Logged off status:0x%08x\n", status);
         is_finished = 1;
 }
 
@@ -47,9 +46,9 @@ void od_cb(struct smb2_context *smb2, int status,
         struct smb2dir *dir = command_data;
         struct smb2dirent *ent;
 
-        printf("OpenDir status:0x%08x %p\n", status, dir);
         if (status) {
-                printf("failed to create/open\n");
+                printf("failed to create/open directory (%s) %s\n",
+                       strerror(-status), smb2_get_error(smb2));
                 exit(10);
         }
 
@@ -114,9 +113,9 @@ void od_cb(struct smb2_context *smb2, int status,
 void cf_cb(struct smb2_context *smb2, int status,
                 void *command_data, void *private_data)
 {
-	printf("Connected to SMB2 share status:0x%08x\n", status);
         if (status) {
-                printf("failed to connect share\n");
+                printf("failed to connect share (%s) %s\n",
+                       strerror(-status), smb2_get_error(smb2));
                 exit(10);
         }
 
@@ -150,12 +149,6 @@ int main(int argc, char *argv[])
                 exit(0);
         }
                 
-        printf("Domain:%s\n", url->domain);
-        printf("User:%s\n", url->user);
-        printf("Server:%s\n", url->server);
-        printf("Share:%s\n", url->share);
-        printf("Path:%s\n", url->path);
-
         smb2_set_security_mode(smb2, SMB2_NEGOTIATE_SIGNING_ENABLED);
 
 	if (smb2_connect_share_async(smb2, url->server, url->share,

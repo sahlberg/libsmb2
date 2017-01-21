@@ -130,6 +130,12 @@ struct smb2_url {
         char *path;
 };
 
+/* Convert an smb2/nt error code into a string */
+const char *nterror_to_str(uint32_t status);
+
+/* Convert an smb2/nt error code into an errno value */
+int nterror_to_errno(uint32_t status);
+        
 /*
  * This function is used to parse an SMB2 URL into as smb2_url structure.
  * SMB2 URL format :

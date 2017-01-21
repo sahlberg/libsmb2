@@ -186,7 +186,7 @@ decode_dirents(struct smb2_context *smb2, struct smb2dir *dir,
                 ent = malloc(sizeof(struct smb2_dirent_internal));
                 if (ent == NULL) {
                         smb2_set_error(smb2, "Failed to allocate "
-                                       "dirent_internal\n");
+                                       "dirent_internal");
                         return -1;
                 }
                 memset(ent, 0, sizeof(struct smb2_dirent_internal));
@@ -228,7 +228,7 @@ close_cb(struct smb2_context *smb2, int status,
         struct smb2dir *dir = private_data;
 
         if (status != SMB2_STATUS_SUCCESS) {
-                dir->cb(smb2, -1, NULL, dir->cb_data);
+                dir->cb(smb2, -ENOMEM, NULL, dir->cb_data);
                 free_smb2dir(dir);
                 return;
         }
@@ -255,7 +255,7 @@ query_cb(struct smb2_context *smb2, int status,
                 vec.len = rep->output_buffer_length;
 
                 if (decode_dirents(smb2, dir, &vec) < 0) {
-                        dir->cb(smb2, -1, NULL, dir->cb_data);
+                        dir->cb(smb2, -ENOMEM, NULL, dir->cb_data);
                         free_smb2dir(dir);
                         return;
                 }
@@ -271,8 +271,7 @@ query_cb(struct smb2_context *smb2, int status,
                 req.name = "*";
                 
                 if (smb2_query_directory_async(smb2, &req, query_cb, dir) < 0) {
-                        smb2_set_error(smb2, "Failed to send query command");
-                        dir->cb(smb2, -1, NULL, dir->cb_data);
+                        dir->cb(smb2, -ENOMEM, NULL, dir->cb_data);
                         free_smb2dir(dir);
                 }
                 return;
@@ -288,14 +287,15 @@ query_cb(struct smb2_context *smb2, int status,
                 memcpy(req.file_id, dir->file_id, SMB2_FD_SIZE);
         
                 if (smb2_close_async(smb2, &req, close_cb, dir) < 0) {
-                        dir->cb(smb2, -1, NULL, dir->cb_data);
+                        dir->cb(smb2, -ENOMEM, NULL, dir->cb_data);
                         free_smb2dir(dir);
                 }
                 return;
         }
 
-        smb2_set_error(smb2, "Unexpected error during query directory");
-        dir->cb(smb2, -1, NULL, dir->cb_data);
+        smb2_set_error(smb2, "Query directory failed with (0x%08x) %s",
+                       status, nterror_to_str(status));
+        dir->cb(smb2, -nterror_to_errno(status), NULL, dir->cb_data);
         free_smb2dir(dir);
 }
 
@@ -308,8 +308,9 @@ opendir_cb(struct smb2_context *smb2, int status,
         struct smb2_query_directory_request req;
 
         if (status != SMB2_STATUS_SUCCESS) {
-                smb2_set_error(smb2, "opendir failed.");
-                dir->cb(smb2, -1, NULL, dir->cb_data);
+                smb2_set_error(smb2, "Opendir failed with (0x%08x) %s",
+                               status, nterror_to_str(status));
+                dir->cb(smb2, -nterror_to_errno(status), NULL, dir->cb_data);
                 free_smb2dir(dir);
                 return;
         }
@@ -328,7 +329,7 @@ opendir_cb(struct smb2_context *smb2, int status,
 
         if (smb2_query_directory_async(smb2, &req, query_cb, dir) < 0) {
                 smb2_set_error(smb2, "Failed to send query command");
-                dir->cb(smb2, -1, NULL, dir->cb_data);
+                dir->cb(smb2, -ENOMEM, NULL, dir->cb_data);
                 free_smb2dir(dir);
                 return;
         }
@@ -462,13 +463,14 @@ tree_connect_cb(struct smb2_context *smb2, int status,
         struct connect_data *c_data = private_data;
 
         if (status != SMB2_STATUS_SUCCESS) {
-                smb2_set_error(smb2, "Session setup failed.");
-                c_data->cb(smb2, -1, NULL, c_data->cb_data);
+                smb2_set_error(smb2, "Session setup failed with (0x%08x) %s",
+                               status, nterror_to_str(status));
+                c_data->cb(smb2, -nterror_to_errno(status), NULL, c_data->cb_data);
                 free_c_data(c_data);
                 return;
         }
 
-        c_data->cb(smb2, status, NULL, c_data->cb_data);
+        c_data->cb(smb2, 0, NULL, c_data->cb_data);
         free_c_data(c_data);
 }
 
@@ -481,6 +483,7 @@ session_setup_cb(struct smb2_context *smb2, int status,
         struct smb2_tree_connect_request req;
         gss_buffer_desc input_token = GSS_C_EMPTY_BUFFER;
         uint32_t min;
+        int ret;
 
         /* release the previous token */
         gss_release_buffer(&min, &c_data->auth_data->output_token);
@@ -491,9 +494,9 @@ session_setup_cb(struct smb2_context *smb2, int status,
                 input_token.length = rep->security_buffer_length;
                 input_token.value = rep->security_buffer;
 
-                if (send_session_setup_request(smb2, c_data,
-                                               &input_token) < 0) {
-                        c_data->cb(smb2, -1, NULL, c_data->cb_data);
+                if ((ret = send_session_setup_request(smb2, c_data,
+                                                      &input_token)) < 0) {
+                        c_data->cb(smb2, ret, NULL, c_data->cb_data);
                         free_c_data(c_data);
                         return;
                 }
@@ -501,8 +504,10 @@ session_setup_cb(struct smb2_context *smb2, int status,
         }
 
         if (status != SMB2_STATUS_SUCCESS) {
-                smb2_set_error(smb2, "Session setup failed.");
-                c_data->cb(smb2, -1, NULL, c_data->cb_data);
+                smb2_set_error(smb2, "Session setup failed with (0x%08x) %s",
+                               status, nterror_to_str(status));
+                c_data->cb(smb2, -nterror_to_errno(status), NULL,
+                           c_data->cb_data);
                 free_c_data(c_data);
                 return;
         }
@@ -515,12 +520,13 @@ session_setup_cb(struct smb2_context *smb2, int status,
         req.path        = c_data->ucs2_unc->val;
         if (smb2_tree_connect_async(smb2, &req, tree_connect_cb,
                                     c_data) != 0) {
-                c_data->cb(smb2, -1, NULL, c_data->cb_data);
+                c_data->cb(smb2, -ENOMEM, NULL, c_data->cb_data);
                 free_c_data(c_data);
                 return;
         }
 }
 
+/* Returns 0 for success and -errno for failure */
 static int
 send_session_setup_request(struct smb2_context *smb2,
                            struct connect_data *c_data,
@@ -528,7 +534,8 @@ send_session_setup_request(struct smb2_context *smb2,
 {
         uint32_t maj, min;
         struct smb2_session_setup_request req;
-        
+
+        /* TODO return -errno instead of just -1 */
         /* NOTE: this call is not async, a helper thread should be used if that
          * is an issue */
         maj = gss_init_sec_context(&min, c_data->auth_data->cred,
@@ -562,7 +569,7 @@ send_session_setup_request(struct smb2_context *smb2,
                 
                 if (smb2_session_setup_async(smb2, &req, session_setup_cb,
                                              c_data) != 0) {
-                        return -1;
+                        return -ENOMEM;
                 }
         } else {
                 /* TODO: cleanup and fail */
@@ -578,9 +585,13 @@ negotiate_cb(struct smb2_context *smb2, int status,
         struct connect_data *c_data = private_data;
         gss_buffer_desc target = GSS_C_EMPTY_BUFFER;
         uint32_t maj, min;
-        
+        int ret;
+
         if (status != SMB2_STATUS_SUCCESS) {
-                c_data->cb(smb2, -1, NULL, c_data->cb_data);
+                smb2_set_error(smb2, "Negotiate failed with (0x%08x) %s",
+                               status, nterror_to_str(status));
+                c_data->cb(smb2, -nterror_to_errno(status), NULL,
+                           c_data->cb_data);
                 free_c_data(c_data);
                 return;
         }
@@ -588,7 +599,7 @@ negotiate_cb(struct smb2_context *smb2, int status,
         c_data->auth_data = malloc(sizeof(struct private_auth_data));
         if (c_data->auth_data == NULL) {
                 smb2_set_error(smb2, "Failed to allocate private_auth_data");
-                c_data->cb(smb2, -1, NULL, c_data->cb_data);
+                c_data->cb(smb2, -ENOMEM, NULL, c_data->cb_data);
                 free_c_data(c_data);
                 return;
         }
@@ -597,7 +608,7 @@ negotiate_cb(struct smb2_context *smb2, int status,
                 
         if (asprintf(&c_data->g_server, "cifs@%s", c_data->server) < 0) {
                 smb2_set_error(smb2, "Failed to allocate server string");
-                c_data->cb(smb2, -1, NULL, c_data->cb_data);
+                c_data->cb(smb2, -ENOMEM, NULL, c_data->cb_data);
                 free_c_data(c_data);
                 return;
         }
@@ -610,7 +621,7 @@ negotiate_cb(struct smb2_context *smb2, int status,
 
         if (maj != GSS_S_COMPLETE) {
                 set_gss_error(smb2, "gss_import_name", maj, min);
-                c_data->cb(smb2, -1, NULL, c_data->cb_data);
+                c_data->cb(smb2, -ENOMEM, NULL, c_data->cb_data);
                 free_c_data(c_data);
                 return;
         }
@@ -624,8 +635,8 @@ negotiate_cb(struct smb2_context *smb2, int status,
          * selected based on the SMB negotiation flags */
         c_data->auth_data->mech_type = &gss_mech_spnego;
 
-        if (send_session_setup_request(smb2, c_data, NULL) < 0) {
-                c_data->cb(smb2, -1, NULL, c_data->cb_data);
+        if ((ret = send_session_setup_request(smb2, c_data, NULL)) < 0) {
+                c_data->cb(smb2, ret, NULL, c_data->cb_data);
                 free_c_data(c_data);
                 return;
         }
@@ -639,9 +650,9 @@ connect_cb(struct smb2_context *smb2, int status,
         struct smb2_negotiate_request req;
 
         if (status != 0) {
-                smb2_set_error(smb2, "Failed to connect socket. errno:%d",
-                               errno);
-                c_data->cb(smb2, -1, NULL, c_data->cb_data);
+                smb2_set_error(smb2, "Socket connect failed with %d",
+                               status);
+                c_data->cb(smb2, -status, NULL, c_data->cb_data);
                 free_c_data(c_data);
                 return;
         }
@@ -655,7 +666,7 @@ connect_cb(struct smb2_context *smb2, int status,
         memcpy(req.client_guid, smb2_get_client_guid(smb2), 16);
 
         if (smb2_negotiate_async(smb2, &req, negotiate_cb, c_data) != 0) {
-                c_data->cb(smb2, -1, NULL, c_data->cb_data);
+                c_data->cb(smb2, -ENOMEM, NULL, c_data->cb_data);
                 free_c_data(c_data);
                 return;
         }
