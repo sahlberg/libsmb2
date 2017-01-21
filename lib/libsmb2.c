@@ -103,6 +103,11 @@ static void free_smb2dir(struct smb2dir *dir)
         free(dir);
 }
 
+void smb2_closedir(struct smb2_context *smb2, struct smb2dir *smb2dir)
+{
+        free_smb2dir(smb2dir);
+}
+
 static int
 decode_dirents(struct smb2_context *smb2, struct smb2dir *dir,
                struct smb2_iovec *vec)

@@ -167,6 +167,14 @@ struct smb2dir;
 int smb2_opendir_async(struct smb2_context *smb2, const char *path,
                        smb2_command_cb cb, void *cb_data);
 
+/*
+ * CLOSEDIR()
+ */
+/*
+ * smb2_closedir() never blocks, thus no async version is needed.
+ */
+void smb2_closedir(struct smb2_context *smb2, struct smb2dir *smb2dir);
+
 #ifdef __cplusplus
 }
 #endif

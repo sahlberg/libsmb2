@@ -29,7 +29,7 @@ int usage(void)
         fprintf(stderr, "Usage:\n"
                 "smb2-ls <smb2-url>\n\n"
                 "URL format: "
-                "smb2://[<domain;][<username>@]<host>/<share>/<path>\n");
+                "smb://[<domain;][<username>@]<host>/<share>/<path>\n");
         exit(1);
 }
 
@@ -53,6 +53,9 @@ void od_cb(struct smb2_context *smb2, int status,
                 printf("failed to create/open\n");
                 exit(10);
         }
+
+        smb2_closedir(smb2, dir);
+        is_finished = 1;
 }
 
 void cf_cb(struct smb2_context *smb2, int status,

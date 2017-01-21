@@ -165,7 +165,7 @@ char *ucs2_to_utf8(const uint16_t *ucs2, int ucs2_len)
         if (str == NULL) {
                 return NULL;
         }
-        str[utf8_len] = 0;
+        str[utf8_len - 1] = 0;
 
         for (i = 0; i < ucs2_len; i++) {
                 uint16_t c = le32toh(ucs2[i]);
