@@ -19,15 +19,11 @@
 #ifndef _SMB2_H_
 #define _SMB2_H_
 
+#include <smb2-errors.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#define SMB2_STATUS_SUCCESS                  0x00000000
-#define SMB2_STATUS_NO_MORE_FILES            0x80000006
-#define SMB2_STATUS_MORE_PROCESSING_REQUIRED 0xC0000016
-#define SMB2_STATUS_LOGON_FAILURE            0xC000006d
-#define SMB2_STATUS_NOT_A_DIRECTORY          0xC0000103
 
 
 #define SMB2_FLAGS_SERVER_TO_REDIR    0x00000001
