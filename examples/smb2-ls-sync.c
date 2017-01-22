@@ -28,29 +28,47 @@ int is_finished;
 int usage(void)
 {
         fprintf(stderr, "Usage:\n"
-                "smb2-ls-async <smb2-url>\n\n"
+                "smb2-ls-sync <smb2-url>\n\n"
                 "URL format: "
                 "smb://[<domain;][<username>@]<host>/<share>/<path>\n");
         exit(1);
 }
 
-void lo_cb(struct smb2_context *smb2, int status,
-                void *command_data _U_, void *private_data)
+int main(int argc, char *argv[])
 {
-        is_finished = 1;
-}
-
-void od_cb(struct smb2_context *smb2, int status,
-                void *command_data, void *private_data)
-{
-        struct smb2dir *dir = command_data;
+        struct smb2_context *smb2;
+        struct smb2_url *url;
+        struct smb2dir *dir;
         struct smb2dirent *ent;
 
-        if (status) {
-                printf("failed to create/open directory (%s) %s\n",
-                       strerror(-status), smb2_get_error(smb2));
-                exit(10);
+        if (argc < 2) {
+                usage();
         }
+        
+	smb2 = smb2_init_context();
+        if (smb2 == NULL) {
+                fprintf(stderr, "Failed to init context\n");
+                exit(0);
+        }
+
+        url = smb2_parse_url(smb2, argv[1]);
+        if (url == NULL) {
+                fprintf(stderr, "Failed to parse url: %s\n",
+                        smb2_get_error(smb2));
+                exit(0);
+        }
+                
+        smb2_set_security_mode(smb2, SMB2_NEGOTIATE_SIGNING_ENABLED);
+
+	if (smb2_connect_share(smb2, url->server, url->share) < 0) {
+		printf("smb2_connect_full failed. %s\n", smb2_get_error(smb2));
+		exit(10);
+	}
+	dir = smb2_opendir(smb2, url->path);
+	if (dir == NULL) {
+		printf("smb2_opendir failed. %s\n", smb2_get_error(smb2));
+		exit(10);
+	}
 
         while (ent = smb2_readdir(smb2, dir)) {
                 printf("%s ", ent->name);
@@ -105,76 +123,8 @@ void od_cb(struct smb2_context *smb2, int status,
                 
                 printf("\n");
         }
-        
+
         smb2_closedir(smb2, dir);
-        smb2_logoff_async(smb2, lo_cb, NULL);
-}
-
-void cf_cb(struct smb2_context *smb2, int status,
-                void *command_data, void *private_data)
-{
-        if (status) {
-                printf("failed to connect share (%s) %s\n",
-                       strerror(-status), smb2_get_error(smb2));
-                exit(10);
-        }
-
-        if (smb2_opendir_async(smb2, private_data, od_cb, NULL) < 0) {
-                printf("Failed to call opendir_async()\n");
-                exit(10);
-        }
-}
-
-int main(int argc, char *argv[])
-{
-        struct smb2_context *smb2;
-        struct smb2_url *url;
-	struct pollfd pfd;
-        int ret;
-
-        if (argc < 2) {
-                usage();
-        }
-        
-	smb2 = smb2_init_context();
-        if (smb2 == NULL) {
-                fprintf(stderr, "Failed to init context\n");
-                exit(0);
-        }
-
-        url = smb2_parse_url(smb2, argv[1]);
-        if (url == NULL) {
-                fprintf(stderr, "Failed to parse url: %s\n",
-                        smb2_get_error(smb2));
-                exit(0);
-        }
-                
-        smb2_set_security_mode(smb2, SMB2_NEGOTIATE_SIGNING_ENABLED);
-
-	if (smb2_connect_share_async(smb2, url->server, url->share,
-                                     cf_cb, url->path) != 0) {
-		printf("smb2_connect_full failed. %s\n", smb2_get_error(smb2));
-		exit(10);
-	}
-        
-        while (!is_finished) {
-		pfd.fd = smb2_get_fd(smb2);
-		pfd.events = smb2_which_events(smb2);
-
-		if (poll(&pfd, 1, 1000) < 0) {
-			printf("Poll failed");
-			exit(10);
-		}
-                if (pfd.revents == 0) {
-                        continue;
-                }
-		if (smb2_service(smb2, pfd.revents) < 0) {
-			printf("smb2_service failed with : %s\n",
-                               smb2_get_error(smb2));
-			break;
-		}
-	}
-
         smb2_destroy_url(url);
         smb2_destroy_context(smb2);
         

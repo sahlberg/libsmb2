@@ -681,26 +681,26 @@ int smb2_connect_share_async(struct smb2_context *smb2,
         c_data = malloc(sizeof(struct connect_data));
         if (c_data == NULL) {
                 smb2_set_error(smb2, "Failed to allocate connect_data");
-                return -1;
+                return -ENOMEM;
         }
         memset(c_data, 0, sizeof(struct connect_data));
         c_data->server = strdup(server);
         if (c_data->server == NULL) {
                 free_c_data(c_data);
                 smb2_set_error(smb2, "Failed to strdup(server)");
-                return -1;
+                return -ENOMEM;
         }
         c_data->share = strdup(share);
         if (c_data->share == NULL) {
                 free_c_data(c_data);
                 smb2_set_error(smb2, "Failed to strdup(server)");
-                return -1;
+                return -ENOMEM;
         }
         if (asprintf(&c_data->utf8_unc, "\\\\%s\\%s", c_data->server,
                      c_data->share) < 0) {
                 free_c_data(c_data);
                 smb2_set_error(smb2, "Failed to allocate unc string.");
-                return -1;
+                return -ENOMEM;
         }
 
         c_data->ucs2_unc = utf8_to_ucs2(c_data->utf8_unc);
@@ -708,7 +708,7 @@ int smb2_connect_share_async(struct smb2_context *smb2,
                 free_c_data(c_data);
                 smb2_set_error(smb2, "Count not convert UNC:[%s] into UCS2",
                                c_data->utf8_unc);
-                return -1;
+                return -ENOMEM;
         }
                 
         c_data->cb = cb;
@@ -716,7 +716,7 @@ int smb2_connect_share_async(struct smb2_context *smb2,
  
         if (smb2_connect_async(smb2, server, connect_cb, c_data) != 0) {
                 free_c_data(c_data);
-                return -1;
+                return -ENOMEM;
         }
 
         return 0;

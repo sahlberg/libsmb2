@@ -7,15 +7,22 @@ Libsmb2 is distributed under the LGPLv2.1 licence.
 THIS IS A WORK IN PROGRESS
 
 
-Libsmb2 implements two diddefent APIs for accessing a remote SMB share :
+Libsmb2 implements three different APIs for accessing a remote SMB share :
 
-1, High level async posix-like API.
-This is a fully async API for accessing a share and provides an API that
-is similar to the normal posix operations such as open()/read()/close().
+1, High level synchronous posix-like API.
+This is a simple API for accessing a share.
+The functions in this API are modelled to be be similar to the corresponding
+POSIX functions.
+This API is described in libsmb.h
+
+2, High level async posix-like API.
+This is a high performance, fully non-blocking and async API.
+The functions in this API are modelled to be be similar to the corresponding
+POSIX functions.
 This is the recommended API.
 This API is described in libsmb.h
 
-2, Low level async RAW API.
+3, Low level async RAW API.
 This is a low level API that provides direct access to the SMB2 PDUs
 and data structures.
 This API is described in libsmb-raw.h

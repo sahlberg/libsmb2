@@ -4,6 +4,7 @@ smb2_close_async
 smb2_closedir
 smb2_create_async
 smb2_connect_async
+smb2_connect_share
 smb2_connect_share_async
 smb2_destroy_context
 smb2_destroy_url
@@ -14,6 +15,7 @@ smb2_get_fd
 smb2_init_context
 smb2_logoff_async
 smb2_negotiate_async
+smb2_opendir
 smb2_opendir_async
 smb2_query_directory_async
 smb2_parse_url

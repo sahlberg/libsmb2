@@ -100,22 +100,32 @@ int smb2_connect_async(struct smb2_context *smb2, const char *server,
                        smb2_command_cb cb, void *cb_data);
 
 /*
- * Asynchronous call to connect to a share/
+ * Async call to connect to a share/
  *
  * Returns:
  *  0 if the call was initiated and a connection will be attempted. Result of
  * the connection will be reported through the callback function.
- * <0 if there was an error. The callback function will not be invoked.
+ * -errno if there was an error. The callback function will not be invoked.
  *
  * Callback parameters :
  * status can be either of :
  *    0     : Connection was successful. Command_data is NULL.
  *
- *   <0     : Failed to connect to the share. Command_data is NULL.
+ *   -errno : Failed to connect to the share. Command_data is NULL.
  */
 int smb2_connect_share_async(struct smb2_context *smb2,
                              const char *server, const char *share,
                              smb2_command_cb cb, void *cb_data);
+
+/*
+ * Sync call to connect to a share/
+ *
+ * Returns:
+ * 0      : Connected to the share successfully.
+ * -errno : Failure.
+ */
+int smb2_connect_share(struct smb2_context *smb2,
+                       const char *server, const char *share);
         
 /*
  * This function returns a description of the last encountered error.
@@ -172,6 +182,13 @@ struct smb2dir;
  */       
 int smb2_opendir_async(struct smb2_context *smb2, const char *path,
                        smb2_command_cb cb, void *cb_data);
+
+/*
+ * Sync opendir()
+ *
+ * Returns NULL on failure.
+ */
+struct smb2dir *smb2_opendir(struct smb2_context *smb2, const char *path);
 
 /*
  * closedir()
