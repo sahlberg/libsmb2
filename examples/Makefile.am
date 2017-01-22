@@ -1,4 +1,4 @@
-noinst_PROGRAMS = smb2-ls
+noinst_PROGRAMS = smb2-ls-async
 
 AM_CPPFLAGS = \
 	-I$(abs_top_srcdir)/include \
@@ -6,4 +6,4 @@ AM_CPPFLAGS = \
 	"-D_U_=__attribute__((unused))"
 
 COMMON_LIBS = ../lib/libsmb2.la -lpopt
-smb2_ls_LDADD = $(COMMON_LIBS)
+smb2_ls_async_LDADD = $(COMMON_LIBS)
