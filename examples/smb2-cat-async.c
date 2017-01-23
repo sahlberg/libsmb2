@@ -13,22 +13,28 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 #define _GNU_SOURCE
 
+#include <fcntl.h>
 #include <poll.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-raw.h"
 
 int is_finished;
+char buf[256 * 1024];
+uint32_t pos;
 
 int usage(void)
 {
         fprintf(stderr, "Usage:\n"
-                "smb2-ls-async <smb2-url>\n\n"
+                "smb2-cat-async <smb2-url>\n\n"
                 "URL format: "
                 "smb://[<domain;][<username>@]<host>/<share>/<path>\n");
         exit(1);
@@ -40,74 +46,55 @@ void lo_cb(struct smb2_context *smb2, int status,
         is_finished = 1;
 }
 
-void od_cb(struct smb2_context *smb2, int status,
+void cl_cb(struct smb2_context *smb2, int status,
                 void *command_data, void *private_data)
 {
-        struct smb2dir *dir = command_data;
-        struct smb2dirent *ent;
+        smb2_cmd_logoff_async(smb2, lo_cb, NULL);
+}
 
-        if (status) {
-                printf("failed to create/open directory (%s) %s\n",
+void pr_cb(struct smb2_context *smb2, int status,
+                void *command_data, void *private_data)
+{
+        struct smb2fh *fh = private_data;
+
+        if (status < 0) {
+                printf("failed to read file (%s) %s\n",
                        strerror(-status), smb2_get_error(smb2));
                 exit(10);
         }
 
-        while (ent = smb2_readdir(smb2, dir)) {
-                printf("%s ", ent->name);
-
-                printf("[");
-                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_READONLY) {
-                        printf("READ-ONLY,");
+        if (status == 0) {
+                if (smb2_close_async(smb2, fh, cl_cb, NULL) < 0) {
+                        printf("Failed to call smb2_close_async()\n");
+                        exit(10);
                 }
-                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_HIDDEN) {
-                        printf("HIDDEN,");
-                }
-                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_SYSTEM) {
-                        printf("SYSTEM,");
-                }
-                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_DIRECTORY) {
-                        printf("DIRECTORY,");
-                }
-                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_ARCHIVE) {
-                        printf("ARCHIVE,");
-                }
-                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_NORMAL) {
-                        printf("NORMAL,");
-                }
-                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_TEMPORARY) {
-                        printf("TEMPORARY,");
-                }
-                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_SPARSE_FILE) {
-                        printf("SPARSE_FILE,");
-                }
-                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_REPARSE_POINT) {
-                        printf("REPARSE_POINT,");
-                }
-                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_COMPRESSED) {
-                        printf("COMPRESSED,");
-                }
-                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_OFFLINE) {
-                        printf("OFFLINE,");
-                }
-                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_NOT_CONTENT_INDEXED) {
-                        printf("NOT_CONTENT_INDEXED,");
-                }
-                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_ENCRYPTED) {
-                        printf("ENCREYPTED,");
-                }
-                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_INTEGRITY_STREAM) {
-                        printf("INTEGRITY_STREAM,");
-                }
-                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_NO_SCRUB_DATA) {
-                        printf("NO_SCRUP_DATA,");
-                }
-                printf("]");
-                
-                printf("\n");
+                return;
         }
-        
-        smb2_closedir(smb2, dir);
-        smb2_cmd_logoff_async(smb2, lo_cb, NULL);
+
+        write(0, buf, status);
+
+        pos += status;
+        if (smb2_pread_async(smb2, fh, buf, 1024, pos, pr_cb, fh) < 0) {
+                printf("Failed to call smb2_pread_async()\n");
+                exit(10);
+        }
+}
+
+void of_cb(struct smb2_context *smb2, int status,
+                void *command_data, void *private_data)
+{
+        struct smb2fh *fh = command_data;
+
+        if (status) {
+                printf("failed to open file (%s) %s\n",
+                       strerror(-status), smb2_get_error(smb2));
+                exit(10);
+        }
+
+        if (smb2_pread_async(smb2, fh, buf, 1024, 0, pr_cb, fh) < 0) {
+                printf("Failed to call smb2_pread_async()\n");
+                exit(10);
+        }
 }
 
 void cf_cb(struct smb2_context *smb2, int status,
@@ -119,8 +106,9 @@ void cf_cb(struct smb2_context *smb2, int status,
                 exit(10);
         }
 
-        if (smb2_opendir_async(smb2, private_data, od_cb, NULL) < 0) {
-                printf("Failed to call opendir_async()\n");
+        if (smb2_open_async(smb2, private_data, O_RDONLY,
+                            of_cb, NULL) < 0) {
+                printf("Failed to call smb2_open_async()\n");
                 exit(10);
         }
 }

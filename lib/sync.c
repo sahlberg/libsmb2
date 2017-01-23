@@ -144,3 +144,96 @@ struct smb2dir *smb2_opendir(struct smb2_context *smb2, const char *path)
 
 	return cb_data.ptr;
 }
+
+/*
+ * open()
+ */
+static void open_cb(struct smb2_context *smb2, int status,
+                    void *command_data, void *private_data)
+{
+        struct sync_cb_data *cb_data = private_data;
+
+        cb_data->is_finished = 1;
+        cb_data->ptr = command_data;
+}
+
+struct smb2fh *smb2_open(struct smb2_context *smb2, const char *path, int flags)
+{
+        struct sync_cb_data cb_data;
+
+	cb_data.is_finished = 0;
+
+	if (smb2_open_async(smb2, path, flags,
+                               open_cb, &cb_data) != 0) {
+		smb2_set_error(smb2, "smb2_open_async failed");
+		return NULL;
+	}
+
+	if (wait_for_reply(smb2, &cb_data) < 0) {
+                return NULL;
+        }
+
+	return cb_data.ptr;
+}
+
+/*
+ * close()
+ */
+static void close_cb(struct smb2_context *smb2, int status,
+                    void *command_data, void *private_data)
+{
+        struct sync_cb_data *cb_data = private_data;
+
+        cb_data->is_finished = 1;
+        cb_data->status = status;
+}
+
+int smb2_close(struct smb2_context *smb2, struct smb2fh *fh)
+{
+        struct sync_cb_data cb_data;
+
+	cb_data.is_finished = 0;
+
+	if (smb2_close_async(smb2, fh, close_cb, &cb_data) != 0) {
+		smb2_set_error(smb2, "smb2_close_async failed");
+		return -1;
+	}
+
+	if (wait_for_reply(smb2, &cb_data) < 0) {
+                return -1;
+        }
+
+	return cb_data.status;
+}
+
+/*
+ * pread()
+ */
+static void pread_cb(struct smb2_context *smb2, int status,
+                    void *command_data, void *private_data)
+{
+        struct sync_cb_data *cb_data = private_data;
+
+        cb_data->is_finished = 1;
+        cb_data->status = status;
+}
+
+int smb2_pread(struct smb2_context *smb2, struct smb2fh *fh,
+               char *buf, uint32_t count, uint64_t offset)
+{
+        struct sync_cb_data cb_data;
+
+	cb_data.is_finished = 0;
+
+	if (smb2_pread_async(smb2, fh, buf, count, offset,
+                             pread_cb, &cb_data) != 0) {
+		smb2_set_error(smb2, "smb2_close_async failed");
+		return -1;
+	}
+
+	if (wait_for_reply(smb2, &cb_data) < 0) {
+                return -1;
+        }
+
+	return cb_data.status;
+}

@@ -96,14 +96,10 @@ smb2_allocate_pdu(struct smb2_context *smb2, enum smb2_command command,
         pdu->cb = cb;
         pdu->cb_data = cb_data;
 
-        pdu->out.niov = 2;
-        pdu->out.iov[0].buf = pdu->hdr;
-        pdu->out.iov[0].len = SMB2_SPL_SIZE;
-        pdu->out.iov[0].free = NULL;
-        pdu->out.iov[1].buf = pdu->hdr + SMB2_SPL_SIZE;
-        pdu->out.iov[1].len = SMB2_HEADER_SIZE;
-        pdu->out.iov[1].free = NULL;
-
+        pdu->out.niov = 0;
+        smb2_add_iovector(smb2, &pdu->out, pdu->hdr, SMB2_SPL_SIZE, NULL);
+        smb2_add_iovector(smb2, &pdu->out, pdu->hdr + SMB2_SPL_SIZE, SMB2_HEADER_SIZE, NULL);
+                          
         if (smb2_encode_header(smb2, &pdu->out.iov[1], &pdu->header)) {
                 smb2_set_error(smb2, "Failed to encode header");
                 smb2_free_pdu(smb2, pdu);
@@ -326,10 +322,12 @@ int smb2_process_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
                 return smb2_process_logoff_reply(smb2, pdu);
         case SMB2_NEGOTIATE:
                 return smb2_process_negotiate_reply(smb2, pdu);
-        case SMB2_SESSION_SETUP:
-                return smb2_process_session_setup_reply(smb2, pdu);
         case SMB2_QUERY_DIRECTORY:
                 return smb2_process_query_directory_reply(smb2, pdu);
+        case SMB2_READ:
+                return smb2_process_read_reply(smb2, pdu);
+        case SMB2_SESSION_SETUP:
+                return smb2_process_session_setup_reply(smb2, pdu);
         case SMB2_TREE_CONNECT:
                 return smb2_process_tree_connect_reply(smb2, pdu);
         default:

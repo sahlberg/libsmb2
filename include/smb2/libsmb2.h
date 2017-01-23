@@ -232,6 +232,96 @@ long smb2_telldir(struct smb2_context *smb2, struct smb2dir *smb2dir);
 void smb2_seekdir(struct smb2_context *smb2, struct smb2dir *smb2dir,
                   long loc);
 
+/*
+ * OPEN
+ */
+struct smb2fh;
+/*
+ * Async open()
+ *
+ * Opens or creates a file.
+ * Supported flags are:
+ * O_RDONLY
+ * O_WRONLY
+ * O_RDWR
+ * O_SYNC
+ * O_CREAT
+ * O_EXCL
+ *
+ * Returns
+ *  0     : The operation was initiated. Result of the operation will be
+ *          reported through the callback function.
+ * -errno : There was an error. The callback function will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ *          Command_data is struct smb2fh.
+ *          This structure is freed using smb2_close().
+ * -errno : An error occured.
+ *          Command_data is NULL.
+ */       
+int smb2_open_async(struct smb2_context *smb2, const char *path, int flags,
+                    smb2_command_cb cb, void *cb_data);
+
+/*
+ * Sync open()
+ *
+ * Returns NULL on failure.
+ */
+struct smb2fh *smb2_open(struct smb2_context *smb2, const char *path, int flags);
+
+/*
+ * CLOSE
+ */
+/*
+ * Async close()
+ *
+ * Returns
+ *  0     : The operation was initiated. Result of the operation will be
+ *          reported through the callback function.
+ * -errno : There was an error. The callback function will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ * -errno : An error occured.
+ *
+ * Command_data is always NULL.
+ */       
+int smb2_close_async(struct smb2_context *smb2, struct smb2fh *fh,
+                     smb2_command_cb cb, void *cb_data);
+
+/*
+ * Sync close()
+ */
+int smb2_close(struct smb2_context *smb2, struct smb2fh *fh);
+
+/*
+ * PREAD
+ */
+/*
+ * Async pread()
+ *
+ * Returns
+ *  0     : The operation was initiated. Result of the operation will be
+ *          reported through the callback function.
+ * -errno : There was an error. The callback function will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *    >=0 : Number of bytes read.
+ * -errno : An error occured.
+ *
+ * Command_data is always NULL.
+ */       
+int smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
+                     char *buf, uint32_t count, uint64_t offset,
+                     smb2_command_cb cb, void *cb_data);
+
+/*
+ * Sync pread()
+ */
+int smb2_pread(struct smb2_context *smb2, struct smb2fh *fh,
+               char *buf, uint32_t count, uint64_t offset);
+
 #ifdef __cplusplus
 }
 #endif

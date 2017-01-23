@@ -258,11 +258,18 @@ smb2_read_from_socket(struct smb2_context *smb2)
                         /* copy any io-vectors we got from the pdu */
                         for (i = 0; i < pdu->in.niov; i++) {
                                 struct smb2_iovec *v = &pdu->in.iov[i];
-                                
+
                                 smb2->in.iov[smb2->in.niov].buf = v->buf;
                                 smb2->in.iov[smb2->in.niov].len = v->len;
                                 smb2->in.iov[smb2->in.niov].free = NULL;
                                 tmp_size += v->len;
+                                if (tmp_size > smb2->in.total_size) {
+                                        smb2->in.iov[smb2->in.niov].len -= tmp_size - smb2->in.total_size;
+                                        tmp_size -= tmp_size - smb2->in.total_size;
+                                        smb2->in.niov++;
+                                        break;
+                                }
+                                
                                 smb2->in.niov++;
                         }
 

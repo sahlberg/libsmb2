@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
         smb2_set_security_mode(smb2, SMB2_NEGOTIATE_SIGNING_ENABLED);
 
 	if (smb2_connect_share(smb2, url->server, url->share) < 0) {
-		printf("smb2_connect_full failed. %s\n", smb2_get_error(smb2));
+		printf("smb2_connect_share failed. %s\n", smb2_get_error(smb2));
 		exit(10);
 	}
 	dir = smb2_opendir(smb2, url->path);

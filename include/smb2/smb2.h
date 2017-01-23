@@ -403,6 +403,36 @@ struct smb2_query_directory_reply {
         char *output_buffer;
 };
 
+#define SMB2_READ_REQUEST_SIZE 49
+#define SMB2_READ_REPLY_SIZE 17
+
+#define SMB2_READFLAG_READ_UNBUFFERED 0x01
+
+#define SMB2_CHANNEL_NONE               0x00000000
+#define SMB2_CHANNEL_RDMA_V1            0x00000001
+#define SMB2_CHANNEL_RDMA_V1_INVALIDATE 0x00000002
+
+struct smb2_read_request {
+        uint16_t struct_size;
+        uint8_t flags;
+        uint32_t length;
+        uint64_t offset;
+        char *buf;
+        smb2_file_id file_id;
+        uint32_t minimum_count;
+        uint32_t channel;
+        uint32_t remaining_bytes;
+        uint16_t read_channel_info_offset;
+        char *read_channel_info;
+};
+
+struct smb2_read_reply {
+        uint16_t struct_size;
+        uint8_t data_offset;
+        uint32_t data_length;
+        uint32_t data_remaining;
+};
+
 #ifdef __cplusplus
 }
 #endif

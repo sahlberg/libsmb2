@@ -33,6 +33,12 @@ const char *nterror_to_str(uint32_t status) {
                 return "STATUS_LOGON_FAILURE";
         case SMB2_STATUS_NOT_A_DIRECTORY:
                 return "STATUS_NOT_A_DIRECTORY";
+        case SMB2_STATUS_INVALID_PARAMETER:
+                return "STATUS_INVALID_PARAMETER";
+        case SMB2_STATUS_END_OF_FILE:
+                return "STATUS_END_OF_FILE";
+        case SMB2_STATUS_FILE_CLOSED:
+                return "STATUS_FILE_CLOSED";
         default:
                 return "Unknown";
         }
@@ -41,7 +47,10 @@ const char *nterror_to_str(uint32_t status) {
 int nterror_to_errno(uint32_t status) {
         switch (status) {
         case SMB2_STATUS_SUCCESS:
+        case SMB2_STATUS_END_OF_FILE:
                 return 0;
+        case SMB2_STATUS_FILE_CLOSED:
+                return EBADFD;
         case SMB2_STATUS_MORE_PROCESSING_REQUIRED:
                 return EAGAIN;
         case SMB2_STATUS_NO_MORE_FILES:
@@ -50,6 +59,8 @@ int nterror_to_errno(uint32_t status) {
                 return ECONNREFUSED;
         case SMB2_STATUS_NOT_A_DIRECTORY:
                 return ENOTDIR;
+        case SMB2_STATUS_INVALID_PARAMETER:
+                return EINVAL;
         default:
                 return EIO;
         }

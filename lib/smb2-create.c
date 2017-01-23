@@ -153,9 +153,9 @@ smb2_decode_create_reply(struct smb2_context *smb2,
         return 0;
 }
 
-int smb2_create_async(struct smb2_context *smb2,
-                      struct smb2_create_request *req,
-                      smb2_command_cb cb, void *cb_data)
+int smb2_cmd_create_async(struct smb2_context *smb2,
+                          struct smb2_create_request *req,
+                          smb2_command_cb cb, void *cb_data)
 {
         struct smb2_pdu *pdu;
 

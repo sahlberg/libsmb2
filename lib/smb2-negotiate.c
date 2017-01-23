@@ -101,9 +101,9 @@ smb2_decode_negotiate_reply(struct smb2_context *smb2,
         return 0;
 }
                                       
-int smb2_negotiate_async(struct smb2_context *smb2,
-                         struct smb2_negotiate_request *req,
-                         smb2_command_cb cb, void *cb_data)
+int smb2_cmd_negotiate_async(struct smb2_context *smb2,
+                             struct smb2_negotiate_request *req,
+                             smb2_command_cb cb, void *cb_data)
 {
         struct smb2_pdu *pdu;
         

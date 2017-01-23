@@ -183,6 +183,15 @@ void smb2_free_iovector(struct smb2_context *smb2, struct smb2_io_vectors *v)
         v->niov = 0;
 }
 
+void smb2_add_iovector(struct smb2_context *smb2, struct smb2_io_vectors *v,
+                       char *buf, int len, void (*free)(void *))
+{
+        v->iov[v->niov].buf = buf;
+        v->iov[v->niov].len = len;
+        v->iov[v->niov].free = free;
+        v->niov++;
+}
+
 void smb2_set_error(struct smb2_context *smb2, const char *error_string, ...)
 {
 	va_list ap;

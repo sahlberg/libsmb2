@@ -123,9 +123,9 @@ smb2_decode_query_directory_reply(struct smb2_context *smb2,
         return 0;
 }
 
-int smb2_query_directory_async(struct smb2_context *smb2,
-                      struct smb2_query_directory_request *req,
-                      smb2_command_cb cb, void *cb_data)
+int smb2_cmd_query_directory_async(struct smb2_context *smb2,
+                                   struct smb2_query_directory_request *req,
+                                   smb2_command_cb cb, void *cb_data)
 {
         struct smb2_pdu *pdu;
 

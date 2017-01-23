@@ -41,9 +41,9 @@ extern "C" {
  *
  *   !0     : Status is NT status code. Command_data is NULL.
  */
-int smb2_negotiate_async(struct smb2_context *smb2,
-                         struct smb2_negotiate_request *req,
-                         smb2_command_cb cb, void *cb_data);
+int smb2_cmd_negotiate_async(struct smb2_context *smb2,
+                             struct smb2_negotiate_request *req,
+                             smb2_command_cb cb, void *cb_data);
 
 
 /*
@@ -61,9 +61,9 @@ int smb2_negotiate_async(struct smb2_context *smb2,
  *
  *   !0     : Status is NT status code.
  */
-int smb2_session_setup_async(struct smb2_context *smb2,
-                             struct smb2_session_setup_request *req,
-                             smb2_command_cb cb, void *cb_data);
+int smb2_cmd_session_setup_async(struct smb2_context *smb2,
+                                 struct smb2_session_setup_request *req,
+                                 smb2_command_cb cb, void *cb_data);
 
 /*
  * Asynchronous SMB2 Tree Connect
@@ -80,9 +80,9 @@ int smb2_session_setup_async(struct smb2_context *smb2,
  *
  *   !0     : Status is NT status code. Command_data is NULL.
  */
-int smb2_tree_connect_async(struct smb2_context *smb2,
-                            struct smb2_tree_connect_request *req,
-                            smb2_command_cb cb, void *cb_data);
+int smb2_cmd_tree_connect_async(struct smb2_context *smb2,
+                                struct smb2_tree_connect_request *req,
+                                smb2_command_cb cb, void *cb_data);
 
 /*
  * Asynchronous SMB2 Create
@@ -99,9 +99,9 @@ int smb2_tree_connect_async(struct smb2_context *smb2,
  *
  *   !0     : Status is NT status code. Command_data is NULL.
  */
-int smb2_create_async(struct smb2_context *smb2,
-                      struct smb2_create_request *req,
-                      smb2_command_cb cb, void *cb_data);
+int smb2_cmd_create_async(struct smb2_context *smb2,
+                          struct smb2_create_request *req,
+                          smb2_command_cb cb, void *cb_data);
 
 /*
  * Asynchronous SMB2 Close
@@ -118,9 +118,29 @@ int smb2_create_async(struct smb2_context *smb2,
  *
  *   !0     : Status is NT status code. Command_data is NULL.
  */
-int smb2_close_async(struct smb2_context *smb2,
-                     struct smb2_close_request *req,
-                     smb2_command_cb cb, void *cb_data);
+int smb2_cmd_close_async(struct smb2_context *smb2,
+                         struct smb2_close_request *req,
+                         smb2_command_cb cb, void *cb_data);
+
+/*
+ * Asynchronous SMB2 Read
+ *
+ * Returns:
+ *  0 if the call was initiated and a connection will be attempted. Result of
+ * the read will be reported through the callback function.
+ * <0 if there was an error. The callback function will not be invoked.
+ *
+ * Callback parameters :
+ * status can be either of :
+ *    0     : Read was successful.
+ *
+ *   !0     : Status is NT status code.
+ *
+ * command_data is always NULL.
+ */
+int smb2_cmd_read_async(struct smb2_context *smb2,
+                        struct smb2_read_request *req,
+                        smb2_command_cb cb, void *cb_data);
 
 /*
  * Asynchronous SMB2 Query Directory
@@ -137,9 +157,9 @@ int smb2_close_async(struct smb2_context *smb2,
  *
  *   !0     : Status is NT status code. Command_data is NULL.
  */
-int smb2_query_directory_async(struct smb2_context *smb2,
-                               struct smb2_query_directory_request *req,
-                               smb2_command_cb cb, void *cb_data);
+int smb2_cmd_query_directory_async(struct smb2_context *smb2,
+                                   struct smb2_query_directory_request *req,
+                                   smb2_command_cb cb, void *cb_data);
 
 /*
  * Asynchronous SMB2 Echo
@@ -157,8 +177,8 @@ int smb2_query_directory_async(struct smb2_context *smb2,
  *
  * command_data is always NULL.
  */
-int smb2_echo_async(struct smb2_context *smb2,
-                    smb2_command_cb cb, void *cb_data);
+int smb2_cmd_echo_async(struct smb2_context *smb2,
+                        smb2_command_cb cb, void *cb_data);
 
 /*
  * Asynchronous SMB2 Logoff
@@ -176,8 +196,8 @@ int smb2_echo_async(struct smb2_context *smb2,
  *
  * command_data is always NULL.
  */
-int smb2_logoff_async(struct smb2_context *smb2,
-                      smb2_command_cb cb, void *cb_data);
+int smb2_cmd_logoff_async(struct smb2_context *smb2,
+                          smb2_command_cb cb, void *cb_data);
         
 #ifdef __cplusplus
 }
