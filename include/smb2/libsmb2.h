@@ -358,6 +358,59 @@ int smb2_read(struct smb2_context *smb2, struct smb2fh *fh,
 int smb2_lseek(struct smb2_context *smb2, struct smb2fh *fh,
                int64_t offset, int whence);
 
+/*
+ * UNLINK
+ */
+/*
+ * Async unlink()
+ *
+ * Returns
+ *  0     : The operation was initiated. Result of the operation will be
+ *          reported through the callback function.
+ * -errno : There was an error. The callback function will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ * -errno : An error occured.
+ *
+ * Command_data is always NULL.
+ */
+int smb2_unlink_async(struct smb2_context *smb2, const char *path,
+                      smb2_command_cb cb, void *cb_data);
+
+/*
+ * Sync unlink()
+ *
+ * Returns NULL on failure.
+ */
+int smb2_unlink(struct smb2_context *smb2, const char *path);
+
+/*
+ * RMDIR
+ */
+/*
+ * Async rmdir()
+ *
+ * Returns
+ *  0     : The operation was initiated. Result of the operation will be
+ *          reported through the callback function.
+ * -errno : There was an error. The callback function will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ * -errno : An error occured.
+ *
+ * Command_data is always NULL.
+ */
+int smb2_rmdir_async(struct smb2_context *smb2, const char *path,
+                     smb2_command_cb cb, void *cb_data);
+
+/*
+ * Sync rmdir()
+ *
+ * Returns NULL on failure.
+ */
+int smb2_rmdir(struct smb2_context *smb2, const char *path);
         
 #ifdef __cplusplus
 }

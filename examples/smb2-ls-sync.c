@@ -64,6 +64,7 @@ int main(int argc, char *argv[])
 		printf("smb2_connect_share failed. %s\n", smb2_get_error(smb2));
 		exit(10);
 	}
+
 	dir = smb2_opendir(smb2, url->path);
 	if (dir == NULL) {
 		printf("smb2_opendir failed. %s\n", smb2_get_error(smb2));

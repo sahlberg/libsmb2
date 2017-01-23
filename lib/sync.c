@@ -198,7 +198,7 @@ int smb2_close(struct smb2_context *smb2, struct smb2fh *fh)
 /*
  * pread()
  */
-static void pread_cb(struct smb2_context *smb2, int status,
+static void generic_status_cb(struct smb2_context *smb2, int status,
                     void *command_data, void *private_data)
 {
         struct sync_cb_data *cb_data = private_data;
@@ -215,7 +215,7 @@ int smb2_pread(struct smb2_context *smb2, struct smb2fh *fh,
 	cb_data.is_finished = 0;
 
 	if (smb2_pread_async(smb2, fh, buf, count, offset,
-                             pread_cb, &cb_data) != 0) {
+                             generic_status_cb, &cb_data) != 0) {
 		smb2_set_error(smb2, "smb2_pread_async failed");
 		return -1;
 	}
@@ -235,8 +235,46 @@ int smb2_read(struct smb2_context *smb2, struct smb2fh *fh,
 	cb_data.is_finished = 0;
 
 	if (smb2_read_async(smb2, fh, buf, count,
-                            pread_cb, &cb_data) != 0) {
+                            generic_status_cb, &cb_data) != 0) {
 		smb2_set_error(smb2, "smb2_read_async failed");
+		return -1;
+	}
+
+	if (wait_for_reply(smb2, &cb_data) < 0) {
+                return -1;
+        }
+
+	return cb_data.status;
+}
+
+int smb2_unlink(struct smb2_context *smb2, const char *path)
+{
+        struct sync_cb_data cb_data;
+
+	cb_data.is_finished = 0;
+
+	if (smb2_unlink_async(smb2, path,
+                            generic_status_cb, &cb_data) != 0) {
+		smb2_set_error(smb2, "smb2_unlink_async failed");
+		return -1;
+	}
+
+	if (wait_for_reply(smb2, &cb_data) < 0) {
+                return -1;
+        }
+
+	return cb_data.status;
+}
+
+int smb2_rmdir(struct smb2_context *smb2, const char *path)
+{
+        struct sync_cb_data cb_data;
+
+	cb_data.is_finished = 0;
+
+	if (smb2_rmdir_async(smb2, path,
+                            generic_status_cb, &cb_data) != 0) {
+		smb2_set_error(smb2, "smb2_rmdir_async failed");
 		return -1;
 	}
 

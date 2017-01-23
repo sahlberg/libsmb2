@@ -984,3 +984,106 @@ int smb2_lseek(struct smb2_context *smb2, struct smb2fh *fh,
                 return -EINVAL;
         }
 }
+
+struct unlink_cb_data {
+        smb2_command_cb cb;
+        void *cb_data;
+};
+
+static void
+unlink_cb_2(struct smb2_context *smb2, int status,
+            void *command_data, void *private_data)
+{
+        struct unlink_cb_data *unlink_data = private_data;
+
+        if (status != SMB2_STATUS_SUCCESS) {
+                unlink_data->cb(smb2, -nterror_to_errno(status),
+                       NULL, unlink_data->cb_data);
+                free(unlink_data);
+                return;
+        }
+
+        unlink_data->cb(smb2, 0, NULL, unlink_data->cb_data);
+        free(unlink_data);
+}
+
+static void
+unlink_cb_1(struct smb2_context *smb2, int status,
+            void *command_data, void *private_data)
+{
+        struct unlink_cb_data *unlink_data = private_data;
+        struct smb2_create_reply *rep = command_data;
+        struct smb2_close_request req;
+
+        if (status != SMB2_STATUS_SUCCESS) {
+                unlink_data->cb(smb2, -nterror_to_errno(status),
+                       NULL, unlink_data->cb_data);
+                free(unlink_data);
+                return;
+        }
+
+        memset(&req, 0, sizeof(struct smb2_close_request));
+        req.struct_size = SMB2_CLOSE_REQUEST_SIZE;
+        req.flags = SMB2_CLOSE_FLAG_POSTQUERY_ATTRIB;
+        memcpy(req.file_id, rep->file_id, SMB2_FD_SIZE);
+
+        if (smb2_cmd_close_async(smb2, &req, unlink_cb_2, unlink_data) < 0) {
+                unlink_data->cb(smb2, -ENOMEM, NULL, unlink_data->cb_data);
+                free(unlink_data);
+        }
+}
+
+static int smb2_unlink_internal(struct smb2_context *smb2, const char *path,
+                                int is_dir,
+                                smb2_command_cb cb, void *cb_data)
+{
+        struct unlink_cb_data *unlink_data;
+        struct smb2_create_request req;
+
+        unlink_data = malloc(sizeof(struct unlink_cb_data));
+        if (unlink_data == NULL) {
+                smb2_set_error(smb2, "Failed to allocate unlink_data");
+                return -ENOMEM;
+        }
+        memset(unlink_data, 0, sizeof(struct unlink_cb_data));
+
+        unlink_data->cb = cb;
+        unlink_data->cb_data = cb_data;
+
+
+        memset(&req, 0, sizeof(struct smb2_create_request));
+        req.struct_size = SMB2_CREATE_REQUEST_SIZE;
+        req.requested_oplock_level = SMB2_OPLOCK_LEVEL_NONE;
+        req.impersonation_level = SMB2_IMPERSONATION_IMPERSONATION;
+        req.desired_access = SMB2_DELETE;
+        if (is_dir) {
+                req.file_attributes = SMB2_FILE_ATTRIBUTE_DIRECTORY;
+        } else {
+                req.file_attributes = SMB2_FILE_ATTRIBUTE_NORMAL;
+        }
+        req.share_access = SMB2_FILE_SHARE_READ | SMB2_FILE_SHARE_WRITE |
+                SMB2_FILE_SHARE_DELETE;
+        req.create_disposition = SMB2_FILE_OPEN;
+        req.create_options = SMB2_FILE_DELETE_ON_CLOSE;
+        req.name_offset = 0x78;
+        req.name = path;
+
+        if (smb2_cmd_create_async(smb2, &req, unlink_cb_1, unlink_data) < 0) {
+                smb2_set_error(smb2, "Failed to send create command");
+                return -ENOMEM;
+        }
+
+        return 0;
+}
+
+int smb2_unlink_async(struct smb2_context *smb2, const char *path,
+                      smb2_command_cb cb, void *cb_data)
+{
+        return smb2_unlink_internal(smb2, path, 0, cb, cb_data);
+}
+
+int smb2_rmdir_async(struct smb2_context *smb2, const char *path,
+                     smb2_command_cb cb, void *cb_data)
+{
+        return smb2_unlink_internal(smb2, path, 1, cb, cb_data);
+}
