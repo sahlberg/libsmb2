@@ -92,7 +92,7 @@ int smb2_connect_share(struct smb2_context *smb2,
 
 	if (smb2_connect_share_async(smb2, server, share,
                                      connect_cb, &cb_data) != 0) {
-		smb2_set_error(smb2, "smb2_connect_async failed");
+		smb2_set_error(smb2, "smb2_connect_share_async failed");
 		return -ENOMEM;
 	}
 
@@ -216,7 +216,27 @@ int smb2_pread(struct smb2_context *smb2, struct smb2fh *fh,
 
 	if (smb2_pread_async(smb2, fh, buf, count, offset,
                              pread_cb, &cb_data) != 0) {
-		smb2_set_error(smb2, "smb2_close_async failed");
+		smb2_set_error(smb2, "smb2_pread_async failed");
+		return -1;
+	}
+
+	if (wait_for_reply(smb2, &cb_data) < 0) {
+                return -1;
+        }
+
+	return cb_data.status;
+}
+
+int smb2_read(struct smb2_context *smb2, struct smb2fh *fh,
+               char *buf, uint32_t count)
+{
+        struct sync_cb_data cb_data;
+
+	cb_data.is_finished = 0;
+
+	if (smb2_read_async(smb2, fh, buf, count,
+                            pread_cb, &cb_data) != 0) {
+		smb2_set_error(smb2, "smb2_read_async failed");
 		return -1;
 	}
 

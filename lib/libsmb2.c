@@ -101,6 +101,7 @@ struct smb2fh {
         void *cb_data;
 
         smb2_file_id file_id;
+        uint64_t offset;
 };
 
 static int
@@ -878,7 +879,9 @@ int smb2_close_async(struct smb2_context *smb2, struct smb2fh *fh,
 struct read_data {
         smb2_command_cb cb;
         void *cb_data;
+
         struct smb2fh *fh;
+        uint64_t offset;
 };
 
 static void
@@ -894,6 +897,10 @@ read_cb(struct smb2_context *smb2, int status,
                 rd->cb(smb2, -nterror_to_errno(status), NULL, rd->cb_data);
                 free(rd);
                 return;
+        }
+
+        if (status == SMB2_STATUS_SUCCESS) {
+                rd->fh->offset = rd->offset + rep->data_length;
         }
 
         rd->cb(smb2, rep->data_length, NULL, rd->cb_data);
@@ -917,6 +924,7 @@ int smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
         rd->cb = cb;
         rd->cb_data = cb_data;
         rd->fh = fh;
+        rd->offset = offset;
 
         memset(&req, 0, sizeof(struct smb2_read_request));
         req.struct_size = SMB2_READ_REQUEST_SIZE;
@@ -938,3 +946,11 @@ int smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
 
         return 0;
 }        
+
+int smb2_read_async(struct smb2_context *smb2, struct smb2fh *fh,
+                     char *buf, uint32_t count,
+                     smb2_command_cb cb, void *cb_data)
+{
+        return smb2_pread_async(smb2, fh, buf, count, fh->offset,
+                                cb, cb_data);
+}

@@ -322,6 +322,33 @@ int smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
 int smb2_pread(struct smb2_context *smb2, struct smb2fh *fh,
                char *buf, uint32_t count, uint64_t offset);
 
+/*
+ * READ
+ */
+/*
+ * Async read()
+ *
+ * Returns
+ *  0     : The operation was initiated. Result of the operation will be
+ *          reported through the callback function.
+ * -errno : There was an error. The callback function will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *    >=0 : Number of bytes read.
+ * -errno : An error occured.
+ *
+ * Command_data is always NULL.
+ */
+int smb2_read_async(struct smb2_context *smb2, struct smb2fh *fh,
+                    char *buf, uint32_t count,
+                    smb2_command_cb cb, void *cb_data);
+
+/*
+ * Sync read()
+ */
+int smb2_read(struct smb2_context *smb2, struct smb2fh *fh,
+              char *buf, uint32_t count);
+
 #ifdef __cplusplus
 }
 #endif
