@@ -20,6 +20,8 @@ smb2_get_client_guid
 smb2_get_error
 smb2_get_fd
 smb2_init_context
+smb2_mkdir
+smb2_mkdir_async
 smb2_open
 smb2_open_async
 smb2_opendir

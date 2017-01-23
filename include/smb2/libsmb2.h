@@ -411,6 +411,33 @@ int smb2_rmdir_async(struct smb2_context *smb2, const char *path,
  * Returns NULL on failure.
  */
 int smb2_rmdir(struct smb2_context *smb2, const char *path);
+
+/*
+ * MKDIR
+ */
+/*
+ * Async mkdir()
+ *
+ * Returns
+ *  0     : The operation was initiated. Result of the operation will be
+ *          reported through the callback function.
+ * -errno : There was an error. The callback function will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ * -errno : An error occured.
+ *
+ * Command_data is always NULL.
+ */
+int smb2_mkdir_async(struct smb2_context *smb2, const char *path,
+                     smb2_command_cb cb, void *cb_data);
+
+/*
+ * Sync mkdir()
+ *
+ * Returns NULL on failure.
+ */
+int smb2_mkdir(struct smb2_context *smb2, const char *path);
         
 #ifdef __cplusplus
 }
