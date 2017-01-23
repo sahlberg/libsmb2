@@ -31,6 +31,7 @@ smb2_read
 smb2_read_async
 smb2_readdir
 smb2_rewinddir
+smb2_seek
 smb2_seekdir
 smb2_service
 smb2_set_security_mode

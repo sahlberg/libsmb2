@@ -349,6 +349,16 @@ int smb2_read_async(struct smb2_context *smb2, struct smb2fh *fh,
 int smb2_read(struct smb2_context *smb2, struct smb2fh *fh,
               char *buf, uint32_t count);
 
+/*
+ * Sync lseek()
+ */
+/*
+ * smb2_seek() never blocks, thus no async version is needed.
+ */
+int smb2_lseek(struct smb2_context *smb2, struct smb2fh *fh,
+               int64_t offset, int whence);
+
+        
 #ifdef __cplusplus
 }
 #endif

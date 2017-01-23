@@ -954,3 +954,33 @@ int smb2_read_async(struct smb2_context *smb2, struct smb2fh *fh,
         return smb2_pread_async(smb2, fh, buf, count, fh->offset,
                                 cb, cb_data);
 }
+
+int smb2_lseek(struct smb2_context *smb2, struct smb2fh *fh,
+               int64_t offset, int whence)
+{
+        switch(whence) {
+        case SEEK_SET:
+                if (offset < 0) {
+                        smb2_set_error(smb2, "Lseek() offset would become"
+                                       "negative");
+                        return -EINVAL;
+                }
+                fh->offset = offset;
+                return fh->offset;
+        case SEEK_CUR:
+                if (fh->offset + offset < 0) {
+                        smb2_set_error(smb2, "Lseek() offset would become"
+                                       "negative");
+                        return -EINVAL;
+                }
+                fh->offset += offset;
+                return fh->offset;
+        case SEEK_END:
+                smb2_set_error(smb2, "SEEK_END not implemented");
+                return -EINVAL;
+        default:
+                smb2_set_error(smb2, "Invalid whence(%d) for lseek",
+                               whence);
+                return -EINVAL;
+        }
+}
