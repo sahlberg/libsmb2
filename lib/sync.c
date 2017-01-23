@@ -31,20 +31,9 @@
 #include <stdlib.h>
 #endif
 
-#ifdef HAVE_STRING_H
-#include <string.h>
-#endif
-
-#ifdef STDC_HEADERS
-#include <stddef.h>
-#endif
-
 #include <errno.h>
 #include <poll.h>
-#include <stdio.h>
-#include <gssapi/gssapi.h>
 
-#include "slist.h"
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-raw.h"
