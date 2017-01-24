@@ -25,6 +25,10 @@
 extern "C" {
 #endif
 
+struct smb2_timeval {
+        uint32_t tv_sec;
+        uint32_t tv_usec;
+};
 
 #define SMB2_FLAGS_SERVER_TO_REDIR    0x00000001
 #define SMB2_FLAGS_ASYNC_COMMAND      0x00000002
@@ -361,15 +365,11 @@ struct smb2_close_reply {
 #define SMB2_INDEX_SPECIFIED     0x04
 #define SMB2_REOPEN              0x10
 
-struct smb2_timeval {
-        uint32_t tv_sec;
-        uint32_t tv_usec;
-};
-
 /* Structure for SMB2_FILE_ID_FULL_DIRECTORY_INFORMATION.
  * This is also used as the dirent content.
  */
 struct smb2_fileidfulldirectoryinformation {
+        uint32_t next_entry_offset;
         uint32_t file_index;
         struct smb2_timeval creation_time;
         struct smb2_timeval last_access_time;
@@ -431,6 +431,88 @@ struct smb2_read_reply {
         uint8_t data_offset;
         uint32_t data_length;
         uint32_t data_remaining;
+};
+
+#define SMB2_QUERY_INFO_REQUEST_SIZE 41
+
+/* info type */
+#define SMB2_0_INFO_FILE       0x01
+#define SMB2_0_INFO_FILESYSTEM 0x02
+#define SMB2_0_INFO_SECURITY   0x03
+#define SMB2_0_INFO_QUOTA      0x04
+
+/* additional info */
+#define OWNER_SECURITY_INFORMATION     0x00000001
+#define GROUP_SECURITY_INFORMATION     0x00000002
+#define DACL_SECURITY_INFORMATION      0x00000004
+#define SACL_SECURITY_INFORMATION      0x00000008
+#define LABEL_SECURITY_INFORMATION     0x00000010
+#define ATTRIBUTE_SECURITY_INFORMATION 0x00000020
+#define SCOPE_SECURITY_INFORMATION     0x00000040
+#define BACKUP_SECURITY_INFORMATION    0x00000100
+
+/* flags */
+#define SL_RESTART_SCAN        0x00000001
+#define SL_RETURN_SINGLE_ENTRY 0x00000002
+#define SL_INDEX_SPECIFIED     0x00000004
+
+/*
+ * FILE_BASIC_INFORMATION
+ */
+struct smb2_file_basic_information {
+        struct smb2_timeval creation_time;
+        struct smb2_timeval last_access_time;
+        struct smb2_timeval last_write_time;
+        struct smb2_timeval change_time;
+        uint32_t file_attributes;
+};
+
+/*
+ * FILE_STANDARD_INFORMATION
+ */
+struct smb2_file_standard_information {
+        uint64_t allocation_size;
+        uint64_t end_of_file;
+        uint32_t number_of_links;
+        uint8_t delete_pending;
+        uint8_t directory;
+};
+
+/*
+ * FILE_ALL_INFORMATION.
+ */
+struct smb2_file_all_information {
+        struct smb2_file_basic_information basic_info;
+        struct smb2_file_standard_information standard_info;
+        uint64_t index_number;
+        uint32_t ea_size;
+        uint32_t access_flags;
+        uint64_t current_byte_offset;
+        uint32_t mode;
+        uint32_t alignment_requirement;
+        char *name_information;
+};
+
+/* File information class */
+#define SMB2_FILE_ALL_INFORMATION               0x12
+
+struct smb2_query_info_request {
+        uint16_t struct_size;
+        uint8_t info_type;
+        uint8_t file_information_class;
+        uint32_t output_buffer_length;
+        uint16_t input_buffer_offset;
+        uint32_t input_buffer_length;
+        uint32_t additional_information;
+        uint32_t flags;
+        smb2_file_id file_id;
+};
+
+struct smb2_query_info_reply {
+        uint16_t struct_size;
+        uint16_t output_buffer_offset;
+        uint32_t output_buffer_length;
+        char *output_buffer;
 };
 
 #ifdef __cplusplus

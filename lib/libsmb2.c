@@ -171,34 +171,20 @@ static int
 decode_dirents(struct smb2_context *smb2, struct smb2dir *dir,
                struct smb2_iovec *vec)
 {
-        uint32_t tmp, offset = 0;
+        struct smb2_dirent_internal *ent;
+        uint32_t offset = 0;
 
         /* TODO Split this out into a generic parser for
          * struct smb2_fileidfulldirectoryinformation
          */
         do {
-                struct smb2_dirent_internal *ent;
-                uint32_t name_len;
-                uint64_t t;
+                struct smb2_iovec tmp_vec;
 
                 /* Make sure we do not go beyond end of vector */
                 if (offset >= vec->len) {
                         smb2_set_error(smb2, "Malformed query reply.\n");
                         return -1;
                 }
-
-                /* Make sure the name fits before end of vector.
-                 * As the name is the final part of this blob this guarantees
-                 * that all other fields also fit within the remainder of the
-                 * vector.
-                 */
-                smb2_get_uint32(vec, offset + 60, &name_len);
-                if (offset + 80 + name_len > vec->len) {
-                        smb2_set_error(smb2, "Malformed name in query.\n");
-                        return -1;
-                }
-
-                smb2_get_uint32(vec, offset, &tmp);
                 
                 ent = malloc(sizeof(struct smb2_dirent_internal));
                 if (ent == NULL) {
@@ -209,31 +195,15 @@ decode_dirents(struct smb2_context *smb2, struct smb2dir *dir,
                 memset(ent, 0, sizeof(struct smb2_dirent_internal));
                 SMB2_LIST_ADD(&dir->entries, ent);
 
-                smb2_get_uint32(vec, offset + 4, &ent->dirent.file_index);
-                smb2_get_uint64(vec, offset + 40, &ent->dirent.end_of_file);
-                smb2_get_uint64(vec, offset + 48, &ent->dirent.allocation_size);
-                smb2_get_uint32(vec, offset + 56, &ent->dirent.file_attributes);
-                smb2_get_uint32(vec, offset + 64, &ent->dirent.ea_size);
-                smb2_get_uint64(vec, offset + 72, &ent->dirent.file_id);
 
-                ent->dirent.name =
-                        ucs2_to_utf8((uint16_t *)&vec->buf[offset + 80],
-                                     name_len / 2);
+                tmp_vec.buf = &vec->buf[offset];
+                tmp_vec.len = vec->len - offset;
 
-                smb2_get_uint64(vec, offset + 8, &t);
-                win_to_timeval(t, &ent->dirent.creation_time);
+                smb2_decode_fileidfulldirectoryinformation(smb2, &ent->dirent,
+                                                           &tmp_vec);
 
-                smb2_get_uint64(vec, offset + 16, &t);
-                win_to_timeval(t, &ent->dirent.last_access_time);
-
-                smb2_get_uint64(vec, offset + 24, &t);
-                win_to_timeval(t, &ent->dirent.last_write_time);
-
-                smb2_get_uint64(vec, offset + 32, &t);
-                win_to_timeval(t, &ent->dirent.change_time);
-
-                offset += tmp;
-        } while (tmp);
+                offset += ent->dirent.next_entry_offset;
+        } while (ent->dirent.next_entry_offset);
         
         return 0;
 }
@@ -1118,6 +1088,83 @@ int smb2_mkdir_async(struct smb2_context *smb2, const char *path,
 
         if (smb2_cmd_create_async(smb2, &req, create_cb_1, create_data) < 0) {
                 smb2_set_error(smb2, "Failed to send create command");
+                return -ENOMEM;
+        }
+
+        return 0;
+}
+
+struct lstat_cb_data {
+        smb2_command_cb cb;
+        void *cb_data;
+        struct smb2_stat_64 *st;
+};
+
+static void
+lstat_cb(struct smb2_context *smb2, int status,
+         void *command_data, void *private_data)
+{
+        struct lstat_cb_data *lstat_data = private_data;
+        struct smb2_query_info_reply *rep = command_data;
+        struct smb2_iovec v;
+        struct smb2_file_all_information fs;
+
+        memset(&fs, 0, sizeof(struct smb2_file_all_information));
+
+        if (status != SMB2_STATUS_SUCCESS) {
+                lstat_data->cb(smb2, -nterror_to_errno(status),
+                       NULL, lstat_data->cb_data);
+                free(lstat_data);
+                return;
+        }
+
+        v.buf = rep->output_buffer;
+        v.len = rep->output_buffer_length;
+
+        smb2_decode_file_all_information(smb2, &fs, &v);
+        lstat_data->st->smb2_nlink = fs.standard_info.number_of_links;
+        lstat_data->st->smb2_ino = fs.index_number;
+        lstat_data->st->smb2_size = fs.standard_info.end_of_file;
+        lstat_data->st->smb2_atime = fs.basic_info.last_access_time.tv_sec;
+        lstat_data->st->smb2_atime_nsec = fs.basic_info.last_access_time.tv_usec * 1000;
+        lstat_data->st->smb2_mtime = fs.basic_info.last_write_time.tv_sec;
+        lstat_data->st->smb2_mtime_nsec = fs.basic_info.last_write_time.tv_usec * 1000;
+        lstat_data->st->smb2_ctime = fs.basic_info.change_time.tv_sec;
+        lstat_data->st->smb2_ctime_nsec = fs.basic_info.change_time.tv_usec * 1000;
+
+        lstat_data->cb(smb2, 0, lstat_data->st, lstat_data->cb_data);
+        free(lstat_data);
+}
+
+int smb2_lstat_async(struct smb2_context *smb2, struct smb2fh *fh,
+                     struct smb2_stat_64 *st,
+                     smb2_command_cb cb, void *cb_data)
+{
+        struct lstat_cb_data *lstat_data;
+        struct smb2_query_info_request req;
+
+        lstat_data = malloc(sizeof(struct lstat_cb_data));
+        if (lstat_data == NULL) {
+                smb2_set_error(smb2, "Failed to allocate create_data");
+                return -ENOMEM;
+        }
+        memset(lstat_data, 0, sizeof(struct lstat_cb_data));
+
+        lstat_data->cb = cb;
+        lstat_data->cb_data = cb_data;
+        lstat_data->st = st;
+
+        memset(&req, 0, sizeof(struct smb2_query_info_request));
+        req.struct_size = SMB2_QUERY_INFO_REQUEST_SIZE;
+        req.info_type = SMB2_0_INFO_FILE;
+        req.file_information_class = SMB2_FILE_ALL_INFORMATION;
+        req.output_buffer_length = 65535;
+        req.additional_information = 0;
+        req.flags = 0;
+        memcpy(req.file_id, fh->file_id, SMB2_FD_SIZE);
+
+        if (smb2_cmd_query_info_async(smb2, &req, lstat_cb, lstat_data) < 0) {
+                smb2_set_error(smb2, "Failed to send query command");
                 return -ENOMEM;
         }
 

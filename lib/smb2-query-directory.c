@@ -43,6 +43,50 @@
 #include "libsmb2.h"
 #include "libsmb2-private.h"
 
+int smb2_decode_fileidfulldirectoryinformation(
+        struct smb2_context *smb2,
+        struct smb2_fileidfulldirectoryinformation *fs,
+        struct smb2_iovec *vec)
+{
+        uint32_t name_len;
+        uint64_t t;
+
+        /* Make sure the name fits before end of vector.
+         * As the name is the final part of this blob this guarantees
+         * that all other fields also fit within the remainder of the
+         * vector.
+         */
+        smb2_get_uint32(vec, 60, &name_len);
+        if (80 + name_len > vec->len) {
+                smb2_set_error(smb2, "Malformed name in query.\n");
+                return -1;
+        }
+
+        smb2_get_uint32(vec, 0, &fs->next_entry_offset);
+        smb2_get_uint32(vec, 4, &fs->file_index);
+        smb2_get_uint64(vec, 40, &fs->end_of_file);
+        smb2_get_uint64(vec, 48, &fs->allocation_size);
+        smb2_get_uint32(vec, 56, &fs->file_attributes);
+        smb2_get_uint32(vec, 64, &fs->ea_size);
+        smb2_get_uint64(vec, 72, &fs->file_id);
+
+        fs->name = ucs2_to_utf8((uint16_t *)&vec->buf[80], name_len / 2);
+
+        smb2_get_uint64(vec, 8, &t);
+        win_to_timeval(t, &fs->creation_time);
+
+        smb2_get_uint64(vec, 16, &t);
+        win_to_timeval(t, &fs->last_access_time);
+
+        smb2_get_uint64(vec, 24, &t);
+        win_to_timeval(t, &fs->last_write_time);
+
+        smb2_get_uint64(vec, 32, &t);
+        win_to_timeval(t, &fs->change_time);
+
+        return 0;
+}
+
 static int
 smb2_encode_query_directory_request(struct smb2_context *smb2,
                                     struct smb2_pdu *pdu,
@@ -113,6 +157,7 @@ smb2_decode_query_directory_reply(struct smb2_context *smb2,
         if (rep->output_buffer_length >
             (pdu->in.iov[0].len -
              (rep->output_buffer_offset - SMB2_HEADER_SIZE))) {
+                smb2_set_error(smb2, "Output buffer overflow");
                 return -1;
         }
         

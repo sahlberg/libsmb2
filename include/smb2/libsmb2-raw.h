@@ -146,7 +146,7 @@ int smb2_cmd_read_async(struct smb2_context *smb2,
  * Asynchronous SMB2 Query Directory
  *
  * Returns:
- *  0 if the call was initiated and a create will be attempted. The result 
+ *  0 if the call was initiated and a query will be attempted. The result 
  *    of the query will be reported through the callback function.
  * <0 if there was an error. The callback function will not be invoked.
  *
@@ -160,6 +160,25 @@ int smb2_cmd_read_async(struct smb2_context *smb2,
 int smb2_cmd_query_directory_async(struct smb2_context *smb2,
                                    struct smb2_query_directory_request *req,
                                    smb2_command_cb cb, void *cb_data);
+
+/*
+ * Asynchronous SMB2 Query Info
+ *
+ * Returns:
+ *  0 if the call was initiated and a query info will be attempted. The result 
+ *    of the query will be reported through the callback function.
+ * <0 if there was an error. The callback function will not be invoked.
+ *
+ * Callback parameters :
+ * status can be either of :
+ *    0     : Query was successful.
+ *            Command_data is a struct smb2_query_info_reply.
+ *
+ *   !0     : Status is NT status code. Command_data is NULL.
+ */
+int smb2_cmd_query_info_async(struct smb2_context *smb2,
+                              struct smb2_query_info_request *req,
+                              smb2_command_cb cb, void *cb_data);
 
 /*
  * Asynchronous SMB2 Echo
@@ -198,7 +217,7 @@ int smb2_cmd_echo_async(struct smb2_context *smb2,
  */
 int smb2_cmd_logoff_async(struct smb2_context *smb2,
                           smb2_command_cb cb, void *cb_data);
-        
+
 #ifdef __cplusplus
 }
 #endif

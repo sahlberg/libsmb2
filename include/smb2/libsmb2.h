@@ -380,8 +380,6 @@ int smb2_unlink_async(struct smb2_context *smb2, const char *path,
 
 /*
  * Sync unlink()
- *
- * Returns NULL on failure.
  */
 int smb2_unlink(struct smb2_context *smb2, const char *path);
 
@@ -407,8 +405,6 @@ int smb2_rmdir_async(struct smb2_context *smb2, const char *path,
 
 /*
  * Sync rmdir()
- *
- * Returns NULL on failure.
  */
 int smb2_rmdir(struct smb2_context *smb2, const char *path);
 
@@ -434,11 +430,44 @@ int smb2_mkdir_async(struct smb2_context *smb2, const char *path,
 
 /*
  * Sync mkdir()
- *
- * Returns NULL on failure.
  */
 int smb2_mkdir(struct smb2_context *smb2, const char *path);
-        
+
+/*
+ * LSTAT
+ */
+struct smb2_stat_64 {
+        uint32_t smb2_nlink;
+        uint64_t smb2_ino;
+        uint64_t smb2_size;
+	uint64_t smb2_atime;
+	uint64_t smb2_atime_nsec;
+	uint64_t smb2_mtime;
+	uint64_t smb2_mtime_nsec;
+	uint64_t smb2_ctime;
+	uint64_t smb2_ctime_nsec;
+};
+/*
+ * Async lstat()
+ *
+ * Returns
+ *  0     : The operation was initiated. Result of the operation will be
+ *          reported through the callback function.
+ * -errno : There was an error. The callback function will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success. Command_data is struct smb2_stat_64
+ * -errno : An error occured.
+ */
+int smb2_lstat_async(struct smb2_context *smb2, struct smb2fh *fh,
+                     struct smb2_stat_64 *st,
+                     smb2_command_cb cb, void *cb_data);
+/*
+ * Sync lstat()
+ */
+int smb2_lstat(struct smb2_context *smb2, struct smb2fh *fh,
+               struct smb2_stat_64 *st);
+
 #ifdef __cplusplus
 }
 #endif

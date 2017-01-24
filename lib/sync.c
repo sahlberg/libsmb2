@@ -303,3 +303,23 @@ int smb2_mkdir(struct smb2_context *smb2, const char *path)
 
 	return cb_data.status;
 }
+
+int smb2_lstat(struct smb2_context *smb2, struct smb2fh *fh,
+               struct smb2_stat_64 *st)
+{
+        struct sync_cb_data cb_data;
+
+	cb_data.is_finished = 0;
+
+	if (smb2_lstat_async(smb2, fh, st,
+                             generic_status_cb, &cb_data) != 0) {
+		smb2_set_error(smb2, "smb2_lstat_async failed");
+		return -1;
+	}
+
+	if (wait_for_reply(smb2, &cb_data) < 0) {
+                return -1;
+        }
+
+	return cb_data.status;
+}

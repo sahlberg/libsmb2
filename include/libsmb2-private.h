@@ -218,13 +218,34 @@ int smb2_process_negotiate_reply(struct smb2_context *smb2,
                                  struct smb2_pdu *pdu);
 int smb2_process_query_directory_reply(struct smb2_context *smb2,
                                        struct smb2_pdu *pdu);
+int smb2_process_query_info_reply(struct smb2_context *smb2,
+                                  struct smb2_pdu *pdu);
 int smb2_process_read_reply(struct smb2_context *smb2,
                             struct smb2_pdu *pdu);
 int smb2_process_session_setup_reply(struct smb2_context *smb2,
                                      struct smb2_pdu *pdu);
 int smb2_process_tree_connect_reply(struct smb2_context *smb2,
                                     struct smb2_pdu *pdu);
-        
+
+int smb2_decode_fileidfulldirectoryinformation(
+        struct smb2_context *smb2,
+        struct smb2_fileidfulldirectoryinformation *fs,
+        struct smb2_iovec *vec);
+
+int smb2_decode_file_basic_information(
+        struct smb2_context *smb2,
+        struct smb2_file_basic_information *fs,
+        struct smb2_iovec *vec);
+int smb2_decode_file_standard_information(
+        struct smb2_context *smb2,
+        struct smb2_file_standard_information *fs,
+        struct smb2_iovec *vec);
+int smb2_decode_file_all_information(
+        struct smb2_context *smb2,
+        struct smb2_file_all_information *fs,
+        struct smb2_iovec *vec);
+
+
 #ifdef __cplusplus
 }
 #endif

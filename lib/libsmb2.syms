@@ -9,6 +9,7 @@ smb2_cmd_echo_async
 smb2_cmd_logoff_async
 smb2_cmd_negotiate_async
 smb2_cmd_query_directory_async
+smb2_cmd_query_info_async
 smb2_cmd_session_setup_async
 smb2_cmd_tree_connect_async
 smb2_connect_async
@@ -20,6 +21,8 @@ smb2_get_client_guid
 smb2_get_error
 smb2_get_fd
 smb2_init_context
+smb2_lstat
+smb2_lstat_async
 smb2_mkdir
 smb2_mkdir_async
 smb2_open
