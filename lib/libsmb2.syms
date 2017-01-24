@@ -17,12 +17,12 @@ smb2_connect_share
 smb2_connect_share_async
 smb2_destroy_context
 smb2_destroy_url
+smb2_fstat
+smb2_fstat_async
 smb2_get_client_guid
 smb2_get_error
 smb2_get_fd
 smb2_init_context
-smb2_lstat
-smb2_lstat_async
 smb2_mkdir
 smb2_mkdir_async
 smb2_open

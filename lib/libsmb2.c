@@ -1094,17 +1094,17 @@ int smb2_mkdir_async(struct smb2_context *smb2, const char *path,
         return 0;
 }
 
-struct lstat_cb_data {
+struct fstat_cb_data {
         smb2_command_cb cb;
         void *cb_data;
         struct smb2_stat_64 *st;
 };
 
 static void
-lstat_cb(struct smb2_context *smb2, int status,
+fstat_cb(struct smb2_context *smb2, int status,
          void *command_data, void *private_data)
 {
-        struct lstat_cb_data *lstat_data = private_data;
+        struct fstat_cb_data *fstat_data = private_data;
         struct smb2_query_info_reply *rep = command_data;
         struct smb2_iovec v;
         struct smb2_file_all_information fs;
@@ -1112,9 +1112,9 @@ lstat_cb(struct smb2_context *smb2, int status,
         memset(&fs, 0, sizeof(struct smb2_file_all_information));
 
         if (status != SMB2_STATUS_SUCCESS) {
-                lstat_data->cb(smb2, -nterror_to_errno(status),
-                       NULL, lstat_data->cb_data);
-                free(lstat_data);
+                fstat_data->cb(smb2, -nterror_to_errno(status),
+                       NULL, fstat_data->cb_data);
+                free(fstat_data);
                 return;
         }
 
@@ -1122,37 +1122,37 @@ lstat_cb(struct smb2_context *smb2, int status,
         v.len = rep->output_buffer_length;
 
         smb2_decode_file_all_information(smb2, &fs, &v);
-        lstat_data->st->smb2_nlink = fs.standard_info.number_of_links;
-        lstat_data->st->smb2_ino = fs.index_number;
-        lstat_data->st->smb2_size = fs.standard_info.end_of_file;
-        lstat_data->st->smb2_atime = fs.basic_info.last_access_time.tv_sec;
-        lstat_data->st->smb2_atime_nsec = fs.basic_info.last_access_time.tv_usec * 1000;
-        lstat_data->st->smb2_mtime = fs.basic_info.last_write_time.tv_sec;
-        lstat_data->st->smb2_mtime_nsec = fs.basic_info.last_write_time.tv_usec * 1000;
-        lstat_data->st->smb2_ctime = fs.basic_info.change_time.tv_sec;
-        lstat_data->st->smb2_ctime_nsec = fs.basic_info.change_time.tv_usec * 1000;
+        fstat_data->st->smb2_nlink = fs.standard_info.number_of_links;
+        fstat_data->st->smb2_ino = fs.index_number;
+        fstat_data->st->smb2_size = fs.standard_info.end_of_file;
+        fstat_data->st->smb2_atime = fs.basic_info.last_access_time.tv_sec;
+        fstat_data->st->smb2_atime_nsec = fs.basic_info.last_access_time.tv_usec * 1000;
+        fstat_data->st->smb2_mtime = fs.basic_info.last_write_time.tv_sec;
+        fstat_data->st->smb2_mtime_nsec = fs.basic_info.last_write_time.tv_usec * 1000;
+        fstat_data->st->smb2_ctime = fs.basic_info.change_time.tv_sec;
+        fstat_data->st->smb2_ctime_nsec = fs.basic_info.change_time.tv_usec * 1000;
 
-        lstat_data->cb(smb2, 0, lstat_data->st, lstat_data->cb_data);
-        free(lstat_data);
+        fstat_data->cb(smb2, 0, fstat_data->st, fstat_data->cb_data);
+        free(fstat_data);
 }
 
-int smb2_lstat_async(struct smb2_context *smb2, struct smb2fh *fh,
+int smb2_fstat_async(struct smb2_context *smb2, struct smb2fh *fh,
                      struct smb2_stat_64 *st,
                      smb2_command_cb cb, void *cb_data)
 {
-        struct lstat_cb_data *lstat_data;
+        struct fstat_cb_data *fstat_data;
         struct smb2_query_info_request req;
 
-        lstat_data = malloc(sizeof(struct lstat_cb_data));
-        if (lstat_data == NULL) {
+        fstat_data = malloc(sizeof(struct fstat_cb_data));
+        if (fstat_data == NULL) {
                 smb2_set_error(smb2, "Failed to allocate create_data");
                 return -ENOMEM;
         }
-        memset(lstat_data, 0, sizeof(struct lstat_cb_data));
+        memset(fstat_data, 0, sizeof(struct fstat_cb_data));
 
-        lstat_data->cb = cb;
-        lstat_data->cb_data = cb_data;
-        lstat_data->st = st;
+        fstat_data->cb = cb;
+        fstat_data->cb_data = cb_data;
+        fstat_data->st = st;
 
         memset(&req, 0, sizeof(struct smb2_query_info_request));
         req.struct_size = SMB2_QUERY_INFO_REQUEST_SIZE;
@@ -1163,7 +1163,7 @@ int smb2_lstat_async(struct smb2_context *smb2, struct smb2fh *fh,
         req.flags = 0;
         memcpy(req.file_id, fh->file_id, SMB2_FD_SIZE);
 
-        if (smb2_cmd_query_info_async(smb2, &req, lstat_cb, lstat_data) < 0) {
+        if (smb2_cmd_query_info_async(smb2, &req, fstat_cb, fstat_data) < 0) {
                 smb2_set_error(smb2, "Failed to send query command");
                 return -ENOMEM;
         }

@@ -434,7 +434,7 @@ int smb2_mkdir_async(struct smb2_context *smb2, const char *path,
 int smb2_mkdir(struct smb2_context *smb2, const char *path);
 
 /*
- * LSTAT
+ * FSTAT
  */
 struct smb2_stat_64 {
         uint32_t smb2_nlink;
@@ -448,7 +448,7 @@ struct smb2_stat_64 {
 	uint64_t smb2_ctime_nsec;
 };
 /*
- * Async lstat()
+ * Async fstat()
  *
  * Returns
  *  0     : The operation was initiated. Result of the operation will be
@@ -459,13 +459,13 @@ struct smb2_stat_64 {
  *      0 : Success. Command_data is struct smb2_stat_64
  * -errno : An error occured.
  */
-int smb2_lstat_async(struct smb2_context *smb2, struct smb2fh *fh,
+int smb2_fstat_async(struct smb2_context *smb2, struct smb2fh *fh,
                      struct smb2_stat_64 *st,
                      smb2_command_cb cb, void *cb_data);
 /*
  * Sync lstat()
  */
-int smb2_lstat(struct smb2_context *smb2, struct smb2fh *fh,
+int smb2_fstat(struct smb2_context *smb2, struct smb2fh *fh,
                struct smb2_stat_64 *st);
 
 #ifdef __cplusplus
