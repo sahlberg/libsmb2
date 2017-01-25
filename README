@@ -1,13 +1,15 @@
 Libsmb2 is a userspace client library for accessing SMB2 shares on a network.
 It depends on both MIT Kerberos as well as GSS-NTLMSSP
-[https://github.com/simo5/gss-ntlmssp] for authenticateion.
+[https://github.com/simo5/gss-ntlmssp] for authentication.
 
 Libsmb2 is distributed under the LGPLv2.1 licence.
 
-THIS IS A WORK IN PROGRESS
+THIS IS A WORK IN PROGRESS.
+THIS IS NOT YET A STABLE CODEBASE AND EXPECT FLUID AND MASSIVE API/ABI
+INSTABILITY. USE AT OWN RISK.
 
 
-Libsmb2 implements three different APIs for accessing a remote SMB share :
+Libsmb2 implements three different APIs for accessing remote SMB shares :
 
 1, High level synchronous posix-like API.
 This is a simple API for accessing a share.
