@@ -383,8 +383,6 @@ struct smb2_fileidfulldirectoryinformation {
         char *name;
 };
 
-#define smb2dirent smb2_fileidfulldirectoryinformation
-
 struct smb2_query_directory_request {
         uint16_t struct_size;
         uint8_t file_information_class;

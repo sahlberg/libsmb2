@@ -13,11 +13,13 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 #define _GNU_SOURCE
 
+#include <inttypes.h>
 #include <poll.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "smb2.h"
 #include "libsmb2.h"
@@ -70,57 +72,22 @@ int main(int argc, char *argv[])
 	}
 
         while (ent = smb2_readdir(smb2, dir)) {
-                printf("%s ", ent->name);
-
-                printf("[");
-                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_READONLY) {
-                        printf("READ-ONLY,");
-                }
-                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_HIDDEN) {
-                        printf("HIDDEN,");
-                }
-                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_SYSTEM) {
-                        printf("SYSTEM,");
-                }
-                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_DIRECTORY) {
-                        printf("DIRECTORY,");
-                }
-                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_ARCHIVE) {
-                        printf("ARCHIVE,");
-                }
-                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_NORMAL) {
-                        printf("NORMAL,");
-                }
-                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_TEMPORARY) {
-                        printf("TEMPORARY,");
-                }
-                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_SPARSE_FILE) {
-                        printf("SPARSE_FILE,");
-                }
-                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_REPARSE_POINT) {
-                        printf("REPARSE_POINT,");
-                }
-                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_COMPRESSED) {
-                        printf("COMPRESSED,");
-                }
-                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_OFFLINE) {
-                        printf("OFFLINE,");
-                }
-                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_NOT_CONTENT_INDEXED) {
-                        printf("NOT_CONTENT_INDEXED,");
-                }
-                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_ENCRYPTED) {
-                        printf("ENCREYPTED,");
-                }
-                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_INTEGRITY_STREAM) {
-                        printf("INTEGRITY_STREAM,");
-                }
-                if (ent->file_attributes & SMB2_FILE_ATTRIBUTE_NO_SCRUB_DATA) {
-                        printf("NO_SCRUP_DATA,");
-                }
-                printf("]");
+                char *type;
+                time_t t;
                 
-                printf("\n");
+                switch (ent->st.smb2_type) {
+                case SMB2_TYPE_FILE:
+                        type = "FILE";
+                        break;
+                case SMB2_TYPE_DIRECTORY:
+                        type = "DIRECTORY";
+                        break;
+                default:
+                        type = "unknown";
+                        break;
+                }
+                t = (time_t)ent->st.smb2_mtime;
+                printf("%-20s %-9s %15"PRIu64" %s\n", ent->name, type, ent->st.smb2_size, asctime(localtime(&t)));
         }
 
         smb2_closedir(smb2, dir);

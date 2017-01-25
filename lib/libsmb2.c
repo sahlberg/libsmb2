@@ -86,6 +86,11 @@ struct connect_data {
         struct private_auth_data *auth_data;
 };
 
+struct smb2_dirent_internal {
+        struct smb2_dirent_internal *next;
+        struct smb2dirent dirent;
+};
+        
 struct smb2dir {
         smb2_command_cb cb;
         void *cb_data;
@@ -172,11 +177,9 @@ decode_dirents(struct smb2_context *smb2, struct smb2dir *dir,
                struct smb2_iovec *vec)
 {
         struct smb2_dirent_internal *ent;
+        struct smb2_fileidfulldirectoryinformation fs;
         uint32_t offset = 0;
 
-        /* TODO Split this out into a generic parser for
-         * struct smb2_fileidfulldirectoryinformation
-         */
         do {
                 struct smb2_iovec tmp_vec;
 
@@ -199,11 +202,26 @@ decode_dirents(struct smb2_context *smb2, struct smb2dir *dir,
                 tmp_vec.buf = &vec->buf[offset];
                 tmp_vec.len = vec->len - offset;
 
-                smb2_decode_fileidfulldirectoryinformation(smb2, &ent->dirent,
+                smb2_decode_fileidfulldirectoryinformation(smb2, &fs,
                                                            &tmp_vec);
+                /* steal the name */
+                ent->dirent.name = fs.name;
+                ent->dirent.st.smb2_type = SMB2_TYPE_FILE;
+                if (fs.file_attributes & SMB2_FILE_ATTRIBUTE_DIRECTORY) {
+                        ent->dirent.st.smb2_type = SMB2_TYPE_DIRECTORY;
+                }
+                ent->dirent.st.smb2_nlink = 0;
+                ent->dirent.st.smb2_ino = fs.file_id;
+                ent->dirent.st.smb2_size = fs.end_of_file;
+                ent->dirent.st.smb2_atime = fs.last_access_time.tv_sec;
+                ent->dirent.st.smb2_atime_nsec = fs.last_access_time.tv_usec * 1000;
+                ent->dirent.st.smb2_mtime = fs.last_write_time.tv_sec;
+                ent->dirent.st.smb2_mtime_nsec = fs.last_write_time.tv_usec * 1000;
+                ent->dirent.st.smb2_ctime = fs.change_time.tv_sec;
+                ent->dirent.st.smb2_ctime_nsec = fs.change_time.tv_usec * 1000;
 
-                offset += ent->dirent.next_entry_offset;
-        } while (ent->dirent.next_entry_offset);
+                offset += fs.next_entry_offset;
+        } while (fs.next_entry_offset);
         
         return 0;
 }

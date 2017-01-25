@@ -153,11 +153,6 @@ struct ucs2 {
         uint16_t val[1];
 };
 
-struct smb2_dirent_internal {
-        struct smb2_dirent_internal *next;
-        struct smb2dirent dirent;
-};
-        
 /* Returns a string converted to UCS2 format. Use free() to release
  * the ucs2 string.
  */

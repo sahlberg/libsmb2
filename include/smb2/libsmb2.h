@@ -32,6 +32,27 @@ struct smb2_context;
 typedef void (*smb2_command_cb)(struct smb2_context *smb2, int status,
                                 void *command_data, void *cb_data);
 
+/* Stat structure */
+#define SMB2_TYPE_FILE      0x00000000
+#define SMB2_TYPE_DIRECTORY 0x00000001
+struct smb2_stat_64 {
+        uint32_t smb2_type;
+        uint32_t smb2_nlink;
+        uint64_t smb2_ino;
+        uint64_t smb2_size;
+	uint64_t smb2_atime;
+	uint64_t smb2_atime_nsec;
+	uint64_t smb2_mtime;
+	uint64_t smb2_mtime_nsec;
+	uint64_t smb2_ctime;
+	uint64_t smb2_ctime_nsec;
+};
+
+struct smb2dirent {
+        char *name;
+        struct smb2_stat_64 st;
+};
+
 /*
  * Create an SMB2 context.
  * Function returns
@@ -436,20 +457,6 @@ int smb2_mkdir(struct smb2_context *smb2, const char *path);
 /*
  * FSTAT
  */
-#define SMB2_TYPE_FILE      0x00000000
-#define SMB2_TYPE_DIRECTORY 0x00000001
-struct smb2_stat_64 {
-        uint32_t smb2_type;
-        uint32_t smb2_nlink;
-        uint64_t smb2_ino;
-        uint64_t smb2_size;
-	uint64_t smb2_atime;
-	uint64_t smb2_atime_nsec;
-	uint64_t smb2_mtime;
-	uint64_t smb2_mtime_nsec;
-	uint64_t smb2_ctime;
-	uint64_t smb2_ctime_nsec;
-};
 /*
  * Async fstat()
  *
