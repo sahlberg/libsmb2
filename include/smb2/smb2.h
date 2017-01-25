@@ -482,8 +482,8 @@ struct smb2_file_standard_information {
  * FILE_ALL_INFORMATION.
  */
 struct smb2_file_all_information {
-        struct smb2_file_basic_information basic_info;
-        struct smb2_file_standard_information standard_info;
+        struct smb2_file_basic_information basic;
+        struct smb2_file_standard_information standard;
         uint64_t index_number;
         uint32_t ea_size;
         uint32_t access_flags;

@@ -23,8 +23,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "libsmb2.h"
 #include "libsmb2-raw.h"
 
-int is_finished;
-
 int usage(void)
 {
         fprintf(stderr, "Usage:\n"

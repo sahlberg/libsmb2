@@ -94,7 +94,7 @@ int smb2_decode_file_all_information(
         
         v.buf = vec->buf;
         v.len = 40;
-        smb2_decode_file_basic_information(smb2, &fs->basic_info, &v);
+        smb2_decode_file_basic_information(smb2, &fs->basic, &v);
 
         if (vec->len < 64) {
                 return -1;
@@ -102,7 +102,7 @@ int smb2_decode_file_all_information(
         
         v.buf = vec->buf + 40;
         v.len = 24;
-        smb2_decode_file_standard_information(smb2, &fs->standard_info, &v);
+        smb2_decode_file_standard_information(smb2, &fs->standard, &v);
 
         smb2_get_uint64(vec, 64, &fs->index_number);
         smb2_get_uint32(vec, 72, &fs->ea_size);

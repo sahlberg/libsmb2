@@ -323,3 +323,23 @@ int smb2_fstat(struct smb2_context *smb2, struct smb2fh *fh,
 
 	return cb_data.status;
 }
+
+int smb2_stat(struct smb2_context *smb2, char *path,
+              struct smb2_stat_64 *st)
+{
+        struct sync_cb_data cb_data;
+
+	cb_data.is_finished = 0;
+
+	if (smb2_stat_async(smb2, path, st,
+                            generic_status_cb, &cb_data) != 0) {
+		smb2_set_error(smb2, "smb2_stat_async failed");
+		return -1;
+	}
+
+	if (wait_for_reply(smb2, &cb_data) < 0) {
+                return -1;
+        }
+
+	return cb_data.status;
+}

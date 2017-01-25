@@ -42,6 +42,8 @@ smb2_seek
 smb2_seekdir
 smb2_service
 smb2_set_security_mode
+smb2_stat
+smb2_stat_async
 smb2_telldir
 smb2_unlink
 smb2_unlink_async

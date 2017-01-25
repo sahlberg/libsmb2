@@ -436,7 +436,10 @@ int smb2_mkdir(struct smb2_context *smb2, const char *path);
 /*
  * FSTAT
  */
+#define SMB2_TYPE_FILE      0x00000000
+#define SMB2_TYPE_DIRECTORY 0x00000001
 struct smb2_stat_64 {
+        uint32_t smb2_type;
         uint32_t smb2_nlink;
         uint64_t smb2_ino;
         uint64_t smb2_size;
@@ -468,6 +471,27 @@ int smb2_fstat_async(struct smb2_context *smb2, struct smb2fh *fh,
 int smb2_fstat(struct smb2_context *smb2, struct smb2fh *fh,
                struct smb2_stat_64 *st);
 
+/*
+ * Async stat()
+ *
+ * Returns
+ *  0     : The operation was initiated. Result of the operation will be
+ *          reported through the callback function.
+ * -errno : There was an error. The callback function will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success. Command_data is struct smb2_stat_64
+ * -errno : An error occured.
+ */
+int smb2_stat_async(struct smb2_context *smb2, char *path,
+                    struct smb2_stat_64 *st,
+                    smb2_command_cb cb, void *cb_data);
+/*
+ * Sync stat()
+ */
+int smb2_stat(struct smb2_context *smb2, char *path,
+              struct smb2_stat_64 *st);
+        
 #ifdef __cplusplus
 }
 #endif
