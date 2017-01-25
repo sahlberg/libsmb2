@@ -513,6 +513,34 @@ struct smb2_query_info_reply {
         char *output_buffer;
 };
 
+#define SMB2_WRITE_REQUEST_SIZE 49
+
+#define SMB2_WRITEFLAG_WRITE_THROUGH    0x00000001
+#define SMB2_WRITEFLAG_WRITE_UNBUFFERED 0x00000002
+
+struct smb2_write_request {
+        uint16_t struct_size;
+        uint16_t data_offset;
+        uint32_t length;
+        uint64_t offset;
+        char *buf;
+        smb2_file_id file_id;
+        uint32_t channel;
+        uint32_t remaining_bytes;
+        uint16_t write_channel_info_offset;
+        char *write_channel_info;
+        uint32_t flags;
+};
+
+#define SMB2_WRITE_REPLY_SIZE 17
+
+struct smb2_write_reply {
+        uint16_t struct_size;
+        uint32_t count;
+        uint32_t remaining;
+};
+
+
 #ifdef __cplusplus
 }
 #endif

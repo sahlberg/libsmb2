@@ -21,6 +21,7 @@ libsmb2_la_SOURCES = \
 	smb2-read.c \
 	smb2-session-setup.c \
 	smb2-tree-connect.c \
+	smb2-write.c \
 	socket.c \
 	sync.c \
 	timestamps.c \

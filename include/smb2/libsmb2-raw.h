@@ -143,6 +143,26 @@ int smb2_cmd_read_async(struct smb2_context *smb2,
                         smb2_command_cb cb, void *cb_data);
 
 /*
+ * Asynchronous SMB2 Write
+ *
+ * Returns:
+ *  0 if the call was initiated and a connection will be attempted. Result of
+ * the write will be reported through the callback function.
+ * <0 if there was an error. The callback function will not be invoked.
+ *
+ * Callback parameters :
+ * status can be either of :
+ *    0     : Write was successful.
+ *
+ *   !0     : Status is NT status code.
+ *
+ * command_data is always NULL.
+ */
+int smb2_cmd_write_async(struct smb2_context *smb2,
+                         struct smb2_write_request *req,
+                         smb2_command_cb cb, void *cb_data);
+
+/*
  * Asynchronous SMB2 Query Directory
  *
  * Returns:

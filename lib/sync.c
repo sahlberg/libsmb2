@@ -227,8 +227,28 @@ int smb2_pread(struct smb2_context *smb2, struct smb2fh *fh,
 	return cb_data.status;
 }
 
+int smb2_pwrite(struct smb2_context *smb2, struct smb2fh *fh,
+                char *buf, uint32_t count, uint64_t offset)
+{
+        struct sync_cb_data cb_data;
+
+	cb_data.is_finished = 0;
+
+	if (smb2_pwrite_async(smb2, fh, buf, count, offset,
+                              generic_status_cb, &cb_data) != 0) {
+		smb2_set_error(smb2, "smb2_pwrite_async failed");
+		return -1;
+	}
+
+	if (wait_for_reply(smb2, &cb_data) < 0) {
+                return -1;
+        }
+
+	return cb_data.status;
+}
+
 int smb2_read(struct smb2_context *smb2, struct smb2fh *fh,
-               char *buf, uint32_t count)
+              char *buf, uint32_t count)
 {
         struct sync_cb_data cb_data;
 
@@ -237,6 +257,26 @@ int smb2_read(struct smb2_context *smb2, struct smb2fh *fh,
 	if (smb2_read_async(smb2, fh, buf, count,
                             generic_status_cb, &cb_data) != 0) {
 		smb2_set_error(smb2, "smb2_read_async failed");
+		return -1;
+	}
+
+	if (wait_for_reply(smb2, &cb_data) < 0) {
+                return -1;
+        }
+
+	return cb_data.status;
+}
+
+int smb2_write(struct smb2_context *smb2, struct smb2fh *fh,
+               char *buf, uint32_t count)
+{
+        struct sync_cb_data cb_data;
+
+	cb_data.is_finished = 0;
+
+	if (smb2_write_async(smb2, fh, buf, count,
+                             generic_status_cb, &cb_data) != 0) {
+		smb2_set_error(smb2, "smb2_write_async failed");
 		return -1;
 	}
 

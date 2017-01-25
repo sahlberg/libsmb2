@@ -332,6 +332,8 @@ int smb2_process_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
                 return smb2_process_session_setup_reply(smb2, pdu);
         case SMB2_TREE_CONNECT:
                 return smb2_process_tree_connect_reply(smb2, pdu);
+        case SMB2_WRITE:
+                return smb2_process_write_reply(smb2, pdu);
         default:
                 smb2_set_error(smb2, "no decoder for command:%d yet",
                                pdu->header.command);

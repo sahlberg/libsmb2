@@ -344,6 +344,33 @@ int smb2_pread(struct smb2_context *smb2, struct smb2fh *fh,
                char *buf, uint32_t count, uint64_t offset);
 
 /*
+ * PWRITE
+ */
+/*
+ * Async pwrite()
+ *
+ * Returns
+ *  0     : The operation was initiated. Result of the operation will be
+ *          reported through the callback function.
+ * -errno : There was an error. The callback function will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *    >=0 : Number of bytes written.
+ * -errno : An error occured.
+ *
+ * Command_data is always NULL.
+ */       
+int smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
+                      char *buf, uint32_t count, uint64_t offset,
+                      smb2_command_cb cb, void *cb_data);
+
+/*
+ * Sync pwrite()
+ */
+int smb2_pwrite(struct smb2_context *smb2, struct smb2fh *fh,
+                char *buf, uint32_t count, uint64_t offset);
+
+/*
  * READ
  */
 /*
@@ -369,6 +396,33 @@ int smb2_read_async(struct smb2_context *smb2, struct smb2fh *fh,
  */
 int smb2_read(struct smb2_context *smb2, struct smb2fh *fh,
               char *buf, uint32_t count);
+
+/*
+ * WRITE
+ */
+/*
+ * Async write()
+ *
+ * Returns
+ *  0     : The operation was initiated. Result of the operation will be
+ *          reported through the callback function.
+ * -errno : There was an error. The callback function will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *    >=0 : Number of bytes written.
+ * -errno : An error occured.
+ *
+ * Command_data is always NULL.
+ */
+int smb2_write_async(struct smb2_context *smb2, struct smb2fh *fh,
+                     char *buf, uint32_t count,
+                     smb2_command_cb cb, void *cb_data);
+
+/*
+ * Sync write()
+ */
+int smb2_write(struct smb2_context *smb2, struct smb2fh *fh,
+               char *buf, uint32_t count);
 
 /*
  * Sync lseek()
