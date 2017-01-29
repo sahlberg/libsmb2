@@ -302,7 +302,7 @@ smb2_read_from_socket(struct smb2_context *smb2)
                                            &smb2->pdu->header);
 
 			if (smb2_process_pdu(smb2, smb2->pdu) != 0) {
-				smb2_set_error(smb2, "Invalid/garbage pdu received from server. Closing socket");
+				smb2_set_error(smb2, "Invalid/garbage pdu received from server. Closing socket. %s", smb2_get_error(smb2));
                                 smb2->in.num_done  = 0;
                                 smb2_free_iovector(smb2, &smb2->in);
                                 smb2_free_pdu(smb2, smb2->pdu);

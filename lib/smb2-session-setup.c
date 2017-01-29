@@ -39,6 +39,8 @@
 #include <stddef.h>
 #endif
 
+#include <errno.h>
+
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-private.h"
@@ -64,12 +66,14 @@ smb2_encode_session_setup_request(struct smb2_context *smb2,
         pdu->out.iov[pdu->out.niov].buf = buf;
         pdu->out.iov[pdu->out.niov].free = free;
         
-        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 0, req->struct_size);
+        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 0,
+                        SMB2_SESSION_SETUP_REQUEST_SIZE);
         smb2_set_uint8(&pdu->out.iov[pdu->out.niov], 2, req->flags);
         smb2_set_uint8(&pdu->out.iov[pdu->out.niov], 3, req->security_mode);
         smb2_set_uint32(&pdu->out.iov[pdu->out.niov], 4, req->capabilities);
         smb2_set_uint32(&pdu->out.iov[pdu->out.niov], 8, req->channel);
-        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 12, req->security_buffer_offset);
+        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 12,
+                        SMB2_HEADER_SIZE + 24);
         smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 14, req->security_buffer_length);
         smb2_set_uint64(&pdu->out.iov[pdu->out.niov], 16, req->previous_session_id);
         pdu->out.niov++;
@@ -90,14 +94,33 @@ smb2_decode_session_setup_reply(struct smb2_context *smb2,
                                 struct smb2_pdu *pdu,
                                 struct smb2_session_setup_reply *rep)
 {
-        
-        smb2_get_uint16(&pdu->in.iov[0], 0, &rep->struct_size);
+        uint16_t struct_size;
+        uint16_t security_buffer_offset;
+
+        smb2_get_uint16(&pdu->in.iov[0], 0, &struct_size);
+        if (struct_size != SMB2_SESSION_SETUP_REPLY_SIZE) {
+                smb2_set_error(smb2, "Unexpected size of Session Setup reply. "
+                               "Expected %d, got %d",
+                               SMB2_SESSION_SETUP_REPLY_SIZE,
+                               (int)struct_size);
+                return -1;
+        }
+
         smb2_get_uint16(&pdu->in.iov[0], 2, &rep->session_flags);
-        smb2_get_uint16(&pdu->in.iov[0], 4, &rep->security_buffer_offset);
+        smb2_get_uint16(&pdu->in.iov[0], 4, &security_buffer_offset);
         smb2_get_uint16(&pdu->in.iov[0], 6, &rep->security_buffer_length);
 
+        /* Check we have all the data that the reply claims. */
+        if (rep->security_buffer_length >
+            (pdu->in.iov[0].len -
+             (security_buffer_offset - SMB2_HEADER_SIZE))) {
+                smb2_set_error(smb2, "Security buffer overflow");
+                rep->security_buffer_length = 0;
+                return -1;
+        }
+
         /* We do not have header in the reply iovectors */
-        rep->security_buffer = &pdu->in.iov[0].buf[rep->security_buffer_offset - SMB2_HEADER_SIZE];
+        rep->security_buffer = &pdu->in.iov[0].buf[security_buffer_offset - SMB2_HEADER_SIZE];
         return 0;
 }
 
@@ -133,7 +156,10 @@ int smb2_process_session_setup_reply(struct smb2_context *smb2,
         /* Update session ID to use for future PDUs */
         smb2->session_id = pdu->header.session_id;
 
-        smb2_decode_session_setup_reply(smb2, pdu, &reply);
+        if (smb2_decode_session_setup_reply(smb2, pdu, &reply) < 0) {
+                pdu->cb(smb2, -EBADMSG, NULL, pdu->cb_data);
+                return -1;
+        }
 
         pdu->cb(smb2, pdu->header.status, &reply, pdu->cb_data);
 

@@ -185,7 +185,7 @@ decode_dirents(struct smb2_context *smb2, struct smb2dir *dir,
 
                 /* Make sure we do not go beyond end of vector */
                 if (offset >= vec->len) {
-                        smb2_set_error(smb2, "Malformed query reply.\n");
+                        smb2_set_error(smb2, "Malformed query reply.");
                         return -1;
                 }
                 
@@ -267,7 +267,6 @@ query_cb(struct smb2_context *smb2, int status,
 
                 /* We need to get more data */
                 memset(&req, 0, sizeof(struct smb2_query_directory_request));
-                req.struct_size = SMB2_QUERY_DIRECTORY_REQUEST_SIZE;
                 req.file_information_class = SMB2_FILE_ID_FULL_DIRECTORY_INFORMATION;
                 req.flags = 0;
                 memcpy(req.file_id, dir->file_id, SMB2_FD_SIZE);
@@ -287,7 +286,6 @@ query_cb(struct smb2_context *smb2, int status,
 
                 /* We have all the data */
                 memset(&req, 0, sizeof(struct smb2_close_request));
-                req.struct_size = SMB2_CLOSE_REQUEST_SIZE;
                 req.flags = SMB2_CLOSE_FLAG_POSTQUERY_ATTRIB;
                 memcpy(req.file_id, dir->file_id, SMB2_FD_SIZE);
         
@@ -298,8 +296,9 @@ query_cb(struct smb2_context *smb2, int status,
                 return;
         }
 
-        smb2_set_error(smb2, "Query directory failed with (0x%08x) %s",
-                       status, nterror_to_str(status));
+        smb2_set_error(smb2, "Query directory failed with (0x%08x) %s. %s",
+                       status, nterror_to_str(status),
+                       smb2_get_error(smb2));
         dir->cb(smb2, -nterror_to_errno(status), NULL, dir->cb_data);
         free_smb2dir(dir);
 }
@@ -313,7 +312,7 @@ opendir_cb(struct smb2_context *smb2, int status,
         struct smb2_query_directory_request req;
 
         if (status != SMB2_STATUS_SUCCESS) {
-                smb2_set_error(smb2, "Opendir failed with (0x%08x) %s",
+                smb2_set_error(smb2, "Opendir failed with (0x%08x) %s.",
                                status, nterror_to_str(status));
                 dir->cb(smb2, -nterror_to_errno(status), NULL, dir->cb_data);
                 free_smb2dir(dir);
@@ -323,7 +322,6 @@ opendir_cb(struct smb2_context *smb2, int status,
         memcpy(dir->file_id, rep->file_id, SMB2_FD_SIZE);
         
         memset(&req, 0, sizeof(struct smb2_query_directory_request));
-        req.struct_size = SMB2_QUERY_DIRECTORY_REQUEST_SIZE;
         req.file_information_class = SMB2_FILE_ID_FULL_DIRECTORY_INFORMATION;
         req.flags = 0;
         memcpy(req.file_id, dir->file_id, SMB2_FD_SIZE);
@@ -332,7 +330,7 @@ opendir_cb(struct smb2_context *smb2, int status,
         req.name = "*";
 
         if (smb2_cmd_query_directory_async(smb2, &req, query_cb, dir) < 0) {
-                smb2_set_error(smb2, "Failed to send query command");
+                smb2_set_error(smb2, "Failed to send query command.");
                 dir->cb(smb2, -ENOMEM, NULL, dir->cb_data);
                 free_smb2dir(dir);
                 return;
@@ -351,7 +349,7 @@ int smb2_opendir_async(struct smb2_context *smb2, const char *path,
 
         dir = malloc(sizeof(struct smb2dir));
         if (dir == NULL) {
-                smb2_set_error(smb2, "Failed to allocate smb2dir");
+                smb2_set_error(smb2, "Failed to allocate smb2dir.");
                 return -1;
         }
         memset(dir, 0, sizeof(struct smb2dir));
@@ -359,7 +357,6 @@ int smb2_opendir_async(struct smb2_context *smb2, const char *path,
         dir->cb_data = cb_data;
 
         memset(&req, 0, sizeof(struct smb2_create_request));
-        req.struct_size = SMB2_CREATE_REQUEST_SIZE;
         req.requested_oplock_level = SMB2_OPLOCK_LEVEL_NONE;
         req.impersonation_level = SMB2_IMPERSONATION_IMPERSONATION;
         req.desired_access = SMB2_FILE_LIST_DIRECTORY | SMB2_FILE_READ_ATTRIBUTES;
@@ -367,12 +364,11 @@ int smb2_opendir_async(struct smb2_context *smb2, const char *path,
         req.share_access = SMB2_FILE_SHARE_READ | SMB2_FILE_SHARE_WRITE;
         req.create_disposition = SMB2_FILE_OPEN;
         req.create_options = SMB2_FILE_DIRECTORY_FILE;
-        req.name_offset = 0x78;
         req.name = path;
         
         if (smb2_cmd_create_async(smb2, &req, opendir_cb, dir) < 0) {
                 free_smb2dir(dir);
-                smb2_set_error(smb2, "Failed to send opendir command");
+                smb2_set_error(smb2, "Failed to send opendir command.");
                 return -1;
         }
         
@@ -467,8 +463,9 @@ tree_connect_cb(struct smb2_context *smb2, int status,
         struct connect_data *c_data = private_data;
 
         if (status != SMB2_STATUS_SUCCESS) {
-                smb2_set_error(smb2, "Session setup failed with (0x%08x) %s",
-                               status, nterror_to_str(status));
+                smb2_set_error(smb2, "Session setup failed with (0x%08x) %s. %s",
+                               status, nterror_to_str(status),
+                               smb2_get_error(smb2));
                 c_data->cb(smb2, -nterror_to_errno(status), NULL, c_data->cb_data);
                 free_c_data(c_data);
                 return;
@@ -517,9 +514,7 @@ session_setup_cb(struct smb2_context *smb2, int status,
         }
 
         memset(&req, 0, sizeof(struct smb2_tree_connect_request));
-        req.struct_size = SMB2_TREE_CONNECT_REQUEST_SIZE;
         req.flags       = 0;
-        req.path_offset = 0x48;
         req.path_length = 2 * c_data->ucs2_unc->len;
         req.path        = c_data->ucs2_unc->val;
         if (smb2_cmd_tree_connect_async(smb2, &req, tree_connect_cb,
@@ -565,9 +560,7 @@ send_session_setup_request(struct smb2_context *smb2,
         if (maj == GSS_S_CONTINUE_NEEDED) {
                 /* Session setup request. */
                 memset(&req, 0, sizeof(struct smb2_session_setup_request));
-                req.struct_size = SMB2_SESSION_SETUP_REQUEST_SIZE;
                 req.security_mode = smb2->security_mode;
-                req.security_buffer_offset = 0x58;
                 req.security_buffer_length = c_data->auth_data->output_token.length;
                 req.security_buffer = c_data->auth_data->output_token.value;
                 
@@ -592,8 +585,9 @@ negotiate_cb(struct smb2_context *smb2, int status,
         int ret;
 
         if (status != SMB2_STATUS_SUCCESS) {
-                smb2_set_error(smb2, "Negotiate failed with (0x%08x) %s",
-                               status, nterror_to_str(status));
+                smb2_set_error(smb2, "Negotiate failed with (0x%08x) %s. %s",
+                               status, nterror_to_str(status),
+                               smb2_get_error(smb2));
                 c_data->cb(smb2, -nterror_to_errno(status), NULL,
                            c_data->cb_data);
                 free_c_data(c_data);
@@ -662,7 +656,6 @@ connect_cb(struct smb2_context *smb2, int status,
         }
         
         memset(&req, 0, sizeof(struct smb2_negotiate_request));
-        req.struct_size = SMB2_NEGOTIATE_REQUEST_SIZE;
         req.dialect_count = SMB2_NUM_DIALECTS;
         req.security_mode = smb2->security_mode;
         req.dialects[0] = SMB2_VERSION_0202;
@@ -806,7 +799,6 @@ int smb2_open_async(struct smb2_context *smb2, const char *path, int flags,
         }
 
         memset(&req, 0, sizeof(struct smb2_create_request));
-        req.struct_size = SMB2_CREATE_REQUEST_SIZE;
         req.requested_oplock_level = SMB2_OPLOCK_LEVEL_NONE;
         req.impersonation_level = SMB2_IMPERSONATION_IMPERSONATION;
         req.desired_access = desired_access;
@@ -814,7 +806,6 @@ int smb2_open_async(struct smb2_context *smb2, const char *path, int flags,
         req.share_access = SMB2_FILE_SHARE_READ | SMB2_FILE_SHARE_WRITE;
         req.create_disposition = create_disposition;
         req.create_options = create_options;
-        req.name_offset = 0x78;
         req.name = path;
 
         if (smb2_cmd_create_async(smb2, &req, open_cb, fh) < 0) {
@@ -852,7 +843,6 @@ int smb2_close_async(struct smb2_context *smb2, struct smb2fh *fh,
         fh->cb_data = cb_data;
 
         memset(&req, 0, sizeof(struct smb2_close_request));
-        req.struct_size = SMB2_CLOSE_REQUEST_SIZE;
         req.flags = SMB2_CLOSE_FLAG_POSTQUERY_ATTRIB;
         memcpy(req.file_id, fh->file_id, SMB2_FD_SIZE);
 
@@ -915,7 +905,6 @@ int smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
         rd->offset = offset;
 
         memset(&req, 0, sizeof(struct smb2_read_request));
-        req.struct_size = SMB2_READ_REQUEST_SIZE;
         req.flags = 0;
         req.length = count;
         req.offset = offset;
@@ -924,8 +913,6 @@ int smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
         req.minimum_count = 0;
         req.channel = SMB2_CHANNEL_NONE;
         req.remaining_bytes = 0;
-        req.read_channel_info_offset = 0;
-        req.read_channel_info = NULL;
 
         if (smb2_cmd_read_async(smb2, &req, rw_cb, rd) < 0) {
                 smb2_set_error(smb2, "Failed to send read command");
@@ -963,16 +950,12 @@ int smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
         rd->offset = offset;
 
         memset(&req, 0, sizeof(struct smb2_write_request));
-        req.struct_size = SMB2_WRITE_REQUEST_SIZE;
-        req.data_offset = 0x0070;
         req.length = count;
         req.offset = offset;
         req.buf = buf;
         memcpy(req.file_id, fh->file_id, SMB2_FD_SIZE);
         req.channel = SMB2_CHANNEL_NONE;
         req.remaining_bytes = 0;
-        req.write_channel_info_offset = 0;
-        req.write_channel_info = NULL;
         req.flags = 0;
 
         if (smb2_cmd_write_async(smb2, &req, rw_cb, rd) < 0) {
@@ -1059,7 +1042,6 @@ create_cb_1(struct smb2_context *smb2, int status,
         }
 
         memset(&req, 0, sizeof(struct smb2_close_request));
-        req.struct_size = SMB2_CLOSE_REQUEST_SIZE;
         req.flags = SMB2_CLOSE_FLAG_POSTQUERY_ATTRIB;
         memcpy(req.file_id, rep->file_id, SMB2_FD_SIZE);
 
@@ -1088,7 +1070,6 @@ static int smb2_unlink_internal(struct smb2_context *smb2, const char *path,
 
 
         memset(&req, 0, sizeof(struct smb2_create_request));
-        req.struct_size = SMB2_CREATE_REQUEST_SIZE;
         req.requested_oplock_level = SMB2_OPLOCK_LEVEL_NONE;
         req.impersonation_level = SMB2_IMPERSONATION_IMPERSONATION;
         req.desired_access = SMB2_DELETE;
@@ -1101,7 +1082,6 @@ static int smb2_unlink_internal(struct smb2_context *smb2, const char *path,
                 SMB2_FILE_SHARE_DELETE;
         req.create_disposition = SMB2_FILE_OPEN;
         req.create_options = SMB2_FILE_DELETE_ON_CLOSE;
-        req.name_offset = 0x78;
         req.name = path;
 
         if (smb2_cmd_create_async(smb2, &req, create_cb_1, create_data) < 0) {
@@ -1141,7 +1121,6 @@ int smb2_mkdir_async(struct smb2_context *smb2, const char *path,
         create_data->cb_data = cb_data;
 
         memset(&req, 0, sizeof(struct smb2_create_request));
-        req.struct_size = SMB2_CREATE_REQUEST_SIZE;
         req.requested_oplock_level = SMB2_OPLOCK_LEVEL_NONE;
         req.impersonation_level = SMB2_IMPERSONATION_IMPERSONATION;
         req.desired_access = SMB2_FILE_READ_ATTRIBUTES;
@@ -1149,7 +1128,6 @@ int smb2_mkdir_async(struct smb2_context *smb2, const char *path,
         req.share_access = SMB2_FILE_SHARE_READ | SMB2_FILE_SHARE_WRITE;
         req.create_disposition = SMB2_FILE_CREATE;
         req.create_options = SMB2_FILE_DIRECTORY_FILE;
-        req.name_offset = 0x78;
         req.name = path;
 
         if (smb2_cmd_create_async(smb2, &req, create_cb_1, create_data) < 0) {
@@ -1226,7 +1204,6 @@ stat_cb_2(struct smb2_context *smb2, int status,
                 struct smb2_close_request req;
 
                 memset(&req, 0, sizeof(struct smb2_close_request));
-                req.struct_size = SMB2_CLOSE_REQUEST_SIZE;
                 req.flags = SMB2_CLOSE_FLAG_POSTQUERY_ATTRIB;
                 memcpy(req.file_id, stat_data->file_id, SMB2_FD_SIZE);
         
@@ -1257,7 +1234,6 @@ stat_cb_1(struct smb2_context *smb2, int status,
         }
 
         memset(&req, 0, sizeof(struct smb2_query_info_request));
-        req.struct_size = SMB2_QUERY_INFO_REQUEST_SIZE;
         req.info_type = SMB2_0_INFO_FILE;
         req.file_information_class = SMB2_FILE_ALL_INFORMATION;
         req.output_buffer_length = 65535;
@@ -1293,7 +1269,6 @@ int smb2_fstat_async(struct smb2_context *smb2, struct smb2fh *fh,
         stat_data->st = st;
 
         memset(&req, 0, sizeof(struct smb2_query_info_request));
-        req.struct_size = SMB2_QUERY_INFO_REQUEST_SIZE;
         req.info_type = SMB2_0_INFO_FILE;
         req.file_information_class = SMB2_FILE_ALL_INFORMATION;
         req.output_buffer_length = 65535;
@@ -1330,7 +1305,6 @@ int smb2_stat_async(struct smb2_context *smb2, char *path,
         stat_data->st = st;
 
         memset(&req, 0, sizeof(struct smb2_create_request));
-        req.struct_size = SMB2_CREATE_REQUEST_SIZE;
         req.requested_oplock_level = SMB2_OPLOCK_LEVEL_NONE;
         req.impersonation_level = SMB2_IMPERSONATION_IMPERSONATION;
         req.desired_access = SMB2_FILE_READ_ATTRIBUTES | SMB2_FILE_READ_EA;
@@ -1338,7 +1312,6 @@ int smb2_stat_async(struct smb2_context *smb2, char *path,
         req.share_access = SMB2_FILE_SHARE_READ | SMB2_FILE_SHARE_WRITE;
         req.create_disposition = SMB2_FILE_OPEN;
         req.create_options = 0;
-        req.name_offset = 0x78;
         req.name = path;
         
         if (smb2_cmd_create_async(smb2, &req, stat_cb_1, stat_data) < 0) {

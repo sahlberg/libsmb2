@@ -39,6 +39,8 @@
 #include <stddef.h>
 #endif
 
+#include <errno.h>
+
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-private.h"
@@ -64,9 +66,12 @@ smb2_encode_tree_connect_request(struct smb2_context *smb2,
         pdu->out.iov[pdu->out.niov].buf = buf;
         pdu->out.iov[pdu->out.niov].free = free;
         
-        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 0, req->struct_size);
+        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 0,
+                        SMB2_TREE_CONNECT_REQUEST_SIZE);
         smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 2, req->flags);
-        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 4, req->path_offset);
+        /* path offset */
+        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 4,
+                        SMB2_HEADER_SIZE + len);
         smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 6, req->path_length);
         pdu->out.niov++;
 
@@ -86,8 +91,17 @@ smb2_decode_tree_connect_reply(struct smb2_context *smb2,
                                struct smb2_pdu *pdu,
                                struct smb2_tree_connect_reply *rep)
 {
-        
-        smb2_get_uint16(&pdu->in.iov[0], 0, &rep->struct_size);
+        uint16_t struct_size;
+
+        smb2_get_uint16(&pdu->in.iov[0], 0, &struct_size);
+        if (struct_size != SMB2_TREE_CONNECT_REPLY_SIZE) {
+                smb2_set_error(smb2, "Unexpected size of Tree Connect reply. "
+                               "Expected %d, got %d",
+                               SMB2_TREE_CONNECT_REPLY_SIZE,
+                               (int)pdu->in.iov[0].len);
+                return -1;
+        }
+
         smb2_get_uint8(&pdu->in.iov[0], 2, &rep->share_type);
         smb2_get_uint32(&pdu->in.iov[0], 4, &rep->share_flags);
         smb2_get_uint32(&pdu->in.iov[0], 4, &rep->capabilities);
@@ -128,7 +142,10 @@ int smb2_process_tree_connect_reply(struct smb2_context *smb2,
         /* Update tree ID to use for future PDUs */
         smb2->tree_id = pdu->header.sync.tree_id;
         
-        smb2_decode_tree_connect_reply(smb2, pdu, &reply);
+        if (smb2_decode_tree_connect_reply(smb2, pdu, &reply) < 0) {
+                pdu->cb(smb2, -EBADMSG, NULL, pdu->cb_data);
+                return -1;
+        }
 
         pdu->cb(smb2, pdu->header.status, &reply, pdu->cb_data);
 

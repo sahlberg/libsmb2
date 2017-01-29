@@ -39,6 +39,8 @@
 #include <stddef.h>
 #endif
 
+#include <errno.h>
+
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-private.h"
@@ -136,11 +138,11 @@ smb2_encode_query_info_request(struct smb2_context *smb2,
         pdu->out.iov[pdu->out.niov].buf = buf;
         pdu->out.iov[pdu->out.niov].free = free;
 
-        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 0, req->struct_size);
+        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 0,
+                        SMB2_QUERY_INFO_REQUEST_SIZE);
         smb2_set_uint8(&pdu->out.iov[pdu->out.niov], 2, req->info_type);
         smb2_set_uint8(&pdu->out.iov[pdu->out.niov], 3, req->file_information_class);
         smb2_set_uint32(&pdu->out.iov[pdu->out.niov],4, req->output_buffer_length);
-        smb2_set_uint16(&pdu->out.iov[pdu->out.niov],8, req->input_buffer_offset);
         smb2_set_uint32(&pdu->out.iov[pdu->out.niov],12, req->input_buffer_length);
         smb2_set_uint32(&pdu->out.iov[pdu->out.niov],16, req->additional_information);
         smb2_set_uint32(&pdu->out.iov[pdu->out.niov],20, req->flags);
@@ -148,7 +150,7 @@ smb2_encode_query_info_request(struct smb2_context *smb2,
                SMB2_FD_SIZE);
         pdu->out.niov++;
 
-        if (req->additional_information > 0) {
+        if (req->input_buffer_length > 0) {
                 smb2_set_error(smb2, "No support for input buffers, yet");
                 return -1;
         }
@@ -161,20 +163,32 @@ smb2_decode_query_info_reply(struct smb2_context *smb2,
                              struct smb2_pdu *pdu,
                              struct smb2_query_info_reply *rep)
 {
-        smb2_get_uint16(&pdu->in.iov[0], 0, &rep->struct_size);
-        smb2_get_uint16(&pdu->in.iov[0], 2, &rep->output_buffer_offset);
+        uint16_t output_buffer_offset;
+        uint16_t struct_size;
+
+        smb2_get_uint16(&pdu->in.iov[0], 0, &struct_size);
+        if (struct_size != SMB2_QUERY_INFO_REPLY_SIZE) {
+                smb2_set_error(smb2, "Unexpected size of Query reply. "
+                               "Expected %d, got %d",
+                               SMB2_QUERY_INFO_REPLY_SIZE,
+                               struct_size);
+                return -1;
+        }
+                
+        smb2_get_uint16(&pdu->in.iov[0], 2, &output_buffer_offset);
         smb2_get_uint32(&pdu->in.iov[0], 4, &rep->output_buffer_length);
 
         /* Check we have all the data that the reply claims. */
         if (rep->output_buffer_length >
             (pdu->in.iov[0].len -
-             (rep->output_buffer_offset - SMB2_HEADER_SIZE))) {
+             (output_buffer_offset - SMB2_HEADER_SIZE))) {
                 smb2_set_error(smb2, "Output buffer overflow");
+                rep->output_buffer_length = 0;
                 return -1;
         }
         
         if (rep->output_buffer_length) {
-                rep->output_buffer = &pdu->in.iov[0].buf[rep->output_buffer_offset - SMB2_HEADER_SIZE];
+                rep->output_buffer = &pdu->in.iov[0].buf[output_buffer_offset - SMB2_HEADER_SIZE];
         }
 
         return 0;
@@ -209,7 +223,10 @@ int smb2_process_query_info_reply(struct smb2_context *smb2,
 {
         struct smb2_query_info_reply reply;
 
-        smb2_decode_query_info_reply(smb2, pdu, &reply);
+        if (smb2_decode_query_info_reply(smb2, pdu, &reply) < 0) {
+                pdu->cb(smb2, -EBADMSG, NULL, pdu->cb_data);
+                return -1;
+        }
 
         pdu->cb(smb2, pdu->header.status, &reply, pdu->cb_data);
 

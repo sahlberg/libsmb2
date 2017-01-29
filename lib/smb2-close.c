@@ -39,6 +39,8 @@
 #include <stddef.h>
 #endif
 
+#include <errno.h>
+
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-private.h"
@@ -63,7 +65,8 @@ smb2_encode_close_request(struct smb2_context *smb2,
         pdu->out.iov[pdu->out.niov].buf = buf;
         pdu->out.iov[pdu->out.niov].free = free;
         
-        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 0, req->struct_size);
+        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 0,
+                        SMB2_CLOSE_REQUEST_SIZE);
         smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 2, req->flags);
         memcpy(pdu->out.iov[pdu->out.niov].buf + 8, req->file_id,
                SMB2_FD_SIZE);
@@ -77,7 +80,18 @@ smb2_decode_close_reply(struct smb2_context *smb2,
                          struct smb2_pdu *pdu,
                          struct smb2_close_reply *rep)
 {
-        smb2_get_uint16(&pdu->in.iov[0], 0, &rep->struct_size);
+        uint16_t struct_size;
+
+        smb2_get_uint16(&pdu->in.iov[0], 0, &struct_size);
+        if (struct_size != SMB2_CLOSE_REPLY_SIZE ||
+            struct_size != pdu->in.iov[0].len) {
+                smb2_set_error(smb2, "Unexpected size of Close reply. "
+                               "Expected %d, got %d",
+                               SMB2_CLOSE_REPLY_SIZE,
+                               (int)pdu->in.iov[0].len);
+                return -1;
+        }
+
         smb2_get_uint16(&pdu->in.iov[0], 2, &rep->flags);
         smb2_get_uint64(&pdu->in.iov[0], 8, &rep->creation_time);
         smb2_get_uint64(&pdu->in.iov[0], 16, &rep->last_access_time);
@@ -119,7 +133,10 @@ int smb2_process_close_reply(struct smb2_context *smb2,
 {
         struct smb2_close_reply reply;
 
-        smb2_decode_close_reply(smb2, pdu, &reply);
+        if (smb2_decode_close_reply(smb2, pdu, &reply) < 0) {
+                pdu->cb(smb2, -EBADMSG, NULL, pdu->cb_data);
+                return -1;
+        }
 
         pdu->cb(smb2, pdu->header.status, &reply, pdu->cb_data);
 

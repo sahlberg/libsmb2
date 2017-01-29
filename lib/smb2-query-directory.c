@@ -39,6 +39,8 @@
 #include <stddef.h>
 #endif
 
+#include <errno.h>
+
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-private.h"
@@ -119,7 +121,8 @@ smb2_encode_query_directory_request(struct smb2_context *smb2,
                 smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 26, 2 * name->len);
         }
         
-        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 0, req->struct_size);
+        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 0,
+                        SMB2_QUERY_DIRECTORY_REQUEST_SIZE);
         smb2_set_uint8(&pdu->out.iov[pdu->out.niov], 2, req->file_information_class);
         smb2_set_uint8(&pdu->out.iov[pdu->out.niov], 3, req->flags);
         smb2_set_uint32(&pdu->out.iov[pdu->out.niov],4, req->file_index);
@@ -149,20 +152,41 @@ smb2_decode_query_directory_reply(struct smb2_context *smb2,
                                   struct smb2_pdu *pdu,
                                   struct smb2_query_directory_reply *rep)
 {
-        smb2_get_uint16(&pdu->in.iov[0], 0, &rep->struct_size);
-        smb2_get_uint16(&pdu->in.iov[0], 2, &rep->output_buffer_offset);
+        uint16_t struct_size;
+        uint16_t output_buffer_offset;
+
+        smb2_get_uint16(&pdu->in.iov[0], 0, &struct_size);
+        if (struct_size != SMB2_QUERY_DIRECTORY_REPLY_SIZE) {
+                smb2_set_error(smb2, "Unexpected size of Query reply. "
+                               "Expected %d, got %d",
+                               SMB2_QUERY_DIRECTORY_REPLY_SIZE,
+                               struct_size);
+                return -1;
+        }
+        
+        smb2_get_uint16(&pdu->in.iov[0], 2, &output_buffer_offset);
         smb2_get_uint32(&pdu->in.iov[0], 4, &rep->output_buffer_length);
 
+        if (rep->output_buffer_length > 0 &&
+            output_buffer_offset != SMB2_HEADER_SIZE + 8) {
+                smb2_set_error(smb2, "Unexpected offset in Query reply. "
+                               "Expected %d, got %d",
+                               SMB2_HEADER_SIZE + 8,
+                               output_buffer_offset);
+                rep->output_buffer_length = 0;
+                return -1;
+        }
+                
         /* Check we have all the data that the reply claims. */
         if (rep->output_buffer_length >
             (pdu->in.iov[0].len -
-             (rep->output_buffer_offset - SMB2_HEADER_SIZE))) {
+             (output_buffer_offset - SMB2_HEADER_SIZE))) {
                 smb2_set_error(smb2, "Output buffer overflow");
                 return -1;
         }
         
         if (rep->output_buffer_length) {
-                rep->output_buffer = &pdu->in.iov[0].buf[rep->output_buffer_offset - SMB2_HEADER_SIZE];
+                rep->output_buffer = &pdu->in.iov[0].buf[output_buffer_offset - SMB2_HEADER_SIZE];
         }
         
         return 0;
@@ -197,7 +221,10 @@ int smb2_process_query_directory_reply(struct smb2_context *smb2,
 {
         struct smb2_query_directory_reply reply;
 
-        smb2_decode_query_directory_reply(smb2, pdu, &reply);
+        if (smb2_decode_query_directory_reply(smb2, pdu, &reply) < 0) {
+                pdu->cb(smb2, -EBADMSG, NULL, pdu->cb_data);
+                return -1;
+        }
 
         pdu->cb(smb2, pdu->header.status, &reply, pdu->cb_data);
 

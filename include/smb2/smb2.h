@@ -84,7 +84,6 @@ enum smb2_command {
 #define SMB2_NEGOTIATE_REQUEST_SIZE 36
         
 struct smb2_negotiate_request {
-        uint16_t struct_size;
         uint16_t dialect_count;
         uint16_t security_mode;
         uint32_t capabilities;
@@ -96,7 +95,6 @@ struct smb2_negotiate_request {
 #define SMB2_NEGOTIATE_REPLY_SIZE 65
 
 struct smb2_negotiate_reply {
-        uint16_t struct_size;
         uint16_t security_mode;
         uint16_t dialect_revision;
         unsigned char server_guid[16];
@@ -106,7 +104,6 @@ struct smb2_negotiate_reply {
         uint32_t max_write_size;
         uint64_t system_time;
         uint64_t server_start_time;
-        uint16_t security_buffer_offset;
         uint16_t security_buffer_length;
         char *security_buffer;
 };
@@ -123,14 +120,12 @@ struct smb2_negotiate_reply {
 #define SMB2_SESSION_SETUP_REQUEST_SIZE 25
 
 struct smb2_session_setup_request {
-        uint16_t struct_size;
         uint8_t flags;
         uint8_t security_mode;
         uint32_t capabilities;
         uint32_t channel;
-        uint16_t security_buffer_offset;
-        uint16_t security_buffer_length;
         uint64_t previous_session_id;
+        uint16_t security_buffer_length;
         char *security_buffer;
 };
 
@@ -138,10 +133,10 @@ struct smb2_session_setup_request {
 #define SMB2_SESSION_FLAG_IS_NULL         0x0002
 #define SMB2_SESSION_FLAG_IS_ENCRYPT_DATA 0x0004
 
+#define SMB2_SESSION_SETUP_REPLY_SIZE 9
+
 struct smb2_session_setup_reply {
-        uint16_t struct_size;
         uint16_t session_flags;
-        uint16_t security_buffer_offset;
         uint16_t security_buffer_length;
         char *security_buffer;
 };
@@ -151,9 +146,7 @@ struct smb2_session_setup_reply {
 #define SMB2_SHAREFLAG_CLUSTER_RECONNECT 0x0001
 
 struct smb2_tree_connect_request {
-        uint16_t struct_size;
         uint16_t flags;
-        uint16_t path_offset;
         uint16_t path_length;
         uint16_t *path;
 };
@@ -183,8 +176,9 @@ struct smb2_tree_connect_request {
 #define SMB2_SHARE_CAP_CLUSTER                     0x00000040
 #define SMB2_SHARE_CAP_ASYMMETRIC                  0x00000080
 
+#define SMB2_TREE_CONNECT_REPLY_SIZE 16
+
 struct smb2_tree_connect_reply {
-        uint16_t struct_size;
         uint8_t share_type;
         uint32_t share_flags;
         uint32_t capabilities;
@@ -288,7 +282,6 @@ struct smb2_tree_connect_reply {
 #define SMB2_FILE_OPEN_FOR_FREE_SPACE_QUERY 0x00800000
 
 struct smb2_create_request {
-        uint16_t struct_size;
         uint8_t security_flags;
         uint8_t requested_oplock_level;
         uint32_t impersonation_level;
@@ -298,19 +291,17 @@ struct smb2_create_request {
         uint32_t share_access;
         uint32_t create_disposition;
         uint32_t create_options;
-        uint16_t name_offset;
         const char *name;       /* name in UTF8 */
-        uint32_t create_context_offset;
         uint32_t create_context_length;
         char *create_context;
 };
 
+#define SMB2_CREATE_REPLY_SIZE 89
 
 #define SMB2_FD_SIZE 16
 typedef char smb2_file_id[SMB2_FD_SIZE];
         
 struct smb2_create_reply {
-        uint16_t struct_size;
         uint8_t oplock_level;
         uint8_t flags;
         uint32_t create_action;
@@ -322,7 +313,6 @@ struct smb2_create_reply {
         uint64_t end_of_file;
         uint32_t file_attributes;
         smb2_file_id file_id;
-        uint32_t create_context_offset;
         uint32_t create_context_length;
         char *create_context;
 };
@@ -332,13 +322,13 @@ struct smb2_create_reply {
 #define SMB2_CLOSE_FLAG_POSTQUERY_ATTRIB 0x0001
 
 struct smb2_close_request {
-        uint16_t struct_size;
         uint16_t flags;
         smb2_file_id file_id;
 };
 
+#define SMB2_CLOSE_REPLY_SIZE 60
+
 struct smb2_close_reply {
-        uint16_t struct_size;
         uint16_t flags;
         uint64_t creation_time;
         uint64_t last_access_time;
@@ -384,7 +374,6 @@ struct smb2_fileidfulldirectoryinformation {
 };
 
 struct smb2_query_directory_request {
-        uint16_t struct_size;
         uint8_t file_information_class;
         uint8_t flags;
         uint32_t file_index;
@@ -394,15 +383,14 @@ struct smb2_query_directory_request {
         uint32_t output_buffer_length;
 };
 
+#define SMB2_QUERY_DIRECTORY_REPLY_SIZE 9
+
 struct smb2_query_directory_reply {
-        uint16_t struct_size;
-        uint16_t output_buffer_offset;
         uint32_t output_buffer_length;
         char *output_buffer;
 };
 
 #define SMB2_READ_REQUEST_SIZE 49
-#define SMB2_READ_REPLY_SIZE 17
 
 #define SMB2_READFLAG_READ_UNBUFFERED 0x01
 
@@ -411,7 +399,6 @@ struct smb2_query_directory_reply {
 #define SMB2_CHANNEL_RDMA_V1_INVALIDATE 0x00000002
 
 struct smb2_read_request {
-        uint16_t struct_size;
         uint8_t flags;
         uint32_t length;
         uint64_t offset;
@@ -420,13 +407,13 @@ struct smb2_read_request {
         uint32_t minimum_count;
         uint32_t channel;
         uint32_t remaining_bytes;
-        uint16_t read_channel_info_offset;
+        uint16_t read_channel_info_length;
         char *read_channel_info;
 };
 
+#define SMB2_READ_REPLY_SIZE 17
+
 struct smb2_read_reply {
-        uint16_t struct_size;
-        uint8_t data_offset;
         uint32_t data_length;
         uint32_t data_remaining;
 };
@@ -495,20 +482,19 @@ struct smb2_file_all_information {
 #define SMB2_FILE_ALL_INFORMATION               0x12
 
 struct smb2_query_info_request {
-        uint16_t struct_size;
         uint8_t info_type;
         uint8_t file_information_class;
         uint32_t output_buffer_length;
-        uint16_t input_buffer_offset;
         uint32_t input_buffer_length;
+        char *input_buffer;
         uint32_t additional_information;
         uint32_t flags;
         smb2_file_id file_id;
 };
 
+#define SMB2_QUERY_INFO_REPLY_SIZE 9
+
 struct smb2_query_info_reply {
-        uint16_t struct_size;
-        uint16_t output_buffer_offset;
         uint32_t output_buffer_length;
         char *output_buffer;
 };
@@ -519,15 +505,13 @@ struct smb2_query_info_reply {
 #define SMB2_WRITEFLAG_WRITE_UNBUFFERED 0x00000002
 
 struct smb2_write_request {
-        uint16_t struct_size;
-        uint16_t data_offset;
         uint32_t length;
         uint64_t offset;
         char *buf;
         smb2_file_id file_id;
         uint32_t channel;
         uint32_t remaining_bytes;
-        uint16_t write_channel_info_offset;
+        uint16_t write_channel_info_length;
         char *write_channel_info;
         uint32_t flags;
 };
@@ -535,11 +519,15 @@ struct smb2_write_request {
 #define SMB2_WRITE_REPLY_SIZE 17
 
 struct smb2_write_reply {
-        uint16_t struct_size;
         uint32_t count;
         uint32_t remaining;
 };
 
+#define SMB2_ECHO_REQUEST_SIZE 4
+#define SMB2_ECHO_REPLY_SIZE 4
+
+#define SMB2_LOGOFF_REQUEST_SIZE 4
+#define SMB2_LOGOFF_REPLY_SIZE 4
 
 #ifdef __cplusplus
 }

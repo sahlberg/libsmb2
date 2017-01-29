@@ -63,7 +63,8 @@ smb2_encode_logoff_request(struct smb2_context *smb2,
         pdu->out.iov[pdu->out.niov].buf = buf;
         pdu->out.iov[pdu->out.niov].free = free;
         
-        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 0, 4);
+        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 0,
+                        SMB2_LOGOFF_REQUEST_SIZE);
 
         pdu->out.niov++;
         return 0;
@@ -99,4 +100,3 @@ int smb2_process_logoff_reply(struct smb2_context *smb2,
         
         return 0;
 }
-

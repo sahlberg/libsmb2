@@ -39,6 +39,8 @@
 #include <stddef.h>
 #endif
 
+#include <errno.h>
+
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-private.h"
@@ -63,7 +65,8 @@ smb2_encode_read_request(struct smb2_context *smb2,
         pdu->out.iov[pdu->out.niov].buf = buf;
         pdu->out.iov[pdu->out.niov].free = free;
 
-        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 0, req->struct_size);
+        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 0,
+                        SMB2_READ_REQUEST_SIZE);
         smb2_set_uint8(&pdu->out.iov[pdu->out.niov], 3, req->flags);
         smb2_set_uint32(&pdu->out.iov[pdu->out.niov], 4, req->length);
         smb2_set_uint64(&pdu->out.iov[pdu->out.niov], 8, req->offset);
@@ -72,11 +75,12 @@ smb2_encode_read_request(struct smb2_context *smb2,
         smb2_set_uint32(&pdu->out.iov[pdu->out.niov], 32, req->minimum_count);
         smb2_set_uint32(&pdu->out.iov[pdu->out.niov], 36, req->channel);
         smb2_set_uint32(&pdu->out.iov[pdu->out.niov], 40, req->remaining_bytes);
-        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 44, req->read_channel_info_offset);
+        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 46, req->read_channel_info_length);
 
         pdu->out.niov++;
 
-        if (req->read_channel_info != NULL) {
+        if (req->read_channel_info_length > 0 ||
+            req->read_channel_info != NULL) {
                 smb2_set_error(smb2, "ChannelInfo not yet implemented");
                 return -1;
         }
@@ -101,8 +105,26 @@ smb2_decode_read_reply(struct smb2_context *smb2,
                          struct smb2_pdu *pdu,
                          struct smb2_read_reply *rep)
 {
-        smb2_get_uint16(&pdu->in.iov[0], 0, &rep->struct_size);
-        smb2_get_uint8(&pdu->in.iov[0], 2, &rep->data_offset);
+        uint16_t struct_size;
+        uint8_t data_offset;
+
+        smb2_get_uint16(&pdu->in.iov[0], 0, &struct_size);
+        if (struct_size != SMB2_READ_REPLY_SIZE) {
+                smb2_set_error(smb2, "Unexpected size of Read reply. "
+                               "Expected %d, got %d",
+                               SMB2_READ_REPLY_SIZE,
+                               (int)struct_size);
+                return -1;
+        }
+
+        smb2_get_uint8(&pdu->in.iov[0], 2, &data_offset);
+        if (data_offset != SMB2_HEADER_SIZE + 16) {
+                smb2_set_error(smb2, "Unexpected data offset in Read reply. "
+                               "Expected %d, got %d",
+                               16, data_offset);
+                return -1;
+        }
+                
         smb2_get_uint32(&pdu->in.iov[0], 4, &rep->data_length);
         smb2_get_uint32(&pdu->in.iov[0], 8, &rep->data_remaining);
 
@@ -153,7 +175,10 @@ int smb2_process_read_reply(struct smb2_context *smb2,
 {
         struct smb2_read_reply reply;
 
-        smb2_decode_read_reply(smb2, pdu, &reply);
+        if (smb2_decode_read_reply(smb2, pdu, &reply) < 0) {
+                pdu->cb(smb2, -EBADMSG, NULL, pdu->cb_data);
+                return -1;
+        }
 
         pdu->cb(smb2, pdu->header.status, &reply, pdu->cb_data);
 

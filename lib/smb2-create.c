@@ -39,6 +39,8 @@
 #include <stddef.h>
 #endif
 
+#include <errno.h>
+
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-private.h"
@@ -51,7 +53,7 @@ smb2_encode_create_request(struct smb2_context *smb2,
         int len;
         char *buf;
         struct ucs2 *name = NULL;
-        
+
         len = SMB2_CREATE_REQUEST_SIZE & 0xfffffffe;
         buf = malloc(len);
         if (buf == NULL) {
@@ -72,11 +74,13 @@ smb2_encode_create_request(struct smb2_context *smb2,
                         free(buf);
                         return -1;
                 }
-                smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 46, 2 * name->len);
+                /* name length */
+                smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 46,
+                                2 * name->len);
         }
-        
-        
-        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 0, req->struct_size);
+
+        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 0,
+                        SMB2_CREATE_REQUEST_SIZE);
         smb2_set_uint8(&pdu->out.iov[pdu->out.niov], 2, req->security_flags);
         smb2_set_uint8(&pdu->out.iov[pdu->out.niov], 3, req->requested_oplock_level);
         smb2_set_uint32(&pdu->out.iov[pdu->out.niov], 4, req->impersonation_level);
@@ -86,8 +90,9 @@ smb2_encode_create_request(struct smb2_context *smb2,
         smb2_set_uint32(&pdu->out.iov[pdu->out.niov], 32, req->share_access);
         smb2_set_uint32(&pdu->out.iov[pdu->out.niov], 36, req->create_disposition);
         smb2_set_uint32(&pdu->out.iov[pdu->out.niov], 40, req->create_options);
-        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 44, req->name_offset);
-        smb2_set_uint32(&pdu->out.iov[pdu->out.niov], 48, req->create_context_offset);
+        /* name offset */
+        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 44,
+                        SMB2_HEADER_SIZE + 56);
         smb2_set_uint32(&pdu->out.iov[pdu->out.niov], 52, req->create_context_length);
         pdu->out.niov++;
 
@@ -128,7 +133,18 @@ smb2_decode_create_reply(struct smb2_context *smb2,
                          struct smb2_pdu *pdu,
                          struct smb2_create_reply *rep)
 {
-        smb2_get_uint16(&pdu->in.iov[0], 0, &rep->struct_size);
+        uint16_t struct_size;
+
+        smb2_get_uint16(&pdu->in.iov[0], 0, &struct_size);
+        if (struct_size != SMB2_CREATE_REPLY_SIZE ||
+            struct_size < pdu->in.iov[0].len) {
+                smb2_set_error(smb2, "Unexpected size of Create reply. "
+                               "Expected %d, got %d",
+                               SMB2_CLOSE_REPLY_SIZE,
+                               (int)pdu->in.iov[0].len);
+                return -1;
+        }
+
         smb2_get_uint8(&pdu->in.iov[0], 2, &rep->oplock_level);
         smb2_get_uint8(&pdu->in.iov[0], 3, &rep->flags);
         smb2_get_uint32(&pdu->in.iov[0], 4, &rep->create_action);
@@ -140,7 +156,6 @@ smb2_decode_create_reply(struct smb2_context *smb2,
         smb2_get_uint64(&pdu->in.iov[0], 48, &rep->end_of_file);
         smb2_get_uint32(&pdu->in.iov[0], 56, &rep->file_attributes);
         memcpy(rep->file_id, pdu->in.iov[0].buf + 64, SMB2_FD_SIZE);
-        smb2_get_uint32(&pdu->in.iov[0], 80, &rep->create_context_offset);
         smb2_get_uint32(&pdu->in.iov[0], 84, &rep->create_context_length);
 
         /* No support for createcontext yet*/
@@ -182,7 +197,10 @@ int smb2_process_create_reply(struct smb2_context *smb2,
 {
         struct smb2_create_reply reply;
 
-        smb2_decode_create_reply(smb2, pdu, &reply);
+        if (smb2_decode_create_reply(smb2, pdu, &reply) < 0) {
+                pdu->cb(smb2, -EBADMSG, NULL, pdu->cb_data);
+                return -1;
+        }
 
         pdu->cb(smb2, pdu->header.status, &reply, pdu->cb_data);
 
