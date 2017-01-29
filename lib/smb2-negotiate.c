@@ -169,7 +169,8 @@ int smb2_process_negotiate_reply(struct smb2_context *smb2,
         smb2->max_transact_size = reply.max_transact_size;
         smb2->max_read_size = reply.max_read_size;
         smb2->max_write_size = reply.max_write_size;
-        
+        smb2->dialect = reply.dialect_revision;
+
         pdu->cb(smb2, pdu->header.status, &reply, pdu->cb_data);
         
         return 0;
