@@ -378,7 +378,6 @@ struct smb2_query_directory_request {
         uint8_t flags;
         uint32_t file_index;
         smb2_file_id file_id;
-        uint16_t name_offset;
         char *name;       /* name in UTF8 */
         uint32_t output_buffer_length;
 };

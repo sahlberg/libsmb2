@@ -271,7 +271,6 @@ query_cb(struct smb2_context *smb2, int status,
                 req.flags = 0;
                 memcpy(req.file_id, dir->file_id, SMB2_FD_SIZE);
                 req.output_buffer_length = 0xffff;
-                req.name_offset = 0x60;
                 req.name = "*";
                 
                 if (smb2_cmd_query_directory_async(smb2, &req, query_cb, dir) < 0) {
@@ -326,7 +325,6 @@ opendir_cb(struct smb2_context *smb2, int status,
         req.flags = 0;
         memcpy(req.file_id, dir->file_id, SMB2_FD_SIZE);
         req.output_buffer_length = 0xffff;
-        req.name_offset = 0x60;
         req.name = "*";
 
         if (smb2_cmd_query_directory_async(smb2, &req, query_cb, dir) < 0) {
