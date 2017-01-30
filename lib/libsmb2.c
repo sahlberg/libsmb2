@@ -47,6 +47,10 @@
 #include <sys/stat.h>
 #endif
 
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -654,10 +658,12 @@ connect_cb(struct smb2_context *smb2, int status,
         }
         
         memset(&req, 0, sizeof(struct smb2_negotiate_request));
-        req.dialect_count = SMB2_NUM_DIALECTS;
+        req.dialect_count = 4;
         req.security_mode = smb2->security_mode;
         req.dialects[0] = SMB2_VERSION_0202;
         req.dialects[1] = SMB2_VERSION_0210;
+        req.dialects[2] = SMB2_VERSION_0300;
+        req.dialects[3] = SMB2_VERSION_0302;
         memcpy(req.client_guid, smb2_get_client_guid(smb2), 16);
 
         if (smb2_cmd_negotiate_async(smb2, &req, negotiate_cb, c_data) != 0) {
@@ -1320,3 +1326,55 @@ int smb2_stat_async(struct smb2_context *smb2, char *path,
 
         return 0;
 }
+
+struct disconnect_data {
+        smb2_command_cb cb;
+        void *cb_data;
+};
+
+static void
+disconnect_cb_2(struct smb2_context *smb2, int status,
+           void *command_data _U_, void *private_data)
+{
+        struct disconnect_data *dc_data = private_data;
+
+        dc_data->cb(smb2, 0, NULL, dc_data->cb_data);
+        free(dc_data);
+        close(smb2->fd);
+}
+
+static void
+disconnect_cb_1(struct smb2_context *smb2, int status,
+           void *command_data _U_, void *private_data)
+{
+        struct disconnect_data *dc_data = private_data;
+
+        if (smb2_cmd_logoff_async(smb2, disconnect_cb_2, dc_data) != 0) {
+                dc_data->cb(smb2, -ENOMEM, NULL, dc_data->cb_data);
+                free(dc_data);
+        }
+}
+
+int smb2_disconnect_share_async(struct smb2_context *smb2,
+                                smb2_command_cb cb, void *cb_data)
+{
+        struct disconnect_data *dc_data;
+
+        dc_data = malloc(sizeof(struct disconnect_data));
+        if (dc_data == NULL) {
+                smb2_set_error(smb2, "Failed to allocate disconnect_data");
+                return -ENOMEM;
+        }
+        memset(dc_data, 0, sizeof(struct disconnect_data));
+
+        dc_data->cb = cb;
+        dc_data->cb_data = cb_data;
+ 
+        if (smb2_cmd_tree_disconnect_async(smb2, disconnect_cb_1, dc_data) != 0) {
+                free(dc_data);
+                return -ENOMEM;
+        }
+
+        return 0;
+}
+        

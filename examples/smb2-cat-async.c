@@ -40,7 +40,7 @@ int usage(void)
         exit(1);
 }
 
-void lo_cb(struct smb2_context *smb2, int status,
+void dc_cb(struct smb2_context *smb2, int status,
                 void *command_data _U_, void *private_data)
 {
         is_finished = 1;
@@ -49,7 +49,7 @@ void lo_cb(struct smb2_context *smb2, int status,
 void cl_cb(struct smb2_context *smb2, int status,
                 void *command_data, void *private_data)
 {
-        smb2_cmd_logoff_async(smb2, lo_cb, NULL);
+        smb2_disconnect_share_async(smb2, dc_cb, NULL);
 }
 
 void pr_cb(struct smb2_context *smb2, int status,

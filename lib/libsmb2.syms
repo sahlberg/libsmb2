@@ -12,11 +12,14 @@ smb2_cmd_query_directory_async
 smb2_cmd_query_info_async
 smb2_cmd_session_setup_async
 smb2_cmd_tree_connect_async
+smb2_cmd_tree_disconnect_async
 smb2_connect_async
 smb2_connect_share
 smb2_connect_share_async
 smb2_destroy_context
 smb2_destroy_url
+smb2_disconnect_share
+smb2_disconnect_share_async
 smb2_fstat
 smb2_fstat_async
 smb2_get_client_guid

@@ -124,7 +124,7 @@ void smb2_destroy_url(struct smb2_url *url)
 struct smb2_context *smb2_init_context(void)
 {
         struct smb2_context *smb2;
-        
+
         smb2 = malloc(sizeof(struct smb2_context));
         if (smb2 == NULL) {
                 return NULL;
@@ -133,7 +133,7 @@ struct smb2_context *smb2_init_context(void)
 
         smb2->fd = -1;
         
-        memcpy(smb2->client_guid, "libnfs", 6);
+        snprintf(smb2->client_guid, 16, "libnfs-%d", getpid());
         
         return smb2;
 }

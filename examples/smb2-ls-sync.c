@@ -91,6 +91,7 @@ int main(int argc, char *argv[])
         }
 
         smb2_closedir(smb2, dir);
+        smb2_disconnect_share(smb2);
         smb2_destroy_url(url);
         smb2_destroy_context(smb2);
         

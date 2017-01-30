@@ -71,9 +71,6 @@ static int wait_for_reply(struct smb2_context *smb2,
         return 0;
 }
 
-/*
- * Connect to the server and mount the share.
- */
 static void connect_cb(struct smb2_context *smb2, int status,
                        void *command_data, void *private_data)
 {
@@ -83,6 +80,9 @@ static void connect_cb(struct smb2_context *smb2, int status,
         cb_data->status = status;
 }
 
+/*
+ * Connect to the server and mount the share.
+ */
 int smb2_connect_share(struct smb2_context *smb2,
                        const char *server, const char *share)
 {
@@ -93,6 +93,27 @@ int smb2_connect_share(struct smb2_context *smb2,
 	if (smb2_connect_share_async(smb2, server, share,
                                      connect_cb, &cb_data) != 0) {
 		smb2_set_error(smb2, "smb2_connect_share_async failed");
+		return -ENOMEM;
+	}
+
+	if (wait_for_reply(smb2, &cb_data) < 0) {
+                return -EIO;
+        }
+
+	return cb_data.status;
+}
+
+/*
+ * Disconnect from share
+ */
+int smb2_disconnect_share(struct smb2_context *smb2)
+{
+        struct sync_cb_data cb_data;
+
+	cb_data.is_finished = 0;
+
+	if (smb2_disconnect_share_async(smb2, connect_cb, &cb_data) != 0) {
+		smb2_set_error(smb2, "smb2_disconnect_share_async failed");
 		return -ENOMEM;
 	}
 

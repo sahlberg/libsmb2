@@ -94,6 +94,7 @@ int main(int argc, char *argv[])
         t = (time_t)st.smb2_ctime;
 	printf("Ctime:%s", asctime(localtime(&t)));
 
+        smb2_disconnect_share(smb2);
         smb2_destroy_url(url);
         smb2_destroy_context(smb2);
         

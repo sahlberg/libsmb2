@@ -85,6 +85,25 @@ int smb2_cmd_tree_connect_async(struct smb2_context *smb2,
                                 smb2_command_cb cb, void *cb_data);
 
 /*
+ * Asynchronous SMB2 Tree Disonnect
+ *
+ * Returns:
+ *  0 if the call was initiated and a disconnect will be attempted. Result of
+ * the tree disconnect will be reported through the callback function.
+ * <0 if there was an error. The callback function will not be invoked.
+ *
+ * Callback parameters :
+ * status can be either of :
+ *    0     : Tree Disonnect was successful.
+ *
+ *   !0     : Status is NT status code.
+ *
+ * Command_data is always NULL.
+ */
+int smb2_cmd_tree_disconnect_async(struct smb2_context *smb2,
+                                smb2_command_cb cb, void *cb_data);
+
+/*
  * Asynchronous SMB2 Create
  *
  * Returns:

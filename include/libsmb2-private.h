@@ -222,6 +222,8 @@ int smb2_process_session_setup_reply(struct smb2_context *smb2,
                                      struct smb2_pdu *pdu);
 int smb2_process_tree_connect_reply(struct smb2_context *smb2,
                                     struct smb2_pdu *pdu);
+int smb2_process_tree_disconnect_reply(struct smb2_context *smb2,
+                                       struct smb2_pdu *pdu);
 int smb2_process_write_reply(struct smb2_context *smb2,
                              struct smb2_pdu *pdu);
 

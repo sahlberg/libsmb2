@@ -147,7 +147,33 @@ int smb2_connect_share_async(struct smb2_context *smb2,
  */
 int smb2_connect_share(struct smb2_context *smb2,
                        const char *server, const char *share);
-        
+
+/*
+ * Async call to disconnect from a share/
+ *
+ * Returns:
+ *  0 if the call was initiated and a connection will be attempted. Result of
+ * the disconnect will be reported through the callback function.
+ * -errno if there was an error. The callback function will not be invoked.
+ *
+ * Callback parameters :
+ * status can be either of :
+ *    0     : Connection was successful. Command_data is NULL.
+ *
+ *   -errno : Failed to disconnect the share. Command_data is NULL.
+ */
+int smb2_disconnect_share_async(struct smb2_context *smb2,
+                                smb2_command_cb cb, void *cb_data);
+
+/*
+ * Sync call to disconnect from a share/
+ *
+ * Returns:
+ * 0      : Disconnected from the share successfully.
+ * -errno : Failure.
+ */
+int smb2_disconnect_share(struct smb2_context *smb2);
+
 /*
  * This function returns a description of the last encountered error.
  */

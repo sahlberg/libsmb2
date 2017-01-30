@@ -81,6 +81,7 @@ int main(int argc, char *argv[])
         };
                 
         smb2_close(smb2, fh);
+        smb2_disconnect_share(smb2);
         smb2_destroy_url(url);
         smb2_destroy_context(smb2);
         
