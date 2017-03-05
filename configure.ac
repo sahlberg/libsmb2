@@ -177,6 +177,12 @@ AC_CHECK_MEMBER([struct sockaddr_storage.ss_family],
 #include <sys/socket.h>
 ])
 
+# check for gssapi/gssapi.h
+dnl Check for gssapi/gssapi.h
+AC_CHECK_HEADERS([gssapi/gssapi.h], [], [
+  AC_MSG_ERROR(You need gssapi development files to compile libsmb2.)
+])
+
 # check where makedev is defined
 AC_HEADER_MAJOR
 
