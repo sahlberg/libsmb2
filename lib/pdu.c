@@ -95,12 +95,11 @@ smb2_allocate_pdu(struct smb2_context *smb2, enum smb2_command command,
 
         pdu->cb = cb;
         pdu->cb_data = cb_data;
-
         pdu->out.niov = 0;
-        smb2_add_iovector(smb2, &pdu->out, pdu->hdr, SMB2_SPL_SIZE, NULL);
-        smb2_add_iovector(smb2, &pdu->out, pdu->hdr + SMB2_SPL_SIZE, SMB2_HEADER_SIZE, NULL);
-                          
-        if (smb2_encode_header(smb2, &pdu->out.iov[1], &pdu->header)) {
+
+        smb2_add_iovector(smb2, &pdu->out, pdu->hdr, SMB2_HEADER_SIZE, NULL);
+        if (smb2_encode_header(smb2, &pdu->out.iov[pdu->out.niov - 1],
+                               &pdu->header)) {
                 smb2_set_error(smb2, "Failed to encode header");
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
@@ -286,10 +285,8 @@ smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
         for (i = 0; i < pdu->out.niov; i++) {
                 len += pdu->out.iov[i].len;
         }
-
         pdu->out.total_size = len;
-        *(uint32_t *)pdu->out.iov[0].buf = htobe32(len - 4);
-        
+
 	smb2_add_to_outqueue(smb2, pdu);
 
 	return 0;

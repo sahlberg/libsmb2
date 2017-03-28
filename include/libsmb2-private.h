@@ -133,15 +133,14 @@ struct smb2_pdu {
         void *cb_data;
 
         /* buffer to avoid having to malloc the headers */
-        char hdr[SMB2_SPL_SIZE + SMB2_HEADER_SIZE];
+        char hdr[SMB2_HEADER_SIZE];
 
         /* For sending/receiving
-         * out contains at least three vectors:
-         * [0]  4 bytes for the stream protocol length
-         * [1]  64 bytes for the smb header
-         * [2+] command and and extra parameters
+         * out contains at least two vectors:
+         * [0]  64 bytes for the smb header
+         * [1+] command and and extra parameters
          *
-         * in contains at least one vectos:
+         * in contains at least one vector:
          * [0+] command and and extra parameters
          */
         struct smb2_io_vectors out;

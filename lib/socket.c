@@ -107,11 +107,20 @@ smb2_write_to_socket(struct smb2_context *smb2)
                 int niov = pdu->out.niov;
                 int i;
                 ssize_t count;
-                
+                uint32_t spl = 0;
+
+                /* Count/copy all the vectors from the PDU */
                 for (i = 0; i < niov; i++) {
-                        iov[i].iov_base = pdu->out.iov[i].buf;
-                        iov[i].iov_len = pdu->out.iov[i].len;
+                        iov[i + 1].iov_base = pdu->out.iov[i].buf;
+                        iov[i + 1].iov_len = pdu->out.iov[i].len;
+                        spl += pdu->out.iov[i].len;
                 }
+                /* Add the SPL vector as the first vector */
+                spl = htobe32(spl);
+                iov[0].iov_base = &spl;
+                iov[0].iov_len = SMB2_SPL_SIZE;
+                niov++;
+
                 tmpiov = iov;
 
                 /* Skip the vectors we have alredy written */
@@ -138,7 +147,7 @@ smb2_write_to_socket(struct smb2_context *smb2)
                 
                 pdu->out.num_done += count;
 
-                if (pdu->out.num_done == pdu->out.total_size) {
+                if (pdu->out.num_done == SMB2_SPL_SIZE + pdu->out.total_size) {
                         SMB2_LIST_REMOVE(&smb2->outqueue, pdu);
                         SMB2_LIST_ADD_END(&smb2->waitqueue, pdu);
                 }
