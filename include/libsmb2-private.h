@@ -172,8 +172,9 @@ uint64_t timeval_to_win(struct smb2_timeval *tv);
 void smb2_set_error(struct smb2_context *smb2, const char *error_string,
                     ...) __attribute__((format(printf, 2, 3)));
 
-void smb2_add_iovector(struct smb2_context *smb2, struct smb2_io_vectors *v,
-                       char *buf, int len, void (*free)(void *));
+struct smb2_iovec *smb2_add_iovector(struct smb2_context *smb2,
+                                     struct smb2_io_vectors *v,
+                                     char *buf, int len, void (*free)(void *));
 
 struct smb2_pdu *smb2_allocate_pdu(struct smb2_context *smb2,
                                    enum smb2_command command,

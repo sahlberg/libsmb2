@@ -52,6 +52,7 @@ smb2_encode_write_request(struct smb2_context *smb2,
 {
         int len;
         char *buf;
+        struct smb2_iovec *iov;
 
         len = SMB2_WRITE_REQUEST_SIZE & 0xfffffffe;
         buf = malloc(len);
@@ -61,24 +62,17 @@ smb2_encode_write_request(struct smb2_context *smb2,
         }
         memset(buf, 0, len);
 
-        pdu->out.iov[pdu->out.niov].len = len;
-        pdu->out.iov[pdu->out.niov].buf = buf;
-        pdu->out.iov[pdu->out.niov].free = free;
+        iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
 
-        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 0,
-                        SMB2_WRITE_REQUEST_SIZE);
-        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 2,
-                        SMB2_HEADER_SIZE + 48);
-        smb2_set_uint32(&pdu->out.iov[pdu->out.niov], 4, req->length);
-        smb2_set_uint64(&pdu->out.iov[pdu->out.niov], 8, req->offset);
-        memcpy(pdu->out.iov[pdu->out.niov].buf + 16, req->file_id,
-               SMB2_FD_SIZE);
-        smb2_set_uint32(&pdu->out.iov[pdu->out.niov], 32, req->channel);
-        smb2_set_uint32(&pdu->out.iov[pdu->out.niov], 36, req->remaining_bytes);
-        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 42, req->write_channel_info_length);
-        smb2_set_uint32(&pdu->out.iov[pdu->out.niov], 44, req->flags);
-
-        pdu->out.niov++;
+        smb2_set_uint16(iov, 0, SMB2_WRITE_REQUEST_SIZE);
+        smb2_set_uint16(iov, 2, SMB2_HEADER_SIZE + 48);
+        smb2_set_uint32(iov, 4, req->length);
+        smb2_set_uint64(iov, 8, req->offset);
+        memcpy(iov->buf + 16, req->file_id, SMB2_FD_SIZE);
+        smb2_set_uint32(iov, 32, req->channel);
+        smb2_set_uint32(iov, 36, req->remaining_bytes);
+        smb2_set_uint16(iov, 42, req->write_channel_info_length);
+        smb2_set_uint32(iov, 44, req->flags);
 
         if (req->write_channel_info_length > 0 ||
             req->write_channel_info != NULL) {

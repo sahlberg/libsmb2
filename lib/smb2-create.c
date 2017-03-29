@@ -53,6 +53,7 @@ smb2_encode_create_request(struct smb2_context *smb2,
         int len;
         char *buf;
         struct ucs2 *name = NULL;
+        struct smb2_iovec *iov;
 
         len = SMB2_CREATE_REQUEST_SIZE & 0xfffffffe;
         buf = malloc(len);
@@ -62,9 +63,7 @@ smb2_encode_create_request(struct smb2_context *smb2,
         }
         memset(buf, 0, len);
         
-        pdu->out.iov[pdu->out.niov].len = len;
-        pdu->out.iov[pdu->out.niov].buf = buf;
-        pdu->out.iov[pdu->out.niov].free = free;
+        iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
 
         /* Name */
         if (req->name && req->name[0]) {
@@ -75,35 +74,31 @@ smb2_encode_create_request(struct smb2_context *smb2,
                         return -1;
                 }
                 /* name length */
-                smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 46,
-                                2 * name->len);
+                smb2_set_uint16(iov, 46, 2 * name->len);
         }
 
-        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 0,
-                        SMB2_CREATE_REQUEST_SIZE);
-        smb2_set_uint8(&pdu->out.iov[pdu->out.niov], 2, req->security_flags);
-        smb2_set_uint8(&pdu->out.iov[pdu->out.niov], 3, req->requested_oplock_level);
-        smb2_set_uint32(&pdu->out.iov[pdu->out.niov], 4, req->impersonation_level);
-        smb2_set_uint64(&pdu->out.iov[pdu->out.niov], 8, req->smb_create_flags);
-        smb2_set_uint32(&pdu->out.iov[pdu->out.niov], 24, req->desired_access);
-        smb2_set_uint32(&pdu->out.iov[pdu->out.niov], 28, req->file_attributes);
-        smb2_set_uint32(&pdu->out.iov[pdu->out.niov], 32, req->share_access);
-        smb2_set_uint32(&pdu->out.iov[pdu->out.niov], 36, req->create_disposition);
-        smb2_set_uint32(&pdu->out.iov[pdu->out.niov], 40, req->create_options);
+        smb2_set_uint16(iov, 0, SMB2_CREATE_REQUEST_SIZE);
+        smb2_set_uint8(iov, 2, req->security_flags);
+        smb2_set_uint8(iov, 3, req->requested_oplock_level);
+        smb2_set_uint32(iov, 4, req->impersonation_level);
+        smb2_set_uint64(iov, 8, req->smb_create_flags);
+        smb2_set_uint32(iov, 24, req->desired_access);
+        smb2_set_uint32(iov, 28, req->file_attributes);
+        smb2_set_uint32(iov, 32, req->share_access);
+        smb2_set_uint32(iov, 36, req->create_disposition);
+        smb2_set_uint32(iov, 40, req->create_options);
         /* name offset */
-        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 44,
-                        SMB2_HEADER_SIZE + 56);
-        smb2_set_uint32(&pdu->out.iov[pdu->out.niov], 52, req->create_context_length);
-        pdu->out.niov++;
+        smb2_set_uint16(iov, 44, SMB2_HEADER_SIZE + 56);
+        smb2_set_uint32(iov, 52, req->create_context_length);
 
         /* Name */
         if (name) {
-                pdu->out.iov[pdu->out.niov].len = 2 * name->len;
-                pdu->out.iov[pdu->out.niov].buf = malloc(2 * name->len);
-                memcpy(pdu->out.iov[pdu->out.niov].buf, &name->val[0],
-                       2 * name->len);
-                pdu->out.iov[pdu->out.niov].free = free;
-                pdu->out.niov++;
+                iov = smb2_add_iovector(smb2, &pdu->out,
+                                        malloc(2 * name->len),
+                                        2 * name->len,
+                                        free);
+
+                memcpy(iov->buf, &name->val[0], 2 * name->len);
         }
         free(name);
 
@@ -119,10 +114,8 @@ smb2_encode_create_request(struct smb2_context *smb2,
         if (name == NULL && !req->create_context_length) {
                 static char zero;
 
-                pdu->out.iov[pdu->out.niov].len = 1;
-                pdu->out.iov[pdu->out.niov].buf = &zero;
-                pdu->out.iov[pdu->out.niov].free = NULL;
-                pdu->out.niov++;
+                iov = smb2_add_iovector(smb2, &pdu->out,
+                                        &zero, 1, NULL);
         }
         
         return 0;

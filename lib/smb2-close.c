@@ -52,6 +52,7 @@ smb2_encode_close_request(struct smb2_context *smb2,
 {
         int len;
         char *buf;
+        struct smb2_iovec *iov;
 
         len = SMB2_CLOSE_REQUEST_SIZE & 0xfffffffe;
         buf = malloc(len);
@@ -60,17 +61,13 @@ smb2_encode_close_request(struct smb2_context *smb2,
                 return -1;
         }
         memset(buf, 0, len);
-        
-        pdu->out.iov[pdu->out.niov].len = len;
-        pdu->out.iov[pdu->out.niov].buf = buf;
-        pdu->out.iov[pdu->out.niov].free = free;
-        
-        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 0,
-                        SMB2_CLOSE_REQUEST_SIZE);
-        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 2, req->flags);
-        memcpy(pdu->out.iov[pdu->out.niov].buf + 8, req->file_id,
-               SMB2_FD_SIZE);
-        pdu->out.niov++;
+
+        iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+
+        smb2_set_uint16(iov, 0, SMB2_CLOSE_REQUEST_SIZE);
+        smb2_set_uint16(iov, 2, req->flags);
+        memcpy(iov->buf + 8, req->file_id, SMB2_FD_SIZE);
+
         
         return 0;
 }

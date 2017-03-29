@@ -52,8 +52,10 @@ smb2_encode_negotiate_request(struct smb2_context *smb2,
 {
         char *buf;
         int i, len;
+        struct smb2_iovec *iov;
         
-        len = SMB2_NEGOTIATE_REQUEST_SIZE + req->dialect_count * sizeof(uint16_t);
+        len = SMB2_NEGOTIATE_REQUEST_SIZE +
+                req->dialect_count * sizeof(uint16_t);
         len = PAD_TO_32BIT(len);
         buf = malloc(len);
         if (buf == NULL) {
@@ -62,22 +64,19 @@ smb2_encode_negotiate_request(struct smb2_context *smb2,
         }
         memset(buf, 0, len);
         
-        pdu->out.iov[pdu->out.niov].len = len;
-        pdu->out.iov[pdu->out.niov].buf = buf;
-        pdu->out.iov[pdu->out.niov].free = free;
+        iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
         
-        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 0,
-                        SMB2_NEGOTIATE_REQUEST_SIZE);
-        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 2, req->dialect_count);
-        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 4, req->security_mode);
-        smb2_set_uint32(&pdu->out.iov[pdu->out.niov], 8, req->capabilities);
-        memcpy(pdu->out.iov[pdu->out.niov].buf + 12, req->client_guid, 16);
-        smb2_set_uint64(&pdu->out.iov[pdu->out.niov], 28, req->client_start_time);
+        smb2_set_uint16(iov, 0, SMB2_NEGOTIATE_REQUEST_SIZE);
+        smb2_set_uint16(iov, 2, req->dialect_count);
+        smb2_set_uint16(iov, 4, req->security_mode);
+        smb2_set_uint32(iov, 8, req->capabilities);
+        memcpy(iov->buf + 12, req->client_guid, 16);
+        smb2_set_uint64(iov, 28, req->client_start_time);
         for (i = 0; i < req->dialect_count; i++) {
-                smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 36 + i * sizeof(uint16_t), req->dialects[i]);
+                smb2_set_uint16(iov, 36 + i * sizeof(uint16_t),
+                                req->dialects[i]);
         }
 
-        pdu->out.niov++;
         return 0;
 }
 

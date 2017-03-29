@@ -49,6 +49,7 @@ smb2_encode_tree_disconnect_request(struct smb2_context *smb2,
 {
         char *buf;
         int len;
+        struct smb2_iovec *iov;
         
         len = 4;
 
@@ -60,14 +61,10 @@ smb2_encode_tree_disconnect_request(struct smb2_context *smb2,
         }
         memset(buf, 0, len);
         
-        pdu->out.iov[pdu->out.niov].len = len;
-        pdu->out.iov[pdu->out.niov].buf = buf;
-        pdu->out.iov[pdu->out.niov].free = free;
+        iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
         
-        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 0,
-                        SMB2_TREE_DISCONNECT_REQUEST_SIZE);
+        smb2_set_uint16(iov, 0, SMB2_TREE_DISCONNECT_REQUEST_SIZE);
 
-        pdu->out.niov++;
         return 0;
 }
 

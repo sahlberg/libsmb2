@@ -52,6 +52,7 @@ smb2_encode_tree_connect_request(struct smb2_context *smb2,
 {
         int len;
         char *buf;
+        struct smb2_iovec *iov;
         
         len = SMB2_TREE_CONNECT_REQUEST_SIZE & 0xfffffffe;
         buf = malloc(len);
@@ -62,27 +63,23 @@ smb2_encode_tree_connect_request(struct smb2_context *smb2,
         }
         memset(buf, 0, len);
         
-        pdu->out.iov[pdu->out.niov].len = len;
-        pdu->out.iov[pdu->out.niov].buf = buf;
-        pdu->out.iov[pdu->out.niov].free = free;
+        iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
         
-        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 0,
-                        SMB2_TREE_CONNECT_REQUEST_SIZE);
-        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 2, req->flags);
+        smb2_set_uint16(iov, 0, SMB2_TREE_CONNECT_REQUEST_SIZE);
+        smb2_set_uint16(iov, 2, req->flags);
         /* path offset */
-        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 4,
-                        SMB2_HEADER_SIZE + len);
-        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 6, req->path_length);
-        pdu->out.niov++;
+        smb2_set_uint16(iov, 4, SMB2_HEADER_SIZE + len);
+        smb2_set_uint16(iov, 6, req->path_length);
+
 
         /* Path */
-        pdu->out.iov[pdu->out.niov].len = req->path_length;
-        pdu->out.iov[pdu->out.niov].buf = malloc(req->path_length);
-        memcpy(pdu->out.iov[pdu->out.niov].buf, req->path,
-               req->path_length);
-        pdu->out.iov[pdu->out.niov].free = free;
-        pdu->out.niov++;
-        
+        iov = smb2_add_iovector(smb2, &pdu->out,
+                                malloc(req->path_length),
+                                req->path_length,
+                                free);
+
+        memcpy(iov->buf, req->path, req->path_length);
+
         return 0;
 }
 

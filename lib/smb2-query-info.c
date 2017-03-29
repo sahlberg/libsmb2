@@ -125,6 +125,7 @@ smb2_encode_query_info_request(struct smb2_context *smb2,
 {
         int len;
         char *buf;
+        struct smb2_iovec *iov;
 
         len = SMB2_QUERY_INFO_REQUEST_SIZE & 0xfffffffe;
         buf = malloc(len);
@@ -134,21 +135,16 @@ smb2_encode_query_info_request(struct smb2_context *smb2,
         }
         memset(buf, 0, len);
         
-        pdu->out.iov[pdu->out.niov].len = len;
-        pdu->out.iov[pdu->out.niov].buf = buf;
-        pdu->out.iov[pdu->out.niov].free = free;
+        iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
 
-        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 0,
-                        SMB2_QUERY_INFO_REQUEST_SIZE);
-        smb2_set_uint8(&pdu->out.iov[pdu->out.niov], 2, req->info_type);
-        smb2_set_uint8(&pdu->out.iov[pdu->out.niov], 3, req->file_information_class);
-        smb2_set_uint32(&pdu->out.iov[pdu->out.niov],4, req->output_buffer_length);
-        smb2_set_uint32(&pdu->out.iov[pdu->out.niov],12, req->input_buffer_length);
-        smb2_set_uint32(&pdu->out.iov[pdu->out.niov],16, req->additional_information);
-        smb2_set_uint32(&pdu->out.iov[pdu->out.niov],20, req->flags);
-        memcpy(pdu->out.iov[pdu->out.niov].buf + 24, req->file_id,
-               SMB2_FD_SIZE);
-        pdu->out.niov++;
+        smb2_set_uint16(iov, 0, SMB2_QUERY_INFO_REQUEST_SIZE);
+        smb2_set_uint8(iov, 2, req->info_type);
+        smb2_set_uint8(iov, 3, req->file_information_class);
+        smb2_set_uint32(iov,4, req->output_buffer_length);
+        smb2_set_uint32(iov,12, req->input_buffer_length);
+        smb2_set_uint32(iov,16, req->additional_information);
+        smb2_set_uint32(iov,20, req->flags);
+        memcpy(iov->buf + 24, req->file_id, SMB2_FD_SIZE);
 
         if (req->input_buffer_length > 0) {
                 smb2_set_error(smb2, "No support for input buffers, yet");

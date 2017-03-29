@@ -52,6 +52,7 @@ smb2_encode_session_setup_request(struct smb2_context *smb2,
 {
         int len;
         char *buf;
+        struct smb2_iovec *iov;
         
         len = SMB2_SESSION_SETUP_REQUEST_SIZE & 0xfffffffe;
         buf = malloc(len);
@@ -62,30 +63,26 @@ smb2_encode_session_setup_request(struct smb2_context *smb2,
         }
         memset(buf, 0, len);
         
-        pdu->out.iov[pdu->out.niov].len = len;
-        pdu->out.iov[pdu->out.niov].buf = buf;
-        pdu->out.iov[pdu->out.niov].free = free;
-        
-        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 0,
-                        SMB2_SESSION_SETUP_REQUEST_SIZE);
-        smb2_set_uint8(&pdu->out.iov[pdu->out.niov], 2, req->flags);
-        smb2_set_uint8(&pdu->out.iov[pdu->out.niov], 3, req->security_mode);
-        smb2_set_uint32(&pdu->out.iov[pdu->out.niov], 4, req->capabilities);
-        smb2_set_uint32(&pdu->out.iov[pdu->out.niov], 8, req->channel);
-        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 12,
-                        SMB2_HEADER_SIZE + 24);
-        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 14, req->security_buffer_length);
-        smb2_set_uint64(&pdu->out.iov[pdu->out.niov], 16, req->previous_session_id);
-        pdu->out.niov++;
+        iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+
+        smb2_set_uint16(iov, 0, SMB2_SESSION_SETUP_REQUEST_SIZE);
+        smb2_set_uint8(iov, 2, req->flags);
+        smb2_set_uint8(iov, 3, req->security_mode);
+        smb2_set_uint32(iov, 4, req->capabilities);
+        smb2_set_uint32(iov, 8, req->channel);
+        smb2_set_uint16(iov, 12, SMB2_HEADER_SIZE + 24);
+        smb2_set_uint16(iov, 14, req->security_buffer_length);
+        smb2_set_uint64(iov, 16, req->previous_session_id);
+
 
         /* Security buffer */
-        pdu->out.iov[pdu->out.niov].len = req->security_buffer_length;
-        pdu->out.iov[pdu->out.niov].buf = malloc(req->security_buffer_length);
-        memcpy(pdu->out.iov[pdu->out.niov].buf, req->security_buffer,
-               req->security_buffer_length);
-        pdu->out.iov[pdu->out.niov].free = free;
-        pdu->out.niov++;
-        
+        iov = smb2_add_iovector(smb2, &pdu->out,
+                                malloc(req->security_buffer_length),
+                                req->security_buffer_length,
+                                free);
+
+        memcpy(iov->buf, req->security_buffer, req->security_buffer_length);
+
         return 0;
 }
 

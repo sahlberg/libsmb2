@@ -97,6 +97,7 @@ smb2_encode_query_directory_request(struct smb2_context *smb2,
         int len;
         char *buf;
         struct ucs2 *name = NULL;
+        struct smb2_iovec *iov;
 
         len = SMB2_QUERY_DIRECTORY_REQUEST_SIZE & 0xfffffffe;
         buf = malloc(len);
@@ -105,10 +106,8 @@ smb2_encode_query_directory_request(struct smb2_context *smb2,
                 return -1;
         }
         memset(buf, 0, len);
-        
-        pdu->out.iov[pdu->out.niov].len = len;
-        pdu->out.iov[pdu->out.niov].buf = buf;
-        pdu->out.iov[pdu->out.niov].free = free;
+
+        iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
 
         /* Name */
         if (req->name && req->name[0]) {
@@ -118,31 +117,27 @@ smb2_encode_query_directory_request(struct smb2_context *smb2,
                         free(buf);
                         return -1;
                 }
-                smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 26, 2 * name->len);
+                smb2_set_uint16(iov, 26, 2 * name->len);
         }
         
-        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 0,
-                        SMB2_QUERY_DIRECTORY_REQUEST_SIZE);
-        smb2_set_uint8(&pdu->out.iov[pdu->out.niov], 2, req->file_information_class);
-        smb2_set_uint8(&pdu->out.iov[pdu->out.niov], 3, req->flags);
-        smb2_set_uint32(&pdu->out.iov[pdu->out.niov],4, req->file_index);
-        memcpy(pdu->out.iov[pdu->out.niov].buf + 8, req->file_id,
-               SMB2_FD_SIZE);
-        smb2_set_uint16(&pdu->out.iov[pdu->out.niov], 24,
-                        SMB2_HEADER_SIZE + 32);
-        smb2_set_uint32(&pdu->out.iov[pdu->out.niov], 28, req->output_buffer_length);
-        pdu->out.niov++;
+        smb2_set_uint16(iov, 0, SMB2_QUERY_DIRECTORY_REQUEST_SIZE);
+        smb2_set_uint8(iov, 2, req->file_information_class);
+        smb2_set_uint8(iov, 3, req->flags);
+        smb2_set_uint32(iov, 4, req->file_index);
+        memcpy(iov->buf + 8, req->file_id, SMB2_FD_SIZE);
+        smb2_set_uint16(iov, 24, SMB2_HEADER_SIZE + 32);
+        smb2_set_uint32(iov, 28, req->output_buffer_length);
 
         /* Name */
         if (name) {
-                pdu->out.iov[pdu->out.niov].len = 2 * name->len;
-                pdu->out.iov[pdu->out.niov].buf = malloc(2 * name->len);
-                memcpy(pdu->out.iov[pdu->out.niov].buf, &name->val[0],
-                       2 * name->len);
-                pdu->out.iov[pdu->out.niov].free = free;
-                pdu->out.niov++;
-        }
+                iov = smb2_add_iovector(smb2, &pdu->out,
+                                        malloc(2 * name->len),
+                                        2 * name->len,
+                                        free);
 
+                memcpy(iov->buf, &name->val[0], 2 * name->len);
+
+        }
         free(name);
         
         return 0;
