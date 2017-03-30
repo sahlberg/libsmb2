@@ -118,6 +118,10 @@ smb2_encode_create_request(struct smb2_context *smb2,
                                         &zero, 1, NULL);
         }
         
+        if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
+                return -1;
+        }
+
         return 0;
 }
 

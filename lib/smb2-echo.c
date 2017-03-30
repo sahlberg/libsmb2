@@ -64,6 +64,10 @@ smb2_encode_echo_request(struct smb2_context *smb2,
 
         smb2_set_uint16(iov, 0, SMB2_ECHO_REQUEST_SIZE);
 
+        if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
+                return -1;
+        }
+
         return 0;
 }
 

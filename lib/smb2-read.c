@@ -88,7 +88,11 @@ smb2_encode_read_request(struct smb2_context *smb2,
 
                 smb2_add_iovector(smb2, &pdu->out, &zero, 1, NULL);
         }
-        
+
+        if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
+                return -1;
+        }
+
         return 0;
 }
 

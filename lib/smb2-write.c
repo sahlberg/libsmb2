@@ -124,6 +124,10 @@ int smb2_cmd_write_async(struct smb2_context *smb2,
         smb2_add_iovector(smb2, &pdu->out, req->buf,
                           req->length, NULL);
         
+        if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
+                return -1;
+        }
+
         if (smb2_queue_pdu(smb2, pdu)) {
                 smb2_free_pdu(smb2, pdu);
                 return -1;

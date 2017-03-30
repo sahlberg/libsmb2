@@ -42,6 +42,26 @@
 #include "libsmb2.h"
 #include "libsmb2-private.h"
 
+int
+smb2_pad_to_64bit(struct smb2_context *smb2, struct smb2_io_vectors *v)
+{
+        static char zero_bytes[7];
+        int i, len = 0;
+
+        for (i = 0; i < v->niov; i++) {
+                len += v->iov[i].len;
+        }
+        if ((len & 0x07) == 0) {
+                return 0;
+        }
+        if (smb2_add_iovector(smb2, v, &zero_bytes[0], 8 - (len & 0x07), NULL)
+            == NULL) {
+                return -1;
+        }
+
+        return 0;
+}
+
 struct smb2_pdu *
 smb2_allocate_pdu(struct smb2_context *smb2, enum smb2_command command,
                   smb2_command_cb cb, void *cb_data)
