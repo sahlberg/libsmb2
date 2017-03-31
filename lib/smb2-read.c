@@ -127,9 +127,10 @@ smb2_decode_read_reply(struct smb2_context *smb2,
         return 0;
 }
 
-int smb2_cmd_read_async(struct smb2_context *smb2,
-                        struct smb2_read_request *req,
-                        smb2_command_cb cb, void *cb_data)
+struct smb2_pdu *
+smb2_cmd_read_async(struct smb2_context *smb2,
+                    struct smb2_read_request *req,
+                    smb2_command_cb cb, void *cb_data)
 {
         struct smb2_pdu *pdu;
         char *buf;
@@ -137,17 +138,17 @@ int smb2_cmd_read_async(struct smb2_context *smb2,
         buf = malloc(SMB2_READ_REPLY_SIZE & 0xfffffffe);
         if (buf == NULL) {
                 smb2_set_error(smb2, "Failed to malloc read header");
-                return -1;
+                return NULL;
         }
 
         pdu = smb2_allocate_pdu(smb2, SMB2_READ, cb, cb_data);
         if (pdu == NULL) {
-                return -1;
+                return NULL;
         }
 
         if (smb2_encode_read_request(smb2, pdu, req)) {
                 smb2_free_pdu(smb2, pdu);
-                return -1;
+                return NULL;
         }
 
         /* Add a vector for the read header as well a vector for
@@ -158,12 +159,7 @@ int smb2_cmd_read_async(struct smb2_context *smb2,
         smb2_add_iovector(smb2, &pdu->in, req->buf,
                           req->length, NULL);
         
-        if (smb2_queue_pdu(smb2, pdu)) {
-                smb2_free_pdu(smb2, pdu);
-                return -1;
-        }
-
-        return 0;
+        return pdu;
 }
 
 int smb2_process_read_reply(struct smb2_context *smb2,

@@ -104,28 +104,24 @@ smb2_decode_close_reply(struct smb2_context *smb2,
         return 0;
 }
 
-int smb2_cmd_close_async(struct smb2_context *smb2,
-                         struct smb2_close_request *req,
-                         smb2_command_cb cb, void *cb_data)
+struct smb2_pdu *
+smb2_cmd_close_async(struct smb2_context *smb2,
+                     struct smb2_close_request *req,
+                     smb2_command_cb cb, void *cb_data)
 {
         struct smb2_pdu *pdu;
 
         pdu = smb2_allocate_pdu(smb2, SMB2_CLOSE, cb, cb_data);
         if (pdu == NULL) {
-                return -1;
+                return NULL;
         }
 
         if (smb2_encode_close_request(smb2, pdu, req)) {
                 smb2_free_pdu(smb2, pdu);
-                return -1;
+                return NULL;
         }
         
-        if (smb2_queue_pdu(smb2, pdu)) {
-                smb2_free_pdu(smb2, pdu);
-                return -1;
-        }
-
-        return 0;
+        return pdu;
 }
 
 int smb2_process_close_reply(struct smb2_context *smb2,

@@ -28,11 +28,12 @@ extern "C" {
  */
 /*
  * Asynchronous SMB2 Negotiate
+ * pdu  : If the call was initiated and a connection will be attempted.
+ *        Result of the negotiate will be reported through the callback
+ *        function.
+ * NULL : If there was an error. The callback function will not be invoked.
  *
  * Returns:
- *  0 if the call was initiated and a connection will be attempted. Result of
- * the negotiate will be reported through the callback function.
- * <0 if there was an error. The callback function will not be invoked.
  *
  * Callback parameters :
  * status can be either of :
@@ -41,18 +42,19 @@ extern "C" {
  *
  *   !0     : Status is NT status code. Command_data is NULL.
  */
-int smb2_cmd_negotiate_async(struct smb2_context *smb2,
-                             struct smb2_negotiate_request *req,
-                             smb2_command_cb cb, void *cb_data);
+struct smb2_pdu *smb2_cmd_negotiate_async(struct smb2_context *smb2,
+                                          struct smb2_negotiate_request *req,
+                                          smb2_command_cb cb, void *cb_data);
 
 
 /*
  * Asynchronous SMB2 Session Setup
  *
  * Returns:
- *  0 if the call was initiated and a connection will be attempted. Result of
- * the session setup will be reported through the callback function.
- * <0 if there was an error. The callback function will not be invoked.
+ * pdu  : If the call was initiated and a connection will be attempted.
+ *        Result of the session setup will be reported through the callback
+ *        function.
+ * NULL : If there was an error. The callback function will not be invoked.
  *
  * Callback parameters :
  * status can be either of :
@@ -61,7 +63,7 @@ int smb2_cmd_negotiate_async(struct smb2_context *smb2,
  *
  *   !0     : Status is NT status code.
  */
-int smb2_cmd_session_setup_async(struct smb2_context *smb2,
+struct smb2_pdu *smb2_cmd_session_setup_async(struct smb2_context *smb2,
                                  struct smb2_session_setup_request *req,
                                  smb2_command_cb cb, void *cb_data);
 
@@ -69,9 +71,10 @@ int smb2_cmd_session_setup_async(struct smb2_context *smb2,
  * Asynchronous SMB2 Tree Connect
  *
  * Returns:
- *  0 if the call was initiated and a connection will be attempted. Result of
- * the tree connect will be reported through the callback function.
- * <0 if there was an error. The callback function will not be invoked.
+ * pdu  : If the call was initiated and a connection will be attempted.
+ *        Result of the tree connect will be reported through the callback
+ *        function.
+ * NULL : If there was an error. The callback function will not be invoked.
  *
  * Callback parameters :
  * status can be either of :
@@ -80,7 +83,7 @@ int smb2_cmd_session_setup_async(struct smb2_context *smb2,
  *
  *   !0     : Status is NT status code. Command_data is NULL.
  */
-int smb2_cmd_tree_connect_async(struct smb2_context *smb2,
+struct smb2_pdu *smb2_cmd_tree_connect_async(struct smb2_context *smb2,
                                 struct smb2_tree_connect_request *req,
                                 smb2_command_cb cb, void *cb_data);
 
@@ -88,9 +91,10 @@ int smb2_cmd_tree_connect_async(struct smb2_context *smb2,
  * Asynchronous SMB2 Tree Disonnect
  *
  * Returns:
- *  0 if the call was initiated and a disconnect will be attempted. Result of
- * the tree disconnect will be reported through the callback function.
- * <0 if there was an error. The callback function will not be invoked.
+ * pdu  : If the call was initiated and a connection will be attempted.
+ *        Result of the tree connect will be reported through the callback
+ *        function.
+ * NULL : If there was an error. The callback function will not be invoked.
  *
  * Callback parameters :
  * status can be either of :
@@ -100,16 +104,16 @@ int smb2_cmd_tree_connect_async(struct smb2_context *smb2,
  *
  * Command_data is always NULL.
  */
-int smb2_cmd_tree_disconnect_async(struct smb2_context *smb2,
-                                smb2_command_cb cb, void *cb_data);
+struct smb2_pdu *smb2_cmd_tree_disconnect_async(struct smb2_context *smb2,
+                                  smb2_command_cb cb, void *cb_data);
 
 /*
  * Asynchronous SMB2 Create
  *
  * Returns:
- *  0 if the call was initiated and a create will be attempted. The result 
- *    of the create will be reported through the callback function.
- * <0 if there was an error. The callback function will not be invoked.
+ * pdu  : If the call was initiated and a connection will be attempted.
+ *        Result of the create will be reported through the callback function.
+ * NULL : If there was an error. The callback function will not be invoked.
  *
  * Callback parameters :
  * status can be either of :
@@ -118,17 +122,17 @@ int smb2_cmd_tree_disconnect_async(struct smb2_context *smb2,
  *
  *   !0     : Status is NT status code. Command_data is NULL.
  */
-int smb2_cmd_create_async(struct smb2_context *smb2,
-                          struct smb2_create_request *req,
-                          smb2_command_cb cb, void *cb_data);
+struct smb2_pdu *smb2_cmd_create_async(struct smb2_context *smb2,
+                                       struct smb2_create_request *req,
+                                       smb2_command_cb cb, void *cb_data);
 
 /*
  * Asynchronous SMB2 Close
  *
  * Returns:
- *  0 if the call was initiated and a create will be attempted. The result 
- *    of the close will be reported through the callback function.
- * <0 if there was an error. The callback function will not be invoked.
+ * pdu  : If the call was initiated and a connection will be attempted.
+ *        Result of the close will be reported through the callback function.
+ * NULL : If there was an error. The callback function will not be invoked.
  *
  * Callback parameters :
  * status can be either of :
@@ -137,17 +141,17 @@ int smb2_cmd_create_async(struct smb2_context *smb2,
  *
  *   !0     : Status is NT status code. Command_data is NULL.
  */
-int smb2_cmd_close_async(struct smb2_context *smb2,
-                         struct smb2_close_request *req,
-                         smb2_command_cb cb, void *cb_data);
+struct smb2_pdu *smb2_cmd_close_async(struct smb2_context *smb2,
+                                      struct smb2_close_request *req,
+                                      smb2_command_cb cb, void *cb_data);
 
 /*
  * Asynchronous SMB2 Read
  *
  * Returns:
- *  0 if the call was initiated and a connection will be attempted. Result of
- * the read will be reported through the callback function.
- * <0 if there was an error. The callback function will not be invoked.
+ * pdu  : If the call was initiated and a connection will be attempted.
+ *        Result of the read will be reported through the callback function.
+ * NULL : If there was an error. The callback function will not be invoked.
  *
  * Callback parameters :
  * status can be either of :
@@ -157,17 +161,17 @@ int smb2_cmd_close_async(struct smb2_context *smb2,
  *
  * command_data is always NULL.
  */
-int smb2_cmd_read_async(struct smb2_context *smb2,
-                        struct smb2_read_request *req,
-                        smb2_command_cb cb, void *cb_data);
+struct smb2_pdu *smb2_cmd_read_async(struct smb2_context *smb2,
+                                     struct smb2_read_request *req,
+                                     smb2_command_cb cb, void *cb_data);
 
 /*
  * Asynchronous SMB2 Write
  *
  * Returns:
- *  0 if the call was initiated and a connection will be attempted. Result of
- * the write will be reported through the callback function.
- * <0 if there was an error. The callback function will not be invoked.
+ * pdu  : If the call was initiated and a connection will be attempted.
+ *        Result of the write will be reported through the callback function.
+ * NULL : If there was an error. The callback function will not be invoked.
  *
  * Callback parameters :
  * status can be either of :
@@ -177,17 +181,17 @@ int smb2_cmd_read_async(struct smb2_context *smb2,
  *
  * command_data is always NULL.
  */
-int smb2_cmd_write_async(struct smb2_context *smb2,
-                         struct smb2_write_request *req,
-                         smb2_command_cb cb, void *cb_data);
+struct smb2_pdu *smb2_cmd_write_async(struct smb2_context *smb2,
+                                      struct smb2_write_request *req,
+                                      smb2_command_cb cb, void *cb_data);
 
 /*
  * Asynchronous SMB2 Query Directory
  *
  * Returns:
- *  0 if the call was initiated and a query will be attempted. The result 
- *    of the query will be reported through the callback function.
- * <0 if there was an error. The callback function will not be invoked.
+ * pdu  : If the call was initiated and a connection will be attempted.
+ *        Result of the QD will be reported through the callback function.
+ * NULL : If there was an error. The callback function will not be invoked.
  *
  * Callback parameters :
  * status can be either of :
@@ -196,17 +200,17 @@ int smb2_cmd_write_async(struct smb2_context *smb2,
  *
  *   !0     : Status is NT status code. Command_data is NULL.
  */
-int smb2_cmd_query_directory_async(struct smb2_context *smb2,
-                                   struct smb2_query_directory_request *req,
-                                   smb2_command_cb cb, void *cb_data);
+struct smb2_pdu *smb2_cmd_query_directory_async(struct smb2_context *smb2,
+                             struct smb2_query_directory_request *req,
+                             smb2_command_cb cb, void *cb_data);
 
 /*
  * Asynchronous SMB2 Query Info
  *
  * Returns:
- *  0 if the call was initiated and a query info will be attempted. The result 
- *    of the query will be reported through the callback function.
- * <0 if there was an error. The callback function will not be invoked.
+ * pdu  : If the call was initiated and a connection will be attempted.
+ *        Result of the QI will be reported through the callback function.
+ * NULL : If there was an error. The callback function will not be invoked.
  *
  * Callback parameters :
  * status can be either of :
@@ -215,17 +219,17 @@ int smb2_cmd_query_directory_async(struct smb2_context *smb2,
  *
  *   !0     : Status is NT status code. Command_data is NULL.
  */
-int smb2_cmd_query_info_async(struct smb2_context *smb2,
-                              struct smb2_query_info_request *req,
-                              smb2_command_cb cb, void *cb_data);
+struct smb2_pdu *smb2_cmd_query_info_async(struct smb2_context *smb2,
+                                           struct smb2_query_info_request *req,
+                                           smb2_command_cb cb, void *cb_data);
 
 /*
  * Asynchronous SMB2 Echo
  *
  * Returns:
- *  0 if the call was initiated and a connection will be attempted. Result of
- * the echo will be reported through the callback function.
- * <0 if there was an error. The callback function will not be invoked.
+ * pdu  : If the call was initiated and a connection will be attempted.
+ *        Result of the echo will be reported through the callback function.
+ * NULL : If there was an error. The callback function will not be invoked.
  *
  * Callback parameters :
  * status can be either of :
@@ -235,16 +239,16 @@ int smb2_cmd_query_info_async(struct smb2_context *smb2,
  *
  * command_data is always NULL.
  */
-int smb2_cmd_echo_async(struct smb2_context *smb2,
-                        smb2_command_cb cb, void *cb_data);
+struct smb2_pdu *smb2_cmd_echo_async(struct smb2_context *smb2,
+                                     smb2_command_cb cb, void *cb_data);
 
 /*
  * Asynchronous SMB2 Logoff
  *
  * Returns:
- *  0 if the call was initiated and a connection will be attempted. Result of
- * the logoff will be reported through the callback function.
- * <0 if there was an error. The callback function will not be invoked.
+ * pdu  : If the call was initiated and a connection will be attempted.
+ *        Result of the logoff will be reported through the callback function.
+ * NULL : If there was an error. The callback function will not be invoked.
  *
  * Callback parameters :
  * status can be either of :
@@ -254,8 +258,8 @@ int smb2_cmd_echo_async(struct smb2_context *smb2,
  *
  * command_data is always NULL.
  */
-int smb2_cmd_logoff_async(struct smb2_context *smb2,
-                          smb2_command_cb cb, void *cb_data);
+struct smb2_pdu *smb2_cmd_logoff_async(struct smb2_context *smb2,
+                                       smb2_command_cb cb, void *cb_data);
 
 #ifdef __cplusplus
 }

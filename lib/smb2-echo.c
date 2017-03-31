@@ -71,27 +71,22 @@ smb2_encode_echo_request(struct smb2_context *smb2,
         return 0;
 }
 
-int smb2_cmd_echo_async(struct smb2_context *smb2,
-                        smb2_command_cb cb, void *cb_data)
+struct smb2_pdu *smb2_cmd_echo_async(struct smb2_context *smb2,
+                                     smb2_command_cb cb, void *cb_data)
 {
         struct smb2_pdu *pdu;
         
         pdu = smb2_allocate_pdu(smb2, SMB2_ECHO, cb, cb_data);
         if (pdu == NULL) {
-                return -1;
+                return NULL;
         }
 
         if (smb2_encode_echo_request(smb2, pdu)) {
                 smb2_free_pdu(smb2, pdu);
-                return -1;
+                return NULL;
         }
         
-        if (smb2_queue_pdu(smb2, pdu)) {
-                smb2_free_pdu(smb2, pdu);
-                return -1;
-        }
-
-        return 0;
+        return pdu;
 }
 
 int smb2_process_echo_reply(struct smb2_context *smb2,

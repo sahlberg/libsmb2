@@ -105,35 +105,32 @@ smb2_decode_write_reply(struct smb2_context *smb2,
         return 0;
 }
 
-int smb2_cmd_write_async(struct smb2_context *smb2,
-                         struct smb2_write_request *req,
-                         smb2_command_cb cb, void *cb_data)
+struct smb2_pdu *
+smb2_cmd_write_async(struct smb2_context *smb2,
+                     struct smb2_write_request *req,
+                     smb2_command_cb cb, void *cb_data)
 {
         struct smb2_pdu *pdu;
 
         pdu = smb2_allocate_pdu(smb2, SMB2_WRITE, cb, cb_data);
         if (pdu == NULL) {
-                return -1;
+                return NULL;
         }
 
         if (smb2_encode_write_request(smb2, pdu, req)) {
                 smb2_free_pdu(smb2, pdu);
-                return -1;
+                return NULL;
         }
 
         smb2_add_iovector(smb2, &pdu->out, req->buf,
                           req->length, NULL);
         
         if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
-                return -1;
-        }
-
-        if (smb2_queue_pdu(smb2, pdu)) {
                 smb2_free_pdu(smb2, pdu);
-                return -1;
+                return NULL;
         }
 
-        return 0;
+        return pdu;
 }
 
 int smb2_process_write_reply(struct smb2_context *smb2,
