@@ -64,10 +64,6 @@ smb2_encode_logoff_request(struct smb2_context *smb2,
 
         smb2_set_uint16(iov, 0, SMB2_LOGOFF_REQUEST_SIZE);
 
-        if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
-                return -1;
-        }
-
         return 0;
 }
 
@@ -87,6 +83,11 @@ smb2_cmd_logoff_async(struct smb2_context *smb2,
                 return NULL;
         }
         
+        if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
+                smb2_free_pdu(smb2, pdu);
+                return NULL;
+        }
+
         return pdu;
 }
 

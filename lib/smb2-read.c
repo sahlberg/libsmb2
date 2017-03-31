@@ -89,10 +89,6 @@ smb2_encode_read_request(struct smb2_context *smb2,
                 smb2_add_iovector(smb2, &pdu->out, &zero, 1, NULL);
         }
 
-        if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
-                return -1;
-        }
-
         return 0;
 }
 
@@ -159,6 +155,11 @@ smb2_cmd_read_async(struct smb2_context *smb2,
         smb2_add_iovector(smb2, &pdu->in, req->buf,
                           req->length, NULL);
         
+        if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
+                smb2_free_pdu(smb2, pdu);
+                return NULL;
+        }
+
         return pdu;
 }
 

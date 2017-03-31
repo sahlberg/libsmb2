@@ -77,10 +77,6 @@ smb2_encode_negotiate_request(struct smb2_context *smb2,
                                 req->dialects[i]);
         }
 
-        if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
-                return -1;
-        }
-
         return 0;
 }
 
@@ -151,6 +147,11 @@ smb2_cmd_negotiate_async(struct smb2_context *smb2,
                 return NULL;
         }
         
+        if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
+                smb2_free_pdu(smb2, pdu);
+                return NULL;
+        }
+
         return pdu;
 }
 

@@ -140,10 +140,6 @@ smb2_encode_query_directory_request(struct smb2_context *smb2,
         }
         free(name);
         
-        if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
-                return -1;
-        }
-
         return 0;
 }
 
@@ -205,6 +201,11 @@ smb2_cmd_query_directory_async(struct smb2_context *smb2,
         }
 
         if (smb2_encode_query_directory_request(smb2, pdu, req)) {
+                smb2_free_pdu(smb2, pdu);
+                return NULL;
+        }
+
+        if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
         }

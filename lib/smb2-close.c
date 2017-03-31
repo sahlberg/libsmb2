@@ -68,10 +68,6 @@ smb2_encode_close_request(struct smb2_context *smb2,
         smb2_set_uint16(iov, 2, req->flags);
         memcpy(iov->buf + 8, req->file_id, SMB2_FD_SIZE);
 
-        if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
-                return -1;
-        }
-
         return 0;
 }
 
@@ -121,6 +117,11 @@ smb2_cmd_close_async(struct smb2_context *smb2,
                 return NULL;
         }
         
+        if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
+                smb2_free_pdu(smb2, pdu);
+                return NULL;
+        }
+
         return pdu;
 }
 
