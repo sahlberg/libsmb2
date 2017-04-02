@@ -118,7 +118,7 @@ smb2_allocate_pdu(struct smb2_context *smb2, enum smb2_command command,
         pdu->out.niov = 0;
 
         smb2_add_iovector(smb2, &pdu->out, pdu->hdr, SMB2_HEADER_SIZE, NULL);
-        if (smb2_encode_header(smb2, &pdu->out.iov[pdu->out.niov - 1],
+        if (smb2_encode_header(smb2, &pdu->out.iov[0],
                                &pdu->header)) {
                 smb2_set_error(smb2, "Failed to encode header");
                 smb2_free_pdu(smb2, pdu);
@@ -128,9 +128,37 @@ smb2_allocate_pdu(struct smb2_context *smb2, enum smb2_command command,
         return pdu;
 }
 
+void smb2_add_compound_pdu(struct smb2_context *smb2,
+                           struct smb2_pdu *pdu, struct smb2_pdu *next_pdu)
+{
+        int i, offset;
+
+        /* find the last pdu in the chain */
+        while (pdu->next_compound) {
+                pdu = pdu->next_compound;
+        }
+        pdu->next_compound = next_pdu;
+
+        /* Fixup the next offset in the header */
+        for (i = 0, offset = 0; i < pdu->out.niov; i++) {
+                offset += pdu->out.iov[i].len;
+        }
+
+        pdu->header.next_command = offset;
+        smb2_set_uint32(&pdu->out.iov[0], 20, pdu->header.next_command);
+
+        /* Fixup flags */
+        next_pdu->header.flags |= SMB2_FLAGS_RELATED_OPERATIONS;
+        smb2_set_uint32(&next_pdu->out.iov[0], 16, next_pdu->header.flags);
+}
+
 void
 smb2_free_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
+        if (pdu->next_compound) {
+                smb2_free_pdu(smb2, pdu->next_compound);
+        }
+
         smb2_free_iovector(smb2, &pdu->out);
         smb2_free_iovector(smb2, &pdu->in);
         

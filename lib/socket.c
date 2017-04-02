@@ -103,23 +103,27 @@ smb2_write_to_socket(struct smb2_context *smb2)
 	while ((pdu = smb2->outqueue) != NULL) {
                 struct iovec iov[SMB2_MAX_VECTORS];
                 struct iovec *tmpiov;
+                struct smb2_pdu *tmp_pdu;
                 size_t num_done = pdu->out.num_done;
-                int niov = pdu->out.niov;
-                int i;
+                int i, niov = 1;
                 ssize_t count;
-                uint32_t spl = 0;
+                uint32_t spl = 0, tmp_spl;
 
-                /* Count/copy all the vectors from the PDU */
-                for (i = 0; i < niov; i++) {
-                        iov[i + 1].iov_base = pdu->out.iov[i].buf;
-                        iov[i + 1].iov_len = pdu->out.iov[i].len;
-                        spl += pdu->out.iov[i].len;
+                /* Count/copy all the vectors from all PDUs in the
+                 * compound set.
+                 */
+                for (tmp_pdu = pdu; tmp_pdu; tmp_pdu = tmp_pdu->next_compound) {
+                        for (i = 0; i < tmp_pdu->out.niov; i++, niov++) {
+                                iov[niov].iov_base = tmp_pdu->out.iov[i].buf;
+                                iov[niov].iov_len = tmp_pdu->out.iov[i].len;
+                                spl += tmp_pdu->out.iov[i].len;
+                        }
                 }
+
                 /* Add the SPL vector as the first vector */
-                spl = htobe32(spl);
-                iov[0].iov_base = &spl;
+                tmp_spl = htobe32(spl);
+                iov[0].iov_base = &tmp_spl;
                 iov[0].iov_len = SMB2_SPL_SIZE;
-                niov++;
 
                 tmpiov = iov;
 
@@ -147,9 +151,21 @@ smb2_write_to_socket(struct smb2_context *smb2)
                 
                 pdu->out.num_done += count;
 
-                if (pdu->out.num_done == SMB2_SPL_SIZE + pdu->out.total_size) {
+                if (pdu->out.num_done == SMB2_SPL_SIZE + spl) {
                         SMB2_LIST_REMOVE(&smb2->outqueue, pdu);
-                        SMB2_LIST_ADD_END(&smb2->waitqueue, pdu);
+                        while (pdu) {
+                                tmp_pdu = pdu->next_compound;
+
+                                /* As we have now sent all the PDUs we
+                                 * can remove the chaining.
+                                 * On the receive side we will treat all
+                                 * PDUs as individual PDUs.
+                                 */
+                                pdu->next_compound = NULL;
+
+                                SMB2_LIST_ADD_END(&smb2->waitqueue, pdu);
+                                pdu = tmp_pdu;
+                        }
                 }
 	}
 	return 0;
