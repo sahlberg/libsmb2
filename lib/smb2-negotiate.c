@@ -80,56 +80,6 @@ smb2_encode_negotiate_request(struct smb2_context *smb2,
         return 0;
 }
 
-static int
-smb2_decode_negotiate_reply(struct smb2_context *smb2,
-                            struct smb2_pdu *pdu,
-                            struct smb2_negotiate_reply *rep)
-{
-        uint16_t struct_size;
-        uint16_t security_buffer_offset;
-
-        smb2_get_uint16(&pdu->in.iov[0], 0, &struct_size);
-        if (struct_size != SMB2_NEGOTIATE_REPLY_SIZE ||
-            struct_size > pdu->in.iov[0].len) {
-                smb2_set_error(smb2, "Unexpected size of Negotiate reply. "
-                               "Expected %d, got %d",
-                               SMB2_NEGOTIATE_REPLY_SIZE,
-                               (int)pdu->in.iov[0].len);
-                return -1;
-        }
-
-        smb2_get_uint16(&pdu->in.iov[0], 2, &rep->security_mode);
-        smb2_get_uint16(&pdu->in.iov[0], 4, &rep->dialect_revision);
-        memcpy(rep->server_guid, pdu->in.iov[0].buf + 8, 16);
-        smb2_get_uint32(&pdu->in.iov[0], 24, &rep->capabilities);
-        smb2_get_uint32(&pdu->in.iov[0], 28, &rep->max_transact_size);
-        smb2_get_uint32(&pdu->in.iov[0], 32, &rep->max_read_size);
-        smb2_get_uint32(&pdu->in.iov[0], 36, &rep->max_write_size);
-        smb2_get_uint64(&pdu->in.iov[0], 40, &rep->system_time);
-        smb2_get_uint64(&pdu->in.iov[0], 48, &rep->server_start_time);
-        smb2_get_uint16(&pdu->in.iov[0], 56, &security_buffer_offset);
-        smb2_get_uint16(&pdu->in.iov[0], 58, &rep->security_buffer_length);
-
-        if (rep->security_buffer_length) {
-                if (security_buffer_offset < SMB2_HEADER_SIZE + 64) {
-                        smb2_set_error(smb2, "Securty buffer overlaps with "
-                                       "negotiate reply header");
-                        rep->security_buffer_length = 0;
-                        return -1;
-                }
-                if (security_buffer_offset - SMB2_HEADER_SIZE + rep->security_buffer_length > pdu->in.iov[0].len) {
-                        smb2_set_error(smb2, "Security buffer overflow in "
-                                       "negotiate reply.");
-                        rep->security_buffer_length = 0;
-                        return -1;
-                }
-        }
-            
-        /* We do not have an smb2 header in the reply iovectors */
-        rep->security_buffer = &pdu->in.iov[0].buf[security_buffer_offset - SMB2_HEADER_SIZE];
-        return 0;
-}
-                                      
 struct smb2_pdu *
 smb2_cmd_negotiate_async(struct smb2_context *smb2,
                          struct smb2_negotiate_request *req,
@@ -155,24 +105,72 @@ smb2_cmd_negotiate_async(struct smb2_context *smb2,
         return pdu;
 }
 
-int smb2_process_negotiate_reply(struct smb2_context *smb2,
+#define IOV_OFFSET (rep->security_buffer_offset - SMB2_HEADER_SIZE - \
+                    (SMB2_NEGOTIATE_REPLY_SIZE & 0xfffe))
+
+int smb2_process_negotiate_fixed(struct smb2_context *smb2,
                                  struct smb2_pdu *pdu)
 {
-        struct smb2_negotiate_reply reply;
+        struct smb2_negotiate_reply *rep;
+        struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
+        uint16_t struct_size;
+
+        rep = malloc(sizeof(*rep));
+        pdu->payload = rep;
+               
+        smb2_get_uint16(iov, 0, &struct_size);
+        if (struct_size != SMB2_NEGOTIATE_REPLY_SIZE ||
+            (struct_size & 0xfffe) != iov->len) {
+                smb2_set_error(smb2, "Unexpected size of Negotiate "
+                               "reply. Expected %d, got %d",
+                               SMB2_NEGOTIATE_REPLY_SIZE,
+                               (int)iov->len);
+                return -1;
+        }
         
-        if (smb2_decode_negotiate_reply(smb2, pdu, &reply) < 0) {
-                pdu->cb(smb2, -EBADMSG, NULL, pdu->cb_data);
+        smb2_get_uint16(iov, 2, &rep->security_mode);
+        smb2_get_uint16(iov, 4, &rep->dialect_revision);
+        memcpy(rep->server_guid, iov->buf + 8, 16);
+        smb2_get_uint32(iov, 24, &rep->capabilities);
+        smb2_get_uint32(iov, 28, &rep->max_transact_size);
+        smb2_get_uint32(iov, 32, &rep->max_read_size);
+        smb2_get_uint32(iov, 36, &rep->max_write_size);
+        smb2_get_uint64(iov, 40, &rep->system_time);
+        smb2_get_uint64(iov, 48, &rep->server_start_time);
+        smb2_get_uint16(iov, 56, &rep->security_buffer_offset);
+        smb2_get_uint16(iov, 58, &rep->security_buffer_length);
+
+        /* update the context */
+        smb2->max_transact_size = rep->max_transact_size;
+        smb2->max_read_size     = rep->max_read_size;
+        smb2->max_write_size    = rep->max_write_size;
+        smb2->dialect           = rep->dialect_revision;
+
+        if (rep->security_buffer_length == 0) {
+                smb2_set_error(smb2, "No security buffer in Negotiate "
+                               "Protocol response");
+                return -1;
+        }
+        if (rep->security_buffer_offset < SMB2_HEADER_SIZE +
+            (SMB2_NEGOTIATE_REPLY_SIZE & 0xfffe)) {
+                smb2_set_error(smb2, "Securty buffer overlaps with "
+                               "negotiate reply header");
                 return -1;
         }
 
-        /* update the context */
-        smb2->max_transact_size = reply.max_transact_size;
-        smb2->max_read_size = reply.max_read_size;
-        smb2->max_write_size = reply.max_write_size;
-        smb2->dialect = reply.dialect_revision;
-
-        pdu->cb(smb2, pdu->header.status, &reply, pdu->cb_data);
-        
-        return 0;
+        /* Return the amount of data that the security buffer will take up.
+         * Including any padding before the security buffer itself.
+         */
+        return IOV_OFFSET + rep->security_buffer_length;
 }
 
+int smb2_process_negotiate_variable(struct smb2_context *smb2,
+                                    struct smb2_pdu *pdu)
+{
+        struct smb2_negotiate_reply *rep = pdu->payload;
+        struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
+
+        rep->security_buffer = &iov->buf[IOV_OFFSET];
+
+        return 0;
+}

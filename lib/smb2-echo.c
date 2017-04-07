@@ -90,11 +90,9 @@ struct smb2_pdu *smb2_cmd_echo_async(struct smb2_context *smb2,
         return pdu;
 }
 
-int smb2_process_echo_reply(struct smb2_context *smb2,
-                            struct smb2_pdu *pdu)
+int
+smb2_process_echo_fixed(struct smb2_context *smb2,
+                        struct smb2_pdu *pdu)
 {
-        pdu->cb(smb2, pdu->header.status, NULL, pdu->cb_data);
-        
         return 0;
 }
-

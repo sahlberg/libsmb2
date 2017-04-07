@@ -92,10 +92,9 @@ smb2_cmd_tree_disconnect_async(struct smb2_context *smb2,
         return pdu;
 }
 
-int smb2_process_tree_disconnect_reply(struct smb2_context *smb2,
-                                       struct smb2_pdu *pdu)
+int
+smb2_process_tree_disconnect_fixed(struct smb2_context *smb2,
+                                   struct smb2_pdu *pdu)
 {
-        pdu->cb(smb2, pdu->header.status, NULL, pdu->cb_data);
-        
         return 0;
 }

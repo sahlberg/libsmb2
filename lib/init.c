@@ -161,6 +161,7 @@ void smb2_destroy_context(struct smb2_context *smb2)
                 smb2->waitqueue = pdu->next;
                 smb2_free_pdu(smb2, pdu);
         }
+        smb2_free_iovector(smb2, &smb2->in);
         if (smb2->pdu) {
                 smb2_free_pdu(smb2, smb2->pdu);
                 smb2->pdu = NULL;
@@ -181,6 +182,8 @@ void smb2_free_iovector(struct smb2_context *smb2, struct smb2_io_vectors *v)
                 }
         }
         v->niov = 0;
+        v->total_size = 0;
+        v->num_done = 0;
 }
 
 struct smb2_iovec *smb2_add_iovector(struct smb2_context *smb2,
@@ -192,6 +195,7 @@ struct smb2_iovec *smb2_add_iovector(struct smb2_context *smb2,
         v->iov[v->niov].buf = buf;
         v->iov[v->niov].len = len;
         v->iov[v->niov].free = free;
+        v->total_size += len;
         v->niov++;
 
         return iov;

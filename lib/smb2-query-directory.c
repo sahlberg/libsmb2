@@ -143,51 +143,6 @@ smb2_encode_query_directory_request(struct smb2_context *smb2,
         return 0;
 }
 
-static int
-smb2_decode_query_directory_reply(struct smb2_context *smb2,
-                                  struct smb2_pdu *pdu,
-                                  struct smb2_query_directory_reply *rep)
-{
-        uint16_t struct_size;
-        uint16_t output_buffer_offset;
-
-        smb2_get_uint16(&pdu->in.iov[0], 0, &struct_size);
-        if (struct_size != SMB2_QUERY_DIRECTORY_REPLY_SIZE) {
-                smb2_set_error(smb2, "Unexpected size of Query reply. "
-                               "Expected %d, got %d",
-                               SMB2_QUERY_DIRECTORY_REPLY_SIZE,
-                               struct_size);
-                return -1;
-        }
-        
-        smb2_get_uint16(&pdu->in.iov[0], 2, &output_buffer_offset);
-        smb2_get_uint32(&pdu->in.iov[0], 4, &rep->output_buffer_length);
-
-        if (rep->output_buffer_length > 0 &&
-            output_buffer_offset != SMB2_HEADER_SIZE + 8) {
-                smb2_set_error(smb2, "Unexpected offset in Query reply. "
-                               "Expected %d, got %d",
-                               SMB2_HEADER_SIZE + 8,
-                               output_buffer_offset);
-                rep->output_buffer_length = 0;
-                return -1;
-        }
-                
-        /* Check we have all the data that the reply claims. */
-        if (rep->output_buffer_length >
-            (pdu->in.iov[0].len -
-             (output_buffer_offset - SMB2_HEADER_SIZE))) {
-                smb2_set_error(smb2, "Output buffer overflow");
-                return -1;
-        }
-        
-        if (rep->output_buffer_length) {
-                rep->output_buffer = &pdu->in.iov[0].buf[output_buffer_offset - SMB2_HEADER_SIZE];
-        }
-        
-        return 0;
-}
-
 struct smb2_pdu *
 smb2_cmd_query_directory_async(struct smb2_context *smb2,
                                struct smb2_query_directory_request *req,
@@ -213,17 +168,58 @@ smb2_cmd_query_directory_async(struct smb2_context *smb2,
         return pdu;
 }
 
-int smb2_process_query_directory_reply(struct smb2_context *smb2,
-                                       struct smb2_pdu *pdu)
-{
-        struct smb2_query_directory_reply reply;
+#define IOV_OFFSET (rep->output_buffer_offset - SMB2_HEADER_SIZE - \
+                    (SMB2_QUERY_DIRECTORY_REPLY_SIZE & 0xfffe))
 
-        if (smb2_decode_query_directory_reply(smb2, pdu, &reply) < 0) {
-                pdu->cb(smb2, -EBADMSG, NULL, pdu->cb_data);
+int
+smb2_process_query_directory_fixed(struct smb2_context *smb2,
+                                   struct smb2_pdu *pdu)
+{
+        struct smb2_query_directory_reply *rep;
+        struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
+        uint16_t struct_size;
+
+        rep = malloc(sizeof(*rep));
+        pdu->payload = rep;
+
+        smb2_get_uint16(iov, 0, &struct_size);
+        if (struct_size != SMB2_QUERY_DIRECTORY_REPLY_SIZE ||
+            (struct_size & 0xfffe) != iov->len) {
+                smb2_set_error(smb2, "Unexpected size of Query Dir "
+                               "reply. Expected %d, got %d",
+                               SMB2_QUERY_DIRECTORY_REPLY_SIZE,
+                               (int)iov->len);
                 return -1;
         }
 
-        pdu->cb(smb2, pdu->header.status, &reply, pdu->cb_data);
+        smb2_get_uint16(iov, 2, &rep->output_buffer_offset);
+        smb2_get_uint32(iov, 4, &rep->output_buffer_length);
+
+        if (rep->output_buffer_length == 0) {
+                return 0;
+        }
+
+        if (rep->output_buffer_offset < SMB2_HEADER_SIZE +
+            (SMB2_QUERY_INFO_REPLY_SIZE & 0xfffe)) {
+                smb2_set_error(smb2, "Output buffer overlaps with "
+                               "Query Dir reply header");
+                return -1;
+        }
+
+        /* Return the amount of data that the output buffer will take up.
+         * Including any padding before the output buffer itself.
+         */
+        return IOV_OFFSET + rep->output_buffer_length;
+}
+
+int
+smb2_process_query_directory_variable(struct smb2_context *smb2,
+                                      struct smb2_pdu *pdu)
+{
+        struct smb2_query_directory_reply *rep = pdu->payload;
+        struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
+
+        rep->output_buffer = &iov->buf[IOV_OFFSET];
 
         return 0;
 }

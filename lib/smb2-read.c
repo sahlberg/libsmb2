@@ -92,6 +92,7 @@ smb2_encode_read_request(struct smb2_context *smb2,
         return 0;
 }
 
+#if 0
 static int
 smb2_decode_read_reply(struct smb2_context *smb2,
                          struct smb2_pdu *pdu,
@@ -109,19 +110,10 @@ smb2_decode_read_reply(struct smb2_context *smb2,
                 return -1;
         }
 
-        smb2_get_uint8(&pdu->in.iov[0], 2, &data_offset);
-        if (data_offset != SMB2_HEADER_SIZE + 16) {
-                smb2_set_error(smb2, "Unexpected data offset in Read reply. "
-                               "Expected %d, got %d",
-                               16, data_offset);
-                return -1;
-        }
-                
-        smb2_get_uint32(&pdu->in.iov[0], 4, &rep->data_length);
-        smb2_get_uint32(&pdu->in.iov[0], 8, &rep->data_remaining);
 
         return 0;
 }
+#endif
 
 struct smb2_pdu *
 smb2_cmd_read_async(struct smb2_context *smb2,
@@ -129,13 +121,6 @@ smb2_cmd_read_async(struct smb2_context *smb2,
                     smb2_command_cb cb, void *cb_data)
 {
         struct smb2_pdu *pdu;
-        char *buf;
-
-        buf = malloc(SMB2_READ_REPLY_SIZE & 0xfffffffe);
-        if (buf == NULL) {
-                smb2_set_error(smb2, "Failed to malloc read header");
-                return NULL;
-        }
 
         pdu = smb2_allocate_pdu(smb2, SMB2_READ, cb, cb_data);
         if (pdu == NULL) {
@@ -147,11 +132,7 @@ smb2_cmd_read_async(struct smb2_context *smb2,
                 return NULL;
         }
 
-        /* Add a vector for the read header as well a vector for
-         * the buffer that the application gave us
-         */
-        smb2_add_iovector(smb2, &pdu->in, buf,
-                          SMB2_READ_REPLY_SIZE & 0xfffffffe, free);
+        /* Add a vector for the buffer that the application gave us */
         smb2_add_iovector(smb2, &pdu->in, req->buf,
                           req->length, NULL);
         
@@ -163,17 +144,40 @@ smb2_cmd_read_async(struct smb2_context *smb2,
         return pdu;
 }
 
-int smb2_process_read_reply(struct smb2_context *smb2,
-                            struct smb2_pdu *pdu)
+int
+smb2_process_read_fixed(struct smb2_context *smb2,
+                        struct smb2_pdu *pdu)
 {
-        struct smb2_read_reply reply;
+        struct smb2_read_reply *rep;
+        struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
+        uint16_t struct_size;
 
-        if (smb2_decode_read_reply(smb2, pdu, &reply) < 0) {
-                pdu->cb(smb2, -EBADMSG, NULL, pdu->cb_data);
+        rep = malloc(sizeof(*rep));
+        pdu->payload = rep;
+
+        smb2_get_uint16(iov, 0, &struct_size);
+        if (struct_size > SMB2_READ_REPLY_SIZE) {
+                smb2_set_error(smb2, "Unexpected size of Read "
+                               "reply. Expected %d, got %d",
+                               SMB2_READ_REPLY_SIZE,
+                               (int)iov->len);
                 return -1;
         }
 
-        pdu->cb(smb2, pdu->header.status, &reply, pdu->cb_data);
+        smb2_get_uint8(iov, 2, &rep->data_offset);
+        smb2_get_uint32(iov, 4, &rep->data_length);
+        smb2_get_uint32(iov, 8, &rep->data_remaining);
 
-        return 0;
+        if (rep->data_length == 0) {
+                return 0;
+        }
+
+        if (rep->data_offset != SMB2_HEADER_SIZE + 16) {
+                smb2_set_error(smb2, "Unexpected data offset in Read reply. "
+                               "Expected %d, got %d",
+                               16, rep->data_offset);
+                return -1;
+        }
+
+        return rep->data_length;
 }

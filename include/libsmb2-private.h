@@ -48,7 +48,7 @@ struct smb2_iovec {
 
 struct smb2_io_vectors {
         size_t num_done;
-        int total_size;
+        size_t total_size;
         int niov;
         struct smb2_iovec iov[SMB2_MAX_VECTORS];
 };
@@ -80,6 +80,25 @@ struct smb2_header {
         uint8_t signature[16];
 };
 
+/* States that we transition when we read data back from the server :
+ * 1: SMB2_RECV_SPL        SPL
+ * 2: SMB2_RECV_HEADER     SMB2 Header
+ * 3: SMB2_RECV_FIXED      The fixed part of the payload. 
+ * 4: SMB2_RECV_VARIABLE   Optional variable part of the payload.
+ * 5: SMB2_RECV_PAD        Optional padding
+ *
+ * 2-5 will be repeated for compound commands.
+ * 4-5 are optional and may or may not be present depending on the
+ *     type of command.
+ */
+enum smb2_recv_state {
+        SMB2_RECV_SPL = 0,
+        SMB2_RECV_HEADER,
+        SMB2_RECV_FIXED,
+        SMB2_RECV_VARIABLE,
+        SMB2_RECV_PAD,
+};
+
 struct smb2_context {
         int fd;
         int is_connected;
@@ -100,15 +119,25 @@ struct smb2_context {
         uint64_t message_id;
         uint64_t session_id;
 
-        /* For sending PDUs */
+        /*
+         * For sending PDUs
+         */
 	struct smb2_pdu *outqueue;
 	struct smb2_pdu *waitqueue;
 
-        /* buffer to avoid having to malloc the headers */
-        char header[SMB2_SPL_SIZE + SMB2_HEADER_SIZE];
 
-        /* For receiving PDUs */
+        /*
+         * For receiving PDUs
+         */
         struct smb2_io_vectors in;
+        enum smb2_recv_state recv_state;
+        /* SPL for the (compound) command we are currently reading */
+        uint32_t spl;
+        /* buffer to avoid having to malloc the header */
+        char header[SMB2_HEADER_SIZE];
+        struct smb2_header hdr;
+        /* Offset into smb2->in where the payload for the current PDU starts */
+        size_t payload_offset;
 
         /* Pointer to the current PDU that we are receiving the reply for.
          * Only valid once the full smb2 header has been received.
@@ -136,6 +165,9 @@ struct smb2_pdu {
 
         /* buffer to avoid having to malloc the headers */
         char hdr[SMB2_HEADER_SIZE];
+
+        /* pointer to the unmarshalled payload in a reply */
+        void *payload;
 
         /* For sending/receiving
          * out contains at least two vectors:
@@ -188,7 +220,11 @@ void smb2_add_compound_pdu(struct smb2_context *smb2,
 void smb2_free_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu);
 
 int smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu);
-int smb2_process_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu);
+int smb2_process_payload_fixed(struct smb2_context *smb2,
+                               struct smb2_pdu *pdu);
+int smb2_process_payload_variable(struct smb2_context *smb2,
+                                  struct smb2_pdu *pdu);
+int smb2_get_fixed_size(struct smb2_context *smb2, struct smb2_pdu *pdu);
         
 struct smb2_pdu *smb2_find_pdu(struct smb2_context *smb2, uint64_t message_id);
 void smb2_free_iovector(struct smb2_context *smb2, struct smb2_io_vectors *v);
@@ -208,29 +244,39 @@ int smb2_get_uint16(struct smb2_iovec *iov, int offset, uint16_t *value);
 int smb2_get_uint32(struct smb2_iovec *iov, int offset, uint32_t *value);
 int smb2_get_uint64(struct smb2_iovec *iov, int offset, uint64_t *value);
 
-int smb2_process_close_reply(struct smb2_context *smb2,
-                             struct smb2_pdu *pdu);
-int smb2_process_create_reply(struct smb2_context *smb2,
-                              struct smb2_pdu *pdu);
-int smb2_process_echo_reply(struct smb2_context *smb2,
-                            struct smb2_pdu *pdu);
-int smb2_process_logoff_reply(struct smb2_context *smb2,
-                              struct smb2_pdu *pdu);
-int smb2_process_negotiate_reply(struct smb2_context *smb2,
+int smb2_process_negotiate_fixed(struct smb2_context *smb2,
                                  struct smb2_pdu *pdu);
-int smb2_process_query_directory_reply(struct smb2_context *smb2,
-                                       struct smb2_pdu *pdu);
-int smb2_process_query_info_reply(struct smb2_context *smb2,
-                                  struct smb2_pdu *pdu);
-int smb2_process_read_reply(struct smb2_context *smb2,
-                            struct smb2_pdu *pdu);
-int smb2_process_session_setup_reply(struct smb2_context *smb2,
-                                     struct smb2_pdu *pdu);
-int smb2_process_tree_connect_reply(struct smb2_context *smb2,
+int smb2_process_negotiate_variable(struct smb2_context *smb2,
                                     struct smb2_pdu *pdu);
-int smb2_process_tree_disconnect_reply(struct smb2_context *smb2,
+int smb2_process_session_setup_fixed(struct smb2_context *smb2,
+                                     struct smb2_pdu *pdu);
+int smb2_process_session_setup_variable(struct smb2_context *smb2,
+                                        struct smb2_pdu *pdu);
+int smb2_process_tree_connect_fixed(struct smb2_context *smb2,
+                                    struct smb2_pdu *pdu);
+int smb2_process_create_fixed(struct smb2_context *smb2,
+                              struct smb2_pdu *pdu);
+int smb2_process_create_variable(struct smb2_context *smb2,
+                                 struct smb2_pdu *pdu);
+int smb2_process_query_directory_fixed(struct smb2_context *smb2,
                                        struct smb2_pdu *pdu);
-int smb2_process_write_reply(struct smb2_context *smb2,
+int smb2_process_query_directory_variable(struct smb2_context *smb2,
+                                          struct smb2_pdu *pdu);
+int smb2_process_query_info_fixed(struct smb2_context *smb2,
+                                  struct smb2_pdu *pdu);
+int smb2_process_query_info_variable(struct smb2_context *smb2,
+                                     struct smb2_pdu *pdu);
+int smb2_process_close_fixed(struct smb2_context *smb2,
+                             struct smb2_pdu *pdu);
+int smb2_process_tree_disconnect_fixed(struct smb2_context *smb2,
+                                       struct smb2_pdu *pdu);
+int smb2_process_logoff_fixed(struct smb2_context *smb2,
+                              struct smb2_pdu *pdu);
+int smb2_process_echo_fixed(struct smb2_context *smb2,
+                            struct smb2_pdu *pdu);
+int smb2_process_read_fixed(struct smb2_context *smb2,
+                            struct smb2_pdu *pdu);
+int smb2_process_write_fixed(struct smb2_context *smb2,
                              struct smb2_pdu *pdu);
 
 int smb2_decode_fileidfulldirectoryinformation(

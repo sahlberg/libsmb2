@@ -71,35 +71,6 @@ smb2_encode_close_request(struct smb2_context *smb2,
         return 0;
 }
 
-static int
-smb2_decode_close_reply(struct smb2_context *smb2,
-                         struct smb2_pdu *pdu,
-                         struct smb2_close_reply *rep)
-{
-        uint16_t struct_size;
-
-        smb2_get_uint16(&pdu->in.iov[0], 0, &struct_size);
-        if (struct_size != SMB2_CLOSE_REPLY_SIZE ||
-            struct_size != pdu->in.iov[0].len) {
-                smb2_set_error(smb2, "Unexpected size of Close reply. "
-                               "Expected %d, got %d",
-                               SMB2_CLOSE_REPLY_SIZE,
-                               (int)pdu->in.iov[0].len);
-                return -1;
-        }
-
-        smb2_get_uint16(&pdu->in.iov[0], 2, &rep->flags);
-        smb2_get_uint64(&pdu->in.iov[0], 8, &rep->creation_time);
-        smb2_get_uint64(&pdu->in.iov[0], 16, &rep->last_access_time);
-        smb2_get_uint64(&pdu->in.iov[0], 24, &rep->last_write_time);
-        smb2_get_uint64(&pdu->in.iov[0], 32, &rep->change_time);
-        smb2_get_uint64(&pdu->in.iov[0], 40, &rep->allocation_size);
-        smb2_get_uint64(&pdu->in.iov[0], 48, &rep->end_of_file);
-        smb2_get_uint32(&pdu->in.iov[0], 56, &rep->file_attributes);
-
-        return 0;
-}
-
 struct smb2_pdu *
 smb2_cmd_close_async(struct smb2_context *smb2,
                      struct smb2_close_request *req,
@@ -125,17 +96,36 @@ smb2_cmd_close_async(struct smb2_context *smb2,
         return pdu;
 }
 
-int smb2_process_close_reply(struct smb2_context *smb2,
-                             struct smb2_pdu *pdu)
+int
+smb2_process_close_fixed(struct smb2_context *smb2,
+                         struct smb2_pdu *pdu)
 {
-        struct smb2_close_reply reply;
+        struct smb2_close_reply *rep;
+        struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
+        uint16_t struct_size;
 
-        if (smb2_decode_close_reply(smb2, pdu, &reply) < 0) {
-                pdu->cb(smb2, -EBADMSG, NULL, pdu->cb_data);
+        rep = malloc(sizeof(*rep));
+        pdu->payload = rep;
+
+        smb2_get_uint16(iov, 0, &struct_size);
+        if (struct_size != SMB2_CLOSE_REPLY_SIZE ||
+            (struct_size & 0xfffe) != iov->len) {
+                smb2_set_error(smb2, "Unexpected size of Close "
+                               "reply. Expected %d, got %d",
+                               SMB2_CLOSE_REPLY_SIZE,
+                               (int)iov->len);
                 return -1;
         }
 
-        pdu->cb(smb2, pdu->header.status, &reply, pdu->cb_data);
+        smb2_get_uint16(iov, 2, &rep->flags);
+        smb2_get_uint64(iov, 8, &rep->creation_time);
+        smb2_get_uint64(iov, 16, &rep->last_access_time);
+        smb2_get_uint64(iov, 24, &rep->last_write_time);
+        smb2_get_uint64(iov, 32, &rep->change_time);
+        smb2_get_uint64(iov, 40, &rep->allocation_size);
+        smb2_get_uint64(iov, 48, &rep->end_of_file);
+        smb2_get_uint32(iov, 56, &rep->file_attributes);
 
         return 0;
 }
+        

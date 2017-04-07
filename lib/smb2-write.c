@@ -83,28 +83,6 @@ smb2_encode_write_request(struct smb2_context *smb2,
         return 0;
 }
 
-static int
-smb2_decode_write_reply(struct smb2_context *smb2,
-                        struct smb2_pdu *pdu,
-                        struct smb2_write_reply *rep)
-{
-        uint16_t struct_size;
-
-        smb2_get_uint16(&pdu->in.iov[0], 0, &struct_size);
-        if (struct_size != SMB2_WRITE_REPLY_SIZE) {
-                smb2_set_error(smb2, "Unexpected size of Write reply. "
-                               "Expected %d, got %d",
-                               SMB2_WRITE_REPLY_SIZE,
-                               (int)struct_size);
-                return -1;
-        }
-
-        smb2_get_uint32(&pdu->in.iov[0], 4, &rep->count);
-        smb2_get_uint32(&pdu->in.iov[0], 8, &rep->remaining);
-
-        return 0;
-}
-
 struct smb2_pdu *
 smb2_cmd_write_async(struct smb2_context *smb2,
                      struct smb2_write_request *req,
@@ -133,17 +111,29 @@ smb2_cmd_write_async(struct smb2_context *smb2,
         return pdu;
 }
 
-int smb2_process_write_reply(struct smb2_context *smb2,
-                            struct smb2_pdu *pdu)
+int
+smb2_process_write_fixed(struct smb2_context *smb2,
+                         struct smb2_pdu *pdu)
 {
-        struct smb2_write_reply reply;
+        struct smb2_write_reply *rep;
+        struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
+        uint16_t struct_size;
 
-        if (smb2_decode_write_reply(smb2, pdu, &reply) < 0) {
-                pdu->cb(smb2, -EBADMSG, NULL, pdu->cb_data);
+        rep = malloc(sizeof(*rep));
+        pdu->payload = rep;
+
+        smb2_get_uint16(iov, 0, &struct_size);
+        if (struct_size != SMB2_WRITE_REPLY_SIZE ||
+            (struct_size & 0xfffe) != iov->len) {
+                smb2_set_error(smb2, "Unexpected size of Write "
+                               "reply. Expected %d, got %d",
+                               SMB2_WRITE_REPLY_SIZE,
+                               (int)iov->len);
                 return -1;
         }
 
-        pdu->cb(smb2, pdu->header.status, &reply, pdu->cb_data);
+        smb2_get_uint32(iov, 4, &rep->count);
+        smb2_get_uint32(iov, 8, &rep->remaining);
 
         return 0;
 }

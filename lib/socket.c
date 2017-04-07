@@ -69,6 +69,8 @@
 #include "libsmb2.h"
 #include "libsmb2-private.h"
 
+#include <stdio.h>
+
 #define MAX_URL_SIZE 256
 
 #define CIFS_PORT 445
@@ -174,8 +176,13 @@ smb2_write_to_socket(struct smb2_context *smb2)
 static int
 smb2_read_from_socket(struct smb2_context *smb2)
 {
-	int available;
-	ssize_t count;
+        struct iovec iov[SMB2_MAX_VECTORS];
+        struct iovec *tmpiov;
+        size_t num_done;
+	ssize_t count, len;
+        int i, niov, is_chained;
+        static char magic[4] = {0xFE, 'S', 'M', 'B'};
+        struct smb2_pdu *pdu = smb2->pdu;
 
         /* initialize the input vectors to the spl and the header
          * which are both static data in the smb2 context.
@@ -183,163 +190,220 @@ smb2_read_from_socket(struct smb2_context *smb2)
          * the corresponding pdu.
          */
         if (smb2->in.num_done == 0) {
-                smb2->in.niov = 2;
-                smb2->in.iov[0].buf = smb2->header;
-                smb2->in.iov[0].len = SMB2_SPL_SIZE;
-                smb2->in.iov[0].free = NULL;
-                smb2->in.iov[1].buf = smb2->header + SMB2_SPL_SIZE;
-                smb2->in.iov[1].len = SMB2_HEADER_SIZE;
-                smb2->in.iov[0].free = NULL;
+                smb2->recv_state = SMB2_RECV_SPL;
+                smb2->spl = 0;
+
+                smb2_free_iovector(smb2, &smb2->in);
+                smb2_add_iovector(smb2, &smb2->in, (char *)&smb2->spl,
+                                  SMB2_SPL_SIZE, NULL);
+        }
+
+read_more_data:
+        num_done = smb2->in.num_done;
+        
+        /* Copy all the current vectors to our work vector */
+        niov = smb2->in.niov;
+        for (i = 0; i < niov; i++) {
+                iov[i].iov_base = smb2->in.iov[i].buf;
+                iov[i].iov_len = smb2->in.iov[i].len;
+        }
+        tmpiov = iov;
+        
+        /* Skip the vectors we have alredy read */
+        while (num_done >= tmpiov->iov_len) {
+                num_done -= tmpiov->iov_len;
+                tmpiov++;
+                niov--;
         }
         
-	/* check how much data is in the input buffer of the socket and read
-         * as many PDUs as available
-         */
-	if (ioctl(smb2->fd, FIONREAD, &available) < 0) {
-		return -1;
-	}
+        /* Adjust the first vector to read */
+        tmpiov->iov_base = (char *)tmpiov->iov_base + num_done;
+        tmpiov->iov_len -= num_done;
 
-	while (available > 0) {
-                struct iovec iov[SMB2_MAX_VECTORS];
-                struct iovec *tmpiov;
-                int i, niov = smb2->in.niov;
-                size_t num_done;
-
-                num_done = smb2->in.num_done;
-
-                for (i = 0; i < niov; i++) {
-                        iov[i].iov_base = smb2->in.iov[i].buf;
-                        iov[i].iov_len = smb2->in.iov[i].len;
+        /* Read into our trimmed iovectors */
+        count = readv(smb2->fd, tmpiov, niov);
+        if (count < 0) {
+                if (errno == EINTR || errno == EAGAIN) {
+                        return 0;
                 }
-                tmpiov = iov;
-                
-                /* Skip the vectors we have alredy read */
-                while (num_done >= tmpiov->iov_len) {
-                        num_done -= tmpiov->iov_len;
-                        tmpiov++;
-                        niov--;
+                smb2_set_error(smb2, "Read from socket failed, "
+                               "errno:%d. Closing socket.", errno);
+                return -1;
+        }
+        if (count == 0) {
+                /* remote side has closed the socket. */
+                return -1;
+        }
+        smb2->in.num_done += count;
+
+        if (smb2->in.num_done < smb2->in.total_size) {
+                goto read_more_data;
+        }
+
+        switch (smb2->recv_state) {
+        case SMB2_RECV_SPL:
+                smb2->spl = be32toh(smb2->spl);
+                smb2->recv_state = SMB2_RECV_HEADER;
+                smb2_add_iovector(smb2, &smb2->in, &smb2->header[0],
+                                  SMB2_HEADER_SIZE, NULL);
+                goto read_more_data;
+        case SMB2_RECV_HEADER:
+                /* Record the offset for the start of payload data. */
+                smb2->payload_offset = smb2->in.num_done;
+
+                if (smb2_decode_header(smb2, &smb2->in.iov[smb2->in.niov - 1],
+                                       &smb2->hdr) != 0) {
+                        smb2_set_error(smb2, "Failed to decode smb2 "
+                                       "header");
+                        return -1;
+                }
+                smb2->credits += smb2->hdr.credit_request_response;
+
+                if (memcmp(&smb2->hdr.protocol_id, magic, 4)) {
+                        smb2_set_error(smb2, "received non-SMB2");
+                        return -1;
+                }
+                if (!(smb2->hdr.flags & SMB2_FLAGS_SERVER_TO_REDIR)) {
+                        smb2_set_error(smb2, "received non-reply");
+                        return -1;
+                }
+                pdu = smb2->pdu = smb2_find_pdu(smb2, smb2->hdr.message_id);
+                if (pdu == NULL) {
+                        smb2_set_error(smb2, "no matching PDU found");
+                        return -1;
+                }
+                SMB2_LIST_REMOVE(&smb2->waitqueue, pdu);
+
+                len = smb2_get_fixed_size(smb2, pdu);
+                if (len < 0) {
+                        return -1;
+                }
+                if (len > smb2->spl + SMB2_SPL_SIZE - smb2->in.num_done) {
+                        /* Naughty windows sending a short pdu :-( */
+                        len = smb2->spl + SMB2_SPL_SIZE - smb2->in.num_done;
                 }
 
-                /* Adjust the first vector to read */
-                tmpiov->iov_base = (char *)tmpiov->iov_base + num_done;
-                tmpiov->iov_len -= num_done;
-
-		count = readv(smb2->fd, tmpiov, niov);
-		if (count < 0) {
-			if (errno == EINTR || errno == EAGAIN) {
-				return 0;
-			}
-			smb2_set_error(smb2, "Read from socket failed, "
-                                       "errno:%d. Closing socket.", errno);
-			return -1;
-		}
-		if (count == 0) {
-			/* remote side has closed the socket. */
-			return -1;
-		}
-		smb2->in.num_done += count;
-		available -= count;
-
-                if (smb2->in.num_done < SMB2_SPL_SIZE + SMB2_HEADER_SIZE) {
-                        continue;
-                }
-                
-                /* make sure stream protocol length is in host endianness */
-                if (smb2->in.num_done == SMB2_SPL_SIZE + SMB2_HEADER_SIZE) {
-                        memcpy(&smb2->in.total_size,
-                               smb2->in.iov[0].buf, 4);
-                        smb2->in.total_size = be32toh(smb2->in.total_size) + 4;
+                smb2->recv_state = SMB2_RECV_FIXED;
+                smb2_add_iovector(smb2, &smb2->in,
+                                  malloc(len & 0xfffe),
+                                  len & 0xfffe, free);
+                goto read_more_data;
+        case SMB2_RECV_FIXED:
+                len = smb2_process_payload_fixed(smb2, pdu);
+                if (len < 0) {
+                        smb2_set_error(smb2, "Invalid/garbage pdu received "
+                                       "from server. Closing socket. %s",
+                                       smb2_get_error(smb2));
+                        return -1;
                 }
 
-                if (smb2->in.num_done == SMB2_SPL_SIZE + SMB2_HEADER_SIZE &&
-                    smb2->in.total_size > smb2->in.num_done) {
-                        struct smb2_pdu *pdu;
-                        struct smb2_header hdr;
-                        char magic[4] = {0xFE, 'S', 'M', 'B'};
-                        size_t tmp_size = smb2->in.num_done;
-                        
-                        if (smb2_decode_header(smb2, &smb2->in.iov[1],
-                                               &hdr) != 0) {
-                                smb2_set_error(smb2, "Failed to decode smb2 "
-                                               "header");
-                                return -1;
-                        }
-                        if (memcmp(&hdr.protocol_id, magic, 4)) {
-                                smb2_set_error(smb2, "received non-SMB2");
-                                return -1;
-                        }
-                        if (!(hdr.flags & SMB2_FLAGS_SERVER_TO_REDIR)) {
-                                smb2_set_error(smb2, "received non-reply");
-                                return -1;
-                        }
-                        pdu = smb2_find_pdu(smb2, hdr.message_id);
-                        if (pdu == NULL) {
-                                smb2_set_error(smb2, "no matching PDU found");
-                                return -1;
-                        }
-                        SMB2_LIST_REMOVE(&smb2->waitqueue, pdu);
-                        smb2->pdu = pdu;
-                        
-                        /* copy any io-vectors we got from the pdu */
+                /* Add application provided iovectors */
+                if (len) {
                         for (i = 0; i < pdu->in.niov; i++) {
-                                struct smb2_iovec *v = &pdu->in.iov[i];
+                                size_t num = pdu->in.iov[i].len;
 
-                                smb2->in.iov[smb2->in.niov].buf = v->buf;
-                                smb2->in.iov[smb2->in.niov].len = v->len;
-                                smb2->in.iov[smb2->in.niov].free = NULL;
-                                tmp_size += v->len;
-                                if (tmp_size > smb2->in.total_size) {
-                                        smb2->in.iov[smb2->in.niov].len -= tmp_size - smb2->in.total_size;
-                                        tmp_size -= tmp_size - smb2->in.total_size;
-                                        smb2->in.niov++;
-                                        break;
+                                if (num > len) {
+                                        num = len;
                                 }
-                                
-                                smb2->in.niov++;
+                                smb2_add_iovector(smb2, &smb2->in,
+                                                  pdu->in.iov[i].buf,
+                                                  num, NULL);
+                                len -= num;
+
+                                if (len == 0) {
+                                        smb2->recv_state = SMB2_RECV_VARIABLE;
+                                        goto read_more_data;
+                                }
                         }
-
-                        if (tmp_size == smb2->in.total_size) {
-                                continue;
+                        if (len > 0) {
+                                smb2->recv_state = SMB2_RECV_VARIABLE;
+                                smb2_add_iovector(smb2, &smb2->in,
+                                                  malloc(len),
+                                                  len, free);
+                                goto read_more_data;
                         }
-
-                        /* We were not given enough vectors from the pdu
-                         * so we need to manually allocate one more.
-                         */
-                        pdu->in.iov[pdu->in.niov].len = smb2->in.total_size - tmp_size;
-                        pdu->in.iov[pdu->in.niov].buf = malloc(pdu->in.iov[pdu->in.niov].len);
-                        pdu->in.iov[pdu->in.niov].free = free;
-
-                        smb2->in.iov[smb2->in.niov].len = pdu->in.iov[pdu->in.niov].len;
-                        smb2->in.iov[smb2->in.niov].buf = pdu->in.iov[pdu->in.niov].buf;
-                        smb2->in.iov[smb2->in.niov].free = NULL;
-                        
-                        pdu->in.niov++;
-                        smb2->in.niov++;
-                        continue;
                 }
-                
-		if (smb2->in.num_done >= SMB2_SPL_SIZE + SMB2_HEADER_SIZE &&
-                    smb2->in.num_done == smb2->in.total_size) {
-                        /* Update pdu so that header now contains the
-                         * reply header.
-                         */
-                        smb2_decode_header(smb2, &smb2->in.iov[1],
-                                           &smb2->pdu->header);
 
-			if (smb2_process_pdu(smb2, smb2->pdu) != 0) {
-				smb2_set_error(smb2, "Invalid/garbage pdu received from server. Closing socket. %s", smb2_get_error(smb2));
-                                smb2->in.num_done  = 0;
-                                smb2_free_iovector(smb2, &smb2->in);
-                                smb2_free_pdu(smb2, smb2->pdu);
-                                smb2->pdu = NULL;
-				return -1;
-			}
-			smb2->in.num_done  = 0;
-                        smb2_free_iovector(smb2, &smb2->in);
-                        smb2_free_pdu(smb2, smb2->pdu);
-                        smb2->pdu = NULL;
-		}
-	}
+                /* Check for padding */
+                if (smb2->hdr.next_command) {
+                        len = smb2->hdr.next_command - (SMB2_HEADER_SIZE +
+                                  smb2->in.num_done - smb2->payload_offset);
+                } else {
+                        len = smb2->spl + SMB2_SPL_SIZE - smb2->in.num_done;
+                }
+                if (len < 0) {
+                        smb2_set_error(smb2, "Negative number of PAD bytes "
+                                       "encountered during PDU decode");
+                        return -1;
+                }
+                if (len > 0) {
+                        /* Add padding before the next PDU */
+                        smb2->recv_state = SMB2_RECV_PAD;
+                        smb2_add_iovector(smb2, &smb2->in,
+                                          malloc(len),
+                                          len, free);
+                        goto read_more_data;
+                }
+
+                /* If len == 0 it means there is no padding and we are finished
+                 * reading this PDU */
+                break;
+        case SMB2_RECV_VARIABLE:
+                if (smb2_process_payload_variable(smb2, pdu) < 0) {
+                        smb2_set_error(smb2, "Invalid/garbage pdu received "
+                                       "from server. Closing socket. %s",
+                                       smb2_get_error(smb2));
+                        return -1;
+                }
+
+                /* Check for padding */
+                if (smb2->hdr.next_command) {
+                        len = smb2->hdr.next_command - (SMB2_HEADER_SIZE +
+                                  smb2->in.num_done - smb2->payload_offset);
+                } else {
+                        len = smb2->spl + SMB2_SPL_SIZE - smb2->in.num_done;
+                }
+                if (len < 0) {
+                        smb2_set_error(smb2, "Negative number of PAD bytes "
+                                       "encountered during PDU decode");
+                        return -1;
+                }
+                if (len > 0) {
+                        /* Add padding before the next PDU */
+                        smb2->recv_state = SMB2_RECV_PAD;
+                        smb2_add_iovector(smb2, &smb2->in,
+                                          malloc(len),
+                                          len, free);
+                        goto read_more_data;
+                }
+
+                /* If len == 0 it means there is no padding and we are finished
+                 * reading this PDU */
+                break;
+        case SMB2_RECV_PAD:
+                /* We are finished reading all the data and padding for this
+                 * PDU. Break out of the switch and invoke the callback.
+                 */
+                break;
+        }
+
+        is_chained = smb2->hdr.next_command;
+
+        pdu->cb(smb2, smb2->hdr.status, pdu->payload, pdu->cb_data);
+        smb2_free_pdu(smb2, pdu);
+        smb2->pdu = NULL;
+
+        if (is_chained) {
+                smb2->recv_state = SMB2_RECV_HEADER;
+                smb2_add_iovector(smb2, &smb2->in, &smb2->header[0],
+                                  SMB2_HEADER_SIZE, NULL);
+                goto read_more_data;
+        }
+
+        /* We are all done now with this chain. Reset num_done to 0
+         * and restart with a new SPL for the next chain.
+         */
+        smb2->in.num_done = 0;        
 
 	return 0;
 }

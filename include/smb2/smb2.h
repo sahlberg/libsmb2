@@ -39,25 +39,25 @@ struct smb2_timeval {
 #define SMB2_FLAGS_REPLAY_OPERATION   0x20000000
         
 enum smb2_command {
-        SMB2_NEGOTIATE       = 0x0000,
+        SMB2_NEGOTIATE       = 0,
         SMB2_SESSION_SETUP,
         SMB2_LOGOFF,
         SMB2_TREE_CONNECT,
         SMB2_TREE_DISCONNECT,
         SMB2_CREATE,
         SMB2_CLOSE,
-        SMB2_FLUSH,
-        SMB2_READ,
+        /* SMB2_FLUSH, */
+        SMB2_READ            = 8,
         SMB2_WRITE,
-        SMB2_LOCK,
-        SMB2_IOCTL,
-        SMB2_CANCEL,
-        SMB2_ECHO,
+        /* SMB2_LOCK, */
+        /* SMB2_IOCTL, */
+        /* SMB2_CANCEL, */
+        SMB2_ECHO            = 13,
         SMB2_QUERY_DIRECTORY,
-        SMB2_CHANGE_NOTIFY,
-        SMB2_QUERY_INFO,
-        SMB2_SET_INFO,
-        SMB2_OPLOCK_BREAK,
+        /* SMB2_CHANGE_NOTIFY, */
+        SMB2_QUERY_INFO      = 16,
+        /* SMB2_SET_INFO, */
+        /* SMB2_OPLOCK_BREAK, */
 };
 
 /*
@@ -105,6 +105,7 @@ struct smb2_negotiate_reply {
         uint64_t system_time;
         uint64_t server_start_time;
         uint16_t security_buffer_length;
+        uint16_t security_buffer_offset;
         char *security_buffer;
 };
 
@@ -138,6 +139,7 @@ struct smb2_session_setup_request {
 struct smb2_session_setup_reply {
         uint16_t session_flags;
         uint16_t security_buffer_length;
+        uint16_t security_buffer_offset;
         char *security_buffer;
 };
 
@@ -314,6 +316,7 @@ struct smb2_create_reply {
         uint32_t file_attributes;
         smb2_file_id file_id;
         uint32_t create_context_length;
+        uint32_t create_context_offset;
         char *create_context;
 };
 
@@ -385,6 +388,7 @@ struct smb2_query_directory_request {
 #define SMB2_QUERY_DIRECTORY_REPLY_SIZE 9
 
 struct smb2_query_directory_reply {
+        uint16_t output_buffer_offset;
         uint32_t output_buffer_length;
         char *output_buffer;
 };
@@ -413,6 +417,7 @@ struct smb2_read_request {
 #define SMB2_READ_REPLY_SIZE 17
 
 struct smb2_read_reply {
+        uint8_t data_offset;
         uint32_t data_length;
         uint32_t data_remaining;
 };
@@ -494,6 +499,7 @@ struct smb2_query_info_request {
 #define SMB2_QUERY_INFO_REPLY_SIZE 9
 
 struct smb2_query_info_reply {
+        uint16_t output_buffer_offset;
         uint32_t output_buffer_length;
         char *output_buffer;
 };

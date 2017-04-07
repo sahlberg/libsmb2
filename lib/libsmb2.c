@@ -1349,7 +1349,7 @@ stat_cb_3(struct smb2_context *smb2, int status,
 {
         struct stat_cb_data *stat_data = private_data;
 
-        if (status != SMB2_STATUS_SUCCESS) {
+        if (stat_data->status == SMB2_STATUS_SUCCESS) {
                 stat_data->status = status;
         }
 
@@ -1369,8 +1369,10 @@ stat_cb_2(struct smb2_context *smb2, int status,
 
         memset(&fs, 0, sizeof(struct smb2_file_all_information));
 
-        if (status != SMB2_STATUS_SUCCESS) {
+        if (stat_data->status == SMB2_STATUS_SUCCESS) {
                 stat_data->status = status;
+        }
+        if (stat_data->status != SMB2_STATUS_SUCCESS) {
                 return;
         }
 
@@ -1399,7 +1401,7 @@ stat_cb_1(struct smb2_context *smb2, int status,
 {
         struct stat_cb_data *stat_data = private_data;
 
-        if (status != SMB2_STATUS_SUCCESS) {
+        if (stat_data->status == SMB2_STATUS_SUCCESS) {
                 stat_data->status = status;
         }
 }

@@ -121,46 +121,6 @@ smb2_encode_create_request(struct smb2_context *smb2,
         return 0;
 }
 
-static int
-smb2_decode_create_reply(struct smb2_context *smb2,
-                         struct smb2_pdu *pdu,
-                         struct smb2_create_reply *rep)
-{
-        uint16_t struct_size;
-
-        smb2_get_uint16(&pdu->in.iov[0], 0, &struct_size);
-        if (struct_size != SMB2_CREATE_REPLY_SIZE ||
-            struct_size < pdu->in.iov[0].len) {
-                smb2_set_error(smb2, "Unexpected size of Create reply. "
-                               "Expected %d, got %d",
-                               SMB2_CLOSE_REPLY_SIZE,
-                               (int)pdu->in.iov[0].len);
-                return -1;
-        }
-
-        smb2_get_uint8(&pdu->in.iov[0], 2, &rep->oplock_level);
-        smb2_get_uint8(&pdu->in.iov[0], 3, &rep->flags);
-        smb2_get_uint32(&pdu->in.iov[0], 4, &rep->create_action);
-        smb2_get_uint64(&pdu->in.iov[0], 8, &rep->creation_time);
-        smb2_get_uint64(&pdu->in.iov[0], 16, &rep->last_access_time);
-        smb2_get_uint64(&pdu->in.iov[0], 24, &rep->last_write_time);
-        smb2_get_uint64(&pdu->in.iov[0], 32, &rep->change_time);
-        smb2_get_uint64(&pdu->in.iov[0], 40, &rep->allocation_size);
-        smb2_get_uint64(&pdu->in.iov[0], 48, &rep->end_of_file);
-        smb2_get_uint32(&pdu->in.iov[0], 56, &rep->file_attributes);
-        memcpy(rep->file_id, pdu->in.iov[0].buf + 64, SMB2_FD_SIZE);
-        smb2_get_uint32(&pdu->in.iov[0], 84, &rep->create_context_length);
-
-        /* No support for createcontext yet*/
-        /* Create Context */
-        if (rep->create_context_length) {
-                smb2_set_error(smb2, "Create context not implemented, yet");
-                return -1;
-        }
-
-        return 0;
-}
-
 struct smb2_pdu *
 smb2_cmd_create_async(struct smb2_context *smb2,
                       struct smb2_create_request *req,
@@ -186,17 +146,73 @@ smb2_cmd_create_async(struct smb2_context *smb2,
         return pdu;
 }
 
-int smb2_process_create_reply(struct smb2_context *smb2,
-                              struct smb2_pdu *pdu)
-{
-        struct smb2_create_reply reply;
+#define IOV_OFFSET (rep->create_context_offset - SMB2_HEADER_SIZE - \
+                    (SMB2_CREATE_REPLY_SIZE & 0xfffe))
 
-        if (smb2_decode_create_reply(smb2, pdu, &reply) < 0) {
-                pdu->cb(smb2, -EBADMSG, NULL, pdu->cb_data);
+int
+smb2_process_create_fixed(struct smb2_context *smb2,
+                          struct smb2_pdu *pdu)
+{
+        struct smb2_create_reply *rep;
+        struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
+        uint16_t struct_size;
+
+        rep = malloc(sizeof(*rep));
+        pdu->payload = rep;
+
+        smb2_get_uint16(iov, 0, &struct_size);
+        if (struct_size != SMB2_CREATE_REPLY_SIZE ||
+            (struct_size & 0xfffe) != iov->len) {
+                smb2_set_error(smb2, "Unexpected size of Create. "
+                               "Expected %d, got %d",
+                               SMB2_CREATE_REPLY_SIZE,
+                               (int)iov->len);
                 return -1;
         }
 
-        pdu->cb(smb2, pdu->header.status, &reply, pdu->cb_data);
+        smb2_get_uint8(iov, 2, &rep->oplock_level);
+        smb2_get_uint8(iov, 3, &rep->flags);
+        smb2_get_uint32(iov, 4, &rep->create_action);
+        smb2_get_uint64(iov, 8, &rep->creation_time);
+        smb2_get_uint64(iov, 16, &rep->last_access_time);
+        smb2_get_uint64(iov, 24, &rep->last_write_time);
+        smb2_get_uint64(iov, 32, &rep->change_time);
+        smb2_get_uint64(iov, 40, &rep->allocation_size);
+        smb2_get_uint64(iov, 48, &rep->end_of_file);
+        smb2_get_uint32(iov, 56, &rep->file_attributes);
+        memcpy(rep->file_id, iov->buf + 64, SMB2_FD_SIZE);
+        smb2_get_uint32(iov, 80, &rep->create_context_offset);
+        smb2_get_uint32(iov, 84, &rep->create_context_length);
+
+        if (rep->create_context_length == 0) {
+                return 0;
+        }
+
+        if (rep->create_context_offset < SMB2_HEADER_SIZE +
+            (SMB2_CREATE_REPLY_SIZE & 0xfffe)) {
+                smb2_set_error(smb2, "Create context overlaps with "
+                               "reply header");
+                return -1;
+        }
+
+        /* Return the amount of data that the security buffer will take up.
+         * Including any padding before the security buffer itself.
+         */
+        return IOV_OFFSET + rep->create_context_length;
+}
+
+int
+smb2_process_create_variable(struct smb2_context *smb2,
+                             struct smb2_pdu *pdu)
+{
+        struct smb2_create_reply *rep = pdu->payload;
+
+        /* No support for createcontext yet*/
+        /* Create Context */
+        if (rep->create_context_length) {
+                smb2_set_error(smb2, "Create context not implemented, yet");
+                return -1;
+        }
 
         return 0;
 }

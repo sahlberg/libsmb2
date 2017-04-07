@@ -83,30 +83,6 @@ smb2_encode_tree_connect_request(struct smb2_context *smb2,
         return 0;
 }
 
-static int
-smb2_decode_tree_connect_reply(struct smb2_context *smb2,
-                               struct smb2_pdu *pdu,
-                               struct smb2_tree_connect_reply *rep)
-{
-        uint16_t struct_size;
-
-        smb2_get_uint16(&pdu->in.iov[0], 0, &struct_size);
-        if (struct_size != SMB2_TREE_CONNECT_REPLY_SIZE) {
-                smb2_set_error(smb2, "Unexpected size of Tree Connect reply. "
-                               "Expected %d, got %d",
-                               SMB2_TREE_CONNECT_REPLY_SIZE,
-                               (int)pdu->in.iov[0].len);
-                return -1;
-        }
-
-        smb2_get_uint8(&pdu->in.iov[0], 2, &rep->share_type);
-        smb2_get_uint32(&pdu->in.iov[0], 4, &rep->share_flags);
-        smb2_get_uint32(&pdu->in.iov[0], 4, &rep->capabilities);
-        smb2_get_uint32(&pdu->in.iov[0], 4, &rep->maximal_access);
-
-        return 0;
-}
-
 struct smb2_pdu *
 smb2_cmd_tree_connect_async(struct smb2_context *smb2,
                             struct smb2_tree_connect_request *req,
@@ -132,20 +108,34 @@ smb2_cmd_tree_connect_async(struct smb2_context *smb2,
         return pdu;
 }
 
-int smb2_process_tree_connect_reply(struct smb2_context *smb2,
-                                    struct smb2_pdu *pdu)
+int
+smb2_process_tree_connect_fixed(struct smb2_context *smb2,
+                                struct smb2_pdu *pdu)
 {
-        struct smb2_tree_connect_reply reply;
+        struct smb2_tree_connect_reply *rep;
+        struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
+        uint16_t struct_size;
 
-        /* Update tree ID to use for future PDUs */
-        smb2->tree_id = pdu->header.sync.tree_id;
-        
-        if (smb2_decode_tree_connect_reply(smb2, pdu, &reply) < 0) {
-                pdu->cb(smb2, -EBADMSG, NULL, pdu->cb_data);
+        rep = malloc(sizeof(*rep));
+        pdu->payload = rep;
+
+        smb2_get_uint16(iov, 0, &struct_size);
+        if (struct_size != SMB2_TREE_CONNECT_REPLY_SIZE ||
+            (struct_size & 0xfffe) != iov->len) {
+                smb2_set_error(smb2, "Unexpected size of Negotiate "
+                               "reply. Expected %d, got %d",
+                               SMB2_TREE_CONNECT_REPLY_SIZE,
+                               (int)iov->len);
                 return -1;
         }
 
-        pdu->cb(smb2, pdu->header.status, &reply, pdu->cb_data);
+        smb2_get_uint8(&pdu->in.iov[0], 2, &rep->share_type);
+        smb2_get_uint32(&pdu->in.iov[0], 4, &rep->share_flags);
+        smb2_get_uint32(&pdu->in.iov[0], 4, &rep->capabilities);
+        smb2_get_uint32(&pdu->in.iov[0], 4, &rep->maximal_access);
+
+        /* Update tree ID to use for future PDUs */
+        smb2->tree_id = smb2->hdr.sync.tree_id;
 
         return 0;
 }
