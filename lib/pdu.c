@@ -325,7 +325,7 @@ smb2_add_to_outqueue(struct smb2_context *smb2, struct smb2_pdu *pdu)
         SMB2_LIST_ADD_END(&smb2->outqueue, pdu);
 }
 
-int
+void
 smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
         int i;
@@ -337,8 +337,6 @@ smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
         pdu->out.total_size = len;
 
 	smb2_add_to_outqueue(smb2, pdu);
-
-	return 0;
 }
 
 struct smb2_pdu *smb2_find_pdu(struct smb2_context *smb2,
