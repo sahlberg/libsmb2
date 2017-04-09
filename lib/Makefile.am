@@ -11,18 +11,18 @@ libsmb2_la_SOURCES = \
 	init.c \
 	libsmb2.c \
 	pdu.c \
-	smb2-close.c \
-	smb2-create.c \
-	smb2-echo.c \
-	smb2-logoff.c \
-	smb2-negotiate.c \
-	smb2-query-directory.c \
-	smb2-query-info.c \
-	smb2-read.c \
-	smb2-session-setup.c \
-	smb2-tree-connect.c \
-	smb2-tree-disconnect.c \
-	smb2-write.c \
+	smb2-cmd-close.c \
+	smb2-cmd-create.c \
+	smb2-cmd-echo.c \
+	smb2-cmd-logoff.c \
+	smb2-cmd-negotiate.c \
+	smb2-cmd-query-directory.c \
+	smb2-cmd-query-info.c \
+	smb2-cmd-read.c \
+	smb2-cmd-session-setup.c \
+	smb2-cmd-tree-connect.c \
+	smb2-cmd-tree-disconnect.c \
+	smb2-cmd-write.c \
 	socket.c \
 	sync.c \
 	timestamps.c \

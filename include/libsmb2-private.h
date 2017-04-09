@@ -282,7 +282,6 @@ int smb2_decode_fileidfulldirectoryinformation(
         struct smb2_context *smb2,
         struct smb2_fileidfulldirectoryinformation *fs,
         struct smb2_iovec *vec);
-
 int smb2_decode_file_basic_information(
         struct smb2_context *smb2,
         struct smb2_file_basic_information *fs,
