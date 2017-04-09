@@ -69,8 +69,6 @@
 #include "libsmb2.h"
 #include "libsmb2-private.h"
 
-#include <stdio.h>
-
 #define MAX_URL_SIZE 256
 
 #define CIFS_PORT 445
