@@ -379,7 +379,7 @@ int smb2_get_fixed_size(struct smb2_context *smb2, struct smb2_pdu *pdu)
         case SMB2_TREE_DISCONNECT:
                 return SMB2_TREE_DISCONNECT_REPLY_SIZE;
         }
-        return 0;
+        return -1;
 }
 
 int

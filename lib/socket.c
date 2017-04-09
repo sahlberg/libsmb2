@@ -209,7 +209,7 @@ read_more_data:
         }
         tmpiov = iov;
         
-        /* Skip the vectors we have alredy read */
+        /* Skip the vectors we have already read */
         while (num_done >= tmpiov->iov_len) {
                 num_done -= tmpiov->iov_len;
                 tmpiov++;
@@ -240,6 +240,7 @@ read_more_data:
                 goto read_more_data;
         }
 
+        /* At this point we have all the data we need for the current phase */
         switch (smb2->recv_state) {
         case SMB2_RECV_SPL:
                 smb2->spl = be32toh(smb2->spl);
@@ -260,7 +261,7 @@ read_more_data:
                 smb2->credits += smb2->hdr.credit_request_response;
 
                 if (memcmp(&smb2->hdr.protocol_id, magic, 4)) {
-                        smb2_set_error(smb2, "received non-SMB2");
+                        smb2_set_error(smb2, "received non-SMB2 blob");
                         return -1;
                 }
                 if (!(smb2->hdr.flags & SMB2_FLAGS_SERVER_TO_REDIR)) {
@@ -276,6 +277,7 @@ read_more_data:
 
                 len = smb2_get_fixed_size(smb2, pdu);
                 if (len < 0) {
+                        smb2_set_error(smb2, "can not determine fixed size");
                         return -1;
                 }
                 if (len > smb2->spl + SMB2_SPL_SIZE - smb2->in.num_done) {
@@ -291,8 +293,8 @@ read_more_data:
         case SMB2_RECV_FIXED:
                 len = smb2_process_payload_fixed(smb2, pdu);
                 if (len < 0) {
-                        smb2_set_error(smb2, "Invalid/garbage pdu received "
-                                       "from server. Closing socket. %s",
+                        smb2_set_error(smb2, "Failed to parse fixed part of "
+                                       "command payload. %s",
                                        smb2_get_error(smb2));
                         return -1;
                 }
@@ -350,8 +352,8 @@ read_more_data:
                 break;
         case SMB2_RECV_VARIABLE:
                 if (smb2_process_payload_variable(smb2, pdu) < 0) {
-                        smb2_set_error(smb2, "Invalid/garbage pdu received "
-                                       "from server. Closing socket. %s",
+                        smb2_set_error(smb2, "Failed to parse variable part of "
+                                       "command payload. %s",
                                        smb2_get_error(smb2));
                         return -1;
                 }
