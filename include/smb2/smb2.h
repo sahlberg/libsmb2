@@ -30,6 +30,15 @@ struct smb2_timeval {
         uint32_t tv_usec;
 };
 
+#define SMB2_ERROR_REPLY_SIZE 9
+
+struct smb2_error_reply {
+        uint8_t error_context_count;
+        uint32_t byte_count;
+        char *error_data;
+};
+
+
 #define SMB2_FLAGS_SERVER_TO_REDIR    0x00000001
 #define SMB2_FLAGS_ASYNC_COMMAND      0x00000002
 #define SMB2_FLAGS_RELATED_OPERATIONS 0x00000004

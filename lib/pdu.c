@@ -351,8 +351,26 @@ struct smb2_pdu *smb2_find_pdu(struct smb2_context *smb2,
         return pdu;
 }
 
+static int smb2_is_error_response(struct smb2_context *smb2,
+                                  struct smb2_pdu *pdu) {
+        if ((smb2->hdr.status & SMB2_STATUS_SEVERITY_MASK) ==
+            SMB2_STATUS_SEVERITY_ERROR) {
+                switch (smb2->hdr.status) {
+                case SMB2_STATUS_MORE_PROCESSING_REQUIRED:
+                        return 0;
+                default:
+                        return 1;
+                }
+        }
+        return 0;
+}
+
 int smb2_get_fixed_size(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
+        if (smb2_is_error_response(smb2, pdu)) {
+                return SMB2_ERROR_REPLY_SIZE & 0xfffe;
+        }
+
         switch (pdu->header.command) {
         case SMB2_NEGOTIATE:
                 return SMB2_NEGOTIATE_REPLY_SIZE;
@@ -385,6 +403,10 @@ int smb2_get_fixed_size(struct smb2_context *smb2, struct smb2_pdu *pdu)
 int
 smb2_process_payload_fixed(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
+        if (smb2_is_error_response(smb2, pdu)) {
+                return smb2_process_error_fixed(smb2, pdu);
+        }
+
         switch (pdu->header.command) {
         case SMB2_NEGOTIATE:
                 return smb2_process_negotiate_fixed(smb2, pdu);
@@ -417,6 +439,10 @@ smb2_process_payload_fixed(struct smb2_context *smb2, struct smb2_pdu *pdu)
 int
 smb2_process_payload_variable(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
+        if (smb2_is_error_response(smb2, pdu)) {
+                return smb2_process_error_variable(smb2, pdu);
+        }
+
         switch (pdu->header.command) {
         case SMB2_NEGOTIATE:
                 return smb2_process_negotiate_variable(smb2, pdu);

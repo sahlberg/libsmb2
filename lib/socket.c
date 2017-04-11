@@ -278,10 +278,6 @@ read_more_data:
                         smb2_set_error(smb2, "can not determine fixed size");
                         return -1;
                 }
-                if (len > smb2->spl + SMB2_SPL_SIZE - smb2->in.num_done) {
-                        /* Naughty windows sending a short pdu :-( */
-                        len = smb2->spl + SMB2_SPL_SIZE - smb2->in.num_done;
-                }
 
                 smb2->recv_state = SMB2_RECV_FIXED;
                 smb2_add_iovector(smb2, &smb2->in,

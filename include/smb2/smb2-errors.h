@@ -16,6 +16,23 @@
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 
+/*
+ * NTSTATUS fields
+ */
+#define SMB2_STATUS_SEVERITY_MASK    0xc0000000
+#define SMB2_STATUS_SEVERITY_SUCCESS 0x00000000
+#define SMB2_STATUS_SEVERITY_INFO    0x40000000
+#define SMB2_STATUS_SEVERITY_WARNING 0x80000000
+#define SMB2_STATUS_SEVERITY_ERROR   0xc0000000
+
+#define SMB2_STATUS_CUSTOMER_MASK    0x20000000
+
+#define SMB2_STATUS_FACILITY_MASK    0x0fff0000
+
+#define SMB2_STATUS_CODE_MASK        0x0000ffff
+
+
+/* Error codes */
 #define SMB2_STATUS_SUCCESS                  0x00000000
 #define SMB2_STATUS_NO_MORE_FILES            0x80000006
 #define SMB2_STATUS_INVALID_PARAMETER        0xC000000d

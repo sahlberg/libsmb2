@@ -243,6 +243,10 @@ int smb2_get_uint16(struct smb2_iovec *iov, int offset, uint16_t *value);
 int smb2_get_uint32(struct smb2_iovec *iov, int offset, uint32_t *value);
 int smb2_get_uint64(struct smb2_iovec *iov, int offset, uint64_t *value);
 
+int smb2_process_error_fixed(struct smb2_context *smb2,
+                             struct smb2_pdu *pdu);
+int smb2_process_error_variable(struct smb2_context *smb2,
+                                struct smb2_pdu *pdu);
 int smb2_process_negotiate_fixed(struct smb2_context *smb2,
                                  struct smb2_pdu *pdu);
 int smb2_process_negotiate_variable(struct smb2_context *smb2,
