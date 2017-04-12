@@ -1,5 +1,6 @@
 nterror_to_str
 nterror_to_errno
+smb2_add_compound_pdu
 smb2_close
 smb2_close_async
 smb2_closedir
@@ -21,6 +22,7 @@ smb2_destroy_url
 smb2_disconnect_share
 smb2_disconnect_share_async
 smb2_free_data
+smb2_free_pdu
 smb2_fstat
 smb2_fstat_async
 smb2_get_client_guid
@@ -38,6 +40,7 @@ smb2_pread
 smb2_pread_async
 smb2_pwrite
 smb2_pwrite_async
+smb2_queue_pdu
 smb2_read
 smb2_read_async
 smb2_readdir

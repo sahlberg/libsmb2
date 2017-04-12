@@ -207,6 +207,27 @@ int nterror_to_errno(uint32_t status);
 struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url);
 void smb2_destroy_url(struct smb2_url *url);
 
+struct smb2_pdu;
+/*
+ * The functions are used when creating compound low level commands.
+ * The general pattern for compound chains is
+ * 1, pdu = smb2_cmd_*_async(smb2, ...)
+ *
+ * 2, next = smb2_cmd_*_async(smb2, ...)
+ * 3, smb2_add_compound_pdu(smb2, pdu, next);
+ *
+ * 4, next = smb2_cmd_*_async(smb2, ...)
+ * 5, smb2_add_compound_pdu(smb2, pdu, next);
+ * ...
+ * *, smb2_queue_pdu(smb2, pdu);
+ *
+ * See libnfs.c and smb2-raw-stat-async.c for examples on how to use
+ * this interface.
+ */
+void smb2_add_compound_pdu(struct smb2_context *smb2,
+                           struct smb2_pdu *pdu, struct smb2_pdu *next_pdu);
+void smb2_free_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu);
+void smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu);
 
 /*
  * OPENDIR

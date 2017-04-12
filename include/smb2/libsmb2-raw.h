@@ -27,6 +27,11 @@ extern "C" {
  * Low level RAW SMB2 interface
  */
 /*
+ * Magic file Id used for compound commands.
+ */
+smb2_file_id compound_file_id;
+
+/*
  * This function is used to free the data returned by the query functions.
  */
 void smb2_free_data(struct smb2_context *smb2, void *ptr);

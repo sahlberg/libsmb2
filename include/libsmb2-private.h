@@ -222,10 +222,6 @@ int smb2_pad_to_64bit(struct smb2_context *smb2, struct smb2_io_vectors *v);
 struct smb2_pdu *smb2_allocate_pdu(struct smb2_context *smb2,
                                    enum smb2_command command,
                                    smb2_command_cb cb, void *cb_data);
-void smb2_add_compound_pdu(struct smb2_context *smb2,
-                           struct smb2_pdu *pdu, struct smb2_pdu *next_pdu);
-void smb2_free_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu);
-void smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu);
 int smb2_process_payload_fixed(struct smb2_context *smb2,
                                struct smb2_pdu *pdu);
 int smb2_process_payload_variable(struct smb2_context *smb2,
