@@ -45,81 +45,6 @@
 #include "libsmb2.h"
 #include "libsmb2-private.h"
 
-static int
-smb2_decode_file_basic_info(struct smb2_context *smb2,
-                            void *memctx,
-                            struct smb2_file_basic_info *fs,
-                            struct smb2_iovec *vec)
-{
-        uint64_t t;
-
-        smb2_get_uint64(vec, 0, &t);
-        win_to_timeval(t, &fs->creation_time);
-
-        smb2_get_uint64(vec, 8, &t);
-        win_to_timeval(t, &fs->last_access_time);
-
-        smb2_get_uint64(vec, 16, &t);
-        win_to_timeval(t, &fs->last_write_time);
-
-        smb2_get_uint64(vec, 24, &t);
-        win_to_timeval(t, &fs->change_time);
-
-        smb2_get_uint32(vec, 32, &fs->file_attributes);
-
-        return 0;
-}
-
-static int
-smb2_decode_file_standard_info(struct smb2_context *smb2,
-                               void *memctx,
-                               struct smb2_file_standard_info *fs,
-                               struct smb2_iovec *vec)
-{
-        smb2_get_uint64(vec, 0, &fs->allocation_size);
-        smb2_get_uint64(vec, 8, &fs->end_of_file);
-        smb2_get_uint32(vec, 16, &fs->number_of_links);
-        smb2_get_uint8(vec, 20, &fs->delete_pending);
-        smb2_get_uint8(vec, 21, &fs->directory);
-
-        return 0;
-}
-
-static int
-smb2_decode_file_all_info(struct smb2_context *smb2,
-                          void *memctx,
-                          struct smb2_file_all_info *fs,
-                          struct smb2_iovec *vec)
-{
-        struct smb2_iovec v;
-
-        if (vec->len < 40) {
-                return -1;
-        }
-
-        v.buf = vec->buf;
-        v.len = 40;
-        smb2_decode_file_basic_info(smb2, memctx, &fs->basic, &v);
-
-        if (vec->len < 64) {
-                return -1;
-        }
-        
-        v.buf = vec->buf + 40;
-        v.len = 24;
-        smb2_decode_file_standard_info(smb2, memctx, &fs->standard, &v);
-
-        smb2_get_uint64(vec, 64, &fs->index_number);
-        smb2_get_uint32(vec, 72, &fs->ea_size);
-        smb2_get_uint32(vec, 76, &fs->access_flags);
-        smb2_get_uint64(vec, 80, &fs->current_byte_offset);
-        smb2_get_uint32(vec, 88, &fs->mode);
-        smb2_get_uint32(vec, 92, &fs->alignment_requirement);
-
-        //fs->name = ucs2_to_utf8((uint16_t *)&vec->buf[80], name_len / 2);
-
-        return 0;
-}
 
 static int
 smb2_encode_query_info_request(struct smb2_context *smb2,
@@ -245,6 +170,16 @@ smb2_process_query_info_variable(struct smb2_context *smb2,
         switch (pdu->info_type) {
         case SMB2_0_INFO_FILE:
                 switch (pdu->file_info_class) {
+                case SMB2_FILE_BASIC_INFORMATION:
+                        ptr = smb2_alloc_init(smb2,
+                                  sizeof(struct smb2_file_basic_info));
+                        smb2_decode_file_basic_info(smb2, ptr, ptr, &vec);
+                        break;
+                case SMB2_FILE_STANDARD_INFORMATION:
+                        ptr = smb2_alloc_init(smb2,
+                                  sizeof(struct smb2_file_standard_info));
+                        smb2_decode_file_standard_info(smb2, ptr, ptr, &vec);
+                        break;
                 case SMB2_FILE_ALL_INFORMATION:
                         ptr = smb2_alloc_init(smb2,
                                   sizeof(struct smb2_file_all_info));

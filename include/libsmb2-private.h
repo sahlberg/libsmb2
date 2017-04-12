@@ -290,6 +290,22 @@ int smb2_decode_fileidfulldirectoryinformation(
         struct smb2_fileidfulldirectoryinformation *fs,
         struct smb2_iovec *vec);
 
+int smb2_decode_file_basic_info(struct smb2_context *smb2,
+                                void *memctx,
+                                struct smb2_file_basic_info *fs,
+                                struct smb2_iovec *vec);
+
+int smb2_decode_file_standard_info(struct smb2_context *smb2,
+                                   void *memctx,
+                                   struct smb2_file_standard_info *fs,
+                                   struct smb2_iovec *vec);
+
+int smb2_decode_file_all_info(struct smb2_context *smb2,
+                              void *memctx,
+                              struct smb2_file_all_info *fs,
+                              struct smb2_iovec *vec);
+
+
 #ifdef __cplusplus
 }
 #endif

@@ -439,6 +439,11 @@ struct smb2_read_reply {
 #define SMB2_0_INFO_SECURITY   0x03
 #define SMB2_0_INFO_QUOTA      0x04
 
+/* File information class : for SMB2_0_INFO_FILE */
+#define SMB2_FILE_BASIC_INFORMATION             0x04
+#define SMB2_FILE_STANDARD_INFORMATION          0x05
+#define SMB2_FILE_ALL_INFORMATION               0x12
+        
 /* additional info */
 #define OWNER_SECURITY_INFORMATION     0x00000001
 #define GROUP_SECURITY_INFORMATION     0x00000002
@@ -490,9 +495,6 @@ struct smb2_file_all_info {
         uint32_t alignment_requirement;
         char *name_information;
 };
-
-/* File information class */
-#define SMB2_FILE_ALL_INFORMATION               0x12
 
 struct smb2_query_info_request {
         uint8_t info_type;
