@@ -1210,10 +1210,7 @@ fstat_cb_1(struct smb2_context *smb2, int status,
 {
         struct stat_cb_data *stat_data = private_data;
         struct smb2_query_info_reply *rep = command_data;
-        struct smb2_iovec v;
-        struct smb2_file_all_information fs;
-
-        memset(&fs, 0, sizeof(struct smb2_file_all_information));
+        struct smb2_file_all_info *fs = rep->output_buffer;
 
         if (status != SMB2_STATUS_SUCCESS) {
                 stat_data->cb(smb2, -nterror_to_errno(status),
@@ -1222,23 +1219,24 @@ fstat_cb_1(struct smb2_context *smb2, int status,
                 return;
         }
 
-        v.buf = rep->output_buffer;
-        v.len = rep->output_buffer_length;
-
-        smb2_decode_file_all_information(smb2, &fs, &v);
         stat_data->st->smb2_type = SMB2_TYPE_FILE;
-        if (fs.basic.file_attributes & SMB2_FILE_ATTRIBUTE_DIRECTORY) {
+        if (fs->basic.file_attributes & SMB2_FILE_ATTRIBUTE_DIRECTORY) {
                 stat_data->st->smb2_type = SMB2_TYPE_DIRECTORY;
         }
-        stat_data->st->smb2_nlink = fs.standard.number_of_links;
-        stat_data->st->smb2_ino = fs.index_number;
-        stat_data->st->smb2_size = fs.standard.end_of_file;
-        stat_data->st->smb2_atime = fs.basic.last_access_time.tv_sec;
-        stat_data->st->smb2_atime_nsec = fs.basic.last_access_time.tv_usec * 1000;
-        stat_data->st->smb2_mtime = fs.basic.last_write_time.tv_sec;
-        stat_data->st->smb2_mtime_nsec = fs.basic.last_write_time.tv_usec * 1000;
-        stat_data->st->smb2_ctime = fs.basic.change_time.tv_sec;
-        stat_data->st->smb2_ctime_nsec = fs.basic.change_time.tv_usec * 1000;
+        stat_data->st->smb2_nlink      = fs->standard.number_of_links;
+        stat_data->st->smb2_ino        = fs->index_number;
+        stat_data->st->smb2_size       = fs->standard.end_of_file;
+        stat_data->st->smb2_atime      = fs->basic.last_access_time.tv_sec;
+        stat_data->st->smb2_atime_nsec = fs->basic.last_access_time.tv_usec *
+                1000;
+        stat_data->st->smb2_mtime      = fs->basic.last_write_time.tv_sec;
+        stat_data->st->smb2_mtime_nsec = fs->basic.last_write_time.tv_usec *
+                1000;
+        stat_data->st->smb2_ctime      = fs->basic.change_time.tv_sec;
+        stat_data->st->smb2_ctime_nsec = fs->basic.change_time.tv_usec *
+                1000;
+
+        smb2_free_data(smb2, fs);
 
         stat_data->cb(smb2, 0, stat_data->st, stat_data->cb_data);
         free(stat_data);
@@ -1265,7 +1263,7 @@ int smb2_fstat_async(struct smb2_context *smb2, struct smb2fh *fh,
 
         memset(&req, 0, sizeof(struct smb2_query_info_request));
         req.info_type = SMB2_0_INFO_FILE;
-        req.file_information_class = SMB2_FILE_ALL_INFORMATION;
+        req.file_info_class = SMB2_FILE_ALL_INFORMATION;
         req.output_buffer_length = 65535;
         req.additional_information = 0;
         req.flags = 0;
@@ -1303,10 +1301,7 @@ stat_cb_2(struct smb2_context *smb2, int status,
 {
         struct stat_cb_data *stat_data = private_data;
         struct smb2_query_info_reply *rep = command_data;
-        struct smb2_iovec v;
-        struct smb2_file_all_information fs;
-
-        memset(&fs, 0, sizeof(struct smb2_file_all_information));
+        struct smb2_file_all_info *fs = rep->output_buffer;
 
         if (stat_data->status == SMB2_STATUS_SUCCESS) {
                 stat_data->status = status;
@@ -1315,23 +1310,24 @@ stat_cb_2(struct smb2_context *smb2, int status,
                 return;
         }
 
-        v.buf = rep->output_buffer;
-        v.len = rep->output_buffer_length;
-
-        smb2_decode_file_all_information(smb2, &fs, &v);
         stat_data->st->smb2_type = SMB2_TYPE_FILE;
-        if (fs.basic.file_attributes & SMB2_FILE_ATTRIBUTE_DIRECTORY) {
+        if (fs->basic.file_attributes & SMB2_FILE_ATTRIBUTE_DIRECTORY) {
                 stat_data->st->smb2_type = SMB2_TYPE_DIRECTORY;
         }
-        stat_data->st->smb2_nlink = fs.standard.number_of_links;
-        stat_data->st->smb2_ino = fs.index_number;
-        stat_data->st->smb2_size = fs.standard.end_of_file;
-        stat_data->st->smb2_atime = fs.basic.last_access_time.tv_sec;
-        stat_data->st->smb2_atime_nsec = fs.basic.last_access_time.tv_usec * 1000;
-        stat_data->st->smb2_mtime = fs.basic.last_write_time.tv_sec;
-        stat_data->st->smb2_mtime_nsec = fs.basic.last_write_time.tv_usec * 1000;
-        stat_data->st->smb2_ctime = fs.basic.change_time.tv_sec;
-        stat_data->st->smb2_ctime_nsec = fs.basic.change_time.tv_usec * 1000;
+        stat_data->st->smb2_nlink      = fs->standard.number_of_links;
+        stat_data->st->smb2_ino        = fs->index_number;
+        stat_data->st->smb2_size       = fs->standard.end_of_file;
+        stat_data->st->smb2_atime      = fs->basic.last_access_time.tv_sec;
+        stat_data->st->smb2_atime_nsec = fs->basic.last_access_time.tv_usec *
+                1000;
+        stat_data->st->smb2_mtime      = fs->basic.last_write_time.tv_sec;
+        stat_data->st->smb2_mtime_nsec = fs->basic.last_write_time.tv_usec *
+                1000;
+        stat_data->st->smb2_ctime      = fs->basic.change_time.tv_sec;
+        stat_data->st->smb2_ctime_nsec = fs->basic.change_time.tv_usec *
+                1000;
+
+        smb2_free_data(smb2, fs);
 }
 
 static void
@@ -1387,7 +1383,7 @@ int smb2_stat_async(struct smb2_context *smb2, char *path,
         /* QUERY INFO command */
         memset(&qi_req, 0, sizeof(struct smb2_query_info_request));
         qi_req.info_type = SMB2_0_INFO_FILE;
-        qi_req.file_information_class = SMB2_FILE_ALL_INFORMATION;
+        qi_req.file_info_class = SMB2_FILE_ALL_INFORMATION;
         qi_req.output_buffer_length = 65535;
         qi_req.additional_information = 0;
         qi_req.flags = 0;

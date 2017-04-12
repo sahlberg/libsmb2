@@ -457,7 +457,7 @@ struct smb2_read_reply {
 /*
  * FILE_BASIC_INFORMATION
  */
-struct smb2_file_basic_information {
+struct smb2_file_basic_info {
         struct smb2_timeval creation_time;
         struct smb2_timeval last_access_time;
         struct smb2_timeval last_write_time;
@@ -468,7 +468,7 @@ struct smb2_file_basic_information {
 /*
  * FILE_STANDARD_INFORMATION
  */
-struct smb2_file_standard_information {
+struct smb2_file_standard_info {
         uint64_t allocation_size;
         uint64_t end_of_file;
         uint32_t number_of_links;
@@ -479,9 +479,9 @@ struct smb2_file_standard_information {
 /*
  * FILE_ALL_INFORMATION.
  */
-struct smb2_file_all_information {
-        struct smb2_file_basic_information basic;
-        struct smb2_file_standard_information standard;
+struct smb2_file_all_info {
+        struct smb2_file_basic_info basic;
+        struct smb2_file_standard_info standard;
         uint64_t index_number;
         uint32_t ea_size;
         uint32_t access_flags;
@@ -496,7 +496,7 @@ struct smb2_file_all_information {
 
 struct smb2_query_info_request {
         uint8_t info_type;
-        uint8_t file_information_class;
+        uint8_t file_info_class;
         uint32_t output_buffer_length;
         uint32_t input_buffer_length;
         char *input_buffer;
@@ -510,7 +510,7 @@ struct smb2_query_info_request {
 struct smb2_query_info_reply {
         uint16_t output_buffer_offset;
         uint32_t output_buffer_length;
-        char *output_buffer;
+        void *output_buffer;
 };
 
 #define SMB2_WRITE_REQUEST_SIZE 49

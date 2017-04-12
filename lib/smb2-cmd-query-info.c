@@ -45,10 +45,11 @@
 #include "libsmb2.h"
 #include "libsmb2-private.h"
 
-int smb2_decode_file_basic_information(
-        struct smb2_context *smb2,
-        struct smb2_file_basic_information *fs,
-        struct smb2_iovec *vec)
+static int
+smb2_decode_file_basic_info(struct smb2_context *smb2,
+                            void *memctx,
+                            struct smb2_file_basic_info *fs,
+                            struct smb2_iovec *vec)
 {
         uint64_t t;
 
@@ -69,10 +70,11 @@ int smb2_decode_file_basic_information(
         return 0;
 }
 
-int smb2_decode_file_standard_information(
-        struct smb2_context *smb2,
-        struct smb2_file_standard_information *fs,
-        struct smb2_iovec *vec)
+static int
+smb2_decode_file_standard_info(struct smb2_context *smb2,
+                               void *memctx,
+                               struct smb2_file_standard_info *fs,
+                               struct smb2_iovec *vec)
 {
         smb2_get_uint64(vec, 0, &fs->allocation_size);
         smb2_get_uint64(vec, 8, &fs->end_of_file);
@@ -83,20 +85,21 @@ int smb2_decode_file_standard_information(
         return 0;
 }
 
-int smb2_decode_file_all_information(
-        struct smb2_context *smb2,
-        struct smb2_file_all_information *fs,
-        struct smb2_iovec *vec)
+static int
+smb2_decode_file_all_info(struct smb2_context *smb2,
+                          void *memctx,
+                          struct smb2_file_all_info *fs,
+                          struct smb2_iovec *vec)
 {
         struct smb2_iovec v;
 
         if (vec->len < 40) {
                 return -1;
         }
-        
+
         v.buf = vec->buf;
         v.len = 40;
-        smb2_decode_file_basic_information(smb2, &fs->basic, &v);
+        smb2_decode_file_basic_info(smb2, memctx, &fs->basic, &v);
 
         if (vec->len < 64) {
                 return -1;
@@ -104,7 +107,7 @@ int smb2_decode_file_all_information(
         
         v.buf = vec->buf + 40;
         v.len = 24;
-        smb2_decode_file_standard_information(smb2, &fs->standard, &v);
+        smb2_decode_file_standard_info(smb2, memctx, &fs->standard, &v);
 
         smb2_get_uint64(vec, 64, &fs->index_number);
         smb2_get_uint32(vec, 72, &fs->ea_size);
@@ -139,7 +142,7 @@ smb2_encode_query_info_request(struct smb2_context *smb2,
 
         smb2_set_uint16(iov, 0, SMB2_QUERY_INFO_REQUEST_SIZE);
         smb2_set_uint8(iov, 2, req->info_type);
-        smb2_set_uint8(iov, 3, req->file_information_class);
+        smb2_set_uint8(iov, 3, req->file_info_class);
         smb2_set_uint32(iov,4, req->output_buffer_length);
         smb2_set_uint32(iov,12, req->input_buffer_length);
         smb2_set_uint32(iov,16, req->additional_information);
@@ -150,6 +153,10 @@ smb2_encode_query_info_request(struct smb2_context *smb2,
                 smb2_set_error(smb2, "No support for input buffers, yet");
                 return -1;
         }
+
+        /* Remember what we asked for so that we can unmarshall the reply */
+        pdu->info_type       = req->info_type;
+        pdu->file_info_class = req->file_info_class;
 
         return 0;
 }
@@ -230,8 +237,34 @@ smb2_process_query_info_variable(struct smb2_context *smb2,
 {
         struct smb2_query_info_reply *rep = pdu->payload;
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
+        struct smb2_iovec vec = {&iov->buf[IOV_OFFSET],
+                                 iov->len - IOV_OFFSET,
+                                 NULL};
+        void *ptr;
 
-        rep->output_buffer = &iov->buf[IOV_OFFSET];
+        switch (pdu->info_type) {
+        case SMB2_0_INFO_FILE:
+                switch (pdu->file_info_class) {
+                case SMB2_FILE_ALL_INFORMATION:
+                        ptr = smb2_alloc_init(smb2,
+                                  sizeof(struct smb2_file_all_info));
+                        smb2_decode_file_all_info(smb2, ptr, ptr, &vec);
+                        break;
+                default:
+                        smb2_set_error(smb2, "Can not decode info_type/"
+                                       "info_class %d/%d yet",
+                                       pdu->info_type,
+                                       pdu->file_info_class);
+                        return -1;
+                }
+                break;
+        default:
+                smb2_set_error(smb2, "Can not decode file info_type %d yet",
+                               pdu->info_type);
+                return -1;
+        }
+
+        rep->output_buffer = ptr;
 
         return 0;
 }

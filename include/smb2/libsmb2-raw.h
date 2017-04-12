@@ -27,6 +27,11 @@ extern "C" {
  * Low level RAW SMB2 interface
  */
 /*
+ * This function is used to free the data returned by the query functions.
+ */
+void smb2_free_data(struct smb2_context *smb2, void *ptr);
+
+/*
  * Asynchronous SMB2 Negotiate
  * pdu  : If the call was initiated and a connection will be attempted.
  *        Result of the negotiate will be reported through the callback
@@ -215,7 +220,10 @@ struct smb2_pdu *smb2_cmd_query_directory_async(struct smb2_context *smb2,
  * Callback parameters :
  * status can be either of :
  *    0     : Query was successful.
- *            Command_data is a struct smb2_query_info_reply.
+ *            Command_data is a struct struct smb2_query_info_reply *
+ *            This structure contains a pointer to the requested data
+ *            structure in ->output_buffer.
+ *            Output_buffer must be freed by calling smb2_free_data()
  *
  *   !0     : Status is NT status code. Command_data is NULL.
  */

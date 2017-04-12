@@ -7,6 +7,7 @@ libsmb2_la_CPPFLAGS = -I$(abs_top_srcdir)/include \
 		      "-D_U_=__attribute__((unused))"
 
 libsmb2_la_SOURCES = \
+	alloc.c \
 	errors.c \
 	init.c \
 	libsmb2.c \

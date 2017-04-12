@@ -179,6 +179,10 @@ struct smb2_pdu {
          */
         struct smb2_io_vectors out;
         struct smb2_io_vectors in;
+
+        /* Data we need to retain between request/reply for QUERY INFO */
+        uint8_t info_type;
+        uint8_t file_info_class;
 };
 
 /* UCS2 is always in Little Endianness */
@@ -205,6 +209,9 @@ uint64_t timeval_to_win(struct smb2_timeval *tv);
 
 void smb2_set_error(struct smb2_context *smb2, const char *error_string,
                     ...) __attribute__((format(printf, 2, 3)));
+
+void *smb2_alloc_init(struct smb2_context *smb2, size_t size);
+void *smb2_alloc_data(struct smb2_context *smb2, void *data, size_t size);
 
 struct smb2_iovec *smb2_add_iovector(struct smb2_context *smb2,
                                      struct smb2_io_vectors *v,
@@ -286,19 +293,6 @@ int smb2_decode_fileidfulldirectoryinformation(
         struct smb2_context *smb2,
         struct smb2_fileidfulldirectoryinformation *fs,
         struct smb2_iovec *vec);
-int smb2_decode_file_basic_information(
-        struct smb2_context *smb2,
-        struct smb2_file_basic_information *fs,
-        struct smb2_iovec *vec);
-int smb2_decode_file_standard_information(
-        struct smb2_context *smb2,
-        struct smb2_file_standard_information *fs,
-        struct smb2_iovec *vec);
-int smb2_decode_file_all_information(
-        struct smb2_context *smb2,
-        struct smb2_file_all_information *fs,
-        struct smb2_iovec *vec);
-
 
 #ifdef __cplusplus
 }
