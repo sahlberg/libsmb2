@@ -132,8 +132,8 @@ stat_cb_1(struct smb2_context *smb2, int status,
         }
 }
 
-int send_compond_stat(struct smb2_context *smb2, char *path,
-                      smb2_command_cb cb, void *cb_data)
+int send_compound_stat(struct smb2_context *smb2, char *path,
+                       smb2_command_cb cb, void *cb_data)
 {
         struct stat_cb_data *stat_data;
         struct smb2_create_request cr_req;
@@ -241,8 +241,8 @@ int main(int argc, char *argv[])
 	}
 
         memset(&cb_data, 0, sizeof(cb_data));
-        if (send_compond_stat(smb2, url->path,
-                              generic_status_cb, &cb_data) != 0) {
+        if (send_compound_stat(smb2, url->path,
+                               generic_status_cb, &cb_data) != 0) {
 		printf("sending compound stat failed. %s\n",
                        smb2_get_error(smb2));
 		exit(10);

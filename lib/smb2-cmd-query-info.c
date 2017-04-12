@@ -80,7 +80,7 @@ smb2_decode_file_standard_info(struct smb2_context *smb2,
         smb2_get_uint64(vec, 8, &fs->end_of_file);
         smb2_get_uint32(vec, 16, &fs->number_of_links);
         smb2_get_uint8(vec, 20, &fs->delete_pending);
-        smb2_get_uint8(vec, 20, &fs->directory);
+        smb2_get_uint8(vec, 21, &fs->directory);
 
         return 0;
 }
