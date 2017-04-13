@@ -693,7 +693,7 @@ connect_cb(struct smb2_context *smb2, int status,
         req.dialects[1] = SMB2_VERSION_0210;
         req.dialects[2] = SMB2_VERSION_0300;
         req.dialects[3] = SMB2_VERSION_0302;
-        memcpy(req.client_guid, smb2_get_client_guid(smb2), 16);
+        memcpy(req.client_guid, smb2_get_client_guid(smb2), SMB2_GUID_SIZE);
 
         pdu = smb2_cmd_negotiate_async(smb2, &req, negotiate_cb, c_data);
         if (pdu == NULL) {

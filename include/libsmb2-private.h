@@ -211,7 +211,7 @@ void smb2_set_error(struct smb2_context *smb2, const char *error_string,
                     ...) __attribute__((format(printf, 2, 3)));
 
 void *smb2_alloc_init(struct smb2_context *smb2, size_t size);
-void *smb2_alloc_data(struct smb2_context *smb2, void *data, size_t size);
+void *smb2_alloc_data(struct smb2_context *smb2, void *memctx, size_t size);
 
 struct smb2_iovec *smb2_add_iovector(struct smb2_context *smb2,
                                      struct smb2_io_vectors *v,
@@ -305,6 +305,10 @@ int smb2_decode_file_all_info(struct smb2_context *smb2,
                               struct smb2_file_all_info *fs,
                               struct smb2_iovec *vec);
 
+int smb2_decode_security_descriptor(struct smb2_context *smb2,
+                                    void *memctx,
+                                    struct smb2_security_descriptor *sd,
+                                    struct smb2_iovec *vec);
 
 #ifdef __cplusplus
 }

@@ -91,12 +91,15 @@ enum smb2_command {
 #define SMB2_NEGOTIATE_MAX_DIALECTS 10
 
 #define SMB2_NEGOTIATE_REQUEST_SIZE 36
-        
+
+#define SMB2_GUID_SIZE 16
+typedef uint8_t smb2_guid[SMB2_GUID_SIZE];
+
 struct smb2_negotiate_request {
         uint16_t dialect_count;
         uint16_t security_mode;
         uint32_t capabilities;
-        unsigned char client_guid[16];
+        smb2_guid client_guid;
         uint64_t client_start_time;
         uint16_t dialects[SMB2_NEGOTIATE_MAX_DIALECTS];
 };
@@ -106,7 +109,7 @@ struct smb2_negotiate_request {
 struct smb2_negotiate_reply {
         uint16_t security_mode;
         uint16_t dialect_revision;
-        unsigned char server_guid[16];
+        smb2_guid server_guid;
         uint32_t capabilities;
         uint32_t max_transact_size;
         uint32_t max_read_size;
@@ -217,7 +220,7 @@ struct smb2_tree_connect_reply {
 #define SMB2_FILE_WRITE_ATTRIBUTES  0x00000100
 #define SMB2_DELETE                 0x00010000
 #define SMB2_READ_CONTROL           0x00020000
-#define SMB2_WRITE_DAC              0x00040000
+#define SMB2_WRITE_DACL             0x00040000
 #define SMB2_WRITE_OWNER            0x00080000
 #define SMB2_SYNCHRONIZE            0x00100000
 #define SMB2_ACCESS_SYSTEM_SECURITY 0x01000000
@@ -310,7 +313,7 @@ struct smb2_create_request {
 #define SMB2_CREATE_REPLY_SIZE 89
 
 #define SMB2_FD_SIZE 16
-typedef char smb2_file_id[SMB2_FD_SIZE];
+typedef uint8_t smb2_file_id[SMB2_FD_SIZE];
         
 struct smb2_create_reply {
         uint8_t oplock_level;
@@ -445,14 +448,15 @@ struct smb2_read_reply {
 #define SMB2_FILE_ALL_INFORMATION               0x12
         
 /* additional info */
-#define OWNER_SECURITY_INFORMATION     0x00000001
-#define GROUP_SECURITY_INFORMATION     0x00000002
-#define DACL_SECURITY_INFORMATION      0x00000004
-#define SACL_SECURITY_INFORMATION      0x00000008
-#define LABEL_SECURITY_INFORMATION     0x00000010
-#define ATTRIBUTE_SECURITY_INFORMATION 0x00000020
-#define SCOPE_SECURITY_INFORMATION     0x00000040
-#define BACKUP_SECURITY_INFORMATION    0x00000100
+#define SMB2_OWNER_SECURITY_INFORMATION     0x00000001
+#define SMB2_GROUP_SECURITY_INFORMATION     0x00000002
+#define SMB2_DACL_SECURITY_INFORMATION      0x00000004
+#define SMB2_SACL_SECURITY_INFORMATION      0x00000008
+#define SMB2_LABEL_SECURITY_INFORMATION     0x00000010
+#define SMB2_ATTRIBUTE_SECURITY_INFORMATION 0x00000020
+#define SMB2_SCOPE_SECURITY_INFORMATION     0x00000040
+#define SMB2_BACKUP_SECURITY_INFORMATION    0x00010000
+
 
 /* flags */
 #define SL_RESTART_SCAN        0x00000001
@@ -505,6 +509,100 @@ struct smb2_query_info_request {
         uint32_t additional_information;
         uint32_t flags;
         smb2_file_id file_id;
+};
+
+/*
+ * SID
+ */
+#define SID_ID_AUTH_LEN 6
+
+struct smb2_sid {
+        uint8_t revision;
+        uint8_t sub_auth_count;
+        uint8_t id_auth[SID_ID_AUTH_LEN];
+        uint32_t sub_auth[0];
+};
+
+/*
+ * ACE
+ */
+/* ace type */
+#define SMB2_ACCESS_ALLOWED_ACE_TYPE                 0x00
+#define SMB2_ACCESS_DENIED_ACE_TYPE                  0x01
+#define SMB2_SYSTEM_AUDIT_ACE_TYPE                   0x02
+#define SMB2_ACCESS_ALLOWED_OBJECT_ACE_TYPE          0x05
+#define SMB2_ACCESS_DENIED_OBJECT_ACE_TYPE           0x06
+#define SMB2_SYSTEM_AUDIT_OBJECT_ACE_TYPE            0x07
+#define SMB2_SYSTEM_ALARM_OBJECT_ACE_TYPE            0x08
+#define SMB2_SYSTEM_MANDATORY_LABEL_ACE_TYPE         0x11
+#define SMB2_SYSTEM_RESOURCE_ATTRIBUTE_ACE_TYPE      0x12
+#define SMB2_SYSTEM_SCOPED_POLICY_ID_ACE_TYPE        0x13
+
+/* ace flags */
+#define SMB2_OBJECT_INHERIT_ACE         0x01
+#define SMB2_CONTAINER_INHERIT_ACE      0x02
+#define SMB2_NO_PROPAGATE_INHERIT_ACE   0x04
+#define SMB2_INHERIT_ONLY_ACE           0x08
+#define SMB2_INHERITED_ACE              0x10
+#define SMB2_SUCCESSFUL_ACCESS_ACE_FLAG 0x40
+#define SMB2_FAILED_ACCESS_ACE_FLAG     0x80
+
+#define SMB2_OBJECT_TYPE_SIZE 16
+
+struct smb2_ace {
+        struct smb2_ace *next;
+
+        uint8_t ace_type;
+        uint8_t ace_flags;
+        uint16_t ace_size;
+
+        /* Which fields are valid depends on the ace type */
+        uint32_t mask;
+        uint32_t flags;
+        struct smb2_sid *sid;
+        uint8_t object_type[SMB2_OBJECT_TYPE_SIZE];
+        uint8_t inherited_object_type[SMB2_OBJECT_TYPE_SIZE];
+};
+
+/*
+ * ACL
+ */
+#define SMB2_ACL_REVISION    0x02
+#define SMB2_ACL_REVISION_DS 0x04
+
+struct smb2_acl {
+        uint8_t revision;
+        uint16_t ace_count;
+        struct smb2_ace *aces;
+};
+
+/*
+ * SECURITY_DESCRIPTOR
+ */
+/* Security descriptor control flags */
+#define SMB2_SD_CONTROL_OD 0x0001
+#define SMB2_SD_CONTROL_GD 0x0002
+#define SMB2_SD_CONTROL_DP 0x0004
+#define SMB2_SD_CONTROL_DD 0x0008
+#define SMB2_SD_CONTROL_SP 0x0010
+#define SMB2_SD_CONTROL_SD 0x0020
+#define SMB2_SD_CONTROL_SS 0x0040
+#define SMB2_SD_CONTROL_DT 0x0080
+#define SMB2_SD_CONTROL_DC 0x0100
+#define SMB2_SD_CONTROL_SC 0x0200
+#define SMB2_SD_CONTROL_DI 0x0400
+#define SMB2_SD_CONTROL_SI 0x0800
+#define SMB2_SD_CONTROL_PD 0x1000
+#define SMB2_SD_CONTROL_PS 0x2000
+#define SMB2_SD_CONTROL_RM 0x4000
+#define SMB2_SD_CONTROL_SR 0x8000
+
+struct smb2_security_descriptor {
+        uint8_t revision;
+        uint16_t control;
+        struct smb2_sid *owner;
+        struct smb2_sid *group;
+        struct smb2_acl *dacl;
 };
 
 #define SMB2_QUERY_INFO_REPLY_SIZE 9

@@ -31,7 +31,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 int usage(void)
 {
         fprintf(stderr, "Usage:\n"
-                "smb2-raw-stat-async <smb2-url>\n\n"
+                "smb2-raw-getsd-async <smb2-url>\n\n"
                 "URL format: "
                 "smb://[<domain;][<username>@]<host>/<share>/<path>\n");
         exit(1);
@@ -84,7 +84,7 @@ struct stat_cb_data {
         void *cb_data;
 
         uint32_t status;
-        struct smb2_file_all_info *fs;
+        struct smb2_security_descriptor *sd;
 };
 
 static void
@@ -98,7 +98,7 @@ stat_cb_3(struct smb2_context *smb2, int status,
         }
 
         stat_data->cb(smb2, -nterror_to_errno(stat_data->status),
-                      stat_data->fs, stat_data->cb_data);
+                      stat_data->sd, stat_data->cb_data);
         free(stat_data);
 }
 
@@ -108,7 +108,7 @@ stat_cb_2(struct smb2_context *smb2, int status,
 {
         struct stat_cb_data *stat_data = private_data;
         struct smb2_query_info_reply *rep = command_data;
-        struct smb2_file_all_info *fs = rep->output_buffer;
+        struct smb2_security_descriptor *sd = rep->output_buffer;
 
         if (stat_data->status == SMB2_STATUS_SUCCESS) {
                 stat_data->status = status;
@@ -117,8 +117,8 @@ stat_cb_2(struct smb2_context *smb2, int status,
                 return;
         }
 
-        /* Remember the fs structure so we can pass it back to the caller */
-        stat_data->fs = fs;
+        /* Remember the sd structure so we can pass it back to the caller */
+        stat_data->sd = sd;
 }
 
 static void
@@ -132,8 +132,9 @@ stat_cb_1(struct smb2_context *smb2, int status,
         }
 }
 
-int send_compound_stat(struct smb2_context *smb2, char *path,
-                       smb2_command_cb cb, void *cb_data)
+static int
+send_compound_stat(struct smb2_context *smb2, char *path,
+                   smb2_command_cb cb, void *cb_data)
 {
         struct stat_cb_data *stat_data;
         struct smb2_create_request cr_req;
@@ -155,7 +156,7 @@ int send_compound_stat(struct smb2_context *smb2, char *path,
         memset(&cr_req, 0, sizeof(struct smb2_create_request));
         cr_req.requested_oplock_level = SMB2_OPLOCK_LEVEL_NONE;
         cr_req.impersonation_level = SMB2_IMPERSONATION_IMPERSONATION;
-        cr_req.desired_access = SMB2_FILE_READ_ATTRIBUTES | SMB2_FILE_READ_EA;
+        cr_req.desired_access = SMB2_READ_CONTROL;
         cr_req.file_attributes = 0;
         cr_req.share_access = SMB2_FILE_SHARE_READ | SMB2_FILE_SHARE_WRITE;
         cr_req.create_disposition = SMB2_FILE_OPEN;
@@ -171,11 +172,12 @@ int send_compound_stat(struct smb2_context *smb2, char *path,
 
         /* QUERY INFO command */
         memset(&qi_req, 0, sizeof(struct smb2_query_info_request));
-        qi_req.info_type = SMB2_0_INFO_FILE;
-        qi_req.file_info_class = SMB2_FILE_ALL_INFORMATION;
+        qi_req.info_type = SMB2_0_INFO_SECURITY;
         qi_req.output_buffer_length = 65535;
-        qi_req.additional_information = 0;
-        qi_req.flags = 0;
+        qi_req.additional_information =
+                SMB2_OWNER_SECURITY_INFORMATION |
+                SMB2_GROUP_SECURITY_INFORMATION |
+                SMB2_DACL_SECURITY_INFORMATION;
         memcpy(qi_req.file_id, compound_file_id, SMB2_FD_SIZE);
 
         next_pdu = smb2_cmd_query_info_async(smb2, &qi_req,
@@ -207,14 +209,136 @@ int send_compound_stat(struct smb2_context *smb2, char *path,
         return 0;
 }
 
+static void
+print_sid(struct smb2_sid *sid)
+{
+        int i;
+        uint64_t ia = 0;
+
+        printf("S-1");
+        for(i = 0; i < SID_ID_AUTH_LEN; i++) {
+                ia <<= 8;
+                ia |= sid->id_auth[i];
+        }
+        if (ia <= 0xffffffff) {
+                printf("-%" PRIu64, ia);
+        } else {
+                printf("-0x%012" PRIx64, ia);
+        }
+        for (i = 0; i < sid->sub_auth_count; i++) {
+                printf("-%u", sid->sub_auth[i]);
+        }
+}
+
+static void
+print_ace(struct smb2_ace *ace)
+{
+        printf("ACE: ");
+        printf("Type:%d ", ace->ace_type);
+        printf("Flags:0x%02x ", ace->ace_flags);
+        switch (ace->ace_type) {
+        case SMB2_ACCESS_ALLOWED_ACE_TYPE:
+        case SMB2_ACCESS_DENIED_ACE_TYPE:
+        case SMB2_SYSTEM_AUDIT_ACE_TYPE:
+        case SMB2_SYSTEM_MANDATORY_LABEL_ACE_TYPE:
+                printf("Mask:0x%08x ", ace->mask);
+                print_sid(ace->sid);
+                break;
+        }
+        printf("\n");
+}
+
+static void
+print_acl(struct smb2_acl *acl)
+{
+        int i;
+        struct smb2_ace *ace;
+
+        printf("Revision: %d\n", acl->revision);
+        printf("Ace count: %d\n", acl->ace_count);
+        for (ace = acl->aces; ace; ace = ace->next) {
+                print_ace(ace);
+        }
+};
+
+static void
+print_security_descriptor(struct smb2_security_descriptor *sd)
+{
+        printf("Revision: %d\n", sd->revision);
+        printf("Control: (0x%08x) ", sd->control);
+        if (sd->control & SMB2_SD_CONTROL_SR) {
+                printf("SR ");
+        }
+        if (sd->control & SMB2_SD_CONTROL_RM) {
+                printf("RM ");
+        }
+        if (sd->control & SMB2_SD_CONTROL_PS) {
+                printf("PS ");
+        }
+        if (sd->control & SMB2_SD_CONTROL_PD) {
+                printf("PD ");
+        }
+        if (sd->control & SMB2_SD_CONTROL_SI) {
+                printf("SI ");
+        }
+        if (sd->control & SMB2_SD_CONTROL_DI) {
+                printf("DI ");
+        }
+        if (sd->control & SMB2_SD_CONTROL_SC) {
+                printf("SC ");
+        }
+        if (sd->control & SMB2_SD_CONTROL_DC) {
+                printf("DC ");
+        }
+        if (sd->control & SMB2_SD_CONTROL_DT) {
+                printf("DT ");
+        }
+        if (sd->control & SMB2_SD_CONTROL_SS) {
+                printf("SS ");
+        }
+        if (sd->control & SMB2_SD_CONTROL_SD) {
+                printf("SD ");
+        }
+        if (sd->control & SMB2_SD_CONTROL_SP) {
+                printf("SP ");
+        }
+        if (sd->control & SMB2_SD_CONTROL_DD) {
+                printf("DD ");
+        }
+        if (sd->control & SMB2_SD_CONTROL_DP) {
+                printf("DP ");
+        }
+        if (sd->control & SMB2_SD_CONTROL_GD) {
+                printf("GD ");
+        }
+        if (sd->control & SMB2_SD_CONTROL_OD) {
+                printf("OD ");
+        }
+        printf("\n");
+
+        if (sd->owner) {
+                printf("Owner SID: ");
+                print_sid(sd->owner);
+                printf("\n");
+        }
+        if (sd->group) {
+                printf("Group SID: ");
+                print_sid(sd->group);
+                printf("\n");
+        }
+        if (sd->dacl) {
+                printf("DACL:\n");
+                print_acl(sd->dacl);
+        }
+}
+
 int main(int argc, char *argv[])
 {
         struct smb2_context *smb2;
         struct smb2_url *url;
         struct sync_cb_data cb_data;
-        struct smb2_file_all_info *fs;
+        struct smb2_security_descriptor *sd;
         int count;
-        time_t t;
 
         if (argc < 2) {
                 usage();
@@ -260,184 +384,9 @@ int main(int argc, char *argv[])
                 exit(10);
         }
 
-        fs = cb_data.ptr;
-
-        /* Print the file_all_info structure */
-        printf("Attributes: ");
-        if (fs->basic.file_attributes & SMB2_FILE_ATTRIBUTE_READONLY) {
-                printf("READONLY ");
-        }
-        if (fs->basic.file_attributes & SMB2_FILE_ATTRIBUTE_HIDDEN) {
-                printf("HIDDEN ");
-        }
-        if (fs->basic.file_attributes & SMB2_FILE_ATTRIBUTE_SYSTEM) {
-                printf("SYSTEM ");
-        }
-        if (fs->basic.file_attributes & SMB2_FILE_ATTRIBUTE_DIRECTORY) {
-                printf("DIRECTORY ");
-        }
-        if (fs->basic.file_attributes & SMB2_FILE_ATTRIBUTE_ARCHIVE) {
-                printf("ARCHIVE ");
-        }
-        if (fs->basic.file_attributes & SMB2_FILE_ATTRIBUTE_NORMAL) {
-                printf("NORMAL ");
-        }
-        if (fs->basic.file_attributes & SMB2_FILE_ATTRIBUTE_TEMPORARY) {
-                printf("TMP ");
-        }
-        if (fs->basic.file_attributes & SMB2_FILE_ATTRIBUTE_SPARSE_FILE) {
-                printf("SPARSE ");
-        }
-        if (fs->basic.file_attributes & SMB2_FILE_ATTRIBUTE_REPARSE_POINT) {
-                printf("REPARSE ");
-        }
-        if (fs->basic.file_attributes & SMB2_FILE_ATTRIBUTE_COMPRESSED) {
-                printf("COMPRESSED ");
-        }
-        if (fs->basic.file_attributes & SMB2_FILE_ATTRIBUTE_OFFLINE) {
-                printf("OFFLINE ");
-        }
-        if (fs->basic.file_attributes & SMB2_FILE_ATTRIBUTE_NOT_CONTENT_INDEXED) {
-                printf("NOT_CONTENT_INDEXED ");
-        }
-        if (fs->basic.file_attributes & SMB2_FILE_ATTRIBUTE_ENCRYPTED) {
-                printf("ENCRYPTED ");
-        }
-        if (fs->basic.file_attributes & SMB2_FILE_ATTRIBUTE_INTEGRITY_STREAM) {
-                printf("INTEGRITY_STREAM ");
-        }
-        if (fs->basic.file_attributes & SMB2_FILE_ATTRIBUTE_NO_SCRUB_DATA) {
-                printf("NO_SCRUB_DATA ");
-        }
-        printf("\n");
-
-
-        t = fs->basic.creation_time.tv_sec;
-        printf("Creation Time:    %s", asctime(localtime(&t)));
-        t = fs->basic.last_access_time.tv_sec;
-        printf("Last Access Time: %s", asctime(localtime(&t)));
-        t = fs->basic.last_write_time.tv_sec;
-        printf("Last Write Time:  %s", asctime(localtime(&t)));
-        t = fs->basic.change_time.tv_sec;
-        printf("Change Time:      %s", asctime(localtime(&t)));
-
-        printf("Allocation Size: %" PRIu64 "\n", fs->standard.allocation_size);
-        printf("End Of File:     %" PRIu64 "\n", fs->standard.end_of_file);
-        printf("Number Of Links: %d\n", fs->standard.number_of_links);
-        printf("Delete Pending:  %s\n", fs->standard.delete_pending ?
-               "YES" : "NO");
-        printf("Directory:       %s\n", fs->standard.directory ?
-               "YES" : "NO");
-
-        printf("Index Number: 0x%016" PRIx64 "\n", fs->index_number);
-        printf("EA Size : %d\n", fs->ea_size);
-
-        printf("Access Flags: ");
-        if (fs->standard.directory) {
-                if (fs->access_flags & SMB2_FILE_LIST_DIRECTORY) {
-                        printf("LIST_DIRECTORY ");
-                }
-                if (fs->access_flags & SMB2_FILE_ADD_FILE) {
-                        printf("ADD_FILE ");
-                }
-                if (fs->access_flags & SMB2_FILE_ADD_SUBDIRECTORY) {
-                        printf("ADD_SUBDIRECTORY ");
-                }
-                if (fs->access_flags & SMB2_FILE_TRAVERSE) {
-                        printf("TRAVERSE ");
-                }
-        } else {
-                if (fs->access_flags & SMB2_FILE_READ_DATA) {
-                        printf("READ_DATA ");
-                }
-                if (fs->access_flags & SMB2_FILE_WRITE_DATA) {
-                        printf("WRITE_DATA ");
-                }
-                if (fs->access_flags & SMB2_FILE_APPEND_DATA) {
-                        printf("APPEND_DATA ");
-                }
-                if (fs->access_flags & SMB2_FILE_EXECUTE) {
-                        printf("FILE_EXECUTE ");
-                }
-        }
-        if (fs->access_flags & SMB2_FILE_READ_EA) {
-                printf("READ_EA ");
-        }
-        if (fs->access_flags & SMB2_FILE_WRITE_EA) {
-                printf("WRITE_EA ");
-        }
-        if (fs->access_flags & SMB2_FILE_READ_ATTRIBUTES) {
-                printf("READ_ATTRIBUTES ");
-        }
-        if (fs->access_flags & SMB2_FILE_WRITE_ATTRIBUTES) {
-                printf("WRITE_ATTRIBUTES ");
-        }
-        if (fs->access_flags & SMB2_FILE_DELETE_CHILD) {
-                printf("DELETE_CHILD ");
-        }
-        if (fs->access_flags & SMB2_DELETE) {
-                printf("DELETE ");
-        }
-        if (fs->access_flags & SMB2_READ_CONTROL) {
-                printf("READ_CONTROL ");
-        }
-        if (fs->access_flags & SMB2_WRITE_DACL) {
-                printf("WRITE_DACL ");
-        }
-        if (fs->access_flags & SMB2_WRITE_OWNER) {
-                printf("WRITE_OWNER ");
-        }
-        if (fs->access_flags & SMB2_SYNCHRONIZE) {
-                printf("SYNCHRONIZE ");
-        }
-        if (fs->access_flags & SMB2_ACCESS_SYSTEM_SECURITY) {
-                printf("ACCESS_SYSTEM_SECURITY ");
-        }
-        if (fs->access_flags & SMB2_MAXIMUM_ALLOWED) {
-                printf("MAXIMUM_ALLOWED ");
-        }
-        if (fs->access_flags & SMB2_GENERIC_ALL) {
-                printf("GENERIC_ALL ");
-        }
-        if (fs->access_flags & SMB2_GENERIC_EXECUTE) {
-                printf("GENERIC_EXECUTE ");
-        }
-        if (fs->access_flags & SMB2_GENERIC_WRITE) {
-                printf("GENERIC_WRITE ");
-        }
-        if (fs->access_flags & SMB2_GENERIC_READ) {
-                printf("GENERIC_READ ");
-        }
-        printf("\n");
-
-        printf("Current Byte Offset: %" PRIu64 "\n", fs->current_byte_offset);
-
-        printf("Mode: ");
-        if (fs->access_flags & SMB2_FILE_WRITE_THROUGH) {
-                printf("WRITE_THROUGH ");
-        }
-        if (fs->access_flags & SMB2_FILE_SEQUENTIAL_ONLY) {
-                printf("SEQUENTIAL_ONLY ");
-        }
-        if (fs->access_flags & SMB2_FILE_NO_INTERMEDIATE_BUFFERING) {
-                printf("NO_INTERMEDIATE_BUFFERING ");
-        }
-        if (fs->access_flags & SMB2_FILE_SYNCHRONOUS_IO_ALERT) {
-                printf("SYNCHRONOUS_IO_ALERT ");
-        }
-        if (fs->access_flags & SMB2_FILE_SYNCHRONOUS_IO_NONALERT) {
-                printf("SYNCHRONOUS_IO_NONALERT ");
-        }
-        if (fs->access_flags & SMB2_FILE_DELETE_ON_CLOSE) {
-                printf("DELETE_ON_CLOSE ");
-        }
-        printf("\n");
-
-        printf("Alignment Requirement: %d\n", fs->alignment_requirement);
-
-
-
-        smb2_free_data(smb2, fs);
+        sd = cb_data.ptr;
+        print_security_descriptor(sd);
+        smb2_free_data(smb2, sd);
 
         smb2_disconnect_share(smb2);
         smb2_destroy_url(url);

@@ -29,6 +29,8 @@ const char *nterror_to_str(uint32_t status) {
                 return "STATUS_NO_MORE_FILES";
         case SMB2_STATUS_MORE_PROCESSING_REQUIRED:
                 return "STATUS_MORE_PROCESSING_REQUIRED";
+        case SMB2_STATUS_ACCESS_DENIED:
+                return "STATUS_ACCESS_DENIED";
         case SMB2_STATUS_LOGON_FAILURE:
                 return "STATUS_LOGON_FAILURE";
         case SMB2_STATUS_NOT_A_DIRECTORY:
@@ -57,6 +59,8 @@ int nterror_to_errno(uint32_t status) {
                 return EBADFD;
         case SMB2_STATUS_MORE_PROCESSING_REQUIRED:
                 return EAGAIN;
+        case SMB2_STATUS_ACCESS_DENIED:
+                return EACCES;
         case SMB2_STATUS_NO_MORE_FILES:
                 return ENODATA;
         case SMB2_STATUS_LOGON_FAILURE:

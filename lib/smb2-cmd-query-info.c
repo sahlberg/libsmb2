@@ -173,23 +173,49 @@ smb2_process_query_info_variable(struct smb2_context *smb2,
                 case SMB2_FILE_BASIC_INFORMATION:
                         ptr = smb2_alloc_init(smb2,
                                   sizeof(struct smb2_file_basic_info));
-                        smb2_decode_file_basic_info(smb2, ptr, ptr, &vec);
+                        if (smb2_decode_file_basic_info(smb2, ptr, ptr, &vec)) {
+                                smb2_set_error(smb2, "could not decode file "
+                                               "basic info. %s",
+                                               smb2_get_error(smb2));
+                                return -1;
+                        }
                         break;
                 case SMB2_FILE_STANDARD_INFORMATION:
                         ptr = smb2_alloc_init(smb2,
                                   sizeof(struct smb2_file_standard_info));
-                        smb2_decode_file_standard_info(smb2, ptr, ptr, &vec);
+                        if (smb2_decode_file_standard_info(smb2, ptr, ptr,
+                                                           &vec)) {
+                                smb2_set_error(smb2, "could not decode file "
+                                               "standard info. %s",
+                                               smb2_get_error(smb2));
+                                return -1;
+                        }
                         break;
                 case SMB2_FILE_ALL_INFORMATION:
                         ptr = smb2_alloc_init(smb2,
                                   sizeof(struct smb2_file_all_info));
-                        smb2_decode_file_all_info(smb2, ptr, ptr, &vec);
+                        if (smb2_decode_file_all_info(smb2, ptr, ptr, &vec)) {
+                                smb2_set_error(smb2, "could not decode file "
+                                               "all info. %s",
+                                               smb2_get_error(smb2));
+                                return -1;
+                        }
                         break;
                 default:
                         smb2_set_error(smb2, "Can not decode info_type/"
                                        "info_class %d/%d yet",
                                        pdu->info_type,
                                        pdu->file_info_class);
+                        return -1;
+                }
+                break;
+        case SMB2_0_INFO_SECURITY:
+                ptr = smb2_alloc_init(smb2,
+                                      sizeof(struct smb2_security_descriptor));
+                if (smb2_decode_security_descriptor(smb2, ptr, ptr, &vec)) {
+                        smb2_set_error(smb2, "could not decode security "
+                                       "descriptor. %s",
+                                       smb2_get_error(smb2));
                         return -1;
                 }
                 break;

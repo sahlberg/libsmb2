@@ -26,6 +26,7 @@ libsmb2_la_SOURCES = \
 	smb2-cmd-tree-disconnect.c \
 	smb2-cmd-write.c \
 	smb2-data-file-info.c \
+	smb2-data-security-descriptor.c \
 	socket.c \
 	sync.c \
 	timestamps.c \

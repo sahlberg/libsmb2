@@ -70,7 +70,7 @@ smb2_encode_negotiate_request(struct smb2_context *smb2,
         smb2_set_uint16(iov, 2, req->dialect_count);
         smb2_set_uint16(iov, 4, req->security_mode);
         smb2_set_uint32(iov, 8, req->capabilities);
-        memcpy(iov->buf + 12, req->client_guid, 16);
+        memcpy(iov->buf + 12, req->client_guid, SMB2_GUID_SIZE);
         smb2_set_uint64(iov, 28, req->client_start_time);
         for (i = 0; i < req->dialect_count; i++) {
                 smb2_set_uint16(iov, 36 + i * sizeof(uint16_t),
@@ -130,7 +130,7 @@ int smb2_process_negotiate_fixed(struct smb2_context *smb2,
         
         smb2_get_uint16(iov, 2, &rep->security_mode);
         smb2_get_uint16(iov, 4, &rep->dialect_revision);
-        memcpy(rep->server_guid, iov->buf + 8, 16);
+        memcpy(rep->server_guid, iov->buf + 8, SMB2_GUID_SIZE);
         smb2_get_uint32(iov, 24, &rep->capabilities);
         smb2_get_uint32(iov, 28, &rep->max_transact_size);
         smb2_get_uint32(iov, 32, &rep->max_read_size);

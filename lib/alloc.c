@@ -73,19 +73,21 @@ smb2_alloc_init(struct smb2_context *smb2, size_t size)
 }
 
 void *
-smb2_alloc_data(struct smb2_context *smb2, void *data, size_t size)
+smb2_alloc_data(struct smb2_context *smb2, void *memctx, size_t size)
 {
         struct smb2_alloc_header *hdr;
         struct smb2_alloc_entry *ptr;
 
-        ptr = malloc(offsetof(struct smb2_alloc_entry, buf)+ size);
+        size += offsetof(struct smb2_alloc_entry, buf);
+
+        ptr = malloc(size);
         if (ptr == NULL) {
                 smb2_set_error(smb2, "Failed to alloc %zu bytes", size);
                 return NULL;
         }
-        memset(ptr, 0, sizeof(*ptr));
+        memset(ptr, 0, size);
 
-        hdr = container_of(data, struct smb2_alloc_header, buf);
+        hdr = container_of(memctx, struct smb2_alloc_header, buf);
 
         ptr->next = hdr->mem;
         hdr->mem = ptr;
