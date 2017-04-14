@@ -63,11 +63,13 @@ smb2_alloc_init(struct smb2_context *smb2, size_t size)
 {
         struct smb2_alloc_header *ptr;
 
-        ptr = malloc(offsetof(struct smb2_alloc_header, buf) + size);
+        size += offsetof(struct smb2_alloc_header, buf);
+
+        ptr = malloc(size);
         if (ptr == NULL) {
                 return NULL;
         }
-        memset(ptr, 0, sizeof(*ptr));
+        memset(ptr, 0, size);
 
         return &ptr->buf[0];
 }
