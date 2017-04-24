@@ -33,6 +33,8 @@ const char *nterror_to_str(uint32_t status) {
                 return "STATUS_ACCESS_DENIED";
         case SMB2_STATUS_LOGON_FAILURE:
                 return "STATUS_LOGON_FAILURE";
+        case SMB2_STATUS_BAD_NETWORK_NAME:
+                return "STATUS_BAD_NETWORK_NAME";
         case SMB2_STATUS_NOT_A_DIRECTORY:
                 return "STATUS_NOT_A_DIRECTORY";
         case SMB2_STATUS_INVALID_PARAMETER:
@@ -53,6 +55,7 @@ int nterror_to_errno(uint32_t status) {
         case SMB2_STATUS_SUCCESS:
         case SMB2_STATUS_END_OF_FILE:
                 return 0;
+        case SMB2_STATUS_BAD_NETWORK_NAME:
         case SMB2_STATUS_OBJECT_NAME_NOT_FOUND:
                 return ENOENT;
         case SMB2_STATUS_FILE_CLOSED:
