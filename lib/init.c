@@ -167,6 +167,7 @@ void smb2_destroy_context(struct smb2_context *smb2)
                 smb2->pdu = NULL;
         }
 
+        free(smb2->user);
         free(smb2->server);
         free(smb2->share);
         free(smb2);
@@ -231,3 +232,9 @@ void smb2_set_security_mode(struct smb2_context *smb2, uint16_t security_mode)
 {
         smb2->security_mode = security_mode;
 }
+
+void smb2_set_user(struct smb2_context *smb2, char *user)
+{
+        smb2->user = strdup(user);
+}
+

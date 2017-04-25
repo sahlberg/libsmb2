@@ -99,6 +99,13 @@ int smb2_service(struct smb2_context *smb2, int revents);
 void smb2_set_security_mode(struct smb2_context *smb2, uint16_t security_mode);
 
 /*
+ * Set the username that we will try to authenticate as.
+ * Default is to try to authenticate as the current user.
+ */
+void smb2_set_user(struct smb2_context *smb2, char *user);
+
+
+/*
  * Returns the client_guid for this context.
  */
 const char *smb2_get_client_guid(struct smb2_context *smb2);

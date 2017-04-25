@@ -107,6 +107,7 @@ struct smb2_context {
 
         char *server;
         char *share;
+        char *user;
 
         smb2_command_cb connect_cb;
         void *connect_data;

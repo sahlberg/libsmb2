@@ -74,6 +74,7 @@ static gss_OID_desc gss_mech_spnego = {
 struct private_auth_data {
         gss_ctx_id_t context;
         gss_cred_id_t cred;
+        gss_name_t user_name;
         gss_name_t target_name;
         gss_OID mech_type;
         uint32_t req_flags;
@@ -453,12 +454,15 @@ static void free_auth_data(struct private_auth_data *auth)
                         /* No logging, yet. Do we care? */
                 }
         }
-        /* Free output_token */
+
         gss_release_buffer(&min, &auth->output_token);
 
-        /* Free the target name */
         if (auth->target_name) {
                 gss_release_name(&min, &auth->target_name);
+        }
+
+        if (auth->user_name) {
+                gss_release_name(&min, &auth->user_name);
         }
 
         free(auth);
@@ -654,14 +658,45 @@ negotiate_cb(struct smb2_context *smb2, int status,
                 return;
         }
 
-        /* TODO: acquire cred before hand if not using default creds,
-         * with gss_acquire_cred_from() or gss_acquire_cred_with_password()
-         */
-        c_data->auth_data->cred = GSS_C_NO_CREDENTIAL;
-
         /* TODO: the proper mechanism (SPNEGO vs NTLM vs KRB5) should be
          * selected based on the SMB negotiation flags */
         c_data->auth_data->mech_type = &gss_mech_spnego;
+        c_data->auth_data->cred = GSS_C_NO_CREDENTIAL;
+
+        if (smb2->user) {
+                gss_buffer_desc user = GSS_C_EMPTY_BUFFER;
+                gss_OID_set_desc mechOidSet;
+
+                user.value = smb2->user;
+                user.length = strlen(smb2->user);
+
+                /* create a name for the user */
+                maj = gss_import_name(&min, &user, GSS_C_NT_USER_NAME,
+                                      &c_data->auth_data->user_name);
+
+                if (maj != GSS_S_COMPLETE) {
+                        set_gss_error(smb2, "gss_import_name", maj, min);
+                        c_data->cb(smb2, -ENOMEM, NULL, c_data->cb_data);
+                        free_c_data(c_data);
+                        return;
+                }
+
+                /* Create creds for the user */
+                mechOidSet.count = 1;
+                mechOidSet.elements = &gss_mech_spnego;
+
+                maj = gss_acquire_cred(
+                        &min, c_data->auth_data->user_name, 0,
+                        &mechOidSet, GSS_C_INITIATE,
+                        &c_data->auth_data->cred, NULL, NULL);
+
+                if (maj != GSS_S_COMPLETE) {
+                        set_gss_error(smb2, "gss_acquire_cred", maj, min);
+                        c_data->cb(smb2, -ENOMEM, NULL, c_data->cb_data);
+                        free_c_data(c_data);
+                        return;
+                }
+        }
 
         if ((ret = send_session_setup_request(smb2, c_data, NULL)) < 0) {
                 c_data->cb(smb2, ret, NULL, c_data->cb_data);

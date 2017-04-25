@@ -232,9 +232,12 @@ int main(int argc, char *argv[])
                         smb2_get_error(smb2));
                 exit(0);
         }
-                
-        smb2_set_security_mode(smb2, SMB2_NEGOTIATE_SIGNING_ENABLED);
 
+        if (url->user) {
+                smb2_set_user(smb2, url->user);
+        }
+
+        smb2_set_security_mode(smb2, SMB2_NEGOTIATE_SIGNING_ENABLED);
 	if (smb2_connect_share(smb2, url->server, url->share) != 0) {
 		printf("smb2_connect_share failed. %s\n", smb2_get_error(smb2));
 		exit(10);
