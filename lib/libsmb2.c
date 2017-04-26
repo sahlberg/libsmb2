@@ -574,7 +574,7 @@ send_session_setup_request(struct smb2_context *smb2,
                                    GSS_C_SEQUENCE_FLAG |
                                    GSS_C_MUTUAL_FLAG |
                                    GSS_C_REPLAY_FLAG |
-                                   ((smb2->security_mode & SMB2_NEGOTIATE_SIGNING_ENABLED)?GSS_C_INTEG_FLAG:0),
+                                   GSS_C_INTEG_FLAG,
                                    GSS_C_INDEFINITE,
                                    GSS_C_NO_CHANNEL_BINDINGS,
                                    input_token,
