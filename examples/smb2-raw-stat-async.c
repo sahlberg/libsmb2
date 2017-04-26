@@ -164,7 +164,7 @@ int send_compound_stat(struct smb2_context *smb2, char *path,
 
         pdu = smb2_cmd_create_async(smb2, &cr_req, stat_cb_1, stat_data);
         if (pdu == NULL) {
-                fprintf(stderr, "Failed to create create command");
+                fprintf(stderr, "Failed to create create command\n");
                 free(stat_data);
                 return -1;
         }
@@ -181,7 +181,7 @@ int send_compound_stat(struct smb2_context *smb2, char *path,
         next_pdu = smb2_cmd_query_info_async(smb2, &qi_req,
                                              stat_cb_2, stat_data);
         if (next_pdu == NULL) {
-                fprintf(stderr, "Failed to create query command");
+                fprintf(stderr, "Failed to create query command\n");
                 free(stat_data);
                 smb2_free_pdu(smb2, pdu);
                 return -1;
@@ -195,7 +195,7 @@ int send_compound_stat(struct smb2_context *smb2, char *path,
 
         next_pdu = smb2_cmd_close_async(smb2, &cl_req, stat_cb_3, stat_data);
         if (next_pdu == NULL) {
-                stat_data->cb(smb2, -1, NULL, stat_data->cb_data);
+                fprintf(stderr, "Failed to create CLOSE command\n");
                 free(stat_data);
                 smb2_free_pdu(smb2, pdu);
                 return -1;
