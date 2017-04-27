@@ -625,6 +625,7 @@ negotiate_cb(struct smb2_context *smb2, int status,
              void *command_data, void *private_data)
 {
         struct connect_data *c_data = private_data;
+        struct smb2_negotiate_reply *rep = command_data;
         gss_buffer_desc target = GSS_C_EMPTY_BUFFER;
         uint32_t maj, min;
         int ret;
@@ -637,6 +638,12 @@ negotiate_cb(struct smb2_context *smb2, int status,
                            c_data->cb_data);
                 free_c_data(c_data);
                 return;
+        }
+
+        if (rep->dialect_revision > SMB2_VERSION_0202) {
+                if (rep->capabilities & SMB2_GLOBAL_CAP_LARGE_MTU) {
+                        smb2->supports_multi_credit = 1;
+                }
         }
 
         c_data->auth_data = malloc(sizeof(struct private_auth_data));
@@ -733,6 +740,7 @@ connect_cb(struct smb2_context *smb2, int status,
         }
         
         memset(&req, 0, sizeof(struct smb2_negotiate_request));
+        req.capabilities = SMB2_GLOBAL_CAP_LARGE_MTU;
         req.dialect_count = 4;
         req.security_mode = smb2->security_mode;
         req.dialects[0] = SMB2_VERSION_0202;

@@ -82,18 +82,26 @@ smb2_allocate_pdu(struct smb2_context *smb2, enum smb2_command command,
         memcpy(hdr->protocol_id, magic, 4);
 
         hdr->struct_size = SMB2_HEADER_SIZE;
-        
-        /* We don't have any credits yet during negprot */
-        if (command != SMB2_NEGOTIATE) {
-                hdr->credit_charge = 1;
-                hdr->credit_request_response = 32 - smb2->credits;
-        }
-        
         hdr->command = command;
         hdr->flags = 0;
         hdr->message_id = smb2->message_id++;
-
         hdr->sync.process_id = 0xFEFF;
+
+        if (hdr->command == SMB2_NEGOTIATE) {
+                /* We don't have any credits yet during negprot by
+                 * looking at traces.
+                 */
+                hdr->credit_charge = 0;
+        } else {
+                /* Assume the credits for this PDU will be 1.
+                 * READ/WRITE/IOCTL/QUERYDIR that consumes more than
+                 * 1 credit will adjusted this after it has marshalled the
+                 * fixed part of the PDU.
+                 */
+                hdr->credit_charge = 1;
+        }
+        hdr->credit_request_response = 32 - smb2->credits;
+
         switch (command) {
         case SMB2_NEGOTIATE:
         case SMB2_SESSION_SETUP:
@@ -118,12 +126,6 @@ smb2_allocate_pdu(struct smb2_context *smb2, enum smb2_command command,
         pdu->out.niov = 0;
 
         smb2_add_iovector(smb2, &pdu->out, pdu->hdr, SMB2_HEADER_SIZE, NULL);
-        if (smb2_encode_header(smb2, &pdu->out.iov[0],
-                               &pdu->header)) {
-                smb2_set_error(smb2, "Failed to encode header");
-                smb2_free_pdu(smb2, pdu);
-                return NULL;
-        }
         
         return pdu;
 }
@@ -256,15 +258,10 @@ smb2_get_uint64(struct smb2_iovec *iov, int offset, uint64_t *value)
         return 0;
 }
 
-int
+static void
 smb2_encode_header(struct smb2_context *smb2, struct smb2_iovec *iov,
                    struct smb2_header *hdr)
 {
-        if (iov->len != SMB2_HEADER_SIZE) {
-                smb2_set_error(smb2, "io vector for header is wrong size");
-                return -1;
-        }
-        
         memcpy(iov->buf, hdr->protocol_id, 4);
         smb2_set_uint16(iov, 4, hdr->struct_size);
         smb2_set_uint16(iov, 6, hdr->credit_charge);
@@ -284,8 +281,6 @@ smb2_encode_header(struct smb2_context *smb2, struct smb2_iovec *iov,
         
         smb2_set_uint64(iov, 40, hdr->session_id);
         memcpy(iov->buf + 48, hdr->signature, 16);
-        
-        return 0;
 }
 
 int
@@ -331,11 +326,17 @@ smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
         int i;
         uint32_t len = 0;
-        
+        struct smb2_pdu *p;
+
         for (i = 0; i < pdu->out.niov; i++) {
                 len += pdu->out.iov[i].len;
         }
         pdu->out.total_size = len;
+
+        /* Update all the PDU headers in this chain */
+        for (p = pdu; p; p = p->next_compound) {
+                smb2_encode_header(smb2, &p->out.iov[0], &p->header);
+        }
 
 	smb2_add_to_outqueue(smb2, pdu);
 }

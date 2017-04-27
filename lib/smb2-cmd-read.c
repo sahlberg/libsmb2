@@ -112,10 +112,15 @@ smb2_cmd_read_async(struct smb2_context *smb2,
         /* Add a vector for the buffer that the application gave us */
         smb2_add_iovector(smb2, &pdu->in, req->buf,
                           req->length, NULL);
-        
+
         if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
+        }
+
+        /* Adjust credit charge for large payloads */
+        if (smb2->supports_multi_credit) {
+                pdu->header.credit_charge = req->length / 65536 + 1;
         }
 
         return pdu;

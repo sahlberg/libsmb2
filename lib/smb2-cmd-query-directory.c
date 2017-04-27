@@ -166,6 +166,12 @@ smb2_cmd_query_directory_async(struct smb2_context *smb2,
                 return NULL;
         }
 
+        /* Adjust credit charge for large payloads */
+        if (smb2->supports_multi_credit) {
+                pdu->header.credit_charge =
+                        req->output_buffer_length / 65536 + 1;
+        }
+
         return pdu;
 }
 

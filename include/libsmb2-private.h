@@ -109,6 +109,9 @@ struct smb2_context {
         const char *share;
         const char *user;
 
+        /* Server capabilities */
+        uint8_t supports_multi_credit;
+
         smb2_command_cb connect_cb;
         void *connect_data;
 
@@ -233,8 +236,6 @@ int smb2_get_fixed_size(struct smb2_context *smb2, struct smb2_pdu *pdu);
 struct smb2_pdu *smb2_find_pdu(struct smb2_context *smb2, uint64_t message_id);
 void smb2_free_iovector(struct smb2_context *smb2, struct smb2_io_vectors *v);
 
-int smb2_encode_header(struct smb2_context *smb2, struct smb2_iovec *iov,
-                       struct smb2_header *hdr);
 int smb2_decode_header(struct smb2_context *smb2, struct smb2_iovec *iov,
                        struct smb2_header *hdr);
         
