@@ -73,12 +73,26 @@
 
 #define CIFS_PORT 445
 
+static int
+smb2_get_credit_charge(struct smb2_context *smb2, struct smb2_pdu *pdu)
+{
+        int credits = 0;
+
+        while (pdu) {
+                credits += pdu->header.credit_charge;
+                pdu = pdu->next_compound;
+        }
+
+        return credits;
+}
+
 int
 smb2_which_events(struct smb2_context *smb2)
 {
 	int events = smb2->is_connected ? POLLIN : POLLOUT;
 
-        if (smb2->outqueue != NULL) {
+        if (smb2->outqueue != NULL &&
+            smb2_get_credit_charge(smb2, smb2->outqueue) <= smb2->credits) {
                 events |= POLLOUT;
         }
         
