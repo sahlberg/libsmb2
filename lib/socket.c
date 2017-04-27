@@ -107,17 +107,22 @@ smb2_write_to_socket(struct smb2_context *smb2)
                 size_t num_done = pdu->out.num_done;
                 int i, niov = 1;
                 ssize_t count;
-                uint32_t spl = 0, tmp_spl;
+                uint32_t spl = 0, tmp_spl, credit_charge = 0;
 
                 /* Count/copy all the vectors from all PDUs in the
                  * compound set.
                  */
                 for (tmp_pdu = pdu; tmp_pdu; tmp_pdu = tmp_pdu->next_compound) {
+                        credit_charge += pdu->header.credit_charge;
                         for (i = 0; i < tmp_pdu->out.niov; i++, niov++) {
                                 iov[niov].iov_base = tmp_pdu->out.iov[i].buf;
                                 iov[niov].iov_len = tmp_pdu->out.iov[i].len;
                                 spl += tmp_pdu->out.iov[i].len;
                         }
+                }
+
+                if (credit_charge > smb2->credits) {
+                        return 0;
                 }
 
                 /* Add the SPL vector as the first vector */
@@ -162,6 +167,7 @@ smb2_write_to_socket(struct smb2_context *smb2)
                                  * PDUs as individual PDUs.
                                  */
                                 pdu->next_compound = NULL;
+                                smb2->credits -= pdu->header.credit_charge;
 
                                 SMB2_LIST_ADD_END(&smb2->waitqueue, pdu);
                                 pdu = tmp_pdu;
