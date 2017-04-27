@@ -29,7 +29,7 @@ extern "C" {
 /*
  * Magic file Id used for compound commands.
  */
-smb2_file_id compound_file_id;
+const smb2_file_id compound_file_id;
 
 /*
  * This function is used to free the data returned by the query functions.

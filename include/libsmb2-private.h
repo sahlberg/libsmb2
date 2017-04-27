@@ -105,9 +105,9 @@ struct smb2_context {
 
         uint16_t security_mode;
 
-        char *server;
-        char *share;
-        char *user;
+        const char *server;
+        const char *share;
+        const char *user;
 
         smb2_command_cb connect_cb;
         void *connect_data;

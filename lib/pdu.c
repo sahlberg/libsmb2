@@ -128,8 +128,9 @@ smb2_allocate_pdu(struct smb2_context *smb2, enum smb2_command command,
         return pdu;
 }
 
-void smb2_add_compound_pdu(struct smb2_context *smb2,
-                           struct smb2_pdu *pdu, struct smb2_pdu *next_pdu)
+void
+smb2_add_compound_pdu(struct smb2_context *smb2,
+                      struct smb2_pdu *pdu, struct smb2_pdu *next_pdu)
 {
         int i, offset;
 
@@ -339,8 +340,9 @@ smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
 	smb2_add_to_outqueue(smb2, pdu);
 }
 
-struct smb2_pdu *smb2_find_pdu(struct smb2_context *smb2,
-                               uint64_t message_id) {
+struct smb2_pdu *
+smb2_find_pdu(struct smb2_context *smb2,
+              uint64_t message_id) {
         struct smb2_pdu *pdu;
         
         for (pdu = smb2->waitqueue; pdu; pdu = pdu->next) {
@@ -351,8 +353,9 @@ struct smb2_pdu *smb2_find_pdu(struct smb2_context *smb2,
         return pdu;
 }
 
-static int smb2_is_error_response(struct smb2_context *smb2,
-                                  struct smb2_pdu *pdu) {
+static int
+smb2_is_error_response(struct smb2_context *smb2,
+                       struct smb2_pdu *pdu) {
         if ((smb2->hdr.status & SMB2_STATUS_SEVERITY_MASK) ==
             SMB2_STATUS_SEVERITY_ERROR) {
                 switch (smb2->hdr.status) {
@@ -365,7 +368,8 @@ static int smb2_is_error_response(struct smb2_context *smb2,
         return 0;
 }
 
-int smb2_get_fixed_size(struct smb2_context *smb2, struct smb2_pdu *pdu)
+int
+smb2_get_fixed_size(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
         if (smb2_is_error_response(smb2, pdu)) {
                 return SMB2_ERROR_REPLY_SIZE & 0xfffe;

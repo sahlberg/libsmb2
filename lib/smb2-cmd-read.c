@@ -92,29 +92,6 @@ smb2_encode_read_request(struct smb2_context *smb2,
         return 0;
 }
 
-#if 0
-static int
-smb2_decode_read_reply(struct smb2_context *smb2,
-                         struct smb2_pdu *pdu,
-                         struct smb2_read_reply *rep)
-{
-        uint16_t struct_size;
-        uint8_t data_offset;
-
-        smb2_get_uint16(&pdu->in.iov[0], 0, &struct_size);
-        if (struct_size != SMB2_READ_REPLY_SIZE) {
-                smb2_set_error(smb2, "Unexpected size of Read reply. "
-                               "Expected %d, got %d",
-                               SMB2_READ_REPLY_SIZE,
-                               (int)struct_size);
-                return -1;
-        }
-
-
-        return 0;
-}
-#endif
-
 struct smb2_pdu *
 smb2_cmd_read_async(struct smb2_context *smb2,
                     struct smb2_read_request *req,

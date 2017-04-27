@@ -167,9 +167,9 @@ void smb2_destroy_context(struct smb2_context *smb2)
                 smb2->pdu = NULL;
         }
 
-        free(smb2->user);
-        free(smb2->server);
-        free(smb2->share);
+        free(discard_const(smb2->user));
+        free(discard_const(smb2->server));
+        free(discard_const(smb2->share));
         free(smb2);
 }
 

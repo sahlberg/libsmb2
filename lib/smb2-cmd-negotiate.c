@@ -108,8 +108,9 @@ smb2_cmd_negotiate_async(struct smb2_context *smb2,
 #define IOV_OFFSET (rep->security_buffer_offset - SMB2_HEADER_SIZE - \
                     (SMB2_NEGOTIATE_REPLY_SIZE & 0xfffe))
 
-int smb2_process_negotiate_fixed(struct smb2_context *smb2,
-                                 struct smb2_pdu *pdu)
+int
+smb2_process_negotiate_fixed(struct smb2_context *smb2,
+                             struct smb2_pdu *pdu)
 {
         struct smb2_negotiate_reply *rep;
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
@@ -164,8 +165,9 @@ int smb2_process_negotiate_fixed(struct smb2_context *smb2,
         return IOV_OFFSET + rep->security_buffer_length;
 }
 
-int smb2_process_negotiate_variable(struct smb2_context *smb2,
-                                    struct smb2_pdu *pdu)
+int
+smb2_process_negotiate_variable(struct smb2_context *smb2,
+                                struct smb2_pdu *pdu)
 {
         struct smb2_negotiate_reply *rep = pdu->payload;
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
