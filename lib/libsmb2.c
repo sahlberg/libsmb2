@@ -131,7 +131,7 @@ free_smb2dir(struct smb2dir *dir)
         while (dir->entries) {
                 struct smb2_dirent_internal *e = dir->entries->next;
 
-                free(dir->entries->dirent.name);
+                free(discard_const(dir->entries->dirent.name));
                 free(dir->entries);
                 dir->entries = e;
         }
@@ -978,7 +978,7 @@ rw_cb(struct smb2_context *smb2, int status,
 
 int
 smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
-                 char *buf, uint32_t count, uint64_t offset,
+                 uint8_t *buf, uint32_t count, uint64_t offset,
                  smb2_command_cb cb, void *cb_data)
 {
         struct smb2_read_request req;
@@ -1020,7 +1020,7 @@ smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
 
 int
 smb2_read_async(struct smb2_context *smb2, struct smb2fh *fh,
-                char *buf, uint32_t count,
+                uint8_t *buf, uint32_t count,
                 smb2_command_cb cb, void *cb_data)
 {
         return smb2_pread_async(smb2, fh, buf, count, fh->offset,
@@ -1029,7 +1029,7 @@ smb2_read_async(struct smb2_context *smb2, struct smb2fh *fh,
 
 int
 smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
-                  char *buf, uint32_t count, uint64_t offset,
+                  uint8_t *buf, uint32_t count, uint64_t offset,
                   smb2_command_cb cb, void *cb_data)
 {
         struct smb2_write_request req;
@@ -1069,7 +1069,7 @@ smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
 
 int
 smb2_write_async(struct smb2_context *smb2, struct smb2fh *fh,
-                 char *buf, uint32_t count,
+                 uint8_t *buf, uint32_t count,
                  smb2_command_cb cb, void *cb_data)
 {
         return smb2_pwrite_async(smb2, fh, buf, count, fh->offset,
@@ -1402,7 +1402,7 @@ stat_cb_1(struct smb2_context *smb2, int status,
 }
 
 int
-smb2_stat_async(struct smb2_context *smb2, char *path,
+smb2_stat_async(struct smb2_context *smb2, const char *path,
                 struct smb2_stat_64 *st,
                 smb2_command_cb cb, void *cb_data)
 {

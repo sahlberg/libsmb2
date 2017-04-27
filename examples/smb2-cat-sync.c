@@ -21,12 +21,13 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-raw.h"
 
-char buf[256 * 1024];
+uint8_t buf[256 * 1024];
 uint32_t pos;
 
 int usage(void)

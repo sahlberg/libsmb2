@@ -96,7 +96,7 @@ smb2_encode_query_directory_request(struct smb2_context *smb2,
                                     struct smb2_query_directory_request *req)
 {
         int len;
-        char *buf;
+        uint8_t *buf;
         struct ucs2 *name = NULL;
         struct smb2_iovec *iov;
 

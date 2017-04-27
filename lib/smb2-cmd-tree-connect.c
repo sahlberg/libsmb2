@@ -51,7 +51,7 @@ smb2_encode_tree_connect_request(struct smb2_context *smb2,
                                  struct smb2_tree_connect_request *req)
 {
         int len;
-        char *buf;
+        uint8_t *buf;
         struct smb2_iovec *iov;
         
         len = SMB2_TREE_CONNECT_REQUEST_SIZE & 0xfffffffe;

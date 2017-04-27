@@ -132,7 +132,7 @@ stat_cb_1(struct smb2_context *smb2, int status,
         }
 }
 
-int send_compound_stat(struct smb2_context *smb2, char *path,
+int send_compound_stat(struct smb2_context *smb2, const char *path,
                        smb2_command_cb cb, void *cb_data)
 {
         struct stat_cb_data *stat_data;
@@ -213,7 +213,6 @@ int main(int argc, char *argv[])
         struct smb2_url *url;
         struct sync_cb_data cb_data;
         struct smb2_file_all_info *fs;
-        int count;
         time_t t;
 
         if (argc < 2) {

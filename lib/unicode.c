@@ -46,7 +46,8 @@
 #include "libsmb2-private.h"
 
 /* Count number of leading 1 bits in the char */
-static int l1(char c)
+static int
+l1(char c)
 {
         int i = 0;
         while (c & 0x80) {
@@ -62,7 +63,8 @@ static int l1(char c)
  * -1 if not.
  * If the encoding is valid the codepoint will be returned in *cp.
  */
-static int validate_utf8_cp(const char **utf8, uint16_t *cp)
+static int
+validate_utf8_cp(const char **utf8, uint16_t *cp)
 {
         int c = *(*utf8)++;
         int l = l1(c);
@@ -97,7 +99,8 @@ static int validate_utf8_cp(const char **utf8, uint16_t *cp)
 /* Validate that the given string is properly formated UTF8.
  * Returns >=0 if valid UTF8 and -1 if not.
  */
-static int validate_utf8_str(const char *utf8)
+static int
+validate_utf8_str(const char *utf8)
 {
         const char *u = utf8;
         int i = 0;
@@ -113,7 +116,8 @@ static int validate_utf8_str(const char *utf8)
 }
 
 /* Convert a UTF8 string into UCS2 Little Endian */
-struct ucs2 *utf8_to_ucs2(const char *utf8)
+struct ucs2 *
+utf8_to_ucs2(const char *utf8)
 {
         struct ucs2 *ucs2;
         int i, len;
@@ -139,7 +143,8 @@ struct ucs2 *utf8_to_ucs2(const char *utf8)
 
 /* Returns how many bytes we need to store a UCS2 codepoint
  */
-static int ucs2_cp_size(uint16_t cp)
+static int
+ucs2_cp_size(uint16_t cp)
 {
         if (cp > 0x07ff) {
                 return 3;
@@ -152,7 +157,8 @@ static int ucs2_cp_size(uint16_t cp)
 
 /* Convert a UCS2 string into UTF8
  */
-char *ucs2_to_utf8(const uint16_t *ucs2, int ucs2_len)
+const char *
+ucs2_to_utf8(const uint16_t *ucs2, int ucs2_len)
 {
         int i, utf8_len = 1;
         char *str, *tmp;

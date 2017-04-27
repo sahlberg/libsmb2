@@ -192,7 +192,7 @@ smb2_read_from_socket(struct smb2_context *smb2)
                 smb2->spl = 0;
 
                 smb2_free_iovector(smb2, &smb2->in);
-                smb2_add_iovector(smb2, &smb2->in, (char *)&smb2->spl,
+                smb2_add_iovector(smb2, &smb2->in, (uint8_t *)&smb2->spl,
                                   SMB2_SPL_SIZE, NULL);
         }
 

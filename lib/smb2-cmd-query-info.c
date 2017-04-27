@@ -52,7 +52,7 @@ smb2_encode_query_info_request(struct smb2_context *smb2,
                                struct smb2_query_info_request *req)
 {
         int len;
-        char *buf;
+        uint8_t *buf;
         struct smb2_iovec *iov;
 
         len = SMB2_QUERY_INFO_REQUEST_SIZE & 0xfffffffe;

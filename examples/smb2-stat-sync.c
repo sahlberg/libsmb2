@@ -42,7 +42,6 @@ int main(int argc, char *argv[])
         struct smb2_context *smb2;
         struct smb2_url *url;
         struct smb2_stat_64 st;
-        int count;
         time_t t;
 
         if (argc < 2) {

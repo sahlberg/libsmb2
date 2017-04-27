@@ -51,7 +51,7 @@ smb2_encode_create_request(struct smb2_context *smb2,
                            struct smb2_create_request *req)
 {
         int len;
-        char *buf;
+        uint8_t *buf;
         struct ucs2 *name = NULL;
         struct smb2_iovec *iov;
 
@@ -112,7 +112,7 @@ smb2_encode_create_request(struct smb2_context *smb2,
          * and there is no create context.
          */
         if (name == NULL && !req->create_context_length) {
-                static char zero;
+                static uint8_t zero;
 
                 iov = smb2_add_iovector(smb2, &pdu->out,
                                         &zero, 1, NULL);

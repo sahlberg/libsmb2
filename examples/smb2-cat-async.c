@@ -28,7 +28,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "libsmb2-raw.h"
 
 int is_finished;
-char buf[256 * 1024];
+uint8_t buf[256 * 1024];
 uint32_t pos;
 
 int usage(void)
@@ -118,7 +118,6 @@ int main(int argc, char *argv[])
         struct smb2_context *smb2;
         struct smb2_url *url;
 	struct pollfd pfd;
-        int ret;
 
         if (argc < 2) {
                 usage();
@@ -140,7 +139,7 @@ int main(int argc, char *argv[])
         smb2_set_security_mode(smb2, SMB2_NEGOTIATE_SIGNING_ENABLED);
 
 	if (smb2_connect_share_async(smb2, url->server, url->share,
-                                     cf_cb, url->path) != 0) {
+                                     cf_cb, (void *)url->path) != 0) {
 		printf("smb2_connect_share failed. %s\n", smb2_get_error(smb2));
 		exit(10);
 	}

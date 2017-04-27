@@ -35,7 +35,7 @@ struct smb2_timeval {
 struct smb2_error_reply {
         uint8_t error_context_count;
         uint32_t byte_count;
-        char *error_data;
+        uint8_t *error_data;
 };
 
 
@@ -118,7 +118,7 @@ struct smb2_negotiate_reply {
         uint64_t server_start_time;
         uint16_t security_buffer_length;
         uint16_t security_buffer_offset;
-        char *security_buffer;
+        uint8_t *security_buffer;
 };
 
 /* session setup flags */
@@ -139,7 +139,7 @@ struct smb2_session_setup_request {
         uint32_t channel;
         uint64_t previous_session_id;
         uint16_t security_buffer_length;
-        char *security_buffer;
+        uint8_t *security_buffer;
 };
 
 #define SMB2_SESSION_FLAG_IS_GUEST        0x0001
@@ -152,7 +152,7 @@ struct smb2_session_setup_reply {
         uint16_t session_flags;
         uint16_t security_buffer_length;
         uint16_t security_buffer_offset;
-        char *security_buffer;
+        uint8_t *security_buffer;
 };
 
 #define SMB2_TREE_CONNECT_REQUEST_SIZE 9
@@ -307,7 +307,7 @@ struct smb2_create_request {
         uint32_t create_options;
         const char *name;       /* name in UTF8 */
         uint32_t create_context_length;
-        char *create_context;
+        uint8_t *create_context;
 };
 
 #define SMB2_CREATE_REPLY_SIZE 89
@@ -329,7 +329,7 @@ struct smb2_create_reply {
         smb2_file_id file_id;
         uint32_t create_context_length;
         uint32_t create_context_offset;
-        char *create_context;
+        uint8_t *create_context;
 };
 
 #define SMB2_CLOSE_REQUEST_SIZE 24
@@ -385,7 +385,7 @@ struct smb2_fileidfulldirectoryinformation {
         uint32_t file_attributes;
         uint32_t ea_size;
         uint64_t file_id;
-        char *name;
+        const char *name;
 };
 
 struct smb2_query_directory_request {
@@ -393,7 +393,7 @@ struct smb2_query_directory_request {
         uint8_t flags;
         uint32_t file_index;
         smb2_file_id file_id;
-        char *name;       /* name in UTF8 */
+        const char *name;       /* name in UTF8 */
         uint32_t output_buffer_length;
 };
 
@@ -402,7 +402,7 @@ struct smb2_query_directory_request {
 struct smb2_query_directory_reply {
         uint16_t output_buffer_offset;
         uint32_t output_buffer_length;
-        char *output_buffer;
+        uint8_t *output_buffer;
 };
 
 #define SMB2_READ_REQUEST_SIZE 49
@@ -417,13 +417,13 @@ struct smb2_read_request {
         uint8_t flags;
         uint32_t length;
         uint64_t offset;
-        char *buf;
+        uint8_t *buf;
         smb2_file_id file_id;
         uint32_t minimum_count;
         uint32_t channel;
         uint32_t remaining_bytes;
         uint16_t read_channel_info_length;
-        char *read_channel_info;
+        uint8_t *read_channel_info;
 };
 
 #define SMB2_READ_REPLY_SIZE 17
@@ -497,7 +497,7 @@ struct smb2_file_all_info {
         uint64_t current_byte_offset;
         uint32_t mode;
         uint32_t alignment_requirement;
-        char *name_information;
+        uint8_t *name_information;
 };
 
 struct smb2_query_info_request {
@@ -505,7 +505,7 @@ struct smb2_query_info_request {
         uint8_t file_info_class;
         uint32_t output_buffer_length;
         uint32_t input_buffer_length;
-        char *input_buffer;
+        uint8_t *input_buffer;
         uint32_t additional_information;
         uint32_t flags;
         smb2_file_id file_id;
@@ -621,12 +621,12 @@ struct smb2_query_info_reply {
 struct smb2_write_request {
         uint32_t length;
         uint64_t offset;
-        char *buf;
+        uint8_t *buf;
         smb2_file_id file_id;
         uint32_t channel;
         uint32_t remaining_bytes;
         uint16_t write_channel_info_length;
-        char *write_channel_info;
+        uint8_t *write_channel_info;
         uint32_t flags;
 };
 

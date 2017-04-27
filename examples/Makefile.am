@@ -8,7 +8,8 @@ noinst_PROGRAMS = smb2-cat-async smb2-cat-sync \
 AM_CPPFLAGS = \
 	-I$(abs_top_srcdir)/include \
 	-I$(abs_top_srcdir)/include/smb2 \
-	"-D_U_=__attribute__((unused))"
+	"-D_U_=__attribute__((unused))" \
+	-Wall -Werror
 
 COMMON_LIBS = ../lib/libsmb2.la -lpopt
 smb2_cat_async_LDADD = $(COMMON_LIBS)

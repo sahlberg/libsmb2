@@ -113,11 +113,11 @@ void smb2_destroy_url(struct smb2_url *url)
         if (url == NULL) {
                 return;
         }
-        free(url->domain);
-        free(url->user);
-        free(url->server);
-        free(url->share);
-        free(url->path);
+        free(discard_const(url->domain));
+        free(discard_const(url->user));
+        free(discard_const(url->server));
+        free(discard_const(url->share));
+        free(discard_const(url->path));
         free(url);
 }
 
@@ -189,7 +189,8 @@ void smb2_free_iovector(struct smb2_context *smb2, struct smb2_io_vectors *v)
 
 struct smb2_iovec *smb2_add_iovector(struct smb2_context *smb2,
                                      struct smb2_io_vectors *v,
-                                     char *buf, int len, void (*free)(void *))
+                                     uint8_t *buf, int len,
+                                     void (*free)(void *))
 {
         struct smb2_iovec *iov = &v->iov[v->niov];
 
@@ -233,7 +234,7 @@ void smb2_set_security_mode(struct smb2_context *smb2, uint16_t security_mode)
         smb2->security_mode = security_mode;
 }
 
-void smb2_set_user(struct smb2_context *smb2, char *user)
+void smb2_set_user(struct smb2_context *smb2, const char *user)
 {
         smb2->user = strdup(user);
 }

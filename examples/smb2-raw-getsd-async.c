@@ -133,7 +133,7 @@ stat_cb_1(struct smb2_context *smb2, int status,
 }
 
 static int
-send_compound_stat(struct smb2_context *smb2, char *path,
+send_compound_stat(struct smb2_context *smb2, const char *path,
                    smb2_command_cb cb, void *cb_data)
 {
         struct stat_cb_data *stat_data;
@@ -251,7 +251,6 @@ print_ace(struct smb2_ace *ace)
 static void
 print_acl(struct smb2_acl *acl)
 {
-        int i;
         struct smb2_ace *ace;
 
         printf("Revision: %d\n", acl->revision);
@@ -338,7 +337,6 @@ int main(int argc, char *argv[])
         struct smb2_url *url;
         struct sync_cb_data cb_data;
         struct smb2_security_descriptor *sd;
-        int count;
 
         if (argc < 2) {
                 usage();

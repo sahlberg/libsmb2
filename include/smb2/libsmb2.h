@@ -49,7 +49,7 @@ struct smb2_stat_64 {
 };
 
 struct smb2dirent {
-        char *name;
+        const char *name;
         struct smb2_stat_64 st;
 };
 
@@ -102,7 +102,7 @@ void smb2_set_security_mode(struct smb2_context *smb2, uint16_t security_mode);
  * Set the username that we will try to authenticate as.
  * Default is to try to authenticate as the current user.
  */
-void smb2_set_user(struct smb2_context *smb2, char *user);
+void smb2_set_user(struct smb2_context *smb2, const char *user);
 
 
 /*
@@ -187,11 +187,11 @@ int smb2_disconnect_share(struct smb2_context *smb2);
 const char *smb2_get_error(struct smb2_context *smb2);
 
 struct smb2_url {
-        char *domain;
-        char *user;
-        char *server;
-        char *share;
-        char *path;
+        const char *domain;
+        const char *user;
+        const char *server;
+        const char *share;
+        const char *path;
 };
 
 /* Convert an smb2/nt error code into a string */
@@ -388,14 +388,14 @@ int smb2_close(struct smb2_context *smb2, struct smb2fh *fh);
  * Command_data is always NULL.
  */       
 int smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
-                     char *buf, uint32_t count, uint64_t offset,
+                     uint8_t *buf, uint32_t count, uint64_t offset,
                      smb2_command_cb cb, void *cb_data);
 
 /*
  * Sync pread()
  */
 int smb2_pread(struct smb2_context *smb2, struct smb2fh *fh,
-               char *buf, uint32_t count, uint64_t offset);
+               uint8_t *buf, uint32_t count, uint64_t offset);
 
 /*
  * PWRITE
@@ -415,14 +415,14 @@ int smb2_pread(struct smb2_context *smb2, struct smb2fh *fh,
  * Command_data is always NULL.
  */       
 int smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
-                      char *buf, uint32_t count, uint64_t offset,
+                      uint8_t *buf, uint32_t count, uint64_t offset,
                       smb2_command_cb cb, void *cb_data);
 
 /*
  * Sync pwrite()
  */
 int smb2_pwrite(struct smb2_context *smb2, struct smb2fh *fh,
-                char *buf, uint32_t count, uint64_t offset);
+                uint8_t *buf, uint32_t count, uint64_t offset);
 
 /*
  * READ
@@ -442,14 +442,14 @@ int smb2_pwrite(struct smb2_context *smb2, struct smb2fh *fh,
  * Command_data is always NULL.
  */
 int smb2_read_async(struct smb2_context *smb2, struct smb2fh *fh,
-                    char *buf, uint32_t count,
+                    uint8_t *buf, uint32_t count,
                     smb2_command_cb cb, void *cb_data);
 
 /*
  * Sync read()
  */
 int smb2_read(struct smb2_context *smb2, struct smb2fh *fh,
-              char *buf, uint32_t count);
+              uint8_t *buf, uint32_t count);
 
 /*
  * WRITE
@@ -469,14 +469,14 @@ int smb2_read(struct smb2_context *smb2, struct smb2fh *fh,
  * Command_data is always NULL.
  */
 int smb2_write_async(struct smb2_context *smb2, struct smb2fh *fh,
-                     char *buf, uint32_t count,
+                     uint8_t *buf, uint32_t count,
                      smb2_command_cb cb, void *cb_data);
 
 /*
  * Sync write()
  */
 int smb2_write(struct smb2_context *smb2, struct smb2fh *fh,
-               char *buf, uint32_t count);
+               uint8_t *buf, uint32_t count);
 
 /*
  * Sync lseek()
@@ -598,13 +598,13 @@ int smb2_fstat(struct smb2_context *smb2, struct smb2fh *fh,
  *      0 : Success. Command_data is struct smb2_stat_64
  * -errno : An error occured.
  */
-int smb2_stat_async(struct smb2_context *smb2, char *path,
+int smb2_stat_async(struct smb2_context *smb2, const char *path,
                     struct smb2_stat_64 *st,
                     smb2_command_cb cb, void *cb_data);
 /*
  * Sync stat()
  */
-int smb2_stat(struct smb2_context *smb2, char *path,
+int smb2_stat(struct smb2_context *smb2, const char *path,
               struct smb2_stat_64 *st);
         
 #ifdef __cplusplus

@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
 		exit(10);
 	}
 
-        while (ent = smb2_readdir(smb2, dir)) {
+        while ((ent = smb2_readdir(smb2, dir))) {
                 char *type;
                 time_t t;
                 

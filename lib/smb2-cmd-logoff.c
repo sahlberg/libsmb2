@@ -47,7 +47,7 @@ static int
 smb2_encode_logoff_request(struct smb2_context *smb2,
                            struct smb2_pdu *pdu)
 {
-        char *buf;
+        uint8_t *buf;
         int len;
         struct smb2_iovec *iov;
         

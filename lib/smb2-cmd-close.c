@@ -51,7 +51,7 @@ smb2_encode_close_request(struct smb2_context *smb2,
                           struct smb2_close_request *req)
 {
         int len;
-        char *buf;
+        uint8_t *buf;
         struct smb2_iovec *iov;
 
         len = SMB2_CLOSE_REQUEST_SIZE & 0xfffffffe;

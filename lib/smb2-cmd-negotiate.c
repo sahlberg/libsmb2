@@ -50,7 +50,7 @@ smb2_encode_negotiate_request(struct smb2_context *smb2,
                               struct smb2_pdu *pdu,
                               struct smb2_negotiate_request *req)
 {
-        char *buf;
+        uint8_t *buf;
         int i, len;
         struct smb2_iovec *iov;
         

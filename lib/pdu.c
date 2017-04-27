@@ -45,7 +45,7 @@
 int
 smb2_pad_to_64bit(struct smb2_context *smb2, struct smb2_io_vectors *v)
 {
-        static char zero_bytes[7];
+        static uint8_t zero_bytes[7];
         int i, len = 0;
 
         for (i = 0; i < v->niov; i++) {

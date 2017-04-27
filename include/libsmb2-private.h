@@ -41,7 +41,7 @@ extern "C" {
 #define SMB2_MAX_VECTORS 256
 
 struct smb2_iovec {
-        char *buf;
+        uint8_t *buf;
         size_t len;
         void (*free)(void *);
 };
@@ -135,7 +135,7 @@ struct smb2_context {
         /* SPL for the (compound) command we are currently reading */
         uint32_t spl;
         /* buffer to avoid having to malloc the header */
-        char header[SMB2_HEADER_SIZE];
+        uint8_t header[SMB2_HEADER_SIZE];
         struct smb2_header hdr;
         /* Offset into smb2->in where the payload for the current PDU starts */
         size_t payload_offset;
@@ -165,7 +165,7 @@ struct smb2_pdu {
         void *cb_data;
 
         /* buffer to avoid having to malloc the headers */
-        char hdr[SMB2_HEADER_SIZE];
+        uint8_t hdr[SMB2_HEADER_SIZE];
 
         /* pointer to the unmarshalled payload in a reply */
         void *payload;
@@ -200,7 +200,7 @@ struct ucs2 *utf8_to_ucs2(const char *utf8);
 /* Returns a string converted to UTF8 format. Use free() to release
  * the utf8 string.
  */
-char *ucs2_to_utf8(const uint16_t *str, int len);
+const char *ucs2_to_utf8(const uint16_t *str, int len);
 
 /* Convert a win timestamp to a unix timeval */
 void win_to_timeval(uint64_t smb2_time, struct smb2_timeval *tv);
@@ -216,7 +216,8 @@ void *smb2_alloc_data(struct smb2_context *smb2, void *memctx, size_t size);
 
 struct smb2_iovec *smb2_add_iovector(struct smb2_context *smb2,
                                      struct smb2_io_vectors *v,
-                                     char *buf, int len, void (*free)(void *));
+                                     uint8_t *buf, int len,
+                                     void (*free)(void *));
 
 int smb2_pad_to_64bit(struct smb2_context *smb2, struct smb2_io_vectors *v);
 

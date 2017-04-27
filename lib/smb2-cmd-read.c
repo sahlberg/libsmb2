@@ -51,7 +51,7 @@ smb2_encode_read_request(struct smb2_context *smb2,
                          struct smb2_read_request *req)
 {
         int len;
-        char *buf;
+        uint8_t *buf;
         struct smb2_iovec *iov;
 
         len = SMB2_READ_REQUEST_SIZE & 0xfffffffe;
@@ -84,7 +84,7 @@ smb2_encode_read_request(struct smb2_context *smb2,
          * have any read channel info.
          */
         if (req->read_channel_info == NULL) {
-                static char zero;
+                static uint8_t zero;
 
                 smb2_add_iovector(smb2, &pdu->out, &zero, 1, NULL);
         }
