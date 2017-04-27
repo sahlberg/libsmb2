@@ -324,14 +324,7 @@ smb2_add_to_outqueue(struct smb2_context *smb2, struct smb2_pdu *pdu)
 void
 smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
-        int i;
-        uint32_t len = 0;
         struct smb2_pdu *p;
-
-        for (i = 0; i < pdu->out.niov; i++) {
-                len += pdu->out.iov[i].len;
-        }
-        pdu->out.total_size = len;
 
         /* Update all the PDU headers in this chain */
         for (p = pdu; p; p = p->next_compound) {
