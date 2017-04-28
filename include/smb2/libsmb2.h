@@ -361,7 +361,7 @@ struct smb2fh *smb2_open(struct smb2_context *smb2, const char *path, int flags)
  * -errno : An error occured.
  *
  * Command_data is always NULL.
- */       
+ */
 int smb2_close_async(struct smb2_context *smb2, struct smb2fh *fh,
                      smb2_command_cb cb, void *cb_data);
 
@@ -369,6 +369,31 @@ int smb2_close_async(struct smb2_context *smb2, struct smb2fh *fh,
  * Sync close()
  */
 int smb2_close(struct smb2_context *smb2, struct smb2fh *fh);
+
+/*
+ * FSYNC
+ */
+/*
+ * Async fsync()
+ *
+ * Returns
+ *  0     : The operation was initiated. Result of the operation will be
+ *          reported through the callback function.
+ * -errno : There was an error. The callback function will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ * -errno : An error occured.
+ *
+ * Command_data is always NULL.
+ */
+int smb2_fsync_async(struct smb2_context *smb2, struct smb2fh *fh,
+                     smb2_command_cb cb, void *cb_data);
+
+/*
+ * Sync fsync()
+ */
+int smb2_fsync(struct smb2_context *smb2, struct smb2fh *fh);
 
 /*
  * PREAD

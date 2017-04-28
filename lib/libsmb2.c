@@ -953,6 +953,45 @@ smb2_close_async(struct smb2_context *smb2, struct smb2fh *fh,
         return 0;
 }
 
+static void
+fsync_cb(struct smb2_context *smb2, int status,
+         void *command_data, void *private_data)
+{
+        struct smb2fh *fh = private_data;
+
+        if (status != SMB2_STATUS_SUCCESS) {
+                smb2_set_error(smb2, "Flush failed with (0x%08x) %s",
+                               status, nterror_to_str(status));
+                fh->cb(smb2, -nterror_to_errno(status), NULL, fh->cb_data);
+                return;
+        }
+
+        fh->cb(smb2, 0, NULL, fh->cb_data);
+}
+
+int
+smb2_fsync_async(struct smb2_context *smb2, struct smb2fh *fh,
+                 smb2_command_cb cb, void *cb_data)
+{
+        struct smb2_flush_request req;
+        struct smb2_pdu *pdu;
+
+        fh->cb = cb;
+        fh->cb_data = cb_data;
+
+        memset(&req, 0, sizeof(struct smb2_flush_request));
+        memcpy(req.file_id, fh->file_id, SMB2_FD_SIZE);
+
+        pdu = smb2_cmd_flush_async(smb2, &req, fsync_cb, fh);
+        if (pdu == NULL) {
+                smb2_set_error(smb2, "Failed to create flush command");
+                return -ENOMEM;
+        }
+        smb2_queue_pdu(smb2, pdu);
+
+        return 0;
+}
+
 struct rw_data {
         smb2_command_cb cb;
         void *cb_data;

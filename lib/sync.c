@@ -217,6 +217,36 @@ int smb2_close(struct smb2_context *smb2, struct smb2fh *fh)
 }
 
 /*
+ * fsync()
+ */
+static void fsync_cb(struct smb2_context *smb2, int status,
+                     void *command_data, void *private_data)
+{
+        struct sync_cb_data *cb_data = private_data;
+
+        cb_data->is_finished = 1;
+        cb_data->status = status;
+}
+
+int smb2_fsync(struct smb2_context *smb2, struct smb2fh *fh)
+{
+        struct sync_cb_data cb_data;
+
+	cb_data.is_finished = 0;
+
+	if (smb2_fsync_async(smb2, fh, fsync_cb, &cb_data) != 0) {
+		smb2_set_error(smb2, "smb2_fsync_async failed");
+		return -1;
+	}
+
+	if (wait_for_reply(smb2, &cb_data) < 0) {
+                return -1;
+        }
+
+	return cb_data.status;
+}
+
+/*
  * pread()
  */
 static void generic_status_cb(struct smb2_context *smb2, int status,
