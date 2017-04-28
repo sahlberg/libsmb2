@@ -115,7 +115,6 @@ smb2_allocate_pdu(struct smb2_context *smb2, enum smb2_command command,
 
         switch (command) {
         case SMB2_NEGOTIATE:
-        case SMB2_ECHO:
                 break;
         default:
                hdr->session_id = smb2->session_id;
@@ -374,26 +373,28 @@ smb2_get_fixed_size(struct smb2_context *smb2, struct smb2_pdu *pdu)
                 return SMB2_NEGOTIATE_REPLY_SIZE;
         case SMB2_SESSION_SETUP:
                 return SMB2_SESSION_SETUP_REPLY_SIZE;
+        case SMB2_LOGOFF:
+                return SMB2_LOGOFF_REPLY_SIZE;
         case SMB2_TREE_CONNECT:
                 return SMB2_TREE_CONNECT_REPLY_SIZE;
+        case SMB2_TREE_DISCONNECT:
+                return SMB2_TREE_DISCONNECT_REPLY_SIZE;
         case SMB2_CREATE:
                 return SMB2_CREATE_REPLY_SIZE;
         case SMB2_CLOSE:
                 return SMB2_CLOSE_REPLY_SIZE;
-        case SMB2_QUERY_DIRECTORY:
-                return SMB2_QUERY_DIRECTORY_REPLY_SIZE;
+        case SMB2_FLUSH:
+                return SMB2_FLUSH_REPLY_SIZE;
         case SMB2_READ:
                 return SMB2_READ_REPLY_SIZE;
-        case SMB2_QUERY_INFO:
-                return SMB2_QUERY_INFO_REPLY_SIZE;
         case SMB2_WRITE:
                 return SMB2_WRITE_REPLY_SIZE;
         case SMB2_ECHO:
                 return SMB2_ECHO_REPLY_SIZE;
-        case SMB2_LOGOFF:
-                return SMB2_LOGOFF_REPLY_SIZE;
-        case SMB2_TREE_DISCONNECT:
-                return SMB2_TREE_DISCONNECT_REPLY_SIZE;
+        case SMB2_QUERY_DIRECTORY:
+                return SMB2_QUERY_DIRECTORY_REPLY_SIZE;
+        case SMB2_QUERY_INFO:
+                return SMB2_QUERY_INFO_REPLY_SIZE;
         }
         return -1;
 }
@@ -410,26 +411,28 @@ smb2_process_payload_fixed(struct smb2_context *smb2, struct smb2_pdu *pdu)
                 return smb2_process_negotiate_fixed(smb2, pdu);
         case SMB2_SESSION_SETUP:
                 return smb2_process_session_setup_fixed(smb2, pdu);
-        case SMB2_TREE_CONNECT:
-                return smb2_process_tree_connect_fixed(smb2, pdu);
-        case SMB2_CREATE:
-                return smb2_process_create_fixed(smb2, pdu);
-        case SMB2_QUERY_INFO:
-                return smb2_process_query_info_fixed(smb2, pdu);
-        case SMB2_CLOSE:
-                return smb2_process_close_fixed(smb2, pdu);
-        case SMB2_TREE_DISCONNECT:
-                return smb2_process_tree_disconnect_fixed(smb2, pdu);
         case SMB2_LOGOFF:
                 return smb2_process_logoff_fixed(smb2, pdu);
-        case SMB2_ECHO:
-                return smb2_process_echo_fixed(smb2, pdu);
+        case SMB2_TREE_CONNECT:
+                return smb2_process_tree_connect_fixed(smb2, pdu);
+        case SMB2_TREE_DISCONNECT:
+                return smb2_process_tree_disconnect_fixed(smb2, pdu);
+        case SMB2_CREATE:
+                return smb2_process_create_fixed(smb2, pdu);
+        case SMB2_CLOSE:
+                return smb2_process_close_fixed(smb2, pdu);
+        case SMB2_FLUSH:
+                return smb2_process_flush_fixed(smb2, pdu);
         case SMB2_READ:
                 return smb2_process_read_fixed(smb2, pdu);
         case SMB2_WRITE:
                 return smb2_process_write_fixed(smb2, pdu);
+        case SMB2_ECHO:
+                return smb2_process_echo_fixed(smb2, pdu);
         case SMB2_QUERY_DIRECTORY:
                 return smb2_process_query_directory_fixed(smb2, pdu);
+        case SMB2_QUERY_INFO:
+                return smb2_process_query_info_fixed(smb2, pdu);
         }
         return 0;
 }
@@ -446,26 +449,28 @@ smb2_process_payload_variable(struct smb2_context *smb2, struct smb2_pdu *pdu)
                 return smb2_process_negotiate_variable(smb2, pdu);
         case SMB2_SESSION_SETUP:
                 return smb2_process_session_setup_variable(smb2, pdu);
-        case SMB2_TREE_CONNECT:
+        case SMB2_LOGOFF:
                 return 0;
-        case SMB2_CREATE:
-                return smb2_process_create_variable(smb2, pdu);
-        case SMB2_QUERY_INFO:
-                return smb2_process_query_info_variable(smb2, pdu);
-        case SMB2_CLOSE:
+        case SMB2_TREE_CONNECT:
                 return 0;
         case SMB2_TREE_DISCONNECT:
                 return 0;
-        case SMB2_LOGOFF:
+        case SMB2_CREATE:
+                return smb2_process_create_variable(smb2, pdu);
+        case SMB2_CLOSE:
                 return 0;
-        case SMB2_ECHO:
+        case SMB2_FLUSH:
                 return 0;
         case SMB2_READ:
                 return 0;
         case SMB2_WRITE:
                 return 0;
+        case SMB2_ECHO:
+                return 0;
         case SMB2_QUERY_DIRECTORY:
                 return smb2_process_query_directory_variable(smb2, pdu);
+        case SMB2_QUERY_INFO:
+                return smb2_process_query_info_variable(smb2, pdu);
         }
         return 0;
 }

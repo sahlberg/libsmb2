@@ -274,6 +274,26 @@ struct smb2_pdu *smb2_cmd_echo_async(struct smb2_context *smb2,
 struct smb2_pdu *smb2_cmd_logoff_async(struct smb2_context *smb2,
                                        smb2_command_cb cb, void *cb_data);
 
+/*
+ * Asynchronous SMB2 Flush
+ *
+ * Returns:
+ * pdu  : If the call was initiated and a connection will be attempted.
+ *        Result of the flush will be reported through the callback function.
+ * NULL : If there was an error. The callback function will not be invoked.
+ *
+ * Callback parameters :
+ * status can be either of :
+ *    0     : Flush was successful.
+ *
+ *   !0     : Status is NT status code.
+ *
+ * command_data is always NULL.
+ */
+struct smb2_pdu *smb2_cmd_flush_async(struct smb2_context *smb2,
+                                      struct smb2_flush_request *req,
+                                      smb2_command_cb cb, void *cb_data);
+
 #ifdef __cplusplus
 }
 #endif

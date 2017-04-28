@@ -283,6 +283,8 @@ int smb2_process_logoff_fixed(struct smb2_context *smb2,
                               struct smb2_pdu *pdu);
 int smb2_process_echo_fixed(struct smb2_context *smb2,
                             struct smb2_pdu *pdu);
+int smb2_process_flush_fixed(struct smb2_context *smb2,
+                             struct smb2_pdu *pdu);
 int smb2_process_read_fixed(struct smb2_context *smb2,
                             struct smb2_pdu *pdu);
 int smb2_process_write_fixed(struct smb2_context *smb2,

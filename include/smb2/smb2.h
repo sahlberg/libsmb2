@@ -55,8 +55,8 @@ enum smb2_command {
         SMB2_TREE_DISCONNECT,
         SMB2_CREATE,
         SMB2_CLOSE,
-        /* SMB2_FLUSH, */
-        SMB2_READ            = 8,
+        SMB2_FLUSH,
+        SMB2_READ,
         SMB2_WRITE,
         /* SMB2_LOCK, */
         /* SMB2_IOCTL, */
@@ -353,6 +353,14 @@ struct smb2_close_reply {
         uint64_t end_of_file;
         uint32_t file_attributes;
 };
+
+#define SMB2_FLUSH_REQUEST_SIZE 24
+
+struct smb2_flush_request {
+        smb2_file_id file_id;
+};
+
+#define SMB2_FLUSH_REPLY_SIZE 4
 
 #define SMB2_QUERY_DIRECTORY_REQUEST_SIZE 33
 
