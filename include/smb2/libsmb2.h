@@ -396,10 +396,19 @@ int smb2_fsync_async(struct smb2_context *smb2, struct smb2fh *fh,
 int smb2_fsync(struct smb2_context *smb2, struct smb2fh *fh);
 
 /*
+ * GetMaxReadWriteSize
+ * SMB2 servers have a maximum size for read/write data that they support.
+ */
+uint32_t smb2_get_max_read_size(struct smb2_context *smb2);
+uint32_t smb2_get_max_write_size(struct smb2_context *smb2);
+
+/*
  * PREAD
  */
 /*
  * Async pread()
+ * Use smb2_get_max_read_size to discover the maximum data size that the
+ * server supports.
  *
  * Returns
  *  0     : The operation was initiated. Result of the operation will be
@@ -418,6 +427,8 @@ int smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
 
 /*
  * Sync pread()
+ * Use smb2_get_max_read_size to discover the maximum data size that the
+ * server supports.
  */
 int smb2_pread(struct smb2_context *smb2, struct smb2fh *fh,
                uint8_t *buf, uint32_t count, uint64_t offset);
@@ -427,6 +438,8 @@ int smb2_pread(struct smb2_context *smb2, struct smb2fh *fh,
  */
 /*
  * Async pwrite()
+ * Use smb2_get_max_write_size to discover the maximum data size that the
+ * server supports.
  *
  * Returns
  *  0     : The operation was initiated. Result of the operation will be
@@ -445,6 +458,8 @@ int smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
 
 /*
  * Sync pwrite()
+ * Use smb2_get_max_write_size to discover the maximum data size that the
+ * server supports.
  */
 int smb2_pwrite(struct smb2_context *smb2, struct smb2fh *fh,
                 uint8_t *buf, uint32_t count, uint64_t offset);

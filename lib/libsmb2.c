@@ -1603,3 +1603,14 @@ smb2_disconnect_share_async(struct smb2_context *smb2,
         return 0;
 }
         
+uint32_t
+smb2_get_max_read_size(struct smb2_context *smb2)
+{
+        return smb2->max_read_size;
+}
+
+uint32_t
+smb2_get_max_write_size(struct smb2_context *smb2)
+{
+        return smb2->max_write_size;
+}

@@ -28,6 +28,8 @@ smb2_fstat_async
 smb2_get_client_guid
 smb2_get_error
 smb2_get_fd
+smb2_get_max_read_size
+smb2_get_max_write_size
 smb2_init_context
 smb2_mkdir
 smb2_mkdir_async
