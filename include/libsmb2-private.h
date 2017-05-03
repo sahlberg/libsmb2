@@ -109,9 +109,6 @@ struct smb2_context {
         const char *share;
         const char *user;
 
-        /* Server capabilities */
-        uint8_t supports_multi_credit;
-
         smb2_command_cb connect_cb;
         void *connect_data;
 
@@ -147,6 +144,9 @@ struct smb2_context {
          * Only valid once the full smb2 header has been received.
          */
         struct smb2_pdu *pdu;
+
+        /* Server capabilities */
+        uint8_t supports_multi_credit;
 
         uint32_t max_transact_size;
         uint32_t max_read_size;

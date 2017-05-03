@@ -640,11 +640,16 @@ negotiate_cb(struct smb2_context *smb2, int status,
                 return;
         }
 
+        /* update the context with the server capabilities */
         if (rep->dialect_revision > SMB2_VERSION_0202) {
                 if (rep->capabilities & SMB2_GLOBAL_CAP_LARGE_MTU) {
                         smb2->supports_multi_credit = 1;
                 }
         }
+        smb2->max_transact_size = rep->max_transact_size;
+        smb2->max_read_size     = rep->max_read_size;
+        smb2->max_write_size    = rep->max_write_size;
+        smb2->dialect           = rep->dialect_revision;
 
         c_data->auth_data = malloc(sizeof(struct private_auth_data));
         if (c_data->auth_data == NULL) {
@@ -1032,6 +1037,12 @@ smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
         struct rw_data *rd;
         struct smb2_pdu *pdu;
 
+        if (count > smb2->max_read_size) {
+                smb2_set_error(smb2, "Read count %d larger than "
+                               "max_read_size %d", count, smb2->max_read_size);
+                return -EIO;
+        }
+
         rd = malloc(sizeof(struct rw_data));
         if (rd == NULL) {
                 smb2_set_error(smb2, "Failed to allocate rw_data");
@@ -1082,6 +1093,13 @@ smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
         struct smb2_write_request req;
         struct rw_data *rd;
         struct smb2_pdu *pdu;
+
+        if (count > smb2->max_write_size) {
+                smb2_set_error(smb2, "Write count %d larger than "
+                               "max_write_size %d", count,
+                               smb2->max_write_size);
+                return -EIO;
+        }
 
         rd = malloc(sizeof(struct rw_data));
         if (rd == NULL) {

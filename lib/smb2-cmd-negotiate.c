@@ -141,12 +141,6 @@ smb2_process_negotiate_fixed(struct smb2_context *smb2,
         smb2_get_uint16(iov, 56, &rep->security_buffer_offset);
         smb2_get_uint16(iov, 58, &rep->security_buffer_length);
 
-        /* update the context */
-        smb2->max_transact_size = rep->max_transact_size;
-        smb2->max_read_size     = rep->max_read_size;
-        smb2->max_write_size    = rep->max_write_size;
-        smb2->dialect           = rep->dialect_revision;
-
         if (rep->security_buffer_length == 0) {
                 smb2_set_error(smb2, "No security buffer in Negotiate "
                                "Protocol response");
