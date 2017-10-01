@@ -1,3 +1,4 @@
+compound_file_id
 nterror_to_str
 nterror_to_errno
 smb2_add_compound_pdu
