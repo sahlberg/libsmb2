@@ -525,7 +525,7 @@ int smb2_write(struct smb2_context *smb2, struct smb2fh *fh,
  * smb2_seek() never blocks, thus no async version is needed.
  */
 int smb2_lseek(struct smb2_context *smb2, struct smb2fh *fh,
-               int64_t offset, int whence);
+               int64_t offset, int whence, uint64_t *current_offset);
 
 /*
  * UNLINK

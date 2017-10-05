@@ -1143,7 +1143,7 @@ smb2_write_async(struct smb2_context *smb2, struct smb2fh *fh,
 
 int
 smb2_lseek(struct smb2_context *smb2, struct smb2fh *fh,
-           int64_t offset, int whence)
+           int64_t offset, int whence, uint64_t *current_offset)
 {
         switch(whence) {
         case SEEK_SET:
@@ -1153,6 +1153,9 @@ smb2_lseek(struct smb2_context *smb2, struct smb2fh *fh,
                         return -EINVAL;
                 }
                 fh->offset = offset;
+                if (current_offset) {
+                        *current_offset = fh->offset;
+                }
                 return fh->offset;
         case SEEK_CUR:
                 if (fh->offset + offset < 0) {
@@ -1161,6 +1164,9 @@ smb2_lseek(struct smb2_context *smb2, struct smb2fh *fh,
                         return -EINVAL;
                 }
                 fh->offset += offset;
+                if (current_offset) {
+                        *current_offset = fh->offset;
+                }
                 return fh->offset;
         case SEEK_END:
                 smb2_set_error(smb2, "SEEK_END not implemented");
