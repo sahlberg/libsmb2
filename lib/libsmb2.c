@@ -1544,6 +1544,131 @@ smb2_stat_async(struct smb2_context *smb2, const char *path,
         return 0;
 }
 
+struct trunc_cb_data {
+        smb2_command_cb cb;
+        void *cb_data;
+
+        uint32_t status;
+        uint64_t length;
+};
+
+static void
+trunc_cb_3(struct smb2_context *smb2, int status,
+           void *command_data _U_, void *private_data)
+{
+        struct trunc_cb_data *trunc_data = private_data;
+
+        if (trunc_data->status == SMB2_STATUS_SUCCESS) {
+                trunc_data->status = status;
+        }
+
+        trunc_data->cb(smb2, -nterror_to_errno(trunc_data->status),
+                       NULL, trunc_data->cb_data);
+        free(trunc_data);
+}
+
+static void
+trunc_cb_2(struct smb2_context *smb2, int status,
+           void *command_data, void *private_data)
+{
+        struct trunc_cb_data *trunc_data = private_data;
+
+        if (trunc_data->status == SMB2_STATUS_SUCCESS) {
+                trunc_data->status = status;
+        }
+}
+
+static void
+trunc_cb_1(struct smb2_context *smb2, int status,
+           void *command_data _U_, void *private_data)
+{
+        struct trunc_cb_data *trunc_data = private_data;
+
+        if (trunc_data->status == SMB2_STATUS_SUCCESS) {
+                trunc_data->status = status;
+        }
+}
+
+int
+smb2_truncate_async(struct smb2_context *smb2, const char *path,
+                    uint64_t length, smb2_command_cb cb, void *cb_data)
+{
+        struct trunc_cb_data *trunc_data;
+        struct smb2_create_request cr_req;
+        struct smb2_set_info_request si_req;
+        struct smb2_close_request cl_req;
+        struct smb2_pdu *pdu, *next_pdu;
+        struct smb2_file_end_of_file_info eofi;
+
+        trunc_data = malloc(sizeof(struct trunc_cb_data));
+        if (trunc_data == NULL) {
+                smb2_set_error(smb2, "Failed to allocate trunc_data");
+                return -1;
+        }
+        memset(trunc_data, 0, sizeof(struct trunc_cb_data));
+
+        trunc_data->cb = cb;
+        trunc_data->cb_data = cb_data;
+        trunc_data->length = length;
+
+        /* CREATE command */
+        memset(&cr_req, 0, sizeof(struct smb2_create_request));
+        cr_req.requested_oplock_level = SMB2_OPLOCK_LEVEL_NONE;
+        cr_req.impersonation_level = SMB2_IMPERSONATION_IMPERSONATION;
+        cr_req.desired_access = SMB2_GENERIC_WRITE;
+        cr_req.file_attributes = 0;
+        cr_req.share_access = SMB2_FILE_SHARE_READ | SMB2_FILE_SHARE_WRITE;
+        cr_req.create_disposition = SMB2_FILE_OPEN;
+        cr_req.create_options = 0;
+        cr_req.name = path;
+
+        pdu = smb2_cmd_create_async(smb2, &cr_req, trunc_cb_1, trunc_data);
+        if (pdu == NULL) {
+                smb2_set_error(smb2, "Failed to create create command");
+                free(trunc_data);
+                return -1;
+        }
+
+        /* SET INFO command */
+        eofi.end_of_file = length;
+
+        memset(&si_req, 0, sizeof(struct smb2_set_info_request));
+        si_req.info_type = SMB2_0_INFO_FILE;
+        si_req.file_info_class = SMB2_FILE_END_OF_FILE_INFORMATION;
+        si_req.additional_information = 0;
+        memcpy(si_req.file_id, compound_file_id, SMB2_FD_SIZE);
+        si_req.input_data = &eofi;
+
+        next_pdu = smb2_cmd_set_info_async(smb2, &si_req,
+                                           trunc_cb_2, trunc_data);
+        if (next_pdu == NULL) {
+                smb2_set_error(smb2, "Failed to create set command. %s",
+                               smb2_get_error(smb2));
+                free(trunc_data);
+                smb2_free_pdu(smb2, pdu);
+                return -1;
+        }
+        smb2_add_compound_pdu(smb2, pdu, next_pdu);
+
+        /* CLOSE command */
+        memset(&cl_req, 0, sizeof(struct smb2_close_request));
+        cl_req.flags = SMB2_CLOSE_FLAG_POSTQUERY_ATTRIB;
+        memcpy(cl_req.file_id, compound_file_id, SMB2_FD_SIZE);
+
+        next_pdu = smb2_cmd_close_async(smb2, &cl_req, trunc_cb_3, trunc_data);
+        if (next_pdu == NULL) {
+                trunc_data->cb(smb2, -ENOMEM, NULL, trunc_data->cb_data);
+                free(trunc_data);
+                smb2_free_pdu(smb2, pdu);
+                return -1;
+        }
+        smb2_add_compound_pdu(smb2, pdu, next_pdu);
+
+        smb2_queue_pdu(smb2, pdu);
+
+        return 0;
+}
+
 struct disconnect_data {
         smb2_command_cb cb;
         void *cb_data;

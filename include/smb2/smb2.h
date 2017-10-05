@@ -65,7 +65,7 @@ enum smb2_command {
         SMB2_QUERY_DIRECTORY,
         /* SMB2_CHANGE_NOTIFY, */
         SMB2_QUERY_INFO      = 16,
-        /* SMB2_SET_INFO, */
+        SMB2_SET_INFO        = 17,
         /* SMB2_OPLOCK_BREAK, */
 };
 
@@ -454,6 +454,7 @@ struct smb2_read_reply {
 #define SMB2_FILE_BASIC_INFORMATION             0x04
 #define SMB2_FILE_STANDARD_INFORMATION          0x05
 #define SMB2_FILE_ALL_INFORMATION               0x12
+#define SMB2_FILE_END_OF_FILE_INFORMATION       0x14
         
 /* additional info */
 #define SMB2_OWNER_SECURITY_INFORMATION     0x00000001
@@ -518,6 +519,25 @@ struct smb2_query_info_request {
         uint32_t flags;
         smb2_file_id file_id;
 };
+
+/*
+ * FILE_END_OF_FILE_INFORMATION.
+ */
+struct smb2_file_end_of_file_info {
+        uint64_t end_of_file;
+};
+
+#define SMB2_SET_INFO_REQUEST_SIZE 33
+
+struct smb2_set_info_request {
+        uint8_t info_type;
+        uint8_t file_info_class;
+        void *input_data;
+        uint32_t additional_information;
+        smb2_file_id file_id;
+};
+
+#define SMB2_SET_INFO_REPLY_SIZE 2
 
 /*
  * SID

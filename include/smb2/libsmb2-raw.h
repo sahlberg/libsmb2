@@ -237,6 +237,25 @@ struct smb2_pdu *smb2_cmd_query_info_async(struct smb2_context *smb2,
                                            smb2_command_cb cb, void *cb_data);
 
 /*
+ * Asynchronous SMB2 Set Info
+ *
+ * Returns:
+ * pdu  : If the call was initiated and a connection will be attempted.
+ *        Result of the QI will be reported through the callback function.
+ * NULL : If there was an error. The callback function will not be invoked.
+ *
+ * Callback parameters :
+ * status can be either of :
+ *    0     : Query was successful.
+ *            Command_data is a struct struct smb2_query_info_reply *
+ *
+ *   !0     : Status is NT status code. Command_data is NULL.
+ */
+struct smb2_pdu *smb2_cmd_set_info_async(struct smb2_context *smb2,
+                                         struct smb2_set_info_request *req,
+                                         smb2_command_cb cb, void *cb_data);
+
+/*
  * Asynchronous SMB2 Echo
  *
  * Returns:

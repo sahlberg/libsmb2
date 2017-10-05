@@ -13,6 +13,7 @@ smb2_cmd_negotiate_async
 smb2_cmd_query_directory_async
 smb2_cmd_query_info_async
 smb2_cmd_session_setup_async
+smb2_cmd_set_info_async
 smb2_cmd_tree_connect_async
 smb2_cmd_tree_disconnect_async
 smb2_connect_async
@@ -58,6 +59,8 @@ smb2_set_user
 smb2_stat
 smb2_stat_async
 smb2_telldir
+smb2_truncate
+smb2_truncate_async
 smb2_unlink
 smb2_unlink_async
 smb2_which_events

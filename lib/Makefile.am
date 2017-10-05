@@ -23,6 +23,7 @@ libsmb2_la_SOURCES = \
 	smb2-cmd-query-info.c \
 	smb2-cmd-read.c \
 	smb2-cmd-session-setup.c \
+	smb2-cmd-set-info.c \
 	smb2-cmd-tree-connect.c \
 	smb2-cmd-tree-disconnect.c \
 	smb2-cmd-write.c \
