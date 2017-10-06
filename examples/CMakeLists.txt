@@ -4,6 +4,7 @@ list(APPEND CORE_LIBRARIES ${POPT_LIBRARY})
 
 set(SOURCES smb2-cat-async
             smb2-cat-sync
+            smb2-ftruncate-sync
             smb2-ls-async
             smb2-ls-sync
             smb2-put-sync

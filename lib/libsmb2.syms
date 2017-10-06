@@ -27,6 +27,8 @@ smb2_free_data
 smb2_free_pdu
 smb2_fstat
 smb2_fstat_async
+smb2_ftruncate
+smb2_ftruncate_async
 smb2_get_client_guid
 smb2_get_error
 smb2_get_fd

@@ -1675,6 +1675,55 @@ smb2_truncate_async(struct smb2_context *smb2, const char *path,
         return 0;
 }
 
+static void
+ftrunc_cb_1(struct smb2_context *smb2, int status,
+            void *command_data _U_, void *private_data)
+{
+        struct create_cb_data *cb_data = private_data;
+
+        cb_data->cb(smb2, -nterror_to_errno(status),
+                    NULL, cb_data->cb_data);
+        free(cb_data);
+}
+
+int
+smb2_ftruncate_async(struct smb2_context *smb2, struct smb2fh *fh,
+                     uint64_t length, smb2_command_cb cb, void *cb_data)
+{
+        struct create_cb_data *create_data;
+        struct smb2_set_info_request req;
+        struct smb2_file_end_of_file_info eofi;
+        struct smb2_pdu *pdu;
+
+        create_data = malloc(sizeof(struct create_cb_data));
+        if (create_data == NULL) {
+                smb2_set_error(smb2, "Failed to allocate create_data");
+                return -ENOMEM;
+        }
+        memset(create_data, 0, sizeof(struct create_cb_data));
+
+        create_data->cb = cb;
+        create_data->cb_data = cb_data;
+
+        eofi.end_of_file = length;
+
+        memset(&req, 0, sizeof(struct smb2_set_info_request));
+        req.info_type = SMB2_0_INFO_FILE;
+        req.file_info_class = SMB2_FILE_END_OF_FILE_INFORMATION;
+        req.additional_information = 0;
+        memcpy(req.file_id, fh->file_id, SMB2_FD_SIZE);
+        req.input_data = &eofi;
+
+        pdu = smb2_cmd_set_info_async(smb2, &req, ftrunc_cb_1, create_data);
+        if (pdu == NULL) {
+                smb2_set_error(smb2, "Failed to create set info command");
+                return -ENOMEM;
+        }
+        smb2_queue_pdu(smb2, pdu);
+
+        return 0;
+}
+
 struct disconnect_data {
         smb2_command_cb cb;
         void *cb_data;
