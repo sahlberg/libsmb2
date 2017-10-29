@@ -2,6 +2,8 @@
 /*
    Copyright (C) 2016 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
 
+   Portions of this code are copyright 2017 to Primary Data Inc.
+
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU Lesser General Public License as published by
    the Free Software Foundation; either version 2.1 of the License, or
@@ -48,10 +50,47 @@
 
 #define MAX_URL_SIZE 256
 
+static int
+smb2_parse_args(struct smb2_context *smb2, const char *args)
+{
+        while (args && *args != 0) {
+                char *next, *value;
+
+		next = strchr(args, '&');
+                if (next) {
+                        *(next++) = '\0';
+                }
+
+		value = strchr(args, '=');
+                if (value) {
+                        *(value++) = '\0';
+                }
+
+                if (!strcmp(args, "sec")) {
+                        if(!strcmp(value, "krb5")) {
+                                smb2->sec = SMB2_SEC_KRB5;
+                        } else if (!strcmp(value, "ntlmssp")) {
+                                smb2->sec = SMB2_SEC_NTLMSSP;
+                        } else {
+                                smb2_set_error(smb2, "Unknown sec= argument: "
+                                               "%s", value);
+                                return -1;
+                        }
+                } else {
+                        smb2_set_error(smb2, "Unknown argument: %s", args);
+                        return -1;
+                }
+                args = next;
+        }
+
+        return 0;
+}
+
 struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url)
 {
         struct smb2_url *u;
         char *ptr, *tmp, str[MAX_URL_SIZE];
+        char *args;
 
         if (strncmp(url, "smb://", 6)) {
                 smb2_set_error(smb2, "URL does not start with 'smb://'");
@@ -62,6 +101,14 @@ struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url)
                 return NULL;
         }
 	strncpy(str, url + 6, MAX_URL_SIZE);
+
+        args = strchr(str, '?');
+        if (args) {
+                *(args++) = '\0';
+                if (smb2_parse_args(smb2, args) != 0) {
+                        return NULL;
+                }
+        }
 
         u = malloc(sizeof(struct smb2_url));
         if (u == NULL) {
@@ -131,8 +178,10 @@ struct smb2_context *smb2_init_context(void)
         }
         memset(smb2, 0, sizeof(struct smb2_context));
 
+        smb2->user = strdup(getlogin());
         smb2->fd = -1;
-        
+        smb2->sec = SMB2_SEC_UNDEFINED;
+
         snprintf(smb2->client_guid, 16, "libnfs-%d", getpid());
         
         return smb2;

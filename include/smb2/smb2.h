@@ -558,10 +558,19 @@ struct smb2_sid {
 #define SMB2_ACCESS_ALLOWED_ACE_TYPE                 0x00
 #define SMB2_ACCESS_DENIED_ACE_TYPE                  0x01
 #define SMB2_SYSTEM_AUDIT_ACE_TYPE                   0x02
+/*
+ * Reserved for future use
+ * #define SMB2_SYSTEM_ALARM_ACE_TYPE                   0x03
+ */
 #define SMB2_ACCESS_ALLOWED_OBJECT_ACE_TYPE          0x05
 #define SMB2_ACCESS_DENIED_OBJECT_ACE_TYPE           0x06
 #define SMB2_SYSTEM_AUDIT_OBJECT_ACE_TYPE            0x07
-#define SMB2_SYSTEM_ALARM_OBJECT_ACE_TYPE            0x08
+/*
+ * Reserved for future use
+ * #define SMB2_SYSTEM_ALARM_OBJECT_ACE_TYPE            0x08
+ */
+#define SMB2_ACCESS_ALLOWED_CALLBACK_ACE_TYPE        0x09
+#define SMB2_ACCESS_DENIED_CALLBACK_ACE_TYPE         0x10
 #define SMB2_SYSTEM_MANDATORY_LABEL_ACE_TYPE         0x11
 #define SMB2_SYSTEM_RESOURCE_ATTRIBUTE_ACE_TYPE      0x12
 #define SMB2_SYSTEM_SCOPED_POLICY_ID_ACE_TYPE        0x13
@@ -590,6 +599,18 @@ struct smb2_ace {
         struct smb2_sid *sid;
         uint8_t object_type[SMB2_OBJECT_TYPE_SIZE];
         uint8_t inherited_object_type[SMB2_OBJECT_TYPE_SIZE];
+
+        /* ApplicationData/AttributeData. Used by
+         * SMB2_ACCESS_ALLOWED_CALLBACK_ACE_TYPE,
+         * SMB2_DENIED_ALLOWED_CALLBACK_ACE_TYPE,
+         * SMB2_SYSTEM_RESOURCE_ATTRIBUTE_ACE_TYPE
+         */
+        int   ad_len;
+        char *ad_data;
+
+        /* raw blob, used for unknown ACE types */
+        int   raw_len;
+        char *raw_data;
 };
 
 /*

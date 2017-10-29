@@ -99,9 +99,17 @@ enum smb2_recv_state {
         SMB2_RECV_PAD,
 };
 
+enum smb2_sec {
+        SMB2_SEC_UNDEFINED = 0,
+        SMB2_SEC_KRB5,
+        SMB2_SEC_NTLMSSP,
+};
+
 struct smb2_context {
         int fd;
         int is_connected;
+
+        enum smb2_sec sec;
 
         uint16_t security_mode;
 

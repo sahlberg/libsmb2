@@ -2,6 +2,8 @@
 /*
    Copyright (C) 2017 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
 
+   Portions of this code are copyright 2017 to Primary Data Inc.
+
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU Lesser General Public License as published by
    the Free Software Foundation; either version 2.1 of the License, or
@@ -51,6 +53,11 @@ decode_sid(struct smb2_context *smb2, void *memctx, struct smb2_iovec *v)
         uint8_t revision, sub_auth_count;
         int i;
 
+        if (v->len < 8) {
+                smb2_set_error(smb2, "SID must be at least 8 bytes");
+                return NULL;
+        }
+
         smb2_get_uint8(v, 0, &revision);
         if (revision != 1) {
                 smb2_set_error(smb2, "can not decode sid with "
@@ -58,6 +65,11 @@ decode_sid(struct smb2_context *smb2, void *memctx, struct smb2_iovec *v)
                 return NULL;
         }
         smb2_get_uint8(v, 1, &sub_auth_count);
+
+        if (v->len < 8 + sub_auth_count * sizeof(uint32_t)) {
+                smb2_set_error(smb2, "SID is bigger than the buffer");
+                return NULL;
+        }
 
         sid = smb2_alloc_data(smb2, memctx,
                               offsetof(struct smb2_sid, sub_auth) +
@@ -74,6 +86,9 @@ decode_sid(struct smb2_context *smb2, void *memctx, struct smb2_iovec *v)
                 smb2_get_uint32(v, 8 + i * sizeof(uint32_t),
                                 &sid->sub_auth[i]);
         }
+
+        v->len -= 8 + sub_auth_count * sizeof(uint32_t);
+        v->buf += 8 + sub_auth_count * sizeof(uint32_t);
 
         return sid;
 }
@@ -143,7 +158,7 @@ decode_ace(struct smb2_context *smb2, void *memctx, struct smb2_iovec *vec)
                         return NULL;
                 }
                 smb2_get_uint32(&v, 0, &ace->mask);
-                
+
                 v.len -= 4;
                 v.buf = &v.buf[4];
                 smb2_get_uint32(&v, 0, &ace->flags);
@@ -161,6 +176,33 @@ decode_ace(struct smb2_context *smb2, void *memctx, struct smb2_iovec *vec)
                 v.buf = &v.buf[SMB2_OBJECT_TYPE_SIZE];
                 ace->sid = decode_sid(smb2, memctx, &v);
                 break;
+        case SMB2_ACCESS_ALLOWED_CALLBACK_ACE_TYPE:
+        case SMB2_ACCESS_DENIED_CALLBACK_ACE_TYPE:
+        case SMB2_SYSTEM_RESOURCE_ATTRIBUTE_ACE_TYPE:
+                smb2_get_uint32(&v, 0, &ace->mask);
+
+                if (v.len < 4) {
+                        smb2_set_error(smb2, "not enough data for ace data.");
+                        return NULL;
+                }
+                v.len -= 4;
+                v.buf = &v.buf[4];
+                ace->sid = decode_sid(smb2, memctx, &v);
+
+                ace->ad_len = v.len;
+                ace->ad_data = smb2_alloc_data(smb2, memctx, ace->ad_len);
+                if (ace->ad_data == NULL) {
+                        return NULL;
+                }
+                memcpy(ace->ad_data, v.buf, v.len);
+                break;
+        default:
+                ace->raw_len = v.len;
+                ace->raw_data = smb2_alloc_data(smb2, memctx, ace->raw_len);
+                if (ace->raw_data == NULL) {
+                        return NULL;
+                }
+                memcpy(ace->raw_data, v.buf, v.len);
         }
 
         return ace;

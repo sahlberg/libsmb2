@@ -215,6 +215,11 @@ print_sid(struct smb2_sid *sid)
         int i;
         uint64_t ia = 0;
 
+        if (sid == NULL) {
+                printf("No SID");
+                return;
+        }
+
         printf("S-1");
         for(i = 0; i < SID_ID_AUTH_LEN; i++) {
                 ia <<= 8;
@@ -244,6 +249,8 @@ print_ace(struct smb2_ace *ace)
                 printf("Mask:0x%08x ", ace->mask);
                 print_sid(ace->sid);
                 break;
+        default:
+                printf("can't print this type");
         }
         printf("\n");
 }

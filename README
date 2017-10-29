@@ -32,11 +32,32 @@ and data structures.
 This API is described in libsmb-raw.h
 
 
+SMB URL Format
+==============
+The SMB URL format is currently a small subset of the URL format that is
+defined/used by the Samba project.
+The goal is to eventually support the full URL format, thus making URLs
+interchangable between Samba utilities and Libsmb2 but we are not there yet.
+
+smb://[<domain>;][<user>@]<server>/<share>[/path][?arg=val[&arg=val]*]
+
+<server> is either a hostname, an IPv4 or an IPv6 address.
+
+Aruments supported by libsmb2 are :
+ sec=<mech>    : Mechanism to use to authenticate to the server. Default
+	         is any available mech, but can be overridden by :
+		 krb5: Only use Kerberos
+		 ntlmssp : Only use NTLMSSP
+
+
 Authentication
 ==============
-Authentication is implemented using MIT Kerberos as well as the GSS-NTLMSSP
-mech plugin. This allows NTLM authentication to modern Windows versions
-as well as Samba. Kerberos implementation is planned but not yet implemented.
+Authentication is implemented using MIT Kerberos and it supports both KRB5
+for authentication against Active Directory as well as NTLMSSP for standalone
+windows servers.
+
+Using NTLMSSP authentication requies that you also install and configure
+the GSS-NTLMSSP mech plugin for kerberos.
 No other authentication mechanisms are planned.
 
 To build libsmb2 you will need to have MIT Kerberos as well as its development
@@ -54,14 +75,20 @@ file.
 You need one entry in this file for each local user account you want to be able
 to use libsmb2 for accessing a remote share.
 
+By default, NTLM authentication will use the username for the current process.
+This can be overridden by specifying a different username in the SMB URL :
+  smb://guest@server/share>?sec=ntlmssp
 
-SMB URL Format
-==============
-The SMB URL format is currently a small subset of the URL format that is
-defined/used by the Samba project.
-The goal is to eventually support the full URL format, thus making URLs
-interchangable between Samba utilities and Libsmb2 but we are not there yet.
 
-smb://[<domain>;][<user>@]<server>/<share>[/path/to/object]
+KRB5 Authentication
+-------------------
+Kerberos authentication can be used when the linux workstation as well as
+the file server are part of Active Directory.
 
-<server> is either a hostname, an IPv4 or an IPv6 address.
+Before you can use KRB5 authentication you must first authenticate to the KDC.
+Use "kinit username@YOUR-REALM" to do that in the normal way you set up
+kerberos.
+
+Once you have run kinit successfully you should be able to authenticate to the
+file server using krb5 by specifying sec=krb5 in the URL :
+  smb://server/share?sec=krb5

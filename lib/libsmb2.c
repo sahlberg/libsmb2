@@ -2,6 +2,8 @@
 /*
    Copyright (C) 2016 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
 
+   Portions of this code are copyright 2017 to Primary Data Inc.
+
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU Lesser General Public License as published by
    the Free Software Foundation; either version 2.1 of the License, or
@@ -69,6 +71,14 @@ const smb2_file_id compound_file_id = {
 
 static const gss_OID_desc gss_mech_spnego = {
     6, "\x2b\x06\x01\x05\x05\x02"
+};
+
+static const gss_OID_desc spnego_mech_krb5 = {
+    9, "\x2a\x86\x48\x86\xf7\x12\x01\x02\x02"
+};
+
+static const gss_OID_desc spnego_mech_ntlmssp = {
+   10, "\x2b\x06\x01\x04\x01\x82\x37\x02\x02\x0a"
 };
 
 struct private_auth_data {
@@ -585,7 +595,7 @@ send_session_setup_request(struct smb2_context *smb2,
                                    GSS_C_SEQUENCE_FLAG |
                                    GSS_C_MUTUAL_FLAG |
                                    GSS_C_REPLAY_FLAG |
-                                   GSS_C_INTEG_FLAG,
+                                   0, //GSS_C_INTEG_FLAG,
                                    GSS_C_INDEFINITE,
                                    GSS_C_NO_CHANNEL_BINDINGS,
                                    input_token,
@@ -629,6 +639,9 @@ negotiate_cb(struct smb2_context *smb2, int status,
         gss_buffer_desc target = GSS_C_EMPTY_BUFFER;
         uint32_t maj, min;
         int ret;
+        gss_buffer_desc user;
+        gss_OID_set_desc mechOidSet;
+        gss_OID_set_desc wantMech;
 
         if (status != SMB2_STATUS_SUCCESS) {
                 smb2_set_error(smb2, "Negotiate failed with (0x%08x) %s. %s",
@@ -636,6 +649,14 @@ negotiate_cb(struct smb2_context *smb2, int status,
                                smb2_get_error(smb2));
                 c_data->cb(smb2, -nterror_to_errno(status), NULL,
                            c_data->cb_data);
+                free_c_data(c_data);
+                return;
+        }
+
+        if (rep->security_mode & SMB2_NEGOTIATE_SIGNING_REQUIRED) {
+                smb2_set_error(smb2, "Signing Required by server. "
+                               "Not yet implemented in libsmb2");
+                c_data->cb(smb2, -EINVAL, NULL, c_data->cb_data);
                 free_c_data(c_data);
                 return;
         }
@@ -686,35 +707,46 @@ negotiate_cb(struct smb2_context *smb2, int status,
         c_data->auth_data->mech_type = &gss_mech_spnego;
         c_data->auth_data->cred = GSS_C_NO_CREDENTIAL;
 
-        if (smb2->user) {
-                gss_buffer_desc user;
-                gss_OID_set_desc mechOidSet;
+        user.value = discard_const(smb2->user);
+        user.length = strlen(smb2->user);
 
-                user.value = discard_const(smb2->user);
-                user.length = strlen(smb2->user);
+        /* create a name for the user */
+        maj = gss_import_name(&min, &user, GSS_C_NT_USER_NAME,
+                              &c_data->auth_data->user_name);
 
-                /* create a name for the user */
-                maj = gss_import_name(&min, &user, GSS_C_NT_USER_NAME,
-                                      &c_data->auth_data->user_name);
+        if (maj != GSS_S_COMPLETE) {
+                set_gss_error(smb2, "gss_import_name", maj, min);
+                c_data->cb(smb2, -ENOMEM, NULL, c_data->cb_data);
+                free_c_data(c_data);
+                return;
+        }
 
-                if (maj != GSS_S_COMPLETE) {
-                        set_gss_error(smb2, "gss_import_name", maj, min);
-                        c_data->cb(smb2, -ENOMEM, NULL, c_data->cb_data);
-                        free_c_data(c_data);
-                        return;
+        /* Create creds for the user */
+        mechOidSet.count = 1;
+        mechOidSet.elements = discard_const(&gss_mech_spnego);
+
+        maj = gss_acquire_cred(&min, c_data->auth_data->user_name, 0,
+                               &mechOidSet, GSS_C_INITIATE,
+                               &c_data->auth_data->cred, NULL, NULL);
+        if (maj != GSS_S_COMPLETE) {
+                set_gss_error(smb2, "gss_acquire_cred", maj, min);
+                c_data->cb(smb2, -ENOMEM, NULL, c_data->cb_data);
+                free_c_data(c_data);
+                return;
+        }
+
+        if (smb2->sec != SMB2_SEC_UNDEFINED) {
+                wantMech.count = 1;
+                if (smb2->sec == SMB2_SEC_KRB5) {
+                        wantMech.elements = discard_const(&spnego_mech_krb5);
+                } else if (smb2->sec == SMB2_SEC_NTLMSSP) {
+                        wantMech.elements = discard_const(&spnego_mech_ntlmssp);
                 }
 
-                /* Create creds for the user */
-                mechOidSet.count = 1;
-                mechOidSet.elements = discard_const(&gss_mech_spnego);
-
-                maj = gss_acquire_cred(
-                        &min, c_data->auth_data->user_name, 0,
-                        &mechOidSet, GSS_C_INITIATE,
-                        &c_data->auth_data->cred, NULL, NULL);
-
-                if (maj != GSS_S_COMPLETE) {
-                        set_gss_error(smb2, "gss_acquire_cred", maj, min);
+                maj = gss_set_neg_mechs(&min, c_data->auth_data->cred,
+                                        &wantMech);
+                if (GSS_ERROR(maj)) {
+                        set_gss_error(smb2, "gss_set_neg_mechs", maj, min);
                         c_data->cb(smb2, -ENOMEM, NULL, c_data->cb_data);
                         free_c_data(c_data);
                         return;
