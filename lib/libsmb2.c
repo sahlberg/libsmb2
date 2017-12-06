@@ -501,6 +501,7 @@ free_c_data(struct connect_data *c_data)
         free(c_data->g_server);
         free(discard_const(c_data->server));
         free(discard_const(c_data->share));
+        free(discard_const(c_data->user));
         free(c_data);
 }
 
@@ -804,25 +805,39 @@ smb2_connect_share_async(struct smb2_context *smb2,
 {
         struct connect_data *c_data;
 
+        if (smb2->server) {
+                free(discard_const(smb2->server));
+        }
+        smb2->server = strdup(server);
+
+        if (smb2->share) {
+                free(discard_const(smb2->share));
+        }
+        smb2->share = strdup(share);
+
+        if (user) {
+                smb2_set_user(smb2, user);
+        }
+
         c_data = malloc(sizeof(struct connect_data));
         if (c_data == NULL) {
                 smb2_set_error(smb2, "Failed to allocate connect_data");
                 return -ENOMEM;
         }
         memset(c_data, 0, sizeof(struct connect_data));
-        c_data->server = strdup(server);
+        c_data->server = strdup(smb2->server);
         if (c_data->server == NULL) {
                 free_c_data(c_data);
                 smb2_set_error(smb2, "Failed to strdup(server)");
                 return -ENOMEM;
         }
-        c_data->share = strdup(share);
+        c_data->share = strdup(smb2->share);
         if (c_data->share == NULL) {
                 free_c_data(c_data);
-                smb2_set_error(smb2, "Failed to strdup(server)");
+                smb2_set_error(smb2, "Failed to strdup(share)");
                 return -ENOMEM;
         }
-        c_data->user = strdup(user);
+        c_data->user = strdup(smb2->user);
         if (c_data->user == NULL) {
                 free_c_data(c_data);
                 smb2_set_error(smb2, "Failed to strdup(user)");

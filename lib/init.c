@@ -130,8 +130,6 @@ struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url)
                 *(tmp++) = '\0';
                 u->user = strdup(ptr);
                 ptr = tmp;
-        } else {
-		u->user = strdup(smb2->user);
 	}
         /* server */
         if ((tmp = strchr(ptr, '/')) != NULL) {
@@ -180,7 +178,7 @@ struct smb2_context *smb2_init_context(void)
         }
         memset(smb2, 0, sizeof(struct smb2_context));
 
-        smb2->user = strdup(getlogin());
+        smb2_set_user(smb2, getlogin());
         smb2->fd = -1;
         smb2->sec = SMB2_SEC_UNDEFINED;
 
@@ -287,6 +285,9 @@ void smb2_set_security_mode(struct smb2_context *smb2, uint16_t security_mode)
 
 void smb2_set_user(struct smb2_context *smb2, const char *user)
 {
+        if (smb2->user) {
+                free(discard_const(smb2->user));
+        }
         smb2->user = strdup(user);
 }
 

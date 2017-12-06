@@ -128,7 +128,8 @@ int smb2_connect_async(struct smb2_context *smb2, const char *server,
                        smb2_command_cb cb, void *cb_data);
 
 /*
- * Async call to connect to a share/
+ * Async call to connect to a share.
+ * On unix, if user is NULL then default to the current user.
  *
  * Returns:
  *  0 if the call was initiated and a connection will be attempted. Result of
@@ -148,7 +149,8 @@ int smb2_connect_share_async(struct smb2_context *smb2,
                              smb2_command_cb cb, void *cb_data);
 
 /*
- * Sync call to connect to a share/
+ * Sync call to connect to a share.
+ * On unix, if user is NULL then default to the current user.
  *
  * Returns:
  * 0      : Connected to the share successfully.
