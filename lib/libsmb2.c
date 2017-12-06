@@ -98,11 +98,12 @@ struct connect_data {
 
         const char *server;
         const char *share;
+        const char *user;
 
         /* UNC for the share in utf8 as well as ucs2 formats */
         char *utf8_unc;
         struct ucs2 *ucs2_unc;
-                
+
         struct private_auth_data *auth_data;
 };
 
@@ -110,12 +111,12 @@ struct smb2_dirent_internal {
         struct smb2_dirent_internal *next;
         struct smb2dirent dirent;
 };
-        
+
 struct smb2dir {
         smb2_command_cb cb;
         void *cb_data;
         smb2_file_id file_id;
-        
+
         struct smb2_dirent_internal *entries;
         struct smb2_dirent_internal *current_entry;
         int index;
@@ -539,7 +540,7 @@ session_setup_cb(struct smb2_context *smb2, int status,
         gss_release_buffer(&min, &c_data->auth_data->output_token);
         c_data->auth_data->output_token.length = 0;
         c_data->auth_data->output_token.value = NULL;
-        
+
         if (status == SMB2_STATUS_MORE_PROCESSING_REQUIRED) {
                 input_token.length = rep->security_buffer_length;
                 input_token.value = rep->security_buffer;
@@ -681,7 +682,7 @@ negotiate_cb(struct smb2_context *smb2, int status,
         }
         memset(c_data->auth_data, 0, sizeof(struct private_auth_data));
         c_data->auth_data->context = GSS_C_NO_CONTEXT;
-                
+
         if (asprintf(&c_data->g_server, "cifs@%s", c_data->server) < 0) {
                 smb2_set_error(smb2, "Failed to allocate server string");
                 c_data->cb(smb2, -ENOMEM, NULL, c_data->cb_data);
@@ -707,8 +708,8 @@ negotiate_cb(struct smb2_context *smb2, int status,
         c_data->auth_data->mech_type = &gss_mech_spnego;
         c_data->auth_data->cred = GSS_C_NO_CREDENTIAL;
 
-        user.value = discard_const(smb2->user);
-        user.length = strlen(smb2->user);
+        user.value = discard_const(c_data->user);
+        user.length = strlen(c_data->user);
 
         /* create a name for the user */
         maj = gss_import_name(&min, &user, GSS_C_NT_USER_NAME,
@@ -775,7 +776,7 @@ connect_cb(struct smb2_context *smb2, int status,
                 free_c_data(c_data);
                 return;
         }
-        
+
         memset(&req, 0, sizeof(struct smb2_negotiate_request));
         req.capabilities = SMB2_GLOBAL_CAP_LARGE_MTU;
         req.dialect_count = 4;
@@ -797,7 +798,8 @@ connect_cb(struct smb2_context *smb2, int status,
 
 int
 smb2_connect_share_async(struct smb2_context *smb2,
-                         const char *server, const char *share,
+                         const char *server,
+                         const char *share, const char *user,
                          smb2_command_cb cb, void *cb_data)
 {
         struct connect_data *c_data;
@@ -820,6 +822,12 @@ smb2_connect_share_async(struct smb2_context *smb2,
                 smb2_set_error(smb2, "Failed to strdup(server)");
                 return -ENOMEM;
         }
+        c_data->user = strdup(user);
+        if (c_data->user == NULL) {
+                free_c_data(c_data);
+                smb2_set_error(smb2, "Failed to strdup(user)");
+                return -ENOMEM;
+        }
         if (asprintf(&c_data->utf8_unc, "\\\\%s\\%s", c_data->server,
                      c_data->share) < 0) {
                 free_c_data(c_data);
@@ -834,10 +842,10 @@ smb2_connect_share_async(struct smb2_context *smb2,
                                c_data->utf8_unc);
                 return -ENOMEM;
         }
-                
+
         c_data->cb = cb;
         c_data->cb_data = cb_data;
- 
+
         if (smb2_connect_async(smb2, server, connect_cb, c_data) != 0) {
                 free_c_data(c_data);
                 return -ENOMEM;

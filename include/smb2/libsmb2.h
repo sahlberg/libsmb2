@@ -109,7 +109,7 @@ void smb2_set_user(struct smb2_context *smb2, const char *user);
  * Returns the client_guid for this context.
  */
 const char *smb2_get_client_guid(struct smb2_context *smb2);
-        
+
 /*
  * Asynchronous call to connect a TCP connection to the server
  *
@@ -142,7 +142,9 @@ int smb2_connect_async(struct smb2_context *smb2, const char *server,
  *   -errno : Failed to connect to the share. Command_data is NULL.
  */
 int smb2_connect_share_async(struct smb2_context *smb2,
-                             const char *server, const char *share,
+                             const char *server,
+                             const char *share,
+                             const char *user,
                              smb2_command_cb cb, void *cb_data);
 
 /*
@@ -153,7 +155,9 @@ int smb2_connect_share_async(struct smb2_context *smb2,
  * -errno : Failure.
  */
 int smb2_connect_share(struct smb2_context *smb2,
-                       const char *server, const char *share);
+                       const char *server,
+                       const char *share,
+                       const char *user);
 
 /*
  * Async call to disconnect from a share/
@@ -199,7 +203,7 @@ const char *nterror_to_str(uint32_t status);
 
 /* Convert an smb2/nt error code into an errno value */
 int nterror_to_errno(uint32_t status);
-        
+
 /*
  * This function is used to parse an SMB2 URL into as smb2_url structure.
  * SMB2 URL format :

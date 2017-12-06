@@ -57,7 +57,7 @@ void od_cb(struct smb2_context *smb2, int status,
         while ((ent = smb2_readdir(smb2, dir))) {
                 char *type;
                 time_t t;
-                
+
                 switch (ent->st.smb2_type) {
                 case SMB2_TYPE_FILE:
                         type = "FILE";
@@ -72,7 +72,7 @@ void od_cb(struct smb2_context *smb2, int status,
                 t = (time_t)ent->st.smb2_mtime;
                 printf("%-20s %-9s %15"PRIu64" %s\n", ent->name, type, ent->st.smb2_size, asctime(localtime(&t)));
         }
-        
+
         smb2_closedir(smb2, dir);
         smb2_disconnect_share_async(smb2, dc_cb, NULL);
 }
@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
         if (argc < 2) {
                 usage();
         }
-        
+
 	smb2 = smb2_init_context();
         if (smb2 == NULL) {
                 fprintf(stderr, "Failed to init context\n");
@@ -114,15 +114,15 @@ int main(int argc, char *argv[])
                         smb2_get_error(smb2));
                 exit(0);
         }
-                
+
         smb2_set_security_mode(smb2, SMB2_NEGOTIATE_SIGNING_ENABLED);
 
-	if (smb2_connect_share_async(smb2, url->server, url->share,
+	if (smb2_connect_share_async(smb2, url->server, url->share, url->user,
                                      cf_cb, (void *)url->path) != 0) {
 		printf("smb2_connect_share failed. %s\n", smb2_get_error(smb2));
 		exit(10);
 	}
-        
+
         while (!is_finished) {
 		pfd.fd = smb2_get_fd(smb2);
 		pfd.events = smb2_which_events(smb2);

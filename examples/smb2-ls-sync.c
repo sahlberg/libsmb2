@@ -44,7 +44,7 @@ int main(int argc, char *argv[])
         if (argc < 2) {
                 usage();
         }
-        
+
 	smb2 = smb2_init_context();
         if (smb2 == NULL) {
                 fprintf(stderr, "Failed to init context\n");
@@ -57,10 +57,10 @@ int main(int argc, char *argv[])
                         smb2_get_error(smb2));
                 exit(0);
         }
-                
+
         smb2_set_security_mode(smb2, SMB2_NEGOTIATE_SIGNING_ENABLED);
 
-	if (smb2_connect_share(smb2, url->server, url->share) < 0) {
+	if (smb2_connect_share(smb2, url->server, url->share, url->user) < 0) {
 		printf("smb2_connect_share failed. %s\n", smb2_get_error(smb2));
 		exit(10);
 	}
@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
         while ((ent = smb2_readdir(smb2, dir))) {
                 char *type;
                 time_t t;
-                
+
                 switch (ent->st.smb2_type) {
                 case SMB2_TYPE_FILE:
                         type = "FILE";

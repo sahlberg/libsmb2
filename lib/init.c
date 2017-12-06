@@ -116,7 +116,7 @@ struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url)
                 return NULL;
         }
         memset(u, 0, sizeof(struct smb2_url));
-        
+
         ptr = str;
 
         /* domain */
@@ -130,7 +130,9 @@ struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url)
                 *(tmp++) = '\0';
                 u->user = strdup(ptr);
                 ptr = tmp;
-        }
+        } else {
+		u->user = strdup(smb2->user);
+	}
         /* server */
         if ((tmp = strchr(ptr, '/')) != NULL) {
                 *(tmp++) = '\0';

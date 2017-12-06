@@ -46,7 +46,7 @@ struct smb2_error_reply {
 #define SMB2_FLAGS_PRIORITY_MASK      0x00000070
 #define SMB2_FLAGS_DFS_OPERATIONS     0x10000000
 #define SMB2_FLAGS_REPLAY_OPERATION   0x20000000
-        
+
 enum smb2_command {
         SMB2_NEGOTIATE       = 0,
         SMB2_SESSION_SETUP,
@@ -87,7 +87,7 @@ enum smb2_command {
 #define SMB2_GLOBAL_CAP_PERSISTENT_HANDLES 0x00000010
 #define SMB2_GLOBAL_CAP_DIRECTORY_LEASING  0x00000020
 #define SMB2_GLOBAL_CAP_ENCRYPTION         0x00000040
-        
+
 #define SMB2_NEGOTIATE_MAX_DIALECTS 10
 
 #define SMB2_NEGOTIATE_REQUEST_SIZE 36
@@ -156,7 +156,7 @@ struct smb2_session_setup_reply {
 };
 
 #define SMB2_TREE_CONNECT_REQUEST_SIZE 9
-        
+
 #define SMB2_SHAREFLAG_CLUSTER_RECONNECT 0x0001
 
 struct smb2_tree_connect_request {
@@ -177,7 +177,7 @@ struct smb2_tree_connect_request {
 #define SMB2_SHAREFLAG_NO_CACHING                  0x00000030
 #define SMB2_SHAREFLAG_RESTRICT_EXCLUSIVE_OPENS    0x00000100
 #define SMB2_SHAREFLAG_FORCE_SHARED_DELETE         0x00000200
-#define SMB2_SHAREFLAG_ALLOW_NAMESPACE_CACHING     0x00000400  
+#define SMB2_SHAREFLAG_ALLOW_NAMESPACE_CACHING     0x00000400
 #define SMB2_SHAREFLAG_ACCESS_BASED_DIRECTORY_ENUM 0x00000800
 #define SMB2_SHAREFLAG_FORCE_LEVELII_OPLOCK        0x00001000
 #define SMB2_SHAREFLAG_ENABLE_HASH_V1              0x00002000
@@ -229,7 +229,7 @@ struct smb2_tree_connect_reply {
 #define SMB2_GENERIC_EXECUTE        0x20000000
 #define SMB2_GENERIC_WRITE          0x40000000
 #define SMB2_GENERIC_READ           0x80000000
-        
+
 /* Access mask unique for file/pipe/printer */
 #define SMB2_FILE_READ_DATA         0x00000001
 #define SMB2_FILE_WRITE_DATA        0x00000002
@@ -242,7 +242,7 @@ struct smb2_tree_connect_reply {
 #define SMB2_FILE_ADD_SUBDIRECTORY  0x00000004
 #define SMB2_FILE_TRAVERSE          0x00000020
 
-/* File attributes */        
+/* File attributes */
 #define SMB2_FILE_ATTRIBUTE_READONLY            0x00000001
 #define SMB2_FILE_ATTRIBUTE_HIDDEN              0x00000002
 #define SMB2_FILE_ATTRIBUTE_SYSTEM              0x00000004
@@ -259,7 +259,7 @@ struct smb2_tree_connect_reply {
 #define SMB2_FILE_ATTRIBUTE_INTEGRITY_STREAM    0x00008000
 #define SMB2_FILE_ATTRIBUTE_NO_SCRUB_DATA       0x00020000
 
-/* Share access */        
+/* Share access */
 #define SMB2_FILE_SHARE_READ 0x00000001
 #define SMB2_FILE_SHARE_WRITE 0x00000002
 #define SMB2_FILE_SHARE_DELETE 0x00000004
@@ -314,7 +314,7 @@ struct smb2_create_request {
 
 #define SMB2_FD_SIZE 16
 typedef uint8_t smb2_file_id[SMB2_FD_SIZE];
-        
+
 struct smb2_create_reply {
         uint8_t oplock_level;
         uint8_t flags;
@@ -455,7 +455,7 @@ struct smb2_read_reply {
 #define SMB2_FILE_STANDARD_INFORMATION          0x05
 #define SMB2_FILE_ALL_INFORMATION               0x12
 #define SMB2_FILE_END_OF_FILE_INFORMATION       0x14
-        
+
 /* additional info */
 #define SMB2_OWNER_SECURITY_INFORMATION     0x00000001
 #define SMB2_GROUP_SECURITY_INFORMATION     0x00000002

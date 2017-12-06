@@ -84,13 +84,15 @@ static void connect_cb(struct smb2_context *smb2, int status,
  * Connect to the server and mount the share.
  */
 int smb2_connect_share(struct smb2_context *smb2,
-                       const char *server, const char *share)
+                       const char *server,
+                       const char *share,
+                       const char *user)
 {
         struct sync_cb_data cb_data;
 
 	cb_data.is_finished = 0;
 
-	if (smb2_connect_share_async(smb2, server, share,
+	if (smb2_connect_share_async(smb2, server, share, user,
                                      connect_cb, &cb_data) != 0) {
 		smb2_set_error(smb2, "smb2_connect_share_async failed");
 		return -ENOMEM;
