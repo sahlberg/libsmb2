@@ -459,6 +459,7 @@ struct smb2_read_reply {
 /* Filesystem information class : for SMB2_0_INFO_FILESYSTEM */
 #define SMB2_FILE_FS_SIZE_INFORMATION              3
 #define SMB2_FILE_FS_DEVICE_INFORMATION            4
+#define SMB2_FILE_FS_CONTROL_INFORMATION           6
 #define SMB2_FILE_FS_FULL_SIZE_INFORMATION         7
         
 /* additional info */
@@ -687,6 +688,26 @@ struct smb2_file_fs_size_info {
 struct smb2_file_fs_device_info {
         uint32_t device_type;
         uint32_t characteristics;
+};
+
+/* File System Control Flags */
+#define FILE_VC_QUOTA_TRACK            0x00000001
+#define FILE_VC_QUOTA_ENFORCE          0x00000002
+#define FILE_VC_CONTENT_INDEX_DISABLED 0x00000008
+#define FILE_VC_LOG_QUOTA_THRESHOLD    0x00000010
+#define FILE_VC_LOG_QUOTA_LIMIT        0x00000020
+#define FILE_VC_LOG_VOLUME_THRESHOLD   0x00000040
+#define FILE_VC_LOG_VOLUME_LIMIT       0x00000080
+#define FILE_VC_QUOTAS_INCOMPLETE      0x00000100
+#define FILE_VC_QUOTAS_REBUILDING      0x00000200
+
+struct smb2_file_fs_control_info {
+        uint64_t free_space_start_filtering;
+        uint64_t free_space_threshold;
+        uint64_t free_space_stop_filtering;
+        uint64_t default_quota_threshold;
+        uint64_t default_quota_limit;
+        uint32_t file_system_control_flags;
 };
 
 struct smb2_file_fs_full_size_info {

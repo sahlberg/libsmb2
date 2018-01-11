@@ -111,6 +111,7 @@ stat_cb_2(struct smb2_context *smb2, int status,
         struct smb2_query_info_reply *rep = command_data;
         struct smb2_file_fs_size_info *fs_size;
         struct smb2_file_fs_device_info *fs_dev;
+        struct smb2_file_fs_control_info *fs_ct;
         struct smb2_file_fs_full_size_info *fs_full_size;
 
         if (stat_data->status == SMB2_STATUS_SUCCESS) {
@@ -137,6 +138,21 @@ stat_cb_2(struct smb2_context *smb2, int status,
                        fs_dev->device_type);
                 printf("Characteristics: 0x%08x\n",
                        fs_dev->characteristics);
+                break;
+        case SMB2_FILE_FS_CONTROL_INFORMATION:
+                fs_ct = rep->output_buffer;
+                printf("FreeSpaceStartFiltering: %" PRIu64 "\n",
+                       fs_ct->free_space_start_filtering);
+                printf("FreeSpaceThreshold: %" PRIu64 "\n",
+                       fs_ct->free_space_threshold);
+                printf("FreeSpaceStopFiltering: %" PRIu64 "\n",
+                       fs_ct->free_space_stop_filtering);
+                printf("DefaultQuotaThreshold: %" PRIu64 "\n",
+                       fs_ct->default_quota_threshold);
+                printf("DefaultQuotaLimit: %" PRIu64 "\n",
+                       fs_ct->default_quota_limit);
+                printf("Characteristics: 0x%08x\n",
+                       fs_ct->file_system_control_flags);
                 break;
         case SMB2_FILE_FS_FULL_SIZE_INFORMATION:
                 fs_full_size = rep->output_buffer;
@@ -262,6 +278,9 @@ int main(int argc, char *argv[])
                 break;
         case SMB2_FILE_FS_DEVICE_INFORMATION:
                 printf("InfoLevel:%d FileFsDeviceInformation\n", info_level);
+                break;
+        case SMB2_FILE_FS_CONTROL_INFORMATION:
+                printf("InfoLevel:%d FileFsControlInformation\n", info_level);
                 break;
         case SMB2_FILE_FS_FULL_SIZE_INFORMATION:
                 printf("InfoLevel:%d FileFsFullSizeInformation\n", info_level);

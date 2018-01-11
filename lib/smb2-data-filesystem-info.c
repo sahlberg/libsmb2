@@ -78,6 +78,26 @@ smb2_decode_file_fs_device_info(struct smb2_context *smb2,
 }
 
 int
+smb2_decode_file_fs_control_info(struct smb2_context *smb2,
+                                 void *memctx,
+                                 struct smb2_file_fs_control_info *fs,
+                                 struct smb2_iovec *vec)
+{
+        if (vec->len < 48) {
+                return -1;
+        }
+
+        smb2_get_uint64(vec,  0, &fs->free_space_start_filtering);
+        smb2_get_uint64(vec,  8, &fs->free_space_threshold);
+        smb2_get_uint64(vec, 16, &fs->free_space_stop_filtering);
+        smb2_get_uint64(vec, 24, &fs->default_quota_threshold);
+        smb2_get_uint64(vec, 32, &fs->default_quota_limit);
+        smb2_get_uint32(vec, 40, &fs->file_system_control_flags);
+
+        return 0;
+}
+
+int
 smb2_decode_file_fs_full_size_info(struct smb2_context *smb2,
                                    void *memctx,
                                    struct smb2_file_fs_full_size_info *fs,
