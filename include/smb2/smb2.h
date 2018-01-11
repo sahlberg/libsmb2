@@ -458,6 +458,7 @@ struct smb2_read_reply {
 
 /* Filesystem information class : for SMB2_0_INFO_FILESYSTEM */
 #define SMB2_FILE_FS_SIZE_INFORMATION              3
+#define SMB2_FILE_FS_DEVICE_INFORMATION            4
 #define SMB2_FILE_FS_FULL_SIZE_INFORMATION         7
         
 /* additional info */
@@ -663,6 +664,29 @@ struct smb2_file_fs_size_info {
         uint64_t available_allocation_units;
         uint32_t sectors_per_allocation_unit;
         uint32_t bytes_per_sector;
+};
+
+/* Device type */
+#define FILE_DEVICE_CD_ROM 0x00000002
+#define FILE_DEVICE_DISK   0x00000007
+
+/* Characteristics */
+#define FILE_REMOVABLE_MEDIA                     0x00000001
+#define FILE_READ_ONLY_DEVICE                    0x00000002
+#define FILE_FLOPPY_DISKETTE                     0x00000004
+#define FILE_WRITE_ONCE_MEDIA                    0x00000008
+#define FILE_REMOTE_DEVICE                       0x00000010
+#define FILE_DEVICE_IS_MOUNTED                   0x00000020
+#define FILE_VIRTUAL_VOLUME                      0x00000040
+#define FILE_DEVICE_SECURE_OPEN                  0x00000100
+#define FILE_CHARACTERISTIC_TS_DEVICE            0x00001000
+#define FILE_CHARACTERISTIC_WEBDAV_DEVICE        0x00002000
+#define FILE_DEVICE_ALLOW_APPCONTAINER_TRAVERSAL 0x00020000
+#define FILE_PORTABLE_DEVICE                     0x00040000
+
+struct smb2_file_fs_device_info {
+        uint32_t device_type;
+        uint32_t characteristics;
 };
 
 struct smb2_file_fs_full_size_info {

@@ -232,6 +232,17 @@ smb2_process_query_info_variable(struct smb2_context *smb2,
                                 return -1;
                         }
                         break;
+                case SMB2_FILE_FS_DEVICE_INFORMATION:
+                        ptr = smb2_alloc_init(smb2,
+                                  sizeof(struct smb2_file_all_info));
+                        if (smb2_decode_file_fs_device_info(smb2, ptr, ptr,
+                                                          &vec)) {
+                                smb2_set_error(smb2, "could not decode file "
+                                               "fs device info. %s",
+                                               smb2_get_error(smb2));
+                                return -1;
+                        }
+                        break;
                 case SMB2_FILE_FS_FULL_SIZE_INFORMATION:
                         ptr = smb2_alloc_init(smb2,
                                   sizeof(struct smb2_file_all_info));

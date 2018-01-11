@@ -62,6 +62,22 @@ smb2_decode_file_fs_size_info(struct smb2_context *smb2,
 }
 
 int
+smb2_decode_file_fs_device_info(struct smb2_context *smb2,
+                                void *memctx,
+                                struct smb2_file_fs_device_info *fs,
+                                struct smb2_iovec *vec)
+{
+        if (vec->len < 8) {
+                return -1;
+        }
+
+        smb2_get_uint32(vec,  0, &fs->device_type);
+        smb2_get_uint32(vec,  4, &fs->characteristics);
+
+        return 0;
+}
+
+int
 smb2_decode_file_fs_full_size_info(struct smb2_context *smb2,
                                    void *memctx,
                                    struct smb2_file_fs_full_size_info *fs,

@@ -110,6 +110,7 @@ stat_cb_2(struct smb2_context *smb2, int status,
         struct stat_cb_data *stat_data = private_data;
         struct smb2_query_info_reply *rep = command_data;
         struct smb2_file_fs_size_info *fs_size;
+        struct smb2_file_fs_device_info *fs_dev;
         struct smb2_file_fs_full_size_info *fs_full_size;
 
         if (stat_data->status == SMB2_STATUS_SUCCESS) {
@@ -129,6 +130,13 @@ stat_cb_2(struct smb2_context *smb2, int status,
                        fs_size->sectors_per_allocation_unit);
                 printf("BytesPerSector: %u\n",
                        fs_size->bytes_per_sector);
+                break;
+        case SMB2_FILE_FS_DEVICE_INFORMATION:
+                fs_dev = rep->output_buffer;
+                printf("DeviceType: %u\n",
+                       fs_dev->device_type);
+                printf("Characteristics: 0x%08x\n",
+                       fs_dev->characteristics);
                 break;
         case SMB2_FILE_FS_FULL_SIZE_INFORMATION:
                 fs_full_size = rep->output_buffer;
@@ -251,6 +259,9 @@ int main(int argc, char *argv[])
         switch (info_level) {
         case SMB2_FILE_FS_SIZE_INFORMATION:
                 printf("InfoLevel:%d FileFsSizeInformation\n", info_level);
+                break;
+        case SMB2_FILE_FS_DEVICE_INFORMATION:
+                printf("InfoLevel:%d FileFsDeviceInformation\n", info_level);
                 break;
         case SMB2_FILE_FS_FULL_SIZE_INFORMATION:
                 printf("InfoLevel:%d FileFsFullSizeInformation\n", info_level);
