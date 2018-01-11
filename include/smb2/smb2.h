@@ -456,6 +456,10 @@ struct smb2_read_reply {
 #define SMB2_FILE_ALL_INFORMATION               0x12
 #define SMB2_FILE_END_OF_FILE_INFORMATION       0x14
 
+/* Filesystem information class : for SMB2_0_INFO_FILESYSTEM */
+#define SMB2_FILE_FS_SIZE_INFORMATION              3
+#define SMB2_FILE_FS_FULL_SIZE_INFORMATION         7
+        
 /* additional info */
 #define SMB2_OWNER_SECURITY_INFORMATION     0x00000001
 #define SMB2_GROUP_SECURITY_INFORMATION     0x00000002
@@ -654,6 +658,21 @@ struct smb2_security_descriptor {
         struct smb2_acl *dacl;
 };
 
+struct smb2_file_fs_size_info {
+        uint64_t total_allocation_units;
+        uint64_t available_allocation_units;
+        uint32_t sectors_per_allocation_unit;
+        uint32_t bytes_per_sector;
+};
+
+struct smb2_file_fs_full_size_info {
+        uint64_t total_allocation_units;
+        uint64_t caller_available_allocation_units;
+        uint64_t actual_available_allocation_units;
+        uint32_t sectors_per_allocation_unit;
+        uint32_t bytes_per_sector;
+};
+ 
 #define SMB2_QUERY_INFO_REPLY_SIZE 9
 
 struct smb2_query_info_reply {

@@ -325,6 +325,14 @@ int smb2_decode_security_descriptor(struct smb2_context *smb2,
                                     struct smb2_security_descriptor *sd,
                                     struct smb2_iovec *vec);
 
+int smb2_decode_file_fs_size_info(struct smb2_context *smb2,
+                                  void *memctx,
+                                  struct smb2_file_fs_size_info *fs,
+                                  struct smb2_iovec *vec);
+int smb2_decode_file_fs_full_size_info(struct smb2_context *smb2,
+                                       void *memctx,
+                                       struct smb2_file_fs_full_size_info *fs,
+                                       struct smb2_iovec *vec);
 #ifdef __cplusplus
 }
 #endif
