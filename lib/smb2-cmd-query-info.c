@@ -265,6 +265,17 @@ smb2_process_query_info_variable(struct smb2_context *smb2,
                                 return -1;
                         }
                         break;
+                case SMB2_FILE_FS_SECTOR_SIZE_INFORMATION:
+                        ptr = smb2_alloc_init(smb2,
+                                  sizeof(struct smb2_file_fs_sector_size_info));
+                        if (smb2_decode_file_fs_sector_size_info(smb2, ptr, ptr,
+                                                                 &vec)) {
+                                smb2_set_error(smb2, "could not decode file "
+                                               "fs sector size info. %s",
+                                               smb2_get_error(smb2));
+                                return -1;
+                        }
+                        break;
                 default:
                         smb2_set_error(smb2, "Can not decode info_type/"
                                        "info_class %d/%d yet",

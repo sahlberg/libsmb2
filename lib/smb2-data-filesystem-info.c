@@ -115,3 +115,27 @@ smb2_decode_file_fs_full_size_info(struct smb2_context *smb2,
 
         return 0;
 }
+
+int
+smb2_decode_file_fs_sector_size_info(struct smb2_context *smb2,
+                                     void *memctx,
+                                     struct smb2_file_fs_sector_size_info *fs,
+                                     struct smb2_iovec *vec)
+{
+        if (vec->len < 28) {
+                return -1;
+        }
+
+        smb2_get_uint32(vec,  0, &fs->logical_bytes_per_sector);
+        smb2_get_uint32(vec,  4,
+           &fs->physical_bytes_per_sector_for_atomicity);
+        smb2_get_uint32(vec,  8,
+           &fs->physical_bytes_per_sector_for_performance);
+        smb2_get_uint32(vec, 12,
+           &fs->file_system_effective_physical_bytes_per_sector_for_atomicity);
+        smb2_get_uint32(vec, 16, &fs->flags);
+        smb2_get_uint32(vec, 20, &fs->byte_offset_for_sector_alignment);
+        smb2_get_uint32(vec, 24, &fs->byte_offset_for_partition_alignment);
+
+        return 0;
+}

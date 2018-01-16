@@ -461,6 +461,7 @@ struct smb2_read_reply {
 #define SMB2_FILE_FS_DEVICE_INFORMATION            4
 #define SMB2_FILE_FS_CONTROL_INFORMATION           6
 #define SMB2_FILE_FS_FULL_SIZE_INFORMATION         7
+#define SMB2_FILE_FS_SECTOR_SIZE_INFORMATION      11
         
 /* additional info */
 #define SMB2_OWNER_SECURITY_INFORMATION     0x00000001
@@ -717,7 +718,23 @@ struct smb2_file_fs_full_size_info {
         uint32_t sectors_per_allocation_unit;
         uint32_t bytes_per_sector;
 };
- 
+
+/* Flags */
+#define SSINFO_FLAGS_ALIGNED_DEVICE              0x00000001
+#define SSINFO_FLAGS_PARTITION_ALIGNED_ON_DEVICE 0x00000002
+#define SSINFO_FLAGS_NO_SEEK_PENALTY             0x00000004
+#define SSINFO_FLAGS_TRIM_ENABLED                0x00000008
+
+struct smb2_file_fs_sector_size_info {
+        uint32_t logical_bytes_per_sector;
+        uint32_t physical_bytes_per_sector_for_atomicity;
+        uint32_t physical_bytes_per_sector_for_performance;
+        uint32_t file_system_effective_physical_bytes_per_sector_for_atomicity;
+        uint32_t flags;
+        uint32_t byte_offset_for_sector_alignment;
+        uint32_t byte_offset_for_partition_alignment;
+};
+
 #define SMB2_QUERY_INFO_REPLY_SIZE 9
 
 struct smb2_query_info_reply {
