@@ -73,12 +73,16 @@ smb2_encode_tree_connect_request(struct smb2_context *smb2,
 
 
         /* Path */
+        buf = malloc(req->path_length);
+        if (buf == NULL) {
+                smb2_set_error(smb2, "Failed to allocate tcon path");
+                return -1;
+        }
+        memcpy(buf, req->path, req->path_length);
         iov = smb2_add_iovector(smb2, &pdu->out,
-                                malloc(req->path_length),
+                                buf,
                                 req->path_length,
                                 free);
-
-        memcpy(iov->buf, req->path, req->path_length);
 
         return 0;
 }
@@ -117,6 +121,10 @@ smb2_process_tree_connect_fixed(struct smb2_context *smb2,
         uint16_t struct_size;
 
         rep = malloc(sizeof(*rep));
+        if (rep == NULL) {
+                smb2_set_error(smb2, "Failed to allocate tcon reply");
+                return -1;
+        }
         pdu->payload = rep;
 
         smb2_get_uint16(iov, 0, &struct_size);

@@ -76,13 +76,16 @@ smb2_encode_session_setup_request(struct smb2_context *smb2,
 
 
         /* Security buffer */
+        buf = malloc(req->security_buffer_length);
+        if (buf == NULL) {
+                smb2_set_error(smb2, "Failed to allocate secbuf");
+                return -1;
+        }
+        memcpy(buf, req->security_buffer, req->security_buffer_length);
         iov = smb2_add_iovector(smb2, &pdu->out,
-                                malloc(req->security_buffer_length),
+                                buf,
                                 req->security_buffer_length,
                                 free);
-
-        memcpy(iov->buf, req->security_buffer, req->security_buffer_length);
-
         return 0;
 }
 
@@ -123,6 +126,10 @@ smb2_process_session_setup_fixed(struct smb2_context *smb2,
         uint16_t struct_size;
 
         rep = malloc(sizeof(*rep));
+        if (rep == NULL) {
+                smb2_set_error(smb2, "Failed to allocate session setup reply");
+                return -1;
+        }
         pdu->payload = rep;
 
         smb2_get_uint16(iov, 0, &struct_size);

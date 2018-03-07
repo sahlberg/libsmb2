@@ -115,7 +115,6 @@ smb2_encode_query_directory_request(struct smb2_context *smb2,
                 name = utf8_to_ucs2(req->name);
                 if (name == NULL) {
                         smb2_set_error(smb2, "Could not convert name into UCS2");
-                        free(buf);
                         return -1;
                 }
                 smb2_set_uint16(iov, 26, 2 * name->len);
@@ -131,13 +130,17 @@ smb2_encode_query_directory_request(struct smb2_context *smb2,
 
         /* Name */
         if (name) {
+                buf = malloc(2 * name->len);
+                if (buf == NULL) {
+                        smb2_set_error(smb2, "Failed to allocate qdir name");
+                        free(name);
+                        return -1;
+                }
+                memcpy(buf, &name->val[0], 2 * name->len);
                 iov = smb2_add_iovector(smb2, &pdu->out,
-                                        malloc(2 * name->len),
+                                        buf,
                                         2 * name->len,
                                         free);
-
-                memcpy(iov->buf, &name->val[0], 2 * name->len);
-
         }
         free(name);
         
@@ -187,6 +190,10 @@ smb2_process_query_directory_fixed(struct smb2_context *smb2,
         uint16_t struct_size;
 
         rep = malloc(sizeof(*rep));
+        if (rep == NULL) {
+                smb2_set_error(smb2, "Failed to allocate query dir reply");
+                return -1;
+        }
         pdu->payload = rep;
 
         smb2_get_uint16(iov, 0, &struct_size);

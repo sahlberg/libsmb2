@@ -135,6 +135,10 @@ smb2_process_read_fixed(struct smb2_context *smb2,
         uint16_t struct_size;
 
         rep = malloc(sizeof(*rep));
+        if (rep == NULL) {
+                smb2_set_error(smb2, "Failed to allocate read reply");
+                return -1;
+        }
         pdu->payload = rep;
 
         smb2_get_uint16(iov, 0, &struct_size);
