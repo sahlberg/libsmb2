@@ -55,6 +55,11 @@ smb2_encode_query_info_request(struct smb2_context *smb2,
         uint8_t *buf;
         struct smb2_iovec *iov;
 
+        if (req->input_buffer_length > 0) {
+                smb2_set_error(smb2, "No support for input buffers, yet");
+                return -1;
+        }
+
         len = SMB2_QUERY_INFO_REQUEST_SIZE & 0xfffffffe;
         buf = malloc(len);
         if (buf == NULL) {
@@ -73,11 +78,6 @@ smb2_encode_query_info_request(struct smb2_context *smb2,
         smb2_set_uint32(iov,16, req->additional_information);
         smb2_set_uint32(iov,20, req->flags);
         memcpy(iov->buf + 24, req->file_id, SMB2_FD_SIZE);
-
-        if (req->input_buffer_length > 0) {
-                smb2_set_error(smb2, "No support for input buffers, yet");
-                return -1;
-        }
 
         /* Remember what we asked for so that we can unmarshall the reply */
         pdu->info_type       = req->info_type;
