@@ -171,6 +171,7 @@ void smb2_destroy_url(struct smb2_url *url)
 struct smb2_context *smb2_init_context(void)
 {
         struct smb2_context *smb2;
+        int i;
 
         smb2 = malloc(sizeof(struct smb2_context));
         if (smb2 == NULL) {
@@ -181,6 +182,10 @@ struct smb2_context *smb2_init_context(void)
         smb2_set_user(smb2, getlogin());
         smb2->fd = -1;
         smb2->sec = SMB2_SEC_UNDEFINED;
+
+        for (i = 0; i < 8; i++) {
+                smb2->client_challenge[i] = random()&0xff;
+        }
 
         snprintf(smb2->client_guid, 16, "libnfs-%d", getpid());
         
@@ -289,5 +294,29 @@ void smb2_set_user(struct smb2_context *smb2, const char *user)
                 free(discard_const(smb2->user));
         }
         smb2->user = strdup(user);
+}
+
+void smb2_set_password(struct smb2_context *smb2, const char *password)
+{
+        if (smb2->password) {
+                free(discard_const(smb2->password));
+        }
+        smb2->password = strdup(password);
+}
+
+void smb2_set_domain(struct smb2_context *smb2, const char *domain)
+{
+        if (smb2->domain) {
+                free(discard_const(smb2->domain));
+        }
+        smb2->domain = strdup(domain);
+}
+
+void smb2_set_workstation(struct smb2_context *smb2, const char *workstation)
+{
+        if (smb2->workstation) {
+                free(discard_const(smb2->workstation));
+        }
+        smb2->workstation = strdup(workstation);
 }
 

@@ -1,4 +1,4 @@
-SUBDIRS = lib include . $(MAYBE_EXAMPLES)
+SUBDIRS = include lib . $(MAYBE_EXAMPLES)
 ACLOCAL_AMFLAGS = -I m4
 
 pkgconfigdir = $(libdir)/pkgconfig

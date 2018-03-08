@@ -1,8 +1,5 @@
 Libsmb2 is a userspace client library for accessing SMB2/SMB3 shares on a
 network.
-It depends on both MIT Kerberos as well as GSS-NTLMSSP
-[https://github.com/simo5/gss-ntlmssp] for authentication.
-
 It is high performance and fully async. It supports both zero-copy
 for SMB READ/WRITE commands as well as compounded commands.
 
@@ -52,6 +49,25 @@ Aruments supported by libsmb2 are :
 
 Authentication
 ==============
+Libsmb2 provides two different modes of doing  authentication. This needs
+to be selected ad configure/compile time for the library.
+The first mode, which is the default, uses MIT Kerberos and a NTLMSSP mech
+plugin.
+This is the default mode and it provides full Active Directory integration
+and full authentication support.
+
+The second mode offers simple NTLMSSP authentication only using a
+small builtin NTLMSSP module in libsmb2.
+This mode can be selected by the --without-libkrb5 flag to configure
+before you compile the library.
+In this mode you will only have basic NTLMSSP, i.e. username+password,
+authentication, but it does not require tho link with MIT kerberos
+or the use of the mech plugin.
+This might be beneficial for limited systems of where it is not convenient
+to depend on a full blown kerberos library.
+
+MIT KERBEROS
+============
 Authentication is implemented using MIT Kerberos and it supports both KRB5
 for authentication against Active Directory as well as NTLMSSP for standalone
 windows servers.
@@ -79,7 +95,6 @@ By default, NTLM authentication will use the username for the current process.
 This can be overridden by specifying a different username in the SMB URL :
   smb://guest@server/share>?sec=ntlmssp
 
-
 KRB5 Authentication
 -------------------
 Kerberos authentication can be used when the linux workstation as well as
@@ -92,3 +107,17 @@ kerberos.
 Once you have run kinit successfully you should be able to authenticate to the
 file server using krb5 by specifying sec=krb5 in the URL :
   smb://server/share?sec=krb5
+
+
+BUILTIN NTLMSSP
+===============
+This is selected by the --without-libkrb5 library to configure.
+In this mode you no longer need to link to or depend on the MIT kerberos
+libraries and thus makes libsmb2 fully standalone.
+
+In this mode you need to adapt your applications in order to set the
+proper credentials.
+Use :
+  smb2_set_user(smb2, <username>);
+  smb2_set_password(smb2, <password>);
+from your application before you connect to the server.

@@ -103,6 +103,21 @@ void smb2_set_security_mode(struct smb2_context *smb2, uint16_t security_mode);
  * Default is to try to authenticate as the current user.
  */
 void smb2_set_user(struct smb2_context *smb2, const char *user);
+/*
+ * Set the password that we will try to authenticate as.
+ * This function is only needed when libsmb2 is built --without-libkrb5
+ */
+void smb2_set_password(struct smb2_context *smb2, const char *password);
+/*
+ * Set the domain when authenticating.
+ * This function is only needed when libsmb2 is built --without-libkrb5
+ */
+void smb2_set_domain(struct smb2_context *smb2, const char *domain);
+/*
+ * Set the workstation when authenticating.
+ * This function is only needed when libsmb2 is built --without-libkrb5
+ */
+void smb2_set_workstation(struct smb2_context *smb2, const char *workstation);
 
 
 /*
