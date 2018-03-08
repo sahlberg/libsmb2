@@ -101,8 +101,8 @@ enum smb2_recv_state {
 
 enum smb2_sec {
         SMB2_SEC_UNDEFINED = 0,
-        SMB2_SEC_KRB5,
         SMB2_SEC_NTLMSSP,
+        SMB2_SEC_KRB5,
 };
 
 struct smb2_context {
@@ -116,6 +116,12 @@ struct smb2_context {
         const char *server;
         const char *share;
         const char *user;
+
+        /* Only used with --without-libkrb5 */
+        const char *password;
+        const char *domain;
+        const char *workstation;
+        char client_challenge[8];
 
         smb2_command_cb connect_cb;
         void *connect_data;

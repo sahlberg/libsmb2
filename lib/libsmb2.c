@@ -64,37 +64,20 @@
 #include "libsmb2-raw.h"
 #include "libsmb2-private.h"
 
+#ifndef HAVE_LIBKRB5
+#include "ntlmssp.h"
+#else
+#include "krb5-wrapper.h"
+#endif
+
 const smb2_file_id compound_file_id = {
         0xff, 0xff, 0xff, 0xff,  0xff, 0xff, 0xff, 0xff,
         0xff, 0xff, 0xff, 0xff,  0xff, 0xff, 0xff, 0xff
 };
 
-static const gss_OID_desc gss_mech_spnego = {
-    6, "\x2b\x06\x01\x05\x05\x02"
-};
-
-static const gss_OID_desc spnego_mech_krb5 = {
-    9, "\x2a\x86\x48\x86\xf7\x12\x01\x02\x02"
-};
-
-static const gss_OID_desc spnego_mech_ntlmssp = {
-   10, "\x2b\x06\x01\x04\x01\x82\x37\x02\x02\x0a"
-};
-
-struct private_auth_data {
-        gss_ctx_id_t context;
-        gss_cred_id_t cred;
-        gss_name_t user_name;
-        gss_name_t target_name;
-        gss_const_OID mech_type;
-        uint32_t req_flags;
-        gss_buffer_desc output_token;
-};
-
 struct connect_data {
         smb2_command_cb cb;
         void *cb_data;
-        char *g_server;
 
         const char *server;
         const char *share;
@@ -104,7 +87,7 @@ struct connect_data {
         char *utf8_unc;
         struct ucs2 *ucs2_unc;
 
-        struct private_auth_data *auth_data;
+        void *auth_data;
 };
 
 struct smb2_dirent_internal {
@@ -133,7 +116,7 @@ struct smb2fh {
 static int
 send_session_setup_request(struct smb2_context *smb2,
                            struct connect_data *c_data,
-                           gss_buffer_desc *input_token);
+                           unsigned char *buf, int len);
 
 static void
 free_smb2dir(struct smb2dir *dir)
@@ -417,88 +400,19 @@ smb2_opendir_async(struct smb2_context *smb2, const char *path,
         return 0;
 }
 
-static char *
-display_status(int type, uint32_t err)
-{
-        gss_buffer_desc text;
-        uint32_t msg_ctx;
-        char *msg, *tmp;
-        uint32_t maj, min;
-
-        msg = NULL;
-        msg_ctx = 0;
-        do {
-                maj = gss_display_status(&min, err, type,
-                                         GSS_C_NO_OID, &msg_ctx, &text);
-                if (maj != GSS_S_COMPLETE) {
-                        return msg;
-                }
-
-                tmp = NULL;
-                if (msg) {
-                        tmp = msg;
-                        min = asprintf(&msg, "%s, %*s", msg,
-                                       (int)text.length, (char *)text.value);
-                } else {
-                        min = asprintf(&msg, "%*s", (int)text.length,
-                                       (char *)text.value);
-                }
-                if (min == -1) return tmp;
-                free(tmp);
-                gss_release_buffer(&min, &text);
-        } while (msg_ctx != 0);
-
-        return msg;
-}
-
 static void
-set_gss_error(struct smb2_context *smb2, char *func,
-              uint32_t maj, uint32_t min)
-{
-        char *err_maj = display_status(GSS_C_GSS_CODE, maj);
-        char *err_min = display_status(GSS_C_MECH_CODE, min);
-        smb2_set_error(smb2, "%s: (%s, %s)", func, err_maj, err_min);
-        free(err_min);
-        free(err_maj);
-}
-
-static void
-free_auth_data(struct private_auth_data *auth)
-{
-        uint32_t maj, min;
-
-        /* Delete context */
-        if (auth->context) {
-                maj = gss_delete_sec_context(&min, &auth->context,
-                                             &auth->output_token);
-                if (maj != GSS_S_COMPLETE) {
-                        /* No logging, yet. Do we care? */
-                }
-        }
-
-        gss_release_buffer(&min, &auth->output_token);
-
-        if (auth->target_name) {
-                gss_release_name(&min, &auth->target_name);
-        }
-
-        if (auth->user_name) {
-                gss_release_name(&min, &auth->user_name);
-        }
-
-        free(auth);
-}
-
-static void
-free_c_data(struct connect_data *c_data)
+free_c_data(struct smb2_context *smb2, struct connect_data *c_data)
 {
         if (c_data->auth_data) {
-                free_auth_data(c_data->auth_data);
+#ifndef HAVE_LIBKRB5
+                ntlmssp_destroy_context(c_data->auth_data);
+#else
+                krb5_free_auth_data(c_data->auth_data);
+#endif
         }
 
         free(c_data->utf8_unc);
         free(c_data->ucs2_unc);
-        free(c_data->g_server);
         free(discard_const(c_data->server));
         free(discard_const(c_data->share));
         free(discard_const(c_data->user));
@@ -517,12 +431,12 @@ tree_connect_cb(struct smb2_context *smb2, int status,
                                status, nterror_to_str(status),
                                smb2_get_error(smb2));
                 c_data->cb(smb2, -nterror_to_errno(status), NULL, c_data->cb_data);
-                free_c_data(c_data);
+                free_c_data(smb2, c_data);
                 return;
         }
 
         c_data->cb(smb2, 0, NULL, c_data->cb_data);
-        free_c_data(c_data);
+        free_c_data(smb2, c_data);
 }
 
 static void
@@ -533,23 +447,14 @@ session_setup_cb(struct smb2_context *smb2, int status,
         struct smb2_session_setup_reply *rep = command_data;
         struct smb2_tree_connect_request req;
         struct smb2_pdu *pdu;
-        gss_buffer_desc input_token = GSS_C_EMPTY_BUFFER;
-        uint32_t min;
         int ret;
 
-        /* release the previous token */
-        gss_release_buffer(&min, &c_data->auth_data->output_token);
-        c_data->auth_data->output_token.length = 0;
-        c_data->auth_data->output_token.value = NULL;
-
         if (status == SMB2_STATUS_MORE_PROCESSING_REQUIRED) {
-                input_token.length = rep->security_buffer_length;
-                input_token.value = rep->security_buffer;
-
-                if ((ret = send_session_setup_request(smb2, c_data,
-                                                      &input_token)) < 0) {
+                if ((ret = send_session_setup_request(
+                                smb2, c_data, rep->security_buffer,
+                                rep->security_buffer_length)) < 0) {
                         c_data->cb(smb2, ret, NULL, c_data->cb_data);
-                        free_c_data(c_data);
+                        free_c_data(smb2, c_data);
                         return;
                 }
                 return;
@@ -560,7 +465,7 @@ session_setup_cb(struct smb2_context *smb2, int status,
                                status, nterror_to_str(status));
                 c_data->cb(smb2, -nterror_to_errno(status), NULL,
                            c_data->cb_data);
-                free_c_data(c_data);
+                free_c_data(smb2, c_data);
                 return;
         }
 
@@ -572,7 +477,7 @@ session_setup_cb(struct smb2_context *smb2, int status,
         pdu = smb2_cmd_tree_connect_async(smb2, &req, tree_connect_cb, c_data);
         if (pdu == NULL) {
                 c_data->cb(smb2, -ENOMEM, NULL, c_data->cb_data);
-                free_c_data(c_data);
+                free_c_data(smb2, c_data);
                 return;
         }
         smb2_queue_pdu(smb2, pdu);
@@ -582,52 +487,38 @@ session_setup_cb(struct smb2_context *smb2, int status,
 static int
 send_session_setup_request(struct smb2_context *smb2,
                            struct connect_data *c_data,
-                           gss_buffer_desc *input_token)
+                           unsigned char *buf, int len)
 {
-        uint32_t maj, min;
+        struct smb2_pdu *pdu;
         struct smb2_session_setup_request req;
 
-        /* TODO return -errno instead of just -1 */
-        /* NOTE: this call is not async, a helper thread should be used if that
-         * is an issue */
-        maj = gss_init_sec_context(&min, c_data->auth_data->cred,
-                                   &c_data->auth_data->context,
-                                   c_data->auth_data->target_name,
-                                   discard_const(c_data->auth_data->mech_type),
-                                   GSS_C_SEQUENCE_FLAG |
-                                   GSS_C_MUTUAL_FLAG |
-                                   GSS_C_REPLAY_FLAG |
-                                   0, //GSS_C_INTEG_FLAG,
-                                   GSS_C_INDEFINITE,
-                                   GSS_C_NO_CHANNEL_BINDINGS,
-                                   input_token,
-                                   NULL,
-                                   &c_data->auth_data->output_token,
-                                   NULL,
-                                   NULL);
-        if (GSS_ERROR(maj)) {
-                set_gss_error(smb2, "gss_init_sec_context", maj, min);
+        /* Session setup request. */
+        memset(&req, 0, sizeof(struct smb2_session_setup_request));
+        req.security_mode = smb2->security_mode;
+
+#ifndef HAVE_LIBKRB5
+        if (ntlmssp_generate_blob(c_data->auth_data, buf, len,
+                                  &req.security_buffer,
+                                  &req.security_buffer_length) < 0) {
                 return -1;
         }
-
-        if (maj == GSS_S_CONTINUE_NEEDED) {
-                struct smb2_pdu *pdu;
-
-                /* Session setup request. */
-                memset(&req, 0, sizeof(struct smb2_session_setup_request));
-                req.security_mode = smb2->security_mode;
-                req.security_buffer_length = c_data->auth_data->output_token.length;
-                req.security_buffer = c_data->auth_data->output_token.value;
-
-                pdu = smb2_cmd_session_setup_async(smb2, &req,
-                                                   session_setup_cb, c_data);
-                if (pdu == NULL) {
-                        return -ENOMEM;
-                }
-                smb2_queue_pdu(smb2, pdu);
-        } else {
-                /* TODO: cleanup and fail */
+#else
+        if (krb5_session_request(smb2, c_data->auth_data,
+                                 buf, len) < 0) {
+                return -1;
         }
+        req.security_buffer_length =
+                krb5_get_output_token_length(c_data->auth_data);
+        req.security_buffer =
+                krb5_get_output_token_buffer(c_data->auth_data);
+#endif
+
+        pdu = smb2_cmd_session_setup_async(smb2, &req,
+                                           session_setup_cb, c_data);
+        if (pdu == NULL) {
+                return -ENOMEM;
+        }
+        smb2_queue_pdu(smb2, pdu);
         
         return 0;
 }
@@ -638,12 +529,7 @@ negotiate_cb(struct smb2_context *smb2, int status,
 {
         struct connect_data *c_data = private_data;
         struct smb2_negotiate_reply *rep = command_data;
-        gss_buffer_desc target = GSS_C_EMPTY_BUFFER;
-        uint32_t maj, min;
         int ret;
-        gss_buffer_desc user;
-        gss_OID_set_desc mechOidSet;
-        gss_OID_set_desc wantMech;
 
         if (status != SMB2_STATUS_SUCCESS) {
                 smb2_set_error(smb2, "Negotiate failed with (0x%08x) %s. %s",
@@ -651,7 +537,7 @@ negotiate_cb(struct smb2_context *smb2, int status,
                                smb2_get_error(smb2));
                 c_data->cb(smb2, -nterror_to_errno(status), NULL,
                            c_data->cb_data);
-                free_c_data(c_data);
+                free_c_data(smb2, c_data);
                 return;
         }
 
@@ -659,7 +545,7 @@ negotiate_cb(struct smb2_context *smb2, int status,
                 smb2_set_error(smb2, "Signing Required by server. "
                                "Not yet implemented in libsmb2");
                 c_data->cb(smb2, -EINVAL, NULL, c_data->cb_data);
-                free_c_data(c_data);
+                free_c_data(smb2, c_data);
                 return;
         }
 
@@ -674,90 +560,24 @@ negotiate_cb(struct smb2_context *smb2, int status,
         smb2->max_write_size    = rep->max_write_size;
         smb2->dialect           = rep->dialect_revision;
 
-        c_data->auth_data = malloc(sizeof(struct private_auth_data));
+#ifndef HAVE_LIBKRB5
+        c_data->auth_data = ntlmssp_init_context(smb2->user,
+                                                 smb2->password,
+                                                 NULL, NULL,
+                                                 smb2->client_challenge);
+#else
+        c_data->auth_data = krb5_negotiate_reply(smb2, c_data->server,
+                                                 c_data->user);
+#endif
         if (c_data->auth_data == NULL) {
-                smb2_set_error(smb2, "Failed to allocate private_auth_data");
                 c_data->cb(smb2, -ENOMEM, NULL, c_data->cb_data);
-                free_c_data(c_data);
-                return;
-        }
-        memset(c_data->auth_data, 0, sizeof(struct private_auth_data));
-        c_data->auth_data->context = GSS_C_NO_CONTEXT;
-
-        if (asprintf(&c_data->g_server, "cifs@%s", c_data->server) < 0) {
-                smb2_set_error(smb2, "Failed to allocate server string");
-                c_data->cb(smb2, -ENOMEM, NULL, c_data->cb_data);
-                free_c_data(c_data);
+                free_c_data(smb2, c_data);
                 return;
         }
 
-        target.value = c_data->g_server;
-        target.length = strlen(c_data->g_server);
-
-        maj = gss_import_name(&min, &target, GSS_C_NT_HOSTBASED_SERVICE,
-                              &c_data->auth_data->target_name);
-
-        if (maj != GSS_S_COMPLETE) {
-                set_gss_error(smb2, "gss_import_name", maj, min);
-                c_data->cb(smb2, -ENOMEM, NULL, c_data->cb_data);
-                free_c_data(c_data);
-                return;
-        }
-
-        /* TODO: the proper mechanism (SPNEGO vs NTLM vs KRB5) should be
-         * selected based on the SMB negotiation flags */
-        c_data->auth_data->mech_type = &gss_mech_spnego;
-        c_data->auth_data->cred = GSS_C_NO_CREDENTIAL;
-
-        user.value = discard_const(c_data->user);
-        user.length = strlen(c_data->user);
-
-        /* create a name for the user */
-        maj = gss_import_name(&min, &user, GSS_C_NT_USER_NAME,
-                              &c_data->auth_data->user_name);
-
-        if (maj != GSS_S_COMPLETE) {
-                set_gss_error(smb2, "gss_import_name", maj, min);
-                c_data->cb(smb2, -ENOMEM, NULL, c_data->cb_data);
-                free_c_data(c_data);
-                return;
-        }
-
-        /* Create creds for the user */
-        mechOidSet.count = 1;
-        mechOidSet.elements = discard_const(&gss_mech_spnego);
-
-        maj = gss_acquire_cred(&min, c_data->auth_data->user_name, 0,
-                               &mechOidSet, GSS_C_INITIATE,
-                               &c_data->auth_data->cred, NULL, NULL);
-        if (maj != GSS_S_COMPLETE) {
-                set_gss_error(smb2, "gss_acquire_cred", maj, min);
-                c_data->cb(smb2, -ENOMEM, NULL, c_data->cb_data);
-                free_c_data(c_data);
-                return;
-        }
-
-        if (smb2->sec != SMB2_SEC_UNDEFINED) {
-                wantMech.count = 1;
-                if (smb2->sec == SMB2_SEC_KRB5) {
-                        wantMech.elements = discard_const(&spnego_mech_krb5);
-                } else if (smb2->sec == SMB2_SEC_NTLMSSP) {
-                        wantMech.elements = discard_const(&spnego_mech_ntlmssp);
-                }
-
-                maj = gss_set_neg_mechs(&min, c_data->auth_data->cred,
-                                        &wantMech);
-                if (GSS_ERROR(maj)) {
-                        set_gss_error(smb2, "gss_set_neg_mechs", maj, min);
-                        c_data->cb(smb2, -ENOMEM, NULL, c_data->cb_data);
-                        free_c_data(c_data);
-                        return;
-                }
-        }
-
-        if ((ret = send_session_setup_request(smb2, c_data, NULL)) < 0) {
+        if ((ret = send_session_setup_request(smb2, c_data, NULL, 0)) < 0) {
                 c_data->cb(smb2, ret, NULL, c_data->cb_data);
-                free_c_data(c_data);
+                free_c_data(smb2, c_data);
                 return;
         }
 }
@@ -774,7 +594,7 @@ connect_cb(struct smb2_context *smb2, int status,
                 smb2_set_error(smb2, "Socket connect failed with %d",
                                status);
                 c_data->cb(smb2, -status, NULL, c_data->cb_data);
-                free_c_data(c_data);
+                free_c_data(smb2, c_data);
                 return;
         }
 
@@ -791,7 +611,7 @@ connect_cb(struct smb2_context *smb2, int status,
         pdu = smb2_cmd_negotiate_async(smb2, &req, negotiate_cb, c_data);
         if (pdu == NULL) {
                 c_data->cb(smb2, -ENOMEM, NULL, c_data->cb_data);
-                free_c_data(c_data);
+                free_c_data(smb2, c_data);
                 return;
         }
         smb2_queue_pdu(smb2, pdu);
@@ -827,32 +647,32 @@ smb2_connect_share_async(struct smb2_context *smb2,
         memset(c_data, 0, sizeof(struct connect_data));
         c_data->server = strdup(smb2->server);
         if (c_data->server == NULL) {
-                free_c_data(c_data);
+                free_c_data(smb2, c_data);
                 smb2_set_error(smb2, "Failed to strdup(server)");
                 return -ENOMEM;
         }
         c_data->share = strdup(smb2->share);
         if (c_data->share == NULL) {
-                free_c_data(c_data);
+                free_c_data(smb2, c_data);
                 smb2_set_error(smb2, "Failed to strdup(share)");
                 return -ENOMEM;
         }
         c_data->user = strdup(smb2->user);
         if (c_data->user == NULL) {
-                free_c_data(c_data);
+                free_c_data(smb2, c_data);
                 smb2_set_error(smb2, "Failed to strdup(user)");
                 return -ENOMEM;
         }
         if (asprintf(&c_data->utf8_unc, "\\\\%s\\%s", c_data->server,
                      c_data->share) < 0) {
-                free_c_data(c_data);
+                free_c_data(smb2, c_data);
                 smb2_set_error(smb2, "Failed to allocate unc string.");
                 return -ENOMEM;
         }
 
         c_data->ucs2_unc = utf8_to_ucs2(c_data->utf8_unc);
         if (c_data->ucs2_unc == NULL) {
-                free_c_data(c_data);
+                free_c_data(smb2, c_data);
                 smb2_set_error(smb2, "Count not convert UNC:[%s] into UCS2",
                                c_data->utf8_unc);
                 return -ENOMEM;
@@ -862,7 +682,7 @@ smb2_connect_share_async(struct smb2_context *smb2,
         c_data->cb_data = cb_data;
 
         if (smb2_connect_async(smb2, server, connect_cb, c_data) != 0) {
-                free_c_data(c_data);
+                free_c_data(smb2, c_data);
                 return -ENOMEM;
         }
 

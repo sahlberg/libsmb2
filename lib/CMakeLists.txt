@@ -1,7 +1,12 @@
 set(SOURCES alloc.c
             errors.c
             init.c
+	    hmac-md5.c
+	    krb5-wrapper.c
             libsmb2.c
+            md4c.c
+            md5.c
+	    ntlmssp.c
             pdu.c
             smb2-cmd-close.c
             smb2-cmd-create.c

@@ -70,6 +70,24 @@ fi
 
 AC_SUBST(MAYBE_EXAMPLES)
 
+AC_ARG_WITH([libkrb5],
+    AS_HELP_STRING([--without-libkrb5], [Do not link with libkrb5 and use builtin NTLMSSP module for authentication instead.]))
+
+AS_IF([test "x$with_libkrb5" != "xno"],
+      [MAYBE_LIBKRB5="-lgssapi_krb5"
+       AC_DEFINE(HAVE_LIBKRB5,1,[Whether we use gssapi_krb5 or not])
+       AC_MSG_NOTICE(Build with gssapi_krb5 support)
+       # check for gssapi/gssapi.h
+       dnl Check for gssapi/gssapi.h
+       AC_CHECK_HEADERS([gssapi/gssapi.h], [], [
+         AC_MSG_ERROR(You need gssapi development files to compile libsmb2.)
+	 ])
+       ],
+      [MAYBE_LIBKRB5=""
+       AC_MSG_NOTICE(Build WITHOUT gssapi_krb5 support)])
+
+AC_SUBST(MAYBE_LIBKRB5)
+
 AC_ARG_ENABLE([werror], [AS_HELP_STRING([--disable-werror],
               [Disables building with -Werror by default])])
 
@@ -177,20 +195,14 @@ AC_CHECK_MEMBER([struct sockaddr_storage.ss_family],
 #include <sys/socket.h>
 ])
 
-# check for gssapi/gssapi.h
-dnl Check for gssapi/gssapi.h
-AC_CHECK_HEADERS([gssapi/gssapi.h], [], [
-  AC_MSG_ERROR(You need gssapi development files to compile libsmb2.)
-])
-
 # check where makedev is defined
 AC_HEADER_MAJOR
 
 #output
 AC_CONFIG_FILES([Makefile]
+                [examples/Makefile]
                 [include/Makefile]
                 [lib/Makefile]
-                [examples/Makefile]
                )
 
 AC_OUTPUT([libsmb2.pc])

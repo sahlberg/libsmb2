@@ -10,7 +10,12 @@ libsmb2_la_SOURCES = \
 	alloc.c \
 	errors.c \
 	init.c \
+	hmac-md5.c \
+	krb5-wrapper.c \
 	libsmb2.c \
+	md4c.c \
+	md5.c \
+	ntlmssp.c \
 	pdu.c \
 	smb2-cmd-close.c \
 	smb2-cmd-create.c \
@@ -40,6 +45,6 @@ SOREVISION=0
 SOAGE=0
 libsmb2_la_LDFLAGS = \
 	-version-info $(SOCURRENT):$(SOREVISION):$(SOAGE) -bindir $(bindir) \
-	-no-undefined -export-symbols ${srcdir}/libsmb2.syms -lgssapi_krb5
+	-no-undefined -export-symbols ${srcdir}/libsmb2.syms $(MAYBE_LIBKRB5)
 
 dist_noinst_DATA = libsmb2.syms
