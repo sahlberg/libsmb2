@@ -555,12 +555,6 @@ negotiate_cb(struct smb2_context *smb2, int status,
                         smb2->supports_multi_credit = 1;
                 }
         }
-        /* The is a bug when using >64k PDUs where the server
-         * disconnects the session on the next PDU.
-         * Drop support for multicredit, and thus >=64kb read/write
-         * calls until I find out what the issue is.
-         */
-        smb2->supports_multi_credit = 0;
 
         smb2->max_transact_size = rep->max_transact_size;
         smb2->max_read_size     = rep->max_read_size;

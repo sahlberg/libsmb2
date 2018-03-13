@@ -84,7 +84,6 @@ smb2_allocate_pdu(struct smb2_context *smb2, enum smb2_command command,
         hdr->struct_size = SMB2_HEADER_SIZE;
         hdr->command = command;
         hdr->flags = 0;
-        hdr->message_id = smb2->message_id++;
         hdr->sync.process_id = 0xFEFF;
 
         if (smb2->dialect == SMB2_VERSION_0202) {
@@ -263,6 +262,11 @@ static void
 smb2_encode_header(struct smb2_context *smb2, struct smb2_iovec *iov,
                    struct smb2_header *hdr)
 {
+        hdr->message_id = smb2->message_id++;
+        if (hdr->credit_charge > 1) {
+                smb2->message_id += (hdr->credit_charge - 1);
+        }
+
         memcpy(iov->buf, hdr->protocol_id, 4);
         smb2_set_uint16(iov, 4, hdr->struct_size);
         smb2_set_uint16(iov, 6, hdr->credit_charge);
