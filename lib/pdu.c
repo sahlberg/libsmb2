@@ -87,7 +87,9 @@ smb2_allocate_pdu(struct smb2_context *smb2, enum smb2_command command,
         hdr->message_id = smb2->message_id++;
         hdr->sync.process_id = 0xFEFF;
 
-        if (hdr->command == SMB2_NEGOTIATE) {
+        if (smb2->dialect == SMB2_VERSION_0202) {
+                hdr->credit_charge = 0;
+        } else if (hdr->command == SMB2_NEGOTIATE) {
                 /* We don't have any credits yet during negprot by
                  * looking at traces.
                  */
