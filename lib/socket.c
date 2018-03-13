@@ -135,8 +135,10 @@ smb2_write_to_socket(struct smb2_context *smb2)
                         }
                 }
 
-                if (credit_charge > smb2->credits) {
-                        return 0;
+                if (smb2->dialect > SMB2_VERSION_0202) {
+                        if (credit_charge > smb2->credits) {
+                                return 0;
+                        }
                 }
 
                 /* Add the SPL vector as the first vector */
