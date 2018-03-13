@@ -91,7 +91,7 @@ void of_cb(struct smb2_context *smb2, int status,
                 exit(10);
         }
 
-        if (smb2_pread_async(smb2, fh, buf, 1024, 0, pr_cb, fh) < 0) {
+        if (smb2_pread_async(smb2, fh, buf, 102400, 0, pr_cb, fh) < 0) {
                 printf("Failed to call smb2_pread_async()\n");
                 exit(10);
         }
