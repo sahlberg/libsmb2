@@ -49,15 +49,15 @@ Aruments supported by libsmb2 are :
 
 Authentication
 ==============
-Libsmb2 provides two different modes of doing  authentication. This needs
-to be selected ad configure/compile time for the library.
-The first mode, which is the default, uses MIT Kerberos and a NTLMSSP mech
+Libsmb2 provides two different modes of doing authentication. This needs
+to be selected at configure/compile time for the library.
+The first mode, which is the default, uses MIT Kerberos and an NTLMSSP mech
 plugin.
 This is the default mode and it provides full Active Directory integration
 and full authentication support.
 
 The second mode offers simple NTLMSSP authentication only using a
-small builtin NTLMSSP module in libsmb2.
+small NTLMSSP module built into libsmb2.
 This mode can be selected by the --without-libkrb5 flag to configure
 before you compile the library.
 In this mode you will only have basic NTLMSSP, i.e. username+password,
