@@ -1614,6 +1614,7 @@ disconnect_cb_2(struct smb2_context *smb2, int status,
         dc_data->cb(smb2, 0, NULL, dc_data->cb_data);
         free(dc_data);
         close(smb2->fd);
+        smb2->fd = -1;
 }
 
 static void
