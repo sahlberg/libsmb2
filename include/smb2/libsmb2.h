@@ -53,6 +53,13 @@ struct smb2dirent {
         struct smb2_stat_64 st;
 };
 
+#ifdef _MSC_VER
+#include <winsock2.h>
+typedef SOCKET t_socket;
+#else
+typedef int t_socket;
+#endif
+
 /*
  * Create an SMB2 context.
  * Function returns
@@ -73,7 +80,7 @@ void smb2_destroy_context(struct smb2_context *smb2);
 /*
  * Returns the file descriptor that libsmb2 uses.
  */
-int smb2_get_fd(struct smb2_context *smb2);
+t_socket smb2_get_fd(struct smb2_context *smb2);
 /*
  * Returns which events that we need to poll for for the smb2 file descriptor.
  */

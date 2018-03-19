@@ -106,7 +106,8 @@ enum smb2_sec {
 };
 
 struct smb2_context {
-        int fd;
+
+        t_socket fd;
         int is_connected;
 
         enum smb2_sec sec;

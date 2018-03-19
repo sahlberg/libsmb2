@@ -99,7 +99,7 @@ smb2_which_events(struct smb2_context *smb2)
 	return events;
 }
 
-int smb2_get_fd(struct smb2_context *smb2)
+t_socket smb2_get_fd(struct smb2_context *smb2)
 {
         return smb2->fd;
 }
@@ -502,7 +502,7 @@ smb2_service(struct smb2_context *smb2, int revents)
 }
 
 static void
-set_nonblocking(int fd)
+set_nonblocking(t_socket fd)
 {
 #if defined(WIN32)
 	unsigned long opt = 1;
@@ -515,7 +515,7 @@ set_nonblocking(int fd)
 }
 
 static int
-set_tcp_sockopt(int sockfd, int optname, int value)
+set_tcp_sockopt(t_socket sockfd, int optname, int value)
 {
 	int level;
 #ifndef SOL_TCP
