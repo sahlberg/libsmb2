@@ -882,7 +882,7 @@ struct rw_data {
 };
 
 static void
-rw_cb(struct smb2_context *smb2, int status,
+read_cb(struct smb2_context *smb2, int status,
       void *command_data, void *private_data)
 {
         struct rw_data *rd = private_data;
@@ -941,7 +941,7 @@ smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
         req.channel = SMB2_CHANNEL_NONE;
         req.remaining_bytes = 0;
 
-        pdu = smb2_cmd_read_async(smb2, &req, rw_cb, rd);
+        pdu = smb2_cmd_read_async(smb2, &req, read_cb, rd);
         if (pdu == NULL) {
                 smb2_set_error(smb2, "Failed to create read command");
                 return -1;
@@ -959,6 +959,29 @@ smb2_read_async(struct smb2_context *smb2, struct smb2fh *fh,
 {
         return smb2_pread_async(smb2, fh, buf, count, fh->offset,
                                 cb, cb_data);
+}
+
+static void
+write_cb(struct smb2_context *smb2, int status,
+      void *command_data, void *private_data)
+{
+        struct rw_data *rd = private_data;
+        struct smb2_write_reply *rep = command_data;
+
+        if (status && status != SMB2_STATUS_END_OF_FILE) {
+                smb2_set_error(smb2, "Read/Write failed with (0x%08x) %s",
+                               status, nterror_to_str(status));
+                rd->cb(smb2, -nterror_to_errno(status), NULL, rd->cb_data);
+                free(rd);
+                return;
+        }
+
+        if (status == SMB2_STATUS_SUCCESS) {
+                rd->fh->offset = rd->offset + rep->count;
+        }
+
+        rd->cb(smb2, rep->count, NULL, rd->cb_data);
+        free(rd);
 }
 
 int
@@ -998,7 +1021,7 @@ smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
         req.remaining_bytes = 0;
         req.flags = 0;
 
-        pdu = smb2_cmd_write_async(smb2, &req, rw_cb, rd);
+        pdu = smb2_cmd_write_async(smb2, &req, write_cb, rd);
         if (pdu == NULL) {
                 smb2_set_error(smb2, "Failed to create write command");
                 return -ENOMEM;
