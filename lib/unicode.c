@@ -179,13 +179,13 @@ ucs2_to_utf8(const uint16_t *ucs2, int ucs2_len)
 
                 switch (l) {
                 case 3:
-                        *tmp++ = 0xe0 | ((c >> 12) & 0x0f);
-                        *tmp++ = 0x80 | ((c >>  6) & 0x3f);
-                        *tmp++ = 0x80 | ((c      ) & 0x3f);
+                        *tmp++ = 0xe0 | (c >> 12);
+                        *tmp++ = 0x80 | (c >>  6) & 0xbf;
+                        *tmp++ = 0x80 | (c      ) & 0xbf;
                         break;
                 case 2:
-                        *tmp++ = 0xc0 | ((c >> 6) & 0x0f);
-                        *tmp++ = 0x80 | ((c     ) & 0x3f);
+                        *tmp++ = 0xc0 | (c >> 6);
+                        *tmp++ = 0x80 | (c     ) & 0xbf;
                         break;
                 case 1:
                         *tmp++ = c;
