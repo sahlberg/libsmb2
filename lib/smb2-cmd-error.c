@@ -73,9 +73,6 @@ smb2_process_error_fixed(struct smb2_context *smb2,
         smb2_get_uint8(iov, 2, &rep->error_context_count);
         smb2_get_uint32(iov, 4, &rep->byte_count);
 
-        if (rep->byte_count == 0) {
-                return 1;
-        }
         return rep->byte_count;
 }
 
