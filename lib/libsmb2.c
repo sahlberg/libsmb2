@@ -1659,6 +1659,49 @@ smb2_disconnect_share_async(struct smb2_context *smb2,
 
         return 0;
 }
+
+struct echo_data {
+  smb2_command_cb cb;
+  void *cb_data;
+};
+
+static void
+echo_cb(struct smb2_context *smb2, int status,
+           void *command_data _U_, void *private_data)
+{
+        struct echo_data *cb_data = private_data;
+
+        cb_data->cb(smb2, -nterror_to_errno(status),
+                    NULL, cb_data->cb_data);
+        free(cb_data);
+}
+
+int
+smb2_echo_async(struct smb2_context *smb2,
+                smb2_command_cb cb, void *cb_data)
+{
+        struct echo_data *echo_data;
+        struct smb2_pdu *pdu;
+
+        echo_data = malloc(sizeof(struct echo_data));
+        if (echo_data == NULL) {
+                smb2_set_error(smb2, "Failed to allocate echo_data");
+                return -ENOMEM;
+        }
+        memset(echo_data, 0, sizeof(struct echo_data));
+
+        echo_data->cb = cb;
+        echo_data->cb_data = cb_data;
+
+        pdu = smb2_cmd_echo_async(smb2, echo_cb, echo_data);
+        if (pdu == NULL) {
+                free(echo_data);
+                return -ENOMEM;
+        }
+        smb2_queue_pdu(smb2, pdu);
+
+        return 0;
+}
         
 uint32_t
 smb2_get_max_read_size(struct smb2_context *smb2)
