@@ -39,7 +39,7 @@
 #include <stddef.h>
 #endif
 
-#include <endian.h>
+#include "portable-endian.h"
 
 #include <smb2.h>
 #include <libsmb2.h>

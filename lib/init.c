@@ -43,12 +43,19 @@
 
 #include <stdarg.h>
 #include <stdio.h>
+#include <sys/socket.h>
 
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-private.h"
 
 #define MAX_URL_SIZE 256
+
+#ifdef _MSC_VER
+#define getlogin() "Guest"
+#define random rand
+#define getpid GetCurrentProcessId
+#endif // _MSC_VER
 
 static int
 smb2_parse_args(struct smb2_context *smb2, const char *args)

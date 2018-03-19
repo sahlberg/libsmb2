@@ -31,7 +31,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <stdint.h>
-#if (__BYTE_ORDER == __BIG_ENDIAN)
+#if !defined(_WIN32) && (__BYTE_ORDER == __BIG_ENDIAN)
 #  define WORDS_BIGENDIAN 1
 #endif
 
