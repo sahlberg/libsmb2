@@ -29,7 +29,7 @@ set(core_DEPENDS ${GSSAPI_LIBRARIES} CACHE STRING "" FORCE)
 
 if(CMAKE_SYSTEM_NAME STREQUAL Windows)
   list(APPEND CORE_LIBRARIES -lws2_32.lib)
-  add_subdirectory(win32)
+  include_directories(include/msvc)
 elseif(CMAKE_SYSTEM_NAME STREQUAL Solaris)
   find_library(SOCKET_LIBRARY socket)
   find_library(NSL_LIBRARY nsl)
