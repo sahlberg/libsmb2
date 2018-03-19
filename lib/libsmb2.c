@@ -564,7 +564,8 @@ negotiate_cb(struct smb2_context *smb2, int status,
 #ifndef HAVE_LIBKRB5
         c_data->auth_data = ntlmssp_init_context(smb2->user,
                                                  smb2->password,
-                                                 NULL, NULL,
+                                                 smb2->domain, 
+                                                 smb2->workstation,
                                                  smb2->client_challenge);
 #else
         c_data->auth_data = krb5_negotiate_reply(smb2, c_data->server,
