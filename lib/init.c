@@ -43,12 +43,19 @@
 
 #include <stdarg.h>
 #include <stdio.h>
+#include <sys/socket.h>
 
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-private.h"
 
 #define MAX_URL_SIZE 256
+
+#ifdef _MSC_VER
+#define getlogin() "Guest"
+#define random rand
+#define getpid GetCurrentProcessId
+#endif // _MSC_VER
 
 static int
 smb2_parse_args(struct smb2_context *smb2, const char *args)
@@ -187,7 +194,7 @@ struct smb2_context *smb2_init_context(void)
                 smb2->client_challenge[i] = random()&0xff;
         }
 
-        snprintf(smb2->client_guid, 16, "libnfs-%d", getpid());
+        snprintf(smb2->client_guid, 16, "libsmb2-%d", getpid());
         
         return smb2;
 }

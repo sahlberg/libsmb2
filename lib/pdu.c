@@ -35,7 +35,7 @@
 #include <string.h>
 #endif
 
-#include <endian.h>
+#include "portable-endian.h"
 
 #include "slist.h"
 #include "smb2.h"

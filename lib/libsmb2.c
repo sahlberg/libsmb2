@@ -56,8 +56,9 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
-#include <gssapi/gssapi.h>
+#include <sys/socket.h>
 
+#include "asprintf.h"
 #include "slist.h"
 #include "smb2.h"
 #include "libsmb2.h"
@@ -69,6 +70,14 @@
 #else
 #include "krb5-wrapper.h"
 #endif
+
+#ifndef O_SYNC
+#ifndef O_DSYNC
+#define O_DSYNC		040000
+#endif // !O_DSYNC
+#define __O_SYNC	020000000
+#define O_SYNC		(__O_SYNC|O_DSYNC)
+#endif // !O_SYNC
 
 const smb2_file_id compound_file_id = {
         0xff, 0xff, 0xff, 0xff,  0xff, 0xff, 0xff, 0xff,
@@ -564,7 +573,8 @@ negotiate_cb(struct smb2_context *smb2, int status,
 #ifndef HAVE_LIBKRB5
         c_data->auth_data = ntlmssp_init_context(smb2->user,
                                                  smb2->password,
-                                                 NULL, NULL,
+                                                 smb2->domain, 
+                                                 smb2->workstation,
                                                  smb2->client_challenge);
 #else
         c_data->auth_data = krb5_negotiate_reply(smb2, c_data->server,
@@ -882,7 +892,7 @@ struct rw_data {
 };
 
 static void
-rw_cb(struct smb2_context *smb2, int status,
+read_cb(struct smb2_context *smb2, int status,
       void *command_data, void *private_data)
 {
         struct rw_data *rd = private_data;
@@ -941,7 +951,7 @@ smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
         req.channel = SMB2_CHANNEL_NONE;
         req.remaining_bytes = 0;
 
-        pdu = smb2_cmd_read_async(smb2, &req, rw_cb, rd);
+        pdu = smb2_cmd_read_async(smb2, &req, read_cb, rd);
         if (pdu == NULL) {
                 smb2_set_error(smb2, "Failed to create read command");
                 return -1;
@@ -959,6 +969,29 @@ smb2_read_async(struct smb2_context *smb2, struct smb2fh *fh,
 {
         return smb2_pread_async(smb2, fh, buf, count, fh->offset,
                                 cb, cb_data);
+}
+
+static void
+write_cb(struct smb2_context *smb2, int status,
+      void *command_data, void *private_data)
+{
+        struct rw_data *rd = private_data;
+        struct smb2_write_reply *rep = command_data;
+
+        if (status && status != SMB2_STATUS_END_OF_FILE) {
+                smb2_set_error(smb2, "Read/Write failed with (0x%08x) %s",
+                               status, nterror_to_str(status));
+                rd->cb(smb2, -nterror_to_errno(status), NULL, rd->cb_data);
+                free(rd);
+                return;
+        }
+
+        if (status == SMB2_STATUS_SUCCESS) {
+                rd->fh->offset = rd->offset + rep->count;
+        }
+
+        rd->cb(smb2, rep->count, NULL, rd->cb_data);
+        free(rd);
 }
 
 int
@@ -998,7 +1031,7 @@ smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
         req.remaining_bytes = 0;
         req.flags = 0;
 
-        pdu = smb2_cmd_write_async(smb2, &req, rw_cb, rd);
+        pdu = smb2_cmd_write_async(smb2, &req, write_cb, rd);
         if (pdu == NULL) {
                 smb2_set_error(smb2, "Failed to create write command");
                 return -ENOMEM;
@@ -1614,6 +1647,7 @@ disconnect_cb_2(struct smb2_context *smb2, int status,
         dc_data->cb(smb2, 0, NULL, dc_data->cb_data);
         free(dc_data);
         close(smb2->fd);
+        smb2->fd = -1;
 }
 
 static void
@@ -1652,6 +1686,49 @@ smb2_disconnect_share_async(struct smb2_context *smb2,
         pdu = smb2_cmd_tree_disconnect_async(smb2, disconnect_cb_1, dc_data);
         if (pdu == NULL) {
                 free(dc_data);
+                return -ENOMEM;
+        }
+        smb2_queue_pdu(smb2, pdu);
+
+        return 0;
+}
+
+struct echo_data {
+  smb2_command_cb cb;
+  void *cb_data;
+};
+
+static void
+echo_cb(struct smb2_context *smb2, int status,
+           void *command_data _U_, void *private_data)
+{
+        struct echo_data *cb_data = private_data;
+
+        cb_data->cb(smb2, -nterror_to_errno(status),
+                    NULL, cb_data->cb_data);
+        free(cb_data);
+}
+
+int
+smb2_echo_async(struct smb2_context *smb2,
+                smb2_command_cb cb, void *cb_data)
+{
+        struct echo_data *echo_data;
+        struct smb2_pdu *pdu;
+
+        echo_data = malloc(sizeof(struct echo_data));
+        if (echo_data == NULL) {
+                smb2_set_error(smb2, "Failed to allocate echo_data");
+                return -ENOMEM;
+        }
+        memset(echo_data, 0, sizeof(struct echo_data));
+
+        echo_data->cb = cb;
+        echo_data->cb_data = cb_data;
+
+        pdu = smb2_cmd_echo_async(smb2, echo_cb, echo_data);
+        if (pdu == NULL) {
+                free(echo_data);
                 return -ENOMEM;
         }
         smb2_queue_pdu(smb2, pdu);

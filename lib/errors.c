@@ -18,6 +18,7 @@
 
 #include <errno.h>
 #include <stdint.h>
+#include <sys/socket.h>
 
 #include "smb2.h"
 

@@ -54,7 +54,7 @@
 #endif
 
 #include <ctype.h>
-#include <endian.h>
+#include "portable-endian.h"
 #include <stdio.h>
 #include <time.h>
 

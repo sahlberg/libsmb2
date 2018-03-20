@@ -59,7 +59,7 @@
 #include <unistd.h>
 #endif
 
-#include <endian.h>
+#include "portable-endian.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/socket.h>
@@ -99,7 +99,7 @@ smb2_which_events(struct smb2_context *smb2)
 	return events;
 }
 
-int smb2_get_fd(struct smb2_context *smb2)
+t_socket smb2_get_fd(struct smb2_context *smb2)
 {
         return smb2->fd;
 }
@@ -243,11 +243,17 @@ read_more_data:
         /* Read into our trimmed iovectors */
         count = readv(smb2->fd, tmpiov, niov);
         if (count < 0) {
-                if (errno == EINTR || errno == EAGAIN) {
+#ifdef _WIN32
+                int err = WSAGetLastError();
+                if (err == WSAEINTR || err == WSAEWOULDBLOCK) {
+#else
+                int err = errno;
+                if (err == EINTR || err == EAGAIN) {
+#endif
                         return 0;
                 }
                 smb2_set_error(smb2, "Read from socket failed, "
-                               "errno:%d. Closing socket.", errno);
+                               "errno:%d. Closing socket.", err);
                 return -1;
         }
         if (count == 0) {
@@ -502,7 +508,7 @@ smb2_service(struct smb2_context *smb2, int revents)
 }
 
 static void
-set_nonblocking(int fd)
+set_nonblocking(t_socket fd)
 {
 #if defined(WIN32)
 	unsigned long opt = 1;
@@ -515,7 +521,7 @@ set_nonblocking(int fd)
 }
 
 static int
-set_tcp_sockopt(int sockfd, int optname, int value)
+set_tcp_sockopt(t_socket sockfd, int optname, int value)
 {
 	int level;
 #ifndef SOL_TCP
@@ -627,7 +633,11 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
 	set_tcp_sockopt(smb2->fd, TCP_NODELAY, 1);
         
 	if (connect(smb2->fd, (struct sockaddr *)&ss, socksize) != 0
-		&& errno != EINPROGRESS) {
+#ifndef _MSC_VER
+		  && errno != EINPROGRESS) {
+#else
+		  && WSAGetLastError() != WSAEWOULDBLOCK) {
+#endif
 		smb2_set_error(smb2, "Connect failed with errno : "
 			"%s(%d)", strerror(errno), errno);
 		close(smb2->fd);
