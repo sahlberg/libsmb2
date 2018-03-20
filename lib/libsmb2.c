@@ -58,7 +58,10 @@
 #include <stdio.h>
 #include <sys/socket.h>
 
+#ifdef _WIN32
 #include "asprintf.h"
+#endif
+
 #include "slist.h"
 #include "smb2.h"
 #include "libsmb2.h"

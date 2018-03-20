@@ -32,6 +32,8 @@
 extern "C" {
 #endif
 
+#include <gssapi/gssapi.h>
+
 static const gss_OID_desc gss_mech_spnego = {
     6, "\x2b\x06\x01\x05\x05\x02"
 };
