@@ -32,7 +32,7 @@ set(SOURCES alloc.c
             unicode.c)
 
 add_library(smb2 ${SOURCES})
-target_link_libraries(smb2 PUBLIC ${core_DEPENDS})
+target_link_libraries(smb2 PUBLIC ${core_DEPENDS} ${CORE_LIBRARIES})
 set_target_properties(smb2 PROPERTIES
                            VERSION ${PROJECT_VERSION}
                            SOVERSION ${SOVERSION})
