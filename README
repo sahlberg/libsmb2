@@ -121,3 +121,28 @@ Use :
   smb2_set_user(smb2, <username>);
   smb2_set_password(smb2, <password>);
 from your application before you connect to the server.
+
+
+BUILDING LIBSMB2
+===============
+
+ Windows
+-------------------
+
+You have to install CMake (https://cmake.org/) and Visual Studio (https://www.visualstudio.com/)
+to build libsmb2 for Windows (including Universal Windows Platform).
+
+Please follow the next steps to build shared library:
+
+	mkdir build
+	cd build
+	cmake -G "Visual Studio 15 2017" ..
+	cmake --build . --config RelWithDebInfo
+
+Static library: 
+
+	mkdir build
+	cd build
+	cmake -G "Visual Studio 15 2017" -DBUILD_SHARED_LIBS=0 ..
+	cmake --build . --config RelWithDebInfo
+
