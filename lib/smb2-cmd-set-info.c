@@ -110,6 +110,7 @@ smb2_encode_set_info_request(struct smb2_context *smb2,
                         if (buf == NULL) {
                                 smb2_set_error(smb2, "Failed to allocate set "
                                                "info data buffer");
+                                free(name);
                                 return -1;
                         }
                         memset(buf, 0, len);
