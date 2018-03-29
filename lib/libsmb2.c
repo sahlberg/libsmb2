@@ -1587,6 +1587,129 @@ smb2_truncate_async(struct smb2_context *smb2, const char *path,
         return 0;
 }
 
+struct rename_cb_data {
+        smb2_command_cb cb;
+        void *cb_data;
+        uint32_t status;
+};
+
+static void
+rename_cb_3(struct smb2_context *smb2, int status,
+           void *command_data _U_, void *private_data)
+{
+        struct rename_cb_data *rename_data = private_data;
+
+        if (rename_data->status == SMB2_STATUS_SUCCESS) {
+                rename_data->status = status;
+        }
+
+        rename_data->cb(smb2, -nterror_to_errno(rename_data->status),
+                        NULL, rename_data->cb_data);
+        free(rename_data);
+}
+
+static void
+rename_cb_2(struct smb2_context *smb2, int status,
+           void *command_data _U_, void *private_data)
+{
+        struct rename_cb_data *rename_data = private_data;
+
+        if (rename_data->status == SMB2_STATUS_SUCCESS) {
+                rename_data->status = status;
+        }
+}
+
+static void
+rename_cb_1(struct smb2_context *smb2, int status,
+           void *command_data _U_, void *private_data)
+{
+        struct rename_cb_data *rename_data = private_data;
+
+        if (rename_data->status == SMB2_STATUS_SUCCESS) {
+                rename_data->status = status;
+        }
+}
+
+int
+smb2_rename_async(struct smb2_context *smb2, const char *oldpath,
+                  const char *newpath, smb2_command_cb cb, void *cb_data)
+{
+        struct rename_cb_data *rename_data;
+        struct smb2_create_request cr_req;
+        struct smb2_set_info_request si_req;
+        struct smb2_close_request cl_req;
+        struct smb2_pdu *pdu, *next_pdu;
+        struct smb2_file_rename_info rn_info;
+
+        rename_data = malloc(sizeof(struct rename_cb_data));
+        if (rename_data == NULL) {
+                smb2_set_error(smb2, "Failed to allocate rename_data");
+                return -1;
+        }
+        memset(rename_data, 0, sizeof(struct rename_cb_data));
+
+        rename_data->cb = cb;
+        rename_data->cb_data = cb_data;
+
+        /* CREATE command */
+        memset(&cr_req, 0, sizeof(struct smb2_create_request));
+        cr_req.requested_oplock_level = SMB2_OPLOCK_LEVEL_NONE;
+        cr_req.impersonation_level = SMB2_IMPERSONATION_IMPERSONATION;
+        cr_req.desired_access = SMB2_GENERIC_READ  | SMB2_FILE_READ_ATTRIBUTES | SMB2_DELETE;
+        cr_req.file_attributes = 0;
+        cr_req.share_access = SMB2_FILE_SHARE_READ | SMB2_FILE_SHARE_WRITE | SMB2_FILE_SHARE_DELETE;
+        cr_req.create_disposition = SMB2_FILE_OPEN;
+        cr_req.create_options = 0;
+        cr_req.name = oldpath;
+
+        pdu = smb2_cmd_create_async(smb2, &cr_req, rename_cb_1, rename_data);
+        if (pdu == NULL) {
+                smb2_set_error(smb2, "Failed to create create command");
+                free(rename_data);
+                return -1;
+        }
+
+        /* SET INFO command */
+        rn_info.replace_if_exist = 0;
+        rn_info.file_name = newpath;
+
+        memset(&si_req, 0, sizeof(struct smb2_set_info_request));
+        si_req.info_type = SMB2_0_INFO_FILE;
+        si_req.file_info_class = SMB2_FILE_RENAME_INFORMATION;
+        si_req.additional_information = 0;
+        memcpy(si_req.file_id, compound_file_id, SMB2_FD_SIZE);
+        si_req.input_data = &rn_info;
+
+        next_pdu = smb2_cmd_set_info_async(smb2, &si_req,
+                                           rename_cb_2, rename_data);
+        if (next_pdu == NULL) {
+                smb2_set_error(smb2, "Failed to create set command. %s",
+                               smb2_get_error(smb2));
+                free(rename_data);
+                smb2_free_pdu(smb2, pdu);
+                return -1;
+        }
+        smb2_add_compound_pdu(smb2, pdu, next_pdu);
+
+        /* CLOSE command */
+        memset(&cl_req, 0, sizeof(struct smb2_close_request));
+        cl_req.flags = SMB2_CLOSE_FLAG_POSTQUERY_ATTRIB;
+        memcpy(cl_req.file_id, compound_file_id, SMB2_FD_SIZE);
+
+        next_pdu = smb2_cmd_close_async(smb2, &cl_req, rename_cb_3, rename_data);
+        if (next_pdu == NULL) {
+                rename_data->cb(smb2, -ENOMEM, NULL, rename_data->cb_data);
+                free(rename_data);
+                smb2_free_pdu(smb2, pdu);
+                return -1;
+        }
+        smb2_add_compound_pdu(smb2, pdu, next_pdu);
+
+        smb2_queue_pdu(smb2, pdu);
+
+        return 0;
+}
+
 static void
 ftrunc_cb_1(struct smb2_context *smb2, int status,
             void *command_data _U_, void *private_data)

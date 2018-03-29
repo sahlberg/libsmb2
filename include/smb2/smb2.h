@@ -453,6 +453,7 @@ struct smb2_read_reply {
 /* File information class : for SMB2_0_INFO_FILE */
 #define SMB2_FILE_BASIC_INFORMATION             0x04
 #define SMB2_FILE_STANDARD_INFORMATION          0x05
+#define SMB2_FILE_RENAME_INFORMATION            0x0a
 #define SMB2_FILE_ALL_INFORMATION               0x12
 #define SMB2_FILE_END_OF_FILE_INFORMATION       0x14
 
@@ -532,6 +533,14 @@ struct smb2_query_info_request {
  */
 struct smb2_file_end_of_file_info {
         uint64_t end_of_file;
+};
+
+/*
+ * SMB2_FILE_RENAME_INFORMATION.
+ */
+struct smb2_file_rename_info {
+        uint8_t replace_if_exist;
+        uint8_t *file_name;
 };
 
 #define SMB2_SET_INFO_REQUEST_SIZE 33

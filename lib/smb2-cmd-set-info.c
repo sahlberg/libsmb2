@@ -55,6 +55,7 @@ smb2_encode_set_info_request(struct smb2_context *smb2,
         uint8_t *buf;
         struct smb2_iovec *iov;
         struct smb2_file_end_of_file_info *eofi;
+        struct smb2_file_rename_info *rni;
 
         len = SMB2_SET_INFO_REQUEST_SIZE & 0xfffffffe;
         buf = malloc(len);
@@ -92,6 +93,35 @@ smb2_encode_set_info_request(struct smb2_context *smb2,
 
                         eofi = req->input_data;
                         smb2_set_uint64(iov, 0, eofi->end_of_file);
+                        break;
+                case SMB2_FILE_RENAME_INFORMATION:
+                        rni = req->input_data;
+
+                        struct ucs2 *name = utf8_to_ucs2(rni->file_name);
+                        if (name == NULL) {
+                                smb2_set_error(smb2, "Could not convert name into UCS2");
+                                return -1;
+                        }
+
+                        len = 20 + name->len * 2;
+                        smb2_set_uint32(iov, 4, len); /* buffer length */
+
+                        buf = malloc(len);
+                        if (buf == NULL) {
+                                smb2_set_error(smb2, "Failed to allocate set "
+                                               "info data buffer");
+                                return -1;
+                        }
+                        memset(buf, 0, len);
+                        iov = smb2_add_iovector(smb2, &pdu->out, buf, len,
+                                                free);
+
+                        smb2_set_uint8(iov, 0, rni->replace_if_exist);
+                        smb2_set_uint64(iov, 8, 0u);
+                        smb2_set_uint32(iov, 16, name->len * 2);
+                        memcpy(iov->buf + 20, name->val, name->len * 2);
+                        free(name);
+
                         break;
                 default:
                         smb2_set_error(smb2, "Can not enccode info_type/"
