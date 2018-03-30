@@ -97,7 +97,7 @@ smb2_encode_set_info_request(struct smb2_context *smb2,
                 case SMB2_FILE_RENAME_INFORMATION:
                         rni = req->input_data;
 
-                        struct ucs2 *name = utf8_to_ucs2(rni->file_name);
+                        struct ucs2 *name = utf8_to_ucs2((char *)(rni->file_name));
                         if (name == NULL) {
                                 smb2_set_error(smb2, "Could not convert name into UCS2");
                                 return -1;

@@ -1671,7 +1671,7 @@ smb2_rename_async(struct smb2_context *smb2, const char *oldpath,
 
         /* SET INFO command */
         rn_info.replace_if_exist = 0;
-        rn_info.file_name = newpath;
+        rn_info.file_name = discard_const(newpath);
 
         memset(&si_req, 0, sizeof(struct smb2_set_info_request));
         si_req.info_type = SMB2_0_INFO_FILE;
