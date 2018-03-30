@@ -252,9 +252,6 @@ krb5_remove_creds_cache(struct private_auth_data *auth_data)
     return 0;
 }
 
-/* Enable this flag to use krb5 cached creds or else you need to do a kinit */
-#define USE_CACHED_CREDS
-
 struct private_auth_data *
 krb5_negotiate_reply(struct smb2_context *smb2, const char *server,
                      const char *user_name) {
@@ -262,11 +259,8 @@ krb5_negotiate_reply(struct smb2_context *smb2, const char *server,
         gss_buffer_desc target = GSS_C_EMPTY_BUFFER;
         uint32_t maj, min;
         gss_buffer_desc user;
-#ifdef USE_CACHED_CREDS
         const char *cname = NULL;
-#else
         gss_OID_set_desc mechOidSet;
-#endif
         gss_OID_set_desc wantMech;
 
         auth_data = malloc(sizeof(struct private_auth_data));
@@ -310,41 +304,42 @@ krb5_negotiate_reply(struct smb2_context *smb2, const char *server,
                 return NULL;
         }
 
-#ifdef USE_CACHED_CREDS
-        maj = krb5_create_creds_cache(smb2, user_name, smb2->password);
-        if (maj != 0)
-          return NULL;
+        if (smb2->use_cached_creds) {
+                maj = krb5_create_creds_cache(smb2, user_name, smb2->password);
+                if (maj != 0) {
+                        return NULL;
+                }
+                cname = krb5_cc_get_name(krb5_cctx, krb5_Ccache);
+                if (cname == NULL) {
+                        smb2_set_error(smb2, "Failed to retrieve the "
+                                       "credentials cache name");
+                        return NULL;
+                }
+                maj = gss_krb5_ccache_name(&min, cname, NULL);
+                if (maj != GSS_S_COMPLETE) {
+                        krb5_set_gss_error(smb2, "gss_acquire_cred", maj, min);
+                        return NULL;
+                }
 
-        cname = krb5_cc_get_name(krb5_cctx, krb5_Ccache);
-        if (cname == NULL)
-        {
-          smb2_set_error(smb2, "Failed to retrieve the credentials cache name");
-          return NULL;
-        }
-        maj = gss_krb5_ccache_name(&min, cname, NULL);
-        if (maj != GSS_S_COMPLETE) {
-                krb5_set_gss_error(smb2, "gss_acquire_cred", maj, min);
-                return NULL;
-        }
+                maj = gss_krb5_import_cred(&min, krb5_Ccache, client_princ, 0,
+                                           &auth_data->cred);
+                if (maj != GSS_S_COMPLETE) {
+                        krb5_set_gss_error(smb2, "gss_acquire_cred", maj, min);
+                        return NULL;
+                }
+        } else {
+                /* Create creds for the user */
+                mechOidSet.count = 1;
+                mechOidSet.elements = discard_const(&gss_mech_spnego);
 
-        maj = gss_krb5_import_cred(&min, krb5_Ccache, client_princ, 0, &auth_data->cred);
-        if (maj != GSS_S_COMPLETE) {
-                krb5_set_gss_error(smb2, "gss_acquire_cred", maj, min);
-                return NULL;
+                maj = gss_acquire_cred(&min, auth_data->user_name, 0,
+                                       &mechOidSet, GSS_C_INITIATE,
+                                       &auth_data->cred, NULL, NULL);
+                if (maj != GSS_S_COMPLETE) {
+                        krb5_set_gss_error(smb2, "gss_acquire_cred", maj, min);
+                        return NULL;
+                }
         }
-#else
-        /* Create creds for the user */
-        mechOidSet.count = 1;
-        mechOidSet.elements = discard_const(&gss_mech_spnego);
-
-        maj = gss_acquire_cred(&min, auth_data->user_name, 0,
-                               &mechOidSet, GSS_C_INITIATE,
-                               &auth_data->cred, NULL, NULL);
-        if (maj != GSS_S_COMPLETE) {
-                krb5_set_gss_error(smb2, "gss_acquire_cred", maj, min);
-                return NULL;
-        }
-#endif
 
         if (smb2->sec != SMB2_SEC_UNDEFINED) {
                 wantMech.count = 1;
