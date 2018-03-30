@@ -100,14 +100,12 @@ KRB5 Authentication
 Kerberos authentication can be used when the linux workstation as well as
 the file server are part of Active Directory.
 
-Before you can use KRB5 authentication you must first authenticate to the KDC.
-Use "kinit username@YOUR-REALM" to do that in the normal way you set up
-kerberos.
-
-Once you have run kinit successfully you should be able to authenticate to the
-file server using krb5 by specifying sec=krb5 in the URL :
+You should be able to authenticate to the file server using krb5
+by specifying sec=krb5 in the URL :
   smb://server/share?sec=krb5
 
+The application needs to set the username, password and the domain fqdn in the context using
+smb2_set_user(), smb2_set_password() and smb2_set_domain() respectively.
 
 BUILTIN NTLMSSP
 ===============

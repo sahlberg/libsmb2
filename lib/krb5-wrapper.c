@@ -194,7 +194,7 @@ krb5_create_creds_cache(struct smb2_context *smb2, const char *user, const char 
 
     len = strlen(smb2->domain);
     ret = krb5_build_principal(krb5_cctx, &client_princ, len, smb2->domain, user, NULL);
-    //ret = krb5_parse_name(krb5_cctx, user, &client_princ);
+    /* ret = krb5_parse_name(krb5_cctx, user, &client_princ); */
     if (ret)
     {
       smb2_set_error(smb2, "Failed to get the client principal - %s", krb5_get_error_message(krb5_cctx, ret));
@@ -241,7 +241,7 @@ krb5_create_creds_cache(struct smb2_context *smb2, const char *user, const char 
 int
 krb5_remove_creds_cache(struct private_auth_data *auth_data)
 {
-    //gss_release_cred(NULL, &auth_data->cred);
+    /* gss_release_cred(NULL, &auth_data->cred); */
 
     if (client_princ != NULL)
       krb5_free_principal(krb5_cctx, client_princ);
@@ -252,7 +252,7 @@ krb5_remove_creds_cache(struct private_auth_data *auth_data)
     return 0;
 }
 
-// Enable thhis flag to use krb5 cached creds or else you need to do a kinit
+/* Enable thhis flag to use krb5 cached creds or else you need to do a kinit */
 #define USE_CACHED_CREDS
 
 struct private_auth_data *
