@@ -1670,3 +1670,48 @@ smb2_get_max_write_size(struct smb2_context *smb2)
 {
         return smb2->max_write_size;
 }
+
+struct smb2_echo_data
+{
+    smb2_command_cb cb;
+    void *cb_data;
+};
+
+static void
+smb2_echo_cb(struct smb2_context *smb2, int status, void *command_data, void *private_data)
+{
+    struct smb2_echo_data *ed = private_data;
+
+    ed->cb(smb2, status, NULL, ed->cb_data);
+    free(ed);
+}
+
+int
+smb2_echo_async(struct smb2_context *smb2, smb2_command_cb cb, void *cb_data)
+{
+    struct smb2_pdu *pdu;
+    struct smb2_echo_data *ed;
+
+    ed = malloc(sizeof(struct smb2_echo_data));
+    if (ed == NULL)
+    {
+        smb2_set_error(smb2, "Failed to allocate smb2_echo_data");
+        return -ENOMEM;
+    }
+    memset(ed, 0, sizeof(struct smb2_echo_data));
+
+    ed->cb = cb;
+    ed->cb_data = cb_data;
+
+    pdu = smb2_cmd_echo_async(smb2, smb2_echo_cb, ed);
+    if (pdu == NULL)
+    {
+        smb2_set_error(smb2, "Failed to create echo command");
+        return -1;
+    }
+
+    smb2_queue_pdu(smb2, pdu);
+
+    return 0;
+}
+

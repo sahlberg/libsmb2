@@ -71,3 +71,5 @@ smb2_unlink_async
 smb2_which_events
 smb2_write
 smb2_write_async
+smb2_echo
+smb2_echo_async
