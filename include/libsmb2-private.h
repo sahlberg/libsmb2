@@ -113,7 +113,6 @@ struct smb2_context {
         enum smb2_sec sec;
 
         uint16_t security_mode;
-        int use_cached_creds;
 
         const char *server;
         const char *share;
