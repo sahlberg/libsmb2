@@ -53,6 +53,9 @@ Aruments supported by libsmb2 are :
 		  2.02, 2.10, 3.00, 3.02 : negotiate a specific version.
 		  Default is to negotiate any SMB2 or SMB3 version.
 
+NOTE:-
+	When using krb5cc mode use smb2_set_domain() and smb2_set_password() in the examples and applications
+
 Authentication
 ==============
 Libsmb2 provides two different modes of doing authentication. This needs
