@@ -76,6 +76,9 @@ smb2_parse_args(struct smb2_context *smb2, const char *args)
                 if (!strcmp(args, "sec")) {
                         if(!strcmp(value, "krb5")) {
                                 smb2->sec = SMB2_SEC_KRB5;
+                        } else if(!strcmp(value, "krb5cc")) {
+                                smb2->sec = SMB2_SEC_KRB5;
+                                smb2->use_cached_creds = 1;
                         } else if (!strcmp(value, "ntlmssp")) {
                                 smb2->sec = SMB2_SEC_NTLMSSP;
                         } else {
@@ -231,6 +234,14 @@ void smb2_destroy_context(struct smb2_context *smb2)
         free(discard_const(smb2->user));
         free(discard_const(smb2->server));
         free(discard_const(smb2->share));
+
+        if (smb2->domain) {
+            free(discard_const(smb2->domain));
+        }
+        if (smb2->workstation) {
+            free(discard_const(smb2->workstation));
+        }
+
         free(smb2);
 }
 

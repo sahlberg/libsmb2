@@ -193,8 +193,13 @@ krb5_negotiate_reply(struct smb2_context *smb2,
                 return NULL;
         }
 
-        user.value = discard_const(user_principal);
-        user.length = strlen(user_principal);
+        if (smb2->use_cached_creds) {
+            user.value = discard_const(user_principal);
+            user.length = strlen(user_principal);
+        } else {
+            user.value = discard_const(user_name);
+            user.length = strlen(user_name);
+        }
 
         /* create a name for the user */
         maj = gss_import_name(&min, &user, GSS_C_NT_USER_NAME,
@@ -218,9 +223,17 @@ krb5_negotiate_reply(struct smb2_context *smb2,
         passwd.value = nc_password;
         passwd.length = strlen(nc_password);
 
-        maj = gss_acquire_cred_with_password(&min, auth_data->user_name, &passwd, 0,
-                                             &mechOidSet, GSS_C_INITIATE, &auth_data->cred,
-                                             NULL, NULL);
+
+        if (smb2->use_cached_creds) {
+            maj = gss_acquire_cred_with_password(&min, auth_data->user_name, &passwd, 0,
+                                                 &mechOidSet, GSS_C_INITIATE, &auth_data->cred,
+                                                 NULL, NULL);
+        } else {
+            maj = gss_acquire_cred(&min, auth_data->user_name, 0,
+                                   &mechOidSet, GSS_C_INITIATE,
+                                   &auth_data->cred, NULL, NULL);
+        }
+
         if (maj != GSS_S_COMPLETE) {
             krb5_set_gss_error(smb2, "gss_acquire_cred", maj, min);
             return NULL;
