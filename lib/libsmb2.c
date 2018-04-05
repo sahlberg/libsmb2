@@ -471,6 +471,25 @@ session_setup_cb(struct smb2_context *smb2, int status,
                 }
                 return;
         }
+        else
+        {
+            /* For NTLM the status will be SMB2_STATUS_MORE_PROCESSING_REQUIRED
+             * and a second call to gss_init_sec_context will complete the gss session.
+             * But for krb5 a second call to gss_init_sec_context is required if GSS_C_MUTUAL_FLAG is set
+             */
+            if (smb2->sec == SMB2_SEC_KRB5)
+            {
+#ifdef HAVE_LIBKRB5
+                if (krb5_session_request(smb2, c_data->auth_data, rep->security_buffer, rep->security_buffer_length) < 0)
+                {
+                    c_data->cb(smb2, -1, NULL, c_data->cb_data);
+                    free_c_data(smb2, c_data);
+                    return;
+                }
+#endif
+            }
+        }
+
 
         if (status != SMB2_STATUS_SUCCESS) {
                 smb2_set_error(smb2, "Session setup failed with (0x%08x) %s",
@@ -479,6 +498,16 @@ session_setup_cb(struct smb2_context *smb2, int status,
                            c_data->cb_data);
                 free_c_data(smb2, c_data);
                 return;
+        }
+
+        if (smb2->sec == SMB2_SEC_KRB5)
+        {
+#ifdef HAVE_LIBKRB5
+            if (krb5_session_get_session_key(smb2, c_data->auth_data) < 0)
+            {
+                return;
+            }
+#endif
         }
 
         memset(&req, 0, sizeof(struct smb2_tree_connect_request));
@@ -554,6 +583,7 @@ negotiate_cb(struct smb2_context *smb2, int status,
         }
 
         if (rep->security_mode & SMB2_NEGOTIATE_SIGNING_REQUIRED) {
+                smb2->signing_required = 1;
                 smb2_set_error(smb2, "Signing Required by server. "
                                "Not yet implemented in libsmb2");
                 c_data->cb(smb2, -EINVAL, NULL, c_data->cb_data);
