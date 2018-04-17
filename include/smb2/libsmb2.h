@@ -735,6 +735,11 @@ int smb2_ftruncate_async(struct smb2_context *smb2, struct smb2fh *fh,
 int smb2_ftruncate(struct smb2_context *smb2, struct smb2fh *fh,
                    uint64_t length);
 
+/*
+ * Make SMB3 a user selectable dialect, Default selected is SMB 2.1
+ */
+void smb2_enable_smb3(struct smb2_context *smb2);
+
 
 /*
  * Async echo()

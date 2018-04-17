@@ -17,6 +17,7 @@ libsmb2_la_SOURCES = \
 	md5.c \
 	ntlmssp.c \
 	pdu.c \
+	smb2-signing.c \
 	smb2-cmd-close.c \
 	smb2-cmd-create.c \
 	smb2-cmd-echo.c \

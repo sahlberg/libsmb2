@@ -73,3 +73,4 @@ smb2_write
 smb2_write_async
 smb2_echo
 smb2_echo_async
+smb2_enable_smb3

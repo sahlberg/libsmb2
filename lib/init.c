@@ -202,6 +202,8 @@ struct smb2_context *smb2_init_context(void)
         smb2->signing_required = 0;
         smb2->session_key = NULL;
 
+        smb2->negotiate_SMB3 = 0; /* negotiate SMB2 by default */
+
         return smb2;
 }
 
@@ -344,5 +346,10 @@ void smb2_set_workstation(struct smb2_context *smb2, const char *workstation)
                 free(discard_const(smb2->workstation));
         }
         smb2->workstation = strdup(workstation);
+}
+
+void smb2_enable_smb3(struct smb2_context *smb2)
+{
+        smb2->negotiate_SMB3 = 1;
 }
 

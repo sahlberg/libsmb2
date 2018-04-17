@@ -582,15 +582,6 @@ negotiate_cb(struct smb2_context *smb2, int status,
                 return;
         }
 
-        if (rep->security_mode & SMB2_NEGOTIATE_SIGNING_REQUIRED) {
-                smb2->signing_required = 1;
-                smb2_set_error(smb2, "Signing Required by server. "
-                               "Not yet implemented in libsmb2");
-                c_data->cb(smb2, -EINVAL, NULL, c_data->cb_data);
-                free_c_data(smb2, c_data);
-                return;
-        }
-
         /* update the context with the server capabilities */
         if (rep->dialect_revision > SMB2_VERSION_0202) {
                 if (rep->capabilities & SMB2_GLOBAL_CAP_LARGE_MTU) {
@@ -602,6 +593,16 @@ negotiate_cb(struct smb2_context *smb2, int status,
         smb2->max_read_size     = rep->max_read_size;
         smb2->max_write_size    = rep->max_write_size;
         smb2->dialect           = rep->dialect_revision;
+
+        if (rep->security_mode & SMB2_NEGOTIATE_SIGNING_REQUIRED) {
+                smb2->signing_required = 1;
+                if (smb2->dialect > SMB2_VERSION_0210) {
+                    smb2_set_error(smb2, "Signing Required by server. Not yet implemented for SMB3");
+                    c_data->cb(smb2, -EINVAL, NULL, c_data->cb_data);
+                    free_c_data(smb2, c_data);
+                    return;
+                }
+        }
 
 #ifndef HAVE_LIBKRB5
         c_data->auth_data = ntlmssp_init_context(smb2->user,
@@ -647,12 +648,18 @@ connect_cb(struct smb2_context *smb2, int status,
 
         memset(&req, 0, sizeof(struct smb2_negotiate_request));
         req.capabilities = SMB2_GLOBAL_CAP_LARGE_MTU;
-        req.dialect_count = 4;
         req.security_mode = smb2->security_mode;
-        req.dialects[0] = SMB2_VERSION_0202;
-        req.dialects[1] = SMB2_VERSION_0210;
-        req.dialects[2] = SMB2_VERSION_0300;
-        req.dialects[3] = SMB2_VERSION_0302;
+        if (smb2->negotiate_SMB3) {
+            req.dialect_count = 4;
+            req.dialects[0] = SMB2_VERSION_0202;
+            req.dialects[1] = SMB2_VERSION_0210;
+            req.dialects[2] = SMB2_VERSION_0300;
+            req.dialects[3] = SMB2_VERSION_0302;
+        } else {
+            req.dialect_count = 2;
+            req.dialects[0] = SMB2_VERSION_0202;
+            req.dialects[1] = SMB2_VERSION_0210;
+        }
         memcpy(req.client_guid, smb2_get_client_guid(smb2), SMB2_GUID_SIZE);
 
         pdu = smb2_cmd_negotiate_async(smb2, &req, negotiate_cb, c_data);
