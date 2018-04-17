@@ -66,13 +66,6 @@
 
 #include "krb5-wrapper.h"
 
-/** Global Definitions */
-krb5_context    krb5_cctx;
-krb5_ccache     krb5_Ccache;
-krb5_creds      krb5_ccreds;
-krb5_principal  client_princ;
-
-
 void
 krb5_free_auth_data(struct private_auth_data *auth)
 {
@@ -225,6 +218,36 @@ krb5_negotiate_reply(struct smb2_context *smb2,
 
 
         if (smb2->use_cached_creds) {
+            krb5_error_code ret = 0;
+            const char *cname = NULL;
+            krb5_context    krb5_cctx;
+            krb5_ccache     krb5_Ccache;
+
+            /* krb5 cache management */
+            ret = krb5_init_context(&krb5_cctx);
+            if (ret)
+            {
+                smb2_set_error(smb2, "Failed to initialize krb5 context - %s", krb5_get_error_message(krb5_cctx, ret));
+                return NULL;
+            }
+            ret = krb5_cc_new_unique(krb5_cctx, "MEMORY", NULL, &krb5_Ccache);
+            if (ret != 0)
+            {
+                smb2_set_error(smb2, "Failed to create krb5 credentials cache - %s", krb5_get_error_message(krb5_cctx, ret));
+                return NULL;
+            }
+            cname = krb5_cc_get_name(krb5_cctx, krb5_Ccache);
+            if (cname == NULL) {
+                smb2_set_error(smb2, "Failed to retrieve the credentials cache name");
+                return NULL;
+            }
+
+            maj = gss_krb5_ccache_name(&min, cname, NULL);
+            if (maj != GSS_S_COMPLETE) {
+                    krb5_set_gss_error(smb2, "gss_krb5_ccache_name", maj, min);
+                    return NULL;
+            }
+
             maj = gss_acquire_cred_with_password(&min, auth_data->user_name, &passwd, 0,
                                                  &mechOidSet, GSS_C_INITIATE, &auth_data->cred,
                                                  NULL, NULL);
