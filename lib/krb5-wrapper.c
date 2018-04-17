@@ -305,7 +305,7 @@ krb5_session_get_session_key(struct smb2_context *smb2,
         return -1;
     }
 
-    // The key is in element 0 and the key type OID is in element 1
+    /* The key is in element 0 and the key type OID is in element 1 */
     if (!sessionKey ||
         (sessionKey->count < 1) ||
         !sessionKey->elements[0].value ||

@@ -157,7 +157,7 @@ smb2_pdu_add_signature(struct smb2_context *smb2,
 
     if (smb2->dialect > SMB2_VERSION_0210) {
 
-        return -1; // TODO signing is not proper for SMB versions higher than 0210
+        return -1; /* TODO signing is not proper for SMB versions higher than 0210 */
 
         CMAC_CTX *ctx = NULL;
         size_t signature_size = SMB2_SIGNATURE_SIZE;
