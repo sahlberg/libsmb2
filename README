@@ -130,6 +130,11 @@ Use :
 from your application before you connect to the server.
 
 
+SMB2/3 SIGNING
+==============
+Signing is only supported for SMB2 and when using sec=krb5.
+
+
 BUILDING LIBSMB2
 ===============
 

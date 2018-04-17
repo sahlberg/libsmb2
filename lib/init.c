@@ -219,6 +219,9 @@ struct smb2_context *smb2_init_context(void)
 
         snprintf(smb2->client_guid, 16, "libsmb2-%d", getpid());
 
+        smb2->session_key = NULL;
+        smb2->signing_required = 0;
+
         return smb2;
 }
 
@@ -360,4 +363,3 @@ void smb2_set_workstation(struct smb2_context *smb2, const char *workstation)
         }
         smb2->workstation = strdup(workstation);
 }
-
