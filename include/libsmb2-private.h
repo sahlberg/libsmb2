@@ -37,6 +37,7 @@ extern "C" {
 
 #define SMB2_SPL_SIZE 4
 #define SMB2_HEADER_SIZE 64
+#define SMB2_SIGNATURE_SIZE 16
 
 #define SMB2_MAX_VECTORS 256
 
@@ -140,6 +141,8 @@ struct smb2_context {
         uint8_t *session_key;
         uint8_t session_key_size;
 
+        uint8_t signing_required;
+
         /*
          * For sending PDUs
          */
@@ -172,7 +175,7 @@ struct smb2_context {
         uint32_t max_read_size;
         uint32_t max_write_size;
         uint16_t dialect;
-        
+
         char error_string[MAX_ERROR_SIZE];
 };
 

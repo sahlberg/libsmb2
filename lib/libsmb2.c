@@ -596,15 +596,6 @@ negotiate_cb(struct smb2_context *smb2, int status,
                 return;
         }
 
-        if (rep->security_mode & SMB2_NEGOTIATE_SIGNING_REQUIRED) {
-                smb2_close_context(smb2);
-                smb2_set_error(smb2, "Signing Required by server. "
-                               "Not yet implemented in libsmb2");
-                c_data->cb(smb2, -EINVAL, NULL, c_data->cb_data);
-                free_c_data(smb2, c_data);
-                return;
-        }
-
         /* update the context with the server capabilities */
         if (rep->dialect_revision > SMB2_VERSION_0202) {
                 if (rep->capabilities & SMB2_GLOBAL_CAP_LARGE_MTU) {
@@ -616,6 +607,22 @@ negotiate_cb(struct smb2_context *smb2, int status,
         smb2->max_read_size     = rep->max_read_size;
         smb2->max_write_size    = rep->max_write_size;
         smb2->dialect           = rep->dialect_revision;
+
+        if (rep->security_mode & SMB2_NEGOTIATE_SIGNING_REQUIRED) {
+#ifndef HAVE_OPENSSL_LIBS
+                smb2_set_error(smb2, "Signing Required by server. Not yet implemented");
+                c_data->cb(smb2, -EINVAL, NULL, c_data->cb_data);
+                free_c_data(smb2, c_data);
+                return;
+#endif
+                smb2->signing_required = 1;
+                if (smb2->dialect > SMB2_VERSION_0210) {
+                        smb2_set_error(smb2, "Signing Required by server. Not yet implemented for SMB3");
+                        c_data->cb(smb2, -EINVAL, NULL, c_data->cb_data);
+                        free_c_data(smb2, c_data);
+                        return;
+                }
+        }
 
 #ifndef HAVE_LIBKRB5
         c_data->auth_data = ntlmssp_init_context(smb2->user,
