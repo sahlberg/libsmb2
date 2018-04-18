@@ -175,6 +175,11 @@ AC_CHECK_HEADERS([netinet/in.h])
 dnl Check for arpa/inet.h
 AC_CHECK_HEADERS([arpa/inet.h])
 
+# check for openssl/hmac.h openssl/cmac.h openssl/evp.h openssl/sha.h
+AC_CHECK_HEADERS([openssl/hmac.h openssl/cmac.h openssl/evp.h openssl/sha.h], [], [AC_MSG_ERROR([cannot find a openssl headers])])
+# check if the library libcrypto is available
+AC_HAVE_LIBRARY(crypto,[AC_DEFINE(HAVE_OPENSSL_LIBS, 1, [OpenSsl libraries are present])], [AC_MSG_ERROR([cannot find openssl libcrypto library])], [])
+
 # check for SA_LEN
 dnl Check if sockaddr data structure includes a "sa_len"
 AC_CHECK_MEMBER([struct sockaddr.sa_len],

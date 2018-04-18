@@ -19,13 +19,19 @@
 #include "config.h"
 #endif
 
+#ifdef HAVE_OPENSSL_LIBS
+
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
 
+#ifndef _SMB2_SIGNING_H_
+#define _SMB2_SIGNING_H_
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 
 #include "slist.h"
 #include "smb2.h"
@@ -44,3 +50,7 @@ smb2_pdu_check_signature(struct smb2_context *smb2,
 #ifdef __cplusplus
 }
 #endif
+
+#endif /* _SMB2_SIGNING_H_ */
+
+#endif /* HAVE_OPENSSL_LIBS */

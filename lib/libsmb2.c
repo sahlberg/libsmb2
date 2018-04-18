@@ -595,13 +595,19 @@ negotiate_cb(struct smb2_context *smb2, int status,
         smb2->dialect           = rep->dialect_revision;
 
         if (rep->security_mode & SMB2_NEGOTIATE_SIGNING_REQUIRED) {
-                smb2->signing_required = 1;
-                if (smb2->dialect > SMB2_VERSION_0210) {
-                    smb2_set_error(smb2, "Signing Required by server. Not yet implemented for SMB3");
-                    c_data->cb(smb2, -EINVAL, NULL, c_data->cb_data);
-                    free_c_data(smb2, c_data);
-                    return;
-                }
+#ifndef HAVE_OPENSSL_LIBS
+            smb2_set_error(smb2, "Signing Required by server. Not yet implemented");
+            c_data->cb(smb2, -EINVAL, NULL, c_data->cb_data);
+            free_c_data(smb2, c_data);
+            return;
+#endif
+            if (smb2->dialect > SMB2_VERSION_0210) {
+                smb2_set_error(smb2, "Signing Required by server. Not yet implemented for SMB3");
+                c_data->cb(smb2, -EINVAL, NULL, c_data->cb_data);
+                free_c_data(smb2, c_data);
+                return;
+            }
+            smb2->signing_required = 1;
         }
 
 #ifndef HAVE_LIBKRB5

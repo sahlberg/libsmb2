@@ -19,6 +19,8 @@
 #include "config.h"
 #endif
 
+#ifdef HAVE_OPENSSL_LIBS
+
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
@@ -202,3 +204,4 @@ smb2_pdu_check_signature(struct smb2_context *smb2,
     return 0;
 }
 
+#endif /* HAVE_OPENSSL_LIBS */
