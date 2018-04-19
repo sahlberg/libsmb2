@@ -31,6 +31,10 @@
 #include <netinet/tcp.h>
 #endif
 
+#ifdef HAVE_NETINET_IN_H
+#include <netinet/in.h>
+#endif
+
 #ifdef HAVE_POLL_H
 #include <poll.h>
 #endif
