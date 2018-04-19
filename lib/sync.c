@@ -478,3 +478,42 @@ int smb2_ftruncate(struct smb2_context *smb2, struct smb2fh *fh,
 
 	return cb_data.status;
 }
+
+static void echo_cb(struct smb2_context *smb2, int status,
+                    void *command_data, void *private_data)
+{
+    struct sync_cb_data *cb_data = private_data;
+
+    cb_data->is_finished = 1;
+    cb_data->status = status;
+}
+
+/*
+ * Send SMB2_ECHO command to the server
+ */
+int smb2_echo(struct smb2_context *smb2)
+{
+    struct sync_cb_data cb_data;
+
+    if (smb2->is_connected == 0)
+    {
+        smb2_set_error(smb2, "Not Connected to Server");
+        return -ENOMEM;
+    }
+
+	cb_data.is_finished = 0;
+
+    if (smb2_echo_async(smb2, echo_cb, &cb_data) != 0)
+    {
+        smb2_set_error(smb2, "smb2_echo failed");
+        return -ENOMEM;
+    }
+
+    if (wait_for_reply(smb2, &cb_data) < 0)
+    {
+        return -EIO;
+    }
+
+    return cb_data.status;
+}
+

@@ -751,6 +751,15 @@ int smb2_ftruncate(struct smb2_context *smb2, struct smb2fh *fh,
 int smb2_echo_async(struct smb2_context *smb2,
                          smb2_command_cb cb, void *cb_data);
 
+/*
+ * Sync echo()
+ *
+ * Returns:
+ * 0      : successfully send the message and received a reply.
+ * -errno : Failure.
+ */
+int smb2_echo(struct smb2_context *smb2);
+
 #ifdef __cplusplus
 }
 #endif
