@@ -56,7 +56,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
-#include <gssapi/gssapi.h>
 
 #include "slist.h"
 #include "smb2.h"
@@ -67,6 +66,7 @@
 #ifndef HAVE_LIBKRB5
 #include "ntlmssp.h"
 #else
+#include <gssapi/gssapi.h>
 #include "krb5-wrapper.h"
 #endif
 
