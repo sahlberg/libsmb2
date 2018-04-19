@@ -75,10 +75,15 @@ enum smb2_command {
 #define SMB2_NEGOTIATE_SIGNING_ENABLED  0x0001
 #define SMB2_NEGOTIATE_SIGNING_REQUIRED 0x0002
 
-#define SMB2_VERSION_0202     0x0202
-#define SMB2_VERSION_0210     0x0210
-#define SMB2_VERSION_0300     0x0300
-#define SMB2_VERSION_0302     0x0302
+enum smb2_negotiate_version {
+        SMB2_VERSION_ANY  = 0,
+        SMB2_VERSION_ANY2 = 2,
+        SMB2_VERSION_ANY3 = 3,
+        SMB2_VERSION_0202 = 0x0202,
+        SMB2_VERSION_0210 = 0x0210,
+        SMB2_VERSION_0300 = 0x0300,
+        SMB2_VERSION_0302 = 0x0302
+};
 
 #define SMB2_GLOBAL_CAP_DFS                0x00000001
 #define SMB2_GLOBAL_CAP_LEASING            0x00000002
