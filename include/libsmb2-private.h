@@ -116,6 +116,8 @@ struct smb2_context {
         uint16_t security_mode;
         int use_cached_creds;
 
+        enum smb2_negotiate_version version;
+
         const char *server;
         const char *share;
         const char *user;

@@ -655,17 +655,33 @@ connect_cb(struct smb2_context *smb2, int status,
         memset(&req, 0, sizeof(struct smb2_negotiate_request));
         req.capabilities = SMB2_GLOBAL_CAP_LARGE_MTU;
         req.security_mode = smb2->security_mode;
-        if (smb2->negotiate_SMB3) {
-            req.dialect_count = 4;
-            req.dialects[0] = SMB2_VERSION_0202;
-            req.dialects[1] = SMB2_VERSION_0210;
-            req.dialects[2] = SMB2_VERSION_0300;
-            req.dialects[3] = SMB2_VERSION_0302;
-        } else {
-            req.dialect_count = 2;
-            req.dialects[0] = SMB2_VERSION_0202;
-            req.dialects[1] = SMB2_VERSION_0210;
+        switch (smb2->version) {
+        case SMB2_VERSION_ANY:
+                req.dialect_count = 4;
+                req.dialects[0] = SMB2_VERSION_0202;
+                req.dialects[1] = SMB2_VERSION_0210;
+                req.dialects[2] = SMB2_VERSION_0300;
+                req.dialects[3] = SMB2_VERSION_0302;
+                break;
+        case SMB2_VERSION_ANY2:
+                req.dialect_count = 2;
+                req.dialects[0] = SMB2_VERSION_0202;
+                req.dialects[1] = SMB2_VERSION_0210;
+                break;
+        case SMB2_VERSION_ANY3:
+                req.dialect_count = 2;
+                req.dialects[0] = SMB2_VERSION_0300;
+                req.dialects[1] = SMB2_VERSION_0302;
+                break;
+        case SMB2_VERSION_0202:
+        case SMB2_VERSION_0210:
+        case SMB2_VERSION_0300:
+        case SMB2_VERSION_0302:
+                req.dialect_count = 1;
+                req.dialects[0] = smb2->version;
+                break;
         }
+
         memcpy(req.client_guid, smb2_get_client_guid(smb2), SMB2_GUID_SIZE);
 
         pdu = smb2_cmd_negotiate_async(smb2, &req, negotiate_cb, c_data);

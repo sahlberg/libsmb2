@@ -86,6 +86,25 @@ smb2_parse_args(struct smb2_context *smb2, const char *args)
                                                "%s", value);
                                 return -1;
                         }
+                } else if (!strcmp(args, "vers")) {
+                        if(!strcmp(value, "2")) {
+                                smb2->version = SMB2_VERSION_ANY2;
+                        } else if(!strcmp(value, "3")) {
+                                smb2->version = SMB2_VERSION_ANY3;
+                        } else if(!strcmp(value, "2.02")) {
+                                smb2->version = SMB2_VERSION_0202;
+                        } else if(!strcmp(value, "2.10")) {
+                                smb2->version = SMB2_VERSION_0210;
+                        } else if(!strcmp(value, "3.0") ||
+                                  !strcmp(value, "3.00")) {
+                                smb2->version = SMB2_VERSION_0300;
+                        } else if(!strcmp(value, "3.02")) {
+                                smb2->version = SMB2_VERSION_0302;
+                        } else {
+                                smb2_set_error(smb2, "Unknown vers= argument: "
+                                               "%s", value);
+                                return -1;
+                        }
                 } else {
                         smb2_set_error(smb2, "Unknown argument: %s", args);
                         return -1;
@@ -192,6 +211,7 @@ struct smb2_context *smb2_init_context(void)
         smb2_set_user(smb2, getlogin());
         smb2->fd = -1;
         smb2->sec = SMB2_SEC_UNDEFINED;
+        smb2->version = SMB2_VERSION_ANY;
 
         for (i = 0; i < 8; i++) {
                 smb2->client_challenge[i] = random()&0xff;

@@ -4,6 +4,8 @@
 ** Function: hmac_md5
 */
 
+#include <strings.h>
+
 #include "md5.h"
 
 #ifdef _MSC_VER

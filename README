@@ -47,7 +47,11 @@ Aruments supported by libsmb2 are :
 		 krb5cc: Use Kerberos using credentials from credentials
 	                 cache.
 		 ntlmssp : Only use NTLMSSP
-
+ vers=<version> : Which SMB version to negotiate:
+                  2: Negotiate any version of SMB2
+                  3: Negotiate any version of SMB3
+		  2.02, 2.10, 3.00, 3.02 : negotiate a specific version.
+		  Default is to negotiate any SMB2 or SMB3 version.
 
 Authentication
 ==============
