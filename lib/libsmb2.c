@@ -125,6 +125,19 @@ struct smb2fh {
         int64_t offset;
 };
 
+static void
+smb2_close_context(struct smb2_context *smb2)
+{
+        if (smb2->fd != -1) {
+                close(smb2->fd);
+                smb2->fd = -1;
+        }
+        smb2->is_connected = 0;
+        smb2->message_id = 0;
+        smb2->session_id = 0;
+        smb2->tree_id = 0;
+}
+
 static int
 send_session_setup_request(struct smb2_context *smb2,
                            struct connect_data *c_data,
@@ -439,6 +452,7 @@ tree_connect_cb(struct smb2_context *smb2, int status,
         struct connect_data *c_data = private_data;
 
         if (status != SMB2_STATUS_SUCCESS) {
+                smb2_close_context(smb2);
                 smb2_set_error(smb2, "Session setup failed with (0x%08x) %s. %s",
                                status, nterror_to_str(status),
                                smb2_get_error(smb2));
@@ -465,6 +479,7 @@ session_setup_cb(struct smb2_context *smb2, int status,
                 if ((ret = send_session_setup_request(
                                 smb2, c_data, rep->security_buffer,
                                 rep->security_buffer_length)) < 0) {
+                        smb2_close_context(smb2);
                         c_data->cb(smb2, ret, NULL, c_data->cb_data);
                         free_c_data(smb2, c_data);
                         return;
@@ -473,6 +488,7 @@ session_setup_cb(struct smb2_context *smb2, int status,
         }
 
         if (status != SMB2_STATUS_SUCCESS) {
+                smb2_close_context(smb2);
                 smb2_set_error(smb2, "Session setup failed with (0x%08x) %s",
                                status, nterror_to_str(status));
                 c_data->cb(smb2, -nterror_to_errno(status), NULL,
@@ -488,6 +504,7 @@ session_setup_cb(struct smb2_context *smb2, int status,
 
         pdu = smb2_cmd_tree_connect_async(smb2, &req, tree_connect_cb, c_data);
         if (pdu == NULL) {
+                smb2_close_context(smb2);
                 c_data->cb(smb2, -ENOMEM, NULL, c_data->cb_data);
                 free_c_data(smb2, c_data);
                 return;
@@ -512,11 +529,13 @@ send_session_setup_request(struct smb2_context *smb2,
         if (ntlmssp_generate_blob(c_data->auth_data, buf, len,
                                   &req.security_buffer,
                                   &req.security_buffer_length) < 0) {
+                smb2_close_context(smb2);
                 return -1;
         }
 #else
         if (krb5_session_request(smb2, c_data->auth_data,
                                  buf, len) < 0) {
+                smb2_close_context(smb2);
                 return -1;
         }
         req.security_buffer_length =
@@ -528,10 +547,11 @@ send_session_setup_request(struct smb2_context *smb2,
         pdu = smb2_cmd_session_setup_async(smb2, &req,
                                            session_setup_cb, c_data);
         if (pdu == NULL) {
+                smb2_close_context(smb2);
                 return -ENOMEM;
         }
         smb2_queue_pdu(smb2, pdu);
-        
+
         return 0;
 }
 
@@ -544,6 +564,7 @@ negotiate_cb(struct smb2_context *smb2, int status,
         int ret;
 
         if (status != SMB2_STATUS_SUCCESS) {
+                smb2_close_context(smb2);
                 smb2_set_error(smb2, "Negotiate failed with (0x%08x) %s. %s",
                                status, nterror_to_str(status),
                                smb2_get_error(smb2));
@@ -554,6 +575,7 @@ negotiate_cb(struct smb2_context *smb2, int status,
         }
 
         if (rep->security_mode & SMB2_NEGOTIATE_SIGNING_REQUIRED) {
+                smb2_close_context(smb2);
                 smb2_set_error(smb2, "Signing Required by server. "
                                "Not yet implemented in libsmb2");
                 c_data->cb(smb2, -EINVAL, NULL, c_data->cb_data);
@@ -587,12 +609,14 @@ negotiate_cb(struct smb2_context *smb2, int status,
                                                  smb2->password);
 #endif
         if (c_data->auth_data == NULL) {
+                smb2_close_context(smb2);
                 c_data->cb(smb2, -ENOMEM, NULL, c_data->cb_data);
                 free_c_data(smb2, c_data);
                 return;
         }
 
         if ((ret = send_session_setup_request(smb2, c_data, NULL, 0)) < 0) {
+                smb2_close_context(smb2);
                 c_data->cb(smb2, ret, NULL, c_data->cb_data);
                 free_c_data(smb2, c_data);
                 return;

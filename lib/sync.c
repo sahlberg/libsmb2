@@ -94,7 +94,8 @@ int smb2_connect_share(struct smb2_context *smb2,
 
 	if (smb2_connect_share_async(smb2, server, share, user,
                                      connect_cb, &cb_data) != 0) {
-		smb2_set_error(smb2, "smb2_connect_share_async failed");
+		smb2_set_error(smb2, "smb2_connect_share_async failed. %s",
+                               smb2_get_error(smb2));
 		return -ENOMEM;
 	}
 
