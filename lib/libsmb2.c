@@ -122,7 +122,7 @@ struct smb2fh {
         void *cb_data;
 
         smb2_file_id file_id;
-        uint64_t offset;
+        int64_t offset;
 };
 
 static int
@@ -1078,7 +1078,7 @@ smb2_write_async(struct smb2_context *smb2, struct smb2fh *fh,
                                  cb, cb_data);
 }
 
-int
+int64_t
 smb2_lseek(struct smb2_context *smb2, struct smb2fh *fh,
            int64_t offset, int whence, uint64_t *current_offset)
 {
