@@ -361,7 +361,8 @@ read_more_data:
                 }
                 if (len < 0) {
                         smb2_set_error(smb2, "Negative number of PAD bytes "
-                                       "encountered during PDU decode");
+                                       "encountered during PDU decode of"
+                                       "fixed payload");
                         return -1;
                 }
                 if (len > 0) {
@@ -393,7 +394,8 @@ read_more_data:
                 }
                 if (len < 0) {
                         smb2_set_error(smb2, "Negative number of PAD bytes "
-                                       "encountered during PDU decode");
+                                       "encountered during PDU decode of"
+                                       "variable payload");
                         return -1;
                 }
                 if (len > 0) {
