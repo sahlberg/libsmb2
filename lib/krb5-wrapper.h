@@ -74,6 +74,10 @@ krb5_negotiate_reply(struct smb2_context *smb2,
                      const char *password);
 
 int
+krb5_session_get_session_key(struct smb2_context *smb2,
+                             struct private_auth_data *auth_data);
+
+int
 krb5_session_request(struct smb2_context *smb2,
                      struct private_auth_data *auth_data,
                      unsigned char *buf, int len);

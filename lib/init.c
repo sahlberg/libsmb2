@@ -218,7 +218,9 @@ struct smb2_context *smb2_init_context(void)
         }
 
         snprintf(smb2->client_guid, 16, "libsmb2-%d", getpid());
-        
+
+        smb2->session_key = NULL;
+
         return smb2;
 }
 
@@ -249,6 +251,11 @@ void smb2_destroy_context(struct smb2_context *smb2)
         if (smb2->pdu) {
                 smb2_free_pdu(smb2, smb2->pdu);
                 smb2->pdu = NULL;
+        }
+
+        if (smb2->session_key != NULL)
+        {
+          free(smb2->session_key); smb2->session_key = NULL;
         }
 
         free(discard_const(smb2->user));
