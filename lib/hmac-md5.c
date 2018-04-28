@@ -3,8 +3,9 @@
 /*
 ** Function: hmac_md5
 */
-
+#ifndef _MSC_VER
 #include <strings.h>
+#endif
 
 #include "md5.h"
 
