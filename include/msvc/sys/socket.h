@@ -16,7 +16,7 @@ extern "C" {
 
 #include <libsmb2.h>
 
-#define EBADFD WSAENOTSOCK
+#define EBADF WSAENOTSOCK
 
 typedef SSIZE_T ssize_t;
 

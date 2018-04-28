@@ -60,7 +60,7 @@ int nterror_to_errno(uint32_t status) {
         case SMB2_STATUS_OBJECT_NAME_NOT_FOUND:
                 return ENOENT;
         case SMB2_STATUS_FILE_CLOSED:
-                return EBADFD;
+                return EBADF;
         case SMB2_STATUS_MORE_PROCESSING_REQUIRED:
                 return EAGAIN;
         case SMB2_STATUS_ACCESS_DENIED:
