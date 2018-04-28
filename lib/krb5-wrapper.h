@@ -67,8 +67,11 @@ int
 krb5_get_output_token_length(struct private_auth_data *auth_data);
 
 struct private_auth_data *
-krb5_negotiate_reply(struct smb2_context *smb2, const char *server,
-                     const char *user_name);
+krb5_negotiate_reply(struct smb2_context *smb2,
+                     const char *server,
+                     const char *domain,
+                     const char *user_name,
+                     const char *password);
 
 int
 krb5_session_request(struct smb2_context *smb2,

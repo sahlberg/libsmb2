@@ -66,13 +66,6 @@
 
 #include "krb5-wrapper.h"
 
-/** Global Definitions */
-krb5_context    krb5_cctx;
-krb5_ccache     krb5_Ccache;
-krb5_creds      krb5_ccreds;
-krb5_principal  client_princ;
-
-
 void
 krb5_free_auth_data(struct private_auth_data *auth)
 {
@@ -146,122 +139,30 @@ krb5_set_gss_error(struct smb2_context *smb2, char *func,
         free(err_maj);
 }
 
-/** private function
-  A function to build the credentials cache, given the user and password and the realm.
-  By default it uses /etc/krb5.conf provided realm.
-  - This funtion gets the TGT, builds the cache and stores the creds in the cache.
-  - the user will have to call krb5_cc_get_name to get a name for the cache, gss_krb5_ccache_name to load the cache by name using
-  - gssapi.
-  - And then gss_krb5_import_cred to generate the gss creds instead of using gss_acquire_cred.
-  - So the no need to call kinit before using a client of this library
- */
-int
-krb5_create_creds_cache(struct smb2_context *smb2, const char *user, const char *password)
-{
-    krb5_error_code ret = 0;
-    krb5_get_init_creds_opt *cred_opt;
-    int len;
-
-    if (user == NULL || password == NULL)
-    {
-      smb2_set_error(smb2, "User name/ Password not provided");
-      return -1;
-    }
-
-    if (smb2->domain == NULL)
-    {
-      smb2_set_error(smb2, "domain not set for kerberos authentication");
-      return -1;
-    }
-
-    client_princ = NULL;
-
-    ret = krb5_init_context(&krb5_cctx);
-    if (ret)
-    {
-      smb2_set_error(smb2, "Failed to initialize krb5 context - %s", krb5_get_error_message(krb5_cctx, ret));
-      return -1;
-    }
-
-    memset(&krb5_ccreds, 0, sizeof(krb5_ccreds));
-
-    ret = krb5_cc_new_unique(krb5_cctx, "MEMORY", NULL, &krb5_Ccache);
-    if (ret != 0)
-    {
-      smb2_set_error(smb2, "Failed to create krb5 credentials cache - %s", krb5_get_error_message(krb5_cctx, ret));
-      return -1;
-    }
-
-    len = strlen(smb2->domain);
-    ret = krb5_build_principal(krb5_cctx, &client_princ, len, smb2->domain, user, NULL);
-    /* ret = krb5_parse_name(krb5_cctx, user, &client_princ); */
-    if (ret)
-    {
-      smb2_set_error(smb2, "Failed to get the client principal - %s", krb5_get_error_message(krb5_cctx, ret));
-      return -1;
-    }
-
-    ret = krb5_cc_initialize(krb5_cctx, krb5_Ccache, client_princ);
-    if (ret != 0)
-    {
-      smb2_set_error(smb2, "Failed to initialize krb5 credentials cache for the principal - %s", krb5_get_error_message(krb5_cctx, ret));
-      return -1;
-    }
-
-    ret = krb5_get_init_creds_opt_alloc(krb5_cctx, &cred_opt);
-    if (ret != 0)
-    {
-      smb2_set_error(smb2, "Failed to get krb5 credentials cache options - %s", krb5_get_error_message(krb5_cctx, ret));
-      return -1;
-    }
-
-    ret = krb5_get_init_creds_password(krb5_cctx,
-                                       &krb5_ccreds,
-                                       client_princ, password,
-                                       0, NULL, 0, NULL, NULL);
-    if (ret != 0)
-    {
-      smb2_set_error(smb2, "krb5_get_init_creds_password: Failed to init credentials - %s", krb5_get_error_message(krb5_cctx, ret));
-      return -1;
-    }
-
-    ret= krb5_cc_store_cred(krb5_cctx, krb5_Ccache, &krb5_ccreds);
-    if (ret != 0)
-    {
-      smb2_set_error(smb2, "Failed to store the credentials in cache - %s", krb5_get_error_message(krb5_cctx, ret));
-      return -1;
-    }
-
-    return ret;
-}
-
-/** private function -
-  - To release the cache, creds and context
- */
-int
-krb5_remove_creds_cache(struct private_auth_data *auth_data)
-{
-    /* gss_release_cred(NULL, &auth_data->cred); */
-
-    if (client_princ != NULL)
-      krb5_free_principal(krb5_cctx, client_princ);
-
-    krb5_free_cred_contents(krb5_cctx, &krb5_ccreds);
-    krb5_cc_destroy(krb5_cctx, krb5_Ccache);
-    krb5_free_context(krb5_cctx);
-    return 0;
-}
-
 struct private_auth_data *
-krb5_negotiate_reply(struct smb2_context *smb2, const char *server,
-                     const char *user_name) {
+krb5_negotiate_reply(struct smb2_context *smb2,
+                     const char *server,
+                     const char *domain,
+                     const char *user_name,
+                     const char *password)
+{
         struct private_auth_data *auth_data;
         gss_buffer_desc target = GSS_C_EMPTY_BUFFER;
         uint32_t maj, min;
         gss_buffer_desc user;
-        const char *cname = NULL;
+        char user_principal[2048];
+        char *nc_password = NULL;
+        gss_buffer_desc passwd;
         gss_OID_set_desc mechOidSet;
         gss_OID_set_desc wantMech;
+
+        if (smb2->use_cached_creds) {
+                /* Validate the parameters */
+                if (domain == NULL || password == NULL) {
+                        smb2_set_error(smb2, "domain and password must be set while using krb5cc mode");
+                        return NULL;
+                }
+        }
 
         auth_data = malloc(sizeof(struct private_auth_data));
         if (auth_data == NULL) {
@@ -287,13 +188,19 @@ krb5_negotiate_reply(struct smb2_context *smb2, const char *server,
                 return NULL;
         }
 
-        /* TODO: the proper mechanism (SPNEGO vs NTLM vs KRB5) should be
-         * selected based on the SMB negotiation flags */
-        auth_data->mech_type = &gss_mech_spnego;
-        auth_data->cred = GSS_C_NO_CREDENTIAL;
+        if (smb2->use_cached_creds) {
+                memset(&user_principal[0], 0, 2048);
+                if (sprintf(&user_principal[0], "%s@%s", user_name, domain) < 0) {
+                        smb2_set_error(smb2, "Failed to allocate user principal");
+                        return NULL;
+                }
 
-        user.value = discard_const(user_name);
-        user.length = strlen(user_name);
+                user.value = discard_const(user_principal);
+                user.length = strlen(user_principal);
+        } else {
+                user.value = discard_const(user_name);
+                user.length = strlen(user_name);
+        }
 
         /* create a name for the user */
         maj = gss_import_name(&min, &user, GSS_C_NT_USER_NAME,
@@ -304,41 +211,60 @@ krb5_negotiate_reply(struct smb2_context *smb2, const char *server,
                 return NULL;
         }
 
+        /* TODO: the proper mechanism (SPNEGO vs NTLM vs KRB5) should be
+         * selected based on the SMB negotiation flags */
+        auth_data->mech_type = &gss_mech_spnego;
+        auth_data->cred = GSS_C_NO_CREDENTIAL;
+
+        /* Create creds for the user */
+        mechOidSet.count = 1;
+        mechOidSet.elements = discard_const(&gss_mech_spnego);
+
         if (smb2->use_cached_creds) {
-                maj = krb5_create_creds_cache(smb2, user_name, smb2->password);
-                if (maj != 0) {
-                        return NULL;
+                krb5_error_code ret = 0;
+                const char *cname = NULL;
+                krb5_context    krb5_cctx;
+                krb5_ccache     krb5_Ccache;
+
+                /* krb5 cache management */
+                ret = krb5_init_context(&krb5_cctx);
+                if (ret) {
+                    smb2_set_error(smb2, "Failed to initialize krb5 context - %s", krb5_get_error_message(krb5_cctx, ret));
+                    return NULL;
+                }
+                ret = krb5_cc_new_unique(krb5_cctx, "MEMORY", NULL, &krb5_Ccache);
+                if (ret != 0) {
+                    smb2_set_error(smb2, "Failed to create krb5 credentials cache - %s", krb5_get_error_message(krb5_cctx, ret));
+                    return NULL;
                 }
                 cname = krb5_cc_get_name(krb5_cctx, krb5_Ccache);
                 if (cname == NULL) {
-                        smb2_set_error(smb2, "Failed to retrieve the "
-                                       "credentials cache name");
-                        return NULL;
+                    smb2_set_error(smb2, "Failed to retrieve the credentials cache name");
+                    return NULL;
                 }
+
                 maj = gss_krb5_ccache_name(&min, cname, NULL);
                 if (maj != GSS_S_COMPLETE) {
-                        krb5_set_gss_error(smb2, "gss_acquire_cred", maj, min);
+                        krb5_set_gss_error(smb2, "gss_krb5_ccache_name", maj, min);
                         return NULL;
                 }
 
-                maj = gss_krb5_import_cred(&min, krb5_Ccache, client_princ, 0,
-                                           &auth_data->cred);
-                if (maj != GSS_S_COMPLETE) {
-                        krb5_set_gss_error(smb2, "gss_acquire_cred", maj, min);
-                        return NULL;
-                }
+                nc_password = strdup(password);
+                passwd.value = nc_password;
+                passwd.length = strlen(nc_password);
+
+                maj = gss_acquire_cred_with_password(&min, auth_data->user_name, &passwd, 0,
+                                                     &mechOidSet, GSS_C_INITIATE, &auth_data->cred,
+                                                     NULL, NULL);
         } else {
-                /* Create creds for the user */
-                mechOidSet.count = 1;
-                mechOidSet.elements = discard_const(&gss_mech_spnego);
-
                 maj = gss_acquire_cred(&min, auth_data->user_name, 0,
                                        &mechOidSet, GSS_C_INITIATE,
                                        &auth_data->cred, NULL, NULL);
-                if (maj != GSS_S_COMPLETE) {
-                        krb5_set_gss_error(smb2, "gss_acquire_cred", maj, min);
-                        return NULL;
-                }
+        }
+
+        if (maj != GSS_S_COMPLETE) {
+                krb5_set_gss_error(smb2, "gss_acquire_cred", maj, min);
+                return NULL;
         }
 
         if (smb2->sec != SMB2_SEC_UNDEFINED) {
@@ -354,6 +280,11 @@ krb5_negotiate_reply(struct smb2_context *smb2, const char *server,
                         krb5_set_gss_error(smb2, "gss_set_neg_mechs", maj, min);
                         return NULL;
                 }
+        }
+
+        if (nc_password) {
+                free(nc_password);
+                nc_password = NULL;
         }
 
         return auth_data;
