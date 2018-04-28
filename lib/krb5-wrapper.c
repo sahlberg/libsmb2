@@ -291,6 +291,50 @@ krb5_negotiate_reply(struct smb2_context *smb2,
 }
 
 int
+krb5_session_get_session_key(struct smb2_context *smb2,
+                             struct private_auth_data *auth_data)
+{
+        /* Get the Session Key */
+        uint32_t gssMajor, gssMinor;
+        gss_buffer_set_t sessionKey = NULL;
+
+        gssMajor = gss_inquire_sec_context_by_oid(
+                           &gssMinor,
+                           auth_data->context,
+                           GSS_C_INQ_SSPI_SESSION_KEY,
+                           &sessionKey);
+        if (gssMajor != GSS_S_COMPLETE)
+        {
+                krb5_set_gss_error(smb2, "gss_inquire_sec_context_by_oid", gssMajor, gssMinor);
+                return -1;
+        }
+
+        /* The key is in element 0 and the key type OID is in element 1 */
+        if (!sessionKey ||
+            (sessionKey->count < 1) ||
+            !sessionKey->elements[0].value ||
+            (0 == sessionKey->elements[0].length))
+        {
+                smb2_set_error(smb2, "Invalid session key");
+                return -1;
+        }
+
+        smb2->session_key = (uint8_t *) malloc(sessionKey->elements[0].length);
+        if (smb2->session_key == NULL)
+        {
+                smb2_set_error(smb2, "Failed to allocate SessionKey");
+                return -1;
+        }
+        memset(smb2->session_key, 0, sessionKey->elements[0].length);
+        memcpy(smb2->session_key, sessionKey->elements[0].value, sessionKey->elements[0].length);
+        smb2->session_key_size = sessionKey->elements[0].length;
+
+        gss_release_buffer_set(&gssMinor, &sessionKey);
+
+        return 0;
+}
+
+int
 krb5_session_request(struct smb2_context *smb2,
                      struct private_auth_data *auth_data,
                      unsigned char *buf, int len)
@@ -313,14 +357,12 @@ krb5_session_request(struct smb2_context *smb2,
         /* TODO return -errno instead of just -1 */
         /* NOTE: this call is not async, a helper thread should be used if that
          * is an issue */
+        auth_data->req_flags = GSS_C_SEQUENCE_FLAG | GSS_C_MUTUAL_FLAG | GSS_C_REPLAY_FLAG;
         maj = gss_init_sec_context(&min, auth_data->cred,
                                    &auth_data->context,
                                    auth_data->target_name,
                                    discard_const(auth_data->mech_type),
-                                   GSS_C_SEQUENCE_FLAG |
-                                   GSS_C_MUTUAL_FLAG |
-                                   GSS_C_REPLAY_FLAG |
-                                   0, //GSS_C_INTEG_FLAG,
+                                   auth_data->req_flags,
                                    GSS_C_INDEFINITE,
                                    GSS_C_NO_CHANNEL_BINDINGS,
                                    input_token,
@@ -328,6 +370,15 @@ krb5_session_request(struct smb2_context *smb2,
                                    &auth_data->output_token,
                                    NULL,
                                    NULL);
+
+        /* GSS_C_MUTUAL_FLAG expects the acceptor to send a token so
+         * a second call to gss_init_sec_context is required to complete the session.
+         * A second call is required even if the first call returns GSS_S_COMPLETE
+         */
+        if (maj & GSS_S_CONTINUE_NEEDED)
+        {
+            return 0;
+        }
         if (GSS_ERROR(maj)) {
                 krb5_set_gss_error(smb2, "gss_init_sec_context", maj, min);
                 return -1;
