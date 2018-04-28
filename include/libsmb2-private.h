@@ -131,12 +131,14 @@ struct smb2_context {
         void *connect_data;
 
         int credits;
-        
+
         char client_guid[16];
-        
+
         uint32_t tree_id;
         uint64_t message_id;
         uint64_t session_id;
+        uint8_t *session_key;
+        uint8_t session_key_size;
 
         /*
          * For sending PDUs

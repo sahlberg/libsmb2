@@ -485,7 +485,24 @@ session_setup_cb(struct smb2_context *smb2, int status,
                         return;
                 }
                 return;
+#ifdef HAVE_LIBKRB5
+        } else {
+                /* For NTLM the status will be
+                 * SMB2_STATUS_MORE_PROCESSING_REQUIRED and a second call to
+                 * gss_init_sec_context will complete the gss session.
+                 * But for krb5 a second call to gss_init_sec_context is
+                 * required if GSS_C_MUTUAL_FLAG is set
+                 */
+                if (krb5_session_request(smb2, c_data->auth_data,
+                                         rep->security_buffer,
+                                         rep->security_buffer_length) < 0) {
+                        c_data->cb(smb2, -1, NULL, c_data->cb_data);
+                        free_c_data(smb2, c_data);
+                        return;
+                }
+#endif
         }
+
 
         if (status != SMB2_STATUS_SUCCESS) {
                 smb2_close_context(smb2);
@@ -496,6 +513,11 @@ session_setup_cb(struct smb2_context *smb2, int status,
                 free_c_data(smb2, c_data);
                 return;
         }
+#ifdef HAVE_LIBKRB5
+        if (krb5_session_get_session_key(smb2, c_data->auth_data) < 0) {
+                return;
+        }
+#endif
 
         memset(&req, 0, sizeof(struct smb2_tree_connect_request));
         req.flags       = 0;
