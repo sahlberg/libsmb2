@@ -515,6 +515,10 @@ session_setup_cb(struct smb2_context *smb2, int status,
         }
 #ifdef HAVE_LIBKRB5
         if (krb5_session_get_session_key(smb2, c_data->auth_data) < 0) {
+                smb2_close_context(smb2);
+                smb2_set_error(smb2, "Failed to get session key");
+                c_data->cb(smb2, -1, NULL, c_data->cb_data);
+                free_c_data(smb2, c_data);
                 return;
         }
 #endif
@@ -609,7 +613,7 @@ negotiate_cb(struct smb2_context *smb2, int status,
         smb2->dialect           = rep->dialect_revision;
 
         if (rep->security_mode & SMB2_NEGOTIATE_SIGNING_REQUIRED) {
-#ifndef HAVE_OPENSSL_LIBS
+#if !defined(HAVE_OPENSSL_LIBS) || !defined(HAVE_LIBKRB5)
                 smb2_set_error(smb2, "Signing Required by server. Not yet implemented");
                 c_data->cb(smb2, -EINVAL, NULL, c_data->cb_data);
                 free_c_data(smb2, c_data);
