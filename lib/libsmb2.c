@@ -514,9 +514,10 @@ session_setup_cb(struct smb2_context *smb2, int status,
                 return;
         }
 #ifdef HAVE_LIBKRB5
-        if (krb5_session_get_session_key(smb2, c_data->auth_data) < 0) {
+        if (krb5_session_get_session_key(smb2, c_data->auth_data) < 0
+            && smb2->signing_required) {
                 smb2_close_context(smb2);
-                smb2_set_error(smb2, "Failed to get session key");
+                smb2_set_error(smb2, "Signing required by server. Session Key is Not available");
                 c_data->cb(smb2, -1, NULL, c_data->cb_data);
                 free_c_data(smb2, c_data);
                 return;
