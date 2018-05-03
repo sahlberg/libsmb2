@@ -41,6 +41,7 @@
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-private.h"
+#include "smb2-signing.h"
 
 int
 smb2_pad_to_64bit(struct smb2_context *smb2, struct smb2_io_vectors *v)
@@ -80,6 +81,11 @@ smb2_allocate_pdu(struct smb2_context *smb2, enum smb2_command command,
         hdr = &pdu->header;
         
         memcpy(hdr->protocol_id, magic, 4);
+
+        /* ZERO out the signature
+         * Signature calculation happens by zeroing out
+         */
+        memset(hdr->signature, 0, 16);
 
         hdr->struct_size = SMB2_HEADER_SIZE;
         hdr->command = command;
@@ -283,7 +289,7 @@ smb2_encode_header(struct smb2_context *smb2, struct smb2_iovec *iov,
                 smb2_set_uint32(iov, 32, hdr->sync.process_id);
                 smb2_set_uint32(iov, 36, hdr->sync.tree_id);
         }
-        
+
         smb2_set_uint64(iov, 40, hdr->session_id);
         memcpy(iov->buf + 48, hdr->signature, 16);
 }
@@ -334,9 +340,18 @@ smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
         /* Update all the PDU headers in this chain */
         for (p = pdu; p; p = p->next_compound) {
                 smb2_encode_header(smb2, &p->out.iov[0], &p->header);
+#if defined(HAVE_OPENSSL_LIBS) && defined(HAVE_LIBKRB5)
+                if (smb2->signing_required)
+                {
+                        if (smb2_pdu_add_signature(smb2, p) < 0)
+                        {
+                                smb2_set_error(smb2, "Failure to add signature");
+                        }
+                }
+#endif
         }
 
-	smb2_add_to_outqueue(smb2, pdu);
+        smb2_add_to_outqueue(smb2, pdu);
 }
 
 struct smb2_pdu *

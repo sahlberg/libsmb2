@@ -14,7 +14,7 @@ AM_CPPFLAGS = \
 	"-D_U_=__attribute__((unused))" \
 	-Wall -Werror
 
-COMMON_LIBS = ../lib/libsmb2.la -lpopt
+COMMON_LIBS = ../lib/libsmb2.la -lpopt -lcrypto
 smb2_cat_async_LDADD = $(COMMON_LIBS)
 smb2_cat_sync_LDADD = $(COMMON_LIBS)
 smb2_ftruncate_sync_LDADD = $(COMMON_LIBS)
