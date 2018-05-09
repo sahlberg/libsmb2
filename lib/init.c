@@ -221,6 +221,7 @@ struct smb2_context *smb2_init_context(void)
 
         smb2->session_key = NULL;
         smb2->signing_required = 0;
+        memset(smb2->signing_key, 0, SMB2_KEY_SIZE);
 
         return smb2;
 }
