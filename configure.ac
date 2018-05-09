@@ -186,7 +186,7 @@ AC_HAVE_LIBRARY(crypt,
 		], [])
 
 # check for openssl/hmac.h openssl/cmac.h openssl/evp.h openssl/sha.h
-AC_CHECK_HEADERS([openssl/hmac.h openssl/cmac.h openssl/evp.h openssl/sha.h openssl/opensslv.h],
+AC_CHECK_HEADERS([openssl/hmac.h openssl/aes.h openssl/evp.h openssl/sha.h openssl/opensslv.h],
                   [],
                   [AC_MSG_WARN([cannot find openssl headers. Building without SEAL support.])
 		  AC_DEFINE(HAVE_OPENSSL_LIBS, 0,

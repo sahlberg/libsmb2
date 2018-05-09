@@ -68,11 +68,34 @@
 #include "libsmb2-raw.h"
 #include "libsmb2-private.h"
 
+#include <openssl/hmac.h>
+#include <openssl/evp.h>
+#include <openssl/sha.h>
+#include <openssl/opensslv.h>
+
+#define OPENSSL_VER_101	0x1000109fL
+#define OPENSSL_VER_102	0x10002100L
+
 #ifndef HAVE_LIBKRB5
 #include "ntlmssp.h"
 #else
 #include "krb5-wrapper.h"
 #endif
+
+/* strings used to derive SMB signing and encryption keys */
+static const char SMB2AESCMAC[] = "SMB2AESCMAC";
+static const char SmbSign[] = "SmbSign";
+/* The following strings will be used for deriving other keys
+static const char SMB2APP[] = "SMB2APP";
+static const char SmbRpc[] = "SmbRpc";
+static const char SMB2AESCCM[] = "SMB2AESCCM";
+static const char ServerOut[] = "ServerOut";
+static const char ServerIn[] = "ServerIn ";
+static const char SMBSigningKey[] = "SMBSigningKey";
+static const char SMBAppKey[] = "SMBAppKey";
+static const char SMBS2CCipherKey[] = "SMBS2CCipherKey";
+static const char SMBC2SCipherKey[] = "SMBC2SCipherKey";
+*/
 
 #ifndef O_SYNC
 #ifndef O_DSYNC
@@ -136,6 +159,12 @@ smb2_close_context(struct smb2_context *smb2)
         smb2->message_id = 0;
         smb2->session_id = 0;
         smb2->tree_id = 0;
+        memset(smb2->signing_key, 0, SMB2_KEY_SIZE);
+        if (smb2->session_key) {
+                free(smb2->session_key);
+                smb2->session_key = NULL;
+        }
+        smb2->session_key_size = 0;
 }
 
 static int
@@ -465,6 +494,67 @@ tree_connect_cb(struct smb2_context *smb2, int status,
         free_c_data(smb2, c_data);
 }
 
+void smb2_derive_key(
+    uint8_t     *derivation_key,
+    uint32_t    derivation_key_len,
+    const char  *label,
+    uint32_t    label_len,
+    const char  *context,
+    uint32_t    context_len,
+    uint8_t     derived_key[SMB2_KEY_SIZE]
+    )
+{
+        const uint32_t counter = htobe32(1);
+        const uint32_t keylen = htobe32(SMB2_KEY_SIZE * 8);
+        static uint8_t nul = 0;
+        uint8_t final_hash[256/8] = {0};
+        uint8_t input_key[SMB2_KEY_SIZE] = {0};
+        unsigned int finalHashSize = sizeof(final_hash);
+
+#if (OPENSSL_VERSION_NUMBER <= OPENSSL_VER_102)
+        HMAC_CTX hmac = {0};
+
+        memcpy(input_key, derivation_key, MIN(sizeof(input_key), derivation_key_len));
+        HMAC_CTX_init(&hmac);
+        HMAC_Init_ex(&hmac, input_key, sizeof(input_key), EVP_sha256(), NULL);
+
+        /* i */
+        HMAC_Update(&hmac, (unsigned char*) &counter, sizeof(counter));
+        /* label */
+        HMAC_Update(&hmac, (unsigned char*) label, label_len);
+        /* 0x00 */
+        HMAC_Update(&hmac, &nul, sizeof(nul));
+        /* context */
+        HMAC_Update(&hmac, (unsigned char*) context, context_len);
+        /* L */
+        HMAC_Update(&hmac, (unsigned char*) &keylen, sizeof(keylen));
+
+        HMAC_Final(&hmac, final_hash, &finalHashSize);
+        HMAC_CTX_cleanup(&hmac);
+#else
+        HMAC_CTX *hmac = HMAC_CTX_new();
+
+        HMAC_CTX_reset(hmac);
+        memcpy(input_key, derivation_key, MIN(sizeof(input_key), derivation_key_len));
+        HMAC_Init_ex(hmac, input_key, sizeof(input_key), EVP_sha256(), NULL);
+
+        /* i */
+        HMAC_Update(hmac, (unsigned char*) &counter, sizeof(counter));
+        /* label */
+        HMAC_Update(hmac, (unsigned char*) label, label_len);
+        /* 0x00 */
+        HMAC_Update(hmac, &nul, sizeof(nul));
+        /* context */
+        HMAC_Update(hmac, (unsigned char*) context, context_len);
+        /* L */
+        HMAC_Update(hmac, (unsigned char*) &keylen, sizeof(keylen));
+
+        HMAC_Final(hmac, final_hash, &finalHashSize);
+        HMAC_CTX_free(hmac); hmac= NULL;
+#endif
+        memcpy(derived_key, final_hash, MIN(finalHashSize, SMB2_KEY_SIZE));
+}
+
 static void
 session_setup_cb(struct smb2_context *smb2, int status,
                  void *command_data, void *private_data)
@@ -520,6 +610,30 @@ session_setup_cb(struct smb2_context *smb2, int status,
                                "Key is not available %s",
                                smb2_get_error(smb2));
                 c_data->cb(smb2, -1, NULL, c_data->cb_data);
+                free_c_data(smb2, c_data);
+                return;
+        }
+
+        /* Derive the signing key from session key
+         * This is based on negotiated protocol
+         */
+        if (smb2->dialect == SMB2_VERSION_0202 || smb2->dialect == SMB2_VERSION_0210) {
+                /* For SMB2 session key is the signing key */
+                memcpy(smb2->signing_key,
+                       smb2->session_key,
+                       MIN(smb2->session_key_size, SMB2_KEY_SIZE));
+        } else if (smb2->dialect <= SMB2_VERSION_0302) {
+                smb2_derive_key(smb2->session_key,
+                                smb2->session_key_size,
+                                SMB2AESCMAC,
+                                sizeof(SMB2AESCMAC),
+                                SmbSign,
+                                sizeof(SmbSign),
+                                smb2->signing_key);
+        } else if (smb2->dialect > SMB2_VERSION_0302) {
+                smb2_close_context(smb2);
+                smb2_set_error(smb2, "Signing Required by server. Not yet implemented for SMB3.1");
+                c_data->cb(smb2, -EINVAL, NULL, c_data->cb_data);
                 free_c_data(smb2, c_data);
                 return;
         }
@@ -622,12 +736,6 @@ negotiate_cb(struct smb2_context *smb2, int status,
                 return;
 #endif
                 smb2->signing_required = 1;
-                if (smb2->dialect > SMB2_VERSION_0210) {
-                        smb2_set_error(smb2, "Signing Required by server. Not yet implemented for SMB3");
-                        c_data->cb(smb2, -EINVAL, NULL, c_data->cb_data);
-                        free_c_data(smb2, c_data);
-                        return;
-                }
         }
 
 #ifndef HAVE_LIBKRB5

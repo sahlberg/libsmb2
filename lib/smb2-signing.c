@@ -56,18 +56,115 @@
 #include "smb2-signing.h"
 
 #include <openssl/hmac.h>
-#include <openssl/cmac.h>
 #include <openssl/evp.h>
 #include <openssl/sha.h>
+#include <openssl/aes.h>
 #include <openssl/opensslv.h>
 
 #define OPENSSL_VER_101	0x1000109fL
 #define OPENSSL_VER_102	0x10002100L
 
-#define MIN(a,b) (((a)<(b))?(a):(b))
+#define AES128_KEY_LEN     16
 
-#define	SIGNING_KEY_SIZE	16
+static
+int aes_cmac_shift_left(uint8_t data[AES128_KEY_LEN])
+{
+        int i = 0;
+        int cin = 0;
+        int cout = 0;
 
+        for (i = AES128_KEY_LEN - 1; i >= 0; i--) {
+            cout = ((int) data[i] & 0x80) >> 7;
+            data[i] = (data[i] << 1) | cin;
+            cin = cout;
+        }
+
+        return cout;
+}
+
+static
+void aes_cmac_xor(
+    uint8_t data[AES128_KEY_LEN],
+    const uint8_t value[AES128_KEY_LEN]
+    )
+{
+        int i = 0;
+
+        for (i = 0; i < AES128_KEY_LEN; i++) {
+            data[i] ^= value[i];
+        }
+}
+
+static
+void aes_cmac_sub_keys(
+    uint8_t key[AES128_KEY_LEN],
+    uint8_t sub_key1[AES128_KEY_LEN],
+    uint8_t sub_key2[AES128_KEY_LEN]
+    )
+{
+        AES_KEY aes_key;
+        static const uint8_t zero[AES128_KEY_LEN] = {0};
+        static const uint8_t rb[AES128_KEY_LEN] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0x87};
+
+        AES_set_encrypt_key(key, 128, &aes_key);
+        AES_encrypt(zero, sub_key1, &aes_key);
+
+        if (aes_cmac_shift_left(sub_key1)) {
+                aes_cmac_xor(sub_key1, rb);
+        }
+
+        memcpy(sub_key2, sub_key1, AES128_KEY_LEN);
+
+        if (aes_cmac_shift_left(sub_key2)) {
+                aes_cmac_xor(sub_key2, rb);
+        }
+}
+
+void smb3_aes_cmac_128(uint8_t key[AES128_KEY_LEN],
+                   uint8_t * msg,
+                   uint64_t msg_len,
+                   uint8_t mac[AES128_KEY_LEN]
+                  )
+{
+        AES_KEY aes_key;
+        uint8_t sub_key1[AES128_KEY_LEN] = {0};
+        uint8_t sub_key2[AES128_KEY_LEN] = {0};
+        uint8_t scratch[AES128_KEY_LEN] = {0};
+        uint64_t n = (msg_len + AES128_KEY_LEN - 1) / AES128_KEY_LEN;
+        uint64_t rem = msg_len % AES128_KEY_LEN;
+        uint64_t i = 0;
+        int is_last_block_complete = n != 0 && rem == 0;
+
+        if (n == 0) {
+                n = 1;
+        }
+
+        aes_cmac_sub_keys(key, sub_key1, sub_key2);
+
+        memset(mac, 0, AES128_KEY_LEN);
+
+        AES_set_encrypt_key(key, 128, &aes_key);
+
+        for (i = 0; i < n - 1; i++) {
+                aes_cmac_xor(mac, &msg[i*AES128_KEY_LEN]);
+                AES_encrypt(mac, scratch, &aes_key);
+                memcpy(mac, scratch, AES128_KEY_LEN);
+        }
+
+        if (is_last_block_complete) {
+                memcpy(scratch, &msg[i*AES128_KEY_LEN], AES128_KEY_LEN);
+                aes_cmac_xor(scratch, sub_key1);
+        } else {
+                memcpy(scratch, &msg[i*AES128_KEY_LEN], rem);
+                scratch[rem] = 0x80;
+                memset(&scratch[rem + 1], 0, AES128_KEY_LEN - (rem + 1));
+                aes_cmac_xor(scratch, sub_key2);
+        }
+
+        aes_cmac_xor(mac, scratch);
+        AES_encrypt(mac, scratch, &aes_key);
+        memcpy(mac, scratch, AES128_KEY_LEN);
+}
 
 int
 smb2_pdu_add_signature(struct smb2_context *smb2,
@@ -76,8 +173,6 @@ smb2_pdu_add_signature(struct smb2_context *smb2,
 {
         struct smb2_header *hdr = NULL;
         uint8_t signature[16];
-        uint8_t key[SIGNING_KEY_SIZE];
-        int key_len = 0;
         struct smb2_iovec *iov = NULL;
 
         if (pdu->out.niov < 2) {
@@ -98,10 +193,6 @@ smb2_pdu_add_signature(struct smb2_context *smb2,
 
         hdr = &pdu->header;
 
-        memset(&key[0], 0, SIGNING_KEY_SIZE);
-        memcpy(key, smb2->session_key, MIN(smb2->session_key_size, SIGNING_KEY_SIZE));
-        key_len = MIN(smb2->session_key_size, SIGNING_KEY_SIZE);
-
         /* Set the flag before calculating signature */
         iov = &pdu->out.iov[0];
         hdr->flags |= SMB2_FLAGS_SIGNED;
@@ -112,9 +203,28 @@ smb2_pdu_add_signature(struct smb2_context *smb2,
          */
 
         if (smb2->dialect > SMB2_VERSION_0210) {
-                /* TODO signing is not implemented for SMB versions higher than 0210 */
-                smb2_set_error(smb2, "Signing is not supported for SMB3");
-                return -1;
+                int i = 0, offset = 0;
+                uint8_t aes_mac[AES_BLOCK_SIZE];
+                /* combine the buffers into one */
+                uint8_t *msg = NULL;
+                msg = (uint8_t *) malloc(4);
+                if (msg == NULL) {
+                        smb2_set_error(smb2, "Failed to allocate buffer");
+                        return -1;
+                }
+
+                for (i=0; i < pdu->out.niov; i++) {
+                        msg = (uint8_t *)realloc(msg, offset + pdu->out.iov[i].len);
+                        if (msg == NULL) {
+                                smb2_set_error(smb2, "Failed to allocate buffer");
+                                return -1;
+                        }
+                        memcpy(msg+offset, pdu->out.iov[i].buf, pdu->out.iov[i].len);
+                        offset += pdu->out.iov[i].len;
+                }
+                smb3_aes_cmac_128(smb2->signing_key, msg, offset, aes_mac);
+                free(msg);
+                memcpy(&signature[0], aes_mac, SMB2_SIGNATURE_SIZE);
         } else {
                 uint8_t sha_digest[SHA256_DIGEST_LENGTH];
                 unsigned int sha_digest_length = SHA256_DIGEST_LENGTH;
@@ -122,7 +232,7 @@ smb2_pdu_add_signature(struct smb2_context *smb2,
 #if (OPENSSL_VERSION_NUMBER <= OPENSSL_VER_102)
                 HMAC_CTX ctx;
                 HMAC_CTX_init(&ctx);
-                HMAC_Init_ex(&ctx, &key[0], key_len, EVP_sha256(), NULL);
+                HMAC_Init_ex(&ctx, &smb2->signing_key[0], SMB2_KEY_SIZE, EVP_sha256(), NULL);
                 for (i=0; i < pdu->out.niov; i++) {
                         HMAC_Update(&ctx, pdu->out.iov[i].buf, pdu->out.iov[i].len);
                 }
@@ -131,7 +241,7 @@ smb2_pdu_add_signature(struct smb2_context *smb2,
 #else
                 HMAC_CTX *ctx = HMAC_CTX_new();
                 HMAC_CTX_reset(ctx);
-                HMAC_Init_ex(ctx, &key[0], key_len, EVP_sha256(), NULL);
+                HMAC_Init_ex(ctx, &smb2->signing_key[0], SMB2_KEY_SIZE, EVP_sha256(), NULL);
                 for (i=0; i < pdu->out.niov; i++) {
                         HMAC_Update(ctx, pdu->out.iov[i].buf, pdu->out.iov[i].len);
                 }
