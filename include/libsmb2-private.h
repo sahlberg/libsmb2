@@ -27,6 +27,8 @@
 extern "C" {
 #endif
 
+#define MIN(a,b) (((a)<(b))?(a):(b))
+
 #ifndef discard_const
 #define discard_const(ptr) ((void *)((intptr_t)(ptr)))
 #endif
@@ -37,7 +39,9 @@ extern "C" {
 
 #define SMB2_SPL_SIZE 4
 #define SMB2_HEADER_SIZE 64
+
 #define SMB2_SIGNATURE_SIZE 16
+#define SMB2_KEY_SIZE 16
 
 #define SMB2_MAX_VECTORS 256
 
@@ -142,6 +146,7 @@ struct smb2_context {
         uint8_t session_key_size;
 
         uint8_t signing_required;
+        uint8_t signing_key[SMB2_KEY_SIZE];
 
         /*
          * For sending PDUs
