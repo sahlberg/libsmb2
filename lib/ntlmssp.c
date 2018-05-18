@@ -311,7 +311,7 @@ encode_temp(struct auth_data *auth_data, uint64_t t, char *client_challenge,
 }
 
 static int
-encode_ntlm_auth(struct auth_data *auth_data,
+encode_ntlm_auth(struct smb2_context *smb2, struct auth_data *auth_data,
                  char *server_challenge)
 {
         int ret = -1;
@@ -335,6 +335,11 @@ encode_ntlm_auth(struct auth_data *auth_data,
         tv.tv_sec = time(NULL);
         tv.tv_usec = 0;
         t = timeval_to_win(&tv);
+
+        if (auth_data->password == NULL) {
+                smb2_set_error(smb2, "No password set, can not use NTLM\n");
+                goto finished;
+        }
 
         /*
          * Generate Concatenation of(NTProofStr, temp)
@@ -506,7 +511,7 @@ finished:
 }
 
 int
-ntlmssp_generate_blob(struct auth_data *auth_data,
+ntlmssp_generate_blob(struct smb2_context *smb2, struct auth_data *auth_data,
                       unsigned char *input_buf, int input_len,
                       unsigned char **output_buf, uint16_t *output_len)
 {
@@ -522,7 +527,7 @@ ntlmssp_generate_blob(struct auth_data *auth_data,
                                            input_len) < 0) {
                         return -1;
                 }
-                if (encode_ntlm_auth(auth_data,
+                if (encode_ntlm_auth(smb2, auth_data,
                                      (char *)&auth_data->ntlm_buf[24]) < 0) {
                         return -1;
                 }
