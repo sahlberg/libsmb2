@@ -17,12 +17,22 @@ option(ENABLE_EXAMPLES "Build example programs" OFF)
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
 
 find_package(GSSAPI)
+find_package(OpenSSL)
+
+if(GSSAPI_FOUND)
+  add_definitions(-DHAVE_LIBKRB5)
+endif()
+
+if(OPENSSL_FOUND)
+  add_definitions(-DHAVE_OPENSSL_LIBS)
+endif()
 
 include(cmake/ConfigureChecks.cmake)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR}
                     include
-                    include/smb2)
+                    include/smb2
+                    ${OPENSSL_INCLUDE_DIR})
 
 set(core_DEPENDS ${GSSAPI_LIBRARIES} CACHE STRING "" FORCE)
 

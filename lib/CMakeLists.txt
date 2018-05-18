@@ -31,6 +31,10 @@ set(SOURCES alloc.c
             timestamps.c
             unicode.c)
 
+if(OPENSSL_FOUND)
+  list(APPEND SOURCES smb2-signing.c)
+endif()
+
 add_library(smb2 ${SOURCES})
 target_link_libraries(smb2 PUBLIC ${core_DEPENDS} ${CORE_LIBRARIES})
 set_target_properties(smb2 PROPERTIES
