@@ -602,42 +602,62 @@ session_setup_cb(struct smb2_context *smb2, int status,
                 free_c_data(smb2, c_data);
                 return;
         }
-#ifdef HAVE_LIBKRB5
-        if (smb2->signing_required &&
-            krb5_session_get_session_key(smb2, c_data->auth_data) < 0) {
-                smb2_close_context(smb2);
-                smb2_set_error(smb2, "Signing required by server. Session "
-                               "Key is not available %s",
-                               smb2_get_error(smb2));
-                c_data->cb(smb2, -1, NULL, c_data->cb_data);
-                free_c_data(smb2, c_data);
-                return;
-        }
 
-        /* Derive the signing key from session key
-         * This is based on negotiated protocol
-         */
-        if (smb2->dialect == SMB2_VERSION_0202 || smb2->dialect == SMB2_VERSION_0210) {
-                /* For SMB2 session key is the signing key */
-                memcpy(smb2->signing_key,
-                       smb2->session_key,
-                       MIN(smb2->session_key_size, SMB2_KEY_SIZE));
-        } else if (smb2->dialect <= SMB2_VERSION_0302) {
-                smb2_derive_key(smb2->session_key,
-                                smb2->session_key_size,
-                                SMB2AESCMAC,
-                                sizeof(SMB2AESCMAC),
-                                SmbSign,
-                                sizeof(SmbSign),
-                                smb2->signing_key);
-        } else if (smb2->dialect > SMB2_VERSION_0302) {
-                smb2_close_context(smb2);
-                smb2_set_error(smb2, "Signing Required by server. Not yet implemented for SMB3.1");
-                c_data->cb(smb2, -EINVAL, NULL, c_data->cb_data);
-                free_c_data(smb2, c_data);
-                return;
-        }
+        if (smb2->signing_required) {
+                uint8_t zero_key[SMB2_KEY_SIZE] = {0};
+                int have_valid_session_key = 1;
+#ifdef HAVE_LIBKRB5
+                if (krb5_session_get_session_key(smb2, c_data->auth_data) < 0) {
+                        have_valid_session_key = 0;
+                }
+#else
+                if (ntlmssp_get_session_key(c_data->auth_data,
+                                            &smb2->session_key,
+                                            &smb2->session_key_size) < 0) {
+                        have_valid_session_key = 0;
+                }
 #endif
+                /* check if the session key is proper */
+                if (smb2->session_key == NULL || memcmp(smb2->session_key, zero_key, SMB2_KEY_SIZE) == 0) {
+                        have_valid_session_key = 0;
+                }
+                if (have_valid_session_key == 0)
+                {
+                        smb2_close_context(smb2);
+                        smb2_set_error(smb2, "Signing required by server. Session "
+                                       "Key is not available %s",
+                                       smb2_get_error(smb2));
+                        c_data->cb(smb2, -1, NULL, c_data->cb_data);
+                        free_c_data(smb2, c_data);
+                        return;
+                }
+
+                /* Derive the signing key from session key
+                 * This is based on negotiated protocol
+                 */
+                if (smb2->dialect == SMB2_VERSION_0202 ||
+                    smb2->dialect == SMB2_VERSION_0210) {
+                        /* For SMB2 session key is the signing key */
+                        memcpy(smb2->signing_key,
+                               smb2->session_key,
+                               MIN(smb2->session_key_size, SMB2_KEY_SIZE));
+                } else if (smb2->dialect <= SMB2_VERSION_0302) {
+                        smb2_derive_key(smb2->session_key,
+                                        smb2->session_key_size,
+                                        SMB2AESCMAC,
+                                        sizeof(SMB2AESCMAC),
+                                        SmbSign,
+                                        sizeof(SmbSign),
+                                        smb2->signing_key);
+                } else if (smb2->dialect > SMB2_VERSION_0302) {
+                        smb2_close_context(smb2);
+                        smb2_set_error(smb2, "Signing Required by server. "
+                                             "Not yet implemented for SMB3.1");
+                        c_data->cb(smb2, -EINVAL, NULL, c_data->cb_data);
+                        free_c_data(smb2, c_data);
+                        return;
+                }
+        }
 
         memset(&req, 0, sizeof(struct smb2_tree_connect_request));
         req.flags       = 0;
@@ -729,7 +749,7 @@ negotiate_cb(struct smb2_context *smb2, int status,
         smb2->dialect           = rep->dialect_revision;
 
         if (rep->security_mode & SMB2_NEGOTIATE_SIGNING_REQUIRED) {
-#if !defined(HAVE_OPENSSL_LIBS) || !defined(HAVE_LIBKRB5)
+#if !defined(HAVE_OPENSSL_LIBS)
                 smb2_set_error(smb2, "Signing Required by server. Not yet implemented");
                 c_data->cb(smb2, -EINVAL, NULL, c_data->cb_data);
                 free_c_data(smb2, c_data);
