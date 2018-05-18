@@ -49,6 +49,8 @@ ntlmssp_generate_blob(struct auth_data *auth_data,
 void
 ntlmssp_destroy_context(struct auth_data *auth);
 
+int ntlmssp_get_session_key(struct auth_data *auth, uint8_t **key, uint8_t *key_size);
+
 #ifdef __cplusplus
 }
 #endif

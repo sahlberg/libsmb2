@@ -83,6 +83,8 @@ struct auth_data {
         const char *domain;
         const char *workstation;
         const char *client_challenge;
+
+        uint8_t exported_session_key[SMB2_KEY_SIZE];
 };
 
 #define NEGOTIATE_MESSAGE      0x00000001
@@ -99,6 +101,7 @@ struct auth_data {
 #define NTLMSSP_REQUEST_TARGET                             0x00000004
 #define NTLMSSP_NEGOTIATE_OEM                              0x00000002
 #define NTLMSSP_NEGOTIATE_UNICODE                          0x00000001
+#define NTLMSSP_NEGOTIATE_KEY_EXCH                         0x40000000
 
 void
 ntlmssp_destroy_context(struct auth_data *auth)
@@ -106,6 +109,7 @@ ntlmssp_destroy_context(struct auth_data *auth)
         free(auth->ntlm_buf);
         free(auth->buf);
         free(auth);
+        memset(auth->exported_session_key, 0, SMB2_KEY_SIZE);
 }
 
 struct auth_data *
@@ -128,6 +132,8 @@ ntlmssp_init_context(const char *user,
         auth_data->domain      = domain;
         auth_data->workstation = workstation;
         auth_data->client_challenge = client_challenge;
+
+        memset(auth_data->exported_session_key, 0, SMB2_KEY_SIZE);
 
         return auth_data;
 }
@@ -323,6 +329,8 @@ encode_ntlm_auth(struct auth_data *auth_data,
         char *server_name_buf;
         int server_name_len;
         uint32_t u32;
+        uint32_t server_neg_flags;
+        unsigned char key_exch[SMB2_KEY_SIZE];
 
         tv.tv_sec = time(NULL);
         tv.tv_usec = 0;
@@ -336,6 +344,10 @@ encode_ntlm_auth(struct auth_data *auth_data,
             < 0) {
                 goto finished;
         }
+
+        /* get the server neg flags */
+        memcpy(&server_neg_flags, &auth_data->ntlm_buf[20], 4);
+        server_neg_flags = le32toh(server_neg_flags);
 
         memcpy(&u32, &auth_data->ntlm_buf[40], 4);
         u32 = le32toh(u32);
@@ -361,6 +373,11 @@ encode_ntlm_auth(struct auth_data *auth_data,
         auth_data->len = 0;
         auth_data->allocated = 0;
 
+        /* get the NTLMv2 Key-Exchange Key
+           For NTLMv2 - Key Exchange Key is the Session Base Key
+         */
+        hmac_md5(NTProofStr, 16, ResponseKeyNT, 16, key_exch);
+        memcpy(auth_data->exported_session_key, key_exch, 16);
 
         /*
          * Generate AUTHENTICATE_MESSAGE
@@ -517,4 +534,26 @@ ntlmssp_generate_blob(struct auth_data *auth_data,
         return 0;
 }
 
+int
+ntlmssp_get_session_key(struct auth_data *auth,
+                        uint8_t **key,
+                        uint8_t *key_size)
+{
+        uint8_t *mkey = NULL;
+
+        if (auth == NULL || key == NULL || key_size == NULL) {
+                return -1;
+        }
+
+        mkey = (uint8_t *) malloc(SMB2_KEY_SIZE);
+        if (mkey == NULL) {
+                return -1;
+        }
+        memcpy(mkey, auth->exported_session_key, SMB2_KEY_SIZE);
+
+        *key = mkey;
+        *key_size = SMB2_KEY_SIZE;
+
+        return 0;
+}
 #endif /* HAVE_LIBKRB5 */
