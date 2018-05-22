@@ -63,6 +63,8 @@ smb2_set_domain
 smb2_set_workstation
 smb2_stat
 smb2_stat_async
+smb2_statvfs
+smb2_statvfs_async
 smb2_telldir
 smb2_truncate
 smb2_truncate_async

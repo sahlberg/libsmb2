@@ -1456,7 +1456,9 @@ struct stat_cb_data {
         void *cb_data;
 
         uint32_t status;
-        struct smb2_stat_64 *st;
+        uint8_t info_type;
+        uint8_t file_info_class;
+        void *st;
 };
 
 static void
@@ -1466,6 +1468,7 @@ fstat_cb_1(struct smb2_context *smb2, int status,
         struct stat_cb_data *stat_data = private_data;
         struct smb2_query_info_reply *rep = command_data;
         struct smb2_file_all_info *fs = rep->output_buffer;
+        struct smb2_stat_64 *st = stat_data->st;
 
         if (status != SMB2_STATUS_SUCCESS) {
                 stat_data->cb(smb2, -nterror_to_errno(status),
@@ -1474,26 +1477,26 @@ fstat_cb_1(struct smb2_context *smb2, int status,
                 return;
         }
 
-        stat_data->st->smb2_type = SMB2_TYPE_FILE;
+        st->smb2_type = SMB2_TYPE_FILE;
         if (fs->basic.file_attributes & SMB2_FILE_ATTRIBUTE_DIRECTORY) {
-                stat_data->st->smb2_type = SMB2_TYPE_DIRECTORY;
+                st->smb2_type = SMB2_TYPE_DIRECTORY;
         }
-        stat_data->st->smb2_nlink      = fs->standard.number_of_links;
-        stat_data->st->smb2_ino        = fs->index_number;
-        stat_data->st->smb2_size       = fs->standard.end_of_file;
-        stat_data->st->smb2_atime      = fs->basic.last_access_time.tv_sec;
-        stat_data->st->smb2_atime_nsec = fs->basic.last_access_time.tv_usec *
+        st->smb2_nlink      = fs->standard.number_of_links;
+        st->smb2_ino        = fs->index_number;
+        st->smb2_size       = fs->standard.end_of_file;
+        st->smb2_atime      = fs->basic.last_access_time.tv_sec;
+        st->smb2_atime_nsec = fs->basic.last_access_time.tv_usec *
                 1000;
-        stat_data->st->smb2_mtime      = fs->basic.last_write_time.tv_sec;
-        stat_data->st->smb2_mtime_nsec = fs->basic.last_write_time.tv_usec *
+        st->smb2_mtime      = fs->basic.last_write_time.tv_sec;
+        st->smb2_mtime_nsec = fs->basic.last_write_time.tv_usec *
                 1000;
-        stat_data->st->smb2_ctime      = fs->basic.change_time.tv_sec;
-        stat_data->st->smb2_ctime_nsec = fs->basic.change_time.tv_usec *
+        st->smb2_ctime      = fs->basic.change_time.tv_sec;
+        st->smb2_ctime_nsec = fs->basic.change_time.tv_usec *
                 1000;
 
         smb2_free_data(smb2, fs);
 
-        stat_data->cb(smb2, 0, stat_data->st, stat_data->cb_data);
+        stat_data->cb(smb2, 0, st, stat_data->cb_data);
         free(stat_data);
 }
 
@@ -1537,8 +1540,8 @@ smb2_fstat_async(struct smb2_context *smb2, struct smb2fh *fh,
 }
 
 static void
-stat_cb_3(struct smb2_context *smb2, int status,
-          void *command_data _U_, void *private_data)
+getinfo_cb_3(struct smb2_context *smb2, int status,
+             void *command_data _U_, void *private_data)
 {
         struct stat_cb_data *stat_data = private_data;
 
@@ -1552,12 +1555,11 @@ stat_cb_3(struct smb2_context *smb2, int status,
 }
 
 static void
-stat_cb_2(struct smb2_context *smb2, int status,
-          void *command_data, void *private_data)
+getinfo_cb_2(struct smb2_context *smb2, int status,
+             void *command_data, void *private_data)
 {
         struct stat_cb_data *stat_data = private_data;
         struct smb2_query_info_reply *rep = command_data;
-        struct smb2_file_all_info *fs = rep->output_buffer;
 
         if (stat_data->status == SMB2_STATUS_SUCCESS) {
                 stat_data->status = status;
@@ -1566,29 +1568,45 @@ stat_cb_2(struct smb2_context *smb2, int status,
                 return;
         }
 
-        stat_data->st->smb2_type = SMB2_TYPE_FILE;
-        if (fs->basic.file_attributes & SMB2_FILE_ATTRIBUTE_DIRECTORY) {
-                stat_data->st->smb2_type = SMB2_TYPE_DIRECTORY;
-        }
-        stat_data->st->smb2_nlink      = fs->standard.number_of_links;
-        stat_data->st->smb2_ino        = fs->index_number;
-        stat_data->st->smb2_size       = fs->standard.end_of_file;
-        stat_data->st->smb2_atime      = fs->basic.last_access_time.tv_sec;
-        stat_data->st->smb2_atime_nsec = fs->basic.last_access_time.tv_usec *
-                1000;
-        stat_data->st->smb2_mtime      = fs->basic.last_write_time.tv_sec;
-        stat_data->st->smb2_mtime_nsec = fs->basic.last_write_time.tv_usec *
-                1000;
-        stat_data->st->smb2_ctime      = fs->basic.change_time.tv_sec;
-        stat_data->st->smb2_ctime_nsec = fs->basic.change_time.tv_usec *
-                1000;
+        if (stat_data->info_type == SMB2_0_INFO_FILE &&
+            stat_data->file_info_class == SMB2_FILE_ALL_INFORMATION) {
+                struct smb2_stat_64 *st = stat_data->st;
+                struct smb2_file_all_info *fs = rep->output_buffer;
 
-        smb2_free_data(smb2, fs);
+                st->smb2_type = SMB2_TYPE_FILE;
+                if (fs->basic.file_attributes & SMB2_FILE_ATTRIBUTE_DIRECTORY) {
+                        st->smb2_type = SMB2_TYPE_DIRECTORY;
+                }
+                st->smb2_nlink      = fs->standard.number_of_links;
+                st->smb2_ino        = fs->index_number;
+                st->smb2_size       = fs->standard.end_of_file;
+                st->smb2_atime      = fs->basic.last_access_time.tv_sec;
+                st->smb2_atime_nsec = fs->basic.last_access_time.tv_usec *
+                        1000;
+                st->smb2_mtime      = fs->basic.last_write_time.tv_sec;
+                st->smb2_mtime_nsec = fs->basic.last_write_time.tv_usec *
+                        1000;
+                st->smb2_ctime      = fs->basic.change_time.tv_sec;
+                st->smb2_ctime_nsec = fs->basic.change_time.tv_usec *
+                        1000;
+        } else if (stat_data->info_type == SMB2_0_INFO_FILESYSTEM &&
+                   stat_data->file_info_class == SMB2_FILE_FS_FULL_SIZE_INFORMATION) {
+                struct smb2_statvfs *statvfs = stat_data->st;
+                struct smb2_file_fs_full_size_info *vfs = rep->output_buffer;
+
+                memset(statvfs, 0, sizeof(struct smb2_statvfs));
+                statvfs->f_bsize = vfs->bytes_per_sector *
+                        vfs->sectors_per_allocation_unit;
+                statvfs->f_blocks = vfs->total_allocation_units;
+                statvfs->f_bfree = statvfs->f_bavail =
+                        vfs->caller_available_allocation_units;
+        }
+        smb2_free_data(smb2, rep->output_buffer);
 }
 
 static void
-stat_cb_1(struct smb2_context *smb2, int status,
-          void *command_data _U_, void *private_data)
+getinfo_cb_1(struct smb2_context *smb2, int status,
+             void *command_data _U_, void *private_data)
 {
         struct stat_cb_data *stat_data = private_data;
 
@@ -1597,10 +1615,11 @@ stat_cb_1(struct smb2_context *smb2, int status,
         }
 }
 
-int
-smb2_stat_async(struct smb2_context *smb2, const char *path,
-                struct smb2_stat_64 *st,
-                smb2_command_cb cb, void *cb_data)
+static int
+smb2_getinfo_async(struct smb2_context *smb2, const char *path,
+                   uint8_t info_type, uint8_t file_info_class,
+                   void *st,
+                   smb2_command_cb cb, void *cb_data)
 {
         struct stat_cb_data *stat_data;
         struct smb2_create_request cr_req;
@@ -1617,6 +1636,8 @@ smb2_stat_async(struct smb2_context *smb2, const char *path,
 
         stat_data->cb = cb;
         stat_data->cb_data = cb_data;
+        stat_data->info_type = info_type;
+        stat_data->file_info_class = file_info_class;
         stat_data->st = st;
 
         /* CREATE command */
@@ -1630,7 +1651,7 @@ smb2_stat_async(struct smb2_context *smb2, const char *path,
         cr_req.create_options = 0;
         cr_req.name = path;
 
-        pdu = smb2_cmd_create_async(smb2, &cr_req, stat_cb_1, stat_data);
+        pdu = smb2_cmd_create_async(smb2, &cr_req, getinfo_cb_1, stat_data);
         if (pdu == NULL) {
                 smb2_set_error(smb2, "Failed to create create command");
                 free(stat_data);
@@ -1639,15 +1660,15 @@ smb2_stat_async(struct smb2_context *smb2, const char *path,
 
         /* QUERY INFO command */
         memset(&qi_req, 0, sizeof(struct smb2_query_info_request));
-        qi_req.info_type = SMB2_0_INFO_FILE;
-        qi_req.file_info_class = SMB2_FILE_ALL_INFORMATION;
+        qi_req.info_type = info_type;
+        qi_req.file_info_class = file_info_class;
         qi_req.output_buffer_length = 65535;
         qi_req.additional_information = 0;
         qi_req.flags = 0;
         memcpy(qi_req.file_id, compound_file_id, SMB2_FD_SIZE);
 
         next_pdu = smb2_cmd_query_info_async(smb2, &qi_req,
-                                             stat_cb_2, stat_data);
+                                             getinfo_cb_2, stat_data);
         if (next_pdu == NULL) {
                 smb2_set_error(smb2, "Failed to create query command");
                 free(stat_data);
@@ -1661,7 +1682,7 @@ smb2_stat_async(struct smb2_context *smb2, const char *path,
         cl_req.flags = SMB2_CLOSE_FLAG_POSTQUERY_ATTRIB;
         memcpy(cl_req.file_id, compound_file_id, SMB2_FD_SIZE);
 
-        next_pdu = smb2_cmd_close_async(smb2, &cl_req, stat_cb_3, stat_data);
+        next_pdu = smb2_cmd_close_async(smb2, &cl_req, getinfo_cb_3, stat_data);
         if (next_pdu == NULL) {
                 stat_data->cb(smb2, -ENOMEM, NULL, stat_data->cb_data);
                 free(stat_data);
@@ -1673,6 +1694,28 @@ smb2_stat_async(struct smb2_context *smb2, const char *path,
         smb2_queue_pdu(smb2, pdu);
 
         return 0;
+}
+
+int
+smb2_stat_async(struct smb2_context *smb2, const char *path,
+                struct smb2_stat_64 *st,
+                smb2_command_cb cb, void *cb_data)
+{
+        return smb2_getinfo_async(smb2, path,
+                                  SMB2_0_INFO_FILE,
+                                  SMB2_FILE_ALL_INFORMATION,
+                                  st, cb, cb_data);
+}
+
+int
+smb2_statvfs_async(struct smb2_context *smb2, const char *path,
+                   struct smb2_statvfs *statvfs,
+                   smb2_command_cb cb, void *cb_data)
+{
+        return smb2_getinfo_async(smb2, path,
+                                  SMB2_0_INFO_FILESYSTEM,
+                                  SMB2_FILE_FS_FULL_SIZE_INFORMATION,
+                                  statvfs, cb, cb_data);
 }
 
 struct trunc_cb_data {

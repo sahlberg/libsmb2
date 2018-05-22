@@ -48,6 +48,20 @@ struct smb2_stat_64 {
 	uint64_t smb2_ctime_nsec;
 };
 
+struct smb2_statvfs {
+	uint32_t	f_bsize;
+	uint32_t	f_frsize;
+	uint64_t	f_blocks;
+	uint64_t	f_bfree;
+	uint64_t	f_bavail;
+	uint32_t	f_files;
+	uint32_t	f_ffree;
+	uint32_t	f_favail;
+	uint32_t	f_fsid;
+	uint32_t	f_flag;
+	uint32_t	f_namemax;
+};
+
 struct smb2dirent {
         const char *name;
         struct smb2_stat_64 st;
@@ -631,6 +645,30 @@ int smb2_mkdir_async(struct smb2_context *smb2, const char *path,
 int smb2_mkdir(struct smb2_context *smb2, const char *path);
 
 /*
+ * STATVFS
+ */
+/*
+ * Async statvfs()
+ *
+ * Returns
+ *  0     : The operation was initiated. Result of the operation will be
+ *          reported through the callback function.
+ * -errno : There was an error. The callback function will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success. Command_data is struct smb2_statvfs
+ * -errno : An error occured.
+ */
+int smb2_statvfs_async(struct smb2_context *smb2, const char *path,
+                       struct smb2_statvfs *statvfs,
+                       smb2_command_cb cb, void *cb_data);
+/*
+ * Sync statvfs()
+ */
+int smb2_statvfs(struct smb2_context *smb2, const char *path,
+                 struct smb2_statvfs *statvfs);
+
+/*
  * FSTAT
  */
 /*
@@ -649,7 +687,7 @@ int smb2_fstat_async(struct smb2_context *smb2, struct smb2fh *fh,
                      struct smb2_stat_64 *st,
                      smb2_command_cb cb, void *cb_data);
 /*
- * Sync lstat()
+ * Sync fstat()
  */
 int smb2_fstat(struct smb2_context *smb2, struct smb2fh *fh,
                struct smb2_stat_64 *st);
