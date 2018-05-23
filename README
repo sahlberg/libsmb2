@@ -158,3 +158,22 @@ Static library:
 	cmake -G "Visual Studio 15 2017" -DBUILD_SHARED_LIBS=0 ..
 	cmake --build . --config RelWithDebInfo
 
+ iOS
+-------------------
+
+You can add AMSMB2 (https://github.com/amosavian/AMSMB2) fraemwork which 
+incorporates precompiled libsmb2.
+
+It is written in Swift but can be used in both Swift and Objective-C codes.
+
+If you want to rebuild libsmb2 in AMSMB2, please follow these steps:
+
+	git clone https://github.com/amosavian/AMSMB2
+	cd AMSMB2/buildtools
+	./build.sh
+
+iOS precompiled binary does not include Kerberos support by default.
+If you want build library with Kerberos support execute this script instead:
+
+	./build-with-krb5.sh
+
