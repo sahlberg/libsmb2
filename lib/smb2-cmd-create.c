@@ -50,8 +50,9 @@ smb2_encode_create_request(struct smb2_context *smb2,
                            struct smb2_pdu *pdu,
                            struct smb2_create_request *req)
 {
-        int len;
+        int i, len;
         uint8_t *buf;
+        uint16_t ch;
         struct ucs2 *name = NULL;
         struct smb2_iovec *iov;
 
@@ -103,6 +104,13 @@ smb2_encode_create_request(struct smb2_context *smb2,
                                         buf,
                                         2 * name->len,
                                         free);
+                /* Convert '/' to '\' */
+                for (i = 0; i < name->len; i++) {
+                        smb2_get_uint16(iov, i * 2, &ch);
+                        if (ch == 0x002f) {
+                                smb2_set_uint16(iov, i * 2, 0x005c);
+                        }
+                }
         }
         free(name);
 
