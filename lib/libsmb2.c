@@ -1595,7 +1595,8 @@ getinfo_cb_2(struct smb2_context *smb2, int status,
                 struct smb2_file_fs_full_size_info *vfs = rep->output_buffer;
 
                 memset(statvfs, 0, sizeof(struct smb2_statvfs));
-                statvfs->f_bsize = vfs->bytes_per_sector *
+                statvfs->f_bsize = statvfs->f_frsize =
+                        vfs->bytes_per_sector *
                         vfs->sectors_per_allocation_unit;
                 statvfs->f_blocks = vfs->total_allocation_units;
                 statvfs->f_bfree = statvfs->f_bavail =
