@@ -175,6 +175,9 @@ smb2_pdu_add_signature(struct smb2_context *smb2,
         uint8_t signature[16];
         struct smb2_iovec *iov = NULL;
 
+        if (pdu->header.command == SMB2_SESSION_SETUP) {
+                return 0;
+        }
         if (pdu->out.niov < 2) {
                 smb2_set_error(smb2, "Too few vectors to sign");
                 return -1;
