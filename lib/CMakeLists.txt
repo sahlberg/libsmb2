@@ -44,6 +44,9 @@ if(NOT MSVC)
   add_definitions("-D_U_=__attribute__((unused))")
 else()
   add_definitions("-D_U_=")
+  if(CMAKE_SYSTEM_NAME STREQUAL WindowsStore)
+    add_definitions("-D_MSC_UWP")
+  endif()
 endif()
 
 install(TARGETS smb2 EXPORT smb2
