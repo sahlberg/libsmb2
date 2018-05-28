@@ -335,19 +335,34 @@ void smb2_set_security_mode(struct smb2_context *smb2, uint16_t security_mode)
 
 static void smb2_set_password_from_file(struct smb2_context *smb2)
 {
-#ifndef _WIN32
-        char *name;
+        char *name = NULL;
         FILE *fh;
         char buf[256];
         char *domain, *user, *password;
         int finished;
 
-        /* Not sure if getenv() is available under windows. */
+#ifdef _MSC_UWP
+// GetEnvironmentVariable is not available for UWP up to 10.0.16299 SDK
+#if defined(NTDDI_WIN10_RS3) && (NTDDI_VERSION >= NTDDI_WIN10_RS3)
+        uint32_t name_len = GetEnvironmentVariableA("NTLM_USER_FILE", NULL, 0);
+        if (name_len > 0) {
+                name = (char*)malloc(name_len + 1);
+                if (name == NULL) {
+                        return;
+                }
+                GetEnvironmentVariableA("NTLM_USER_FILE", name, name_len);
+        }
+#endif
+#else
         name = getenv("NTLM_USER_FILE");
+#endif
         if (name == NULL) {
                 return;
         }
         fh = fopen(name, "r");
+#ifdef _MSC_UWP
+        free(name);
+#endif
         while (!feof(fh)) {
                 if (fgets(buf, 256, fh) == NULL) {
                         break;
@@ -386,7 +401,6 @@ static void smb2_set_password_from_file(struct smb2_context *smb2)
                 smb2_set_password(smb2, password);
         }
         fclose(fh);
-#endif
 }
 
 void smb2_set_user(struct smb2_context *smb2, const char *user)
