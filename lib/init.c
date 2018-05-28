@@ -333,12 +333,69 @@ void smb2_set_security_mode(struct smb2_context *smb2, uint16_t security_mode)
         smb2->security_mode = security_mode;
 }
 
+static void smb2_set_password_from_file(struct smb2_context *smb2)
+{
+#ifndef _WIN32
+        char *name;
+        FILE *fh;
+        char buf[256];
+        char *domain, *user, *password;
+        int finished;
+
+        /* Not sure if getenv() is available under windows. */
+        name = getenv("NTLM_USER_FILE");
+        if (name == NULL) {
+                return;
+        }
+        fh = fopen(name, "r");
+        while (!feof(fh)) {
+                if (fgets(buf, 256, fh) == NULL) {
+                        break;
+                }
+                buf[255] = 0;
+                finished = 0;
+                while (!finished) {
+                        switch (buf[strlen(buf) - 1]) {
+                        case '\n':
+                                buf[strlen(buf) - 1] = 0;
+                        default:
+                                finished = 1;
+                        }
+                        if (strlen(buf) == 0) {
+                                break;
+                        }
+                }
+                if (buf[0] == 0) {
+                        break;
+                }
+                domain = buf;
+                user = strchr(domain, ':');
+                if (user == NULL) {
+                        continue;
+                }
+                *user++ = 0;
+                password = strchr(user, ':');
+                if (password == NULL) {
+                        continue;
+                }
+                *password++ = 0;
+
+                if (strcmp(user, smb2->user)) {
+                        continue;
+                }
+                smb2_set_password(smb2, password);
+        }
+        fclose(fh);
+#endif
+}
+
 void smb2_set_user(struct smb2_context *smb2, const char *user)
 {
         if (smb2->user) {
                 free(discard_const(smb2->user));
         }
         smb2->user = strdup(user);
+        smb2_set_password_from_file(smb2);
 }
 
 void smb2_set_password(struct smb2_context *smb2, const char *password)

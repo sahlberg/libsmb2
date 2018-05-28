@@ -75,6 +75,7 @@ or the use of the mech plugin.
 This might be beneficial for limited systems of where it is not convenient
 to depend on a full blown kerberos library.
 
+
 MIT KERBEROS
 ============
 Authentication is implemented using MIT Kerberos and it supports both KRB5
@@ -116,18 +117,31 @@ by specifying sec=krb5 in the URL :
 The application needs to set the username, password and the domain fqdn in the context using
 smb2_set_user(), smb2_set_password() and smb2_set_domain() respectively.
 
+
 BUILTIN NTLMSSP
 ===============
 This is selected by the --without-libkrb5 library to configure.
 In this mode you no longer need to link to or depend on the MIT kerberos
 libraries and thus makes libsmb2 fully standalone.
 
-In this mode you need to adapt your applications in order to set the
-proper credentials.
-Use :
+NTLM Authentication
+-------------------
+NTLM credentials are stored in a text file of the form :
+DOMAIN:USERNAME:PASSWORD
+with one line per username.
+You need to set up the environment variable NTLM_USER_FILE to point to this
+file.
+You need one entry in this file for each local user account you want to be able
+to use libsmb2 for accessing a remote share.
+
+By default, NTLM authentication will use the username for the current process.
+This can be overridden by specifying a different username in the SMB URL :
+  smb://guest@server/share>?sec=ntlmssp
+
+Alternatively you can provide the username and password from your application
+by calling :
   smb2_set_user(smb2, <username>);
   smb2_set_password(smb2, <password>);
-from your application before you connect to the server.
 
 
 SMB2/3 SIGNING
