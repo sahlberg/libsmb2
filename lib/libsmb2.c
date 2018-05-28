@@ -1140,9 +1140,7 @@ smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
         struct smb2_pdu *pdu;
 
         if (count > smb2->max_read_size) {
-                smb2_set_error(smb2, "Read count %d larger than "
-                               "max_read_size %d", count, smb2->max_read_size);
-                return -EIO;
+                count = smb2->max_read_size;
         }
 
         rd = malloc(sizeof(struct rw_data));
@@ -1220,10 +1218,7 @@ smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
         struct smb2_pdu *pdu;
 
         if (count > smb2->max_write_size) {
-                smb2_set_error(smb2, "Write count %d larger than "
-                               "max_write_size %d", count,
-                               smb2->max_write_size);
-                return -EIO;
+                count = smb2->max_write_size;
         }
 
         rd = malloc(sizeof(struct rw_data));
