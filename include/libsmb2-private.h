@@ -319,6 +319,10 @@ int smb2_process_read_fixed(struct smb2_context *smb2,
                             struct smb2_pdu *pdu);
 int smb2_process_write_fixed(struct smb2_context *smb2,
                              struct smb2_pdu *pdu);
+int smb2_process_ioctl_fixed(struct smb2_context *smb2,
+                             struct smb2_pdu *pdu);
+int smb2_process_ioctl_variable(struct smb2_context *smb2,
+                                struct smb2_pdu *pdu);
 
 int smb2_decode_fileidfulldirectoryinformation(
         struct smb2_context *smb2,
