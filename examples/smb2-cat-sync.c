@@ -70,17 +70,15 @@ int main(int argc, char *argv[])
 		exit(10);
 	}
 
-        fh = smb2_open(smb2, url->path, O_RDONLY);
+        fh = smb2_open(smb2, url->path, O_WRONLY | O_CREAT | O_TRUNC);
         if (fh == NULL) {
 		printf("smb2_open failed. %s\n", smb2_get_error(smb2));
 		exit(10);
         }
 
-        while ((count = smb2_pread(smb2, fh, buf, 1024, pos)) > 0) {
-                write(0, buf, count);
-                pos += count;
-        };
-                
+        count = smb2_pwrite(smb2, fh, buf, 15, 0);
+        printf("count:%d\n", count);
+
         smb2_close(smb2, fh);
         smb2_disconnect_share(smb2);
         smb2_destroy_url(url);
