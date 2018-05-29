@@ -416,6 +416,8 @@ smb2_get_fixed_size(struct smb2_context *smb2, struct smb2_pdu *pdu)
                 return SMB2_QUERY_INFO_REPLY_SIZE;
         case SMB2_SET_INFO:
                 return SMB2_SET_INFO_REPLY_SIZE;
+        case SMB2_IOCTL:
+                return SMB2_IOCTL_REPLY_SIZE;
         }
         return -1;
 }
@@ -456,6 +458,8 @@ smb2_process_payload_fixed(struct smb2_context *smb2, struct smb2_pdu *pdu)
                 return smb2_process_query_info_fixed(smb2, pdu);
         case SMB2_SET_INFO:
                 return smb2_process_set_info_fixed(smb2, pdu);
+        case SMB2_IOCTL:
+                return smb2_process_ioctl_fixed(smb2, pdu);
         }
         return 0;
 }
@@ -496,6 +500,8 @@ smb2_process_payload_variable(struct smb2_context *smb2, struct smb2_pdu *pdu)
                 return smb2_process_query_info_variable(smb2, pdu); 
         case SMB2_SET_INFO:
                 return 0;
+        case SMB2_IOCTL:
+                return smb2_process_ioctl_variable(smb2, pdu); 
         }
         return 0;
 }

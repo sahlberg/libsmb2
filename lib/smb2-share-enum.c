@@ -1233,11 +1233,11 @@ encode_request(struct dcerpc_context *ctx, uint8_t *buf, int max,
 }
 
 static void
-nse_enum_read_cb(struct smb2_context *smb2, int status,
+nse_enum_ioctl_cb(struct smb2_context *smb2, int status,
                  void *command_data, void *private_data)
 {
         struct smb2nse *nse = private_data;
-        struct smb2_read_reply *rep = command_data;
+        struct smb2_ioctl_reply *rep = command_data;
         struct dcerpc_pdu *dce_pdu;
         struct smb2_iovec iov;
         struct srvsvc_netshareenumall_rep *nse_rep;
@@ -1259,8 +1259,8 @@ nse_enum_read_cb(struct smb2_context *smb2, int status,
         }
         dce_pdu->coder = srvsvc_netshareenumall_decoder;
 
-        iov.buf = &nse->buf[0];
-        iov.len = rep->data_length;
+        iov.buf = rep->output;
+        iov.len = rep->output_count;
         iov.free = NULL;
         ret = dcerpc_decode_pdu(&nse->ctx, dce_pdu, &iov);
         if (ret < 0) {
@@ -1286,51 +1286,15 @@ nse_enum_read_cb(struct smb2_context *smb2, int status,
         dcerpc_free_pdu(&nse->ctx, dce_pdu);
 }
 
+#define MAX_SERVER_NAME 64
 static void
-nse_enum_write_cb(struct smb2_context *smb2, int status,
+nse_bind_ioctl_cb(struct smb2_context *smb2, int status,
                   void *command_data, void *private_data)
 {
         struct smb2nse *nse = private_data;
-        struct smb2_read_request req;
-        struct smb2_pdu *pdu;
-
-        if (status != SMB2_STATUS_SUCCESS) {
-                nse->cb(smb2, -nterror_to_errno(status),
-                       NULL, nse->cb_data);
-                free(nse);
-                return;
-        }
-
-        memset(&req, 0, sizeof(struct smb2_read_request));
-        req.flags = 0;
-        req.length = NSE_BUF_SIZE;
-        req.offset = 0;
-        req.buf = &nse->buf[0];
-        memcpy(req.file_id, nse->file_id, SMB2_FD_SIZE);
-        req.minimum_count = 0;
-        req.channel = SMB2_CHANNEL_NONE;
-        req.remaining_bytes = 0;
-
-        pdu = smb2_cmd_read_async(smb2, &req, nse_enum_read_cb, nse);
-        if (pdu == NULL) {
-                nse->cb(smb2, -ENOMEM,
-                       NULL, nse->cb_data);
-                free(nse);
-                return;
-        }
-
-        smb2_queue_pdu(smb2, pdu);
-}
-
-#define MAX_SERVER_NAME 64
-static void
-nse_bind_read_cb(struct smb2_context *smb2, int status,
-                 void *command_data, void *private_data)
-{
-        struct smb2nse *nse = private_data;
-        struct smb2_read_reply *rep = command_data;
+        struct smb2_ioctl_reply *rep = command_data;
         struct dcerpc_pdu *dce_pdu;
-        struct smb2_write_request req;
+        struct smb2_ioctl_request req;
         struct smb2_pdu *pdu;
         struct srvsvc_netshareenumall_req ea_req;
         int i, offset;
@@ -1352,8 +1316,8 @@ nse_bind_read_cb(struct smb2_context *smb2, int status,
                 return;
         }
 
-        iov.buf = &nse->buf[0];
-        iov.len = rep->data_length;
+        iov.buf = rep->output;
+        iov.len = rep->output_count;
         iov.free = NULL;
         if (dcerpc_decode_pdu(&nse->ctx, dce_pdu, &iov) < 0) {
                 nse->cb(smb2, -EINVAL,
@@ -1429,57 +1393,19 @@ nse_bind_read_cb(struct smb2_context *smb2, int status,
                 return;
         }
 
-        memset(&req, 0, sizeof(struct smb2_write_request));
-        req.length = offset;
-        req.offset = 0;
-        req.buf = &nse->buf[0];
+        memset(&req, 0, sizeof(struct smb2_ioctl_request));
+        req.ctl_code = SMB2_FSCTL_PIPE_TRANSCEIVE;
         memcpy(req.file_id, nse->file_id, SMB2_FD_SIZE);
-        req.channel = SMB2_CHANNEL_NONE;
-        req.remaining_bytes = 0;
-        req.flags = 0;
+        req.input_count = offset;
+        req.input = &nse->buf[0];
+        req.flags = SMB2_0_IOCTL_IS_FSCTL;
 
-        pdu = smb2_cmd_write_async(smb2, &req, nse_enum_write_cb, nse);
+        pdu = smb2_cmd_ioctl_async(smb2, &req, nse_enum_ioctl_cb, nse);
         if (pdu == NULL) {
                 nse->cb(smb2, -ENOMEM, NULL, nse->cb_data);
                 free(nse);
                 return;
         }
-        smb2_queue_pdu(smb2, pdu);
-}
-
-static void
-nse_bind_write_cb(struct smb2_context *smb2, int status,
-                  void *command_data, void *private_data)
-{
-        struct smb2nse *nse = private_data;
-        struct smb2_read_request req;
-        struct smb2_pdu *pdu;
-
-        if (status != SMB2_STATUS_SUCCESS) {
-                nse->cb(smb2, -nterror_to_errno(status),
-                       NULL, nse->cb_data);
-                free(nse);
-                return;
-        }
-
-        memset(&req, 0, sizeof(struct smb2_read_request));
-        req.flags = 0;
-        req.length = NSE_BUF_SIZE;
-        req.offset = 0;
-        req.buf = &nse->buf[0];
-        memcpy(req.file_id, nse->file_id, SMB2_FD_SIZE);
-        req.minimum_count = 0;
-        req.channel = SMB2_CHANNEL_NONE;
-        req.remaining_bytes = 0;
-
-        pdu = smb2_cmd_read_async(smb2, &req, nse_bind_read_cb, nse);
-        if (pdu == NULL) {
-                nse->cb(smb2, -ENOMEM,
-                       NULL, nse->cb_data);
-                free(nse);
-                return;
-        }
-
         smb2_queue_pdu(smb2, pdu);
 }
 
@@ -1491,7 +1417,7 @@ nse_open_cb(struct smb2_context *smb2, int status,
         struct smb2_create_reply *rep = command_data;
         struct dcerpc_context *ctx = &nse->ctx;
         struct dcerpc_pdu dce_pdu;
-        struct smb2_write_request req;
+        struct smb2_ioctl_request req;
         struct smb2_pdu *pdu;
         struct smb2_iovec iov;
         int offset;
@@ -1531,16 +1457,14 @@ nse_open_cb(struct smb2_context *smb2, int status,
                 return;
         }
 
-        memset(&req, 0, sizeof(struct smb2_write_request));
-        req.length = offset;
-        req.offset = 0;
-        req.buf = &nse->buf[0];
+        memset(&req, 0, sizeof(struct smb2_ioctl_request));
+        req.ctl_code = SMB2_FSCTL_PIPE_TRANSCEIVE;
         memcpy(req.file_id, nse->file_id, SMB2_FD_SIZE);
-        req.channel = SMB2_CHANNEL_NONE;
-        req.remaining_bytes = 0;
-        req.flags = 0;
+        req.input_count = offset;
+        req.input = &nse->buf[0];
+        req.flags = SMB2_0_IOCTL_IS_FSCTL;
 
-        pdu = smb2_cmd_write_async(smb2, &req, nse_bind_write_cb, nse);
+        pdu = smb2_cmd_ioctl_async(smb2, &req, nse_bind_ioctl_cb, nse);
         if (pdu == NULL) {
                 nse->cb(smb2, -ENOMEM, NULL, nse->cb_data);
                 free(nse);

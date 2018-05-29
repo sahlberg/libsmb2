@@ -256,6 +256,28 @@ struct smb2_pdu *smb2_cmd_set_info_async(struct smb2_context *smb2,
                                          smb2_command_cb cb, void *cb_data);
 
 /*
+ * Asynchronous SMB2 Ioctl
+ *
+ * Returns:
+ * pdu  : If the call was initiated and a connection will be attempted.
+ *        Result of the Ioctl will be reported through the callback function.
+ * NULL : If there was an error. The callback function will not be invoked.
+ *
+ * Callback parameters :
+ * status can be either of :
+ *    0     : Query was successful.
+ *            Command_data is a struct struct smb2_ioctl_reply *
+ *            This structure contains a pointer to the requested data
+ *            structure in ->output_buffer.
+ *            Output_buffer must be freed by calling smb2_free_data()
+ *
+ *   !0     : Status is NT status code. Command_data is NULL.
+ */
+struct smb2_pdu *smb2_cmd_ioctl_async(struct smb2_context *smb2,
+                                      struct smb2_ioctl_request *req,
+                                      smb2_command_cb cb, void *cb_data);
+
+/*
  * Asynchronous SMB2 Echo
  *
  * Returns:
