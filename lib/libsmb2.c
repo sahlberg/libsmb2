@@ -2114,8 +2114,8 @@ smb2_disconnect_share_async(struct smb2_context *smb2,
 }
 
 struct echo_data {
-  smb2_command_cb cb;
-  void *cb_data;
+        smb2_command_cb cb;
+        void *cb_data;
 };
 
 static void
