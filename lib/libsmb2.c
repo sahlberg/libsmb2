@@ -69,6 +69,8 @@
 #include "libsmb2-private.h"
 #include "portable-endian.h"
 
+#ifdef HAVE_OPENSSL_LIBS
+
 #include <openssl/hmac.h>
 #include <openssl/evp.h>
 #include <openssl/sha.h>
@@ -76,6 +78,8 @@
 
 #define OPENSSL_VER_101	0x1000109fL
 #define OPENSSL_VER_102	0x10002100L
+
+#endif
 
 #ifndef HAVE_LIBKRB5
 #include "ntlmssp.h"
@@ -495,6 +499,7 @@ tree_connect_cb(struct smb2_context *smb2, int status,
         free_c_data(smb2, c_data);
 }
 
+#ifdef HAVE_OPENSSL_LIBS
 void smb2_derive_key(
     uint8_t     *derivation_key,
     uint32_t    derivation_key_len,
@@ -555,6 +560,7 @@ void smb2_derive_key(
 #endif
         memcpy(derived_key, final_hash, MIN(finalHashSize, SMB2_KEY_SIZE));
 }
+#endif
 
 static void
 session_setup_cb(struct smb2_context *smb2, int status,
@@ -643,6 +649,7 @@ session_setup_cb(struct smb2_context *smb2, int status,
                                smb2->session_key,
                                MIN(smb2->session_key_size, SMB2_KEY_SIZE));
                 } else if (smb2->dialect <= SMB2_VERSION_0302) {
+#ifdef HAVE_OPENSSL_LIBS
                         smb2_derive_key(smb2->session_key,
                                         smb2->session_key_size,
                                         SMB2AESCMAC,
@@ -650,6 +657,13 @@ session_setup_cb(struct smb2_context *smb2, int status,
                                         SmbSign,
                                         sizeof(SmbSign),
                                         smb2->signing_key);
+#else
+                        smb2_close_context(smb2);
+                        smb2_set_error(smb2, "Signing Requires OpenSSL support");
+                        c_data->cb(smb2, -EINVAL, NULL, c_data->cb_data);
+                        free_c_data(smb2, c_data);
+                        return;
+#endif
                 } else if (smb2->dialect > SMB2_VERSION_0302) {
                         smb2_close_context(smb2);
                         smb2_set_error(smb2, "Signing Required by server. "

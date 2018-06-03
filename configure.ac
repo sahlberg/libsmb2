@@ -180,19 +180,14 @@ MAYBE_LIBCRYPTO="-lcrypto"
 
 # check if the library libcrypto is available
 AC_HAVE_LIBRARY(crypt,
-                [AC_DEFINE(HAVE_OPENSSL_LIBS, 1, [OpenSsl libraries are present])],
+                AC_CHECK_HEADERS([openssl/hmac.h openssl/aes.h openssl/evp.h openssl/sha.h openssl/opensslv.h],
+                                 [AC_DEFINE(HAVE_OPENSSL_LIBS, 1, [OpenSsl libraries are present])],
+                                 [AC_MSG_WARN([cannot find openssl headers. Building without SEAL support.])
+                        MAYBE_LIBCRYPTO=""
+                        ]),
                 [AC_MSG_WARN([cannot find openssl libcrypto library. Building without SEAL support.])
-		MAYBE_LIBCRYPTO=""
-		], [])
-
-# check for openssl/hmac.h openssl/cmac.h openssl/evp.h openssl/sha.h
-AC_CHECK_HEADERS([openssl/hmac.h openssl/aes.h openssl/evp.h openssl/sha.h openssl/opensslv.h],
-                  [],
-                  [AC_MSG_WARN([cannot find openssl headers. Building without SEAL support.])
-		  AC_DEFINE(HAVE_OPENSSL_LIBS, 0,
-		 	   [OpenSsl libraries are NOT present])
-		  MAYBE_LIBCRYPTO=""
-		  ])
+                MAYBE_LIBCRYPTO=""
+                ], [])
 
 AC_SUBST(MAYBE_LIBCRYPTO)
 
