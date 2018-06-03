@@ -110,6 +110,10 @@ static const char SMBC2SCipherKey[] = "SMBC2SCipherKey";
 #define O_SYNC		(__O_SYNC|O_DSYNC)
 #endif // !O_SYNC
 
+#ifndef O_NOOVERWRITE
+#define O_NOOVERWRITE	0x040000000
+#endif
+
 const smb2_file_id compound_file_id = {
         0xff, 0xff, 0xff, 0xff,  0xff, 0xff, 0xff, 0xff,
         0xff, 0xff, 0xff, 0xff,  0xff, 0xff, 0xff, 0xff
@@ -984,7 +988,7 @@ smb2_open_async(struct smb2_context *smb2, const char *path, int flags,
                         create_disposition = SMB2_FILE_OVERWRITE_IF;
                 }
         } else {
-                if (flags & (O_WRONLY | O_RDWR)) {
+                if ((flags & (O_WRONLY | O_RDWR)) && !(flags & O_NOOVERWRITE)) {
                         create_disposition = SMB2_FILE_OVERWRITE;
                 } else {
                         create_disposition = SMB2_FILE_OPEN;
