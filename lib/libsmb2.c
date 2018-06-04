@@ -1152,9 +1152,23 @@ smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
         struct smb2_read_request req;
         struct rw_data *rd;
         struct smb2_pdu *pdu;
+        int needed_credits = (count - 1) / 65536 + 1;
 
         if (count > smb2->max_read_size) {
                 count = smb2->max_read_size;
+        }
+        if (smb2->dialect > SMB2_VERSION_0202) {
+                if (needed_credits > MAX_CREDITS - 16) {
+                        count =  (MAX_CREDITS - 16) * 65536;
+                }
+                needed_credits = (count - 1) / 65536 + 1;
+                if (needed_credits > smb2->credits) {
+                        count = smb2->credits * 65536;
+                }
+        } else {
+                if (count > 65536) {
+                        count = 65536;
+                }
         }
 
         rd = malloc(sizeof(struct rw_data));
@@ -1230,9 +1244,23 @@ smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
         struct smb2_write_request req;
         struct rw_data *rd;
         struct smb2_pdu *pdu;
+        int needed_credits = (count - 1) / 65536 + 1;
 
         if (count > smb2->max_write_size) {
                 count = smb2->max_write_size;
+        }
+        if (smb2->dialect > SMB2_VERSION_0202) {
+                if (needed_credits > MAX_CREDITS - 16) {
+                        count =  (MAX_CREDITS - 16) * 65536;
+                }
+                needed_credits = (count - 1) / 65536 + 1;
+                if (needed_credits > smb2->credits) {
+                        count = smb2->credits * 65536;
+                }
+        } else {
+                if (count > 65536) {
+                        count = 65536;
+                }
         }
 
         rd = malloc(sizeof(struct rw_data));

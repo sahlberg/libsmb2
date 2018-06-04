@@ -110,6 +110,8 @@ enum smb2_sec {
         SMB2_SEC_KRB5,
 };
 
+#define MAX_CREDITS 1024
+
 struct smb2_context {
 
         t_socket fd;

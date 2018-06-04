@@ -107,7 +107,7 @@ smb2_allocate_pdu(struct smb2_context *smb2, enum smb2_command command,
                  */
                 hdr->credit_charge = 1;
         }
-        hdr->credit_request_response = 32 - smb2->credits;
+        hdr->credit_request_response = MAX_CREDITS - smb2->credits;
 
         switch (command) {
         case SMB2_NEGOTIATE:
