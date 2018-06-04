@@ -68,6 +68,7 @@ smb2_statvfs_async
 smb2_telldir
 smb2_truncate
 smb2_truncate_async
+smb2_rename
 smb2_rename_async
 smb2_unlink
 smb2_unlink_async

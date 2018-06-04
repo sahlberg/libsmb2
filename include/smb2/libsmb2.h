@@ -714,20 +714,6 @@ int smb2_stat(struct smb2_context *smb2, const char *path,
               struct smb2_stat_64 *st);
 
 /*
- * Async truncate()
- *
- * Returns
- *  0     : The operation was initiated. Result of the operation will be
- *          reported through the callback function.
- * -errno : There was an error. The callback function will not be invoked.
- *
- * When the callback is invoked, status indicates the result:
- *      0 : Success.
- * -errno : An error occured.
- */
-int smb2_truncate_async(struct smb2_context *smb2, const char *path,
-                        uint64_t length, smb2_command_cb cb, void *cb_data);
-/*
  * Async rename()
  *
  * Returns
@@ -741,6 +727,27 @@ int smb2_truncate_async(struct smb2_context *smb2, const char *path,
  */
 int smb2_rename_async(struct smb2_context *smb2, const char *oldpath,
                       const char *newpath, smb2_command_cb cb, void *cb_data);
+
+/*
+ * Sync rename()
+ */
+int smb2_rename(struct smb2_context *smb2, const char *oldpath,
+              const char *newpath);
+        
+/*
+ * Async truncate()
+ *
+ * Returns
+ *  0     : The operation was initiated. Result of the operation will be
+ *          reported through the callback function.
+ * -errno : There was an error. The callback function will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ * -errno : An error occured.
+ */
+int smb2_truncate_async(struct smb2_context *smb2, const char *path,
+                        uint64_t length, smb2_command_cb cb, void *cb_data);
 /*
  * Sync truncate()
  * Function returns
