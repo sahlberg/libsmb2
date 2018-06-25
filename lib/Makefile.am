@@ -7,9 +7,11 @@ libsmb2_la_CPPFLAGS = -I$(abs_top_srcdir)/include \
 		      "-D_U_=__attribute__((unused))"
 
 libsmb2_la_SOURCES = \
+	aes.c \
 	alloc.c \
 	errors.c \
 	init.c \
+	hmac.c \
 	hmac-md5.c \
 	krb5-wrapper.c \
 	libsmb2.c \
@@ -17,6 +19,7 @@ libsmb2_la_SOURCES = \
 	md5.c \
 	ntlmssp.c \
 	pdu.c \
+	sha224-256.c \
 	smb2-cmd-close.c \
 	smb2-cmd-create.c \
 	smb2-cmd-echo.c \
@@ -40,14 +43,14 @@ libsmb2_la_SOURCES = \
 	socket.c \
 	sync.c \
 	timestamps.c \
-	unicode.c
+	unicode.c \
+	usha.c
 
 SOCURRENT=1
 SOREVISION=0
 SOAGE=0
 libsmb2_la_LDFLAGS = \
 	-version-info $(SOCURRENT):$(SOREVISION):$(SOAGE) -bindir $(bindir) \
-	-no-undefined -export-symbols ${srcdir}/libsmb2.syms $(MAYBE_LIBKRB5) \
-	$(MAYBE_LIBCRYPTO)
+	-no-undefined -export-symbols ${srcdir}/libsmb2.syms $(MAYBE_LIBKRB5)
 
 dist_noinst_DATA = libsmb2.syms

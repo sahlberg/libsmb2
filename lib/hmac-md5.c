@@ -10,10 +10,8 @@
 #include "md5.h"
 
 #ifdef _MSC_VER
-// void bzero(void *s, size_t n);
 #define bzero(s, n) memset((s), 0, (n))
 
-// void bcopy(const void *s1, void *s2, size_t n);
 #define bcopy(s1, s2, n) memmove((s2), (s1), (n))
 #endif // _MSC_VER
 

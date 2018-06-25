@@ -19,8 +19,6 @@
 #include "config.h"
 #endif
 
-#ifdef HAVE_OPENSSL_LIBS
-
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
@@ -55,16 +53,15 @@
 
 #include "smb2-signing.h"
 
-#include <openssl/hmac.h>
-#include <openssl/evp.h>
-#include <openssl/sha.h>
-#include <openssl/aes.h>
-#include <openssl/opensslv.h>
+#define EBC 1
+#define CBC 1
 
-#define OPENSSL_VER_101	0x1000109fL
-#define OPENSSL_VER_102	0x10002100L
+#include "aes.h"
+#include "sha.h"
+#include "sha-private.h"
 
 #define AES128_KEY_LEN     16
+#define AES_BLOCK_SIZE     16
 
 static
 int aes_cmac_shift_left(uint8_t data[AES128_KEY_LEN])
@@ -102,13 +99,10 @@ void aes_cmac_sub_keys(
     uint8_t sub_key2[AES128_KEY_LEN]
     )
 {
-        AES_KEY aes_key;
-        static const uint8_t zero[AES128_KEY_LEN] = {0};
+        uint8_t zero[AES128_KEY_LEN] = {0};
         static const uint8_t rb[AES128_KEY_LEN] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0x87};
 
-        AES_set_encrypt_key(key, 128, &aes_key);
-        AES_encrypt(zero, sub_key1, &aes_key);
-
+        AES128_ECB_encrypt(zero, key, sub_key1);
         if (aes_cmac_shift_left(sub_key1)) {
                 aes_cmac_xor(sub_key1, rb);
         }
@@ -126,7 +120,6 @@ void smb3_aes_cmac_128(uint8_t key[AES128_KEY_LEN],
                    uint8_t mac[AES128_KEY_LEN]
                   )
 {
-        AES_KEY aes_key;
         uint8_t sub_key1[AES128_KEY_LEN] = {0};
         uint8_t sub_key2[AES128_KEY_LEN] = {0};
         uint8_t scratch[AES128_KEY_LEN] = {0};
@@ -143,11 +136,9 @@ void smb3_aes_cmac_128(uint8_t key[AES128_KEY_LEN],
 
         memset(mac, 0, AES128_KEY_LEN);
 
-        AES_set_encrypt_key(key, 128, &aes_key);
-
         for (i = 0; i < n - 1; i++) {
                 aes_cmac_xor(mac, &msg[i*AES128_KEY_LEN]);
-                AES_encrypt(mac, scratch, &aes_key);
+                AES128_ECB_encrypt(mac, key, scratch);
                 memcpy(mac, scratch, AES128_KEY_LEN);
         }
 
@@ -162,7 +153,7 @@ void smb3_aes_cmac_128(uint8_t key[AES128_KEY_LEN],
         }
 
         aes_cmac_xor(mac, scratch);
-        AES_encrypt(mac, scratch, &aes_key);
+        AES128_ECB_encrypt(mac, key, scratch);
         memcpy(mac, scratch, AES128_KEY_LEN);
 }
 
@@ -172,7 +163,7 @@ smb2_pdu_add_signature(struct smb2_context *smb2,
                        )
 {
         struct smb2_header *hdr = NULL;
-        uint8_t signature[16];
+        uint8_t signature[16] = {0};
         struct smb2_iovec *iov = NULL;
 
         if (pdu->header.command == SMB2_SESSION_SETUP) {
@@ -229,29 +220,18 @@ smb2_pdu_add_signature(struct smb2_context *smb2,
                 free(msg);
                 memcpy(&signature[0], aes_mac, SMB2_SIGNATURE_SIZE);
         } else {
-                uint8_t sha_digest[SHA256_DIGEST_LENGTH];
-                unsigned int sha_digest_length = SHA256_DIGEST_LENGTH;
+                HMACContext ctx;
+                uint8_t digest[USHAMaxHashSize];
                 int i;
-#if (OPENSSL_VERSION_NUMBER <= OPENSSL_VER_102)
-                HMAC_CTX ctx;
-                HMAC_CTX_init(&ctx);
-                HMAC_Init_ex(&ctx, &smb2->signing_key[0], SMB2_KEY_SIZE, EVP_sha256(), NULL);
+
+                hmacReset(&ctx, SHA256, &smb2->signing_key[0], SMB2_KEY_SIZE);
                 for (i=0; i < pdu->out.niov; i++) {
-                        HMAC_Update(&ctx, pdu->out.iov[i].buf, pdu->out.iov[i].len);
+                        hmacInput(&ctx,
+                                  pdu->out.iov[i].buf,
+                                  pdu->out.iov[i].len);
                 }
-                HMAC_Final(&ctx, &sha_digest[0], &sha_digest_length);
-                HMAC_CTX_cleanup(&ctx);
-#else
-                HMAC_CTX *ctx = HMAC_CTX_new();
-                HMAC_CTX_reset(ctx);
-                HMAC_Init_ex(ctx, &smb2->signing_key[0], SMB2_KEY_SIZE, EVP_sha256(), NULL);
-                for (i=0; i < pdu->out.niov; i++) {
-                        HMAC_Update(ctx, pdu->out.iov[i].buf, pdu->out.iov[i].len);
-                }
-                HMAC_Final(ctx, &sha_digest[0], &sha_digest_length);
-                HMAC_CTX_free(ctx); ctx = NULL;
-#endif
-                memcpy(&signature[0], sha_digest, SMB2_SIGNATURE_SIZE);
+                hmacResult(&ctx, digest);
+                memcpy(&signature[0], digest, SMB2_SIGNATURE_SIZE);
         }
 
         memcpy(&(hdr->signature[0]), signature, SMB2_SIGNATURE_SIZE);
@@ -267,5 +247,3 @@ smb2_pdu_check_signature(struct smb2_context *smb2,
 {
         return 0;
 }
-
-#endif /* HAVE_OPENSSL_LIBS */

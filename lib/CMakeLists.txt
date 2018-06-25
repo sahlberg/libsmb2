@@ -1,6 +1,8 @@
-set(SOURCES alloc.c
+set(SOURCES aes.c
+            alloc.c
             errors.c
             init.c
+            hmac.c
             hmac-md5.c
             krb5-wrapper.c
             libsmb2.c
@@ -8,6 +10,7 @@ set(SOURCES alloc.c
             md5.c
             ntlmssp.c
             pdu.c
+	    sha224-256.c
             smb2-cmd-close.c
             smb2-cmd-create.c
             smb2-cmd-echo.c
@@ -27,14 +30,12 @@ set(SOURCES alloc.c
             smb2-data-filesystem-info.c
             smb2-data-security-descriptor.c
 	    smb2-share-enum.c
+	    smb2-signing.c
             socket.c
             sync.c
             timestamps.c
-            unicode.c)
-
-if(OPENSSL_FOUND)
-  list(APPEND SOURCES smb2-signing.c)
-endif()
+            unicode.c
+	    usha.c)
 
 add_library(smb2 ${SOURCES})
 target_link_libraries(smb2 PUBLIC ${core_DEPENDS} ${CORE_LIBRARIES})
