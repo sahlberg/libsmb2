@@ -1548,17 +1548,12 @@ nse_open_cb(struct smb2_context *smb2, int status,
 }
 
 int
-smb2_share_enum_async(struct smb2_context *smb2, const char *server,
+smb2_share_enum_async(struct smb2_context *smb2,
                       smb2_command_cb cb, void *cb_data)
 {
         struct smb2nse *nse;
         struct smb2_create_request req;
         struct smb2_pdu *pdu;
-
-        if (server == NULL) {
-                smb2_set_error(smb2, "No server name specified.");
-                return -1;
-        }
 
         nse = malloc(sizeof(struct smb2nse));
         if (nse == NULL) {

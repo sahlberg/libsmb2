@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
 		exit(10);
         }
 
-	if (smb2_share_enum_async(smb2, url->server, se_cb, NULL) != 0) {
+	if (smb2_share_enum_async(smb2, se_cb, NULL) != 0) {
 		printf("smb2_share_enum failed. %s\n", smb2_get_error(smb2));
 		exit(10);
 	}
