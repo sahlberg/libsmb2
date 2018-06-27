@@ -109,7 +109,6 @@ ntlmssp_destroy_context(struct auth_data *auth)
         free(auth->ntlm_buf);
         free(auth->buf);
         free(auth);
-        memset(auth->exported_session_key, 0, SMB2_KEY_SIZE);
 }
 
 struct auth_data *
