@@ -466,7 +466,7 @@ struct dcerpc_response_pdu {
 #define DCERPC_DR_CHARACTER_ASCII               0x00
 #define DCERPC_DR_CHARACTER_EBCDIC              0x01
 
-#define NSE_BUF_SIZE 1024
+#define NSE_BUF_SIZE 128*1024
 
 struct dcerpc_pdu {
         struct dcerpc_header hdr;
@@ -1263,7 +1263,7 @@ nse_enum_read_cb(struct smb2_context *smb2, int status,
         iov.free = NULL;
         ret = dcerpc_decode_pdu(&nse->ctx, dce_pdu, &iov);
         if (ret < 0) {
-                nse->cb(smb2, -nterror_to_errno(status),
+                nse->cb(smb2, -EINVAL,
                        NULL, nse->cb_data);
                 dcerpc_free_pdu(&nse->ctx, dce_pdu);
                 free(nse);
@@ -1355,7 +1355,7 @@ nse_bind_read_cb(struct smb2_context *smb2, int status,
         iov.len = rep->data_length;
         iov.free = NULL;
         if (dcerpc_decode_pdu(&nse->ctx, dce_pdu, &iov) < 0) {
-                nse->cb(smb2, -nterror_to_errno(status),
+                nse->cb(smb2, -EINVAL,
                        NULL, nse->cb_data);
                 dcerpc_free_pdu(&nse->ctx, dce_pdu);
                 free(nse);
