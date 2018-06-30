@@ -34,6 +34,7 @@
 
 /* Error codes */
 #define SMB2_STATUS_SUCCESS                  0x00000000
+#define SMB2_STATUS_PENDING                  0x00000103
 #define SMB2_STATUS_NO_MORE_FILES            0x80000006
 #define SMB2_STATUS_INVALID_PARAMETER        0xC000000d
 #define SMB2_STATUS_END_OF_FILE              0xC0000011

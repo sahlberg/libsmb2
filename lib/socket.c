@@ -298,6 +298,22 @@ read_more_data:
                         smb2_set_error(smb2, "received non-reply");
                         return -1;
                 }
+                if (smb2->hdr.status == SMB2_STATUS_PENDING) {
+                        /* Pending. Just treat the rest of the data as
+                         * padding then check for and skip processing below.
+                         * We will eventually receive a proper reply for this
+                         * request sometime later.
+                         */
+                        len = smb2->spl + SMB2_SPL_SIZE - smb2->in.num_done;
+
+                        /* Add padding before the next PDU */
+                        smb2->recv_state = SMB2_RECV_PAD;
+                        smb2_add_iovector(smb2, &smb2->in,
+                                          malloc(len),
+                                          len, free);
+                        goto read_more_data;
+                }
+
                 pdu = smb2->pdu = smb2_find_pdu(smb2, smb2->hdr.message_id);
                 if (pdu == NULL) {
                         smb2_set_error(smb2, "no matching PDU found");
@@ -415,6 +431,14 @@ read_more_data:
                  * PDU. Break out of the switch and invoke the callback.
                  */
                 break;
+        }
+
+        if (smb2->hdr.status == SMB2_STATUS_PENDING) {
+                /* This was a pending command. Just ignore it and proceed
+                 * to read the next chain.
+                 */
+                smb2->in.num_done = 0;
+                return 0;
         }
 
         is_chained = smb2->hdr.next_command;

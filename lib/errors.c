@@ -26,6 +26,8 @@ const char *nterror_to_str(uint32_t status) {
         switch (status) {
         case SMB2_STATUS_SUCCESS:
                 return "STATUS_SUCCESS";
+        case SMB2_STATUS_PENDING:
+                return "STATUS_PENDING";
         case SMB2_STATUS_NO_MORE_FILES:
                 return "STATUS_NO_MORE_FILES";
         case SMB2_STATUS_MORE_PROCESSING_REQUIRED:
@@ -65,6 +67,8 @@ int nterror_to_errno(uint32_t status) {
                 return EAGAIN;
         case SMB2_STATUS_ACCESS_DENIED:
                 return EACCES;
+        case SMB2_STATUS_PENDING:
+                return EAGAIN;
         case SMB2_STATUS_NO_MORE_FILES:
                 return ENODATA;
         case SMB2_STATUS_LOGON_FAILURE:
