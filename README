@@ -153,7 +153,7 @@ BUILDING LIBSMB2
 ===============
 
  Windows
--------------------
+---------------------------
 
 You have to install CMake (https://cmake.org/) and Visual Studio (https://www.visualstudio.com/)
 to build libsmb2 for Windows (including Universal Windows Platform).
@@ -172,11 +172,11 @@ Static library:
 	cmake -G "Visual Studio 15 2017" -DBUILD_SHARED_LIBS=0 ..
 	cmake --build . --config RelWithDebInfo
 
- iOS
--------------------
+ macOS, iOS, tvOS, watchOS
+---------------------------
 
-You can add AMSMB2 (https://github.com/amosavian/AMSMB2) fraemwork which 
-incorporates precompiled libsmb2.
+You can use AMSMB2 (https://github.com/amosavian/AMSMB2) universal framework 
+which incorporates precompiled libsmb2 for Apple devices.
 
 It is written in Swift but can be used in both Swift and Objective-C codes.
 
@@ -186,8 +186,8 @@ If you want to rebuild libsmb2 in AMSMB2, please follow these steps:
 	cd AMSMB2/buildtools
 	./build.sh
 
-iOS precompiled binary does not include Kerberos support by default.
-If you want build library with Kerberos support execute this script instead:
+Precompiled binaries don't include Kerberos support by default.
+If you want build libraries with Kerberos support, execute this script instead:
 
 	./build-with-krb5.sh
 
