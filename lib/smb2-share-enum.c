@@ -86,6 +86,7 @@ struct dcerpc_context {
         uint8_t tctx_id; /* 0:NDR32 1:NDR64 */
         uint64_t ptr_id;
         int top_level;
+        uint32_t call_id;
 
         int cur_ptr;
         int max_ptr;
@@ -1211,7 +1212,7 @@ encode_request(struct dcerpc_context *ctx, uint8_t *buf, int max,
                 DCERPC_DR_CHARACTER_ASCII;
         pdu.hdr.frag_length = 0;
         pdu.hdr.auth_length = 0;
-        pdu.hdr.call_id = 2;
+        pdu.hdr.call_id = ctx->call_id++;
         pdu.req.alloc_hint = 0;
         pdu.req.context_id = ctx->tctx_id;
         pdu.req.opnum = opnum;
@@ -1488,6 +1489,7 @@ nse_open_cb(struct smb2_context *smb2, int status,
 {
         struct smb2nse *nse = private_data;
         struct smb2_create_reply *rep = command_data;
+        struct dcerpc_context *ctx = &nse->ctx;
         struct dcerpc_pdu dce_pdu;
         struct smb2_write_request req;
         struct smb2_pdu *pdu;
@@ -1512,7 +1514,7 @@ nse_open_cb(struct smb2_context *smb2, int status,
                 DCERPC_DR_CHARACTER_ASCII;
         dce_pdu.hdr.frag_length = 0;
         dce_pdu.hdr.auth_length = 0;
-        dce_pdu.hdr.call_id = 2;
+        dce_pdu.hdr.call_id = ctx->call_id++;
         dce_pdu.bind.max_xmit_frag = 4280;
         dce_pdu.bind.max_recv_frag = 4280;
         dce_pdu.bind.assoc_group_id = 0;
@@ -1562,6 +1564,7 @@ smb2_share_enum_async(struct smb2_context *smb2,
         }
         memset(nse, 0, sizeof(struct smb2nse));
         nse->ctx.smb2 = smb2;
+        nse->ctx.call_id = 2;
         nse->cb = cb;
         nse->cb_data = cb_data;
 
