@@ -27,6 +27,12 @@
 extern "C" {
 #endif
 
+struct smb2_iovec {
+        uint8_t *buf;
+        size_t len;
+        void (*free)(void *);
+};
+        
 struct smb2_context;
 
 /*
@@ -823,9 +829,9 @@ int smb2_echo(struct smb2_context *smb2);
 #define SHARE_TYPE_HIDDEN    0x80000000
 
 struct srvsvc_netshareinfo1 {
-        char *name;
+        const char *name;
         uint32_t type;
-	char *comment;
+	const char *comment;
 };
 
 struct srvsvc_netsharectr1 {
@@ -841,7 +847,7 @@ struct srvsvc_netsharectr {
 };
 
 struct srvsvc_netshareenumall_req {
-        struct ucs2 *server;
+        const char *server;
         uint32_t level;
         struct srvsvc_netsharectr *ctr;
         uint32_t max_buffer;

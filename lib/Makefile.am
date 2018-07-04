@@ -9,6 +9,8 @@ libsmb2_la_CPPFLAGS = -I$(abs_top_srcdir)/include \
 libsmb2_la_SOURCES = \
 	aes.c \
 	alloc.c \
+	dcerpc.c \
+	dcerpc-srvsvc.c \
 	errors.c \
 	init.c \
 	hmac.c \

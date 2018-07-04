@@ -45,12 +45,6 @@ extern "C" {
 
 #define SMB2_MAX_VECTORS 256
 
-struct smb2_iovec {
-        uint8_t *buf;
-        size_t len;
-        void (*free)(void *);
-};
-
 struct smb2_io_vectors {
         size_t num_done;
         size_t total_size;

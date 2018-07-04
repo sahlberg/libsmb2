@@ -1,5 +1,7 @@
 set(SOURCES aes.c
             alloc.c
+            dcerpc.c
+            dcerpc-srvsvc.c
             errors.c
             init.c
             hmac.c

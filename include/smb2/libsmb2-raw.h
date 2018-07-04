@@ -268,8 +268,8 @@ struct smb2_pdu *smb2_cmd_set_info_async(struct smb2_context *smb2,
  *    0     : Query was successful.
  *            Command_data is a struct struct smb2_ioctl_reply *
  *            This structure contains a pointer to the requested data
- *            structure in ->output_buffer.
- *            Output_buffer must be freed by calling smb2_free_data()
+ *            structure in ->output.
+ *            Output must be freed by calling smb2_free_data()
  *
  *   !0     : Status is NT status code. Command_data is NULL.
  */
