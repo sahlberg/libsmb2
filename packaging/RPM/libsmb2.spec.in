@@ -91,5 +91,12 @@ development libraries for LibSMB2
 %{_libdir}/pkgconfig/libsmb2.pc
 
 %changelog
+* Sat Jul 7 2018 : Version 2.0.0
+ - SMB2/3 signing
+ - Kerberos authentication
+ - Builtin NTLMSSP authentication for when libkrb5 is not available
+ - Share enumeration
+ - CMake support
+ - Various bugfixes
 * Sun Mar 5 2017 : Version 1.0.0
  - Initial version
