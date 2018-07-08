@@ -329,6 +329,9 @@ int smb2_decode_file_basic_info(struct smb2_context *smb2,
                                 void *memctx,
                                 struct smb2_file_basic_info *fs,
                                 struct smb2_iovec *vec);
+int smb2_encode_file_basic_info(struct smb2_context *smb2,
+                                struct smb2_file_basic_info *fs,
+                                struct smb2_iovec *vec);
 
 int smb2_decode_file_standard_info(struct smb2_context *smb2,
                                    void *memctx,

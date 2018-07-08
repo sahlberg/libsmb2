@@ -78,6 +78,21 @@ smb2_encode_set_info_request(struct smb2_context *smb2,
         switch (req->info_type) {
         case SMB2_0_INFO_FILE:
                 switch (req->file_info_class) {
+                case SMB2_FILE_BASIC_INFORMATION:
+                        len = 40;
+                        smb2_set_uint32(iov, 4, len); /* buffer length */
+
+                        buf = malloc(len);
+                        if (buf == NULL) {
+                                smb2_set_error(smb2, "Failed to allocate set "
+                                               "info data buffer");
+                                return -1;
+                        }
+                        memset(buf, 0, len);
+                        iov = smb2_add_iovector(smb2, &pdu->out, buf, len,
+                                                free);
+                        smb2_encode_file_basic_info(smb2, req->input_data, iov);
+                        break;
                 case SMB2_FILE_END_OF_FILE_INFORMATION:
                         len = 8;
                         smb2_set_uint32(iov, 4, len); /* buffer length */
