@@ -320,6 +320,9 @@ struct smb2_create_request {
 #define SMB2_FD_SIZE 16
 typedef uint8_t smb2_file_id[SMB2_FD_SIZE];
 
+struct smb2fh;
+smb2_file_id *smb2_get_file_id(struct smb2fh *fh);
+
 struct smb2_create_reply {
         uint8_t oplock_level;
         uint8_t flags;

@@ -2110,3 +2110,9 @@ smb2_get_max_write_size(struct smb2_context *smb2)
 {
         return smb2->max_write_size;
 }
+
+smb2_file_id *
+smb2_get_file_id(struct smb2fh *fh)
+{
+        return &fh->file_id;
+}
