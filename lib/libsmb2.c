@@ -1464,6 +1464,9 @@ fstat_cb_1(struct smb2_context *smb2, int status,
         if (fs->basic.file_attributes & SMB2_FILE_ATTRIBUTE_DIRECTORY) {
                 st->smb2_type = SMB2_TYPE_DIRECTORY;
         }
+        if (fs->basic.file_attributes & SMB2_FILE_ATTRIBUTE_REPARSE_POINT) {
+                st->smb2_type = SMB2_TYPE_SYMLINK;
+        }
         st->smb2_nlink      = fs->standard.number_of_links;
         st->smb2_ino        = fs->index_number;
         st->smb2_size       = fs->standard.end_of_file;
@@ -1559,6 +1562,9 @@ getinfo_cb_2(struct smb2_context *smb2, int status,
                 st->smb2_type = SMB2_TYPE_FILE;
                 if (fs->basic.file_attributes & SMB2_FILE_ATTRIBUTE_DIRECTORY) {
                         st->smb2_type = SMB2_TYPE_DIRECTORY;
+                }
+                if (fs->basic.file_attributes & SMB2_FILE_ATTRIBUTE_REPARSE_POINT) {
+                        st->smb2_type = SMB2_TYPE_SYMLINK;
                 }
                 st->smb2_nlink      = fs->standard.number_of_links;
                 st->smb2_ino        = fs->index_number;
