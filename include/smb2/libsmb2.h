@@ -45,6 +45,7 @@ typedef void (*smb2_command_cb)(struct smb2_context *smb2, int status,
 /* Stat structure */
 #define SMB2_TYPE_FILE      0x00000000
 #define SMB2_TYPE_DIRECTORY 0x00000001
+#define SMB2_TYPE_SYMLINK   0x00000002
 struct smb2_stat_64 {
         uint32_t smb2_type;
         uint32_t smb2_nlink;
