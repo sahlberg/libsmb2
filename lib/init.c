@@ -404,6 +404,9 @@ void smb2_set_user(struct smb2_context *smb2, const char *user)
         if (smb2->user) {
                 free(discard_const(smb2->user));
         }
+        if (user == NULL) {
+                return;
+        }
         smb2->user = strdup(user);
         smb2_set_password_from_file(smb2);
 }
