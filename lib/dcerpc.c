@@ -995,6 +995,49 @@ dcerpc_decode_pdu(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 }
 
 static void
+dce_unfragment_ioctl(struct smb2_iovec *iov)
+{
+        int offset = 0;
+        struct dcerpc_header hdr, next_hdr;
+        struct smb2_iovec tmpiov;
+
+        dcerpc_decode_header(iov, &hdr);
+        if (hdr.rpc_vers != 5 || hdr.rpc_vers_minor != 0 ||
+            hdr.PTYPE != PDU_TYPE_RESPONSE) {
+                return;
+        }
+
+        if (hdr.pfc_flags & PFC_LAST_FRAG) {
+                return;
+        }
+
+        offset += hdr.frag_length;
+        do {
+                /* We must have at least a DCERPC header plus a
+                 * RESPONSE header
+                 */
+                if (iov->len - offset < 24) {
+                        return;
+                }
+
+                tmpiov.buf = iov->buf + offset;
+                tmpiov.len = iov->len - offset;
+                dcerpc_decode_header(&tmpiov, &next_hdr);
+
+                memmove(iov->buf + offset, iov->buf + offset + 24,
+                        iov->len - offset - 24);
+                offset += next_hdr.frag_length;
+                iov->len -= 24;
+
+                hdr.frag_length += next_hdr.frag_length;
+                if (next_hdr.pfc_flags & PFC_LAST_FRAG) {
+                        hdr.pfc_flags |= PFC_LAST_FRAG;
+                }
+                dcerpc_encode_header(iov, &hdr);
+        } while (!(next_hdr.pfc_flags & PFC_LAST_FRAG));
+}
+
+static void
 dcerpc_call_cb(struct smb2_context *smb2, int status,
                void *command_data, void *private_data)
 {
@@ -1023,6 +1066,9 @@ dcerpc_call_cb(struct smb2_context *smb2, int status,
         iov.buf = rep->output;
         iov.len = rep->output_count;
         iov.free = NULL;
+
+        dce_unfragment_ioctl(&iov);
+
         ret = dcerpc_decode_pdu(dce, pdu, &iov);
         if (ret < 0) {
                 pdu->cb(dce, -EINVAL, NULL, pdu->cb_data);
