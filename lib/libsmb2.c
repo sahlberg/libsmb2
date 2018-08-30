@@ -2116,3 +2116,18 @@ smb2_get_file_id(struct smb2fh *fh)
 {
         return &fh->file_id;
 }
+
+struct smb2fh *
+smb2_fh_from_file_id(smb2_file_id *fileid)
+{
+        struct smb2fh *fh;
+
+        fh = malloc(sizeof(struct smb2fh));
+        if (fh == NULL) {
+                return NULL;
+        }
+        memset(fh, 0, sizeof(struct smb2fh));
+        memcpy(fh->file_id, file_id, SMB2_FD_SIZE);
+
+        return fh;
+}
