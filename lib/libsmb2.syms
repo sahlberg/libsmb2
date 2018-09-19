@@ -23,6 +23,7 @@ smb2_destroy_context
 smb2_destroy_url
 smb2_disconnect_share
 smb2_disconnect_share_async
+smb2_fh_from_file_id
 smb2_free_data
 smb2_free_pdu
 smb2_fstat
