@@ -58,5 +58,5 @@ endif()
 
 install(TARGETS smb2 EXPORT smb2
                      RUNTIME DESTINATION bin
-                     ARCHIVE DESTINATION lib
-                     LIBRARY DESTINATION lib)
+                     ARCHIVE DESTINATION lib${LIB_SUFFIX}
+                     LIBRARY DESTINATION lib${LIB_SUFFIX})
