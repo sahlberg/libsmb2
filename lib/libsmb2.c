@@ -2127,7 +2127,7 @@ smb2_fh_from_file_id(smb2_file_id *fileid)
                 return NULL;
         }
         memset(fh, 0, sizeof(struct smb2fh));
-        memcpy(fh->file_id, file_id, SMB2_FD_SIZE);
+        memcpy(fh->file_id, fileid, SMB2_FD_SIZE);
 
         return fh;
 }
