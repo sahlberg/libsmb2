@@ -7,6 +7,7 @@ set(SOURCES smb2-cat-async
             smb2-ftruncate-sync
             smb2-ls-async
             smb2-ls-sync
+            smb2-put-async
             smb2-put-sync
             smb2-raw-stat-async
             smb2-raw-getsd-async
