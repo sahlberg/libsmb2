@@ -218,7 +218,7 @@ int nterror_to_errno(uint32_t status) {
         case SMB2_STATUS_MEDIA_WRITE_PROTECTED:
                 return EROFS;
         case SMB2_STATUS_NO_MEDIA_IN_DEVICE:
-                return ENOMEDIUM;
+                return ENODEV;
         case SMB2_STATUS_DATA_ERROR:
         case SMB2_STATUS_CRC_ERROR:
         case SMB2_STATUS_DEVICE_DATA_ERROR:
