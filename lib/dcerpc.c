@@ -998,6 +998,7 @@ static void
 dce_unfragment_ioctl(struct smb2_iovec *iov)
 {
         int offset = 0;
+        int unfragment_len;
         struct dcerpc_header hdr, next_hdr;
         struct smb2_iovec tmpiov;
 
@@ -1012,6 +1013,7 @@ dce_unfragment_ioctl(struct smb2_iovec *iov)
         }
 
         offset += hdr.frag_length;
+        unfragment_len = hdr.frag_length;
         do {
                 /* We must have at least a DCERPC header plus a
                  * RESPONSE header
@@ -1024,10 +1026,11 @@ dce_unfragment_ioctl(struct smb2_iovec *iov)
                 tmpiov.len = iov->len - offset;
                 dcerpc_decode_header(&tmpiov, &next_hdr);
 
-                memmove(iov->buf + offset, iov->buf + offset + 24,
-                        iov->len - offset - 24);
+                memmove(iov->buf + unfragment_len, iov->buf + offset + 24,
+                        hdr.frag_length - 24);
+
+                unfragment_len += hdr.frag_length - 24;
                 offset += next_hdr.frag_length;
-                iov->len -= 24;
 
                 hdr.frag_length += next_hdr.frag_length;
                 if (next_hdr.pfc_flags & PFC_LAST_FRAG) {
@@ -1035,6 +1038,7 @@ dce_unfragment_ioctl(struct smb2_iovec *iov)
                 }
                 dcerpc_encode_header(iov, &hdr);
         } while (!(next_hdr.pfc_flags & PFC_LAST_FRAG));
+        iov->len = unfragment_len;
 }
 
 static void
