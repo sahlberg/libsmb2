@@ -1027,9 +1027,8 @@ dce_unfragment_ioctl(struct smb2_iovec *iov)
                 dcerpc_decode_header(&tmpiov, &next_hdr);
 
                 memmove(iov->buf + unfragment_len, iov->buf + offset + 24,
-                        hdr.frag_length - 24);
-
-                unfragment_len += hdr.frag_length - 24;
+                        next_hdr.frag_length - 24);
+                unfragment_len += next_hdr.frag_length - 24;
                 offset += next_hdr.frag_length;
 
                 hdr.frag_length += next_hdr.frag_length;
