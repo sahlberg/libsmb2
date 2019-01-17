@@ -416,6 +416,10 @@ void smb2_set_password(struct smb2_context *smb2, const char *password)
 {
         if (smb2->password) {
                 free(discard_const(smb2->password));
+                smb2->password = NULL;
+        }
+        if (password == NULL) {
+                return;
         }
         smb2->password = strdup(password);
 }
