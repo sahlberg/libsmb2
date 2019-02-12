@@ -180,6 +180,10 @@ int nterror_to_errno(uint32_t status) {
                 return EAGAIN;
         case SMB2_STATUS_ACCESS_DENIED:
         case SMB2_STATUS_NETWORK_ACCESS_DENIED:
+        case SMB2_STATUS_ACCOUNT_RESTRICTION:
+        case SMB2_STATUS_INVALID_LOGON_HOURS:
+        case SMB2_STATUS_PASSWORD_EXPIRED:
+        case SMB2_STATUS_ACCOUNT_DISABLED:
                 return EACCES;
         case SMB2_STATUS_INVALID_LOCK_SEQUENCE:
         case SMB2_STATUS_INVALID_VIEW_SIZE:
