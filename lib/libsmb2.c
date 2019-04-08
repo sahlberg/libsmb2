@@ -923,11 +923,13 @@ smb2_open_async(struct smb2_context *smb2, const char *path, int flags,
         if (flags & O_CREAT) {
                 if (flags & O_EXCL) {
                         create_disposition = SMB2_FILE_CREATE;
-                } else {
+                } else if(flags & O_TRUNC) {
                         create_disposition = SMB2_FILE_OVERWRITE_IF;
+                } else {
+                        create_disposition = SMB2_FILE_OPEN_IF;
                 }
         } else {
-                if (flags & (O_WRONLY | O_RDWR)) {
+                if (flags & O_TRUNC) {
                         create_disposition = SMB2_FILE_OVERWRITE;
                 } else {
                         create_disposition = SMB2_FILE_OPEN;
