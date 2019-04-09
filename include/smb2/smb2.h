@@ -30,7 +30,7 @@ struct smb2_timeval {
         uint32_t tv_usec;
 };
 
-#define SMB2_ERROR_REPLY_SIZE 9
+#define SMB2_ERROR_REPLY_SIZE (uint16_t)9
 
 struct smb2_error_reply {
         uint8_t error_context_count;
@@ -39,13 +39,13 @@ struct smb2_error_reply {
 };
 
 
-#define SMB2_FLAGS_SERVER_TO_REDIR    0x00000001
-#define SMB2_FLAGS_ASYNC_COMMAND      0x00000002
-#define SMB2_FLAGS_RELATED_OPERATIONS 0x00000004
-#define SMB2_FLAGS_SIGNED             0x00000008
-#define SMB2_FLAGS_PRIORITY_MASK      0x00000070
-#define SMB2_FLAGS_DFS_OPERATIONS     0x10000000
-#define SMB2_FLAGS_REPLAY_OPERATION   0x20000000
+#define SMB2_FLAGS_SERVER_TO_REDIR    0x00000001ul
+#define SMB2_FLAGS_ASYNC_COMMAND      0x00000002ul
+#define SMB2_FLAGS_RELATED_OPERATIONS 0x00000004ul
+#define SMB2_FLAGS_SIGNED             0x00000008ul
+#define SMB2_FLAGS_PRIORITY_MASK      0x00000070ul
+#define SMB2_FLAGS_DFS_OPERATIONS     0x10000000ul
+#define SMB2_FLAGS_REPLAY_OPERATION   0x20000000ul
 
 enum smb2_command {
         SMB2_NEGOTIATE       = 0,
@@ -72,8 +72,8 @@ enum smb2_command {
 /*
  * SMB2 NEGOTIATE
  */
-#define SMB2_NEGOTIATE_SIGNING_ENABLED  0x0001
-#define SMB2_NEGOTIATE_SIGNING_REQUIRED 0x0002
+#define SMB2_NEGOTIATE_SIGNING_ENABLED  (uint16_t)0x0001
+#define SMB2_NEGOTIATE_SIGNING_REQUIRED (uint16_t)0x0002
 
 enum smb2_negotiate_version {
         SMB2_VERSION_ANY  = 0,
@@ -85,17 +85,17 @@ enum smb2_negotiate_version {
         SMB2_VERSION_0302 = 0x0302
 };
 
-#define SMB2_GLOBAL_CAP_DFS                0x00000001
-#define SMB2_GLOBAL_CAP_LEASING            0x00000002
-#define SMB2_GLOBAL_CAP_LARGE_MTU          0x00000004
-#define SMB2_GLOBAL_CAP_MULTI_CHANNEL      0x00000008
-#define SMB2_GLOBAL_CAP_PERSISTENT_HANDLES 0x00000010
-#define SMB2_GLOBAL_CAP_DIRECTORY_LEASING  0x00000020
-#define SMB2_GLOBAL_CAP_ENCRYPTION         0x00000040
+#define SMB2_GLOBAL_CAP_DFS                0x00000001ul
+#define SMB2_GLOBAL_CAP_LEASING            0x00000002ul
+#define SMB2_GLOBAL_CAP_LARGE_MTU          0x00000004ul
+#define SMB2_GLOBAL_CAP_MULTI_CHANNEL      0x00000008ul
+#define SMB2_GLOBAL_CAP_PERSISTENT_HANDLES 0x00000010ul
+#define SMB2_GLOBAL_CAP_DIRECTORY_LEASING  0x00000020ul
+#define SMB2_GLOBAL_CAP_ENCRYPTION         0x00000040ul
 
-#define SMB2_NEGOTIATE_MAX_DIALECTS 10
+#define SMB2_NEGOTIATE_MAX_DIALECTS (uint16_t)10
 
-#define SMB2_NEGOTIATE_REQUEST_SIZE 36
+#define SMB2_NEGOTIATE_REQUEST_SIZE (uint16_t)36
 
 #define SMB2_GUID_SIZE 16
 typedef uint8_t smb2_guid[SMB2_GUID_SIZE];
@@ -109,7 +109,7 @@ struct smb2_negotiate_request {
         uint16_t dialects[SMB2_NEGOTIATE_MAX_DIALECTS];
 };
 
-#define SMB2_NEGOTIATE_REPLY_SIZE 65
+#define SMB2_NEGOTIATE_REPLY_SIZE (uint16_t)65
 
 struct smb2_negotiate_reply {
         uint16_t security_mode;
@@ -127,15 +127,15 @@ struct smb2_negotiate_reply {
 };
 
 /* session setup flags */
-#define SMB2_SESSION_FLAG_BINDING 0x01
+#define SMB2_SESSION_FLAG_BINDING (uint8_t)0x01
 
 /* session setup capabilities */
-#define SMB2_GLOBAL_CAP_DFS     0x00000001
-#define SMB2_GLOBAL_CAP_UNUSED1 0x00000002
-#define SMB2_GLOBAL_CAP_UNUSED2 0x00000004
-#define SMB2_GLOBAL_CAP_UNUSED4 0x00000008
+#define SMB2_GLOBAL_CAP_DFS     0x00000001ul
+#define SMB2_GLOBAL_CAP_UNUSED1 0x00000002ul
+#define SMB2_GLOBAL_CAP_UNUSED2 0x00000004ul
+#define SMB2_GLOBAL_CAP_UNUSED4 0x00000008ul
 
-#define SMB2_SESSION_SETUP_REQUEST_SIZE 25
+#define SMB2_SESSION_SETUP_REQUEST_SIZE (uint16_t)25
 
 struct smb2_session_setup_request {
         uint8_t flags;
@@ -147,11 +147,11 @@ struct smb2_session_setup_request {
         uint8_t *security_buffer;
 };
 
-#define SMB2_SESSION_FLAG_IS_GUEST        0x0001
-#define SMB2_SESSION_FLAG_IS_NULL         0x0002
-#define SMB2_SESSION_FLAG_IS_ENCRYPT_DATA 0x0004
+#define SMB2_SESSION_FLAG_IS_GUEST        (uint16_t)0x0001
+#define SMB2_SESSION_FLAG_IS_NULL         (uint16_t)0x0002
+#define SMB2_SESSION_FLAG_IS_ENCRYPT_DATA (uint16_t)0x0004
 
-#define SMB2_SESSION_SETUP_REPLY_SIZE 9
+#define SMB2_SESSION_SETUP_REPLY_SIZE (uint16_t)9
 
 struct smb2_session_setup_reply {
         uint16_t session_flags;
@@ -160,9 +160,9 @@ struct smb2_session_setup_reply {
         uint8_t *security_buffer;
 };
 
-#define SMB2_TREE_CONNECT_REQUEST_SIZE 9
+#define SMB2_TREE_CONNECT_REQUEST_SIZE (uint16_t)9
 
-#define SMB2_SHAREFLAG_CLUSTER_RECONNECT 0x0001
+#define SMB2_SHAREFLAG_CLUSTER_RECONNECT (uint16_t)0x0001
 
 struct smb2_tree_connect_request {
         uint16_t flags;
@@ -170,32 +170,32 @@ struct smb2_tree_connect_request {
         uint16_t *path;
 };
 
-#define SMB2_SHARE_TYPE_DISK  0x01
-#define SMB2_SHARE_TYPE_PIPE  0x02
-#define SMB2_SHARE_TYPE_PRINT 0x03
+#define SMB2_SHARE_TYPE_DISK  (uint8_t)0x01
+#define SMB2_SHARE_TYPE_PIPE  (uint8_t)0x02
+#define SMB2_SHARE_TYPE_PRINT (uint8_t)0x03
 
-#define SMB2_SHAREFLAG_MANUAL_CACHING              0x00000000
-#define SMB2_SHAREFLAG_DFS                         0x00000001
-#define SMB2_SHAREFLAG_DFS_ROOT                    0x00000002
-#define SMB2_SHAREFLAG_AUTO_CACHING                0x00000010
-#define SMB2_SHAREFLAG_VDO_CACHING                 0x00000020
-#define SMB2_SHAREFLAG_NO_CACHING                  0x00000030
-#define SMB2_SHAREFLAG_RESTRICT_EXCLUSIVE_OPENS    0x00000100
-#define SMB2_SHAREFLAG_FORCE_SHARED_DELETE         0x00000200
-#define SMB2_SHAREFLAG_ALLOW_NAMESPACE_CACHING     0x00000400
-#define SMB2_SHAREFLAG_ACCESS_BASED_DIRECTORY_ENUM 0x00000800
-#define SMB2_SHAREFLAG_FORCE_LEVELII_OPLOCK        0x00001000
-#define SMB2_SHAREFLAG_ENABLE_HASH_V1              0x00002000
-#define SMB2_SHAREFLAG_ENABLE_HASH_V2              0x00004000
-#define SMB2_SHAREFLAG_ENCRYPT_DATA                0x00008000
+#define SMB2_SHAREFLAG_MANUAL_CACHING              0x00000000ul
+#define SMB2_SHAREFLAG_DFS                         0x00000001ul
+#define SMB2_SHAREFLAG_DFS_ROOT                    0x00000002ul
+#define SMB2_SHAREFLAG_AUTO_CACHING                0x00000010ul
+#define SMB2_SHAREFLAG_VDO_CACHING                 0x00000020ul
+#define SMB2_SHAREFLAG_NO_CACHING                  0x00000030ul
+#define SMB2_SHAREFLAG_RESTRICT_EXCLUSIVE_OPENS    0x00000100ul
+#define SMB2_SHAREFLAG_FORCE_SHARED_DELETE         0x00000200ul
+#define SMB2_SHAREFLAG_ALLOW_NAMESPACE_CACHING     0x00000400ul
+#define SMB2_SHAREFLAG_ACCESS_BASED_DIRECTORY_ENUM 0x00000800ul
+#define SMB2_SHAREFLAG_FORCE_LEVELII_OPLOCK        0x00001000ul
+#define SMB2_SHAREFLAG_ENABLE_HASH_V1              0x00002000ul
+#define SMB2_SHAREFLAG_ENABLE_HASH_V2              0x00004000ul
+#define SMB2_SHAREFLAG_ENCRYPT_DATA                0x00008000ul
 
-#define SMB2_SHARE_CAP_DFS                         0x00000008
-#define SMB2_SHARE_CAP_CONTINUOUS_AVAILABILITY     0x00000010
-#define SMB2_SHARE_CAP_SCALEOUT                    0x00000020
-#define SMB2_SHARE_CAP_CLUSTER                     0x00000040
-#define SMB2_SHARE_CAP_ASYMMETRIC                  0x00000080
+#define SMB2_SHARE_CAP_DFS                         0x00000008ul
+#define SMB2_SHARE_CAP_CONTINUOUS_AVAILABILITY     0x00000010ul
+#define SMB2_SHARE_CAP_SCALEOUT                    0x00000020ul
+#define SMB2_SHARE_CAP_CLUSTER                     0x00000040ul
+#define SMB2_SHARE_CAP_ASYMMETRIC                  0x00000080ul
 
-#define SMB2_TREE_CONNECT_REPLY_SIZE 16
+#define SMB2_TREE_CONNECT_REPLY_SIZE (uint16_t)16
 
 struct smb2_tree_connect_reply {
         uint8_t share_type;
@@ -204,101 +204,101 @@ struct smb2_tree_connect_reply {
         uint32_t maximal_access;
 };
 
-#define SMB2_CREATE_REQUEST_SIZE 57
+#define SMB2_CREATE_REQUEST_SIZE (uint16_t)57
 
-#define SMB2_OPLOCK_LEVEL_NONE      0x00
-#define SMB2_OPLOCK_LEVEL_II        0x01
-#define SMB2_OPLOCK_LEVEL_EXCLUSIVE 0x08
-#define SMB2_OPLOCK_LEVEL_BATCH     0x09
-#define SMB2_OPLOCK_LEVEL_LEASE     0xff
+#define SMB2_OPLOCK_LEVEL_NONE      (uint8_t)0x00
+#define SMB2_OPLOCK_LEVEL_II        (uint8_t)0x01
+#define SMB2_OPLOCK_LEVEL_EXCLUSIVE (uint8_t)0x08
+#define SMB2_OPLOCK_LEVEL_BATCH     (uint8_t)0x09
+#define SMB2_OPLOCK_LEVEL_LEASE     (uint8_t)0xff
 
-#define SMB2_IMPERSONATION_ANONYMOUS      0x00000000
-#define SMB2_IMPERSONATION_IDENTIFICATION 0x00000001
-#define SMB2_IMPERSONATION_IMPERSONATION  0x00000002
-#define SMB2_IMPERSONATION_DELEGATE       0x00000003
+#define SMB2_IMPERSONATION_ANONYMOUS      0x00000000ul
+#define SMB2_IMPERSONATION_IDENTIFICATION 0x00000001ul
+#define SMB2_IMPERSONATION_IMPERSONATION  0x00000002ul
+#define SMB2_IMPERSONATION_DELEGATE       0x00000003ul
 
 /* Access mask common to all objects */
-#define SMB2_FILE_READ_EA           0x00000008
-#define SMB2_FILE_WRITE_EA          0x00000010
-#define SMB2_FILE_DELETE_CHILD      0x00000040
-#define SMB2_FILE_READ_ATTRIBUTES   0x00000080
-#define SMB2_FILE_WRITE_ATTRIBUTES  0x00000100
-#define SMB2_DELETE                 0x00010000
-#define SMB2_READ_CONTROL           0x00020000
-#define SMB2_WRITE_DACL             0x00040000
-#define SMB2_WRITE_OWNER            0x00080000
-#define SMB2_SYNCHRONIZE            0x00100000
-#define SMB2_ACCESS_SYSTEM_SECURITY 0x01000000
-#define SMB2_MAXIMUM_ALLOWED        0x02000000
-#define SMB2_GENERIC_ALL            0x10000000
-#define SMB2_GENERIC_EXECUTE        0x20000000
-#define SMB2_GENERIC_WRITE          0x40000000
-#define SMB2_GENERIC_READ           0x80000000
+#define SMB2_FILE_READ_EA           0x00000008ul
+#define SMB2_FILE_WRITE_EA          0x00000010ul
+#define SMB2_FILE_DELETE_CHILD      0x00000040ul
+#define SMB2_FILE_READ_ATTRIBUTES   0x00000080ul
+#define SMB2_FILE_WRITE_ATTRIBUTES  0x00000100ul
+#define SMB2_DELETE                 0x00010000ul
+#define SMB2_READ_CONTROL           0x00020000ul
+#define SMB2_WRITE_DACL             0x00040000ul
+#define SMB2_WRITE_OWNER            0x00080000ul
+#define SMB2_SYNCHRONIZE            0x00100000ul
+#define SMB2_ACCESS_SYSTEM_SECURITY 0x01000000ul
+#define SMB2_MAXIMUM_ALLOWED        0x02000000ul
+#define SMB2_GENERIC_ALL            0x10000000ul
+#define SMB2_GENERIC_EXECUTE        0x20000000ul
+#define SMB2_GENERIC_WRITE          0x40000000ul
+#define SMB2_GENERIC_READ           0x80000000ul
 
 /* Access mask unique for file/pipe/printer */
-#define SMB2_FILE_READ_DATA         0x00000001
-#define SMB2_FILE_WRITE_DATA        0x00000002
-#define SMB2_FILE_APPEND_DATA       0x00000004
-#define SMB2_FILE_EXECUTE           0x00000020
+#define SMB2_FILE_READ_DATA         0x00000001ul
+#define SMB2_FILE_WRITE_DATA        0x00000002ul
+#define SMB2_FILE_APPEND_DATA       0x00000004ul
+#define SMB2_FILE_EXECUTE           0x00000020ul
 
 /* Access mask unique for directories */
-#define SMB2_FILE_LIST_DIRECTORY    0x00000001
-#define SMB2_FILE_ADD_FILE          0x00000002
-#define SMB2_FILE_ADD_SUBDIRECTORY  0x00000004
-#define SMB2_FILE_TRAVERSE          0x00000020
+#define SMB2_FILE_LIST_DIRECTORY    0x00000001ul
+#define SMB2_FILE_ADD_FILE          0x00000002ul
+#define SMB2_FILE_ADD_SUBDIRECTORY  0x00000004ul
+#define SMB2_FILE_TRAVERSE          0x00000020ul
 
 /* File attributes */
-#define SMB2_FILE_ATTRIBUTE_READONLY            0x00000001
-#define SMB2_FILE_ATTRIBUTE_HIDDEN              0x00000002
-#define SMB2_FILE_ATTRIBUTE_SYSTEM              0x00000004
-#define SMB2_FILE_ATTRIBUTE_DIRECTORY           0x00000010
-#define SMB2_FILE_ATTRIBUTE_ARCHIVE             0x00000020
-#define SMB2_FILE_ATTRIBUTE_NORMAL              0x00000080
-#define SMB2_FILE_ATTRIBUTE_TEMPORARY           0x00000100
-#define SMB2_FILE_ATTRIBUTE_SPARSE_FILE         0x00000200
-#define SMB2_FILE_ATTRIBUTE_REPARSE_POINT       0x00000400
-#define SMB2_FILE_ATTRIBUTE_COMPRESSED          0x00000800
-#define SMB2_FILE_ATTRIBUTE_OFFLINE             0x00001000
-#define SMB2_FILE_ATTRIBUTE_NOT_CONTENT_INDEXED 0x00002000
-#define SMB2_FILE_ATTRIBUTE_ENCRYPTED           0x00004000
-#define SMB2_FILE_ATTRIBUTE_INTEGRITY_STREAM    0x00008000
-#define SMB2_FILE_ATTRIBUTE_NO_SCRUB_DATA       0x00020000
+#define SMB2_FILE_ATTRIBUTE_READONLY            0x00000001ul
+#define SMB2_FILE_ATTRIBUTE_HIDDEN              0x00000002ul
+#define SMB2_FILE_ATTRIBUTE_SYSTEM              0x00000004ul
+#define SMB2_FILE_ATTRIBUTE_DIRECTORY           0x00000010ul
+#define SMB2_FILE_ATTRIBUTE_ARCHIVE             0x00000020ul
+#define SMB2_FILE_ATTRIBUTE_NORMAL              0x00000080ul
+#define SMB2_FILE_ATTRIBUTE_TEMPORARY           0x00000100ul
+#define SMB2_FILE_ATTRIBUTE_SPARSE_FILE         0x00000200ul
+#define SMB2_FILE_ATTRIBUTE_REPARSE_POINT       0x00000400ul
+#define SMB2_FILE_ATTRIBUTE_COMPRESSED          0x00000800ul
+#define SMB2_FILE_ATTRIBUTE_OFFLINE             0x00001000ul
+#define SMB2_FILE_ATTRIBUTE_NOT_CONTENT_INDEXED 0x00002000ul
+#define SMB2_FILE_ATTRIBUTE_ENCRYPTED           0x00004000ul
+#define SMB2_FILE_ATTRIBUTE_INTEGRITY_STREAM    0x00008000ul
+#define SMB2_FILE_ATTRIBUTE_NO_SCRUB_DATA       0x00020000ul
 
 /* Share access */
-#define SMB2_FILE_SHARE_READ 0x00000001
-#define SMB2_FILE_SHARE_WRITE 0x00000002
-#define SMB2_FILE_SHARE_DELETE 0x00000004
+#define SMB2_FILE_SHARE_READ 0x00000001ul
+#define SMB2_FILE_SHARE_WRITE 0x00000002ul
+#define SMB2_FILE_SHARE_DELETE 0x00000004ul
 
 /* Create disposition */
-#define SMB2_FILE_SUPERSEDE    0x00000000
-#define SMB2_FILE_OPEN         0x00000001
-#define SMB2_FILE_CREATE       0x00000002
-#define SMB2_FILE_OPEN_IF      0x00000003
-#define SMB2_FILE_OVERWRITE    0x00000004
-#define SMB2_FILE_OVERWRITE_IF 0x00000005
+#define SMB2_FILE_SUPERSEDE    0x00000000ul
+#define SMB2_FILE_OPEN         0x00000001ul
+#define SMB2_FILE_CREATE       0x00000002ul
+#define SMB2_FILE_OPEN_IF      0x00000003ul
+#define SMB2_FILE_OVERWRITE    0x00000004ul
+#define SMB2_FILE_OVERWRITE_IF 0x00000005ul
 
 /* Create options */
-#define SMB2_FILE_DIRECTORY_FILE            0x00000001
-#define SMB2_FILE_WRITE_THROUGH             0x00000002
-#define SMB2_FILE_SEQUENTIAL_ONLY           0x00000004
-#define SMB2_FILE_NO_INTERMEDIATE_BUFFERING 0x00000008
-#define SMB2_FILE_SYNCHRONOUS_IO_ALERT      0x00000010
-#define SMB2_FILE_SYNCHRONOUS_IO_NONALERT   0x00000020
-#define SMB2_FILE_NON_DIRECTORY_FILE        0x00000040
-#define SMB2_FILE_COMPLETE_IF_OPLOCKED      0x00000100
-#define SMB2_FILE_NO_EA_KNOWLEDGE           0x00000200
-#define SMB2_FILE_RANDOM_ACCESS             0x00000800
-#define SMB2_FILE_DELETE_ON_CLOSE           0x00001000
-#define SMB2_FILE_OPEN_BY_FILE_ID           0x00002000
-#define SMB2_FILE_OPEN_FOR_BACKUP_INTENT    0x00004000
-#define SMB2_FILE_NO_COMPRESSION            0x00008000
-#define SMB2_FILE_OPEN_REMOTE_INSTANCE      0x00000400
-#define SMB2_FILE_OPEN_REQUIRING_OPLOCK     0x00010000
-#define SMB2_FILE_DISALLOW_EXCLUSIVE        0x00020000
-#define SMB2_FILE_RESERVE_OPFILTER          0x00100000
-#define SMB2_FILE_OPEN_REPARSE_POINT        0x00200000
-#define SMB2_FILE_OPEN_NO_RECALL            0x00400000
-#define SMB2_FILE_OPEN_FOR_FREE_SPACE_QUERY 0x00800000
+#define SMB2_FILE_DIRECTORY_FILE            0x00000001ul
+#define SMB2_FILE_WRITE_THROUGH             0x00000002ul
+#define SMB2_FILE_SEQUENTIAL_ONLY           0x00000004ul
+#define SMB2_FILE_NO_INTERMEDIATE_BUFFERING 0x00000008ul
+#define SMB2_FILE_SYNCHRONOUS_IO_ALERT      0x00000010ul
+#define SMB2_FILE_SYNCHRONOUS_IO_NONALERT   0x00000020ul
+#define SMB2_FILE_NON_DIRECTORY_FILE        0x00000040ul
+#define SMB2_FILE_COMPLETE_IF_OPLOCKED      0x00000100ul
+#define SMB2_FILE_NO_EA_KNOWLEDGE           0x00000200ul
+#define SMB2_FILE_RANDOM_ACCESS             0x00000800ul
+#define SMB2_FILE_DELETE_ON_CLOSE           0x00001000ul
+#define SMB2_FILE_OPEN_BY_FILE_ID           0x00002000ul
+#define SMB2_FILE_OPEN_FOR_BACKUP_INTENT    0x00004000ul
+#define SMB2_FILE_NO_COMPRESSION            0x00008000ul
+#define SMB2_FILE_OPEN_REMOTE_INSTANCE      0x00000400ul
+#define SMB2_FILE_OPEN_REQUIRING_OPLOCK     0x00010000ul
+#define SMB2_FILE_DISALLOW_EXCLUSIVE        0x00020000ul
+#define SMB2_FILE_RESERVE_OPFILTER          0x00100000ul
+#define SMB2_FILE_OPEN_REPARSE_POINT        0x00200000ul
+#define SMB2_FILE_OPEN_NO_RECALL            0x00400000ul
+#define SMB2_FILE_OPEN_FOR_FREE_SPACE_QUERY 0x00800000ul
 
 struct smb2_create_request {
         uint8_t security_flags;
@@ -315,7 +315,7 @@ struct smb2_create_request {
         uint8_t *create_context;
 };
 
-#define SMB2_CREATE_REPLY_SIZE 89
+#define SMB2_CREATE_REPLY_SIZE (uint16_t)89
 
 #define SMB2_FD_SIZE 16
 typedef uint8_t smb2_file_id[SMB2_FD_SIZE];
@@ -346,16 +346,16 @@ struct smb2_create_reply {
         uint8_t *create_context;
 };
 
-#define SMB2_CLOSE_REQUEST_SIZE 24
+#define SMB2_CLOSE_REQUEST_SIZE (uint16_t)24
 
-#define SMB2_CLOSE_FLAG_POSTQUERY_ATTRIB 0x0001
+#define SMB2_CLOSE_FLAG_POSTQUERY_ATTRIB (uint16_t)0x0001
 
 struct smb2_close_request {
         uint16_t flags;
         smb2_file_id file_id;
 };
 
-#define SMB2_CLOSE_REPLY_SIZE 60
+#define SMB2_CLOSE_REPLY_SIZE (uint16_t)60
 
 struct smb2_close_reply {
         uint16_t flags;
@@ -368,29 +368,29 @@ struct smb2_close_reply {
         uint32_t file_attributes;
 };
 
-#define SMB2_FLUSH_REQUEST_SIZE 24
+#define SMB2_FLUSH_REQUEST_SIZE (uint16_t)24
 
 struct smb2_flush_request {
         smb2_file_id file_id;
 };
 
-#define SMB2_FLUSH_REPLY_SIZE 4
+#define SMB2_FLUSH_REPLY_SIZE (uint16_t)4
 
-#define SMB2_QUERY_DIRECTORY_REQUEST_SIZE 33
+#define SMB2_QUERY_DIRECTORY_REQUEST_SIZE (uint16_t)33
 
 /* File information class */
-#define SMB2_FILE_DIRECTORY_INFORMATION         0x01
-#define SMB2_FILE_FULL_DIRECTORY_INFORMATION    0x02
-#define SMB2_FILE_BOTH_DIRECTORY_INFORMATION    0x03
-#define SMB2_FILE_NAMES_INFORMATION             0x0c
-#define SMB2_FILE_ID_BOTH_DIRECTORY_INFORMATION 0x25
-#define SMB2_FILE_ID_FULL_DIRECTORY_INFORMATION 0x26
+#define SMB2_FILE_DIRECTORY_INFORMATION         (uint8_t)0x01
+#define SMB2_FILE_FULL_DIRECTORY_INFORMATION    (uint8_t)0x02
+#define SMB2_FILE_BOTH_DIRECTORY_INFORMATION    (uint8_t)0x03
+#define SMB2_FILE_NAMES_INFORMATION             (uint8_t)0x0c
+#define SMB2_FILE_ID_BOTH_DIRECTORY_INFORMATION (uint8_t)0x25
+#define SMB2_FILE_ID_FULL_DIRECTORY_INFORMATION (uint8_t)0x26
 
 /* query flags */
-#define SMB2_RESTART_SCANS       0x01
-#define SMB2_RETURN_SINGLE_ENTRY 0x02
-#define SMB2_INDEX_SPECIFIED     0x04
-#define SMB2_REOPEN              0x10
+#define SMB2_RESTART_SCANS       (uint8_t)0x01
+#define SMB2_RETURN_SINGLE_ENTRY (uint8_t)0x02
+#define SMB2_INDEX_SPECIFIED     (uint8_t)0x04
+#define SMB2_REOPEN              (uint8_t)0x10
 
 /* Structure for SMB2_FILE_ID_FULL_DIRECTORY_INFORMATION.
  * This is also used as the dirent content.
@@ -419,7 +419,7 @@ struct smb2_query_directory_request {
         uint32_t output_buffer_length;
 };
 
-#define SMB2_QUERY_DIRECTORY_REPLY_SIZE 9
+#define SMB2_QUERY_DIRECTORY_REPLY_SIZE (uint16_t)9
 
 struct smb2_query_directory_reply {
         uint16_t output_buffer_offset;
@@ -427,13 +427,13 @@ struct smb2_query_directory_reply {
         uint8_t *output_buffer;
 };
 
-#define SMB2_READ_REQUEST_SIZE 49
+#define SMB2_READ_REQUEST_SIZE (uint16_t)49
 
-#define SMB2_READFLAG_READ_UNBUFFERED 0x01
+#define SMB2_READFLAG_READ_UNBUFFERED (uint8_t)0x01
 
-#define SMB2_CHANNEL_NONE               0x00000000
-#define SMB2_CHANNEL_RDMA_V1            0x00000001
-#define SMB2_CHANNEL_RDMA_V1_INVALIDATE 0x00000002
+#define SMB2_CHANNEL_NONE               0x00000000ul
+#define SMB2_CHANNEL_RDMA_V1            0x00000001ul
+#define SMB2_CHANNEL_RDMA_V1_INVALIDATE 0x00000002ul
 
 struct smb2_read_request {
         uint8_t flags;
@@ -448,7 +448,7 @@ struct smb2_read_request {
         uint8_t *read_channel_info;
 };
 
-#define SMB2_READ_REPLY_SIZE 17
+#define SMB2_READ_REPLY_SIZE (uint16_t)17
 
 struct smb2_read_reply {
         uint8_t data_offset;
@@ -456,43 +456,43 @@ struct smb2_read_reply {
         uint32_t data_remaining;
 };
 
-#define SMB2_QUERY_INFO_REQUEST_SIZE 41
+#define SMB2_QUERY_INFO_REQUEST_SIZE (uint16_t)41
 
 /* info type */
-#define SMB2_0_INFO_FILE       0x01
-#define SMB2_0_INFO_FILESYSTEM 0x02
-#define SMB2_0_INFO_SECURITY   0x03
-#define SMB2_0_INFO_QUOTA      0x04
+#define SMB2_0_INFO_FILE       (uint8_t)0x01
+#define SMB2_0_INFO_FILESYSTEM (uint8_t)0x02
+#define SMB2_0_INFO_SECURITY   (uint8_t)0x03
+#define SMB2_0_INFO_QUOTA      (uint8_t)0x04
 
 /* File information class : for SMB2_0_INFO_FILE */
-#define SMB2_FILE_BASIC_INFORMATION             0x04
-#define SMB2_FILE_STANDARD_INFORMATION          0x05
-#define SMB2_FILE_RENAME_INFORMATION            0x0a
-#define SMB2_FILE_ALL_INFORMATION               0x12
-#define SMB2_FILE_END_OF_FILE_INFORMATION       0x14
+#define SMB2_FILE_BASIC_INFORMATION             (uint8_t)0x04
+#define SMB2_FILE_STANDARD_INFORMATION          (uint8_t)0x05
+#define SMB2_FILE_RENAME_INFORMATION            (uint8_t)0x0a
+#define SMB2_FILE_ALL_INFORMATION               (uint8_t)0x12
+#define SMB2_FILE_END_OF_FILE_INFORMATION       (uint8_t)0x14
 
 /* Filesystem information class : for SMB2_0_INFO_FILESYSTEM */
-#define SMB2_FILE_FS_SIZE_INFORMATION              3
-#define SMB2_FILE_FS_DEVICE_INFORMATION            4
-#define SMB2_FILE_FS_CONTROL_INFORMATION           6
-#define SMB2_FILE_FS_FULL_SIZE_INFORMATION         7
-#define SMB2_FILE_FS_SECTOR_SIZE_INFORMATION      11
+#define SMB2_FILE_FS_SIZE_INFORMATION           (uint8_t)3
+#define SMB2_FILE_FS_DEVICE_INFORMATION         (uint8_t)4
+#define SMB2_FILE_FS_CONTROL_INFORMATION        (uint8_t)6
+#define SMB2_FILE_FS_FULL_SIZE_INFORMATION      (uint8_t)7
+#define SMB2_FILE_FS_SECTOR_SIZE_INFORMATION    (uint8_t)11
         
 /* additional info */
-#define SMB2_OWNER_SECURITY_INFORMATION     0x00000001
-#define SMB2_GROUP_SECURITY_INFORMATION     0x00000002
-#define SMB2_DACL_SECURITY_INFORMATION      0x00000004
-#define SMB2_SACL_SECURITY_INFORMATION      0x00000008
-#define SMB2_LABEL_SECURITY_INFORMATION     0x00000010
-#define SMB2_ATTRIBUTE_SECURITY_INFORMATION 0x00000020
-#define SMB2_SCOPE_SECURITY_INFORMATION     0x00000040
-#define SMB2_BACKUP_SECURITY_INFORMATION    0x00010000
+#define SMB2_OWNER_SECURITY_INFORMATION     0x00000001ul
+#define SMB2_GROUP_SECURITY_INFORMATION     0x00000002ul
+#define SMB2_DACL_SECURITY_INFORMATION      0x00000004ul
+#define SMB2_SACL_SECURITY_INFORMATION      0x00000008ul
+#define SMB2_LABEL_SECURITY_INFORMATION     0x00000010ul
+#define SMB2_ATTRIBUTE_SECURITY_INFORMATION 0x00000020ul
+#define SMB2_SCOPE_SECURITY_INFORMATION     0x00000040ul
+#define SMB2_BACKUP_SECURITY_INFORMATION    0x00010000ul
 
 
 /* flags */
-#define SL_RESTART_SCAN        0x00000001
-#define SL_RETURN_SINGLE_ENTRY 0x00000002
-#define SL_INDEX_SPECIFIED     0x00000004
+#define SL_RESTART_SCAN        0x00000001ul
+#define SL_RETURN_SINGLE_ENTRY 0x00000002ul
+#define SL_INDEX_SPECIFIED     0x00000004ul
 
 /*
  * FILE_BASIC_INFORMATION
@@ -557,7 +557,7 @@ struct smb2_file_rename_info {
         uint8_t *file_name;
 };
 
-#define SMB2_SET_INFO_REQUEST_SIZE 33
+#define SMB2_SET_INFO_REQUEST_SIZE (uint16_t)33
 
 struct smb2_set_info_request {
         uint8_t info_type;
@@ -567,7 +567,7 @@ struct smb2_set_info_request {
         smb2_file_id file_id;
 };
 
-#define SMB2_SET_INFO_REPLY_SIZE 2
+#define SMB2_SET_INFO_REPLY_SIZE (uint16_t)2
 
 /*
  * SID
@@ -585,34 +585,34 @@ struct smb2_sid {
  * ACE
  */
 /* ace type */
-#define SMB2_ACCESS_ALLOWED_ACE_TYPE                 0x00
-#define SMB2_ACCESS_DENIED_ACE_TYPE                  0x01
-#define SMB2_SYSTEM_AUDIT_ACE_TYPE                   0x02
+#define SMB2_ACCESS_ALLOWED_ACE_TYPE                 (uint8_t)0x00
+#define SMB2_ACCESS_DENIED_ACE_TYPE                  (uint8_t)0x01
+#define SMB2_SYSTEM_AUDIT_ACE_TYPE                   (uint8_t)0x02
 /*
  * Reserved for future use
- * #define SMB2_SYSTEM_ALARM_ACE_TYPE                   0x03
+ * #define SMB2_SYSTEM_ALARM_ACE_TYPE                   (uint8_t)0x03
  */
-#define SMB2_ACCESS_ALLOWED_OBJECT_ACE_TYPE          0x05
-#define SMB2_ACCESS_DENIED_OBJECT_ACE_TYPE           0x06
-#define SMB2_SYSTEM_AUDIT_OBJECT_ACE_TYPE            0x07
+#define SMB2_ACCESS_ALLOWED_OBJECT_ACE_TYPE          (uint8_t)0x05
+#define SMB2_ACCESS_DENIED_OBJECT_ACE_TYPE           (uint8_t)0x06
+#define SMB2_SYSTEM_AUDIT_OBJECT_ACE_TYPE            (uint8_t)0x07
 /*
  * Reserved for future use
- * #define SMB2_SYSTEM_ALARM_OBJECT_ACE_TYPE            0x08
+ * #define SMB2_SYSTEM_ALARM_OBJECT_ACE_TYPE            (uint8_t)0x08
  */
-#define SMB2_ACCESS_ALLOWED_CALLBACK_ACE_TYPE        0x09
-#define SMB2_ACCESS_DENIED_CALLBACK_ACE_TYPE         0x10
-#define SMB2_SYSTEM_MANDATORY_LABEL_ACE_TYPE         0x11
-#define SMB2_SYSTEM_RESOURCE_ATTRIBUTE_ACE_TYPE      0x12
-#define SMB2_SYSTEM_SCOPED_POLICY_ID_ACE_TYPE        0x13
+#define SMB2_ACCESS_ALLOWED_CALLBACK_ACE_TYPE        (uint8_t)0x09
+#define SMB2_ACCESS_DENIED_CALLBACK_ACE_TYPE         (uint8_t)0x10
+#define SMB2_SYSTEM_MANDATORY_LABEL_ACE_TYPE         (uint8_t)0x11
+#define SMB2_SYSTEM_RESOURCE_ATTRIBUTE_ACE_TYPE      (uint8_t)0x12
+#define SMB2_SYSTEM_SCOPED_POLICY_ID_ACE_TYPE        (uint8_t)0x13
 
 /* ace flags */
-#define SMB2_OBJECT_INHERIT_ACE         0x01
-#define SMB2_CONTAINER_INHERIT_ACE      0x02
-#define SMB2_NO_PROPAGATE_INHERIT_ACE   0x04
-#define SMB2_INHERIT_ONLY_ACE           0x08
-#define SMB2_INHERITED_ACE              0x10
-#define SMB2_SUCCESSFUL_ACCESS_ACE_FLAG 0x40
-#define SMB2_FAILED_ACCESS_ACE_FLAG     0x80
+#define SMB2_OBJECT_INHERIT_ACE         (uint8_t)0x01
+#define SMB2_CONTAINER_INHERIT_ACE      (uint8_t)0x02
+#define SMB2_NO_PROPAGATE_INHERIT_ACE   (uint8_t)0x04
+#define SMB2_INHERIT_ONLY_ACE           (uint8_t)0x08
+#define SMB2_INHERITED_ACE              (uint8_t)0x10
+#define SMB2_SUCCESSFUL_ACCESS_ACE_FLAG (uint8_t)0x40
+#define SMB2_FAILED_ACCESS_ACE_FLAG     (uint8_t)0x80
 
 #define SMB2_OBJECT_TYPE_SIZE 16
 
@@ -646,8 +646,8 @@ struct smb2_ace {
 /*
  * ACL
  */
-#define SMB2_ACL_REVISION    0x02
-#define SMB2_ACL_REVISION_DS 0x04
+#define SMB2_ACL_REVISION    (uint8_t)0x02
+#define SMB2_ACL_REVISION_DS (uint8_t)0x04
 
 struct smb2_acl {
         uint8_t revision;
@@ -659,22 +659,22 @@ struct smb2_acl {
  * SECURITY_DESCRIPTOR
  */
 /* Security descriptor control flags */
-#define SMB2_SD_CONTROL_OD 0x0001
-#define SMB2_SD_CONTROL_GD 0x0002
-#define SMB2_SD_CONTROL_DP 0x0004
-#define SMB2_SD_CONTROL_DD 0x0008
-#define SMB2_SD_CONTROL_SP 0x0010
-#define SMB2_SD_CONTROL_SD 0x0020
-#define SMB2_SD_CONTROL_SS 0x0040
-#define SMB2_SD_CONTROL_DT 0x0080
-#define SMB2_SD_CONTROL_DC 0x0100
-#define SMB2_SD_CONTROL_SC 0x0200
-#define SMB2_SD_CONTROL_DI 0x0400
-#define SMB2_SD_CONTROL_SI 0x0800
-#define SMB2_SD_CONTROL_PD 0x1000
-#define SMB2_SD_CONTROL_PS 0x2000
-#define SMB2_SD_CONTROL_RM 0x4000
-#define SMB2_SD_CONTROL_SR 0x8000
+#define SMB2_SD_CONTROL_OD (uint16_t)0x0001
+#define SMB2_SD_CONTROL_GD (uint16_t)0x0002
+#define SMB2_SD_CONTROL_DP (uint16_t)0x0004
+#define SMB2_SD_CONTROL_DD (uint16_t)0x0008
+#define SMB2_SD_CONTROL_SP (uint16_t)0x0010
+#define SMB2_SD_CONTROL_SD (uint16_t)0x0020
+#define SMB2_SD_CONTROL_SS (uint16_t)0x0040
+#define SMB2_SD_CONTROL_DT (uint16_t)0x0080
+#define SMB2_SD_CONTROL_DC (uint16_t)0x0100
+#define SMB2_SD_CONTROL_SC (uint16_t)0x0200
+#define SMB2_SD_CONTROL_DI (uint16_t)0x0400
+#define SMB2_SD_CONTROL_SI (uint16_t)0x0800
+#define SMB2_SD_CONTROL_PD (uint16_t)0x1000
+#define SMB2_SD_CONTROL_PS (uint16_t)0x2000
+#define SMB2_SD_CONTROL_RM (uint16_t)0x4000
+#define SMB2_SD_CONTROL_SR (uint16_t)0x8000
 
 struct smb2_security_descriptor {
         uint8_t revision;
@@ -692,22 +692,22 @@ struct smb2_file_fs_size_info {
 };
 
 /* Device type */
-#define FILE_DEVICE_CD_ROM 0x00000002
-#define FILE_DEVICE_DISK   0x00000007
+#define FILE_DEVICE_CD_ROM 0x00000002ul
+#define FILE_DEVICE_DISK   0x00000007ul
 
 /* Characteristics */
-#define FILE_REMOVABLE_MEDIA                     0x00000001
-#define FILE_READ_ONLY_DEVICE                    0x00000002
-#define FILE_FLOPPY_DISKETTE                     0x00000004
-#define FILE_WRITE_ONCE_MEDIA                    0x00000008
-#define FILE_REMOTE_DEVICE                       0x00000010
-#define FILE_DEVICE_IS_MOUNTED                   0x00000020
-#define FILE_VIRTUAL_VOLUME                      0x00000040
-#define FILE_DEVICE_SECURE_OPEN                  0x00000100
-#define FILE_CHARACTERISTIC_TS_DEVICE            0x00001000
-#define FILE_CHARACTERISTIC_WEBDAV_DEVICE        0x00002000
-#define FILE_DEVICE_ALLOW_APPCONTAINER_TRAVERSAL 0x00020000
-#define FILE_PORTABLE_DEVICE                     0x00040000
+#define FILE_REMOVABLE_MEDIA                     0x00000001ul
+#define FILE_READ_ONLY_DEVICE                    0x00000002ul
+#define FILE_FLOPPY_DISKETTE                     0x00000004ul
+#define FILE_WRITE_ONCE_MEDIA                    0x00000008ul
+#define FILE_REMOTE_DEVICE                       0x00000010ul
+#define FILE_DEVICE_IS_MOUNTED                   0x00000020ul
+#define FILE_VIRTUAL_VOLUME                      0x00000040ul
+#define FILE_DEVICE_SECURE_OPEN                  0x00000100ul
+#define FILE_CHARACTERISTIC_TS_DEVICE            0x00001000ul
+#define FILE_CHARACTERISTIC_WEBDAV_DEVICE        0x00002000ul
+#define FILE_DEVICE_ALLOW_APPCONTAINER_TRAVERSAL 0x00020000ul
+#define FILE_PORTABLE_DEVICE                     0x00040000ul
 
 struct smb2_file_fs_device_info {
         uint32_t device_type;
@@ -715,15 +715,15 @@ struct smb2_file_fs_device_info {
 };
 
 /* File System Control Flags */
-#define FILE_VC_QUOTA_TRACK            0x00000001
-#define FILE_VC_QUOTA_ENFORCE          0x00000002
-#define FILE_VC_CONTENT_INDEX_DISABLED 0x00000008
-#define FILE_VC_LOG_QUOTA_THRESHOLD    0x00000010
-#define FILE_VC_LOG_QUOTA_LIMIT        0x00000020
-#define FILE_VC_LOG_VOLUME_THRESHOLD   0x00000040
-#define FILE_VC_LOG_VOLUME_LIMIT       0x00000080
-#define FILE_VC_QUOTAS_INCOMPLETE      0x00000100
-#define FILE_VC_QUOTAS_REBUILDING      0x00000200
+#define FILE_VC_QUOTA_TRACK            0x00000001ul
+#define FILE_VC_QUOTA_ENFORCE          0x00000002ul
+#define FILE_VC_CONTENT_INDEX_DISABLED 0x00000008ul
+#define FILE_VC_LOG_QUOTA_THRESHOLD    0x00000010ul
+#define FILE_VC_LOG_QUOTA_LIMIT        0x00000020ul
+#define FILE_VC_LOG_VOLUME_THRESHOLD   0x00000040ul
+#define FILE_VC_LOG_VOLUME_LIMIT       0x00000080ul
+#define FILE_VC_QUOTAS_INCOMPLETE      0x00000100ul
+#define FILE_VC_QUOTAS_REBUILDING      0x00000200ul
 
 struct smb2_file_fs_control_info {
         uint64_t free_space_start_filtering;
@@ -743,10 +743,10 @@ struct smb2_file_fs_full_size_info {
 };
 
 /* Flags */
-#define SSINFO_FLAGS_ALIGNED_DEVICE              0x00000001
-#define SSINFO_FLAGS_PARTITION_ALIGNED_ON_DEVICE 0x00000002
-#define SSINFO_FLAGS_NO_SEEK_PENALTY             0x00000004
-#define SSINFO_FLAGS_TRIM_ENABLED                0x00000008
+#define SSINFO_FLAGS_ALIGNED_DEVICE              0x00000001ul
+#define SSINFO_FLAGS_PARTITION_ALIGNED_ON_DEVICE 0x00000002ul
+#define SSINFO_FLAGS_NO_SEEK_PENALTY             0x00000004ul
+#define SSINFO_FLAGS_TRIM_ENABLED                0x00000008ul
 
 struct smb2_file_fs_sector_size_info {
         uint32_t logical_bytes_per_sector;
@@ -758,7 +758,7 @@ struct smb2_file_fs_sector_size_info {
         uint32_t byte_offset_for_partition_alignment;
 };
 
-#define SMB2_QUERY_INFO_REPLY_SIZE 9
+#define SMB2_QUERY_INFO_REPLY_SIZE (uint16_t)9
 
 struct smb2_query_info_reply {
         uint16_t output_buffer_offset;
@@ -766,27 +766,27 @@ struct smb2_query_info_reply {
         void *output_buffer;
 };
 
-#define SMB2_IOCTL_REQUEST_SIZE 57
+#define SMB2_IOCTL_REQUEST_SIZE (uint16_t)57
 
 /* CtlCode */
-#define SMB2_FSCTL_DFS_GET_REFERRALS            0x00060194
-#define SMB2_FSCTL_PIPE_PEEK                    0x0011400C
-#define SMB2_FSCTL_PIPE_WAIT                    0x00110018
-#define SMB2_FSCTL_PIPE_TRANSCEIVE              0x0011C017
-#define SMB2_FSCTL_SRV_COPYCHUNK                0x001440F2
-#define SMB2_FSCTL_SRV_ENUMERATE_SNAPSHOTS      0x00144064
-#define SMB2_FSCTL_SRV_REQUEST_RESUME_KEY       0x00140078
-#define SMB2_FSCTL_SRV_READ_HASH                0x001441bb
-#define SMB2_FSCTL_SRV_COPYCHUNK_WRITE          0x001480F2
-#define SMB2_FSCTL_LMR_REQUEST_RESILIENCY       0x001401D4
-#define SMB2_FSCTL_QUERY_NETWORK_INTERFACE_INFO 0x001401FC
-#define SMB2_FSCTL_SET_REPARSE_POINT            0x000900A4
-#define SMB2_FSCTL_DFS_GET_REFERRALS_EX         0x000601B0
-#define SMB2_FSCTL_FILE_LEVEL_TRIM              0x00098208
-#define SMB2_FSCTL_VALIDATE_NEGOTIATE_INFO      0x00140204
+#define SMB2_FSCTL_DFS_GET_REFERRALS            0x00060194ul
+#define SMB2_FSCTL_PIPE_PEEK                    0x0011400Cul
+#define SMB2_FSCTL_PIPE_WAIT                    0x00110018ul
+#define SMB2_FSCTL_PIPE_TRANSCEIVE              0x0011C017ul
+#define SMB2_FSCTL_SRV_COPYCHUNK                0x001440F2ul
+#define SMB2_FSCTL_SRV_ENUMERATE_SNAPSHOTS      0x00144064ul
+#define SMB2_FSCTL_SRV_REQUEST_RESUME_KEY       0x00140078ul
+#define SMB2_FSCTL_SRV_READ_HASH                0x001441bbul
+#define SMB2_FSCTL_SRV_COPYCHUNK_WRITE          0x001480F2ul
+#define SMB2_FSCTL_LMR_REQUEST_RESILIENCY       0x001401D4ul
+#define SMB2_FSCTL_QUERY_NETWORK_INTERFACE_INFO 0x001401FCul
+#define SMB2_FSCTL_SET_REPARSE_POINT            0x000900A4ul
+#define SMB2_FSCTL_DFS_GET_REFERRALS_EX         0x000601B0ul
+#define SMB2_FSCTL_FILE_LEVEL_TRIM              0x00098208ul
+#define SMB2_FSCTL_VALIDATE_NEGOTIATE_INFO      0x00140204ul
 
 /* Flags */
-#define SMB2_0_IOCTL_IS_FSCTL                   0x00000001
+#define SMB2_0_IOCTL_IS_FSCTL                   0x00000001ul
 
 struct smb2_ioctl_request {
         uint32_t ctl_code;
@@ -796,7 +796,7 @@ struct smb2_ioctl_request {
         uint32_t flags;
 };
 
-#define SMB2_IOCTL_REPLY_SIZE 49
+#define SMB2_IOCTL_REPLY_SIZE (uint16_t)49
 
 struct smb2_ioctl_reply {
         uint32_t ctl_code;
@@ -807,10 +807,10 @@ struct smb2_ioctl_reply {
         uint32_t flags;
 };
 
-#define SMB2_WRITE_REQUEST_SIZE 49
+#define SMB2_WRITE_REQUEST_SIZE (uint16_t)49
 
-#define SMB2_WRITEFLAG_WRITE_THROUGH    0x00000001
-#define SMB2_WRITEFLAG_WRITE_UNBUFFERED 0x00000002
+#define SMB2_WRITEFLAG_WRITE_THROUGH    0x00000001ul
+#define SMB2_WRITEFLAG_WRITE_UNBUFFERED 0x00000002ul
 
 struct smb2_write_request {
         uint32_t length;
@@ -824,21 +824,21 @@ struct smb2_write_request {
         uint32_t flags;
 };
 
-#define SMB2_WRITE_REPLY_SIZE 17
+#define SMB2_WRITE_REPLY_SIZE (uint16_t)17
 
 struct smb2_write_reply {
         uint32_t count;
         uint32_t remaining;
 };
 
-#define SMB2_ECHO_REQUEST_SIZE 4
-#define SMB2_ECHO_REPLY_SIZE 4
+#define SMB2_ECHO_REQUEST_SIZE (uint16_t)4
+#define SMB2_ECHO_REPLY_SIZE (uint16_t)4
 
-#define SMB2_LOGOFF_REQUEST_SIZE 4
-#define SMB2_LOGOFF_REPLY_SIZE 4
+#define SMB2_LOGOFF_REQUEST_SIZE (uint16_t)4
+#define SMB2_LOGOFF_REPLY_SIZE (uint16_t)4
 
-#define SMB2_TREE_DISCONNECT_REQUEST_SIZE 4
-#define SMB2_TREE_DISCONNECT_REPLY_SIZE 4
+#define SMB2_TREE_DISCONNECT_REQUEST_SIZE (uint16_t)4
+#define SMB2_TREE_DISCONNECT_REPLY_SIZE (uint16_t)4
 
 #ifdef __cplusplus
 }

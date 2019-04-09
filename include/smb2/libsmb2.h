@@ -43,8 +43,8 @@ typedef void (*smb2_command_cb)(struct smb2_context *smb2, int status,
                                 void *command_data, void *cb_data);
 
 /* Stat structure */
-#define SMB2_TYPE_FILE      0x00000000
-#define SMB2_TYPE_DIRECTORY 0x00000001
+#define SMB2_TYPE_FILE      0x00000000ul
+#define SMB2_TYPE_DIRECTORY 0x00000001ul
 struct smb2_stat_64 {
         uint32_t smb2_type;
         uint32_t smb2_nlink;
@@ -820,13 +820,13 @@ int smb2_echo(struct smb2_context *smb2);
 #endif
 
 /* Low 2 bits desctibe the type */
-#define SHARE_TYPE_DISKTREE  0
-#define SHARE_TYPE_PRINTQ    1
-#define SHARE_TYPE_DEVICE    2
-#define SHARE_TYPE_IPC       3
+#define SHARE_TYPE_DISKTREE  0ul
+#define SHARE_TYPE_PRINTQ    1ul
+#define SHARE_TYPE_DEVICE    2ul
+#define SHARE_TYPE_IPC       3ul
 
-#define SHARE_TYPE_TEMPORARY 0x40000000
-#define SHARE_TYPE_HIDDEN    0x80000000
+#define SHARE_TYPE_TEMPORARY 0x40000000ul
+#define SHARE_TYPE_HIDDEN    0x80000000ul
 
 struct srvsvc_netshareinfo1 {
         const char *name;
