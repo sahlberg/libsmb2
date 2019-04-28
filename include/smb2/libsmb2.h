@@ -56,6 +56,8 @@ struct smb2_stat_64 {
 	uint64_t smb2_mtime_nsec;
 	uint64_t smb2_ctime;
 	uint64_t smb2_ctime_nsec;
+    uint64_t smb2_btime;
+    uint64_t smb2_btime_nsec;
 };
 
 struct smb2_statvfs {
