@@ -249,12 +249,14 @@ void smb2_destroy_context(struct smb2_context *smb2)
                 struct smb2_pdu *pdu = smb2->outqueue;
 
                 smb2->outqueue = pdu->next;
+                pdu->cb(smb2, SMB2_STATUS_CANCELLED, NULL, pdu->cb_data);
                 smb2_free_pdu(smb2, pdu);
         }
         while (smb2->waitqueue) {
                 struct smb2_pdu *pdu = smb2->waitqueue;
 
                 smb2->waitqueue = pdu->next;
+                pdu->cb(smb2, SMB2_STATUS_CANCELLED, NULL, pdu->cb_data);
                 smb2_free_pdu(smb2, pdu);
         }
         smb2_free_iovector(smb2, &smb2->in);
