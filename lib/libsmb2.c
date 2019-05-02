@@ -137,6 +137,7 @@ struct smb2dir {
 };
 
 struct smb2fh {
+        struct smb2fh *next;
         smb2_command_cb cb;
         void *cb_data;
 
@@ -874,9 +875,17 @@ smb2_connect_share_async(struct smb2_context *smb2,
 }
 
 static void
-free_smb2fh(struct smb2fh *fh)
+free_smb2fh(struct smb2_context *smb2, struct smb2fh *fh)
 {
+        SMB2_LIST_REMOVE(&smb2->fhs, fh);
         free(fh);
+}
+
+void smb2_free_all_fhs(struct smb2_context *smb2)
+{
+        while (smb2->fhs) {
+                free_smb2fh(smb2, smb2->fhs);
+        }
 }
 
 static void
@@ -889,7 +898,7 @@ open_cb(struct smb2_context *smb2, int status,
         if (status != SMB2_STATUS_SUCCESS) {
                 fh->cb(smb2, -nterror_to_errno(status),
                        NULL, fh->cb_data);
-                free_smb2fh(fh);
+                free_smb2fh(smb2, fh);
                 return;
         }
 
@@ -915,6 +924,7 @@ smb2_open_async(struct smb2_context *smb2, const char *path, int flags,
                 return -ENOMEM;
         }
         memset(fh, 0, sizeof(struct smb2fh));
+        SMB2_LIST_ADD(&smb2->fhs, fh);
 
         fh->cb = cb;
         fh->cb_data = cb_data;
@@ -970,6 +980,7 @@ smb2_open_async(struct smb2_context *smb2, const char *path, int flags,
         pdu = smb2_cmd_create_async(smb2, &req, open_cb, fh);
         if (pdu == NULL) {
                 smb2_set_error(smb2, "Failed to create create command");
+                free_smb2fh(smb2, fh);
                 return -ENOMEM;
         }
         smb2_queue_pdu(smb2, pdu);
@@ -987,12 +998,12 @@ close_cb(struct smb2_context *smb2, int status,
                 smb2_set_error(smb2, "Close failed with (0x%08x) %s",
                                status, nterror_to_str(status));
                 fh->cb(smb2, -nterror_to_errno(status), NULL, fh->cb_data);
-                free_smb2fh(fh);
+                free_smb2fh(smb2, fh);
                 return;
         }
 
         fh->cb(smb2, 0, NULL, fh->cb_data);
-        free_smb2fh(fh);
+        free_smb2fh(smb2, fh);
 }
         
 int
@@ -2120,7 +2131,7 @@ smb2_get_file_id(struct smb2fh *fh)
 }
 
 struct smb2fh *
-smb2_fh_from_file_id(smb2_file_id *fileid)
+smb2_fh_from_file_id(struct smb2_context *smb2, smb2_file_id *fileid)
 {
         struct smb2fh *fh;
 
@@ -2130,6 +2141,7 @@ smb2_fh_from_file_id(smb2_file_id *fileid)
         }
         memset(fh, 0, sizeof(struct smb2fh));
         memcpy(fh->file_id, fileid, SMB2_FD_SIZE);
+        SMB2_LIST_ADD(&smb2->fhs, fh);
 
         return fh;
 }
