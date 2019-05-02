@@ -241,6 +241,10 @@ void smb2_destroy_context(struct smb2_context *smb2)
                 smb2_free_all_fhs(smb2);
         }
 
+        if (smb2->dirs) {
+                smb2_free_all_dirs(smb2);
+        }
+
         while (smb2->outqueue) {
                 struct smb2_pdu *pdu = smb2->outqueue;
 

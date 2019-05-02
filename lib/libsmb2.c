@@ -127,6 +127,7 @@ struct smb2_dirent_internal {
 };
 
 struct smb2dir {
+        struct smb2dir *next;
         smb2_command_cb cb;
         void *cb_data;
         smb2_file_id file_id;
@@ -170,9 +171,9 @@ send_session_setup_request(struct smb2_context *smb2,
                            unsigned char *buf, int len);
 
 static void
-free_smb2dir(struct smb2dir *dir)
+free_smb2dir(struct smb2_context *smb2, struct smb2dir *dir)
 {
-
+        SMB2_LIST_REMOVE(&smb2->dirs, dir);
         while (dir->entries) {
                 struct smb2_dirent_internal *e = dir->entries->next;
 
@@ -181,6 +182,13 @@ free_smb2dir(struct smb2dir *dir)
                 dir->entries = e;
         }
         free(dir);
+}
+
+void smb2_free_all_dirs(struct smb2_context *smb2)
+{
+        while (smb2->dirs) {
+                free_smb2dir(smb2, smb2->dirs);
+        }
 }
 
 void
@@ -230,7 +238,7 @@ smb2_readdir(struct smb2_context *smb2,
 void
 smb2_closedir(struct smb2_context *smb2, struct smb2dir *dir)
 {
-        free_smb2dir(dir);
+        free_smb2dir(smb2, dir);
 }
 
 static int
@@ -295,7 +303,7 @@ od_close_cb(struct smb2_context *smb2, int status,
 
         if (status != SMB2_STATUS_SUCCESS) {
                 dir->cb(smb2, -ENOMEM, NULL, dir->cb_data);
-                free_smb2dir(dir);
+                free_smb2dir(smb2, dir);
                 return;
         }
 
@@ -323,7 +331,7 @@ query_cb(struct smb2_context *smb2, int status,
 
                 if (decode_dirents(smb2, dir, &vec) < 0) {
                         dir->cb(smb2, -ENOMEM, NULL, dir->cb_data);
-                        free_smb2dir(dir);
+                        free_smb2dir(smb2, dir);
                         return;
                 }
 
@@ -338,7 +346,7 @@ query_cb(struct smb2_context *smb2, int status,
                 pdu = smb2_cmd_query_directory_async(smb2, &req, query_cb, dir);
                 if (pdu == NULL) {
                         dir->cb(smb2, -ENOMEM, NULL, dir->cb_data);
-                        free_smb2dir(dir);
+                        free_smb2dir(smb2, dir);
                         return;
                 }
                 smb2_queue_pdu(smb2, pdu);
@@ -358,7 +366,7 @@ query_cb(struct smb2_context *smb2, int status,
                 pdu = smb2_cmd_close_async(smb2, &req, od_close_cb, dir);
                 if (pdu == NULL) {
                         dir->cb(smb2, -ENOMEM, NULL, dir->cb_data);
-                        free_smb2dir(dir);
+                        free_smb2dir(smb2, dir);
                         return;
                 }
                 smb2_queue_pdu(smb2, pdu);
@@ -370,7 +378,7 @@ query_cb(struct smb2_context *smb2, int status,
                        status, nterror_to_str(status),
                        smb2_get_error(smb2));
         dir->cb(smb2, -nterror_to_errno(status), NULL, dir->cb_data);
-        free_smb2dir(dir);
+        free_smb2dir(smb2, dir);
 }
 
 static void
@@ -386,7 +394,7 @@ opendir_cb(struct smb2_context *smb2, int status,
                 smb2_set_error(smb2, "Opendir failed with (0x%08x) %s.",
                                status, nterror_to_str(status));
                 dir->cb(smb2, -nterror_to_errno(status), NULL, dir->cb_data);
-                free_smb2dir(dir);
+                free_smb2dir(smb2, dir);
                 return;
         }
 
@@ -403,7 +411,7 @@ opendir_cb(struct smb2_context *smb2, int status,
         if (pdu == NULL) {
                 smb2_set_error(smb2, "Failed to create query command.");
                 dir->cb(smb2, -ENOMEM, NULL, dir->cb_data);
-                free_smb2dir(dir);
+                free_smb2dir(smb2, dir);
                 return;
         }
         smb2_queue_pdu(smb2, pdu);
@@ -427,6 +435,7 @@ smb2_opendir_async(struct smb2_context *smb2, const char *path,
                 return -1;
         }
         memset(dir, 0, sizeof(struct smb2dir));
+        SMB2_LIST_ADD(&smb2->dirs, dir);
         dir->cb = cb;
         dir->cb_data = cb_data;
 
@@ -442,7 +451,7 @@ smb2_opendir_async(struct smb2_context *smb2, const char *path,
 
         pdu = smb2_cmd_create_async(smb2, &req, opendir_cb, dir);
         if (pdu == NULL) {
-                free_smb2dir(dir);
+                free_smb2dir(smb2, dir);
                 smb2_set_error(smb2, "Failed to create opendir command.");
                 return -1;
         }
