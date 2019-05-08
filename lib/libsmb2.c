@@ -288,6 +288,8 @@ decode_dirents(struct smb2_context *smb2, struct smb2dir *dir,
                 ent->dirent.st.smb2_mtime_nsec = fs.last_write_time.tv_usec * 1000;
                 ent->dirent.st.smb2_ctime = fs.change_time.tv_sec;
                 ent->dirent.st.smb2_ctime_nsec = fs.change_time.tv_usec * 1000;
+                ent->dirent.st.smb2_btime = fs.creation_time.tv_sec;
+                ent->dirent.st.smb2_btime_nsec = fs.creation_time.tv_usec * 1000;
 
                 offset += fs.next_entry_offset;
         } while (fs.next_entry_offset);
@@ -1495,6 +1497,9 @@ fstat_cb_1(struct smb2_context *smb2, int status,
         st->smb2_ctime      = fs->basic.change_time.tv_sec;
         st->smb2_ctime_nsec = fs->basic.change_time.tv_usec *
                 1000;
+        st->smb2_btime      = fs->basic.creation_time.tv_sec;
+        st->smb2_btime_nsec = fs->basic.creation_time.tv_usec *
+                1000;
 
         smb2_free_data(smb2, fs);
 
@@ -1590,6 +1595,9 @@ getinfo_cb_2(struct smb2_context *smb2, int status,
                         1000;
                 st->smb2_ctime      = fs->basic.change_time.tv_sec;
                 st->smb2_ctime_nsec = fs->basic.change_time.tv_usec *
+                        1000;
+                st->smb2_btime      = fs->basic.creation_time.tv_sec;
+                st->smb2_btime_nsec = fs->basic.creation_time.tv_usec *
                         1000;
         } else if (stat_data->info_type == SMB2_0_INFO_FILESYSTEM &&
                    stat_data->file_info_class == SMB2_FILE_FS_FULL_SIZE_INFORMATION) {
