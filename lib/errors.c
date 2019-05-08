@@ -96,6 +96,14 @@ const char *nterror_to_str(uint32_t status) {
                 return "STATUS_PRIVILEGE_NOT_HELD";
         case SMB2_STATUS_LOGON_FAILURE:
                 return "STATUS_LOGON_FAILURE";
+        case SMB2_STATUS_ACCOUNT_RESTRICTION:
+                return "STATUS_ACCOUNT_RESTRICTION";
+        case SMB2_STATUS_INVALID_LOGON_HOURS:
+                return "STATUS_INVALID_LOGON_HOURS";
+        case SMB2_STATUS_PASSWORD_EXPIRED:
+                return "STATUS_PASSWORD_EXPIRED";
+        case SMB2_STATUS_ACCOUNT_DISABLED:
+                return "STATUS_ACCOUNT_DISABLED";
         case SMB2_STATUS_DISK_FULL:
                 return "STATUS_DISK_FULL";
         case SMB2_STATUS_TOO_MANY_PAGING_FILES:
@@ -176,6 +184,10 @@ int nterror_to_errno(uint32_t status) {
                 return EAGAIN;
         case SMB2_STATUS_ACCESS_DENIED:
         case SMB2_STATUS_NETWORK_ACCESS_DENIED:
+        case SMB2_STATUS_ACCOUNT_RESTRICTION:
+        case SMB2_STATUS_INVALID_LOGON_HOURS:
+        case SMB2_STATUS_PASSWORD_EXPIRED:
+        case SMB2_STATUS_ACCOUNT_DISABLED:
                 return EACCES;
         case SMB2_STATUS_INVALID_LOCK_SEQUENCE:
         case SMB2_STATUS_INVALID_VIEW_SIZE:
