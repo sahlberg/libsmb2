@@ -75,8 +75,6 @@
 
 #define MAX_URL_SIZE 256
 
-#define CIFS_PORT 445
-
 static int
 smb2_get_credit_charge(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
@@ -573,7 +571,7 @@ int
 smb2_connect_async(struct smb2_context *smb2, const char *server,
                    smb2_command_cb cb, void *private_data)
 {
-        char *addr, *host;
+        char *addr, *host, *port;
         struct addrinfo *ai = NULL;
         struct sockaddr_storage ss;
         socklen_t socksize;
@@ -592,6 +590,7 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
                 return -1;
         }
         host = addr;
+        port = host;
 
         /* ipv6 in [...] form ? */
         if (host[0] == '[') {
@@ -606,10 +605,18 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
                         return -1;
                 }
                 *str = 0;
+                port = str + 1;
+        }
+
+        port = strchr(port, ':');
+        if (port != NULL) {
+                *port++ = 0;
+        } else {
+                port = "445";
         }
 
         /* is it a hostname ? */
-        if (getaddrinfo(host, NULL, NULL, &ai) != 0) {
+        if (getaddrinfo(host, port, NULL, &ai) != 0) {
                 free(addr);
                 smb2_set_error(smb2, "Invalid address:%s  "
                                "Can not resolv into IPv4/v6.", server);
@@ -622,7 +629,6 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
         case AF_INET:
                 socksize = sizeof(struct sockaddr_in);
                 memcpy(&ss, ai->ai_addr, socksize);
-                ((struct sockaddr_in *)&ss)->sin_port = htons(CIFS_PORT);
 #ifdef HAVE_SOCK_SIN_LEN
                 ((struct sockaddr_in *)&ss)->sin_len = socksize;
 #endif
@@ -631,7 +637,6 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
         case AF_INET6:
                 socksize = sizeof(struct sockaddr_in6);
                 memcpy(&ss, ai->ai_addr, socksize);
-                ((struct sockaddr_in6 *)&ss)->sin6_port = htons(CIFS_PORT);
 #ifdef HAVE_SOCK_SIN_LEN
                 ((struct sockaddr_in6 *)&ss)->sin6_len = socksize;
 #endif
