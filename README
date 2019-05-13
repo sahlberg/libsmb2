@@ -36,7 +36,7 @@ defined/used by the Samba project.
 The goal is to eventually support the full URL format, thus making URLs
 interchangable between Samba utilities and Libsmb2 but we are not there yet.
 
-smb://[<domain>;][<user>@]<server>/<share>[/path][?arg=val[&arg=val]*]
+smb://[<domain>;][<user>@]<server>[:<port>]/<share>[/path][?arg=val[&arg=val]*]
 
 <server> is either a hostname, an IPv4 or an IPv6 address.
 
@@ -103,7 +103,7 @@ to use libsmb2 for accessing a remote share.
 
 By default, NTLM authentication will use the username for the current process.
 This can be overridden by specifying a different username in the SMB URL :
-  smb://guest@server/share>?sec=ntlmssp
+  smb://guest@server/share?sec=ntlmssp
 
 KRB5 Authentication
 -------------------
@@ -136,7 +136,7 @@ to use libsmb2 for accessing a remote share.
 
 By default, NTLM authentication will use the username for the current process.
 This can be overridden by specifying a different username in the SMB URL :
-  smb://guest@server/share>?sec=ntlmssp
+  smb://guest@server/share?sec=ntlmssp
 
 Alternatively you can provide the username and password from your application
 by calling :

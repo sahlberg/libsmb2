@@ -262,8 +262,10 @@ int nterror_to_errno(uint32_t status);
 
 /*
  * This function is used to parse an SMB2 URL into as smb2_url structure.
- * SMB2 URL format :
- * smb2://[<domain;][<username>@]<host>/<share>/<path>
+ * SMB2 URL format:
+ *   smb2://[<domain;][<username>@]<server>/<share>/<path>
+ * where <server> has the format:
+ *   <host>[:<port>].
  *
  * Function will return a pointer to an iscsi smb2 structure if successful,
  * or it will return NULL and set smb2_get_error() accordingly if there was

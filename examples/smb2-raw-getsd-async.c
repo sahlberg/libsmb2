@@ -33,7 +33,7 @@ int usage(void)
         fprintf(stderr, "Usage:\n"
                 "smb2-raw-getsd-async <smb2-url>\n\n"
                 "URL format: "
-                "smb://[<domain;][<username>@]<host>/<share>/<path>\n");
+                "smb://[<domain;][<username>@]<host>>[:<port>]/<share>/<path>\n");
         exit(1);
 }
 
