@@ -35,7 +35,7 @@ int usage(void)
         fprintf(stderr, "Usage:\n"
                 "smb2-raw-fsstat-async <smb2-url> <infolevel>\n\n"
                 "URL format: "
-                "smb://[<domain;][<username>@]<host>/<share>/<path>\n");
+                "smb://[<domain;][<username>@]<host>[:<port>]/<share>/<path>\n");
         exit(1);
 }
 
