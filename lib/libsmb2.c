@@ -907,8 +907,9 @@ open_cb(struct smb2_context *smb2, int status,
         struct smb2_create_reply *rep = command_data;
 
         if (status != SMB2_STATUS_SUCCESS) {
-                fh->cb(smb2, -nterror_to_errno(status),
-                       NULL, fh->cb_data);
+                smb2_set_error(smb2, "Open failed with (0x%08x) %s.",
+                               status, nterror_to_str(status));
+                fh->cb(smb2, -nterror_to_errno(status), NULL, fh->cb_data);
                 free_smb2fh(smb2, fh);
                 return;
         }
