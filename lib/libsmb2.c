@@ -57,6 +57,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <sys/socket.h>
+#include <time.h>
 
 #ifdef _WIN32
 #include "asprintf.h"
@@ -664,7 +665,8 @@ send_session_setup_request(struct smb2_context *smb2,
         req.security_mode = smb2->security_mode;
 
 #ifndef HAVE_LIBKRB5
-        if (ntlmssp_generate_blob(smb2, c_data->auth_data, buf, len,
+        if (ntlmssp_generate_blob(smb2, time(NULL), c_data->auth_data,
+                                  buf, len,
                                   &req.security_buffer,
                                   &req.security_buffer_length) < 0) {
                 smb2_close_context(smb2);

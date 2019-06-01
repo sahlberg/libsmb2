@@ -310,8 +310,8 @@ encode_temp(struct auth_data *auth_data, uint64_t t, char *client_challenge,
 }
 
 static int
-encode_ntlm_auth(struct smb2_context *smb2, struct auth_data *auth_data,
-                 char *server_challenge)
+encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
+                 struct auth_data *auth_data, char *server_challenge)
 {
         int ret = -1;
         unsigned char lm_buf[16];
@@ -331,7 +331,7 @@ encode_ntlm_auth(struct smb2_context *smb2, struct auth_data *auth_data,
         uint32_t server_neg_flags;
         unsigned char key_exch[SMB2_KEY_SIZE];
 
-        tv.tv_sec = time(NULL);
+        tv.tv_sec = ti;
         tv.tv_usec = 0;
         t = timeval_to_win(&tv);
 
@@ -510,7 +510,8 @@ finished:
 }
 
 int
-ntlmssp_generate_blob(struct smb2_context *smb2, struct auth_data *auth_data,
+ntlmssp_generate_blob(struct smb2_context *smb2, time_t t,
+                      struct auth_data *auth_data,
                       unsigned char *input_buf, int input_len,
                       unsigned char **output_buf, uint16_t *output_len)
 {
@@ -526,7 +527,7 @@ ntlmssp_generate_blob(struct smb2_context *smb2, struct auth_data *auth_data,
                                            input_len) < 0) {
                         return -1;
                 }
-                if (encode_ntlm_auth(smb2, auth_data,
+                if (encode_ntlm_auth(smb2, t, auth_data,
                                      (char *)&auth_data->ntlm_buf[24]) < 0) {
                         return -1;
                 }

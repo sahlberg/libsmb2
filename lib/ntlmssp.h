@@ -42,7 +42,8 @@ ntlmssp_init_context(const char *user,
                      const char *client_challenge);
 
 int
-ntlmssp_generate_blob(struct smb2_context *smb2, struct auth_data *auth_data,
+ntlmssp_generate_blob(struct smb2_context *smb2, time_t t,
+                      struct auth_data *auth_data,
                       unsigned char *input_buf, int input_len,
                       unsigned char **output_buf, uint16_t *output_len);
 
