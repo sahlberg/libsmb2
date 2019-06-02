@@ -204,10 +204,22 @@ ntlm_challenge_message(struct auth_data *auth_data, unsigned char *buf,
         return 0;
 }
 
+void DEBUG(char *str, unsigned char *buf, int buf_size)
+{
+        int i;
+
+        printf("%s\n", str);
+        for (i = 0; i < buf_size; i++) {
+                printf("0x%02x ", buf[i]);
+        }
+        printf("\n");
+}
+
 static int
 NTOWFv1(const char *password, unsigned char password_hash[16])
 {
         MD4_CTX ctx;
+        int i;
         struct ucs2 *ucs2_password = NULL;
 
         ucs2_password = utf8_to_ucs2(password);
@@ -215,8 +227,13 @@ NTOWFv1(const char *password, unsigned char password_hash[16])
                 return -1;
         }
         MD4Init(&ctx);
+        for (i = 0; i < ucs2_password->len; i++) {
+                ucs2_password->val[i] = htole16(ucs2_password->val[i]);
+        }
+DEBUG("NTOFv1 ucs2_password buf", (unsigned char *)ucs2_password->val, ucs2_password->len * 2);
         MD4Update(&ctx, (unsigned char *)ucs2_password->val, ucs2_password->len * 2);
         MD4Final(password_hash, &ctx);
+DEBUG("NTOWFv1 hash", password_hash, 16);        
         free(ucs2_password);
 
         return 0;
@@ -259,11 +276,15 @@ NTOWFv2(const char *user, const char *password, const char *domain,
                 return -1;
         }
 
+        for (i = 0; i < ucs2_userdomain->len; i++) {
+                ucs2_userdomain->val[i] = htole16(ucs2_userdomain->val[i]);
+        }
         hmac_md5((unsigned char *)ucs2_userdomain->val,
                  ucs2_userdomain->len * 2,
                  ntlm_hash, 16, ntlmv2_hash);
         free(userdomain);
         free(ucs2_userdomain);
+DEBUG("NTOWFv2 hash", ntlmv2_hash, 16);        
 
         return 0;
 }
@@ -313,7 +334,7 @@ static int
 encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
                  struct auth_data *auth_data, char *server_challenge)
 {
-        int ret = -1;
+        int i, ret = -1;
         unsigned char lm_buf[16];
         unsigned char *NTChallengeResponse_buf = NULL;
         unsigned char ResponseKeyNT[16];
@@ -328,6 +349,7 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
         char *server_name_buf;
         int server_name_len;
         uint32_t u32;
+        uint16_t u16;
         uint32_t server_neg_flags;
         unsigned char key_exch[SMB2_KEY_SIZE];
 
@@ -348,6 +370,7 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
             < 0) {
                 goto finished;
         }
+DEBUG("ResponseKeyNT initialized to", ResponseKeyNT, 16);        
 
         /* get the server neg flags */
         memcpy(&server_neg_flags, &auth_data->ntlm_buf[20], 4);
@@ -386,6 +409,7 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
         /*
          * Generate AUTHENTICATE_MESSAGE
          */
+        printf("NTLMSSP at %x\n", auth_data->len);
         encoder("NTLMSSP", 8, auth_data);
 
         /* message type */
@@ -395,8 +419,11 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
         /* lm challenge response fields */
         memcpy(&lm_buf[0], server_challenge, 8);
         memcpy(&lm_buf[8], auth_data->client_challenge, 8);
+DEBUG("lm_buf", lm_buf, 16);        
+DEBUG("ResponseKeyNT", ResponseKeyNT, 16);        
         hmac_md5(&lm_buf[0], 16,
                  ResponseKeyNT, 16, LMStr);
+DEBUG("LMStr", LMStr, 16);        
         u32 = htole32(0x00180018);
         encoder(&u32, 4, auth_data);
         u32 = 0;
@@ -456,6 +483,7 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
 
         /* encrypted random session key */
         u32 = 0;
+        printf("random session key at %x\n", auth_data->len);
         encoder(&u32, 4, auth_data);
         encoder(&u32, 4, auth_data);
 
@@ -473,28 +501,39 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
         u32 = htole32(auth_data->len);
         memcpy(&auth_data->buf[32], &u32, 4);
         if (ucs2_domain) {
-                encoder(ucs2_domain->val, ucs2_domain->len * 2, auth_data);
+                for (i = 0; i < ucs2_domain->len; i++) {
+                        u16 = htole16(ucs2_domain->val[i]);
+                        encoder(&u16, 2, auth_data);
+                }
         }
 
         /* append user */
         u32 = htole32(auth_data->len);
         memcpy(&auth_data->buf[40], &u32, 4);
-        encoder(ucs2_user->val, ucs2_user->len * 2, auth_data);
+        for (i = 0; i < ucs2_user->len; i++) {
+                u16 = htole16(ucs2_user->val[i]);
+                encoder(&u16, 2, auth_data);
+        }
 
         /* append workstation */
         u32 = htole32(auth_data->len);
         memcpy(&auth_data->buf[48], &u32, 4);
         if (ucs2_workstation) {
-                encoder(ucs2_workstation->val, ucs2_workstation->len * 2, auth_data);
+                for (i = 0; i < ucs2_workstation->len; i++) {
+                        u16 = htole16(ucs2_workstation->val[i]);
+                        encoder(&u16, 2, auth_data);
+                }
         }
 
         /* append LMChallengeResponse */
+        printf("lm challenge response at %x\n", auth_data->len);
         u32 = htole32(auth_data->len);
         memcpy(&auth_data->buf[16], &u32, 4);
         encoder(LMStr, 16, auth_data);
         encoder(auth_data->client_challenge, 8, auth_data);
 
         /* append NTChallengeResponse */
+        printf("nt challenge response at %x\n", auth_data->len);
         u32 = htole32(auth_data->len);
         memcpy(&auth_data->buf[24], &u32, 4);
         encoder(NTChallengeResponse_buf, NTChallengeResponse_len, auth_data);
