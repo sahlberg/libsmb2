@@ -57,6 +57,12 @@
 #define getpid GetCurrentProcessId
 #endif // _MSC_VER
 
+#ifdef ESP_PLATFORM
+#include <esp_system.h>
+#define random esp_random
+#define getlogin() "Guest"
+#endif
+
 static int
 smb2_parse_args(struct smb2_context *smb2, const char *args)
 {

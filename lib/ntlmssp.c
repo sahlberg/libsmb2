@@ -246,8 +246,8 @@ NTOWFv2(const char *user, const char *password, const char *domain,
 
         strcpy(userdomain, user);
         for (i = strlen(userdomain) - 1; i >=0; i--) {
-                if (islower(userdomain[i])) {
-                        userdomain[i] = toupper(userdomain[i]);
+                if (islower((unsigned int) userdomain[i])) {
+                        userdomain[i] = toupper((unsigned int) userdomain[i]);
                 }
         }
         if (domain) {
@@ -259,7 +259,7 @@ NTOWFv2(const char *user, const char *password, const char *domain,
                 return -1;
         }
 
-        hmac_md5((unsigned char *)ucs2_userdomain->val,
+        smb2_hmac_md5((unsigned char *)ucs2_userdomain->val,
                  ucs2_userdomain->len * 2,
                  ntlm_hash, 16, ntlmv2_hash);
         free(userdomain);
@@ -367,7 +367,7 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
                 return -1;
         }
 
-        hmac_md5(&auth_data->buf[8], auth_data->len-8,
+        smb2_hmac_md5(&auth_data->buf[8], auth_data->len-8,
                  ResponseKeyNT, 16, NTProofStr);
         memcpy(auth_data->buf, NTProofStr, 16);
 
@@ -380,7 +380,7 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
         /* get the NTLMv2 Key-Exchange Key
            For NTLMv2 - Key Exchange Key is the Session Base Key
          */
-        hmac_md5(NTProofStr, 16, ResponseKeyNT, 16, key_exch);
+        smb2_hmac_md5(NTProofStr, 16, ResponseKeyNT, 16, key_exch);
         memcpy(auth_data->exported_session_key, key_exch, 16);
 
         /*
@@ -395,7 +395,7 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
         /* lm challenge response fields */
         memcpy(&lm_buf[0], server_challenge, 8);
         memcpy(&lm_buf[8], auth_data->client_challenge, 8);
-        hmac_md5(&lm_buf[0], 16,
+        smb2_hmac_md5(&lm_buf[0], 16,
                  ResponseKeyNT, 16, LMStr);
         u32 = htole32(0x00180018);
         encoder(&u32, 4, auth_data);

@@ -32,7 +32,11 @@
 #endif
 
 #include <errno.h>
+#ifdef ESP_PLATFORM
+#include <sys/poll.h>
+#else
 #include <poll.h>
+#endif
 
 #include "smb2.h"
 #include "libsmb2.h"

@@ -13,7 +13,16 @@
 
 #endif
 
-#if defined(__linux__) || defined(__CYGWIN__)
+#if defined(ESP_PLATFORM)
+
+#       define _LITTLE_ENDIAN LITTLE_ENDIAN
+#       define __bswap16     __bswap_16
+#       define __bswap32     __bswap_32
+#       define __bswap64     __bswap_64
+
+#	include <endian.h>
+
+#elif defined(__linux__) || defined(__CYGWIN__)
 
 #	include <endian.h>
 
