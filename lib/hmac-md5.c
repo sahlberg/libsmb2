@@ -7,6 +7,7 @@
 #include <strings.h>
 #endif
 
+#include <stdio.h>
 #include "md5.h"
 
 #ifdef _MSC_VER
@@ -14,6 +15,17 @@
 
 #define bcopy(s1, s2, n) memmove((s2), (s1), (n))
 #endif // _MSC_VER
+
+static void DEBUG(char *str, unsigned char *buf, int buf_size)
+{
+        int i;
+
+        printf("%s\n", str);
+        for (i = 0; i < buf_size; i++) {
+                printf("0x%02x ", buf[i]);
+        }
+        printf("\n");
+}
 
 /*
  * unsigned char*  text;                pointer to data stream/
@@ -40,8 +52,10 @@ hmac_md5(unsigned char *text, int text_len, unsigned char *key, int key_len,
 		struct MD5Context tctx;
 
                 MD5Init(&tctx);
+		DEBUG("MD5 64 Key:", key, key_len);
                 MD5Update(&tctx, key, key_len);
                 MD5Final(tk, &tctx);
+		DEBUG("MD5 64 Tk:", tk, 16);
 
                 key = tk;
                 key_len = 16;
@@ -62,6 +76,7 @@ hmac_md5(unsigned char *text, int text_len, unsigned char *key, int key_len,
         bzero( k_opad, sizeof k_opad);
         bcopy( key, k_ipad, key_len);
         bcopy( key, k_opad, key_len);
+	DEBUG("MD5 Key:", key, key_len);
 
         /* XOR key with ipad and opad values */
         for (i=0; i<64; i++) {
@@ -73,16 +88,22 @@ hmac_md5(unsigned char *text, int text_len, unsigned char *key, int key_len,
          */
         MD5Init(&context);                   /* init context for 1st
                                               * pass */
+	DEBUG("MD5 k_ipad:", k_ipad, 64);
         MD5Update(&context, k_ipad, 64);     /* start with inner pad */
+	DEBUG("MD5 text:", text, text_len);
         MD5Update(&context, text, text_len); /* then text of datagram */
         MD5Final(digest, &context);          /* finish up 1st pass */
+	DEBUG("MD5 digest 1:", digest, 16);
         /*
          * perform outer MD5
          */
         MD5Init(&context);                   /* init context for 2nd
                                               * pass */
         MD5Update(&context, k_opad, 64);     /* start with outer pad */
+	DEBUG("MD5 k_opad:", k_opad, 64);
         MD5Update(&context, digest, 16);     /* then results of 1st
+	DEBUG("MD5 digest 2:", digest, 16);
                                               * hash */
         MD5Final(digest, &context);          /* finish up 2nd pass */
+	DEBUG("MD5 digest 3:", digest, 16);
 }

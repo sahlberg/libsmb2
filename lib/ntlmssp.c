@@ -204,7 +204,7 @@ ntlm_challenge_message(struct auth_data *auth_data, unsigned char *buf,
         return 0;
 }
 
-void DEBUG(char *str, unsigned char *buf, int buf_size)
+static void DEBUG(char *str, unsigned char *buf, int buf_size)
 {
         int i;
 
@@ -279,6 +279,8 @@ NTOWFv2(const char *user, const char *password, const char *domain,
         for (i = 0; i < ucs2_userdomain->len; i++) {
                 ucs2_userdomain->val[i] = htole16(ucs2_userdomain->val[i]);
         }
+DEBUG("NTOWFv2 ucs2_userdomain buf", (unsigned char *)ucs2_userdomain->val, ucs2_userdomain->len * 2);
+DEBUG("NTOWFv2 ntlm_hash", ntlm_hash, 16);
         hmac_md5((unsigned char *)ucs2_userdomain->val,
                  ucs2_userdomain->len * 2,
                  ntlm_hash, 16, ntlmv2_hash);
