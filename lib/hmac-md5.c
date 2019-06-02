@@ -23,7 +23,7 @@
  * caddr_t         digest;              caller digest to be filled in
  */
 void
-hmac_md5(unsigned char *text, int text_len, unsigned char *key, int key_len,
+smb2_hmac_md5(unsigned char *text, int text_len, unsigned char *key, int key_len,
 	 unsigned char *digest)
 {
         struct MD5Context context;
