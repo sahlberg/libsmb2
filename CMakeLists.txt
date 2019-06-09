@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.2)
 
 project(libsmb2
         LANGUAGES C
-        VERSION 2.0.0)
+        VERSION 3.0.0)
 
 set(SOVERSION 1 CACHE STRING "" FORCE)
 

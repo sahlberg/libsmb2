@@ -91,6 +91,16 @@ development libraries for LibSMB2
 %{_libdir}/pkgconfig/libsmb2.pc
 
 %changelog
+* Mon Jun 10 2019 : Version 3.0.0
+ - ESP32 support
+ - Support specifying the port number in an SMB URL.
+ - Add creation time to smb_stat
+ - Abort all commands when the context is destroyed.
+ - Free all file and directory handles when the context is destroyed.
+ - Fix handling of O_TRUNC
+ - Add more error codes.
+ - Add support for SMB2_IOCTL
+ - Handle DCE/RPC fragment reassembly for IOCTL().
 * Sat Jul 7 2018 : Version 2.0.0
  - SMB2/3 signing
  - Kerberos authentication
