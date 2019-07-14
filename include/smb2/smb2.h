@@ -783,12 +783,32 @@ struct smb2_query_info_reply {
 #define SMB2_FSCTL_LMR_REQUEST_RESILIENCY       0x001401D4
 #define SMB2_FSCTL_QUERY_NETWORK_INTERFACE_INFO 0x001401FC
 #define SMB2_FSCTL_SET_REPARSE_POINT            0x000900A4
+#define SMB2_FSCTL_GET_REPARSE_POINT            0X000900A8
 #define SMB2_FSCTL_DFS_GET_REFERRALS_EX         0x000601B0
 #define SMB2_FSCTL_FILE_LEVEL_TRIM              0x00098208
 #define SMB2_FSCTL_VALIDATE_NEGOTIATE_INFO      0x00140204
 
 /* Flags */
 #define SMB2_0_IOCTL_IS_FSCTL                   0x00000001
+
+#define SMB2_SYMLINK_FLAG_RELATIVE 0x00000001
+struct smb2_symlink_reparse_buffer {
+        uint32_t flags;
+        char *subname;
+        char *printname;
+};
+
+#define SMB2_REPARSE_TAG_SYMLINK                0xa000000c
+/*
+ * Reparse_data_buffer
+ */
+struct smb2_reparse_data_buffer {
+        uint32_t reparse_tag;
+        uint16_t reparse_data_length;
+        union {
+                struct smb2_symlink_reparse_buffer symlink;
+        };
+};
 
 struct smb2_ioctl_request {
         uint32_t ctl_code;

@@ -54,6 +54,8 @@ smb2_read
 smb2_read_async
 smb2_readdir
 smb2_rewinddir
+smb2_readlink
+smb2_readlink_async
 smb2_rmdir
 smb2_rmdir_async
 smb2_lseek

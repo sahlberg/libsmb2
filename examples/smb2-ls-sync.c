@@ -40,6 +40,7 @@ int main(int argc, char *argv[])
         struct smb2_url *url;
         struct smb2dir *dir;
         struct smb2dirent *ent;
+        char *link;
 
         if (argc < 2) {
                 usage();
@@ -75,7 +76,11 @@ int main(int argc, char *argv[])
                 char *type;
                 time_t t;
 
+                t = (time_t)ent->st.smb2_mtime;
                 switch (ent->st.smb2_type) {
+                case SMB2_TYPE_LINK:
+                        type = "LINK";
+                        break;
                 case SMB2_TYPE_FILE:
                         type = "FILE";
                         break;
@@ -86,8 +91,19 @@ int main(int argc, char *argv[])
                         type = "unknown";
                         break;
                 }
-                t = (time_t)ent->st.smb2_mtime;
-                printf("%-20s %-9s %15"PRIu64" %s\n", ent->name, type, ent->st.smb2_size, asctime(localtime(&t)));
+                printf("%-20s %-9s %15"PRIu64" %s", ent->name, type, ent->st.smb2_size, asctime(localtime(&t)));
+                if (ent->st.smb2_type == SMB2_TYPE_LINK) {
+                        char buf[256];
+
+                        if (url->path) {
+                                asprintf(&link, "%s/%s", url->path, ent->name);
+                        } else {
+                                asprintf(&link, "%s", ent->name);
+                        }
+                        smb2_readlink(smb2, link, buf, 256);
+                        printf("    -> [%s]\n", buf);
+                        free(link);
+                }
         }
 
         smb2_closedir(smb2, dir);

@@ -45,6 +45,7 @@ typedef void (*smb2_command_cb)(struct smb2_context *smb2, int status,
 /* Stat structure */
 #define SMB2_TYPE_FILE      0x00000000
 #define SMB2_TYPE_DIRECTORY 0x00000001
+#define SMB2_TYPE_LINK      0x00000002
 struct smb2_stat_64 {
         uint32_t smb2_type;
         uint32_t smb2_nlink;
@@ -800,6 +801,29 @@ int smb2_ftruncate_async(struct smb2_context *smb2, struct smb2fh *fh,
 int smb2_ftruncate(struct smb2_context *smb2, struct smb2fh *fh,
                    uint64_t length);
 
+
+/*
+ * READLINK
+ */
+/*
+ * Async readlink()
+ *
+ * Returns
+ *  0     : The operation was initiated. The link content will be
+ *          reported through the callback function.
+ * -errno : There was an error. The callback function will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success. Command_data is the link content.
+ * -errno : An error occured.
+ */
+int smb2_readlink_async(struct smb2_context *smb2, const char *path,
+                        smb2_command_cb cb, void *cb_data);
+
+/*
+ * Sync readlink()
+ */
+int smb2_readlink(struct smb2_context *smb2, const char *path, char *buf, uint32_t bufsiz);
 
 /*
  * Async echo()

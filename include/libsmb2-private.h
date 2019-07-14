@@ -373,6 +373,10 @@ int smb2_decode_file_fs_sector_size_info(struct smb2_context *smb2,
                                      void *memctx,
                                      struct smb2_file_fs_sector_size_info *fs,
                                      struct smb2_iovec *vec);
+int smb2_decode_reparse_data_buffer(struct smb2_context *smb2,
+                                    void *memctx,
+                                    struct smb2_reparse_data_buffer *rp,
+                                    struct smb2_iovec *vec);
 void smb2_free_all_fhs(struct smb2_context *smb2);
 void smb2_free_all_dirs(struct smb2_context *smb2);
 #ifdef __cplusplus

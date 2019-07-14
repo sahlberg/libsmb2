@@ -280,6 +280,9 @@ decode_dirents(struct smb2_context *smb2, struct smb2dir *dir,
                 if (fs.file_attributes & SMB2_FILE_ATTRIBUTE_DIRECTORY) {
                         ent->dirent.st.smb2_type = SMB2_TYPE_DIRECTORY;
                 }
+                if (fs.file_attributes & SMB2_FILE_ATTRIBUTE_REPARSE_POINT) {
+                        ent->dirent.st.smb2_type = SMB2_TYPE_LINK;
+                }
                 ent->dirent.st.smb2_nlink = 0;
                 ent->dirent.st.smb2_ino = fs.file_id;
                 ent->dirent.st.smb2_size = fs.end_of_file;
@@ -1488,6 +1491,9 @@ fstat_cb_1(struct smb2_context *smb2, int status,
         if (fs->basic.file_attributes & SMB2_FILE_ATTRIBUTE_DIRECTORY) {
                 st->smb2_type = SMB2_TYPE_DIRECTORY;
         }
+        if (fs->basic.file_attributes & SMB2_FILE_ATTRIBUTE_REPARSE_POINT) {
+                st->smb2_type = SMB2_TYPE_LINK;
+        }
         st->smb2_nlink      = fs->standard.number_of_links;
         st->smb2_ino        = fs->index_number;
         st->smb2_size       = fs->standard.end_of_file;
@@ -1586,6 +1592,9 @@ getinfo_cb_2(struct smb2_context *smb2, int status,
                 st->smb2_type = SMB2_TYPE_FILE;
                 if (fs->basic.file_attributes & SMB2_FILE_ATTRIBUTE_DIRECTORY) {
                         st->smb2_type = SMB2_TYPE_DIRECTORY;
+                }
+                if (fs->basic.file_attributes & SMB2_FILE_ATTRIBUTE_REPARSE_POINT) {
+                        st->smb2_type = SMB2_TYPE_LINK;
                 }
                 st->smb2_nlink      = fs->standard.number_of_links;
                 st->smb2_ino        = fs->index_number;
@@ -2024,6 +2033,133 @@ smb2_ftruncate_async(struct smb2_context *smb2, struct smb2fh *fh,
                 smb2_set_error(smb2, "Failed to create set info command");
                 return -ENOMEM;
         }
+        smb2_queue_pdu(smb2, pdu);
+
+        return 0;
+}
+
+struct readlink_cb_data {
+        smb2_command_cb cb;
+        void *cb_data;
+
+        uint32_t status;
+        struct smb2_reparse_data_buffer *reparse;
+};
+
+static void
+readlink_cb_3(struct smb2_context *smb2, int status,
+            void *command_data _U_, void *private_data)
+{
+        struct readlink_cb_data *cb_data = private_data;
+        struct smb2_reparse_data_buffer *rp = cb_data->reparse;
+        char *target = "<unknown reparse point type>";
+
+        switch (rp->reparse_tag) {
+        case SMB2_REPARSE_TAG_SYMLINK:
+                target = rp->symlink.subname;
+        }
+        cb_data->cb(smb2, -nterror_to_errno(cb_data->status),
+                    target, cb_data->cb_data);
+        smb2_free_data(smb2, rp);
+        free(cb_data);
+}
+
+static void
+readlink_cb_2(struct smb2_context *smb2, int status,
+            void *command_data, void *private_data)
+{
+        struct readlink_cb_data *cb_data = private_data;
+        struct smb2_ioctl_reply *rep = command_data;
+
+        if (cb_data->status == SMB2_STATUS_SUCCESS) {
+                cb_data->status = status;
+        }
+        if (status == SMB2_STATUS_SUCCESS) {
+                cb_data->reparse = rep->output;
+        }
+}
+
+static void
+readlink_cb_1(struct smb2_context *smb2, int status,
+            void *command_data _U_, void *private_data)
+{
+        struct readlink_cb_data *cb_data = private_data;
+
+        cb_data->status = status;
+}
+
+int
+smb2_readlink_async(struct smb2_context *smb2, const char *path,
+                    smb2_command_cb cb, void *cb_data)
+{
+        struct readlink_cb_data *readlink_data;
+        struct smb2_create_request cr_req;
+        struct smb2_ioctl_request io_req;
+        struct smb2_close_request cl_req;
+        struct smb2_pdu *pdu, *next_pdu;
+
+        readlink_data = malloc(sizeof(struct readlink_cb_data));
+        if (readlink_data == NULL) {
+                smb2_set_error(smb2, "Failed to allocate readlink_data");
+                return -1;
+        }
+        memset(readlink_data, 0, sizeof(struct readlink_cb_data));
+
+        readlink_data->cb = cb;
+        readlink_data->cb_data = cb_data;
+
+        /* CREATE command */
+        memset(&cr_req, 0, sizeof(struct smb2_create_request));
+        cr_req.requested_oplock_level = SMB2_OPLOCK_LEVEL_NONE;
+        cr_req.impersonation_level = SMB2_IMPERSONATION_IMPERSONATION;
+        cr_req.desired_access = SMB2_FILE_READ_ATTRIBUTES;
+        cr_req.file_attributes = 0;
+        cr_req.share_access = SMB2_FILE_SHARE_READ | SMB2_FILE_SHARE_WRITE |
+                SMB2_FILE_SHARE_DELETE;
+        cr_req.create_disposition = SMB2_FILE_OPEN;
+        cr_req.create_options = SMB2_FILE_OPEN_REPARSE_POINT;
+        cr_req.name = path;
+
+        pdu = smb2_cmd_create_async(smb2, &cr_req, readlink_cb_1, readlink_data);
+        if (pdu == NULL) {
+                smb2_set_error(smb2, "Failed to create create command");
+                free(readlink_data);
+                return -1;
+        }
+
+        /* IOCTL command */
+        memset(&io_req, 0, sizeof(struct smb2_ioctl_request));
+        io_req.ctl_code = SMB2_FSCTL_GET_REPARSE_POINT;
+        memcpy(io_req.file_id, compound_file_id, SMB2_FD_SIZE);
+        io_req.input_count = 0;
+        io_req.input = NULL;
+        io_req.flags = SMB2_0_IOCTL_IS_FSCTL;
+
+        next_pdu = smb2_cmd_ioctl_async(smb2, &io_req, readlink_cb_2,
+                                        readlink_data);
+        if (next_pdu == NULL) {
+                readlink_data->cb(smb2, -ENOMEM, NULL, readlink_data->cb_data);
+                free(readlink_data);
+                smb2_free_pdu(smb2, pdu);
+                return -1;
+        }
+        smb2_add_compound_pdu(smb2, pdu, next_pdu);
+
+        /* CLOSE command */
+        memset(&cl_req, 0, sizeof(struct smb2_close_request));
+        cl_req.flags = SMB2_CLOSE_FLAG_POSTQUERY_ATTRIB;
+        memcpy(cl_req.file_id, compound_file_id, SMB2_FD_SIZE);
+
+        next_pdu = smb2_cmd_close_async(smb2, &cl_req, readlink_cb_3,
+                                        readlink_data);
+        if (next_pdu == NULL) {
+                readlink_data->cb(smb2, -ENOMEM, NULL, readlink_data->cb_data);
+                free(readlink_data);
+                smb2_free_pdu(smb2, pdu);
+                return -1;
+        }
+        smb2_add_compound_pdu(smb2, pdu, next_pdu);
+
         smb2_queue_pdu(smb2, pdu);
 
         return 0;

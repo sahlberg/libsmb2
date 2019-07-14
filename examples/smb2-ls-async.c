@@ -59,6 +59,9 @@ void od_cb(struct smb2_context *smb2, int status,
                 time_t t;
 
                 switch (ent->st.smb2_type) {
+                case SMB2_TYPE_LINK:
+                        type = "LINK";
+                        break;
                 case SMB2_TYPE_FILE:
                         type = "FILE";
                         break;

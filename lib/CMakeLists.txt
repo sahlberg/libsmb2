@@ -34,6 +34,7 @@ set(SOURCES aes.c
             smb2-data-file-info.c
             smb2-data-filesystem-info.c
             smb2-data-security-descriptor.c
+            smb2-data-reparse-point.c
 	    smb2-share-enum.c
 	    smb2-signing.c
             socket.c

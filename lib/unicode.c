@@ -155,7 +155,8 @@ ucs2_cp_size(uint16_t cp)
         return 1;
 }
 
-/* Convert a UCS2 string into UTF8
+/*
+ * Convert a UCS2 string into UTF8
  */
 const char *
 ucs2_to_utf8(const uint16_t *ucs2, int ucs2_len)
