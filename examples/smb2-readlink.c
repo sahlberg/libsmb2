@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
         if (rc == 0) {
                 printf("Link:%s\n", buf);
         } else {
-                printf("Error: %s\n", strerror(-rc));
+                printf("Error: %s (%s)\n", smb2_get_error(smb2), strerror(-rc));
         }
         
         smb2_disconnect_share(smb2);

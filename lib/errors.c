@@ -148,6 +148,8 @@ const char *nterror_to_str(uint32_t status) {
                 return "STATUS_INSUFF_SERVER_RESOURCES";
         case SMB2_STATUS_HANDLE_NOT_CLOSABLE:
                 return "STATUS_HANDLE_NOT_CLOSABLE";
+        case SMB2_STATUS_NOT_A_REPARSE_POINT:
+                return "STATUS_NOT_A_REPARSE_POINT";
         default:
                  return "Unknown";
         }
@@ -213,6 +215,7 @@ int nterror_to_errno(uint32_t status) {
         case SMB2_STATUS_INVALID_DEVICE_REQUEST:
         case SMB2_STATUS_ILLEGAL_FUNCTION:
         case SMB2_STATUS_INVALID_PARAMETER:
+        case SMB2_STATUS_NOT_A_REPARSE_POINT:
                 return EINVAL;
         case SMB2_STATUS_TOO_MANY_OPENED_FILES:
                 return EMFILE;

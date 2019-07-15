@@ -2076,6 +2076,9 @@ readlink_cb_2(struct smb2_context *smb2, int status,
         if (cb_data->status == SMB2_STATUS_SUCCESS) {
                 cb_data->status = status;
         }
+        if (status == SMB2_STATUS_NOT_A_REPARSE_POINT) {
+                smb2_set_error(smb2, "Not a reparse point");
+        }
         if (status == SMB2_STATUS_SUCCESS) {
                 cb_data->reparse = rep->output;
         }
@@ -2087,6 +2090,9 @@ readlink_cb_1(struct smb2_context *smb2, int status,
 {
         struct readlink_cb_data *cb_data = private_data;
 
+        if (status != SMB2_STATUS_SUCCESS) {
+                smb2_set_error(smb2, "%s", nterror_to_str(status));
+        }
         cb_data->status = status;
 }
 
