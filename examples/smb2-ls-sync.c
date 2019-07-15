@@ -95,7 +95,7 @@ int main(int argc, char *argv[])
                 if (ent->st.smb2_type == SMB2_TYPE_LINK) {
                         char buf[256];
 
-                        if (url->path) {
+                        if (url->path && url->path[0]) {
                                 asprintf(&link, "%s/%s", url->path, ent->name);
                         } else {
                                 asprintf(&link, "%s", ent->name);

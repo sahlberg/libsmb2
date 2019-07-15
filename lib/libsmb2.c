@@ -2054,9 +2054,11 @@ readlink_cb_3(struct smb2_context *smb2, int status,
         struct smb2_reparse_data_buffer *rp = cb_data->reparse;
         char *target = "<unknown reparse point type>";
 
-        switch (rp->reparse_tag) {
-        case SMB2_REPARSE_TAG_SYMLINK:
-                target = rp->symlink.subname;
+        if (rp) {
+                switch (rp->reparse_tag) {
+                case SMB2_REPARSE_TAG_SYMLINK:
+                        target = rp->symlink.subname;
+                }
         }
         cb_data->cb(smb2, -nterror_to_errno(cb_data->status),
                     target, cb_data->cb_data);
