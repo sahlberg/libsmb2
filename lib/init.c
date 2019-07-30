@@ -52,7 +52,7 @@
 #define MAX_URL_SIZE 256
 
 #ifdef _MSC_VER
-#define getlogin() "Guest"
+#define getlogin_r() ENXIO
 #define random rand
 #define getpid GetCurrentProcessId
 #endif // _MSC_VER
@@ -60,7 +60,7 @@
 #ifdef ESP_PLATFORM
 #include <esp_system.h>
 #define random esp_random
-#define getlogin() "Guest"
+#define getlogin_r() ENXIO
 #endif
 
 static int
@@ -206,7 +206,8 @@ void smb2_destroy_url(struct smb2_url *url)
 struct smb2_context *smb2_init_context(void)
 {
         struct smb2_context *smb2;
-        int i;
+        char buf[1024];
+        int i, ret;
 
         smb2 = malloc(sizeof(struct smb2_context));
         if (smb2 == NULL) {
@@ -214,7 +215,8 @@ struct smb2_context *smb2_init_context(void)
         }
         memset(smb2, 0, sizeof(struct smb2_context));
 
-        smb2_set_user(smb2, getlogin());
+        ret = getlogin_r(buf, sizeof(buf));
+        smb2_set_user(smb2, ret == 0 ? buf : "Guest");
         smb2->fd = -1;
         smb2->sec = SMB2_SEC_UNDEFINED;
         smb2->version = SMB2_VERSION_ANY;
