@@ -79,6 +79,12 @@
 #include "krb5-wrapper.h"
 #endif
 
+#ifdef ESP_PLATFORM
+#define DEFAULT_OUTPUT_BUFFER_LENGTH 512
+#else
+#define DEFAULT_OUTPUT_BUFFER_LENGTH 0xffff
+#endif
+
 /* strings used to derive SMB signing and encryption keys */
 static const char SMB2AESCMAC[] = "SMB2AESCMAC";
 static const char SmbSign[] = "SmbSign";
@@ -343,7 +349,7 @@ query_cb(struct smb2_context *smb2, int status,
                 req.file_information_class = SMB2_FILE_ID_FULL_DIRECTORY_INFORMATION;
                 req.flags = 0;
                 memcpy(req.file_id, dir->file_id, SMB2_FD_SIZE);
-                req.output_buffer_length = 0xffff;
+                req.output_buffer_length = DEFAULT_OUTPUT_BUFFER_LENGTH;
                 req.name = "*";
 
                 pdu = smb2_cmd_query_directory_async(smb2, &req, query_cb, dir);
@@ -407,7 +413,7 @@ opendir_cb(struct smb2_context *smb2, int status,
         req.file_information_class = SMB2_FILE_ID_FULL_DIRECTORY_INFORMATION;
         req.flags = 0;
         memcpy(req.file_id, dir->file_id, SMB2_FD_SIZE);
-        req.output_buffer_length = 0xffff;
+        req.output_buffer_length = DEFAULT_OUTPUT_BUFFER_LENGTH;
         req.name = "*";
 
         pdu = smb2_cmd_query_directory_async(smb2, &req, query_cb, dir);
@@ -1533,7 +1539,7 @@ smb2_fstat_async(struct smb2_context *smb2, struct smb2fh *fh,
         memset(&req, 0, sizeof(struct smb2_query_info_request));
         req.info_type = SMB2_0_INFO_FILE;
         req.file_info_class = SMB2_FILE_ALL_INFORMATION;
-        req.output_buffer_length = 65535;
+        req.output_buffer_length = DEFAULT_OUTPUT_BUFFER_LENGTH;
         req.additional_information = 0;
         req.flags = 0;
         memcpy(req.file_id, fh->file_id, SMB2_FD_SIZE);
@@ -1676,7 +1682,7 @@ smb2_getinfo_async(struct smb2_context *smb2, const char *path,
         memset(&qi_req, 0, sizeof(struct smb2_query_info_request));
         qi_req.info_type = info_type;
         qi_req.file_info_class = file_info_class;
-        qi_req.output_buffer_length = 65535;
+        qi_req.output_buffer_length = DEFAULT_OUTPUT_BUFFER_LENGTH;
         qi_req.additional_information = 0;
         qi_req.flags = 0;
         memcpy(qi_req.file_id, compound_file_id, SMB2_FD_SIZE);
