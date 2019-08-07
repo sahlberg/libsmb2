@@ -89,7 +89,9 @@ smb2_parse_args(struct smb2_context *smb2, const char *args)
                         *(value++) = '\0';
                 }
 
-                if (!strcmp(args, "sec")) {
+                if (!strcmp(args, "seal")) {
+                        smb2->seal = 1;
+                } else if (!strcmp(args, "sec")) {
                         if(!strcmp(value, "krb5")) {
                                 smb2->sec = SMB2_SEC_KRB5;
                         } else if(!strcmp(value, "krb5cc")) {
@@ -126,6 +128,21 @@ smb2_parse_args(struct smb2_context *smb2, const char *args)
                         return -1;
                 }
                 args = next;
+        }
+
+        if (smb2->seal) {
+                switch (smb2->version) {
+                case SMB2_VERSION_ANY:
+                        smb2->version = SMB2_VERSION_ANY3;
+                        break;
+                case SMB2_VERSION_ANY3:
+                case SMB2_VERSION_0300:
+                case SMB2_VERSION_0302:
+                        break;
+                default:
+                        smb2_set_error(smb2, "Can only use seal with SMB3");
+                        return -1;
+                }
         }
 
         return 0;
@@ -238,8 +255,6 @@ struct smb2_context *smb2_init_context(void)
         snprintf(smb2->client_guid, 16, "libsmb2-%d", getpid());
 
         smb2->session_key = NULL;
-        smb2->signing_required = 0;
-        memset(smb2->signing_key, 0, SMB2_KEY_SIZE);
 
         return smb2;
 }

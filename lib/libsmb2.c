@@ -589,7 +589,7 @@ session_setup_cb(struct smb2_context *smb2, int status,
                 return;
         }
 
-        if (smb2->signing_required) {
+        if (smb2->sign) {
                 uint8_t zero_key[SMB2_KEY_SIZE] = {0};
                 int have_valid_session_key = 1;
 #ifdef HAVE_LIBKRB5
@@ -736,7 +736,11 @@ negotiate_cb(struct smb2_context *smb2, int status,
         smb2->dialect           = rep->dialect_revision;
 
         if (rep->security_mode & SMB2_NEGOTIATE_SIGNING_REQUIRED) {
-                smb2->signing_required = 1;
+                smb2->sign = 1;
+        }
+
+        if (smb2->seal) {
+                smb2->sign = 0;
         }
 
 #ifndef HAVE_LIBKRB5

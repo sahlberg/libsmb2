@@ -141,7 +141,8 @@ struct smb2_context {
         uint8_t *session_key;
         uint8_t session_key_size;
 
-        uint8_t signing_required;
+        uint8_t seal:1;
+        uint8_t sign:1;
         uint8_t signing_key[SMB2_KEY_SIZE];
 
         /*

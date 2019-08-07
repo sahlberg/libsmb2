@@ -340,7 +340,7 @@ smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
         /* Update all the PDU headers in this chain */
         for (p = pdu; p; p = p->next_compound) {
                 smb2_encode_header(smb2, &p->out.iov[0], &p->header);
-                if (smb2->signing_required) {
+                if (smb2->sign) {
                         if (smb2_pdu_add_signature(smb2, p) < 0) {
                                 smb2_set_error(smb2, "Failure to add "
                                                "signature. %s",
