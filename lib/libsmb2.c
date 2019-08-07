@@ -88,12 +88,12 @@
 /* strings used to derive SMB signing and encryption keys */
 static const char SMB2AESCMAC[] = "SMB2AESCMAC";
 static const char SmbSign[] = "SmbSign";
-/* The following strings will be used for deriving other keys
-static const char SMB2APP[] = "SMB2APP";
-static const char SmbRpc[] = "SmbRpc";
 static const char SMB2AESCCM[] = "SMB2AESCCM";
 static const char ServerOut[] = "ServerOut";
 static const char ServerIn[] = "ServerIn ";
+/* The following strings will be used for deriving other keys
+static const char SMB2APP[] = "SMB2APP";
+static const char SmbRpc[] = "SmbRpc";
 static const char SMBSigningKey[] = "SMBSigningKey";
 static const char SMBAppKey[] = "SMBAppKey";
 static const char SMBS2CCipherKey[] = "SMBS2CCipherKey";
@@ -589,7 +589,7 @@ session_setup_cb(struct smb2_context *smb2, int status,
                 return;
         }
 
-        if (smb2->sign) {
+        if (smb2->sign || smb2->seal) {
                 uint8_t zero_key[SMB2_KEY_SIZE] = {0};
                 int have_valid_session_key = 1;
 #ifdef HAVE_LIBKRB5
@@ -607,8 +607,7 @@ session_setup_cb(struct smb2_context *smb2, int status,
                 if (smb2->session_key == NULL || memcmp(smb2->session_key, zero_key, SMB2_KEY_SIZE) == 0) {
                         have_valid_session_key = 0;
                 }
-                if (have_valid_session_key == 0)
-                {
+                if (have_valid_session_key == 0) {
                         smb2_close_context(smb2);
                         smb2_set_error(smb2, "Signing required by server. Session "
                                        "Key is not available %s",
@@ -635,9 +634,23 @@ session_setup_cb(struct smb2_context *smb2, int status,
                                         SmbSign,
                                         sizeof(SmbSign),
                                         smb2->signing_key);
+                        smb2_derive_key(smb2->session_key,
+                                        smb2->session_key_size,
+                                        SMB2AESCCM,
+                                        sizeof(SMB2AESCCM),
+                                        ServerIn,
+                                        sizeof(ServerIn),
+                                        smb2->serverin_key);
+                        smb2_derive_key(smb2->session_key,
+                                        smb2->session_key_size,
+                                        SMB2AESCCM,
+                                        sizeof(SMB2AESCCM),
+                                        ServerOut,
+                                        sizeof(ServerOut),
+                                        smb2->serverout_key);
                 } else if (smb2->dialect > SMB2_VERSION_0302) {
                         smb2_close_context(smb2);
-                        smb2_set_error(smb2, "Signing Required by server. "
+                        smb2_set_error(smb2, "Signing/Encryption Required. "
                                              "Not yet implemented for SMB3.1");
                         c_data->cb(smb2, -EINVAL, NULL, c_data->cb_data);
                         free_c_data(smb2, c_data);

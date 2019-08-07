@@ -144,6 +144,8 @@ struct smb2_context {
         uint8_t seal:1;
         uint8_t sign:1;
         uint8_t signing_key[SMB2_KEY_SIZE];
+        uint8_t serverin_key[SMB2_KEY_SIZE];
+        uint8_t serverout_key[SMB2_KEY_SIZE];
 
         /*
          * For sending PDUs
