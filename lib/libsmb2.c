@@ -748,6 +748,18 @@ negotiate_cb(struct smb2_context *smb2, int status,
         smb2->max_write_size    = rep->max_write_size;
         smb2->dialect           = rep->dialect_revision;
 
+        if (smb2->seal && (smb2->dialect == SMB2_VERSION_0300 ||
+                           smb2->dialect == SMB2_VERSION_0302)) {
+                if(!(rep->capabilities & SMB2_GLOBAL_CAP_ENCRYPTION)) {
+                        smb2_set_error(smb2, "Encryption requested but server "
+                                       "does not support encryption.");
+                        smb2_close_context(smb2);
+                        c_data->cb(smb2, -ENOMEM, NULL, c_data->cb_data);
+                        free_c_data(smb2, c_data);
+                        return;
+                }
+        }
+
         if (rep->security_mode & SMB2_NEGOTIATE_SIGNING_REQUIRED) {
                 smb2->sign = 1;
         }
@@ -802,6 +814,11 @@ connect_cb(struct smb2_context *smb2, int status,
 
         memset(&req, 0, sizeof(struct smb2_negotiate_request));
         req.capabilities = SMB2_GLOBAL_CAP_LARGE_MTU;
+        if (smb2->seal && (smb2->version == SMB2_VERSION_ANY3 ||
+                           smb2->version == SMB2_VERSION_0300 ||
+                           smb2->version == SMB2_VERSION_0302)) {
+                req.capabilities |= SMB2_GLOBAL_CAP_ENCRYPTION;
+        }
         req.security_mode = smb2->security_mode;
         switch (smb2->version) {
         case SMB2_VERSION_ANY:
