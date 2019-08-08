@@ -52,7 +52,7 @@
 #define MAX_URL_SIZE 256
 
 #ifdef _MSC_VER
-#define getlogin() "Guest"
+#define getlogin_r() ENXIO
 #define random rand
 #define getpid GetCurrentProcessId
 #endif // _MSC_VER
@@ -60,7 +60,7 @@
 #ifdef ESP_PLATFORM
 #include <esp_system.h>
 #define random esp_random
-#define getlogin() "Guest"
+#define getlogin_r() ENXIO
 #endif
 
 static int
@@ -69,12 +69,12 @@ smb2_parse_args(struct smb2_context *smb2, const char *args)
         while (args && *args != 0) {
                 char *next, *value;
 
-		next = strchr(args, '&');
+                next = strchr(args, '&');
                 if (next) {
                         *(next++) = '\0';
                 }
 
-		value = strchr(args, '=');
+                value = strchr(args, '=');
                 if (value) {
                         *(value++) = '\0';
                 }
@@ -135,7 +135,7 @@ struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url)
                 smb2_set_error(smb2, "URL is too long");
                 return NULL;
         }
-	strncpy(str, url + 6, MAX_URL_SIZE);
+        strncpy(str, url + 6, MAX_URL_SIZE);
 
         args = strchr(str, '?');
         if (args) {
@@ -165,7 +165,7 @@ struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url)
                 *(tmp++) = '\0';
                 u->user = strdup(ptr);
                 ptr = tmp;
-	}
+        }
         /* server */
         if ((tmp = strchr(ptr, '/')) != NULL) {
                 *(tmp++) = '\0';
@@ -206,7 +206,8 @@ void smb2_destroy_url(struct smb2_url *url)
 struct smb2_context *smb2_init_context(void)
 {
         struct smb2_context *smb2;
-        int i;
+        char buf[1024];
+        int i, ret;
 
         smb2 = malloc(sizeof(struct smb2_context));
         if (smb2 == NULL) {
@@ -214,7 +215,8 @@ struct smb2_context *smb2_init_context(void)
         }
         memset(smb2, 0, sizeof(struct smb2_context));
 
-        smb2_set_user(smb2, getlogin());
+        ret = getlogin_r(buf, sizeof(buf));
+        smb2_set_user(smb2, ret == 0 ? buf : "Guest");
         smb2->fd = -1;
         smb2->sec = SMB2_SEC_UNDEFINED;
         smb2->version = SMB2_VERSION_ANY;
@@ -287,7 +289,7 @@ void smb2_destroy_context(struct smb2_context *smb2)
 void smb2_free_iovector(struct smb2_context *smb2, struct smb2_io_vectors *v)
 {
         int i;
-        
+
         for (i = 0; i < v->niov; i++) {
                 if (v->iov[i].free) {
                         v->iov[i].free(v->iov[i].buf);
@@ -316,25 +318,25 @@ struct smb2_iovec *smb2_add_iovector(struct smb2_context *smb2,
 
 void smb2_set_error(struct smb2_context *smb2, const char *error_string, ...)
 {
-	va_list ap;
-	char errstr[MAX_ERROR_SIZE] = {0};
+        va_list ap;
+        char errstr[MAX_ERROR_SIZE] = {0};
 
-	va_start(ap, error_string);
-	if (vsnprintf(errstr, MAX_ERROR_SIZE, error_string, ap) < 0) {
-		strncpy(errstr, "could not format error string!",
+        va_start(ap, error_string);
+        if (vsnprintf(errstr, MAX_ERROR_SIZE, error_string, ap) < 0) {
+                strncpy(errstr, "could not format error string!",
                         MAX_ERROR_SIZE);
-	}
-	va_end(ap);
-	if (smb2 != NULL) {
-		strncpy(smb2->error_string, errstr, MAX_ERROR_SIZE);
-	}
+        }
+        va_end(ap);
+        if (smb2 != NULL) {
+                strncpy(smb2->error_string, errstr, MAX_ERROR_SIZE);
+        }
 }
 
 const char *smb2_get_error(struct smb2_context *smb2)
 {
-	return smb2 ? smb2->error_string : "";
+        return smb2 ? smb2->error_string : "";
 }
-        
+
 const char *smb2_get_client_guid(struct smb2_context *smb2)
 {
         return smb2->client_guid;
