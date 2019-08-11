@@ -1,4 +1,5 @@
 set(SOURCES aes.c
+            aes128ccm.c
             alloc.c
             dcerpc.c
             dcerpc-srvsvc.c

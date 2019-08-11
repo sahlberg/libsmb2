@@ -8,6 +8,7 @@ libsmb2_la_CPPFLAGS = -I$(abs_top_srcdir)/include \
 
 libsmb2_la_SOURCES = \
 	aes.c \
+	aes128ccm.c \
 	alloc.c \
 	dcerpc.c \
 	dcerpc-srvsvc.c \
