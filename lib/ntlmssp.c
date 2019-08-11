@@ -98,6 +98,7 @@ struct auth_data {
 #define NTLMSSP_NEGOTIATE_ALWAYS_SIGN                      0x00008000
 #define NTLMSSP_NEGOTIATE_ANONYMOUS                        0x00000800
 #define NTLMSSP_NEGOTIATE_NTLM                             0x00000200
+#define NTLMSSP_NEGOTIATE_SEAL                             0x00000020
 #define NTLMSSP_NEGOTIATE_SIGN                             0x00000010
 #define NTLMSSP_REQUEST_TARGET                             0x00000004
 #define NTLMSSP_NEGOTIATE_OEM                              0x00000002
@@ -163,7 +164,7 @@ encoder(const void *buffer, size_t size, void *ptr)
 }
 
 static int
-ntlm_negotiate_message(struct auth_data *auth_data)
+ntlm_negotiate_message(struct smb2_context *smb2, struct auth_data *auth_data)
 {
         unsigned char ntlm[32];
         uint32_t u32;
@@ -174,13 +175,16 @@ ntlm_negotiate_message(struct auth_data *auth_data)
         u32 = htole32(NEGOTIATE_MESSAGE);
         memcpy(&ntlm[8], &u32, 4);
 
-        u32 = htole32(NTLMSSP_NEGOTIATE_56|NTLMSSP_NEGOTIATE_128|
-                      NTLMSSP_NEGOTIATE_EXTENDED_SESSIONSECURITY|
-                      //NTLMSSP_NEGOTIATE_ALWAYS_SIGN|
-                      NTLMSSP_NEGOTIATE_NTLM|
-                      //NTLMSSP_NEGOTIATE_SIGN|
-                      NTLMSSP_REQUEST_TARGET|NTLMSSP_NEGOTIATE_OEM|
-                      NTLMSSP_NEGOTIATE_UNICODE);
+        u32 = NTLMSSP_NEGOTIATE_56|NTLMSSP_NEGOTIATE_128|
+                NTLMSSP_NEGOTIATE_EXTENDED_SESSIONSECURITY|
+                //NTLMSSP_NEGOTIATE_ALWAYS_SIGN|
+                NTLMSSP_NEGOTIATE_NTLM|
+                //NTLMSSP_NEGOTIATE_SIGN|
+                NTLMSSP_REQUEST_TARGET|NTLMSSP_NEGOTIATE_OEM|
+                NTLMSSP_NEGOTIATE_UNICODE;
+        if (smb2->seal)
+                u32 |= NTLMSSP_NEGOTIATE_SEAL;
+        u32 = htole32(u32);
         memcpy(&ntlm[12], &u32, 4);
 
         if (encoder(&ntlm[0], 32, auth_data) < 0) {
@@ -484,6 +488,8 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
                 NTLMSSP_NEGOTIATE_UNICODE;
         if (anonymous)
                 u32 |= NTLMSSP_NEGOTIATE_ANONYMOUS;
+        if (smb2->seal)
+                u32 |= NTLMSSP_NEGOTIATE_SEAL;
         u32 = htole32(u32);
         encoder(&u32, 4, auth_data);
 
@@ -544,7 +550,7 @@ ntlmssp_generate_blob(struct smb2_context *smb2, time_t t,
         auth_data->allocated = 0;
 
         if (input_buf == NULL) {
-                ntlm_negotiate_message(auth_data);
+                ntlm_negotiate_message(smb2, auth_data);
         } else {
                 if (ntlm_challenge_message(auth_data, input_buf,
                                            input_len) < 0) {
