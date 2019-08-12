@@ -15,14 +15,27 @@
    You should have received a copy of the GNU Lesser General Public License
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
-void aes128ccm_encrypt(unsigned char *key,
-		       unsigned char *nonce, int nlen,
-		       unsigned char *aad, int alen,
-		       unsigned char *p, int plen,
-		       unsigned char *m, int mlen);
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 
-int aes128ccm_decrypt(unsigned char *key,
-		      unsigned char *nonce, int nlen,
-		      unsigned char *aad, int alen,
-		      unsigned char *p, int plen,
-		      unsigned char *m, int mlen);
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
+#ifndef _SMB3_SEAL_H_
+#define _SMB3_SEAL_H_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+int
+smb3_encrypt_pdu(struct smb2_context *smb2,
+                 struct smb2_pdu *pdu);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* _SMB3_SEAL_H_ */

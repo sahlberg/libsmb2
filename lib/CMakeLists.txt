@@ -37,6 +37,7 @@ set(SOURCES aes.c
             smb2-data-security-descriptor.c
             smb2-data-reparse-point.c
 	    smb2-share-enum.c
+	    smb3-seal.c
 	    smb2-signing.c
             socket.c
             sync.c

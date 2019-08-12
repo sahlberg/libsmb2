@@ -129,21 +129,32 @@ smb2_write_to_socket(struct smb2_context *smb2)
                 ssize_t count;
                 uint32_t spl = 0, tmp_spl, credit_charge = 0;
 
-                /* Count/copy all the vectors from all PDUs in the
-                 * compound set.
-                 */
                 for (tmp_pdu = pdu; tmp_pdu; tmp_pdu = tmp_pdu->next_compound) {
                         credit_charge += pdu->header.credit_charge;
-                        for (i = 0; i < tmp_pdu->out.niov; i++, niov++) {
-                                iov[niov].iov_base = tmp_pdu->out.iov[i].buf;
-                                iov[niov].iov_len = tmp_pdu->out.iov[i].len;
-                                spl += tmp_pdu->out.iov[i].len;
-                        }
                 }
-
                 if (smb2->dialect > SMB2_VERSION_0202) {
                         if (credit_charge > smb2->credits) {
                                 return 0;
+                        }
+                }
+
+                if (pdu->seal) {
+                        niov = 2;
+                        spl = pdu->crypt_len;
+                        iov[1].iov_base = pdu->crypt;
+                        iov[1].iov_len  = pdu->crypt_len;
+                } else {
+                        /* Copy all the vectors from all PDUs in the
+                         * compound set.
+                         */
+                        for (tmp_pdu = pdu; tmp_pdu;
+                             tmp_pdu = tmp_pdu->next_compound) {
+                                for (i = 0; i < tmp_pdu->out.niov;
+                                     i++, niov++) {
+                                        iov[niov].iov_base = tmp_pdu->out.iov[i].buf;
+                                        iov[niov].iov_len = tmp_pdu->out.iov[i].len;
+                                        spl += tmp_pdu->out.iov[i].len;
+                                }
                         }
                 }
 

@@ -219,6 +219,11 @@ struct smb2_pdu {
         /* Data we need to retain between request/reply for QUERY INFO */
         uint8_t info_type;
         uint8_t file_info_class;
+
+        /* For encrypted PDUs */
+        int seal:1;
+        uint32_t crypt_len;
+        unsigned char *crypt;
 };
 
 /* UCS2 is always in Little Endianness */

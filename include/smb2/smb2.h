@@ -862,6 +862,8 @@ struct smb2_write_reply {
 #define SMB2_TREE_DISCONNECT_REQUEST_SIZE 4
 #define SMB2_TREE_DISCONNECT_REPLY_SIZE 4
 
+#define SMB_ENCRYPTION_AES128_CCM     0x0001
+
 #ifdef __cplusplus
 }
 #endif

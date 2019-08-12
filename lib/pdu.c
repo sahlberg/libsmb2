@@ -41,6 +41,7 @@
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-private.h"
+#include "smb3-seal.h"
 #include "smb2-signing.h"
 
 int
@@ -172,6 +173,7 @@ smb2_free_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
         smb2_free_iovector(smb2, &pdu->in);
 
         free(pdu->payload);
+        free(pdu->crypt);
         free(pdu);
 }
 
@@ -348,6 +350,8 @@ smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
                         }
                 }
         }
+
+        smb3_encrypt_pdu(smb2, pdu);
 
         smb2_add_to_outqueue(smb2, pdu);
 }
