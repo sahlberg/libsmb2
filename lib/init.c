@@ -52,16 +52,26 @@
 #define MAX_URL_SIZE 256
 
 #ifdef _MSC_VER
-#define getlogin_r() ENXIO
+#include <errno.h>
+#define getlogin_r(a,b) ENXIO
 #define random rand
 #define getpid GetCurrentProcessId
 #endif // _MSC_VER
 
 #ifdef ESP_PLATFORM
+#include <errno.h>
 #include <esp_system.h>
 #define random esp_random
-#define getlogin_r() ENXIO
+#define getlogin_r(a,b) ENXIO
 #endif
+
+#ifdef __ANDROID__
+#include <errno.h>
+// getlogin_r() was added in API 28
+#if __ANDROID_API__ < 28
+#define getlogin_r(a,b) ENXIO
+#endif
+#endif // __ANDROID__
 
 static int
 smb2_parse_args(struct smb2_context *smb2, const char *args)
