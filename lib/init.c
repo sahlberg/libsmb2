@@ -44,6 +44,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <sys/socket.h>
+#include <time.h>
 
 #include "smb2.h"
 #include "libsmb2.h"
@@ -230,11 +231,15 @@ void smb2_destroy_url(struct smb2_url *url)
         free(url);
 }
 
+
 struct smb2_context *smb2_init_context(void)
 {
         struct smb2_context *smb2;
         char buf[1024];
         int i, ret;
+        static int ctr;
+
+        srandom(time(NULL) | getpid() | ctr++);
 
         smb2 = malloc(sizeof(struct smb2_context));
         if (smb2 == NULL) {
