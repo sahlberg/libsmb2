@@ -76,6 +76,7 @@
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-private.h"
+#include "smb3-seal.h"
 
 #define MAX_URL_SIZE 256
 
@@ -218,7 +219,7 @@ smb2_read_from_socket(struct smb2_context *smb2)
         size_t num_done;
 	ssize_t count, len;
         int i, niov, is_chained;
-        static char magic[4] = {0xFE, 'S', 'M', 'B'};
+        static char smb3tfrm[4] = {0xFD, 'S', 'M', 'B'};
         struct smb2_pdu *pdu = smb2->pdu;
 
         /* initialize the input vectors to the spl and the header
@@ -292,21 +293,29 @@ read_more_data:
                                   SMB2_HEADER_SIZE, NULL);
                 goto read_more_data;
         case SMB2_RECV_HEADER:
-                /* Record the offset for the start of payload data. */
-                smb2->payload_offset = smb2->in.num_done;
-
+                if (!memcmp(smb2->in.iov[smb2->in.niov - 1].buf, smb3tfrm, 4)) {
+                        smb2->in.iov[smb2->in.niov - 1].len = 52;
+                        len = smb2->spl - 52;
+                        smb2->in.total_size -= 12;
+                        smb2_add_iovector(smb2, &smb2->in,
+                                          malloc(len),
+                                          len, free);
+                        memcpy(smb2->in.iov[smb2->in.niov - 1].buf,
+                               &smb2->in.iov[smb2->in.niov - 2].buf[52], 12);
+                        smb2->recv_state = SMB2_RECV_TRFM;
+                        goto read_more_data;
+                }
                 if (smb2_decode_header(smb2, &smb2->in.iov[smb2->in.niov - 1],
                                        &smb2->hdr) != 0) {
                         smb2_set_error(smb2, "Failed to decode smb2 "
-                                       "header");
+                                       "header: %s", smb2_get_error(smb2));
                         return -1;
                 }
+                /* Record the offset for the start of payload data. */
+                smb2->payload_offset = smb2->in.num_done;
+
                 smb2->credits += smb2->hdr.credit_request_response;
 
-                if (memcmp(&smb2->hdr.protocol_id, magic, 4)) {
-                        smb2_set_error(smb2, "received non-SMB2 blob");
-                        return -1;
-                }
                 if (!(smb2->hdr.flags & SMB2_FLAGS_SERVER_TO_REDIR)) {
                         smb2_set_error(smb2, "received non-reply");
                         return -1;
@@ -444,6 +453,18 @@ read_more_data:
                  * PDU. Break out of the switch and invoke the callback.
                  */
                 break;
+        case SMB2_RECV_TRFM:
+                /* We are finished reading the full payload for the
+                 * encrypted packet.
+                 */
+                smb2->in.num_done = 0;
+                if (smb3_decrypt_pdu(smb2)) {
+                        return -1;
+                }
+                /* We are all done now with this PDU. Reset num_done to 0
+                 * and restart with a new SPL for the next chain.
+                 */
+                return 0;
         }
 
         if (smb2->hdr.status == SMB2_STATUS_PENDING) {

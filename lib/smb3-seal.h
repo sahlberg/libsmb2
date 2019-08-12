@@ -33,6 +33,8 @@ extern "C" {
 int
 smb3_encrypt_pdu(struct smb2_context *smb2,
                  struct smb2_pdu *pdu);
+int
+smb3_decrypt_pdu(struct smb2_context *smb2);
 
 #ifdef __cplusplus
 }

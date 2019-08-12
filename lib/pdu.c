@@ -300,11 +300,16 @@ int
 smb2_decode_header(struct smb2_context *smb2, struct smb2_iovec *iov,
                    struct smb2_header *hdr)
 {
-        if (iov->len != SMB2_HEADER_SIZE) {
-                smb2_set_error(smb2, "io vector for header is wrong size");
+        static char smb2sign[4] = {0xFE, 'S', 'M', 'B'};
+
+        if (iov->len < SMB2_HEADER_SIZE) {
+                smb2_set_error(smb2, "io vector for header is too small");
                 return -1;
         }
-
+        if (memcmp(iov->buf, smb2sign, 4)) {
+                smb2_set_error(smb2, "bad SMB signature in header");
+                return -1;
+        }
         memcpy(&hdr->protocol_id, iov->buf, 4);
         smb2_get_uint16(iov, 4, &hdr->struct_size);
         smb2_get_uint16(iov, 6, &hdr->credit_charge);

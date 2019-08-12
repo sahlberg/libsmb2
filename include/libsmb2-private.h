@@ -79,7 +79,8 @@ struct smb2_header {
         uint8_t signature[16];
 };
 
-/* States that we transition when we read data back from the server :
+/* States that we transition when we read data back from the server for
+ * normal SMB2/3 :
  * 1: SMB2_RECV_SPL        SPL
  * 2: SMB2_RECV_HEADER     SMB2 Header
  * 3: SMB2_RECV_FIXED      The fixed part of the payload. 
@@ -89,6 +90,11 @@ struct smb2_header {
  * 2-5 will be repeated for compound commands.
  * 4-5 are optional and may or may not be present depending on the
  *     type of command.
+ *
+ * States for SMB3 encryption:
+ * 1: SMB2_RECV_SPL        SPL
+ * 2: SMB2_RECV_HEADER     SMB3 Transform Header
+ * 3: SMB2_RECV_TRFM       encrypted payload
  */
 enum smb2_recv_state {
         SMB2_RECV_SPL = 0,
@@ -96,6 +102,7 @@ enum smb2_recv_state {
         SMB2_RECV_FIXED,
         SMB2_RECV_VARIABLE,
         SMB2_RECV_PAD,
+        SMB2_RECV_TRFM,
 };
 
 enum smb2_sec {

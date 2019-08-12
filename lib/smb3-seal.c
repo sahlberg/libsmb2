@@ -23,13 +23,6 @@
 #define _GNU_SOURCE
 #endif
 
-#ifndef _SMB2_SEAL_H_
-#define _SMB2_SEAL_H_
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -60,6 +53,7 @@ extern "C" {
 #include "libsmb2.h"
 #include "libsmb2-raw.h"
 #include "libsmb2-private.h"
+#include "smb3-seal.h"
 
 static const char xfer[4] = {0xFD, 'S', 'M', 'B'};
 
@@ -121,9 +115,19 @@ smb3_encrypt_pdu(struct smb2_context *smb2,
         return 0;
 }
 
+int
+smb3_decrypt_pdu(struct smb2_context *smb2)
+{
+        if (aes128ccm_decrypt(smb2->serverout_key,
+                              &smb2->in.iov[smb2->in.niov - 2].buf[20], 11,
+                              &smb2->in.iov[smb2->in.niov - 2].buf[20], 32,
+                              &smb2->in.iov[smb2->in.niov - 1].buf[0],
+                              smb2->in.iov[smb2->in.niov - 1].len,
+                              &smb2->in.iov[smb2->in.niov - 2].buf[4], 16)) {
+                smb2_set_error(smb2, "Failed to decrypt PDU");
+                return -1;
+        }
 
-#ifdef __cplusplus
+        printf("decrypted:\n");
+        return 0;
 }
-#endif
-
-#endif /* _SMB2_SEAL_H_ */
