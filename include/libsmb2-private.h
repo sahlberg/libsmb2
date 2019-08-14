@@ -394,6 +394,12 @@ int smb2_decode_reparse_data_buffer(struct smb2_context *smb2,
                                     struct smb2_iovec *vec);
 void smb2_free_all_fhs(struct smb2_context *smb2);
 void smb2_free_all_dirs(struct smb2_context *smb2);
+
+struct iovec;
+typedef ssize_t (*read_func)(struct smb2_context *smb2,
+                             const struct iovec *iov, int iovcnt);
+int smb2_read_data(struct smb2_context *smb2, read_func func);
+
 #ifdef __cplusplus
 }
 #endif

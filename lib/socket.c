@@ -211,30 +211,15 @@ smb2_write_to_socket(struct smb2_context *smb2)
 	return 0;
 }
 
-static int
-smb2_read_from_socket(struct smb2_context *smb2)
+int smb2_read_data(struct smb2_context *smb2, read_func func)
 {
         struct iovec iov[SMB2_MAX_VECTORS];
         struct iovec *tmpiov;
-        size_t num_done;
-	ssize_t count, len;
         int i, niov, is_chained;
+        size_t num_done;
         static char smb3tfrm[4] = {0xFD, 'S', 'M', 'B'};
         struct smb2_pdu *pdu = smb2->pdu;
-
-        /* initialize the input vectors to the spl and the header
-         * which are both static data in the smb2 context.
-         * additional vectors will be added when we can map this to
-         * the corresponding pdu.
-         */
-        if (smb2->in.num_done == 0) {
-                smb2->recv_state = SMB2_RECV_SPL;
-                smb2->spl = 0;
-
-                smb2_free_iovector(smb2, &smb2->in);
-                smb2_add_iovector(smb2, &smb2->in, (uint8_t *)&smb2->spl,
-                                  SMB2_SPL_SIZE, NULL);
-        }
+	ssize_t count, len;
 
 read_more_data:
         num_done = smb2->in.num_done;
@@ -259,7 +244,7 @@ read_more_data:
         tmpiov->iov_len -= num_done;
 
         /* Read into our trimmed iovectors */
-        count = readv(smb2->fd, tmpiov, niov);
+        count = func(smb2, tmpiov, niov);
         if (count < 0) {
 #ifdef _WIN32
                 int err = WSAGetLastError();
@@ -494,6 +479,32 @@ read_more_data:
         smb2->in.num_done = 0;        
 
 	return 0;
+}
+
+static ssize_t smb2_readv(struct smb2_context *smb2,
+                          const struct iovec *iov, int iovcnt)
+{
+        return readv(smb2->fd, iov, iovcnt);
+}
+
+static int
+smb2_read_from_socket(struct smb2_context *smb2)
+{
+        /* initialize the input vectors to the spl and the header
+         * which are both static data in the smb2 context.
+         * additional vectors will be added when we can map this to
+         * the corresponding pdu.
+         */
+        if (smb2->in.num_done == 0) {
+                smb2->recv_state = SMB2_RECV_SPL;
+                smb2->spl = 0;
+
+                smb2_free_iovector(smb2, &smb2->in);
+                smb2_add_iovector(smb2, &smb2->in, (uint8_t *)&smb2->spl,
+                                  SMB2_SPL_SIZE, NULL);
+        }
+
+        return smb2_read_data(smb2, smb2_readv);
 }
 
 int
