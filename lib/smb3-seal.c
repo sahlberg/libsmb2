@@ -43,6 +43,10 @@
 #include <string.h>
 #endif
 
+#ifdef HAVE_SYS_UIO_H
+#include <sys/uio.h>
+#endif
+
 #include <stdio.h>
 
 #include "portable-endian.h"
@@ -115,9 +119,28 @@ smb3_encrypt_pdu(struct smb2_context *smb2,
         return 0;
 }
 
+static ssize_t smb2_readv_from_buf(struct smb2_context *smb2,
+                                   const struct iovec *iov, int iovcnt)
+{
+        int i, len, count = 0;
+
+        for (i=0;i<iovcnt;i++){
+                len = iov[i].iov_len;
+                if (len > smb2->enc_len - smb2->enc_pos) {
+                        len = smb2->enc_len - smb2->enc_pos;
+                }
+                memcpy(iov[i].iov_base, &smb2->enc[smb2->enc_pos], len);
+                smb2->enc_pos += len;
+                count += len;
+        }
+        return count;
+}
+
 int
 smb3_decrypt_pdu(struct smb2_context *smb2)
 {
+        int rc;
+
         if (aes128ccm_decrypt(smb2->serverout_key,
                               &smb2->in.iov[smb2->in.niov - 2].buf[20], 11,
                               &smb2->in.iov[smb2->in.niov - 2].buf[20], 32,
@@ -128,6 +151,22 @@ smb3_decrypt_pdu(struct smb2_context *smb2)
                 return -1;
         }
 
-        printf("decrypted:\n");
-        return 0;
+        if (smb2->in.num_done == 0) {
+                smb2->enc = smb2->in.iov[smb2->in.niov - 1].buf;
+                smb2->enc_len = smb2->in.iov[smb2->in.niov - 1].len;
+                smb2->enc_pos = 0;
+                smb2->in.iov[smb2->in.niov - 1].free = NULL;
+                smb2_free_iovector(smb2, &smb2->in);
+
+                smb2->spl = smb2->enc_len;
+                smb2->recv_state = SMB2_RECV_HEADER;
+                smb2_add_iovector(smb2, &smb2->in, &smb2->header[0],
+                                  SMB2_HEADER_SIZE, NULL);
+        }
+
+        rc = smb2_read_data(smb2, smb2_readv_from_buf);
+        free(smb2->enc);
+        smb2->enc = NULL;
+
+        return rc;
 }

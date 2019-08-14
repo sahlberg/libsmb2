@@ -155,6 +155,13 @@ struct smb2_context {
         uint8_t serverout_key[SMB2_KEY_SIZE];
 
         /*
+         * For handling received smb3 encrypted blobs
+         */
+        unsigned char *enc;
+        size_t enc_len;
+        int enc_pos;
+
+        /*
          * For sending PDUs
          */
 	struct smb2_pdu *outqueue;

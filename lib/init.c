@@ -312,6 +312,7 @@ void smb2_destroy_context(struct smb2_context *smb2)
         free(discard_const(smb2->password));
         free(discard_const(smb2->domain));
         free(discard_const(smb2->workstation));
+        free(smb2->enc);
 
         free(smb2);
 }

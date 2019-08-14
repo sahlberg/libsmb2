@@ -381,6 +381,13 @@ read_more_data:
                                   smb2->in.num_done - smb2->payload_offset);
                 } else {
                         len = smb2->spl + SMB2_SPL_SIZE - smb2->in.num_done;
+                        /*
+                         * We never read the SPL when handling decrypted
+                         * payloads.
+                         */
+                        if (smb2->enc) {
+                                len -= SMB2_SPL_SIZE;
+                        }
                 }
                 if (len < 0) {
                         smb2_set_error(smb2, "Negative number of PAD bytes "
@@ -414,6 +421,13 @@ read_more_data:
                                   smb2->in.num_done - smb2->payload_offset);
                 } else {
                         len = smb2->spl + SMB2_SPL_SIZE - smb2->in.num_done;
+                        /*
+                         * We never read the SPL when handling decrypted
+                         * payloads.
+                         */
+                        if (smb2->enc) {
+                                len -= SMB2_SPL_SIZE;
+                        }
                 }
                 if (len < 0) {
                         smb2_set_error(smb2, "Negative number of PAD bytes "
@@ -481,8 +495,8 @@ read_more_data:
 	return 0;
 }
 
-static ssize_t smb2_readv(struct smb2_context *smb2,
-                          const struct iovec *iov, int iovcnt)
+static ssize_t smb2_readv_from_socket(struct smb2_context *smb2,
+                                      const struct iovec *iov, int iovcnt)
 {
         return readv(smb2->fd, iov, iovcnt);
 }
@@ -504,7 +518,7 @@ smb2_read_from_socket(struct smb2_context *smb2)
                                   SMB2_SPL_SIZE, NULL);
         }
 
-        return smb2_read_data(smb2, smb2_readv);
+        return smb2_read_data(smb2, smb2_readv_from_socket);
 }
 
 int
