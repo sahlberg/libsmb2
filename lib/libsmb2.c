@@ -670,9 +670,6 @@ session_setup_cb(struct smb2_context *smb2, int status,
                 free_c_data(smb2, c_data);
                 return;
         }
-        if (smb2->seal) {
-                pdu->seal = 1;
-        }
         smb2_queue_pdu(smb2, pdu);
 }
 

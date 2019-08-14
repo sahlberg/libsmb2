@@ -134,6 +134,16 @@ smb2_allocate_pdu(struct smb2_context *smb2, enum smb2_command command,
 
         smb2_add_iovector(smb2, &pdu->out, pdu->hdr, SMB2_HEADER_SIZE, NULL);
         
+        switch (command) {
+        case SMB2_NEGOTIATE:
+        case SMB2_SESSION_SETUP:
+                break;
+        default:
+                if (smb2->seal) {
+                        pdu->seal = 1;
+                }
+        }
+
         return pdu;
 }
 
