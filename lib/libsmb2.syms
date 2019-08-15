@@ -66,6 +66,7 @@ smb2_set_user
 smb2_set_password
 smb2_set_domain
 smb2_set_workstation
+smb2_set_seal
 smb2_stat
 smb2_stat_async
 smb2_statvfs

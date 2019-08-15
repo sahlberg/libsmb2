@@ -139,6 +139,13 @@ int smb2_service(struct smb2_context *smb2, int revents);
 void smb2_set_security_mode(struct smb2_context *smb2, uint16_t security_mode);
 
 /*
+ * Set whether smb3 encryption should be used or not.
+ * 0  : disable encryption. This is the default.
+ * !0 : enable encryption.
+ */
+void smb2_set_seal(struct smb2_context *smb2, int val);
+
+/*
  * Set the username that we will try to authenticate as.
  * Default is to try to authenticate as the current user.
  */
