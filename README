@@ -52,6 +52,7 @@ Aruments supported by libsmb2 are :
                   3: Negotiate any version of SMB3
 		  2.02, 2.10, 3.00, 3.02 : negotiate a specific version.
 		  Default is to negotiate any SMB2 or SMB3 version.
+  seal          : Enable SMB3 encryption.
 
 NOTE:-
 	When using krb5cc mode use smb2_set_domain() and smb2_set_password() in the examples and applications
@@ -149,6 +150,12 @@ SMB2/3 SIGNING
 Signing is only supported with KRB5 or with the builtin ntlmssp support.
 Signing is not supported when the gss-ntlmssp mech plugin is used.
 
+SMB3 Encryption
+===============
+Encryption is only supported with KRB5 or with the builtin ntlmssp support.
+Encryption is not supported when the gss-ntlmssp mech plugin is used.
+Encryption can be enabled either using the "seal" URL argument or by calling
+  smb3_set_seal(smb2, 1);
 
 BUILDING LIBSMB2
 ===============
