@@ -146,6 +146,14 @@ void smb2_set_security_mode(struct smb2_context *smb2, uint16_t security_mode);
 void smb2_set_seal(struct smb2_context *smb2, int val);
 
 /*
+ * Set authentication method.
+ * SMB2_SEC_UNDEFINED (use KRB if available or NTLM if not)
+ * SMB2_SEC_NTLMSSP
+ * SMB2_SEC_KRB5
+ */
+void smb2_set_authentication(struct smb2_context *smb2, int val);
+
+/*
  * Set the username that we will try to authenticate as.
  * Default is to try to authenticate as the current user.
  */

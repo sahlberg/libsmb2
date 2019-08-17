@@ -493,3 +493,8 @@ void smb2_set_seal(struct smb2_context *smb2, int val)
 {
         smb2->seal = val;
 }
+
+void smb2_set_authentication(struct smb2_context *smb2, int val)
+{
+        smb2->sec = val;
+}

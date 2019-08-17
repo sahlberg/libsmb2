@@ -61,6 +61,7 @@ smb2_rmdir_async
 smb2_lseek
 smb2_seekdir
 smb2_service
+smb2_set_authentication
 smb2_set_security_mode
 smb2_set_user
 smb2_set_password
