@@ -119,23 +119,6 @@ smb3_encrypt_pdu(struct smb2_context *smb2,
         return 0;
 }
 
-static ssize_t smb2_readv_from_buf(struct smb2_context *smb2,
-                                   const struct iovec *iov, int iovcnt)
-{
-        int i, len, count = 0;
-
-        for (i=0;i<iovcnt;i++){
-                len = iov[i].iov_len;
-                if (len > smb2->enc_len - smb2->enc_pos) {
-                        len = smb2->enc_len - smb2->enc_pos;
-                }
-                memcpy(iov[i].iov_base, &smb2->enc[smb2->enc_pos], len);
-                smb2->enc_pos += len;
-                count += len;
-        }
-        return count;
-}
-
 int
 smb3_decrypt_pdu(struct smb2_context *smb2)
 {
@@ -164,7 +147,7 @@ smb3_decrypt_pdu(struct smb2_context *smb2)
                                   SMB2_HEADER_SIZE, NULL);
         }
 
-        rc = smb2_read_data(smb2, smb2_readv_from_buf);
+        rc = smb2_read_from_buf(smb2);
         free(smb2->enc);
         smb2->enc = NULL;
 

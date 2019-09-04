@@ -211,6 +211,9 @@ smb2_write_to_socket(struct smb2_context *smb2)
 	return 0;
 }
 
+typedef ssize_t (*read_func)(struct smb2_context *smb2,
+                             const struct iovec *iov, int iovcnt);
+
 int smb2_read_data(struct smb2_context *smb2, read_func func)
 {
         struct iovec iov[SMB2_MAX_VECTORS];
@@ -519,6 +522,29 @@ smb2_read_from_socket(struct smb2_context *smb2)
         }
 
         return smb2_read_data(smb2, smb2_readv_from_socket);
+}
+
+static ssize_t smb2_readv_from_buf(struct smb2_context *smb2,
+                                   const struct iovec *iov, int iovcnt)
+{
+        int i, len, count = 0;
+
+        for (i=0;i<iovcnt;i++){
+                len = iov[i].iov_len;
+                if (len > smb2->enc_len - smb2->enc_pos) {
+                        len = smb2->enc_len - smb2->enc_pos;
+                }
+                memcpy(iov[i].iov_base, &smb2->enc[smb2->enc_pos], len);
+                smb2->enc_pos += len;
+                count += len;
+        }
+        return count;
+}
+
+int
+smb2_read_from_buf(struct smb2_context *smb2)
+{
+        return smb2_read_data(smb2, smb2_readv_from_buf);
 }
 
 int
