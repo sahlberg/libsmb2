@@ -90,8 +90,8 @@ typedef int t_socket;
 /*
  * Create an SMB2 context.
  * Function returns
- *  NULL : Failed to create a context.
- *  *nfs : A pointer to an smb2 context.
+ *  NULL  : Failed to create a context.
+ *  *smb2 : A pointer to an smb2 context.
  */
 struct smb2_context *smb2_init_context(void);
 
@@ -306,7 +306,7 @@ struct smb2_pdu;
  * ...
  * *, smb2_queue_pdu(smb2, pdu);
  *
- * See libnfs.c and smb2-raw-stat-async.c for examples on how to use
+ * See libsmb2.c and smb2-raw-stat-async.c for examples on how to use
  * this interface.
  */
 void smb2_add_compound_pdu(struct smb2_context *smb2,

@@ -100,6 +100,9 @@ int main(int argc, char *argv[])
                         smb2_get_error(smb2));
                 exit(0);
         }
+        if (url->user) {
+                smb2_set_user(smb2, url->user);
+        }
 
         smb2_set_security_mode(smb2, SMB2_NEGOTIATE_SIGNING_ENABLED);
 
