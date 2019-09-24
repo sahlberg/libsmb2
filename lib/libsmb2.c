@@ -887,6 +887,11 @@ smb2_connect_share_async(struct smb2_context *smb2,
 
         if (smb2->server) {
                 free(discard_const(smb2->server));
+                smb2->server = NULL;
+        }
+        if (!server) {
+                smb2_set_error(smb2, "No server name provided");
+                return -EINVAL;
         }
         smb2->server = strdup(server);
 
