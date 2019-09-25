@@ -1253,8 +1253,8 @@ dcerpc_bind_async(struct dcerpc_context *dce, dcerpc_cb cb,
                 DCERPC_DR_CHARACTER_ASCII;
         pdu->hdr.frag_length = 0;
         pdu->hdr.auth_length = 0;
-        pdu->bind.max_xmit_frag = 256;
-        pdu->bind.max_recv_frag = 256;
+        pdu->bind.max_xmit_frag = 32768;
+        pdu->bind.max_recv_frag = 32768;
         pdu->bind.assoc_group_id = 0;
         pdu->bind.abstract_syntax = dce->syntax;
 
