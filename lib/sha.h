@@ -11,6 +11,10 @@
   #define USE_SHA224 0
 #endif
 
+#ifndef USE_SHA384
+  #define USE_SHA384 0
+#endif
+
 /*
  *  Description:
  *      This file implements the Secure Hash Signature Standard
@@ -75,15 +79,20 @@ enum
   SHA224HashSize = 28,
   SHA224HashSizeBits = 224,
 #endif
-  SHA256_Message_Block_Size = 64, SHA384_Message_Block_Size = 128,
+#if defined(USE_SHA384) && USE_SHA384
+  SHA384_Message_Block_Size = 128,  
+  SHA384HashSize = 48,
+  SHA384HashSizeBits = 384,
+#endif
+  SHA256_Message_Block_Size = 64,
   SHA512_Message_Block_Size = 128,
   USHA_Max_Message_Block_Size = SHA512_Message_Block_Size,
 
   SHA256HashSize = 32,
-  SHA384HashSize = 48, SHA512HashSize = 64,
+  SHA512HashSize = 64,
   USHAMaxHashSize = SHA512HashSize,
 
-  SHA256HashSizeBits = 256, SHA384HashSizeBits = 384,
+  SHA256HashSizeBits = 256,
   SHA512HashSizeBits = 512, USHAMaxHashSizeBits = SHA512HashSizeBits
 };
 
@@ -98,7 +107,11 @@ typedef enum SHAversion
 #if defined(USE_SHA224) && USE_SHA224
   SHA224,
 #endif
-  SHA256, SHA384, SHA512
+  SHA256,
+#if defined(USE_SHA384) && USE_SHA384
+  SHA384,
+#endif
+  SHA512
 } SHAversion;
 
 #if defined(USE_SHA1) && USE_SHA1
@@ -170,11 +183,13 @@ typedef struct SHA512Context
 typedef struct SHA256Context SHA224Context;
 #endif
 
+#if defined(USE_SHA384) && USE_SHA384
 /*
  *  This structure will hold context information for the SHA-384
  *  hashing operation. It uses the SHA-512 structure for computation.
  */
 typedef struct SHA512Context SHA384Context;
+#endif
 
 /*
  *  This structure holds context information for all SHA
@@ -192,7 +207,9 @@ typedef struct USHAContext
     SHA224Context sha224Context;
 #endif
     SHA256Context sha256Context;
+#if defined(USE_SHA384) && USE_SHA384
     SHA384Context sha384Context;
+#endif
     SHA512Context sha512Context;
   } ctx;
 } USHAContext;
@@ -245,6 +262,7 @@ extern int SHA256FinalBits (SHA256Context *, const uint8_t bits,
 extern int SHA256Result (SHA256Context *,
 			 uint8_t Message_Digest[SHA256HashSize]);
 
+#if defined(USE_SHA384) && USE_SHA384
 /* SHA-384 */
 extern int SHA384Reset (SHA384Context *);
 extern int SHA384Input (SHA384Context *, const uint8_t * bytes,
@@ -253,6 +271,7 @@ extern int SHA384FinalBits (SHA384Context *, const uint8_t bits,
 			    unsigned int bitcount);
 extern int SHA384Result (SHA384Context *,
 			 uint8_t Message_Digest[SHA384HashSize]);
+#endif
 
 /* SHA-512 */
 extern int SHA512Reset (SHA512Context *);

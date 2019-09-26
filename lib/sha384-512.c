@@ -300,12 +300,14 @@ static int SHA384_512Reset (SHA512Context * context, uint64_t H0[]);
 static int SHA384_512ResultN (SHA512Context * context,
 			      uint8_t Message_Digest[], int HashSize);
 
+#if defined(USE_SHA384) && USE_SHA384
 /* Initial Hash Values: FIPS-180-2 sections 5.3.3 and 5.3.4 */
 static uint64_t SHA384_H0[] = {
   0xCBBB9D5DC1059ED8ll, 0x629A292A367CD507ll, 0x9159015A3070DD17ll,
   0x152FECD8F70E5939ll, 0x67332667FFC00B31ll, 0x8EB44A8768581511ll,
   0xDB0C2E0D64F98FA7ll, 0x47B5481DBEFA4FA4ll
 };
+#endif
 
 static uint64_t SHA512_H0[] = {
   0x6A09E667F3BCC908ll, 0xBB67AE8584CAA73Bll, 0x3C6EF372FE94F82Bll,
@@ -315,6 +317,7 @@ static uint64_t SHA512_H0[] = {
 
 #endif /* USE_32BIT_ONLY */
 
+#if defined(USE_SHA384) && USE_SHA384
 /*
  * SHA384Reset
  *
@@ -414,6 +417,7 @@ SHA384Result (SHA384Context * context, uint8_t Message_Digest[SHA384HashSize])
 {
   return SHA384_512ResultN (context, Message_Digest, SHA384HashSize);
 }
+#endif
 
 /*
  * SHA512Reset
