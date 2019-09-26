@@ -3,6 +3,10 @@
 #ifndef _SHA_H_
 #define _SHA_H_
 
+#ifndef USE_SHA1
+  #define USE_SHA1 0
+#endif
+
 #ifndef USE_SHA224
   #define USE_SHA224 0
 #endif
@@ -61,21 +65,24 @@ enum
  */
 enum
 {
+#if defined(USE_SHA1) && USE_SHA1
+  SHA1_Message_Block_Size = 64,
+  SHA1HashSize = 20,
+  SHA1HashSizeBits = 160,
+#endif
 #if defined(USE_SHA224) && USE_SHA224
   SHA224_Message_Block_Size = 64,
   SHA224HashSize = 28,
   SHA224HashSizeBits = 224,
 #endif
-  SHA1_Message_Block_Size = 64,
   SHA256_Message_Block_Size = 64, SHA384_Message_Block_Size = 128,
   SHA512_Message_Block_Size = 128,
   USHA_Max_Message_Block_Size = SHA512_Message_Block_Size,
 
-  SHA1HashSize = 20, SHA256HashSize = 32,
+  SHA256HashSize = 32,
   SHA384HashSize = 48, SHA512HashSize = 64,
   USHAMaxHashSize = SHA512HashSize,
 
-  SHA1HashSizeBits = 160,
   SHA256HashSizeBits = 256, SHA384HashSizeBits = 384,
   SHA512HashSizeBits = 512, USHAMaxHashSizeBits = SHA512HashSizeBits
 };
@@ -85,12 +92,16 @@ enum
  */
 typedef enum SHAversion
 {
+#if defined(USE_SHA1) && USE_SHA1
+  SHA1,
+#endif
 #if defined(USE_SHA224) && USE_SHA224
   SHA224,
 #endif
-  SHA1, SHA256, SHA384, SHA512
+  SHA256, SHA384, SHA512
 } SHAversion;
 
+#if defined(USE_SHA1) && USE_SHA1
 /*
  *  This structure will hold context information for the SHA-1
  *  hashing operation.
@@ -109,6 +120,7 @@ typedef struct SHA1Context
   int Computed;			/* Is the digest computed? */
   int Corrupted;		/* Is the digest corrupted? */
 } SHA1Context;
+#endif
 
 /*
  *  This structure will hold context information for the SHA-256
@@ -173,7 +185,9 @@ typedef struct USHAContext
   int whichSha;			/* which SHA is being used */
   union
   {
+#if defined(USE_SHA1) && USE_SHA1
     SHA1Context sha1Context;
+#endif
 #if defined(USE_SHA224) && USE_SHA224
     SHA224Context sha224Context;
 #endif
@@ -201,6 +215,7 @@ typedef struct HMACContext
  *  Function Prototypes
  */
 
+#if defined(USE_SHA1) && USE_SHA1
 /* SHA-1 */
 extern int SHA1Reset (SHA1Context *);
 extern int SHA1Input (SHA1Context *, const uint8_t * bytes,
@@ -208,6 +223,7 @@ extern int SHA1Input (SHA1Context *, const uint8_t * bytes,
 extern int SHA1FinalBits (SHA1Context *, const uint8_t bits,
 			  unsigned int bitcount);
 extern int SHA1Result (SHA1Context *, uint8_t Message_Digest[SHA1HashSize]);
+#endif
 
 #if defined(USE_SHA224) && USE_SHA224
 /* SHA-224 */

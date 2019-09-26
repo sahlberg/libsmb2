@@ -32,12 +32,14 @@ USHAReset (USHAContext * ctx, enum SHAversion whichSha)
       ctx->whichSha = whichSha;
       switch (whichSha)
 	{
+#if defined(USE_SHA1) && USE_SHA1
+	case SHA1:
+	  return SHA1Reset ((SHA1Context *) & ctx->ctx);
+#endif
 #if defined(USE_SHA224) && USE_SHA224
 	case SHA224:
 	  return SHA224Reset ((SHA224Context *) & ctx->ctx);
 #endif
-	case SHA1:
-	  return SHA1Reset ((SHA1Context *) & ctx->ctx);
 	case SHA256:
 	  return SHA256Reset ((SHA256Context *) & ctx->ctx);
 	case SHA384:
@@ -81,12 +83,14 @@ USHAInput (USHAContext * ctx, const uint8_t * bytes, unsigned int bytecount)
     {
       switch (ctx->whichSha)
 	{
+#if defined(USE_SHA1) && USE_SHA1
+	case SHA1:
+	  return SHA1Input ((SHA1Context *) & ctx->ctx, bytes, bytecount);
+#endif
 #if defined(USE_SHA224) && USE_SHA224
 	case SHA224:
 	  return SHA224Input ((SHA224Context *) & ctx->ctx, bytes, bytecount);
 #endif
-	case SHA1:
-	  return SHA1Input ((SHA1Context *) & ctx->ctx, bytes, bytecount);
 	case SHA256:
 	  return SHA256Input ((SHA256Context *) & ctx->ctx, bytes, bytecount);
 	case SHA384:
@@ -129,13 +133,15 @@ USHAFinalBits (USHAContext * ctx, const uint8_t bits, unsigned int bitcount)
     {
       switch (ctx->whichSha)
 	{
+#if defined(USE_SHA1) && USE_SHA1
+	case SHA1:
+	  return SHA1FinalBits ((SHA1Context *) & ctx->ctx, bits, bitcount);
+#endif
 #if defined(USE_SHA224) && USE_SHA224
 	case SHA224:
 	  return SHA224FinalBits ((SHA224Context *) & ctx->ctx, bits,
 				  bitcount);
 #endif
-	case SHA1:
-	  return SHA1FinalBits ((SHA1Context *) & ctx->ctx, bits, bitcount);
 	case SHA256:
 	  return SHA256FinalBits ((SHA256Context *) & ctx->ctx, bits,
 				  bitcount);
@@ -181,12 +187,14 @@ USHAResult (USHAContext * ctx, uint8_t Message_Digest[USHAMaxHashSize])
     {
       switch (ctx->whichSha)
 	{
+#if defined(USE_SHA1) && USE_SHA1
+	case SHA1:
+	  return SHA1Result ((SHA1Context *) & ctx->ctx, Message_Digest);
+#endif
 #if defined(USE_SHA224) && USE_SHA224
 	case SHA224:
 	  return SHA224Result ((SHA224Context *) & ctx->ctx, Message_Digest);
 #endif
-	case SHA1:
-	  return SHA1Result ((SHA1Context *) & ctx->ctx, Message_Digest);
 	case SHA256:
 	  return SHA256Result ((SHA256Context *) & ctx->ctx, Message_Digest);
 	case SHA384:
@@ -223,12 +231,14 @@ USHABlockSize (enum SHAversion whichSha)
 {
   switch (whichSha)
     {
+#if defined(USE_SHA1) && USE_SHA1
+    case SHA1:
+      return SHA1_Message_Block_Size;
+#endif
 #if defined(USE_SHA224) && USE_SHA224
     case SHA224:
       return SHA224_Message_Block_Size;
 #endif
-    case SHA1:
-      return SHA1_Message_Block_Size;
     case SHA256:
       return SHA256_Message_Block_Size;
     case SHA384:
@@ -259,12 +269,14 @@ USHAHashSize (enum SHAversion whichSha)
 {
   switch (whichSha)
     {
+#if defined(USE_SHA1) && USE_SHA1
+    case SHA1:
+      return SHA1HashSize;
+#endif
 #if defined(USE_SHA224) && USE_SHA224
     case SHA224:
       return SHA224HashSize;
 #endif
-    case SHA1:
-      return SHA1HashSize;
     case SHA256:
       return SHA256HashSize;
     case SHA384:
@@ -295,12 +307,14 @@ USHAHashSizeBits (enum SHAversion whichSha)
 {
   switch (whichSha)
     {
+#if defined(USE_SHA1) && USE_SHA1
+    case SHA1:
+      return SHA1HashSizeBits;
+#endif
 #if defined(USE_SHA224) && USE_SHA224
     case SHA224:
       return SHA224HashSizeBits;
 #endif
-    case SHA1:
-      return SHA1HashSizeBits;
     case SHA256:
       return SHA256HashSizeBits;
     case SHA384:

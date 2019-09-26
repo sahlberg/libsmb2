@@ -38,6 +38,8 @@
 #include "sha.h"
 #include "sha-private.h"
 
+#if defined(USE_SHA1) && USE_SHA1
+
 /*
  *  Define the SHA1 circular left shift macro
  */
@@ -440,3 +442,5 @@ SHA1ProcessMessageBlock (SHA1Context * context)
 
   context->Message_Block_Index = 0;
 }
+
+#endif /* defined(USE_SHA1) && USE_SHA1 */
