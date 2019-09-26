@@ -235,7 +235,7 @@ struct smb2_pdu {
         uint8_t file_info_class;
 
         /* For encrypted PDUs */
-        int seal:1;
+        uint8_t seal:1;
         uint32_t crypt_len;
         unsigned char *crypt;
 };
