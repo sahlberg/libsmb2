@@ -42,12 +42,12 @@ USHAReset (USHAContext * ctx, enum SHAversion whichSha)
 #endif
 	case SHA256:
 	  return SHA256Reset ((SHA256Context *) & ctx->ctx);
-#if defined(USE_SHA384) && USE_SHA384
+#if defined(USE_SHA384_SHA512) && USE_SHA384_SHA512
 	case SHA384:
 	  return SHA384Reset ((SHA384Context *) & ctx->ctx);
-#endif
 	case SHA512:
 	  return SHA512Reset ((SHA512Context *) & ctx->ctx);
+#endif
 	default:
 	  return shaBadParam;
 	}
@@ -95,12 +95,12 @@ USHAInput (USHAContext * ctx, const uint8_t * bytes, unsigned int bytecount)
 #endif
 	case SHA256:
 	  return SHA256Input ((SHA256Context *) & ctx->ctx, bytes, bytecount);
-#if defined(USE_SHA384) && USE_SHA384
+#if defined(USE_SHA384_SHA512) && USE_SHA384_SHA512
 	case SHA384:
 	  return SHA384Input ((SHA384Context *) & ctx->ctx, bytes, bytecount);
-#endif
 	case SHA512:
 	  return SHA512Input ((SHA512Context *) & ctx->ctx, bytes, bytecount);
+#endif
 	default:
 	  return shaBadParam;
 	}
@@ -149,14 +149,14 @@ USHAFinalBits (USHAContext * ctx, const uint8_t bits, unsigned int bitcount)
 	case SHA256:
 	  return SHA256FinalBits ((SHA256Context *) & ctx->ctx, bits,
 				  bitcount);
-#if defined(USE_SHA384) && USE_SHA384
+#if defined(USE_SHA384_SHA512) && USE_SHA384_SHA512
 	case SHA384:
 	  return SHA384FinalBits ((SHA384Context *) & ctx->ctx, bits,
 				  bitcount);
-#endif
 	case SHA512:
 	  return SHA512FinalBits ((SHA512Context *) & ctx->ctx, bits,
 				  bitcount);
+#endif
 	default:
 	  return shaBadParam;
 	}
@@ -203,12 +203,12 @@ USHAResult (USHAContext * ctx, uint8_t Message_Digest[USHAMaxHashSize])
 #endif
 	case SHA256:
 	  return SHA256Result ((SHA256Context *) & ctx->ctx, Message_Digest);
-#if defined(USE_SHA384) && USE_SHA384
+#if defined(USE_SHA384_SHA512) && USE_SHA384_SHA512
 	case SHA384:
 	  return SHA384Result ((SHA384Context *) & ctx->ctx, Message_Digest);
-#endif
 	case SHA512:
 	  return SHA512Result ((SHA512Context *) & ctx->ctx, Message_Digest);
+#endif
 	default:
 	  return shaBadParam;
 	}
@@ -249,12 +249,13 @@ USHABlockSize (enum SHAversion whichSha)
 #endif
     case SHA256:
       return SHA256_Message_Block_Size;
-#if defined(USE_SHA384) && USE_SHA384
+#if defined(USE_SHA384_SHA512) && USE_SHA384_SHA512
     case SHA384:
       return SHA384_Message_Block_Size;
+    case SHA512:
+      return SHA512_Message_Block_Size;
 #endif
     default:
-    case SHA512:
       return SHA512_Message_Block_Size;
     }
 }
@@ -289,12 +290,13 @@ USHAHashSize (enum SHAversion whichSha)
 #endif
     case SHA256:
       return SHA256HashSize;
-#if defined(USE_SHA384) && USE_SHA384
+#if defined(USE_SHA384_SHA512) && USE_SHA384_SHA512
     case SHA384:
       return SHA384HashSize;
+    case SHA512:
+      return SHA512HashSize;
 #endif
     default:
-    case SHA512:
       return SHA512HashSize;
     }
 }
@@ -329,12 +331,13 @@ USHAHashSizeBits (enum SHAversion whichSha)
 #endif
     case SHA256:
       return SHA256HashSizeBits;
-#if defined(USE_SHA384) && USE_SHA384
+#if defined(USE_SHA384_SHA512) && USE_SHA384_SHA512
     case SHA384:
       return SHA384HashSizeBits;
+    case SHA512:
+      return SHA512HashSizeBits;
 #endif
     default:
-    case SHA512:
       return SHA512HashSizeBits;
     }
 }

@@ -11,8 +11,8 @@
   #define USE_SHA224 0
 #endif
 
-#ifndef USE_SHA384
-  #define USE_SHA384 0
+#ifndef USE_SHA384_SHA512
+  #define USE_SHA384_SHA512 0
 #endif
 
 /*
@@ -79,7 +79,7 @@ enum
   SHA224HashSize = 28,
   SHA224HashSizeBits = 224,
 #endif
-#if defined(USE_SHA384) && USE_SHA384
+#if defined(USE_SHA384_SHA512) && USE_SHA384_SHA512
   SHA384_Message_Block_Size = 128,  
   SHA384HashSize = 48,
   SHA384HashSizeBits = 384,
@@ -107,11 +107,11 @@ typedef enum SHAversion
 #if defined(USE_SHA224) && USE_SHA224
   SHA224,
 #endif
-  SHA256,
-#if defined(USE_SHA384) && USE_SHA384
+#if defined(USE_SHA384_SHA512) && USE_SHA384_SHA512
   SHA384,
+  SHA512,
 #endif
-  SHA512
+  SHA256
 } SHAversion;
 
 #if defined(USE_SHA1) && USE_SHA1
@@ -183,7 +183,7 @@ typedef struct SHA512Context
 typedef struct SHA256Context SHA224Context;
 #endif
 
-#if defined(USE_SHA384) && USE_SHA384
+#if defined(USE_SHA384_SHA512) && USE_SHA384_SHA512
 /*
  *  This structure will hold context information for the SHA-384
  *  hashing operation. It uses the SHA-512 structure for computation.
@@ -207,10 +207,10 @@ typedef struct USHAContext
     SHA224Context sha224Context;
 #endif
     SHA256Context sha256Context;
-#if defined(USE_SHA384) && USE_SHA384
+#if defined(USE_SHA384_SHA512) && USE_SHA384_SHA512
     SHA384Context sha384Context;
-#endif
     SHA512Context sha512Context;
+#endif
   } ctx;
 } USHAContext;
 
@@ -262,7 +262,7 @@ extern int SHA256FinalBits (SHA256Context *, const uint8_t bits,
 extern int SHA256Result (SHA256Context *,
 			 uint8_t Message_Digest[SHA256HashSize]);
 
-#if defined(USE_SHA384) && USE_SHA384
+#if defined(USE_SHA384_SHA512) && USE_SHA384_SHA512
 /* SHA-384 */
 extern int SHA384Reset (SHA384Context *);
 extern int SHA384Input (SHA384Context *, const uint8_t * bytes,
@@ -271,7 +271,6 @@ extern int SHA384FinalBits (SHA384Context *, const uint8_t bits,
 			    unsigned int bitcount);
 extern int SHA384Result (SHA384Context *,
 			 uint8_t Message_Digest[SHA384HashSize]);
-#endif
 
 /* SHA-512 */
 extern int SHA512Reset (SHA512Context *);
@@ -281,6 +280,7 @@ extern int SHA512FinalBits (SHA512Context *, const uint8_t bits,
 			    unsigned int bitcount);
 extern int SHA512Result (SHA512Context *,
 			 uint8_t Message_Digest[SHA512HashSize]);
+#endif
 
 /* Unified SHA functions, chosen by whichSha */
 extern int USHAReset (USHAContext *, SHAversion whichSha);
