@@ -1,3 +1,7 @@
+/* -*-  mode:c; tab-width:8; c-basic-offset:8; indent-tabs-mode:nil;  -*- */
+#ifndef _MD4_H_
+#define _MD4_H_
+
 /* From RFC1320 */
 
 /* MD4.H - header file for MD4C.C
@@ -35,3 +39,5 @@ typedef struct {
 void MD4Init(MD4_CTX *);
 void MD4Update(MD4_CTX *, unsigned char *, unsigned int);
 void MD4Final(unsigned char [16], MD4_CTX *);
+
+#endif /* _MD4_H_ */

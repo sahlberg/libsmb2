@@ -1,4 +1,7 @@
 /* -*-  mode:c; tab-width:8; c-basic-offset:8; indent-tabs-mode:nil;  -*- */
+#ifndef _KRB5_WRAPPER_H_
+#define _KRB5_WRAPPER_H_
+
 /*
    Copyright (C) 2018 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
 
@@ -24,9 +27,6 @@
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
-
-#ifndef _KRB5_WRAPPER_H_
-#define _KRB5_WRAPPER_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -90,6 +90,6 @@ krb5_set_gss_error(struct smb2_context *smb2, char *func,
 }
 #endif
 
-#endif /* _KRB5_WRAPPER_H_ */
-
 #endif /* HAVE_LIBKRB5 */
+
+#endif /* _KRB5_WRAPPER_H_ */

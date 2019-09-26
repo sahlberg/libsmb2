@@ -1,4 +1,7 @@
 /* -*-  mode:c; tab-width:8; c-basic-offset:8; indent-tabs-mode:nil;  -*- */
+#ifndef _SMB2_SIGNING_H_
+#define _SMB2_SIGNING_H_
+
 /*
    Copyright (C) 2018 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
 
@@ -22,9 +25,6 @@
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
-
-#ifndef _SMB2_SIGNING_H_
-#define _SMB2_SIGNING_H_
 
 #ifdef __cplusplus
 extern "C" {
