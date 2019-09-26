@@ -59,6 +59,7 @@
  * add "length" to the length
  */
 static uint32_t addTemp;
+
 #define SHA224_256AddLength(context, length)               \
   (addTemp = (context)->Length_Low, (context)->Corrupted = \
     (((context)->Length_Low += (length)) < addTemp) &&     \
@@ -72,16 +73,17 @@ static int SHA224_256Reset (SHA256Context * context, uint32_t * H0);
 static int SHA224_256ResultN (SHA256Context * context,
 			      uint8_t Message_Digest[], int HashSize);
 
-/* Initial Hash Values: FIPS-180-2 Change Notice 1 */
-static uint32_t SHA224_H0[SHA256HashSize / 4] = {
-  0xC1059ED8, 0x367CD507, 0x3070DD17, 0xF70E5939,
-  0xFFC00B31, 0x68581511, 0x64F98FA7, 0xBEFA4FA4
-};
-
 /* Initial Hash Values: FIPS-180-2 section 5.3.2 */
 static uint32_t SHA256_H0[SHA256HashSize / 4] = {
   0x6A09E667, 0xBB67AE85, 0x3C6EF372, 0xA54FF53A,
   0x510E527F, 0x9B05688C, 0x1F83D9AB, 0x5BE0CD19
+};
+
+#if defined(USE_SHA224) && USE_SHA224
+/* Initial Hash Values: FIPS-180-2 Change Notice 1 */
+static uint32_t SHA224_H0[SHA256HashSize / 4] = {
+  0xC1059ED8, 0x367CD507, 0x3070DD17, 0xF70E5939,
+  0xFFC00B31, 0x68581511, 0x64F98FA7, 0xBEFA4FA4
 };
 
 /*
@@ -180,6 +182,8 @@ SHA224Result (SHA224Context * context, uint8_t Message_Digest[SHA224HashSize])
 {
   return SHA224_256ResultN (context, Message_Digest, SHA224HashSize);
 }
+
+#endif /* defined(USE_SHA224) && USE_SHA224 */
 
 /*
  * SHA256Reset
