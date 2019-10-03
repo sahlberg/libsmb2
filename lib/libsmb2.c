@@ -569,11 +569,15 @@ session_setup_cb(struct smb2_context *smb2, int status,
                  * SMB2_STATUS_MORE_PROCESSING_REQUIRED and a second call to
                  * gss_init_sec_context will complete the gss session.
                  * But for krb5 a second call to gss_init_sec_context is
-                 * required if GSS_C_MUTUAL_FLAG is set
+                 * required if GSS_C_MUTUAL_FLAG is set.
+                 *
+                 * Ignore any krb5 errors if the SMB2 layer reported
+                 * success.
                  */
                 if (krb5_session_request(smb2, c_data->auth_data,
                                          rep->security_buffer,
-                                         rep->security_buffer_length) < 0) {
+                                         rep->security_buffer_length) < 0 &&
+                    status != SMB2_STATUS_SUCCESS) {
                         c_data->cb(smb2, -1, NULL, c_data->cb_data);
                         free_c_data(smb2, c_data);
                         return;
