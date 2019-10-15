@@ -410,6 +410,9 @@ static void smb2_set_password_from_file(struct smb2_context *smb2)
 #ifdef _MSC_UWP
         free(name);
 #endif
+        if (!fh) {
+            return;
+        }
         while (!feof(fh)) {
                 if (fgets(buf, 256, fh) == NULL) {
                         break;
