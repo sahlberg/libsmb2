@@ -386,8 +386,6 @@ static void smb2_set_password_from_file(struct smb2_context *smb2)
         char *domain, *user, *password;
         int finished;
 
-        smb2_set_password(smb2, NULL);
-
 #ifdef _MSC_UWP
 // GetEnvironmentVariable is not available for UWP up to 10.0.16299 SDK
 #if defined(NTDDI_WIN10_RS3) && (NTDDI_VERSION >= NTDDI_WIN10_RS3)
@@ -410,6 +408,12 @@ static void smb2_set_password_from_file(struct smb2_context *smb2)
 #ifdef _MSC_UWP
         free(name);
 #endif
+        if (!fh) {
+            return;
+        }
+
+        smb2_set_password(smb2, NULL);
+
         while (!feof(fh)) {
                 if (fgets(buf, 256, fh) == NULL) {
                         break;
