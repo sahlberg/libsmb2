@@ -120,6 +120,8 @@ const char *nterror_to_str(uint32_t status) {
                 return "STATUS_PIPE_DISCONNECTED";
         case SMB2_STATUS_FILE_IS_A_DIRECTORY:
                 return "STATUS_FILE_IS_A_DIRECTORY";
+        case SMB2_STATUS_BAD_NETWORK_PATH:
+                return "STATUS_BAD_NETWORK_PATH";
         case SMB2_STATUS_NETWORK_ACCESS_DENIED:
                 return "STATUS_NETWORK_ACCESS_DENIED";
         case SMB2_STATUS_BAD_NETWORK_NAME:
