@@ -7,7 +7,9 @@ libsmb2_la_CPPFLAGS = -I$(abs_top_srcdir)/include \
 		      "-D_U_=__attribute__((unused))"
 
 libsmb2_la_SOURCES = \
+	aes.h \
 	aes.c \
+	aes128ccm.h \
 	aes128ccm.c \
 	alloc.c \
 	dcerpc.c \
@@ -15,13 +17,20 @@ libsmb2_la_SOURCES = \
 	errors.c \
 	init.c \
 	hmac.c \
+	hmac-md5.h \
 	hmac-md5.c \
+	krb5-wrapper.h \
 	krb5-wrapper.c \
 	libsmb2.c \
+	md4.h \
 	md4c.c \
+	md5.h \
 	md5.c \
+	ntlmssp.h \
 	ntlmssp.c \
 	pdu.c \
+	sha.h \
+	sha-private.h \
 	sha1.c \
 	sha224-256.c \
 	sha384-512.c \
@@ -46,7 +55,9 @@ libsmb2_la_SOURCES = \
 	smb2-data-reparse-point.c \
 	smb2-data-security-descriptor.c \
 	smb2-share-enum.c \
+	smb3-seal.h \
 	smb3-seal.c \
+	smb2-signing.h \
 	smb2-signing.c \
 	socket.c \
 	sync.c \
