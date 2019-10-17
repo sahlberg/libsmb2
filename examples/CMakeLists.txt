@@ -1,5 +1,3 @@
-find_library(POPT_LIBRARY popt)
-
 list(APPEND CORE_LIBRARIES ${POPT_LIBRARY})
 
 set(SOURCES smb2-cat-async
