@@ -22,3 +22,17 @@ jobs:
       run: make
     - name: make distcheck
       run: make distcheck
+
+  build-windows:
+    name: Windows build
+
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Cmake configure
+      run: |
+        cmake -G "Visual Studio 16 2019" .
+    - name: Build (MSVC)
+      run: |
+        cmake --build .
