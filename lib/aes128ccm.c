@@ -15,7 +15,10 @@
    You should have received a copy of the GNU Lesser General Public License
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
+#ifndef _MSC_VER
 #include <arpa/inet.h>
+#endif // !_MSC_VER
+
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>

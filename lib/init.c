@@ -55,6 +55,7 @@
 #ifdef _MSC_VER
 #include <errno.h>
 #define getlogin_r(a,b) ENXIO
+#define srandom srand
 #define random rand
 #define getpid GetCurrentProcessId
 #endif // _MSC_VER
