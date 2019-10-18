@@ -8,17 +8,16 @@ AC_CONFIG_MACRO_DIR([m4])
 
 m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 
-# Do not add default CFLAGS in AC_PROG_CC
+dnl  Do not add default CFLAGS in AC_PROG_CC
 : ${CFLAGS=""}
 AC_PROG_CC
 AC_PROG_LIBTOOL
 
 AM_PROG_CC_C_O
 
-# We always want 64 bit file offsets
+dnl  We always want 64 bit file offsets
 CFLAGS="${CFLAGS} -D_FILE_OFFSET_BITS=64"
 
-#option: examples
 AC_ARG_ENABLE([examples],
               [AS_HELP_STRING([--enable-examples],
                               [Build example programs])])
@@ -35,8 +34,7 @@ AS_IF([test "x$with_libkrb5" != "xno"], [
     MAYBE_LIBKRB5="-lgssapi_krb5"
     AC_DEFINE([HAVE_LIBKRB5], [1], [Whether we use gssapi_krb5 or not])
     AC_MSG_NOTICE([Build with gssapi_krb5 support])
-    # check for gssapi/gssapi.h
-    dnl Check for gssapi/gssapi.h
+    dnl  Check for gssapi/gssapi.h
     AC_CHECK_HEADERS([gssapi/gssapi.h], [], [
         AC_MSG_ERROR([You need gssapi development files to compile libsmb2.])
     ])
@@ -79,64 +77,49 @@ esac
 AM_CONDITIONAL([HAVE_WIN32], [test "${SYS}" = "mingw32"])
 AC_SUBST([LIBSOCKET])
 
-# check for poll.h
-dnl Check for poll.h
+dnl  Check for poll.h
 AC_CHECK_HEADERS([poll.h])
 
-# check for unistd.h
-dnl Check for unistd.h
+dnl  Check for unistd.h
 AC_CHECK_HEADERS([unistd.h])
 
-# check for netdb.h
-dnl Check for netdb.h
+dnl  Check for netdb.h
 AC_CHECK_HEADERS([netdb.h])
 
-# check for utime.h
-dnl Check for utime.h
+dnl  Check for utime.h
 AC_CHECK_HEADERS([utime.h])
 
-# check for net/if.h
-dnl Check for net/if.h
+dnl  Check for net/if.h
 AC_CHECK_HEADERS([net/if.h])
 
-# check for sys/time.h
-dnl Check for sys/time.h
+dnl  Check for sys/time.h
 AC_CHECK_HEADERS([sys/time.h])
 
-# check for sys/ioctl.h
-dnl Check for sys/ioctl.h
+dnl  Check for sys/ioctl.h
 AC_CHECK_HEADERS([sys/ioctl.h])
 
-# check for sys/vfs.h
-dnl Check for sys/vfs.h
+dnl  Check for sys/vfs.h
 AC_CHECK_HEADERS([sys/vfs.h])
 
-# check for sys/statvfs.h
-dnl Check for sys/statvfs.h
+dnl  Check for sys/statvfs.h
 AC_CHECK_HEADERS([sys/statvfs.h])
 
-# check for sys/socket.h
-dnl Check for sys/socket.h
+dnl  Check for sys/socket.h
 AC_CHECK_HEADERS([sys/socket.h])
 
-# check for sys/uio.h
-dnl Check for sys/uio.h
+dnl  Check for sys/uio.h
 AC_CHECK_HEADERS([sys/uio.h])
 
-# check for netinet/tcp.h
-dnl Check for netinet/tcp.h
+dnl  Check for netinet/tcp.h
 AC_CHECK_HEADERS([netinet/tcp.h])
 
-# check for netinet/in.h
-dnl Check for netinet/in.h
+dnl  Check for netinet/in.h
 AC_CHECK_HEADERS([netinet/in.h])
 
-# check for arpa/inet.h
-dnl Check for arpa/inet.h
+dnl  Check for arpa/inet.h
 AC_CHECK_HEADERS([arpa/inet.h])
 
-# check for SA_LEN
-dnl Check if sockaddr data structure includes a "sa_len"
+dnl  Check if sockaddr data struct includes a "sa_len"
 AC_CHECK_MEMBER([struct sockaddr.sa_len], [
     AC_DEFINE([HAVE_SOCKADDR_LEN], [1], [Whether sockaddr struct has sa_len])
 ], [], [
@@ -144,8 +127,7 @@ AC_CHECK_MEMBER([struct sockaddr.sa_len], [
 #include <sys/socket.h>
 ])
 
-# check for sockaddr_storage
-dnl Check if sockaddr structure includes a "ss_family"
+dnl  Check if sockaddr_storage struct includes a "ss_family"
 AC_CHECK_MEMBER([struct sockaddr_storage.ss_family], [
     AC_DEFINE([HAVE_SOCKADDR_STORAGE], [1], [Whether we have sockaddr_Storage])
 ], [], [
@@ -153,10 +135,10 @@ AC_CHECK_MEMBER([struct sockaddr_storage.ss_family], [
 #include <sys/socket.h>
 ])
 
-# check where makedev is defined
+dnl  Check where makedev is defined
 AC_HEADER_MAJOR
 
-#output
+dnl  Output
 AC_CONFIG_FILES([
     Makefile
     examples/Makefile
