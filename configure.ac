@@ -1,7 +1,7 @@
 AC_PREREQ(2.50)
 AC_INIT([libsmb2], [3.0.0], [ronniesahlberg@gmail.com])
 AC_CONFIG_HEADERS([config.h])
-AM_INIT_AUTOMAKE([-Wall foreign subdir-objects])
+AM_INIT_AUTOMAKE([-Wall foreign subdir-objects 1.11])
 AC_CANONICAL_HOST
 AC_CONFIG_MACRO_DIR([m4])
 m4_pattern_allow([AM_PROG_AR])
