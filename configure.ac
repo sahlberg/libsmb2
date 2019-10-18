@@ -7,19 +7,14 @@ AC_CONFIG_MACRO_DIR([m4])
 m4_pattern_allow([AM_PROG_AR])
 AM_PROG_AR
 
-# Work around stupid autoconf default cflags. pt 1
-SAVE_CFLAGS="x${CFLAGS}"
 
+# Do not add default CFLAGS in AC_PROG_CC
+: ${CFLAGS=""}
 AC_PROG_CC
 AC_PROG_LIBTOOL
 
 AM_PROG_CC_C_O
 PKG_PROG_PKG_CONFIG
-
-# Work around stupid autoconf default cflags. pt 2
-if test "$SAVE_CFLAGS" = "x"; then
-  CFLAGS=""
-fi
 
 # We always want 64 bit file offsets
 CFLAGS="${CFLAGS} -D_FILE_OFFSET_BITS=64"
