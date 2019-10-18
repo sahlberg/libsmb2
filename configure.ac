@@ -49,12 +49,12 @@ AC_ARG_ENABLE([werror],
               [AS_HELP_STRING([--disable-werror],
               [Disables building with -Werror by default])])
 
-if test "$GCC" = yes; then
-   WARN_CFLAGS="-Wall -Wshadow -Wno-write-strings -Wstrict-prototypes -Wpointer-arith -Wcast-align -Wno-strict-aliasing"
-   if test "x$enable_werror" != "xno"; then
-       WARN_CFLAGS="$WARN_CFLAGS -Werror"
-   fi
-fi
+AS_IF([test "$GCC" = "yes"], [
+    WARN_CFLAGS="-Wall -Wshadow -Wno-write-strings -Wstrict-prototypes -Wpointer-arith -Wcast-align -Wno-strict-aliasing"
+    AS_IF([test "$enable_werror" != "no"], [
+        WARN_CFLAGS="${WARN_CFLAGS} -Werror"
+    ])
+])
 AC_SUBST([WARN_CFLAGS])
 
 LIBSOCKET=
