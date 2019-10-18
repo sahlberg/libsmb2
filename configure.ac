@@ -27,24 +27,28 @@ AM_CONDITIONAL([ENABLE_EXAMPLES],
                [test "$enable_examples" = "yes"])
 
 AC_ARG_WITH([libkrb5],
-    [AS_HELP_STRING([--without-libkrb5], [Do not link with libkrb5 and use builtin NTLMSSP module for authentication instead.])])
+            [AS_HELP_STRING([--without-libkrb5],
+                            [Do not link with libkrb5 and use builtin
+                             NTLMSSP module for authentication instead.])])
 
-AS_IF([test "x$with_libkrb5" != "xno"],
-      [MAYBE_LIBKRB5="-lgssapi_krb5"
-       AC_DEFINE([HAVE_LIBKRB5],[1],[Whether we use gssapi_krb5 or not])
-       AC_MSG_NOTICE([Build with gssapi_krb5 support])
-       # check for gssapi/gssapi.h
-       dnl Check for gssapi/gssapi.h
-       AC_CHECK_HEADERS([gssapi/gssapi.h], [], [
-         AC_MSG_ERROR([You need gssapi development files to compile libsmb2.])
-	 ])
-       ],
-      [MAYBE_LIBKRB5=""
-       AC_MSG_NOTICE([Build WITHOUT gssapi_krb5 support])])
+AS_IF([test "x$with_libkrb5" != "xno"], [
+    MAYBE_LIBKRB5="-lgssapi_krb5"
+    AC_DEFINE([HAVE_LIBKRB5], [1], [Whether we use gssapi_krb5 or not])
+    AC_MSG_NOTICE([Build with gssapi_krb5 support])
+    # check for gssapi/gssapi.h
+    dnl Check for gssapi/gssapi.h
+    AC_CHECK_HEADERS([gssapi/gssapi.h], [], [
+        AC_MSG_ERROR([You need gssapi development files to compile libsmb2.])
+    ])
+], [
+    MAYBE_LIBKRB5=""
+    AC_MSG_NOTICE([Build WITHOUT gssapi_krb5 support])
+])
 
 AC_SUBST([MAYBE_LIBKRB5])
 
-AC_ARG_ENABLE([werror], [AS_HELP_STRING([--disable-werror],
+AC_ARG_ENABLE([werror],
+              [AS_HELP_STRING([--disable-werror],
               [Disables building with -Werror by default])])
 
 if test "$ac_cv_prog_gcc" = yes; then
@@ -72,7 +76,7 @@ case $host in
   *)
     ;;
 esac
-AM_CONDITIONAL([HAVE_WIN32],   [test "${SYS}" = "mingw32"])
+AM_CONDITIONAL([HAVE_WIN32], [test "${SYS}" = "mingw32"])
 AC_SUBST([LIBSOCKET])
 
 # check for poll.h
@@ -133,20 +137,18 @@ AC_CHECK_HEADERS([arpa/inet.h])
 
 # check for SA_LEN
 dnl Check if sockaddr data structure includes a "sa_len"
-AC_CHECK_MEMBER([struct sockaddr.sa_len],
-                [ AC_DEFINE([HAVE_SOCKADDR_LEN],[1],[Whether sockaddr struct has sa_len]) ],
-                [],
-                [
+AC_CHECK_MEMBER([struct sockaddr.sa_len], [
+    AC_DEFINE([HAVE_SOCKADDR_LEN], [1], [Whether sockaddr struct has sa_len])
+], [], [
 #include <sys/types.h>
 #include <sys/socket.h>
 ])
 
 # check for sockaddr_storage
 dnl Check if sockaddr structure includes a "ss_family"
-AC_CHECK_MEMBER([struct sockaddr_storage.ss_family],
-                [ AC_DEFINE([HAVE_SOCKADDR_STORAGE],[1],[Whether we have sockaddr_Storage]) ],
-                [],
-                [
+AC_CHECK_MEMBER([struct sockaddr_storage.ss_family], [
+    AC_DEFINE([HAVE_SOCKADDR_STORAGE], [1], [Whether we have sockaddr_Storage])
+], [], [
 #include <sys/types.h>
 #include <sys/socket.h>
 ])
@@ -156,10 +158,10 @@ AC_HEADER_MAJOR
 
 #output
 AC_CONFIG_FILES([
-	Makefile
-	examples/Makefile
-	include/Makefile
-	lib/Makefile
+    Makefile
+    examples/Makefile
+    include/Makefile
+    lib/Makefile
 ])
 
 AC_OUTPUT([libsmb2.pc])
