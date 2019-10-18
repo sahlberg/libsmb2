@@ -20,7 +20,7 @@ CFLAGS="${CFLAGS} -D_FILE_OFFSET_BITS=64"
 
 #option: examples
 AC_ARG_ENABLE([examples],
-              [AC_HELP_STRING([--enable-examples],
+              [AS_HELP_STRING([--enable-examples],
                               [Build example programs])])
 
 AM_CONDITIONAL([ENABLE_EXAMPLES],
