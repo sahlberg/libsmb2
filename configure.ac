@@ -4,9 +4,8 @@ AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([-Wall foreign subdir-objects 1.11])
 AC_CANONICAL_HOST
 AC_CONFIG_MACRO_DIR([m4])
-m4_pattern_allow([AM_PROG_AR])
-AM_PROG_AR
 
+m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 
 # Do not add default CFLAGS in AC_PROG_CC
 : ${CFLAGS=""}
