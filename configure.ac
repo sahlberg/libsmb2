@@ -62,8 +62,6 @@ SYS=
 
 case $host in
   *solaris*)
-    AC_CHECK_HEADERS([sys/filio.h])
-    AC_CHECK_HEADERS([sys/sockio.h])
     AC_CHECK_LIB([socket], [main], , [AC_MSG_ERROR([Can not find required library])])
     AC_CHECK_LIB([nsl],    [main], , [AC_MSG_ERROR([Can not find required library])])
     ;;
@@ -86,23 +84,8 @@ AC_CHECK_HEADERS([unistd.h])
 dnl  Check for netdb.h
 AC_CHECK_HEADERS([netdb.h])
 
-dnl  Check for utime.h
-AC_CHECK_HEADERS([utime.h])
-
-dnl  Check for net/if.h
-AC_CHECK_HEADERS([net/if.h])
-
-dnl  Check for sys/time.h
-AC_CHECK_HEADERS([sys/time.h])
-
 dnl  Check for sys/ioctl.h
 AC_CHECK_HEADERS([sys/ioctl.h])
-
-dnl  Check for sys/vfs.h
-AC_CHECK_HEADERS([sys/vfs.h])
-
-dnl  Check for sys/statvfs.h
-AC_CHECK_HEADERS([sys/statvfs.h])
 
 dnl  Check for sys/socket.h
 AC_CHECK_HEADERS([sys/socket.h])
@@ -134,9 +117,6 @@ AC_CHECK_MEMBER([struct sockaddr_storage.ss_family], [
 #include <sys/types.h>
 #include <sys/socket.h>
 ])
-
-dnl  Check where makedev is defined
-AC_HEADER_MAJOR
 
 dnl  Output
 AC_CONFIG_FILES([
