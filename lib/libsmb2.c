@@ -888,6 +888,7 @@ smb2_connect_share_async(struct smb2_context *smb2,
                          smb2_command_cb cb, void *cb_data)
 {
         struct connect_data *c_data;
+        int err;
 
         if (smb2->server) {
                 free(discard_const(smb2->server));
@@ -950,9 +951,10 @@ smb2_connect_share_async(struct smb2_context *smb2,
         c_data->cb = cb;
         c_data->cb_data = cb_data;
 
-        if (smb2_connect_async(smb2, server, connect_cb, c_data) != 0) {
+        err = smb2_connect_async(smb2, server, connect_cb, c_data);
+        if (err != 0) {
                 free_c_data(smb2, c_data);
-                return -ENOMEM;
+                return err;
         }
 
         return 0;
