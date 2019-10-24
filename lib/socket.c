@@ -662,7 +662,7 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
         struct addrinfo *ai = NULL;
         struct sockaddr_storage ss;
         socklen_t socksize;
-        int family;
+        int family, err;
 
         if (smb2->fd != -1) {
                 smb2_set_error(smb2, "Trying to connect but already "
@@ -703,11 +703,27 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
         }
 
         /* is it a hostname ? */
-        if (getaddrinfo(host, port, NULL, &ai) != 0) {
+        err = getaddrinfo(host, port, NULL, &ai);
+        if (err != 0) {
                 free(addr);
                 smb2_set_error(smb2, "Invalid address:%s  "
                                "Can not resolv into IPv4/v6.", server);
-                return -EINVAL;
+                switch (err) {
+                    case EAI_AGAIN:
+                        return -EAGAIN;
+                    case EAI_NONAME:
+                    case EAI_NODATA:
+                    case EAI_SERVICE:
+                    case EAI_FAIL:
+                    case EAI_ADDRFAMILY:
+                        return -EIO;
+                    case EAI_MEMORY:
+                        return -ENOMEM;
+                    case EAI_SYSTEM:
+                        return -errno;
+                    default:
+                        return -EINVAL;
+                }
         }
         free(addr);
 
