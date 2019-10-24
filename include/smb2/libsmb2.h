@@ -192,7 +192,7 @@ const char *smb2_get_client_guid(struct smb2_context *smb2);
  * status can be either of :
  *    0     : Connection was successful. Command_data is NULL.
  *
- *   <0     : Failed to establish the connection. Command_data is NULL.
+ *   -errno : Failed to establish the connection. Command_data is NULL.
  */
 int smb2_connect_async(struct smb2_context *smb2, const char *server,
                        smb2_command_cb cb, void *cb_data);
