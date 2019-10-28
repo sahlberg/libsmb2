@@ -146,9 +146,7 @@ smb2_process_negotiate_fixed(struct smb2_context *smb2,
         smb2_get_uint16(iov, 58, &rep->security_buffer_length);
 
         if (rep->security_buffer_length == 0) {
-                smb2_set_error(smb2, "No security buffer in Negotiate "
-                               "Protocol response");
-                return -1;
+                return 0;
         }
         if (rep->security_buffer_offset < SMB2_HEADER_SIZE +
             (SMB2_NEGOTIATE_REPLY_SIZE & 0xfffe)) {
