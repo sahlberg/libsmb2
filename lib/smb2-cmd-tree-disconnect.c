@@ -53,13 +53,12 @@ smb2_encode_tree_disconnect_request(struct smb2_context *smb2,
         
         len = 4;
 
-        buf = malloc(len);
+        buf = calloc(len, sizeof(uint8_t));
         if (buf == NULL) {
                 smb2_set_error(smb2, "Failed to allocate tree disconnect "
                                "buffer");
                 return -1;
         }
-        memset(buf, 0, len);
         
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
         

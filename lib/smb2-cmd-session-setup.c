@@ -55,13 +55,12 @@ smb2_encode_session_setup_request(struct smb2_context *smb2,
         struct smb2_iovec *iov;
         
         len = SMB2_SESSION_SETUP_REQUEST_SIZE & 0xfffffffe;
-        buf = malloc(len);
+        buf = calloc(len, sizeof(uint8_t));
         if (buf == NULL) {
                 smb2_set_error(smb2, "Failed to allocate session "
                                "setup buffer");
                 return -1;
         }
-        memset(buf, 0, len);
         
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
 

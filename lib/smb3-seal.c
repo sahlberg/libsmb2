@@ -87,13 +87,12 @@ smb3_encrypt_pdu(struct smb2_context *smb2,
                         spl += tmp_pdu->out.iov[i].len;
                 }
         }
-        pdu->crypt = malloc(spl);
+        pdu->crypt = calloc(spl, sizeof(uint8_t));
         if (pdu->crypt == NULL) {
                 pdu->seal = 0;
                 return -1;
         }
 
-        memset(pdu->crypt, 0, spl);
         memcpy(&pdu->crypt[0], xfer, 4);
         for (i = 20; i < 31; i++) {
                 pdu->crypt[i] = random()&0xff;

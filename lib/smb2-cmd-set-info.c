@@ -59,12 +59,11 @@ smb2_encode_set_info_request(struct smb2_context *smb2,
         struct smb2_file_rename_info *rni;
 
         len = SMB2_SET_INFO_REQUEST_SIZE & 0xfffffffe;
-        buf = malloc(len);
+        buf = calloc(len, sizeof(uint8_t));
         if (buf == NULL) {
                 smb2_set_error(smb2, "Failed to allocate set info buffer");
                 return -1;
         }
-        memset(buf, 0, len);
         
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
 
@@ -82,13 +81,12 @@ smb2_encode_set_info_request(struct smb2_context *smb2,
                         len = 40;
                         smb2_set_uint32(iov, 4, len); /* buffer length */
 
-                        buf = malloc(len);
+                        buf = calloc(len, sizeof(uint8_t));
                         if (buf == NULL) {
                                 smb2_set_error(smb2, "Failed to allocate set "
                                                "info data buffer");
                                 return -1;
                         }
-                        memset(buf, 0, len);
                         iov = smb2_add_iovector(smb2, &pdu->out, buf, len,
                                                 free);
                         smb2_encode_file_basic_info(smb2, req->input_data, iov);
@@ -97,13 +95,12 @@ smb2_encode_set_info_request(struct smb2_context *smb2,
                         len = 8;
                         smb2_set_uint32(iov, 4, len); /* buffer length */
 
-                        buf = malloc(len);
+                        buf = calloc(len, sizeof(uint8_t));
                         if (buf == NULL) {
                                 smb2_set_error(smb2, "Failed to allocate set "
                                                "info data buffer");
                                 return -1;
                         }
-                        memset(buf, 0, len);
                         iov = smb2_add_iovector(smb2, &pdu->out, buf, len,
                                                 free);
 
@@ -129,14 +126,13 @@ smb2_encode_set_info_request(struct smb2_context *smb2,
                         len = 20 + name->len * 2;
                         smb2_set_uint32(iov, 4, len); /* buffer length */
 
-                        buf = malloc(len);
+                        buf = calloc(len, sizeof(uint8_t));
                         if (buf == NULL) {
                                 smb2_set_error(smb2, "Failed to allocate set "
                                                "info data buffer");
                                 free(name);
                                 return -1;
                         }
-                        memset(buf, 0, len);
                         iov = smb2_add_iovector(smb2, &pdu->out, buf, len,
                                                 free);
 

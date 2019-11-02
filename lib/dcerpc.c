@@ -265,12 +265,11 @@ dcerpc_create_context(struct smb2_context *smb2, const char *path,
 {
         struct dcerpc_context *ctx;
 
-        ctx = malloc(sizeof(struct dcerpc_context));
+        ctx = calloc(1, sizeof(struct dcerpc_context));
         if (ctx == NULL) {
                 smb2_set_error(smb2, "Failed to allcoate dcercp context.");
                 return NULL;
         }
-        memset(ctx, 0, sizeof(struct dcerpc_context));
 
         ctx->smb2 = smb2;
         ctx->call_id = 2;
@@ -314,13 +313,12 @@ dcerpc_allocate_pdu(struct dcerpc_context *dce)
 {
         struct dcerpc_pdu *pdu;
 
-        pdu = malloc(sizeof(struct dcerpc_pdu));
+        pdu = calloc(1, sizeof(struct dcerpc_pdu));
         if (pdu == NULL) {
                 smb2_set_error(dce->smb2, "Failed to allocate DCERPC PDU");
                 return NULL;
         }
 
-        memset(pdu, 0, sizeof(struct dcerpc_pdu));
         pdu->dce = dce;
         pdu->hdr.call_id = dce->call_id++;
 

@@ -264,13 +264,12 @@ decode_dirents(struct smb2_context *smb2, struct smb2dir *dir,
                         return -1;
                 }
                 
-                ent = malloc(sizeof(struct smb2_dirent_internal));
+                ent = calloc(1, sizeof(struct smb2_dirent_internal));
                 if (ent == NULL) {
                         smb2_set_error(smb2, "Failed to allocate "
                                        "dirent_internal");
                         return -1;
                 }
-                memset(ent, 0, sizeof(struct smb2_dirent_internal));
                 SMB2_LIST_ADD(&dir->entries, ent);
 
 
@@ -440,12 +439,11 @@ smb2_opendir_async(struct smb2_context *smb2, const char *path,
                 path = "";
         }
 
-        dir = malloc(sizeof(struct smb2dir));
+        dir = calloc(1, sizeof(struct smb2dir));
         if (dir == NULL) {
                 smb2_set_error(smb2, "Failed to allocate smb2dir.");
                 return -1;
         }
-        memset(dir, 0, sizeof(struct smb2dir));
         SMB2_LIST_ADD(&smb2->dirs, dir);
         dir->cb = cb;
         dir->cb_data = cb_data;
@@ -909,12 +907,11 @@ smb2_connect_share_async(struct smb2_context *smb2,
                 smb2_set_user(smb2, user);
         }
 
-        c_data = malloc(sizeof(struct connect_data));
+        c_data = calloc(1, sizeof(struct connect_data));
         if (c_data == NULL) {
                 smb2_set_error(smb2, "Failed to allocate connect_data");
                 return -ENOMEM;
         }
-        memset(c_data, 0, sizeof(struct connect_data));
         c_data->server = strdup(smb2->server);
         if (c_data->server == NULL) {
                 free_c_data(smb2, c_data);
@@ -1005,12 +1002,11 @@ smb2_open_async(struct smb2_context *smb2, const char *path, int flags,
         uint32_t create_options = 0;
         uint32_t file_attributes = 0;
 
-        fh = malloc(sizeof(struct smb2fh));
+        fh = calloc(1, sizeof(struct smb2fh));
         if (fh == NULL) {
                 smb2_set_error(smb2, "Failed to allocate smbfh");
                 return -ENOMEM;
         }
-        memset(fh, 0, sizeof(struct smb2fh));
         SMB2_LIST_ADD(&smb2->fhs, fh);
 
         fh->cb = cb;
@@ -1214,12 +1210,11 @@ smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
                 }
         }
 
-        rd = malloc(sizeof(struct rw_data));
+        rd = calloc(1, sizeof(struct rw_data));
         if (rd == NULL) {
                 smb2_set_error(smb2, "Failed to allocate rw_data");
                 return -ENOMEM;
         }
-        memset(rd, 0, sizeof(struct rw_data));
                 
         rd->cb = cb;
         rd->cb_data = cb_data;
@@ -1306,12 +1301,11 @@ smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
                 }
         }
 
-        rd = malloc(sizeof(struct rw_data));
+        rd = calloc(1, sizeof(struct rw_data));
         if (rd == NULL) {
                 smb2_set_error(smb2, "Failed to allocate rw_data");
                 return -ENOMEM;
         }
-        memset(rd, 0, sizeof(struct rw_data));
                 
         rd->cb = cb;
         rd->cb_data = cb_data;
@@ -1443,12 +1437,11 @@ smb2_unlink_internal(struct smb2_context *smb2, const char *path,
         struct smb2_create_request req;
         struct smb2_pdu *pdu;
 
-        create_data = malloc(sizeof(struct create_cb_data));
+        create_data = calloc(1, sizeof(struct create_cb_data));
         if (create_data == NULL) {
                 smb2_set_error(smb2, "Failed to allocate create_data");
                 return -ENOMEM;
         }
-        memset(create_data, 0, sizeof(struct create_cb_data));
 
         create_data->cb = cb;
         create_data->cb_data = cb_data;
@@ -1501,12 +1494,11 @@ smb2_mkdir_async(struct smb2_context *smb2, const char *path,
         struct smb2_create_request req;
         struct smb2_pdu *pdu;
 
-        create_data = malloc(sizeof(struct create_cb_data));
+        create_data = calloc(1, sizeof(struct create_cb_data));
         if (create_data == NULL) {
                 smb2_set_error(smb2, "Failed to allocate create_data");
                 return -ENOMEM;
         }
-        memset(create_data, 0, sizeof(struct create_cb_data));
 
         create_data->cb = cb;
         create_data->cb_data = cb_data;
@@ -1595,12 +1587,11 @@ smb2_fstat_async(struct smb2_context *smb2, struct smb2fh *fh,
         struct smb2_query_info_request req;
         struct smb2_pdu *pdu;
 
-        stat_data = malloc(sizeof(struct stat_cb_data));
+        stat_data = calloc(1, sizeof(struct stat_cb_data));
         if (stat_data == NULL) {
                 smb2_set_error(smb2, "Failed to allocate stat_data");
                 return -ENOMEM;
         }
-        memset(stat_data, 0, sizeof(struct stat_cb_data));
 
         stat_data->cb = cb;
         stat_data->cb_data = cb_data;
@@ -1720,12 +1711,11 @@ smb2_getinfo_async(struct smb2_context *smb2, const char *path,
         struct smb2_close_request cl_req;
         struct smb2_pdu *pdu, *next_pdu;
 
-        stat_data = malloc(sizeof(struct stat_cb_data));
+        stat_data = calloc(1, sizeof(struct stat_cb_data));
         if (stat_data == NULL) {
                 smb2_set_error(smb2, "Failed to allocate create_data");
                 return -1;
         }
-        memset(stat_data, 0, sizeof(struct stat_cb_data));
 
         stat_data->cb = cb;
         stat_data->cb_data = cb_data;
@@ -1867,12 +1857,11 @@ smb2_truncate_async(struct smb2_context *smb2, const char *path,
         struct smb2_pdu *pdu, *next_pdu;
         struct smb2_file_end_of_file_info eofi;
 
-        trunc_data = malloc(sizeof(struct trunc_cb_data));
+        trunc_data = calloc(1, sizeof(struct trunc_cb_data));
         if (trunc_data == NULL) {
                 smb2_set_error(smb2, "Failed to allocate trunc_data");
                 return -1;
         }
-        memset(trunc_data, 0, sizeof(struct trunc_cb_data));
 
         trunc_data->cb = cb;
         trunc_data->cb_data = cb_data;
@@ -1990,12 +1979,11 @@ smb2_rename_async(struct smb2_context *smb2, const char *oldpath,
         struct smb2_pdu *pdu, *next_pdu;
         struct smb2_file_rename_info rn_info;
 
-        rename_data = malloc(sizeof(struct rename_cb_data));
+        rename_data = calloc(1, sizeof(struct rename_cb_data));
         if (rename_data == NULL) {
                 smb2_set_error(smb2, "Failed to allocate rename_data");
                 return -1;
         }
-        memset(rename_data, 0, sizeof(struct rename_cb_data));
 
         rename_data->cb = cb;
         rename_data->cb_data = cb_data;
@@ -2079,12 +2067,11 @@ smb2_ftruncate_async(struct smb2_context *smb2, struct smb2fh *fh,
         struct smb2_file_end_of_file_info eofi;
         struct smb2_pdu *pdu;
 
-        create_data = malloc(sizeof(struct create_cb_data));
+        create_data = calloc(1, sizeof(struct create_cb_data));
         if (create_data == NULL) {
                 smb2_set_error(smb2, "Failed to allocate create_data");
                 return -ENOMEM;
         }
-        memset(create_data, 0, sizeof(struct create_cb_data));
 
         create_data->cb = cb;
         create_data->cb_data = cb_data;
@@ -2176,12 +2163,11 @@ smb2_readlink_async(struct smb2_context *smb2, const char *path,
         struct smb2_close_request cl_req;
         struct smb2_pdu *pdu, *next_pdu;
 
-        readlink_data = malloc(sizeof(struct readlink_cb_data));
+        readlink_data = calloc(1, sizeof(struct readlink_cb_data));
         if (readlink_data == NULL) {
                 smb2_set_error(smb2, "Failed to allocate readlink_data");
                 return -1;
         }
-        memset(readlink_data, 0, sizeof(struct readlink_cb_data));
 
         readlink_data->cb = cb;
         readlink_data->cb_data = cb_data;
@@ -2283,12 +2269,11 @@ smb2_disconnect_share_async(struct smb2_context *smb2,
         struct disconnect_data *dc_data;
         struct smb2_pdu *pdu;
 
-        dc_data = malloc(sizeof(struct disconnect_data));
+        dc_data = calloc(1, sizeof(struct disconnect_data));
         if (dc_data == NULL) {
                 smb2_set_error(smb2, "Failed to allocate disconnect_data");
                 return -ENOMEM;
         }
-        memset(dc_data, 0, sizeof(struct disconnect_data));
 
         dc_data->cb = cb;
         dc_data->cb_data = cb_data;
@@ -2326,12 +2311,11 @@ smb2_echo_async(struct smb2_context *smb2,
         struct echo_data *echo_data;
         struct smb2_pdu *pdu;
 
-        echo_data = malloc(sizeof(struct echo_data));
+        echo_data = calloc(1, sizeof(struct echo_data));
         if (echo_data == NULL) {
                 smb2_set_error(smb2, "Failed to allocate echo_data");
                 return -ENOMEM;
         }
-        memset(echo_data, 0, sizeof(struct echo_data));
 
         echo_data->cb = cb;
         echo_data->cb_data = cb_data;
@@ -2369,11 +2353,10 @@ smb2_fh_from_file_id(struct smb2_context *smb2, smb2_file_id *fileid)
 {
         struct smb2fh *fh;
 
-        fh = malloc(sizeof(struct smb2fh));
+        fh = calloc(1, sizeof(struct smb2fh));
         if (fh == NULL) {
                 return NULL;
         }
-        memset(fh, 0, sizeof(struct smb2fh));
         memcpy(fh->file_id, fileid, SMB2_FD_SIZE);
         SMB2_LIST_ADD(&smb2->fhs, fh);
 

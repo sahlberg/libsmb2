@@ -174,12 +174,11 @@ struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url)
                 }
         }
 
-        u = malloc(sizeof(struct smb2_url));
+        u = calloc(1, sizeof(struct smb2_url));
         if (u == NULL) {
                 smb2_set_error(smb2, "Failed to allocate smb2_url");
                 return NULL;
         }
-        memset(u, 0, sizeof(struct smb2_url));
 
         ptr = str;
 
@@ -242,11 +241,10 @@ struct smb2_context *smb2_init_context(void)
 
         srandom(time(NULL) | getpid() | ctr++);
 
-        smb2 = malloc(sizeof(struct smb2_context));
+        smb2 = calloc(1, sizeof(struct smb2_context));
         if (smb2 == NULL) {
                 return NULL;
         }
-        memset(smb2, 0, sizeof(struct smb2_context));
 
         ret = getlogin_r(buf, sizeof(buf));
         smb2_set_user(smb2, ret == 0 ? buf : "Guest");

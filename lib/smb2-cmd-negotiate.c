@@ -57,12 +57,11 @@ smb2_encode_negotiate_request(struct smb2_context *smb2,
         len = SMB2_NEGOTIATE_REQUEST_SIZE +
                 req->dialect_count * sizeof(uint16_t);
         len = PAD_TO_32BIT(len);
-        buf = malloc(len);
+        buf = calloc(len, sizeof(uint8_t));
         if (buf == NULL) {
                 smb2_set_error(smb2, "Failed to allocate negotiate buffer");
                 return -1;
         }
-        memset(buf, 0, len);
         
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
         

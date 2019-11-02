@@ -158,13 +158,12 @@ smb2_share_enum_async(struct smb2_context *smb2,
                 return -ENOMEM;
         }
         
-        nse = malloc(sizeof(struct smb2nse));
+        nse = calloc(1, sizeof(struct smb2nse));
         if (nse == NULL) {
                 smb2_set_error(smb2, "Failed to allocate nse");
                 dcerpc_destroy_context(dce);
                 return -ENOMEM;
         }
-        memset(nse, 0, sizeof(struct smb2nse));
         nse->cb = cb;
         nse->cb_data = cb_data;
 

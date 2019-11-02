@@ -164,12 +164,11 @@ krb5_negotiate_reply(struct smb2_context *smb2,
                 }
         }
 
-        auth_data = malloc(sizeof(struct private_auth_data));
+        auth_data = calloc(1, sizeof(struct private_auth_data));
         if (auth_data == NULL) {
                 smb2_set_error(smb2, "Failed to allocate private_auth_data");
                 return NULL;
         }
-        memset(auth_data, 0, sizeof(struct private_auth_data));
         auth_data->context = GSS_C_NO_CONTEXT;
 
         if (asprintf(&auth_data->g_server, "cifs@%s", server) < 0) {

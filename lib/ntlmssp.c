@@ -120,11 +120,10 @@ ntlmssp_init_context(const char *user,
 {
         struct auth_data *auth_data = NULL;
 
-        auth_data = malloc(sizeof(struct auth_data));
+        auth_data = calloc(1, sizeof(struct auth_data));
         if (auth_data == NULL) {
                 return NULL;
         }
-        memset(auth_data, 0, sizeof(struct auth_data));
 
         auth_data->user        = user;
         auth_data->password    = password;

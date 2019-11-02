@@ -72,12 +72,11 @@ smb2_allocate_pdu(struct smb2_context *smb2, enum smb2_command command,
         struct smb2_header *hdr;
         char magic[4] = {0xFE, 'S', 'M', 'B'};
         
-        pdu = malloc(sizeof(struct smb2_pdu));
+        pdu = calloc(1, sizeof(struct smb2_pdu));
         if (pdu == NULL) {
                 smb2_set_error(smb2, "Failed to allocate pdu");
                 return NULL;
         }
-        memset(pdu, 0, sizeof(struct smb2_pdu));
 
         hdr = &pdu->header;
         
