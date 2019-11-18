@@ -941,7 +941,7 @@ dcerpc_decode_response(struct dcerpc_context *ctx,
         smb2_get_uint32(iov, offset, &rsp->alloc_hint);
         offset += 4;
 
-        if (rsp->alloc_hint < 0 || rsp->alloc_hint > 16*1024*1024) {
+        if (rsp->alloc_hint > 16*1024*1024) {
                 smb2_set_error(ctx->smb2, "DCERPC RESPONSE alloc_hint out "
                                "of range.");
                 return -1;
