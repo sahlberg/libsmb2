@@ -985,7 +985,6 @@ dcerpc_decode_pdu(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         default:
                 smb2_set_error(ctx->smb2, "DCERPC No decoder for PDU type %d",
                                pdu->hdr.PTYPE);
-                dcerpc_free_pdu(ctx, pdu);
                 return -1;
         }
 
