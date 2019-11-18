@@ -258,6 +258,7 @@ NTOWFv2(const char *user, const char *password, const char *domain,
 
         ucs2_userdomain = utf8_to_ucs2(userdomain);
         if (ucs2_userdomain == NULL) {
+                free(userdomain);
                 return -1;
         }
 
