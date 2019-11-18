@@ -939,9 +939,9 @@ smb2_connect_share_async(struct smb2_context *smb2,
 
         c_data->ucs2_unc = utf8_to_ucs2(c_data->utf8_unc);
         if (c_data->ucs2_unc == NULL) {
-                free_c_data(smb2, c_data);
                 smb2_set_error(smb2, "Count not convert UNC:[%s] into UCS2",
                                c_data->utf8_unc);
+                free_c_data(smb2, c_data);
                 return -ENOMEM;
         }
 
