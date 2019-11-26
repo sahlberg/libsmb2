@@ -222,7 +222,8 @@ smb2_set_uint64(struct smb2_iovec *iov, int offset, uint64_t value)
         if (offset + sizeof(uint64_t) > iov->len) {
                 return -1;
         }
-        *(uint64_t *)(iov->buf + offset) = htole64(value);
+        value = htole64(value);
+        memcpy(iov->buf + offset, &value, 8);
         return 0;
 }
 
