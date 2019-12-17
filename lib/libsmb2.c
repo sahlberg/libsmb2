@@ -561,29 +561,8 @@ session_setup_cb(struct smb2_context *smb2, int status,
                         return;
                 }
                 return;
-#ifdef HAVE_LIBKRB5
-        } else if (smb2->sec == SMB2_SEC_KRB5) {
-                /* For NTLM the status will be
-                 * SMB2_STATUS_MORE_PROCESSING_REQUIRED and a second call to
-                 * gss_init_sec_context will complete the gss session.
-                 * But for krb5 a second call to gss_init_sec_context is
-                 * required if GSS_C_MUTUAL_FLAG is set.
-                 *
-                 * Ignore any krb5 errors if the SMB2 layer reported
-                 * success.
-                 */
-                if (krb5_session_request(smb2, c_data->auth_data,
-                                         rep->security_buffer,
-                                         rep->security_buffer_length) < 0 &&
-                    status != SMB2_STATUS_SUCCESS) {
-                        c_data->cb(smb2, -1, NULL, c_data->cb_data);
-                        free_c_data(smb2, c_data);
-                        return;
-                }
-#endif
-        }
 
-        if (status != SMB2_STATUS_SUCCESS) {
+        } else if (status != SMB2_STATUS_SUCCESS) {
                 smb2_close_context(smb2);
                 smb2_set_error(smb2, "Session setup failed with (0x%08x) %s",
                                status, nterror_to_str(status));
@@ -592,6 +571,24 @@ session_setup_cb(struct smb2_context *smb2, int status,
                 free_c_data(smb2, c_data);
                 return;
         }
+
+#ifdef HAVE_LIBKRB5
+       if (smb2->sec == SMB2_SEC_KRB5) {
+                /* For NTLM the status will be
+                 * SMB2_STATUS_MORE_PROCESSING_REQUIRED and a second call to
+                 * gss_init_sec_context will complete the gss session.
+                 * But for krb5 a second call to gss_init_sec_context is
+                 * required if GSS_C_MUTUAL_FLAG is set.
+                 *
+                 * At this point SMB2 layer reported success already, so we
+                 * ignore krb5 errors.
+                 */
+                krb5_session_request(smb2, c_data->auth_data,
+                                         rep->security_buffer,
+                                         rep->security_buffer_length);
+       }
+#endif
+
 
         if (smb2->sign || smb2->seal) {
                 uint8_t zero_key[SMB2_KEY_SIZE] = {0};
