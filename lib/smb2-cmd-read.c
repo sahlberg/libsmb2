@@ -63,8 +63,8 @@ smb2_encode_read_request(struct smb2_context *smb2,
         
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
 
-        if (!smb2->supports_multi_credit && req->length > 60 * 1024) {
-                req->length = 60 * 1024;
+        if (!smb2->supports_multi_credit && req->length > 64 * 1024) {
+                req->length = 64 * 1024;
                 req->minimum_count = 0;
         }
         smb2_set_uint16(iov, 0, SMB2_READ_REQUEST_SIZE);
