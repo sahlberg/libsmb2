@@ -837,7 +837,7 @@ struct smb2_ioctl_reply {
 struct smb2_write_request {
         uint32_t length;
         uint64_t offset;
-        uint8_t *buf;
+        const uint8_t* buf;
         smb2_file_id file_id;
         uint32_t channel;
         uint32_t remaining_bytes;

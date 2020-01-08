@@ -1273,7 +1273,7 @@ write_cb(struct smb2_context *smb2, int status,
 
 int
 smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
-                  uint8_t *buf, uint32_t count, uint64_t offset,
+                  const uint8_t *buf, uint32_t count, uint64_t offset,
                   smb2_command_cb cb, void *cb_data)
 {
         struct smb2_write_request req;
@@ -1330,7 +1330,7 @@ smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
 
 int
 smb2_write_async(struct smb2_context *smb2, struct smb2fh *fh,
-                 uint8_t *buf, uint32_t count,
+                 const uint8_t *buf, uint32_t count,
                  smb2_command_cb cb, void *cb_data)
 {
         return smb2_pwrite_async(smb2, fh, buf, count, fh->offset,
