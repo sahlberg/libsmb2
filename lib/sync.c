@@ -290,7 +290,7 @@ int smb2_pread(struct smb2_context *smb2, struct smb2fh *fh,
 }
 
 int smb2_pwrite(struct smb2_context *smb2, struct smb2fh *fh,
-                uint8_t *buf, uint32_t count, uint64_t offset)
+                const uint8_t *buf, uint32_t count, uint64_t offset)
 {
         struct sync_cb_data cb_data;
 
@@ -330,7 +330,7 @@ int smb2_read(struct smb2_context *smb2, struct smb2fh *fh,
 }
 
 int smb2_write(struct smb2_context *smb2, struct smb2fh *fh,
-               uint8_t *buf, uint32_t count)
+               const uint8_t *buf, uint32_t count)
 {
         struct sync_cb_data cb_data;
 
