@@ -55,7 +55,7 @@
 #ifdef _MSC_VER
 #include <errno.h>
 #define getlogin_r(a,b) ENXIO
-#define srandom srand
+//#define srandom srand
 #define random rand
 #define getpid GetCurrentProcessId
 #endif // _MSC_VER
@@ -239,7 +239,7 @@ struct smb2_context *smb2_init_context(void)
         int i, ret;
         static int ctr;
 
-        srandom(time(NULL) | getpid() | ctr++);
+        random(time(NULL) | getpid() | ctr++);
 
         smb2 = calloc(1, sizeof(struct smb2_context));
         if (smb2 == NULL) {
@@ -270,7 +270,7 @@ void smb2_destroy_context(struct smb2_context *smb2)
         }
 
         if (smb2->fd != -1) {
-                close(smb2->fd);
+                fclose(smb2->fd);
                 smb2->fd = -1;
         }
 

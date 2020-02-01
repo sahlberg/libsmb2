@@ -156,7 +156,7 @@ static void
 smb2_close_context(struct smb2_context *smb2)
 {
         if (smb2->fd != -1) {
-                close(smb2->fd);
+                fclose(smb2->fd);
                 smb2->fd = -1;
         }
         smb2->is_connected = 0;
@@ -2239,7 +2239,7 @@ disconnect_cb_2(struct smb2_context *smb2, int status,
 
         dc_data->cb(smb2, 0, NULL, dc_data->cb_data);
         free(dc_data);
-        close(smb2->fd);
+        fclose(smb2->fd);
         smb2->fd = -1;
 }
 
