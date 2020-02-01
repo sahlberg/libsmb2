@@ -1,3 +1,6 @@
+#pragma warning(disable: 4996)
+#pragma comment(lib, "Ws2_32")
+
 /* -*-  mode:c; tab-width:8; c-basic-offset:8; indent-tabs-mode:nil;  -*- */
 /*
    Copyright (C) 2016 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
@@ -80,6 +83,20 @@ void se_cb(struct smb2_context *smb2, int status,
 
 int main(int argc, char *argv[])
 {
+	WORD wVersionRequested;
+	WSADATA wsaData;
+	int err;
+
+   	wVersionRequested = MAKEWORD(2, 2);
+
+   	err = WSAStartup(wVersionRequested, &wsaData);
+    	if (err != 0) {
+        	/* Tell the user that we could not find a usable */
+	        /* Winsock DLL.                                  */
+        	printf("WSAStartup failed with error: %d\n", err);
+	        return 1;
+    	}
+
         struct smb2_context *smb2;
         struct smb2_url *url;
 	struct pollfd pfd;
@@ -100,9 +117,9 @@ int main(int argc, char *argv[])
                         smb2_get_error(smb2));
                 exit(0);
         }
-        if (url->user) {
-                smb2_set_user(smb2, url->user);
-        }
+
+		smb2_set_user(smb2, "<usr>");
+		smb2_set_password(smb2, "<pwd>");
 
         smb2_set_security_mode(smb2, SMB2_NEGOTIATE_SIGNING_ENABLED);
 
