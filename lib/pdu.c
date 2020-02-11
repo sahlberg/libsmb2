@@ -347,6 +347,7 @@ static void
 smb2_add_to_outqueue(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
         SMB2_LIST_ADD_END(&smb2->outqueue, pdu);
+        smb2_change_events(smb2, smb2->fd, smb2_which_events(smb2));
 }
 
 void

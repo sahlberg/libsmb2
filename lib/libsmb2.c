@@ -156,6 +156,9 @@ static void
 smb2_close_context(struct smb2_context *smb2)
 {
         if (smb2->fd != -1) {
+                if (smb2->change_fd) {
+                        smb2->change_fd(smb2, smb2->fd, SMB2_DEL_FD);
+                }
                 close(smb2->fd);
                 smb2->fd = -1;
         }
@@ -2239,6 +2242,9 @@ disconnect_cb_2(struct smb2_context *smb2, int status,
 
         dc_data->cb(smb2, 0, NULL, dc_data->cb_data);
         free(dc_data);
+        if (smb2->change_fd) {
+                smb2->change_fd(smb2, smb2->fd, SMB2_DEL_FD);
+        }
         close(smb2->fd);
         smb2->fd = -1;
 }
@@ -2358,4 +2364,13 @@ smb2_fh_from_file_id(struct smb2_context *smb2, smb2_file_id *fileid)
         SMB2_LIST_ADD(&smb2->fhs, fh);
 
         return fh;
+}
+
+void
+smb2_fd_event_callbacks(struct smb2_context *smb2,
+                        smb2_change_fd_cb change_fd,
+                        smb2_change_events_cb change_events)
+{
+        smb2->change_fd = change_fd;
+        smb2->change_events = change_events;
 }

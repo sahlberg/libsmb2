@@ -107,8 +107,22 @@ struct smb2_context *smb2_init_context(void);
 void smb2_destroy_context(struct smb2_context *smb2);
 
 /*
- * The following three functions are used to integrate libsmb2 in an event
+ * EVENT SYSTEM INTEGRATION
+ * ========================
+ * The following functions are used to integrate libsmb2 in an event
  * system.
+ *
+ * The simplest way is by using smb2_get_fd() and smb2_which_events()
+ * in every loop of the event system to detect which fd to use (it can change)
+ * and which events should be waited for.
+ * This is very simple to use but has the drawback of the overhead having to
+ * call these two functions for every loop.
+ *
+ * This is suitable for trivial apps where you roll your event system
+ * using select() or poll().
+ *
+ * See for example smb2-cat-async.c for an example on how to use these
+ * two functions in an event loop.
  */
 /*
  * Returns the file descriptor that libsmb2 uses.
@@ -118,6 +132,27 @@ t_socket smb2_get_fd(struct smb2_context *smb2);
  * Returns which events that we need to poll for for the smb2 file descriptor.
  */
 int smb2_which_events(struct smb2_context *smb2);
+/*
+ * A much more scalable way to use smb2_fd_event_callbacks() to register
+ * callbacks for libsmb2 to call anytime a filedescriptor is changed or when
+ * the  events we are waiting for changes.
+ * This way libsmb2 will do callbacks back into the application to inform
+ * when fd or events change.
+ *
+ * This is suitable when you want to plug libsmb2 into a more sophisticated
+ * eventsystem or if you use epoll() or similar.
+ *
+ * See for smb2-ls-async.c for a trivial example of using these callbacks.
+ */
+#define SMB2_ADD_FD 0
+#define SMB2_DEL_FD 1
+typedef void (*smb2_change_fd_cb)(struct smb2_context *smb2, int fd, int cmd);
+typedef void (*smb2_change_events_cb)(struct smb2_context *smb2, int fd,
+                                      int events);
+void smb2_fd_event_callbacks(struct smb2_context *smb2,
+                             smb2_change_fd_cb change_fd,
+                             smb2_change_events_cb change_events);
+
 /*
  * Called to process the events when events become available for the smb2
  * file descriptor.

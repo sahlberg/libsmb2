@@ -192,6 +192,7 @@ smb2_write_to_socket(struct smb2_context *smb2)
 
                 if (pdu->out.num_done == SMB2_SPL_SIZE + spl) {
                         SMB2_LIST_REMOVE(&smb2->outqueue, pdu);
+                        smb2_change_events(smb2, smb2->fd, smb2_which_events(smb2));
                         while (pdu) {
                                 tmp_pdu = pdu->next_compound;
 
@@ -599,6 +600,7 @@ smb2_service(struct smb2_context *smb2, int revents)
 		}
 
 		smb2->is_connected = 1;
+                smb2_change_events(smb2, smb2->fd, smb2_which_events(smb2));
 		if (smb2->connect_cb) {
 			smb2->connect_cb(smb2, 0, NULL,	smb2->connect_data);
 			smb2->connect_cb = NULL;
@@ -789,6 +791,24 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
 		return -EIO;
 	}
 
+        if (smb2->fd && smb2->change_fd) {
+                smb2->change_fd(smb2, smb2->fd, SMB2_ADD_FD);
+        }
+        if (smb2->fd && smb2->change_fd) {
+                smb2_change_events(smb2, smb2->fd, POLLOUT);
+        }
+
         return 0;
 }
 
+void smb2_change_events(struct smb2_context *smb2, int fd, int events)
+{
+        if (smb2->events == events) {
+                return;
+        }
+
+        if (smb2->change_events) {
+                smb2->change_events(smb2, smb2->fd, events);
+                smb2->events = events;
+        }
+}
