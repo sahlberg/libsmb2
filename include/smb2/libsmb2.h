@@ -864,9 +864,6 @@ int smb2_echo_async(struct smb2_context *smb2,
  */
 int smb2_echo(struct smb2_context *smb2);
 
-#ifdef __cplusplus
-}
-#endif
 
 /* Low 2 bits desctibe the type */
 #define SHARE_TYPE_DISKTREE  0
@@ -929,4 +926,7 @@ struct srvsvc_netshareenumall_rep {
 int smb2_share_enum_async(struct smb2_context *smb2,
                           smb2_command_cb cb, void *cb_data);
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* !_LIBSMB2_H_ */

@@ -99,8 +99,8 @@ int dcerpc_process_deferred_pointers(struct dcerpc_context *ctx,
 void dcerpc_add_deferred_pointer(struct dcerpc_context *ctx,
                                  struct dcerpc_pdu *pdu,
                                  dcerpc_coder coder, void *ptr);
-
-
-
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* !_LIBSMB2_DCERPC_H_ */

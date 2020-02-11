@@ -36,5 +36,8 @@ int srvsvc_netshareenumall_encoder(struct dcerpc_context *ctx,
                                    struct dcerpc_pdu *pdu,
                                    struct smb2_iovec *iov, int offset,
                                    void *ptr);
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* !_LIBSMB2_DCERPC_SRVSVC_H_ */
