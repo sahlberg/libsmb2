@@ -51,10 +51,10 @@ inline int readv(t_socket sock, struct iovec *iov, int nvecs)
   return -1;
 }
 
-inline int close(t_socket sock)
-{
-  return closesocket(sock);
-}
+//inline int close(t_socket sock)
+//{
+//  return closesocket(sock);
+//}
 
 #ifdef __cplusplus
 }

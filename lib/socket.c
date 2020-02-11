@@ -784,7 +784,7 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
 #endif
 		smb2_set_error(smb2, "Connect failed with errno : "
 			"%s(%d)", strerror(errno), errno);
-		close(smb2->fd);
+		fclose(smb2->fd);
 		smb2->fd = -1;
 		return -EIO;
 	}
