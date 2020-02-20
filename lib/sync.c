@@ -265,6 +265,10 @@ static void generic_status_cb(struct smb2_context *smb2, int status,
 {
         struct sync_cb_data *cb_data = private_data;
 
+        if (status == SMB2_STATUS_CANCELLED) {
+                return;
+        }
+
         cb_data->is_finished = 1;
         cb_data->status = status;
 }
