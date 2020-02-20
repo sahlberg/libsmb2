@@ -744,7 +744,6 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
                 ((struct sockaddr_in *)&ss)->sin_len = socksize;
 #endif
                 break;
-#ifdef HAVE_SOCKADDR_IN6
         case AF_INET6:
                 socksize = sizeof(struct sockaddr_in6);
                 memcpy(&ss, ai->ai_addr, socksize);
@@ -752,7 +751,6 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
                 ((struct sockaddr_in6 *)&ss)->sin6_len = socksize;
 #endif
                 break;
-#endif
         default:
                 smb2_set_error(smb2, "Unknown address family :%d. "
                                 "Only IPv4/IPv6 supported so far.",
