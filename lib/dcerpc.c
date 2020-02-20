@@ -930,7 +930,7 @@ dcerpc_decode_response(struct dcerpc_context *ctx,
         struct dcerpc_pdu *pdu = container_of(rsp, struct dcerpc_pdu, rsp);
 #else
         const char* __mptr = rsp;
-        struct dcerpc_pdu *pdu = (struct smb2_alloc_header*)((char *)__mptr - offsetof(struct dcerpc_pdu, rsp));
+        struct dcerpc_pdu *pdu = (struct dcerpc_pdu*)((char *)__mptr - offsetof(struct dcerpc_pdu, rsp));
 #endif // !_MSC_VER
    
         if (offset < 0) {
