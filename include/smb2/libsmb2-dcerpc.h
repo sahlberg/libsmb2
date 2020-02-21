@@ -23,6 +23,14 @@
 extern "C" {
 #endif
 
+/* Data representation */
+/* Integer */
+#define DCERPC_DR_BIG_ENDIAN                    0x00
+#define DCERPC_DR_LITTLE_ENDIAN                 0x10
+/* Character */
+#define DCERPC_DR_ASCII                         0x00
+#define DCERPC_DR_EBCDIC                        0x01
+
 struct dcerpc_context;
 struct dcerpc_pdu;
 

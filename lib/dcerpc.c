@@ -93,6 +93,7 @@ struct dcerpc_context {
         smb2_file_id file_id;
 
         uint8_t tctx_id; /* 0:NDR32 1:NDR64 */
+        uint8_t packed_drep[4];
         uint32_t call_id;
 };
 
@@ -201,14 +202,6 @@ struct dcerpc_response_pdu {
 #define PFC_MAYBE           0x40
 #define PFC_OBJECT_UUID     0x80
 
-/* Data representation */
-/* Integer */
-#define DCERPC_DR_BYTE_ORDER_BIG_ENDIAN         0x00
-#define DCERPC_DR_BYTE_ORDER_LITTLE_ENDIAN      0x10
-/* Character */
-#define DCERPC_DR_CHARACTER_ASCII               0x00
-#define DCERPC_DR_CHARACTER_EBCDIC              0x01
-
 #define NSE_BUF_SIZE 128*1024
 
 struct dcerpc_cb_data {
@@ -281,6 +274,7 @@ dcerpc_create_context(struct smb2_context *smb2, const char *path,
                 return NULL;
         }
         ctx->syntax = syntax;
+        ctx->packed_drep[0] = DCERPC_DR_LITTLE_ENDIAN | DCERPC_DR_ASCII;
 
         return ctx;
 }
@@ -1112,8 +1106,7 @@ dcerpc_call_async(struct dcerpc_context *dce,
         pdu->hdr.rpc_vers_minor = 0;
         pdu->hdr.PTYPE = PDU_TYPE_REQUEST;
         pdu->hdr.pfc_flags = PFC_FIRST_FRAG | PFC_LAST_FRAG;
-        pdu->hdr.packed_drep[0] = DCERPC_DR_BYTE_ORDER_LITTLE_ENDIAN |
-                DCERPC_DR_CHARACTER_ASCII;
+        pdu->hdr.packed_drep[0] = dce->packed_drep[0];
         pdu->hdr.frag_length = 0;
         pdu->hdr.auth_length = 0;
         pdu->req.alloc_hint = 0;
@@ -1246,8 +1239,7 @@ dcerpc_bind_async(struct dcerpc_context *dce, dcerpc_cb cb,
         pdu->hdr.rpc_vers_minor = 0;
         pdu->hdr.PTYPE = PDU_TYPE_BIND;
         pdu->hdr.pfc_flags = PFC_FIRST_FRAG | PFC_LAST_FRAG;
-        pdu->hdr.packed_drep[0] = DCERPC_DR_BYTE_ORDER_LITTLE_ENDIAN |
-                DCERPC_DR_CHARACTER_ASCII;
+        pdu->hdr.packed_drep[0] = dce->packed_drep[0];
         pdu->hdr.frag_length = 0;
         pdu->hdr.auth_length = 0;
         pdu->bind.max_xmit_frag = 32768;
