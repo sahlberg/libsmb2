@@ -240,6 +240,63 @@ struct dcerpc_pdu {
         struct dcerpc_deferred_pointer ptrs[MAX_DEFERRED_PTR];
 };
 
+int
+dcerpc_set_uint8(struct dcerpc_context *ctx, struct smb2_iovec *iov,
+                  int offset, uint8_t value)
+{
+        if (offset + sizeof(uint8_t) > iov->len) {
+                return -1;
+        }
+        *(uint8_t *)(iov->buf + offset) = value;
+
+        return 0;
+}
+
+int
+dcerpc_set_uint16(struct dcerpc_context *ctx, struct smb2_iovec *iov,
+                  int offset, uint16_t value)
+{
+        if (offset + sizeof(uint16_t) > iov->len) {
+                return -1;
+        }
+        if (!(ctx->packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN)) {
+                *(uint16_t *)(iov->buf + offset) = htobe16(value);
+        } else {
+                *(uint16_t *)(iov->buf + offset) = htole16(value);
+        }
+        return 0;
+}
+
+int
+dcerpc_set_uint32(struct dcerpc_context *ctx, struct smb2_iovec *iov,
+                  int offset, uint32_t value)
+{
+        if (offset + sizeof(uint32_t) > iov->len) {
+                return -1;
+        }
+        if (!(ctx->packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN)) {
+                *(uint32_t *)(iov->buf + offset) = htobe32(value);
+        } else {
+                *(uint32_t *)(iov->buf + offset) = htole32(value);
+        }
+        return 0;
+}
+
+int
+dcerpc_set_uint64(struct dcerpc_context *ctx, struct smb2_iovec *iov,
+                  int offset, uint64_t value)
+{
+        if (offset + sizeof(uint64_t) > iov->len) {
+                return -1;
+        }
+        if (!(ctx->packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN)) {
+                *(uint64_t *)(iov->buf + offset) = htobe64(value);
+        } else {
+                *(uint64_t *)(iov->buf + offset) = htole64(value);
+        }
+        return 0;
+}
+
 struct smb2_context *
 dcerpc_get_smb2_context(struct dcerpc_context *dce)
 {
@@ -275,7 +332,6 @@ dcerpc_create_context(struct smb2_context *smb2, const char *path,
         }
         ctx->syntax = syntax;
         ctx->packed_drep[0] = DCERPC_DR_LITTLE_ENDIAN | DCERPC_DR_ASCII;
-
         return ctx;
 }
 
@@ -372,14 +428,14 @@ dcerpc_encode_32(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 
         offset = (offset + 3) & ~3;
 
-        smb2_set_uint32(iov, offset, val);
+        dcerpc_set_uint32(ctx, iov, offset, val);
         offset += 4;
 
         return offset;
 }
 
 int
-dcerpc_encode_16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+dcerpc_encode_16(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                  struct smb2_iovec *iov,
                  int offset, void *ptr)
 {
@@ -391,7 +447,7 @@ dcerpc_encode_16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 
         offset = (offset + 1) & ~1;
 
-        smb2_set_uint16(iov, offset, val);
+        dcerpc_set_uint16(dce, iov, offset, val);
         offset += 2;
 
         return offset;
@@ -411,13 +467,13 @@ dcerpc_encode_3264(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 offset = (offset + 7) & ~7;
 
                 /* NDR64 */
-                smb2_set_uint64(iov, offset, val);
+                dcerpc_set_uint64(ctx, iov, offset, val);
                 offset += 8;
         } else {
                 offset = (offset + 3) & ~3;
 
                 /* NDR32 */
-                smb2_set_uint32(iov, offset, val);
+                dcerpc_set_uint32(ctx, iov, offset, val);
                 offset += 4;
         }
         return offset;
@@ -464,10 +520,12 @@ dcerpc_encode_ptr(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                 return offset;
         }
 
-        if (dce->tctx_id) {
-                offset = (offset + 7) & ~7;
-        } else {
-                offset = (offset + 3) & ~3;
+        if (ptr != PTR_REF && !pdu->top_level) {
+                if (dce->tctx_id) {
+                        offset = (offset + 7) & ~7;
+                } else {
+                        offset = (offset + 3) & ~3;
+                }
         }
 
         switch (type) {
@@ -609,31 +667,32 @@ int dcerpc_decode_ucs2z(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 }
 
 static int
-dcerpc_encode_header(struct smb2_iovec *iov, struct dcerpc_header *hdr)
+dcerpc_encode_header(struct dcerpc_context *dce, struct smb2_iovec *iov,
+                     struct dcerpc_header *hdr)
 {
         /* Major Version */
-        smb2_set_uint8(iov, 0, hdr->rpc_vers);
+        dcerpc_set_uint8(dce, iov, 0, hdr->rpc_vers);
         /* Minor Version */
-        smb2_set_uint8(iov, 1, hdr->rpc_vers_minor);
+        dcerpc_set_uint8(dce, iov, 1, hdr->rpc_vers_minor);
         /* Packet Type */
-        smb2_set_uint8(iov, 2, hdr->PTYPE);
+        dcerpc_set_uint8(dce, iov, 2, hdr->PTYPE);
         /* Flags */
-        smb2_set_uint8(iov, 3, hdr->pfc_flags);
+        dcerpc_set_uint8(dce, iov, 3, hdr->pfc_flags);
 
         /* Data Representation */
-        smb2_set_uint8(iov, 4, hdr->packed_drep[0]);
-        smb2_set_uint8(iov, 5, hdr->packed_drep[1]);
-        smb2_set_uint8(iov, 6, hdr->packed_drep[2]);
-        smb2_set_uint8(iov, 7, hdr->packed_drep[3]);
+        dcerpc_set_uint8(dce, iov, 4, hdr->packed_drep[0]);
+        dcerpc_set_uint8(dce, iov, 5, hdr->packed_drep[1]);
+        dcerpc_set_uint8(dce, iov, 6, hdr->packed_drep[2]);
+        dcerpc_set_uint8(dce, iov, 7, hdr->packed_drep[3]);
 
         /* Fragment len */
-        smb2_set_uint16(iov, 8, hdr->frag_length);
+        dcerpc_set_uint16(dce, iov, 8, hdr->frag_length);
 
         /* Auth len */
-        smb2_set_uint16(iov, 10, hdr->auth_length);
+        dcerpc_set_uint16(dce, iov, 10, hdr->auth_length);
 
         /* Call id */
-        smb2_set_uint32(iov, 12, hdr->call_id);
+        dcerpc_set_uint32(dce, iov, 12, hdr->call_id);
 
         return 16;
 }
@@ -677,28 +736,28 @@ dcerpc_encode_uuid(struct dcerpc_context *ctx,
                 return offset;
         }
 
-        smb2_set_uint32(iov, offset, uuid->v1);
+        dcerpc_set_uint32(ctx, iov, offset, uuid->v1);
         offset += 4;
-        smb2_set_uint16(iov, offset, uuid->v2);
+        dcerpc_set_uint16(ctx, iov, offset, uuid->v2);
         offset += 2;
-        smb2_set_uint16(iov, offset, uuid->v3);
+        dcerpc_set_uint16(ctx, iov, offset, uuid->v3);
         offset += 2;
 
-        smb2_set_uint64(iov, offset, (uuid->v4 >> 56) & 0xff);
+        dcerpc_set_uint8(ctx, iov, offset, (uuid->v4 >> 56) & 0xff);
         offset += 1;
-        smb2_set_uint64(iov, offset, (uuid->v4 >> 48) & 0xff);
+        dcerpc_set_uint8(ctx, iov, offset, (uuid->v4 >> 48) & 0xff);
         offset += 1;
-        smb2_set_uint64(iov, offset, (uuid->v4 >> 40) & 0xff);
+        dcerpc_set_uint8(ctx, iov, offset, (uuid->v4 >> 40) & 0xff);
         offset += 1;
-        smb2_set_uint64(iov, offset, (uuid->v4 >> 32) & 0xff);
+        dcerpc_set_uint8(ctx, iov, offset, (uuid->v4 >> 32) & 0xff);
         offset += 1;
-        smb2_set_uint64(iov, offset, (uuid->v4 >> 24) & 0xff);
+        dcerpc_set_uint8(ctx, iov, offset, (uuid->v4 >> 24) & 0xff);
         offset += 1;
-        smb2_set_uint64(iov, offset, (uuid->v4 >> 16) & 0xff);
+        dcerpc_set_uint8(ctx, iov, offset, (uuid->v4 >> 16) & 0xff);
         offset += 1;
-        smb2_set_uint64(iov, offset, (uuid->v4 >>  8) & 0xff);
+        dcerpc_set_uint8(ctx, iov, offset, (uuid->v4 >>  8) & 0xff);
         offset += 1;
-        smb2_set_uint64(iov, offset, (uuid->v4      ) & 0xff);
+        dcerpc_set_uint8(ctx, iov, offset, (uuid->v4      ) & 0xff);
         offset += 1;
 
         return offset;
@@ -743,69 +802,66 @@ dcerpc_encode_bind(struct dcerpc_context *ctx,
         }
 
         /* Max Xmit Frag */
-        smb2_set_uint16(iov, offset, bind->max_xmit_frag);
+        dcerpc_set_uint16(ctx, iov, offset, bind->max_xmit_frag);
         offset += 2;
 
         /* Max Recv Frag */
-        smb2_set_uint16(iov, offset, bind->max_recv_frag);
+        dcerpc_set_uint16(ctx, iov, offset, bind->max_recv_frag);
         offset += 2;
 
         /* Association Group */
-        smb2_set_uint32(iov, offset, bind->assoc_group_id);
+        dcerpc_set_uint32(ctx, iov, offset, bind->assoc_group_id);
         offset += 4;
 
         /* Number Of Context Items */
-        smb2_set_uint8(iov, offset, 2);
+        dcerpc_set_uint8(ctx, iov, offset, 2);
         offset += 4;
 
         /* Context Id[0]: NDR32 */
-        smb2_set_uint16(iov, offset, 0);
+        dcerpc_set_uint16(ctx, iov, offset, 0);
         offset += 2;
         /* Num Trans Items */
-        smb2_set_uint8(iov, offset, 1);
+        dcerpc_set_uint8(ctx, iov, offset, 1);
         offset += 2;
         /* Abstract Syntax */
         offset = dcerpc_encode_uuid(ctx, iov, offset, &bind->abstract_syntax->uuid);
         if (offset < 0) {
                 return offset;
         }
+        dcerpc_set_uint32(ctx, iov, offset, bind->abstract_syntax->vers);
+        offset += 4;
 
-        smb2_set_uint16(iov, offset, bind->abstract_syntax->vers);
-        offset += 2;
-        smb2_set_uint16(iov, offset, bind->abstract_syntax->vers_minor);
-        offset += 2;
         /* Transport Syntax */
         offset = dcerpc_encode_uuid(ctx, iov, offset, &ndr32_syntax.uuid);
         if (offset < 0) {
                 return offset;
         }
-        smb2_set_uint16(iov, offset, ndr32_syntax.vers);
+        dcerpc_set_uint32(ctx, iov, offset, ndr32_syntax.vers);
         offset += 4;
         /* Context Id[1]: NDR64 */
-        smb2_set_uint16(iov, offset, 1);
+        dcerpc_set_uint16(ctx, iov, offset, 1);
         offset += 2;
         /* Num Trans Items */
-        smb2_set_uint8(iov, offset, 1);
+        dcerpc_set_uint8(ctx, iov, offset, 1);
         offset += 2;
         /* Abstract Syntax */
         offset = dcerpc_encode_uuid(ctx, iov, offset, &bind->abstract_syntax->uuid);
         if (offset < 0) {
                 return offset;
         }
-        smb2_set_uint16(iov, offset, bind->abstract_syntax->vers);
-        offset += 2;
-        smb2_set_uint16(iov, offset, bind->abstract_syntax->vers_minor);
-        offset += 2;
+        dcerpc_set_uint32(ctx, iov, offset, bind->abstract_syntax->vers);
+        offset += 4;
+
         /* Transport Syntax */
         offset = dcerpc_encode_uuid(ctx, iov, offset, &ndr64_syntax.uuid);
         if (offset < 0) {
                 return offset;
         }
-        smb2_set_uint16(iov, offset, ndr64_syntax.vers);
+        dcerpc_set_uint32(ctx, iov, offset, ndr64_syntax.vers);
         offset += 4;
         
         /* Fixup fragment length */
-        smb2_set_uint16(iov, 8, offset);
+        dcerpc_set_uint16(ctx, iov, 8, offset);
         
         return offset;
 }
@@ -820,40 +876,40 @@ dcerpc_encode_request(struct dcerpc_context *ctx,
         }
 
         /* Alloc Hint */
-        smb2_set_uint32(iov, offset, req->alloc_hint);
+        dcerpc_set_uint32(ctx, iov, offset, req->alloc_hint);
         offset += 4;
 
         /* Context ID */
-        smb2_set_uint16(iov, offset, req->context_id);
+        dcerpc_set_uint16(ctx, iov, offset, req->context_id);
         offset += 2;
         
         /* Opnum */
-        smb2_set_uint16(iov, offset, req->opnum);
+        dcerpc_set_uint16(ctx, iov, offset, req->opnum);
         offset += 2;
 
         return offset;
 }
 
 static int
-dcerpc_encode_pdu(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+dcerpc_encode_pdu(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                   struct smb2_iovec *iov)
 {
         int offset = 0;
 
-        offset = dcerpc_encode_header(iov, &pdu->hdr);
+        offset = dcerpc_encode_header(dce, iov, &pdu->hdr);
         if (offset < 0) {
                 return offset;
         }
 
         switch (pdu->hdr.PTYPE) {
         case PDU_TYPE_BIND:
-                offset = dcerpc_encode_bind(ctx, &pdu->bind, iov, offset);
+                offset = dcerpc_encode_bind(dce, &pdu->bind, iov, offset);
                 break;
         case PDU_TYPE_REQUEST:
-                offset = dcerpc_encode_request(ctx, &pdu->req, iov, offset);
+                offset = dcerpc_encode_request(dce, &pdu->req, iov, offset);
                 break;
         default:
-                smb2_set_error(ctx->smb2, "DCERPC No encoder for PDU type %d",
+                smb2_set_error(dce->smb2, "DCERPC No encoder for PDU type %d",
                                pdu->hdr.PTYPE);
                 return -1;
         }
@@ -986,7 +1042,7 @@ dcerpc_decode_pdu(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 }
 
 static void
-dce_unfragment_ioctl(struct smb2_iovec *iov)
+dce_unfragment_ioctl(struct dcerpc_context *dce, struct smb2_iovec *iov)
 {
         int offset = 0;
         int unfragment_len;
@@ -1026,7 +1082,7 @@ dce_unfragment_ioctl(struct smb2_iovec *iov)
                 if (next_hdr.pfc_flags & PFC_LAST_FRAG) {
                         hdr.pfc_flags |= PFC_LAST_FRAG;
                 }
-                dcerpc_encode_header(iov, &hdr);
+                dcerpc_encode_header(dce, iov, &hdr);
         } while (!(next_hdr.pfc_flags & PFC_LAST_FRAG));
         iov->len = unfragment_len;
 }
@@ -1061,7 +1117,7 @@ dcerpc_call_cb(struct smb2_context *smb2, int status,
         iov.len = rep->output_count;
         iov.free = NULL;
 
-        dce_unfragment_ioctl(&iov);
+        dce_unfragment_ioctl(dce, &iov);
 
         ret = dcerpc_decode_pdu(dce, pdu, &iov);
         if (ret < 0) {
@@ -1140,8 +1196,8 @@ dcerpc_call_async(struct dcerpc_context *dce,
         iov.len = offset;
 
         /* Fixup frag_length and alloc_hint */
-        smb2_set_uint16(&iov,  8, offset);
-        smb2_set_uint32(&iov, 16, offset - 24);
+        dcerpc_set_uint16(dce, &iov,  8, offset);
+        dcerpc_set_uint32(dce, &iov, 16, offset - 24);
 
         memset(&req, 0, sizeof(struct smb2_ioctl_request));
         req.ctl_code = SMB2_FSCTL_PIPE_TRANSCEIVE;
