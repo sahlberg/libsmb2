@@ -525,7 +525,7 @@ dcerpc_encode_ptr(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                 return offset;
         }
 
-        if (ptr != PTR_REF && !pdu->top_level) {
+        if (!(ptr == PTR_REF && pdu->top_level)) {
                 if (dce->tctx_id) {
                         offset = (offset + 7) & ~7;
                 } else {
