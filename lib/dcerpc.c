@@ -51,6 +51,7 @@
 #include <unistd.h>
 #endif
 
+#include "portable-endian.h"
 #include <errno.h>
 
 #include "smb2.h"
