@@ -336,7 +336,10 @@ dcerpc_create_context(struct smb2_context *smb2, const char *path,
                 return NULL;
         }
         ctx->syntax = syntax;
-        ctx->packed_drep[0] = DCERPC_DR_LITTLE_ENDIAN | DCERPC_DR_ASCII;
+        ctx->packed_drep[0] = DCERPC_DR_ASCII;
+        if (!ctx->smb2->endianess) {
+                ctx->packed_drep[0] |= DCERPC_DR_LITTLE_ENDIAN;
+        }
         return ctx;
 }
 

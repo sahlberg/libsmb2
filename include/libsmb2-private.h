@@ -208,6 +208,7 @@ struct smb2_context {
 
         /* dcerpc settings */
         int ndr;
+        int endianess;
 };
 
 #define SMB2_MAX_PDU_SIZE 16*1024*1024
