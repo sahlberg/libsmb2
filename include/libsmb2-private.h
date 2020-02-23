@@ -205,6 +205,9 @@ struct smb2_context {
         int events;
         smb2_change_fd_cb change_fd;
         smb2_change_events_cb change_events;
+
+        /* dcerpc settings */
+        int ndr;
 };
 
 #define SMB2_MAX_PDU_SIZE 16*1024*1024

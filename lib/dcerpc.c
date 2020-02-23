@@ -819,52 +819,56 @@ dcerpc_encode_bind(struct dcerpc_context *ctx,
         offset += 4;
 
         /* Number Of Context Items */
-        dcerpc_set_uint8(ctx, iov, offset, 2);
+        dcerpc_set_uint8(ctx, iov, offset, ctx->smb2->ndr ? 1 : 2);
         offset += 4;
 
-        /* Context Id[0]: NDR32 */
-        dcerpc_set_uint16(ctx, iov, offset, 0);
-        offset += 2;
-        /* Num Trans Items */
-        dcerpc_set_uint8(ctx, iov, offset, 1);
-        offset += 2;
-        /* Abstract Syntax */
-        offset = dcerpc_encode_uuid(ctx, iov, offset, &bind->abstract_syntax->uuid);
-        if (offset < 0) {
-                return offset;
-        }
-        dcerpc_set_uint32(ctx, iov, offset, bind->abstract_syntax->vers);
-        offset += 4;
+        if (ctx->smb2->ndr == 0 || ctx->smb2->ndr == 1) {
+                /* Context Id[0]: NDR32 */
+                dcerpc_set_uint16(ctx, iov, offset, 0);
+                offset += 2;
+                /* Num Trans Items */
+                dcerpc_set_uint8(ctx, iov, offset, 1);
+                offset += 2;
+                /* Abstract Syntax */
+                offset = dcerpc_encode_uuid(ctx, iov, offset, &bind->abstract_syntax->uuid);
+                if (offset < 0) {
+                        return offset;
+                }
+                dcerpc_set_uint32(ctx, iov, offset, bind->abstract_syntax->vers);
+                offset += 4;
 
-        /* Transport Syntax */
-        offset = dcerpc_encode_uuid(ctx, iov, offset, &ndr32_syntax.uuid);
-        if (offset < 0) {
-                return offset;
+                /* Transport Syntax */
+                offset = dcerpc_encode_uuid(ctx, iov, offset, &ndr32_syntax.uuid);
+                if (offset < 0) {
+                        return offset;
+                }
+                dcerpc_set_uint32(ctx, iov, offset, ndr32_syntax.vers);
+                offset += 4;
         }
-        dcerpc_set_uint32(ctx, iov, offset, ndr32_syntax.vers);
-        offset += 4;
-        /* Context Id[1]: NDR64 */
-        dcerpc_set_uint16(ctx, iov, offset, 1);
-        offset += 2;
-        /* Num Trans Items */
-        dcerpc_set_uint8(ctx, iov, offset, 1);
-        offset += 2;
-        /* Abstract Syntax */
-        offset = dcerpc_encode_uuid(ctx, iov, offset, &bind->abstract_syntax->uuid);
-        if (offset < 0) {
-                return offset;
-        }
-        dcerpc_set_uint32(ctx, iov, offset, bind->abstract_syntax->vers);
-        offset += 4;
+        if (ctx->smb2->ndr == 0 || ctx->smb2->ndr == 2) {
+                /* Context Id[1]: NDR64 */
+                dcerpc_set_uint16(ctx, iov, offset, 1);
+                offset += 2;
+                /* Num Trans Items */
+                dcerpc_set_uint8(ctx, iov, offset, 1);
+                offset += 2;
+                /* Abstract Syntax */
+                offset = dcerpc_encode_uuid(ctx, iov, offset, &bind->abstract_syntax->uuid);
+                if (offset < 0) {
+                        return offset;
+                }
+                dcerpc_set_uint32(ctx, iov, offset, bind->abstract_syntax->vers);
+                offset += 4;
 
-        /* Transport Syntax */
-        offset = dcerpc_encode_uuid(ctx, iov, offset, &ndr64_syntax.uuid);
-        if (offset < 0) {
-                return offset;
+                /* Transport Syntax */
+                offset = dcerpc_encode_uuid(ctx, iov, offset, &ndr64_syntax.uuid);
+                if (offset < 0) {
+                        return offset;
+                }
+                dcerpc_set_uint32(ctx, iov, offset, ndr64_syntax.vers);
+                offset += 4;
         }
-        dcerpc_set_uint32(ctx, iov, offset, ndr64_syntax.vers);
-        offset += 4;
-        
+
         /* Fixup fragment length */
         dcerpc_set_uint16(ctx, iov, 8, offset);
         
@@ -1267,7 +1271,17 @@ dcerpc_bind_cb(struct smb2_context *smb2, int status,
                         continue;
                 }
 
-                dce->tctx_id = i;
+                switch (smb2->ndr) {
+                case 0:
+                        dce->tctx_id = i;
+                        break;
+                case 1:
+                        dce->tctx_id = 0;
+                        break;
+                case 2:
+                        dce->tctx_id = 1;
+                        break;
+                }
                 break;
         }
         if (i == pdu->bind_ack.num_results) {
