@@ -70,37 +70,52 @@
 		srvsvc_ShareType type;
 		[string,charset(UTF16)] uint16 *comment;
 	} srvsvc_NetShareInfo1;
+*/
+static int
+srvsvc_NetShareInfo1_decoder(struct dcerpc_context *ctx,
+                             struct dcerpc_pdu *pdu,
+                             struct smb2_iovec *iov, int offset,
+                             void *ptr)
+{
+        struct srvsvc_netshareinfo1 *nsi1 = ptr;
+        
+        offset = dcerpc_decode_ptr(ctx, pdu, iov, offset, &nsi1->name,
+                                   PTR_UNIQUE,
+                                   dcerpc_decode_ucs2z);
+        offset = dcerpc_decode_32(ctx, pdu, iov, offset, &nsi1->type);
+        offset = dcerpc_decode_ptr(ctx, pdu, iov, offset, &nsi1->comment,
+                                   PTR_UNIQUE,
+                                   dcerpc_decode_ucs2z);
+        return offset;
+}
 
+static int
+srvsvc_NetShareInfo1_array_decoder(struct dcerpc_context *ctx,
+                                   struct dcerpc_pdu *pdu,
+                                   struct smb2_iovec *iov, int offset,
+                                   void *ptr)
+{
+        struct srvsvc_netshareinfo1 *nsi1 = ptr;
+        uint64_t p;
+
+        offset = dcerpc_decode_3264(ctx, pdu, iov, offset, &p);
+
+        while (p--) {
+                offset = srvsvc_NetShareInfo1_decoder(ctx, pdu, iov, offset,
+                                                      nsi1);
+                nsi1++;
+        }
+
+        offset = dcerpc_process_deferred_pointers(ctx, pdu, iov, offset);
+        return offset;
+}
+
+/*
 	typedef struct {
 		uint32 count;
 		[size_is(count)] srvsvc_NetShareInfo1 *array;
 	} srvsvc_NetShareCtr1;
-
-	typedef union {
-		[case(0)] srvsvc_NetShareCtr0 *ctr0;
-		[case(1)] srvsvc_NetShareCtr1 *ctr1;
-		[case(2)] srvsvc_NetShareCtr2 *ctr2;
-		[case(501)] srvsvc_NetShareCtr501 *ctr501;
-		[case(502)] srvsvc_NetShareCtr502 *ctr502;
-		[case(1004)] srvsvc_NetShareCtr1004 *ctr1004;
-		[case(1005)] srvsvc_NetShareCtr1005 *ctr1005;
-		[case(1006)] srvsvc_NetShareCtr1006 *ctr1006;
-		[case(1007)] srvsvc_NetShareCtr1007 *ctr1007;
-		[case(1501)] srvsvc_NetShareCtr1501 *ctr1501;
-		[default] ;
-	} srvsvc_NetShareCtr;
 */
-/*****************
- * Function: 0x0f
-	WERROR srvsvc_NetShareEnumAll (
-		[in]   [string,charset(UTF16)] uint16 *server_unc,
-		[in,out,ref]   uint32 *level,
-		[in,out,switch_is(level),ref] srvsvc_NetShareCtr *ctr,
-		[in]   uint32 max_buffer,
-		[out,ref]  uint32 *totalentries,
-		[in,out]   uint32 *resume_handle
-		);
-******************/
 static int
 srvsvc_NetShareCtr1_encoder(struct dcerpc_context *ctx,
                             struct dcerpc_pdu *pdu,
@@ -110,46 +125,6 @@ srvsvc_NetShareCtr1_encoder(struct dcerpc_context *ctx,
         /* just encode a fake array with 0 count and no pointer */
         offset = dcerpc_encode_3264(ctx, pdu, iov, offset, 0);
         offset = dcerpc_encode_3264(ctx, pdu, iov, offset, 0);
-
-        offset = dcerpc_process_deferred_pointers(ctx, pdu, iov, offset);
-        return offset;
-}
-
-static int
-srvsvc_NetShareCtr_encoder(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
-                           struct smb2_iovec *iov, int offset,
-                           void *ptr)
-{
-        /* just encode a fake union with case 1 */
-        offset = dcerpc_encode_3264(dce, pdu, iov, offset, 1);
-        offset = dcerpc_encode_ptr(dce, pdu, iov, offset, "dummy pointer",
-                                   PTR_UNIQUE, srvsvc_NetShareCtr1_encoder);
-
-        offset = dcerpc_process_deferred_pointers(dce, pdu, iov, offset);
-        return offset;
-}
-
-static int
-srvsvc_NetShareCtr1_array_decoder(struct dcerpc_context *ctx,
-                                  struct dcerpc_pdu *pdu,
-                                  struct smb2_iovec *iov, int offset,
-                                  void *ptr)
-{
-        struct srvsvc_netshareinfo1 *nsi1 = ptr;
-        uint64_t p;
-
-        offset = dcerpc_decode_3264(ctx, pdu, iov, offset, &p);
-
-        while (p--) {
-                offset = dcerpc_decode_ptr(ctx, pdu, iov, offset, &nsi1->name,
-                                           PTR_UNIQUE,
-                                           dcerpc_decode_ucs2z);
-                offset = dcerpc_decode_32(ctx, pdu, iov, offset, &nsi1->type);
-                offset = dcerpc_decode_ptr(ctx, pdu, iov, offset, &nsi1->comment,
-                                           PTR_UNIQUE,
-                                           dcerpc_decode_ucs2z);
-                nsi1++;
-        }
 
         offset = dcerpc_process_deferred_pointers(ctx, pdu, iov, offset);
         return offset;
@@ -173,7 +148,36 @@ srvsvc_NetShareCtr1_decoder(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
 
         offset = dcerpc_decode_ptr(dce, pdu, iov, offset, ctr1->array,
                                    PTR_UNIQUE,
-                                   srvsvc_NetShareCtr1_array_decoder);
+                                   srvsvc_NetShareInfo1_array_decoder);
+
+        offset = dcerpc_process_deferred_pointers(dce, pdu, iov, offset);
+        return offset;
+}
+
+/*
+	typedef union {
+		[case(0)] srvsvc_NetShareCtr0 *ctr0;
+		[case(1)] srvsvc_NetShareCtr1 *ctr1;
+		[case(2)] srvsvc_NetShareCtr2 *ctr2;
+		[case(501)] srvsvc_NetShareCtr501 *ctr501;
+		[case(502)] srvsvc_NetShareCtr502 *ctr502;
+		[case(1004)] srvsvc_NetShareCtr1004 *ctr1004;
+		[case(1005)] srvsvc_NetShareCtr1005 *ctr1005;
+		[case(1006)] srvsvc_NetShareCtr1006 *ctr1006;
+		[case(1007)] srvsvc_NetShareCtr1007 *ctr1007;
+		[case(1501)] srvsvc_NetShareCtr1501 *ctr1501;
+		[default] ;
+	} srvsvc_NetShareCtr;
+*/
+static int
+srvsvc_NetShareCtr_encoder(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+                           struct smb2_iovec *iov, int offset,
+                           void *ptr)
+{
+        /* just encode a fake union with case 1 */
+        offset = dcerpc_encode_3264(dce, pdu, iov, offset, 1);
+        offset = dcerpc_encode_ptr(dce, pdu, iov, offset, "dummy pointer",
+                                   PTR_UNIQUE, srvsvc_NetShareCtr1_encoder);
 
         offset = dcerpc_process_deferred_pointers(dce, pdu, iov, offset);
         return offset;
@@ -202,8 +206,19 @@ srvsvc_NetShareCtr_decoder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         return offset;
 }
 
+/*****************
+ * Function: 0x0f
+ *	WERROR srvsvc_NetShareEnumAll (
+ *		[in]   [string,charset(UTF16)] uint16 *server_unc,
+ *		[in,out,ref]   uint32 *level,
+ *		[in,out,switch_is(level),ref] srvsvc_NetShareCtr *ctr,
+ *		[in]   uint32 max_buffer,
+ *		[out,ref]  uint32 *totalentries,
+ *		[in,out]   uint32 *resume_handle
+ *		);
+ ******************/
 int
-srvsvc_netshareenumall_encoder(struct dcerpc_context *ctx,
+srvsvc_NetShareEnumAll_encoder(struct dcerpc_context *ctx,
                                struct dcerpc_pdu *pdu,
                                struct smb2_iovec *iov, int offset,
                                void *ptr)
@@ -244,7 +259,7 @@ srvsvc_netshareenumall_encoder(struct dcerpc_context *ctx,
 }
 
 int
-srvsvc_netshareenumall_decoder(struct dcerpc_context *dce,
+srvsvc_NetShareEnumAll_decoder(struct dcerpc_context *dce,
                                struct dcerpc_pdu *pdu,
                                struct smb2_iovec *iov, int offset,
                                void *ptr)
@@ -274,5 +289,119 @@ srvsvc_netshareenumall_decoder(struct dcerpc_context *dce,
 
         offset = dcerpc_decode_32(dce, pdu, iov, offset, &rep->status);
         
+        return offset;
+}
+
+/*
+ *	typedef union {
+ *		[case(0)] srvsvc_NetShareInfo0 *info0;
+ *		[case(1)] srvsvc_NetShareInfo1 *info1;
+ *		[case(2)] srvsvc_NetShareInfo2 *info2;
+ *		[case(501)] srvsvc_NetShareInfo501 *info501;
+ *		[case(502)] srvsvc_NetShareInfo502 *info502;
+ *		[case(1004)] srvsvc_NetShareInfo1004 *info1004;
+ *		[case(1005)] srvsvc_NetShareInfo1005 *info1005;
+ *		[case(1006)] srvsvc_NetShareInfo1006 *info1006;
+ *		[case(1007)] srvsvc_NetShareInfo1007 *info1007;
+ *		[case(1501)] sec_desc_buf *info1501;
+ *		[default] ;
+ *	} srvsvc_NetShareInfo;
+ */
+static int
+srvsvc_NetShareInfo_decoder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                           struct smb2_iovec *iov, int offset,
+                           void *ptr)
+{
+        struct srvsvc_netshareinfo *info = ptr;
+        uint64_t p;
+
+        offset = dcerpc_decode_3264(ctx, pdu, iov, offset, &p);
+        info->level = (uint32_t)p;
+
+        switch (info->level) {
+        case 1:
+                offset = dcerpc_decode_ptr(ctx, pdu, iov, offset, &info->info1,
+                                           PTR_UNIQUE,
+                                           srvsvc_NetShareInfo1_decoder);
+                break;
+        };
+        offset = dcerpc_process_deferred_pointers(ctx, pdu, iov, offset);
+        return offset;
+}
+
+/******************
+ * Function: 0x10
+ *	WERROR srvsvc_NetShareGetInfo(
+ *		[in]   [string,charset(UTF16)] uint16 *server_unc,
+ *		[in]   [string,charset(UTF16)] uint16 share_name[],
+ *		[in]   uint32 level,
+ *		[out,switch_is(level),ref] srvsvc_NetShareInfo *info
+ *		);
+ ******************/
+int
+srvsvc_NetShareGetInfo_encoder(struct dcerpc_context *dce,
+                               struct dcerpc_pdu *pdu,
+                               struct smb2_iovec *iov, int offset,
+                               void *ptr)
+{
+        struct srvsvc_netsharegetinfo_req *req = ptr;
+        int len;
+        char *server;
+        struct ucs2 *ucs2_unc, *ucs2_share;
+
+        len = strlen(req->server) + 3;
+        server = malloc(len);
+        if (server == NULL) {
+                return -1;
+        }
+
+        snprintf(server, len, "\\\\%s", req->server);
+        ucs2_unc = utf8_to_ucs2(server);
+        free(server);
+        if (ucs2_unc == NULL) {
+                return -1;
+        }
+        ucs2_share = utf8_to_ucs2(req->share);
+        if (ucs2_unc == NULL) {
+                free(ucs2_unc);
+                return -1;
+        }
+
+        offset = dcerpc_encode_ptr(dce, pdu, iov, offset, ucs2_unc,
+                                   PTR_UNIQUE, dcerpc_encode_ucs2z);
+        offset = dcerpc_encode_ptr(dce, pdu, iov, offset, ucs2_share,
+                                   PTR_REF, dcerpc_encode_ucs2z);
+        offset = dcerpc_encode_ptr(dce, pdu, iov, offset, &req->level,
+                                   PTR_REF, dcerpc_encode_32);
+        offset = dcerpc_process_deferred_pointers(dce, pdu, iov, offset);
+
+        free(ucs2_unc);
+        free(ucs2_share);
+
+        return offset;
+}
+
+int
+srvsvc_NetShareGetInfo_decoder(struct dcerpc_context *dce,
+                               struct dcerpc_pdu *pdu,
+                               struct smb2_iovec *iov, int offset,
+                               void *ptr)
+{
+        struct srvsvc_netsharegetinfo_rep *rep = ptr;
+        struct srvsvc_netshareinfo *info;
+
+        info = smb2_alloc_data(dcerpc_get_smb2_context(dce),
+                               dcerpc_get_pdu_payload(pdu),
+                               sizeof(struct srvsvc_netshareinfo));
+        if (info == NULL) {
+                return -1;
+        }
+
+        rep->info = info;
+        offset = dcerpc_decode_ptr(dce, pdu, iov, offset, rep->info,
+                                   PTR_REF, srvsvc_NetShareInfo_decoder);
+
+        offset = dcerpc_decode_32(dce, pdu, iov, offset, &rep->status);
+
         return offset;
 }

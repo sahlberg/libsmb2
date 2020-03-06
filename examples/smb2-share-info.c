@@ -1,6 +1,6 @@
 /* -*-  mode:c; tab-width:8; c-basic-offset:8; indent-tabs-mode:nil;  -*- */
 /*
-   Copyright (C) 2016 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
+   Copyright (C) 2020 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
@@ -31,49 +31,44 @@ int is_finished;
 int usage(void)
 {
         fprintf(stderr, "Usage:\n"
-                "smb2-share-enum <smb2-url>\n\n"
+                "smb2-share-info <smb2-url>\n\n"
                 "URL format: "
-                "smb://[<domain;][<username>@]<host>[:<port>]/\n");
+                "smb://[<domain;][<username>@]<host>[:<port>]/share\n");
         exit(1);
 }
 
-void se_cb(struct smb2_context *smb2, int status,
+void si_cb(struct smb2_context *smb2, int status,
                 void *command_data, void *private_data)
 {
-        struct srvsvc_netshareenumall_rep *rep = command_data;
-        int i;
+        struct srvsvc_netsharegetinfo_rep *rep = command_data;
 
         if (status) {
-                printf("failed to enumerate shares (%s) %s\n",
+                printf("failed to get info for share (%s) %s\n",
                        strerror(-status), smb2_get_error(smb2));
                 exit(10);
         }
-
-        printf("Number of shares:%d\n", rep->ctr->ctr1.count);
-        for (i = 0; i < rep->ctr->ctr1.count; i++) {
-                printf("%-20s %-20s", rep->ctr->ctr1.array[i].name,
-                       rep->ctr->ctr1.array[i].comment);
-                if ((rep->ctr->ctr1.array[i].type & 3) == SHARE_TYPE_DISKTREE) {
+        printf("%-20s %-20s", rep->info->info1.name,
+               rep->info->info1.comment);
+        if ((rep->info->info1.type & 3) == SHARE_TYPE_DISKTREE) {
                         printf(" DISKTREE");
-                }
-                if ((rep->ctr->ctr1.array[i].type & 3) == SHARE_TYPE_PRINTQ) {
-                        printf(" PRINTQ");
-                }
-                if ((rep->ctr->ctr1.array[i].type & 3) == SHARE_TYPE_DEVICE) {
-                        printf(" DEVICE");
-                }
-                if ((rep->ctr->ctr1.array[i].type & 3) == SHARE_TYPE_IPC) {
-                        printf(" IPC");
-                }
-                if (rep->ctr->ctr1.array[i].type & SHARE_TYPE_TEMPORARY) {
-                        printf(" TEMPORARY");
-                }
-                if (rep->ctr->ctr1.array[i].type & SHARE_TYPE_HIDDEN) {
-                        printf(" HIDDEN");
-                }
-                printf("\n");
+        }
+        if ((rep->info->info1.type & 3) == SHARE_TYPE_PRINTQ) {
+                printf(" PRINTQ");
+        }
+        if ((rep->info->info1.type & 3) == SHARE_TYPE_DEVICE) {
+                printf(" DEVICE");
+        }
+        if ((rep->info->info1.type & 3) == SHARE_TYPE_IPC) {
+                printf(" IPC");
+        }
+        if (rep->info->info1.type & SHARE_TYPE_TEMPORARY) {
+                printf(" TEMPORARY");
+        }
+        if (rep->info->info1.type & SHARE_TYPE_HIDDEN) {
+                printf(" HIDDEN");
         }
 
+        printf("\n");
         smb2_free_data(smb2, rep);
 
         is_finished = 1;
@@ -113,8 +108,8 @@ int main(int argc, char *argv[])
 		exit(10);
         }
 
-	if (smb2_share_enum_async(smb2, se_cb, NULL) != 0) {
-		printf("smb2_share_enum failed. %s\n", smb2_get_error(smb2));
+	if (smb2_share_info_async(smb2, url->share, si_cb, NULL) != 0) {
+		printf("smb2_share_info failed. %s\n", smb2_get_error(smb2));
 		exit(10);
 	}
 

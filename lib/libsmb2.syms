@@ -41,6 +41,7 @@ smb2_init_context
 smb2_mkdir
 smb2_mkdir_async
 smb2_share_enum_async
+smb2_share_info_async
 smb2_open
 smb2_open_async
 smb2_opendir
