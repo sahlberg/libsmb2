@@ -71,17 +71,12 @@ struct dcerpc_deferred_pointer {
 
 #define MAX_DEFERRED_PTR 1024
 
-#define SRVSVC_UUID    0x4b324fc8, 0x1670, 0x01d3, 0x12785a47bf6ee188
 #define NDR32_UUID     0x8a885d04, 0x1ceb, 0x11c9, 0x9fe808002b104860
 #define NDR64_UUID     0x71710533, 0xbeba, 0x4937, 0x8319b5dbef9ccc36
 /*
  * NDR64 is only supported for LITTLE_ENDIAN encodings:
  * https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-rpce/b1af93c7-f988-4a1a-ac74-063179942f32
  */
-
-p_syntax_id_t srvsvc_interface = {
-        {SRVSVC_UUID}, 3, 0
-};
 
 p_syntax_id_t ndr32_syntax = {
         {NDR32_UUID}, 2

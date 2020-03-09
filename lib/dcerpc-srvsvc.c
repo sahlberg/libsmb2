@@ -61,6 +61,12 @@
 #include "libsmb2-raw.h"
 #include "libsmb2-private.h"
 
+#define SRVSVC_UUID    0x4b324fc8, 0x1670, 0x01d3, 0x12785a47bf6ee188
+
+p_syntax_id_t srvsvc_interface = {
+        {SRVSVC_UUID}, 3, 0
+};
+
 /*
  * SRVSVC BEGIN:  DEFINITIONS FROM SRVSVC.IDL
  */
