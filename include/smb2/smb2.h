@@ -556,7 +556,7 @@ struct smb2_file_end_of_file_info {
  */
 struct smb2_file_rename_info {
         uint8_t replace_if_exist;
-        uint8_t *file_name;
+        const uint8_t* file_name;
 };
 
 #define SMB2_SET_INFO_REQUEST_SIZE 33
