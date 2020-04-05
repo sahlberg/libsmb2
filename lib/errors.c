@@ -1046,6 +1046,7 @@ const char *nterror_to_str(uint32_t status) {
 int nterror_to_errno(uint32_t status) {
         switch (status) {
         case SMB2_STATUS_SUCCESS:
+        case SMB2_STATUS_END_OF_FILE:
                 return 0;
         case SMB2_STATUS_PENDING:
                 return EAGAIN;
@@ -1126,7 +1127,6 @@ int nterror_to_errno(uint32_t status) {
                 return EROFS;
         case SMB2_STATUS_NO_MEDIA_IN_DEVICE:
                 return ENODEV;
-        case SMB2_STATUS_END_OF_FILE:
         case SMB2_STATUS_DATA_ERROR:
         case SMB2_STATUS_CRC_ERROR:
         case SMB2_STATUS_DEVICE_DATA_ERROR:
