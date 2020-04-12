@@ -93,6 +93,8 @@ smb2_parse_args(struct smb2_context *smb2, const char *args)
 
                 if (!strcmp(args, "seal")) {
                         smb2->seal = 1;
+                } else if (!strcmp(args, "sign")) {
+                        smb2->sign = 1;
                 } else if (!strcmp(args, "ndr32")) {
                         smb2->ndr = 1;
                 } else if (!strcmp(args, "ndr64")) {
@@ -508,6 +510,11 @@ void smb2_set_workstation(struct smb2_context *smb2, const char *workstation)
 void smb2_set_seal(struct smb2_context *smb2, int val)
 {
         smb2->seal = val;
+}
+
+void smb2_set_sign(struct smb2_context *smb2, int val)
+{
+        smb2->sign = val;
 }
 
 void smb2_set_authentication(struct smb2_context *smb2, int val)

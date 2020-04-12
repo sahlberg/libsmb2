@@ -53,6 +53,7 @@ Aruments supported by libsmb2 are :
 		  2.02, 2.10, 3.00, 3.02 : negotiate a specific version.
 		  Default is to negotiate any SMB2 or SMB3 version.
   seal          : Enable SMB3 encryption.
+  sign          : Require SMB2/3 signing.
 
 NOTE:-
 	When using krb5cc mode use smb2_set_domain() and smb2_set_password() in the examples and applications

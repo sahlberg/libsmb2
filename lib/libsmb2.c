@@ -771,6 +771,16 @@ negotiate_cb(struct smb2_context *smb2, int status,
                 }
         }
 
+        if (smb2->sign &&
+            !(rep->security_mode & SMB2_NEGOTIATE_SIGNING_ENABLED)) {
+                smb2_set_error(smb2, "Signing requested but server "
+                               "does not support signing.");
+                smb2_close_context(smb2);
+                c_data->cb(smb2, -ENOMEM, NULL, c_data->cb_data);
+                free_c_data(smb2, c_data);
+                return;
+        }
+
         if (rep->security_mode & SMB2_NEGOTIATE_SIGNING_REQUIRED) {
                 smb2->sign = 1;
         }

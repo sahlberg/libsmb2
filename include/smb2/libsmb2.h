@@ -181,6 +181,13 @@ void smb2_set_security_mode(struct smb2_context *smb2, uint16_t security_mode);
 void smb2_set_seal(struct smb2_context *smb2, int val);
 
 /*
+ * Set whether smb2 signing should be required or not
+ * 0  : do not require signing. This is the default.
+ * !0 : require signing.
+ */
+void smb2_set_sign(struct smb2_context *smb2, int val);
+
+/*
  * Set authentication method.
  * SMB2_SEC_UNDEFINED (use KRB if available or NTLM if not)
  * SMB2_SEC_NTLMSSP
