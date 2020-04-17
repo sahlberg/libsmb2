@@ -445,7 +445,7 @@ smb2_opendir_async(struct smb2_context *smb2, const char *path,
         dir = calloc(1, sizeof(struct smb2dir));
         if (dir == NULL) {
                 smb2_set_error(smb2, "Failed to allocate smb2dir.");
-                return -1;
+                return -EINVAL;
         }
         SMB2_LIST_ADD(&smb2->dirs, dir);
         dir->cb = cb;
@@ -465,7 +465,7 @@ smb2_opendir_async(struct smb2_context *smb2, const char *path,
         if (pdu == NULL) {
                 free_smb2dir(smb2, dir);
                 smb2_set_error(smb2, "Failed to create opendir command.");
-                return -1;
+                return -EINVAL;
         }
         smb2_queue_pdu(smb2, pdu);
         
@@ -1248,7 +1248,7 @@ smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
         pdu = smb2_cmd_read_async(smb2, &req, read_cb, rd);
         if (pdu == NULL) {
                 smb2_set_error(smb2, "Failed to create read command");
-                return -1;
+                return -EINVAL;
         }
 
         smb2_queue_pdu(smb2, pdu);
@@ -1338,7 +1338,7 @@ smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
         pdu = smb2_cmd_write_async(smb2, &req, write_cb, rd);
         if (pdu == NULL) {
                 smb2_set_error(smb2, "Failed to create write command");
-                return -ENOMEM;
+                return -EINVAL;
         }
         smb2_queue_pdu(smb2, pdu);
 
@@ -1878,7 +1878,7 @@ smb2_truncate_async(struct smb2_context *smb2, const char *path,
         trunc_data = calloc(1, sizeof(struct trunc_cb_data));
         if (trunc_data == NULL) {
                 smb2_set_error(smb2, "Failed to allocate trunc_data");
-                return -1;
+                return -ENOMEM;
         }
 
         trunc_data->cb = cb;
@@ -1900,7 +1900,7 @@ smb2_truncate_async(struct smb2_context *smb2, const char *path,
         if (pdu == NULL) {
                 smb2_set_error(smb2, "Failed to create create command");
                 free(trunc_data);
-                return -1;
+                return -EINVAL;
         }
 
         /* SET INFO command */
@@ -1920,7 +1920,7 @@ smb2_truncate_async(struct smb2_context *smb2, const char *path,
                                smb2_get_error(smb2));
                 free(trunc_data);
                 smb2_free_pdu(smb2, pdu);
-                return -1;
+                return -EINVAL;
         }
         smb2_add_compound_pdu(smb2, pdu, next_pdu);
 
@@ -1934,7 +1934,7 @@ smb2_truncate_async(struct smb2_context *smb2, const char *path,
                 trunc_data->cb(smb2, -ENOMEM, NULL, trunc_data->cb_data);
                 free(trunc_data);
                 smb2_free_pdu(smb2, pdu);
-                return -1;
+                return -EINVAL;
         }
         smb2_add_compound_pdu(smb2, pdu, next_pdu);
 
@@ -2000,7 +2000,7 @@ smb2_rename_async(struct smb2_context *smb2, const char *oldpath,
         rename_data = calloc(1, sizeof(struct rename_cb_data));
         if (rename_data == NULL) {
                 smb2_set_error(smb2, "Failed to allocate rename_data");
-                return -1;
+                return -ENOMEM;
         }
 
         rename_data->cb = cb;
@@ -2021,7 +2021,7 @@ smb2_rename_async(struct smb2_context *smb2, const char *oldpath,
         if (pdu == NULL) {
                 smb2_set_error(smb2, "Failed to create create command");
                 free(rename_data);
-                return -1;
+                return -EINVAL;
         }
 
         /* SET INFO command */
@@ -2042,7 +2042,7 @@ smb2_rename_async(struct smb2_context *smb2, const char *oldpath,
                                smb2_get_error(smb2));
                 free(rename_data);
                 smb2_free_pdu(smb2, pdu);
-                return -1;
+                return -EINVAL;
         }
         smb2_add_compound_pdu(smb2, pdu, next_pdu);
 
@@ -2056,7 +2056,7 @@ smb2_rename_async(struct smb2_context *smb2, const char *oldpath,
                 rename_data->cb(smb2, -ENOMEM, NULL, rename_data->cb_data);
                 free(rename_data);
                 smb2_free_pdu(smb2, pdu);
-                return -1;
+                return -EINVAL;
         }
         smb2_add_compound_pdu(smb2, pdu, next_pdu);
 
@@ -2184,7 +2184,7 @@ smb2_readlink_async(struct smb2_context *smb2, const char *path,
         readlink_data = calloc(1, sizeof(struct readlink_cb_data));
         if (readlink_data == NULL) {
                 smb2_set_error(smb2, "Failed to allocate readlink_data");
-                return -1;
+                return -ENOMEM;
         }
 
         readlink_data->cb = cb;
@@ -2206,7 +2206,7 @@ smb2_readlink_async(struct smb2_context *smb2, const char *path,
         if (pdu == NULL) {
                 smb2_set_error(smb2, "Failed to create create command");
                 free(readlink_data);
-                return -1;
+                return -EINVAL;
         }
 
         /* IOCTL command */
@@ -2223,7 +2223,7 @@ smb2_readlink_async(struct smb2_context *smb2, const char *path,
                 readlink_data->cb(smb2, -ENOMEM, NULL, readlink_data->cb_data);
                 free(readlink_data);
                 smb2_free_pdu(smb2, pdu);
-                return -1;
+                return -EINVAL;
         }
         smb2_add_compound_pdu(smb2, pdu, next_pdu);
 
@@ -2238,7 +2238,7 @@ smb2_readlink_async(struct smb2_context *smb2, const char *path,
                 readlink_data->cb(smb2, -ENOMEM, NULL, readlink_data->cb_data);
                 free(readlink_data);
                 smb2_free_pdu(smb2, pdu);
-                return -1;
+                return -EINVAL;
         }
         smb2_add_compound_pdu(smb2, pdu, next_pdu);
 
