@@ -1177,10 +1177,6 @@ read_cb(struct smb2_context *smb2, int status,
         struct rw_data *rd = private_data;
         struct smb2_read_reply *rep = command_data;
 
-        if (status == SMB2_STATUS_CANCELLED) {
-                free(rd);
-                return;
-        }
         if (status && status != SMB2_STATUS_END_OF_FILE) {
                 smb2_set_error(smb2, "Read/Write failed with (0x%08x) %s",
                                status, nterror_to_str(status));
@@ -1707,10 +1703,6 @@ getinfo_cb_1(struct smb2_context *smb2, int status,
              void *command_data _U_, void *private_data)
 {
         struct stat_cb_data *stat_data = private_data;
-
-        if (status == SMB2_STATUS_CANCELLED) {
-                return;
-        }
 
         if (stat_data->status == SMB2_STATUS_SUCCESS) {
                 stat_data->status = status;
@@ -2258,11 +2250,6 @@ disconnect_cb_2(struct smb2_context *smb2, int status,
 {
         struct disconnect_data *dc_data = private_data;
 
-        if (status == SMB2_STATUS_CANCELLED) {
-                free(dc_data);
-                return;
-        }
-
         dc_data->cb(smb2, 0, NULL, dc_data->cb_data);
         free(dc_data);
         if (smb2->change_fd) {
@@ -2278,11 +2265,6 @@ disconnect_cb_1(struct smb2_context *smb2, int status,
 {
         struct disconnect_data *dc_data = private_data;
         struct smb2_pdu *pdu;
-
-        if (status == SMB2_STATUS_CANCELLED) {
-                free(dc_data);
-                return;
-        }
 
         pdu = smb2_cmd_logoff_async(smb2, disconnect_cb_2, dc_data);
         if (pdu == NULL) {
