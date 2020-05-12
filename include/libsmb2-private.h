@@ -117,6 +117,7 @@ struct smb2_context {
 
         t_socket fd;
         int is_connected;
+        int timeout;
 
         enum smb2_sec sec;
 
@@ -247,6 +248,7 @@ struct smb2_pdu {
         uint8_t seal:1;
         uint32_t crypt_len;
         unsigned char *crypt;
+        time_t timeout;
 };
 
 /* UCS2 is always in Little Endianness */
@@ -413,6 +415,7 @@ void smb2_free_all_dirs(struct smb2_context *smb2);
 
 int smb2_read_from_buf(struct smb2_context *smb2);
 void smb2_change_events(struct smb2_context *smb2, int fd, int events);
+void smb2_timeout_pdus(struct smb2_context *smb2);
 
 struct dcerpc_context;
 int dcerpc_set_uint8(struct dcerpc_context *ctx, struct smb2_iovec *iov,

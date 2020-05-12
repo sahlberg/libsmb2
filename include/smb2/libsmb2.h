@@ -166,6 +166,16 @@ void smb2_fd_event_callbacks(struct smb2_context *smb2,
 int smb2_service(struct smb2_context *smb2, int revents);
 
 /*
+ * Set the timeout in seconds after which a command will be aborted with
+ * SMB2_STATUS_IO_TIMEOUT.
+ * If you use timeouts with the async API you must make sure to call
+ * smb2_service() at least once every second.
+ *
+ * Default is 0: No timeout.
+ */
+void smb2_set_timeout(struct smb2_context *smb2, int seconds);
+
+/*
  * Set the security mode for the connection.
  * This is a combination of the flags SMB2_NEGOTIATE_SIGNING_ENABLED
  * and  SMB2_NEGOTIATE_SIGNING_REQUIRED

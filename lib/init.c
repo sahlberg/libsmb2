@@ -135,6 +135,8 @@ smb2_parse_args(struct smb2_context *smb2, const char *args)
                                                "%s", value);
                                 return -1;
                         }
+                } else if (!strcmp(args, "timeout")) {
+                        smb2->timeout = strtol(value, NULL, 10);
                 } else {
                         smb2_set_error(smb2, "Unknown argument: %s", args);
                         return -1;
@@ -520,4 +522,9 @@ void smb2_set_sign(struct smb2_context *smb2, int val)
 void smb2_set_authentication(struct smb2_context *smb2, int val)
 {
         smb2->sec = val;
+}
+
+void smb2_set_timeout(struct smb2_context *smb2, int seconds)
+{
+        smb2->timeout = seconds;
 }

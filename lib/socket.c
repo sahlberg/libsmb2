@@ -551,8 +551,10 @@ smb2_read_from_buf(struct smb2_context *smb2)
 int
 smb2_service(struct smb2_context *smb2, int revents)
 {
+        int ret = 0;
+
 	if (smb2->fd < 0) {
-		return 0;
+                goto out;
 	}
 
         if (revents & POLLERR) {
@@ -571,12 +573,14 @@ smb2_service(struct smb2_context *smb2, int revents)
 			smb2_set_error(smb2, "smb2_service: POLLERR, "
 					"Unknown socket error.");
 		}
-		return -1;
+		ret = -1;
+                goto out;
 	}
 	if (revents & POLLHUP) {
 		smb2_set_error(smb2, "smb2_service: POLLHUP, "
 				"socket error.");
-                return -1;
+                ret = -1;
+                goto out;
 	}
 
 	if (smb2->is_connected == 0 && revents & POLLOUT) {
@@ -596,7 +600,8 @@ smb2_service(struct smb2_context *smb2, int revents)
                                                  NULL, smb2->connect_data);
 				smb2->connect_cb = NULL;
 			}
-                        return -1;
+                        ret = -1;
+                        goto out;
 		}
 
 		smb2->is_connected = 1;
@@ -605,23 +610,28 @@ smb2_service(struct smb2_context *smb2, int revents)
 			smb2->connect_cb(smb2, 0, NULL,	smb2->connect_data);
 			smb2->connect_cb = NULL;
 		}
-		return 0;
+		goto out;
 	}
 
 	if (revents & POLLIN) {
 		if (smb2_read_from_socket(smb2) != 0) {
-                        return -1;
+                        ret = -1;
+                        goto out;
 		}
 	}
         
 	if (revents & POLLOUT && smb2->outqueue != NULL) {
 		if (smb2_write_to_socket(smb2) != 0) {
-                        return -1;
+                        ret = -1;
+                        goto out;
 		}
 	}
 
-        
-        return 0;
+ out:
+        if (smb2->timeout) {
+                smb2_timeout_pdus(smb2);
+        }
+        return ret;
 }
 
 static void

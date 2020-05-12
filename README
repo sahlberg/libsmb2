@@ -54,6 +54,8 @@ Aruments supported by libsmb2 are :
 		  Default is to negotiate any SMB2 or SMB3 version.
   seal          : Enable SMB3 encryption.
   sign          : Require SMB2/3 signing.
+  timeout       : Timeout in seconds when to cancel a command.
+                  Default it 0: No timeout.
 
 NOTE:-
 	When using krb5cc mode use smb2_set_domain() and smb2_set_password() in the examples and applications

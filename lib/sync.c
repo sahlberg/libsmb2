@@ -66,6 +66,9 @@ static int wait_for_reply(struct smb2_context *smb2,
 			smb2_set_error(smb2, "Poll failed");
 			return -1;
 		}
+                if (smb2->timeout) {
+                        smb2_timeout_pdus(smb2);
+                }
                 if (pfd.revents == 0) {
                         continue;
                 }

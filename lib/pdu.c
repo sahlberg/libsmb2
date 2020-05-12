@@ -35,6 +35,8 @@
 #include <string.h>
 #endif
 
+#include <time.h>
+
 #include "portable-endian.h"
 
 #include "slist.h"
@@ -141,6 +143,10 @@ smb2_allocate_pdu(struct smb2_context *smb2, enum smb2_command command,
                 if (smb2->seal) {
                         pdu->seal = 1;
                 }
+        }
+
+        if (smb2->timeout) {
+                pdu->timeout = time(NULL) + smb2->timeout;
         }
 
         return pdu;
@@ -524,5 +530,35 @@ smb2_process_payload_variable(struct smb2_context *smb2, struct smb2_pdu *pdu)
                 return smb2_process_ioctl_variable(smb2, pdu); 
         }
         return 0;
+}
+
+void smb2_timeout_pdus(struct smb2_context *smb2)
+{
+        struct smb2_pdu *pdu, *next;
+        time_t t = time(NULL);
+
+        pdu = smb2->outqueue;
+        while (pdu) {
+                next = pdu->next;
+                if (pdu->timeout && pdu->timeout < t) {
+                        SMB2_LIST_REMOVE(&smb2->outqueue, pdu);
+                        pdu->cb(smb2, SMB2_STATUS_IO_TIMEOUT, NULL,
+                                pdu->cb_data);
+                        smb2_free_pdu(smb2, pdu);
+                }
+                pdu = next;
+        }
+
+        pdu = smb2->waitqueue;
+        while (pdu) {
+                next = pdu->next;
+                if (pdu->timeout && pdu->timeout < t) {
+                        SMB2_LIST_REMOVE(&smb2->waitqueue, pdu);
+                        pdu->cb(smb2, SMB2_STATUS_IO_TIMEOUT, NULL,
+                                pdu->cb_data);
+                        smb2_free_pdu(smb2, pdu);
+                }
+                pdu = next;
+        }
 }
 
