@@ -1201,11 +1201,13 @@ smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
         struct smb2_read_request req;
         struct rw_data *rd;
         struct smb2_pdu *pdu;
-        int needed_credits = (count - 1) / 65536 + 1;
+        int needed_credits;
 
         if (count > smb2->max_read_size) {
                 count = smb2->max_read_size;
         }
+        needed_credits = (count - 1) / 65536 + 1;
+
         if (smb2->dialect > SMB2_VERSION_0202) {
                 if (needed_credits > MAX_CREDITS - 16) {
                         count =  (MAX_CREDITS - 16) * 65536;
@@ -1219,6 +1221,7 @@ smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
                         count = 65536;
                 }
         }
+        needed_credits = (count - 1) / 65536 + 1;
 
         rd = calloc(1, sizeof(struct rw_data));
         if (rd == NULL) {
@@ -1292,11 +1295,13 @@ smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
         struct smb2_write_request req;
         struct rw_data *rd;
         struct smb2_pdu *pdu;
-        int needed_credits = (count - 1) / 65536 + 1;
+        int needed_credits;
 
         if (count > smb2->max_write_size) {
                 count = smb2->max_write_size;
         }
+        needed_credits = (count - 1) / 65536 + 1;
+
         if (smb2->dialect > SMB2_VERSION_0202) {
                 if (needed_credits > MAX_CREDITS - 16) {
                         count =  (MAX_CREDITS - 16) * 65536;
@@ -1310,6 +1315,7 @@ smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
                         count = 65536;
                 }
         }
+        needed_credits = (count - 1) / 65536 + 1;
 
         rd = calloc(1, sizeof(struct rw_data));
         if (rd == NULL) {
