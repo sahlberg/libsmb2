@@ -13,6 +13,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 #define _GNU_SOURCE
 
+#include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
 #include <stdint.h>
@@ -45,7 +46,7 @@ int main(int argc, char *argv[])
         struct smb2_context *smb2;
         struct smb2_url *url;
         struct smb2fh *fh;
-        int count;
+        int count, rc = 0;
 
         if (argc < 2) {
                 usage();
@@ -77,7 +78,16 @@ int main(int argc, char *argv[])
 		exit(10);
         }
 
-        while ((count = smb2_pread(smb2, fh, buf, MAXBUF, pos)) > 0) {
+        while ((count = smb2_pread(smb2, fh, buf, MAXBUF, pos)) != 0) {
+                if (count == -EAGAIN) {
+                        continue;
+                }
+                if (count < 0) {
+                        fprintf(stderr, "Failed to read file. %s\n",
+                                smb2_get_error(smb2));
+                        rc = 1;
+                        break;
+                }
                 write(0, buf, count);
                 pos += count;
         };
@@ -87,5 +97,5 @@ int main(int argc, char *argv[])
         smb2_destroy_url(url);
         smb2_destroy_context(smb2);
         
-	return 0;
+	return rc;
 }
