@@ -27,7 +27,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "libsmb2.h"
 #include "libsmb2-raw.h"
 
-uint8_t buf[256 * 1024];
+#define MAXBUF 16 * 1024 * 1024
+uint8_t buf[MAXBUF];
 uint32_t pos;
 
 int usage(void)
@@ -76,7 +77,7 @@ int main(int argc, char *argv[])
 		exit(10);
         }
 
-        while ((count = smb2_pread(smb2, fh, buf, 1024, pos)) > 0) {
+        while ((count = smb2_pread(smb2, fh, buf, MAXBUF, pos)) > 0) {
                 write(0, buf, count);
                 pos += count;
         };
