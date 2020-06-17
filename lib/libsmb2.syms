@@ -1,4 +1,10 @@
 compound_file_id
+dcerpc_call_async
+dcerpc_create_context
+dcerpc_connect_context_async
+dcerpc_destroy_context
+dcerpc_free_data
+dcerpc_get_error
 nterror_to_str
 nterror_to_errno
 smb2_add_compound_pdu
@@ -41,7 +47,6 @@ smb2_init_context
 smb2_mkdir
 smb2_mkdir_async
 smb2_share_enum_async
-smb2_share_info_async
 smb2_open
 smb2_open_async
 smb2_opendir
@@ -88,3 +93,8 @@ smb2_write
 smb2_write_async
 smb2_echo
 smb2_echo_async
+srvsvc_interface
+srvsvc_NetShareEnumAll_decoder
+srvsvc_NetShareEnumAll_encoder
+srvsvc_NetShareGetInfo_decoder
+srvsvc_NetShareGetInfo_encoder

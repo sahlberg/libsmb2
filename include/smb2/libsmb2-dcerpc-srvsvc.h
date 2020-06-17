@@ -113,24 +113,6 @@ struct srvsvc_rep {
 int smb2_share_enum_async(struct smb2_context *smb2,
                           smb2_command_cb cb, void *cb_data);
 
-/*
- * Async share_info()
- * This function only works when connected to the IPC$ share.
- *
- * Returns
- *  0     : The operation was initiated. Result of the operation will be
- *          reported through the callback function.
- * -errno : There was an error. The callback function will not be invoked.
- *
- * When the callback is invoked, status indicates the result:
- *      0 : Success. Command_data is struct srvsvc_netshareinfo_rep *
- *          This pointer must be freed using smb2_free_data().
- * -errno : An error occured.
- */
-int smb2_share_info_async(struct smb2_context *smb2, const char *share,
-                          smb2_command_cb cb, void *cb_data);
-
-        
 int srvsvc_NetShareEnumAll_decoder(struct dcerpc_context *dce,
                                    struct dcerpc_pdu *pdu,
                                    struct smb2_iovec *iov, int offset,

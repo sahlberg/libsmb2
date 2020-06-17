@@ -310,8 +310,7 @@ dcerpc_get_pdu_payload(struct dcerpc_pdu *pdu)
 }
 
 struct dcerpc_context *
-dcerpc_create_context(struct smb2_context *smb2, const char *path,
-                      p_syntax_id_t *syntax)
+dcerpc_create_context(struct smb2_context *smb2)
 {
         struct dcerpc_context *ctx;
 
@@ -322,20 +321,32 @@ dcerpc_create_context(struct smb2_context *smb2, const char *path,
         }
 
         ctx->smb2 = smb2;
-        ctx->call_id = 2;
-        ctx->path = strdup(path);
-        if (ctx->path == NULL) {
-                smb2_set_error(smb2, "Failed to allocate path for "
-                               "dcercp context.");
-                free(ctx);
-                return NULL;
-        }
-        ctx->syntax = syntax;
-        ctx->packed_drep[0] = DCERPC_DR_ASCII;
-        if (!ctx->smb2->endianess) {
-                ctx->packed_drep[0] |= DCERPC_DR_LITTLE_ENDIAN;
-        }
         return ctx;
+}
+
+int
+dcerpc_connect_context_async(struct dcerpc_context *dce, const char *path,
+                             p_syntax_id_t *syntax,
+                             dcerpc_cb cb, void *cb_data)
+{
+        dce->call_id = 2;
+        dce->path = strdup(path);
+        if (dce->path == NULL) {
+                smb2_set_error(dce->smb2, "Failed to allocate path for "
+                               "dcercp context.");
+                return -ENOMEM;
+        }
+        dce->syntax = syntax;
+        dce->packed_drep[0] = DCERPC_DR_ASCII;
+        if (!dce->smb2->endianess) {
+                dce->packed_drep[0] |= DCERPC_DR_LITTLE_ENDIAN;
+        }
+
+        if (dcerpc_open_async(dce, cb, cb_data) != 0) {
+                return -1;
+        }
+
+        return 0;
 }
 
 void
@@ -1464,4 +1475,16 @@ dcerpc_open_async(struct dcerpc_context *dce, dcerpc_cb cb,
         smb2_queue_pdu(dce->smb2, pdu);
 
         return 0;
+}
+
+const char *
+dcerpc_get_error(struct dcerpc_context *dce)
+{
+        return smb2_get_error(dcerpc_get_smb2_context(dce));
+}
+
+void
+dcerpc_free_data(struct dcerpc_context *dce, void *data)
+{
+        return smb2_free_data(dcerpc_get_smb2_context(dce), data);
 }

@@ -68,9 +68,12 @@ extern p_syntax_id_t srvsvc_interface;
 typedef void (*dcerpc_cb)(struct dcerpc_context *dce, int status,
                           void *command_data, void *cb_data);
 
-struct dcerpc_context *dcerpc_create_context(struct smb2_context *smb2,
-                                             const char *path,
-                                             p_syntax_id_t *syntax);
+struct dcerpc_context *dcerpc_create_context(struct smb2_context *smb2);
+void dcerpc_free_data(struct dcerpc_context *dce, void *data);
+const char *dcerpc_get_error(struct dcerpc_context *dce);
+int dcerpc_connect_context_async(struct dcerpc_context *dce,
+                                 const char *path, p_syntax_id_t *syntax,
+                                 dcerpc_cb cb, void *cb_data);
 void dcerpc_destroy_context(struct dcerpc_context *dce);
 
 struct smb2_context *dcerpc_get_smb2_context(struct dcerpc_context *dce);
