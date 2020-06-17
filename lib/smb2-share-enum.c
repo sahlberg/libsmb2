@@ -66,7 +66,6 @@ struct smb2nse {
         void *cb_data;
         union {
                 struct srvsvc_netshareenumall_req se_req;
-                struct srvsvc_netsharegetinfo_req si_req;
         };
 };
 
@@ -132,7 +131,7 @@ smb2_share_enum_async(struct smb2_context *smb2,
         struct smb2nse *nse;
         int rc;
 
-        dce = dcerpc_create_context(smb2, "srvsvc", &srvsvc_interface);
+        dce = dcerpc_create_context(smb2);
         if (dce == NULL) {
                 return -ENOMEM;
         }
@@ -152,76 +151,13 @@ smb2_share_enum_async(struct smb2_context *smb2,
         nse->se_req.max_buffer = 0xffffffff;
         nse->se_req.resume_handle = 0;
 
-        rc = dcerpc_open_async(dce, share_enum_bind_cb, nse);
+        rc = dcerpc_connect_context_async(dce, "srvsvc", &srvsvc_interface,
+                                          share_enum_bind_cb, nse);
         if (rc) {
                 free(nse);
                 dcerpc_destroy_context(dce);
                 return rc;
         }
         
-        return 0;
-}
-
-static void
-share_info_bind_cb(struct dcerpc_context *dce, int status,
-                   void *command_data, void *cb_data)
-{
-        struct smb2nse *nse = cb_data;
-        struct smb2_context *smb2 = dcerpc_get_smb2_context(dce);
-
-        if (status != SMB2_STATUS_SUCCESS) {
-                nse->cb(smb2, status, NULL, nse->cb_data);
-                nse_free(nse);
-                dcerpc_destroy_context(dce);
-                return;
-        }
-
-        status = dcerpc_call_async(dce,
-                                   SRVSVC_NETSHAREGETINFO,
-                                   srvsvc_NetShareGetInfo_encoder, &nse->si_req,
-                                   srvsvc_NetShareGetInfo_decoder,
-                                   sizeof(struct srvsvc_netsharegetinfo_rep),
-                                   srvsvc_ioctl_cb, nse);
-        if (status) {
-                nse->cb(smb2, status, NULL, nse->cb_data);
-                nse_free(nse);
-                dcerpc_destroy_context(dce);
-                return;
-        }
-}
-
-int
-smb2_share_info_async(struct smb2_context *smb2, const char *share,
-                      smb2_command_cb cb, void *cb_data)
-{
-        struct dcerpc_context *dce;
-        struct smb2nse *nse;
-        int rc;
-
-        dce = dcerpc_create_context(smb2, "srvsvc", &srvsvc_interface);
-        if (dce == NULL) {
-                return -ENOMEM;
-        }
-
-        nse = calloc(1, sizeof(struct smb2nse));
-        if (nse == NULL) {
-                smb2_set_error(smb2, "Failed to allocate nse");
-                dcerpc_destroy_context(dce);
-                return -ENOMEM;
-        }
-        nse->cb = cb;
-        nse->cb_data = cb_data;
-
-        nse->si_req.server = smb2->server;
-        nse->si_req.share = share;
-        nse->si_req.level = 1;
-
-        rc = dcerpc_open_async(dce, share_info_bind_cb, nse);
-        if (rc) {
-                free(nse);
-                dcerpc_destroy_context(dce);
-                return rc;
-        }
-
         return 0;
 }

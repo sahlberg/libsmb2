@@ -24,6 +24,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-raw.h"
+#include "libsmb2-dcerpc.h"
 #include "libsmb2-dcerpc-srvsvc.h"
 
 int is_finished;
@@ -37,14 +38,15 @@ int usage(void)
         exit(1);
 }
 
-void si_cb(struct smb2_context *smb2, int status,
-                void *command_data, void *private_data)
+void si_cb(struct dcerpc_context *dce, int status,
+                void *command_data, void *cb_data)
 {
         struct srvsvc_netsharegetinfo_rep *rep = command_data;
 
+        free(cb_data);
         if (status) {
                 printf("failed to get info for share (%s) %s\n",
-                       strerror(-status), smb2_get_error(smb2));
+                       strerror(-status), dcerpc_get_error(dce));
                 exit(10);
         }
         printf("%-20s %-20s", rep->info->info1.name,
@@ -69,14 +71,50 @@ void si_cb(struct smb2_context *smb2, int status,
         }
 
         printf("\n");
-        smb2_free_data(smb2, rep);
+        dcerpc_free_data(dce, rep);
 
         is_finished = 1;
+}
+
+void co_cb(struct dcerpc_context *dce, int status,
+           void *command_data, void *cb_data)
+{
+        struct srvsvc_netsharegetinfo_req *si_req;
+        struct smb2_url *url = cb_data;
+
+        if (status != SMB2_STATUS_SUCCESS) {
+                printf("failed to connect to SRVSVC (%s) %s\n",
+                       strerror(-status), dcerpc_get_error(dce));
+                exit(10);
+        }
+
+        si_req = calloc(1, sizeof(struct srvsvc_netsharegetinfo_req));
+        if (si_req == NULL) {
+                printf("failed to allocate srvsvc_netsharegetinfo_req\n");
+                exit(10);
+        }
+
+        si_req->server = url->server;
+        si_req->share = url->share;
+        si_req->level = 1;
+
+        if (dcerpc_call_async(dce,
+                              SRVSVC_NETSHAREGETINFO,
+                              srvsvc_NetShareGetInfo_encoder, si_req,
+                              srvsvc_NetShareGetInfo_decoder,
+                              sizeof(struct srvsvc_netsharegetinfo_rep),
+                              si_cb, si_req) != 0) {
+                printf("dcerpc_call_async failed with %s\n",
+                       dcerpc_get_error(dce));
+                free(si_req);
+                exit(10);
+        }
 }
 
 int main(int argc, char *argv[])
 {
         struct smb2_context *smb2;
+        struct dcerpc_context *dce;
         struct smb2_url *url;
 	struct pollfd pfd;
 
@@ -108,10 +146,19 @@ int main(int argc, char *argv[])
 		exit(10);
         }
 
-	if (smb2_share_info_async(smb2, url->share, si_cb, NULL) != 0) {
-		printf("smb2_share_info failed. %s\n", smb2_get_error(smb2));
+        dce = dcerpc_create_context(smb2);
+        if (dce == NULL) {
+		printf("Failed to create dce context. %s\n",
+                       smb2_get_error(smb2));
 		exit(10);
-	}
+        }
+
+        if (dcerpc_connect_context_async(dce, "srvsvc", &srvsvc_interface,
+                       co_cb, url) != 0) {
+		printf("Failed to connect dce context. %s\n",
+                       smb2_get_error(smb2));
+		exit(10);
+        }
 
         while (!is_finished) {
 		pfd.fd = smb2_get_fd(smb2);
@@ -131,6 +178,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
+        dcerpc_destroy_context(dce);
         smb2_disconnect_share(smb2);
         smb2_destroy_url(url);
         smb2_destroy_context(smb2);

@@ -56,8 +56,8 @@
 
 #include "smb2.h"
 #include "libsmb2.h"
-#include "libsmb2-dcerpc-srvsvc.h"
 #include "libsmb2-dcerpc.h"
+#include "libsmb2-dcerpc-srvsvc.h"
 #include "libsmb2-raw.h"
 #include "libsmb2-private.h"
 
