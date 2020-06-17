@@ -718,8 +718,19 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
         err = getaddrinfo(host, port, NULL, &ai);
         if (err != 0) {
                 free(addr);
-                smb2_set_error(smb2, "Invalid address:%s  "
-                               "Can not resolv into IPv4/v6.", server);
+#ifdef _WINDOWS
+				if (err == WSANOTINITIALISED)
+				{
+					smb2_set_error(smb2, "Winsock was not initialized. "
+						"Please call WSAStartup().");
+					return -WSANOTINITIALISED; 
+				}
+				else
+#endif
+				{
+					smb2_set_error(smb2, "Invalid address:%s  "
+						"Can not resolv into IPv4/v6.", server);
+				}
                 switch (err) {
                     case EAI_AGAIN:
                         return -EAGAIN;

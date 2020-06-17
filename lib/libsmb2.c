@@ -155,6 +155,9 @@ struct smb2fh {
 static void
 smb2_close_context(struct smb2_context *smb2)
 {
+        if (smb2 == NULL){
+                return;
+        }
         if (smb2->fd != -1) {
                 if (smb2->change_fd) {
                         smb2->change_fd(smb2, smb2->fd, SMB2_DEL_FD);
@@ -204,6 +207,9 @@ void
 smb2_seekdir(struct smb2_context *smb2, struct smb2dir *dir,
                   long loc)
 {
+        if (dir == NULL){
+                return;
+        }
         dir->current_entry = dir->entries;
         dir->index = 0;
 
@@ -216,6 +222,9 @@ smb2_seekdir(struct smb2_context *smb2, struct smb2dir *dir,
 long
 smb2_telldir(struct smb2_context *smb2, struct smb2dir *dir)
 {
+        if (dir == NULL) {
+                return -EINVAL;
+        }
         return dir->index;
 }
 
@@ -223,6 +232,9 @@ void
 smb2_rewinddir(struct smb2_context *smb2,
                     struct smb2dir *dir)
 {
+        if (dir == NULL) {
+                return;
+        }
         dir->current_entry = dir->entries;
         dir->index = 0;
 }
@@ -232,8 +244,7 @@ smb2_readdir(struct smb2_context *smb2,
              struct smb2dir *dir)
 {
         struct smb2dirent *ent;
-
-        if (dir->current_entry == NULL) {
+        if ((dir == NULL) || (dir->current_entry == NULL)) {
                 return NULL;
         }
 
@@ -247,6 +258,9 @@ smb2_readdir(struct smb2_context *smb2,
 void
 smb2_closedir(struct smb2_context *smb2, struct smb2dir *dir)
 {
+        if ((smb2 == NULL) || (dir == NULL)) {
+                return;
+        }
         free_smb2dir(smb2, dir);
 }
 
@@ -437,6 +451,10 @@ smb2_opendir_async(struct smb2_context *smb2, const char *path,
         struct smb2_create_request req;
         struct smb2dir *dir;
         struct smb2_pdu *pdu;
+
+        if (smb2 == NULL) {
+                return -EINVAL;
+        }
 
         if (path == NULL) {
                 path = "";
@@ -898,11 +916,15 @@ smb2_connect_share_async(struct smb2_context *smb2,
         struct connect_data *c_data;
         int err;
 
-        if (smb2->server) {
+        if (smb2 == NULL) {
+                return -EINVAL;
+        }
+
+        if (smb2->server != NULL) {
                 free(discard_const(smb2->server));
                 smb2->server = NULL;
         }
-        if (!server) {
+        if (server == NULL) {
                 smb2_set_error(smb2, "No server name provided");
                 return -EINVAL;
         }
@@ -1012,6 +1034,10 @@ smb2_open_async(struct smb2_context *smb2, const char *path, int flags,
         uint32_t create_options = 0;
         uint32_t file_attributes = 0;
 
+        if (smb2 == NULL) {
+                return -EINVAL;
+        }
+
         fh = calloc(1, sizeof(struct smb2fh));
         if (fh == NULL) {
                 smb2_set_error(smb2, "Failed to allocate smbfh");
@@ -1106,6 +1132,14 @@ smb2_close_async(struct smb2_context *smb2, struct smb2fh *fh,
         struct smb2_close_request req;
         struct smb2_pdu *pdu;
 
+        if (smb2 == NULL) {
+            return -EINVAL;
+        }
+        if (fh == NULL) {
+            smb2_set_error(smb2, "File handle was NULL");
+            return -EINVAL;
+        }
+
         fh->cb = cb;
         fh->cb_data = cb_data;
 
@@ -1145,6 +1179,14 @@ smb2_fsync_async(struct smb2_context *smb2, struct smb2fh *fh,
 {
         struct smb2_flush_request req;
         struct smb2_pdu *pdu;
+
+        if (smb2 == NULL) {
+            return -EINVAL;
+        }
+        if (fh == NULL) {
+            smb2_set_error(smb2, "File handle was NULL");
+            return -EINVAL;
+        }
 
         fh->cb = cb;
         fh->cb_data = cb_data;
@@ -1203,6 +1245,14 @@ smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
         struct smb2_pdu *pdu;
         int needed_credits;
 
+        if (smb2 == NULL) {
+				return -EINVAL;
+        }	
+        if (fh == NULL) {
+				smb2_set_error(smb2, "File handle was NULL");
+				return -EINVAL;
+        }
+
         if (count > smb2->max_read_size) {
                 count = smb2->max_read_size;
         }
@@ -1260,6 +1310,14 @@ smb2_read_async(struct smb2_context *smb2, struct smb2fh *fh,
                 uint8_t *buf, uint32_t count,
                 smb2_command_cb cb, void *cb_data)
 {
+		if (smb2 == NULL) {
+				return -EINVAL;
+		}
+		if (fh == NULL) {
+				smb2_set_error(smb2, "File handle was NULL");
+				return -EINVAL;
+		}
+
         return smb2_pread_async(smb2, fh, buf, count, fh->offset,
                                 cb, cb_data);
 }
@@ -1296,6 +1354,14 @@ smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
         struct rw_data *rd;
         struct smb2_pdu *pdu;
         int needed_credits;
+
+        if (smb2 == NULL) {
+				return -EINVAL;
+        }
+        if (fh == NULL) {
+				smb2_set_error(smb2, "File handle was NULL");
+				return -EINVAL;
+        }
 
         if (count > smb2->max_write_size) {
                 count = smb2->max_write_size;
@@ -1352,6 +1418,13 @@ smb2_write_async(struct smb2_context *smb2, struct smb2fh *fh,
                  const uint8_t *buf, uint32_t count,
                  smb2_command_cb cb, void *cb_data)
 {
+		if (smb2 == NULL) {
+				return -EINVAL;
+		}
+		if (fh == NULL) {
+				smb2_set_error(smb2, "File handle was NULL");
+				return -EINVAL;
+		}
         return smb2_pwrite_async(smb2, fh, buf, count, fh->offset,
                                  cb, cb_data);
 }
@@ -1360,11 +1433,19 @@ int64_t
 smb2_lseek(struct smb2_context *smb2, struct smb2fh *fh,
            int64_t offset, int whence, uint64_t *current_offset)
 {
+        if (smb2 == NULL) {
+                return -EINVAL;
+        }
+        if (fh == NULL) {
+                smb2_set_error(smb2, "File handle was NULL");
+                return -EINVAL;
+        }
+
         switch(whence) {
         case SEEK_SET:
                 if (offset < 0) {
                         smb2_set_error(smb2, "Lseek() offset would become"
-                                       "negative");
+                                        "negative");
                         return -EINVAL;
                 }
                 fh->offset = offset;
@@ -1375,7 +1456,7 @@ smb2_lseek(struct smb2_context *smb2, struct smb2fh *fh,
         case SEEK_CUR:
                 if (fh->offset + offset < 0) {
                         smb2_set_error(smb2, "Lseek() offset would become"
-                                       "negative");
+                                        "negative");
                         return -EINVAL;
                 }
                 fh->offset += offset;
@@ -1388,7 +1469,7 @@ smb2_lseek(struct smb2_context *smb2, struct smb2fh *fh,
                 return -EINVAL;
         default:
                 smb2_set_error(smb2, "Invalid whence(%d) for lseek",
-                               whence);
+                                    whence);
                 return -EINVAL;
         }
 }
@@ -1453,6 +1534,10 @@ smb2_unlink_internal(struct smb2_context *smb2, const char *path,
         struct smb2_create_request req;
         struct smb2_pdu *pdu;
 
+        if (smb2 == NULL) {
+                return -EINVAL;
+        }
+
         create_data = calloc(1, sizeof(struct create_cb_data));
         if (create_data == NULL) {
                 smb2_set_error(smb2, "Failed to allocate create_data");
@@ -1509,6 +1594,10 @@ smb2_mkdir_async(struct smb2_context *smb2, const char *path,
         struct create_cb_data *create_data;
         struct smb2_create_request req;
         struct smb2_pdu *pdu;
+
+        if (smb2 == NULL) {
+                return -EINVAL;
+        }
 
         create_data = calloc(1, sizeof(struct create_cb_data));
         if (create_data == NULL) {
@@ -1602,6 +1691,14 @@ smb2_fstat_async(struct smb2_context *smb2, struct smb2fh *fh,
         struct stat_cb_data *stat_data;
         struct smb2_query_info_request req;
         struct smb2_pdu *pdu;
+
+        if (smb2 == NULL) {
+                return -EINVAL;
+        }
+        if (fh == NULL) {
+                smb2_set_error(smb2, "File handle was NULL");
+                return -EINVAL;
+        }
 
         stat_data = calloc(1, sizeof(struct stat_cb_data));
         if (stat_data == NULL) {
@@ -1726,6 +1823,10 @@ smb2_getinfo_async(struct smb2_context *smb2, const char *path,
         struct smb2_query_info_request qi_req;
         struct smb2_close_request cl_req;
         struct smb2_pdu *pdu, *next_pdu;
+
+        if (smb2 == NULL) {
+                return -EINVAL;
+        }
 
         stat_data = calloc(1, sizeof(struct stat_cb_data));
         if (stat_data == NULL) {
@@ -1873,6 +1974,10 @@ smb2_truncate_async(struct smb2_context *smb2, const char *path,
         struct smb2_pdu *pdu, *next_pdu;
         struct smb2_file_end_of_file_info eofi;
 
+        if (smb2 == NULL) {
+                return -EINVAL;
+        }
+
         trunc_data = calloc(1, sizeof(struct trunc_cb_data));
         if (trunc_data == NULL) {
                 smb2_set_error(smb2, "Failed to allocate trunc_data");
@@ -1995,6 +2100,10 @@ smb2_rename_async(struct smb2_context *smb2, const char *oldpath,
         struct smb2_pdu *pdu, *next_pdu;
         struct smb2_file_rename_info rn_info;
 
+        if (smb2 == NULL) {
+                return -EINVAL;
+        }
+
         rename_data = calloc(1, sizeof(struct rename_cb_data));
         if (rename_data == NULL) {
                 smb2_set_error(smb2, "Failed to allocate rename_data");
@@ -2082,6 +2191,14 @@ smb2_ftruncate_async(struct smb2_context *smb2, struct smb2fh *fh,
         struct smb2_set_info_request req;
         struct smb2_file_end_of_file_info eofi;
         struct smb2_pdu *pdu;
+
+        if (smb2 == NULL) {
+                return -EINVAL;
+        }
+        if (fh == NULL) {
+                smb2_set_error(smb2, "File handle was NULL");
+                return -EINVAL;
+        }
 
         create_data = calloc(1, sizeof(struct create_cb_data));
         if (create_data == NULL) {
@@ -2178,6 +2295,10 @@ smb2_readlink_async(struct smb2_context *smb2, const char *path,
         struct smb2_ioctl_request io_req;
         struct smb2_close_request cl_req;
         struct smb2_pdu *pdu, *next_pdu;
+
+        if (smb2 == NULL) {
+                return -EINVAL;
+        }
 
         readlink_data = calloc(1, sizeof(struct readlink_cb_data));
         if (readlink_data == NULL) {
@@ -2288,6 +2409,10 @@ smb2_disconnect_share_async(struct smb2_context *smb2,
         struct disconnect_data *dc_data;
         struct smb2_pdu *pdu;
 
+        if (smb2 == NULL) {
+                return -EINVAL;
+        }
+
         dc_data = calloc(1, sizeof(struct disconnect_data));
         if (dc_data == NULL) {
                 smb2_set_error(smb2, "Failed to allocate disconnect_data");
@@ -2329,6 +2454,10 @@ smb2_echo_async(struct smb2_context *smb2,
 {
         struct echo_data *echo_data;
         struct smb2_pdu *pdu;
+
+        if (smb2 == NULL) {
+                return -EINVAL;
+        }
 
         echo_data = calloc(1, sizeof(struct echo_data));
         if (echo_data == NULL) {
