@@ -47,6 +47,8 @@
 #include "libsmb2-raw.h"
 #include "libsmb2-private.h"
 
+#include <time.h>
+
 struct sync_cb_data {
 	int is_finished;
 	int status;
@@ -56,6 +58,8 @@ struct sync_cb_data {
 static int wait_for_reply(struct smb2_context *smb2,
                           struct sync_cb_data *cb_data)
 {
+	time_t t = time(NULL);
+
         while (!cb_data->is_finished) {
                 struct pollfd pfd;
 
@@ -69,12 +73,17 @@ static int wait_for_reply(struct smb2_context *smb2,
                 if (smb2->timeout) {
                         smb2_timeout_pdus(smb2);
                 }
+		if ((!smb2->is_connected) && ((time(NULL) - t) > (smb2->timeout)))
+		{
+			smb2_set_error(smb2, "Timeout expired and no connection exists\n");
+			return -1;
+		}
                 if (pfd.revents == 0) {
                         continue;
                 }
 		if (smb2_service(smb2, pfd.revents) < 0) {
 			smb2_set_error(smb2, "smb2_service failed with : "
-                                       "%s\n", smb2_get_error(smb2));
+                                        "%s\n", smb2_get_error(smb2));
                         return -1;
 		}
 	}
