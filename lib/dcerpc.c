@@ -389,7 +389,7 @@ dcerpc_allocate_pdu(struct dcerpc_context *dce)
         return pdu;
 }
 
-void
+static void
 dcerpc_add_deferred_pointer(struct dcerpc_context *ctx,
                             struct dcerpc_pdu *pdu,
                             dcerpc_coder coder, void *ptr)
@@ -399,7 +399,7 @@ dcerpc_add_deferred_pointer(struct dcerpc_context *ctx,
         pdu->max_ptr++;
 }
 
-int
+static int
 dcerpc_process_deferred_pointers(struct dcerpc_context *ctx,
                                  struct dcerpc_pdu *pdu,
                                  struct smb2_iovec *iov,
@@ -536,12 +536,10 @@ dcerpc_encode_ptr(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                 return offset;
         }
 
-        if (!(ptr == PTR_REF && pdu->top_level)) {
-                if (dce->tctx_id) {
-                        offset = (offset + 7) & ~7;
-                } else {
-                        offset = (offset + 3) & ~3;
-                }
+        if (dce->tctx_id) {
+                offset = (offset + 7) & ~7;
+        } else {
+                offset = (offset + 3) & ~3;
         }
 
         switch (type) {
@@ -550,7 +548,7 @@ dcerpc_encode_ptr(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                         pdu->top_level = 0;
                         offset = coder(dce, pdu, iov, offset, ptr);
                         pdu->top_level = top_level;
-                        return offset;
+                        goto out;
                 }
                 
                 offset = dcerpc_encode_3264(dce, pdu, iov, offset, RPTR);
@@ -559,7 +557,7 @@ dcerpc_encode_ptr(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
         case PTR_FULL:
                 if (ptr == NULL) {
                         offset = dcerpc_encode_3264(dce, pdu, iov, offset, 0);
-                        return offset;
+                        goto out;
                 }
                 
                 pdu->ptr_id++;
@@ -575,7 +573,7 @@ dcerpc_encode_ptr(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
         case PTR_UNIQUE:
                 if (ptr == NULL) {
                         offset = dcerpc_encode_3264(dce, pdu, iov, offset, 0);
-                        return offset;
+                        goto out;
                 }
 
                 offset = dcerpc_encode_3264(dce, pdu, iov, offset, UPTR);
@@ -589,6 +587,10 @@ dcerpc_encode_ptr(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                 break;
         }
 
+ out:
+        if (pdu->top_level) {
+                offset = dcerpc_process_deferred_pointers(dce, pdu, iov, offset);
+        }
         return offset;
 }
 
@@ -616,7 +618,7 @@ dcerpc_decode_ptr(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                         pdu->top_level = 0;
                         offset = coder(dce, pdu, iov, offset, ptr);
                         pdu->top_level = top_level;
-                        return offset;
+                        goto out;
                 }
                 
                 offset = dcerpc_decode_3264(dce, pdu, iov, offset, &p);
@@ -641,6 +643,12 @@ dcerpc_decode_ptr(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                 break;
         }
 
+ out:
+        if (pdu->top_level) {
+                pdu->top_level = 0;
+                offset = dcerpc_process_deferred_pointers(dce, pdu, iov, offset);
+                pdu->top_level = top_level;
+        }
         return offset;
 }
 

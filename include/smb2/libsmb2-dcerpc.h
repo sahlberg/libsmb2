@@ -103,13 +103,6 @@ int dcerpc_encode_32(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                      struct smb2_iovec *iov, int offset, void *ptr);
 int dcerpc_encode_3264(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                        struct smb2_iovec *iov, int offset, uint64_t val);
-int dcerpc_process_deferred_pointers(struct dcerpc_context *ctx,
-                                     struct dcerpc_pdu *pdu,
-                                     struct smb2_iovec *iov,
-                                     int offset);
-void dcerpc_add_deferred_pointer(struct dcerpc_context *ctx,
-                                 struct dcerpc_pdu *pdu,
-                                 dcerpc_coder coder, void *ptr);
 #ifdef __cplusplus
 }
 #endif
