@@ -427,6 +427,13 @@ int dcerpc_set_uint32(struct dcerpc_context *ctx, struct smb2_iovec *iov,
 int dcerpc_set_uint64(struct dcerpc_context *ctx, struct smb2_iovec *iov,
                       int offset, uint64_t value);
 
+#define DCERPC_DECODE 0
+#define DCERPC_ENCODE 1
+struct dcerpc_pdu;
+int dcerpc_pdu_direction(struct dcerpc_pdu *pdu);
+
+int dcerpc_align_3264(struct dcerpc_context *ctx, int offset);
+
 #ifdef __cplusplus
 }
 #endif

@@ -10,6 +10,7 @@ set(SOURCES smb2-cat-async
             smb2-raw-stat-async
             smb2-raw-getsd-async
             smb2-readlink
+            smb2-lsa-lookupsids
             smb2-share-enum
             smb2-share-info
             smb2-stat-sync

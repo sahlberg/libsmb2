@@ -45,24 +45,30 @@ enum ptr_type {
         PTR_FULL   = 2
 };
 
-struct dcerpc_uuid {
+typedef struct dcerpc_uuid {
         uint32_t v1;
         uint16_t v2;
         uint16_t v3;
         uint64_t v4;
-};
+} uuid_t;
 
 typedef struct p_syntax_id {
-        struct dcerpc_uuid uuid;
+        uuid_t uuid;
         uint16_t vers;
         uint16_t vers_minor;
 } p_syntax_id_t;
 
-struct dcerpc_transfer_syntax {
-        struct dcerpc_uuid uuid;
+struct ndr_transfer_syntax {
+        uuid_t uuid;
         uint16_t vers;
 };
 
+struct ndr_context_handle {
+        uint32_t context_handle_attributes;
+        uuid_t context_handle_uuid;
+};
+
+extern p_syntax_id_t lsa_interface;
 extern p_syntax_id_t srvsvc_interface;
         
 typedef void (*dcerpc_cb)(struct dcerpc_context *dce, int status,
@@ -85,24 +91,24 @@ int dcerpc_call_async(struct dcerpc_context *dce, int opnum,
                       dcerpc_coder decoder, int decode_size,
                       dcerpc_cb cb, void *cb_data);
 
-int dcerpc_decode_ptr(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
-                      struct smb2_iovec *iov, int offset, void *ptr,
-                      enum ptr_type type, dcerpc_coder coder);
-int dcerpc_decode_32(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+int dcerpc_ptr_coder(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+                     struct smb2_iovec *iov, int offset, void *ptr,
+                     enum ptr_type type, dcerpc_coder coder);
+int dcerpc_uint8_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                    struct smb2_iovec *iov, int offset, void *ptr);
+int dcerpc_uint16_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                      struct smb2_iovec *iov, int offset, void *ptr);
-int dcerpc_decode_3264(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+int dcerpc_uint32_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                     struct smb2_iovec *iov, int offset, void *ptr);
+int dcerpc_uint3264_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                        struct smb2_iovec *iov, int offset, void *ptr);
-int dcerpc_decode_ucs2z(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+int dcerpc_ucs2z_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                         struct smb2_iovec *iov, int offset, void *ptr);
-int dcerpc_encode_ptr(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
-                      struct smb2_iovec *iov, int offset, void *ptr,
-                      enum ptr_type type, dcerpc_coder coder);
-int dcerpc_encode_ucs2z(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                        struct smb2_iovec *iov, int offset, void *ptr);
-int dcerpc_encode_32(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                     struct smb2_iovec *iov, int offset, void *ptr);
-int dcerpc_encode_3264(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                       struct smb2_iovec *iov, int offset, uint64_t val);
+int dcerpc_context_handle_coder(struct dcerpc_context *dce,
+                                struct dcerpc_pdu *pdu,
+                                struct smb2_iovec *iov, int offset,
+                                void *ptr);
+
 #ifdef __cplusplus
 }
 #endif

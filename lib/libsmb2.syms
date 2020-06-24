@@ -5,6 +5,7 @@ dcerpc_connect_context_async
 dcerpc_destroy_context
 dcerpc_free_data
 dcerpc_get_error
+dcerpc_context_handle_coder
 nterror_to_str
 nterror_to_errno
 smb2_add_compound_pdu
@@ -98,3 +99,12 @@ srvsvc_NetShareEnumAll_decoder
 srvsvc_NetShareEnumAll_encoder
 srvsvc_NetShareGetInfo_decoder
 srvsvc_NetShareGetInfo_encoder
+NT_SID_AUTHORITY
+lsa_interface
+lsa_Close_decoder
+lsa_Close_encoder
+lsa_LookupSids2_decoder
+lsa_LookupSids2_encoder
+lsa_OpenPolicy2_decoder
+lsa_OpenPolicy2_encoder
+lsa_RPC_SID_coder

@@ -78,20 +78,18 @@ p_syntax_id_t srvsvc_interface = {
 	} srvsvc_NetShareInfo1;
 */
 static int
-srvsvc_NetShareInfo1_decoder(struct dcerpc_context *ctx,
-                             struct dcerpc_pdu *pdu,
-                             struct smb2_iovec *iov, int offset,
-                             void *ptr)
+srvsvc_NetShareInfo1_coder(struct dcerpc_context *ctx,
+                           struct dcerpc_pdu *pdu,
+                           struct smb2_iovec *iov, int offset,
+                           void *ptr)
 {
         struct srvsvc_netshareinfo1 *nsi1 = ptr;
         
-        offset = dcerpc_decode_ptr(ctx, pdu, iov, offset, &nsi1->name,
-                                   PTR_UNIQUE,
-                                   dcerpc_decode_ucs2z);
-        offset = dcerpc_decode_32(ctx, pdu, iov, offset, &nsi1->type);
-        offset = dcerpc_decode_ptr(ctx, pdu, iov, offset, &nsi1->comment,
-                                   PTR_UNIQUE,
-                                   dcerpc_decode_ucs2z);
+        offset = dcerpc_ptr_coder(ctx, pdu, iov, offset, &nsi1->name,
+                                   PTR_UNIQUE, dcerpc_ucs2z_coder);
+        offset = dcerpc_uint32_coder(ctx, pdu, iov, offset, &nsi1->type);
+        offset = dcerpc_ptr_coder(ctx, pdu, iov, offset, &nsi1->comment,
+                                   PTR_UNIQUE, dcerpc_ucs2z_coder);
         return offset;
 }
 
@@ -104,11 +102,11 @@ srvsvc_NetShareInfo1_array_decoder(struct dcerpc_context *ctx,
         struct srvsvc_netshareinfo1 *nsi1 = ptr;
         uint64_t p;
 
-        offset = dcerpc_decode_3264(ctx, pdu, iov, offset, &p);
+        offset = dcerpc_uint3264_coder(ctx, pdu, iov, offset, &p);
 
         while (p--) {
-                offset = srvsvc_NetShareInfo1_decoder(ctx, pdu, iov, offset,
-                                                      nsi1);
+                offset = srvsvc_NetShareInfo1_coder(ctx, pdu, iov, offset,
+                                                    nsi1);
                 nsi1++;
         }
 
@@ -127,9 +125,11 @@ srvsvc_NetShareCtr1_encoder(struct dcerpc_context *ctx,
                             struct smb2_iovec *iov, int offset,
                             void *ptr)
 {
+        uint64_t val = 0;
+
         /* just encode a fake array with 0 count and no pointer */
-        offset = dcerpc_encode_3264(ctx, pdu, iov, offset, 0);
-        offset = dcerpc_encode_3264(ctx, pdu, iov, offset, 0);
+        offset = dcerpc_uint3264_coder(ctx, pdu, iov, offset, &val);
+        offset = dcerpc_uint3264_coder(ctx, pdu, iov, offset, &val);
 
         return offset;
 }
@@ -141,7 +141,7 @@ srvsvc_NetShareCtr1_decoder(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
 {
         struct srvsvc_netsharectr1 *ctr1 = ptr;
 
-        offset = dcerpc_decode_32(dce, pdu, iov, offset, &ctr1->count);
+        offset = dcerpc_uint32_coder(dce, pdu, iov, offset, &ctr1->count);
 
         ctr1->array = smb2_alloc_data(dcerpc_get_smb2_context(dce),
                 dcerpc_get_pdu_payload(pdu),
@@ -150,7 +150,7 @@ srvsvc_NetShareCtr1_decoder(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                 return -1;
         }
 
-        offset = dcerpc_decode_ptr(dce, pdu, iov, offset, ctr1->array,
+        offset = dcerpc_ptr_coder(dce, pdu, iov, offset, ctr1->array,
                                    PTR_UNIQUE,
                                    srvsvc_NetShareInfo1_array_decoder);
 
@@ -177,9 +177,11 @@ srvsvc_NetShareCtr_encoder(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                            struct smb2_iovec *iov, int offset,
                            void *ptr)
 {
+        uint64_t val = 1;
+
         /* just encode a fake union with case 1 */
-        offset = dcerpc_encode_3264(dce, pdu, iov, offset, 1);
-        offset = dcerpc_encode_ptr(dce, pdu, iov, offset, "dummy pointer",
+        offset = dcerpc_uint3264_coder(dce, pdu, iov, offset, &val);
+        offset = dcerpc_ptr_coder(dce, pdu, iov, offset, "dummy pointer",
                                    PTR_UNIQUE, srvsvc_NetShareCtr1_encoder);
 
         return offset;
@@ -193,12 +195,12 @@ srvsvc_NetShareCtr_decoder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         struct srvsvc_netsharectr *ctr = ptr;
         uint64_t p;
 
-        offset = dcerpc_decode_3264(ctx, pdu, iov, offset, &p);
+        offset = dcerpc_uint3264_coder(ctx, pdu, iov, offset, &p);
         ctr->level = (uint32_t)p;
 
         switch (ctr->level) {
         case 1:
-                offset = dcerpc_decode_ptr(ctx, pdu, iov, offset, &ctr->ctr1,
+                offset = dcerpc_ptr_coder(ctx, pdu, iov, offset, &ctr->ctr1,
                                            PTR_UNIQUE,
                                            srvsvc_NetShareCtr1_decoder);
                 break;
@@ -242,16 +244,16 @@ srvsvc_NetShareEnumAll_encoder(struct dcerpc_context *ctx,
                 return -1;
         }
 
-        offset = dcerpc_encode_ptr(ctx, pdu, iov, offset, ucs2_unc,
-                                   PTR_UNIQUE, dcerpc_encode_ucs2z);
-        offset = dcerpc_encode_ptr(ctx, pdu, iov, offset, &req->level,
-                                   PTR_REF, dcerpc_encode_32);
-        offset = dcerpc_encode_ptr(ctx, pdu, iov, offset, "dummy pointer",
+        offset = dcerpc_ptr_coder(ctx, pdu, iov, offset, ucs2_unc,
+                                   PTR_UNIQUE, dcerpc_ucs2z_coder);
+        offset = dcerpc_ptr_coder(ctx, pdu, iov, offset, &req->level,
+                                   PTR_REF, dcerpc_uint32_coder);
+        offset = dcerpc_ptr_coder(ctx, pdu, iov, offset, "dummy pointer",
                                    PTR_REF, srvsvc_NetShareCtr_encoder);
-        offset = dcerpc_encode_ptr(ctx, pdu, iov, offset, &req->max_buffer,
-                                   PTR_REF, dcerpc_encode_32);
-        offset = dcerpc_encode_ptr(ctx, pdu, iov, offset, &req->resume_handle,
-                                   PTR_UNIQUE, dcerpc_encode_32);
+        offset = dcerpc_ptr_coder(ctx, pdu, iov, offset, &req->max_buffer,
+                                   PTR_REF, dcerpc_uint32_coder);
+        offset = dcerpc_ptr_coder(ctx, pdu, iov, offset, &req->resume_handle,
+                                   PTR_UNIQUE, dcerpc_uint32_coder);
         free(ucs2_unc);
 
         return offset;
@@ -266,8 +268,8 @@ srvsvc_NetShareEnumAll_decoder(struct dcerpc_context *dce,
         struct srvsvc_netshareenumall_rep *rep = ptr;
         struct srvsvc_netsharectr *ctr;
 
-        offset = dcerpc_decode_ptr(dce, pdu, iov, offset, &rep->level,
-                                PTR_REF, dcerpc_decode_32);
+        offset = dcerpc_ptr_coder(dce, pdu, iov, offset, &rep->level,
+                                PTR_REF, dcerpc_uint32_coder);
 
         ctr = smb2_alloc_data(dcerpc_get_smb2_context(dce),
                               dcerpc_get_pdu_payload(pdu),
@@ -277,16 +279,16 @@ srvsvc_NetShareEnumAll_decoder(struct dcerpc_context *dce,
         }
 
         rep->ctr = ctr;
-        offset = dcerpc_decode_ptr(dce, pdu, iov, offset, rep->ctr,
+        offset = dcerpc_ptr_coder(dce, pdu, iov, offset, rep->ctr,
                                    PTR_REF, srvsvc_NetShareCtr_decoder);
 
-        offset = dcerpc_decode_ptr(dce, pdu, iov, offset, &rep->total_entries,
-                                   PTR_REF, dcerpc_decode_32);
+        offset = dcerpc_ptr_coder(dce, pdu, iov, offset, &rep->total_entries,
+                                   PTR_REF, dcerpc_uint32_coder);
         
-        offset = dcerpc_decode_ptr(dce, pdu, iov, offset, &rep->resume_handle,
-                                   PTR_UNIQUE, dcerpc_decode_32);
+        offset = dcerpc_ptr_coder(dce, pdu, iov, offset, &rep->resume_handle,
+                                   PTR_UNIQUE, dcerpc_uint32_coder);
 
-        offset = dcerpc_decode_32(dce, pdu, iov, offset, &rep->status);
+        offset = dcerpc_uint32_coder(dce, pdu, iov, offset, &rep->status);
         
         return offset;
 }
@@ -314,14 +316,14 @@ srvsvc_NetShareInfo_decoder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         struct srvsvc_netshareinfo *info = ptr;
         uint64_t p;
 
-        offset = dcerpc_decode_3264(ctx, pdu, iov, offset, &p);
+        offset = dcerpc_uint3264_coder(ctx, pdu, iov, offset, &p);
         info->level = (uint32_t)p;
 
         switch (info->level) {
         case 1:
-                offset = dcerpc_decode_ptr(ctx, pdu, iov, offset, &info->info1,
+                offset = dcerpc_ptr_coder(ctx, pdu, iov, offset, &info->info1,
                                            PTR_UNIQUE,
-                                           srvsvc_NetShareInfo1_decoder);
+                                           srvsvc_NetShareInfo1_coder);
                 break;
         };
 
@@ -366,11 +368,11 @@ srvsvc_NetShareGetInfo_encoder(struct dcerpc_context *dce,
                 return -1;
         }
 
-        offset = dcerpc_encode_ptr(dce, pdu, iov, offset, ucs2_unc,
-                                   PTR_UNIQUE, dcerpc_encode_ucs2z);
-        offset = dcerpc_encode_ptr(dce, pdu, iov, offset, ucs2_share,
-                                   PTR_REF, dcerpc_encode_ucs2z);
-        offset = dcerpc_encode_32(dce, pdu, iov, offset, &req->level);
+        offset = dcerpc_ptr_coder(dce, pdu, iov, offset, ucs2_unc,
+                                   PTR_UNIQUE, dcerpc_ucs2z_coder);
+        offset = dcerpc_ptr_coder(dce, pdu, iov, offset, ucs2_share,
+                                   PTR_REF, dcerpc_ucs2z_coder);
+        offset = dcerpc_uint32_coder(dce, pdu, iov, offset, &req->level);
 
         free(ucs2_unc);
         free(ucs2_share);
@@ -395,10 +397,10 @@ srvsvc_NetShareGetInfo_decoder(struct dcerpc_context *dce,
         }
 
         rep->info = info;
-        offset = dcerpc_decode_ptr(dce, pdu, iov, offset, rep->info,
+        offset = dcerpc_ptr_coder(dce, pdu, iov, offset, rep->info,
                                    PTR_REF, srvsvc_NetShareInfo_decoder);
 
-        offset = dcerpc_decode_32(dce, pdu, iov, offset, &rep->status);
+        offset = dcerpc_uint32_coder(dce, pdu, iov, offset, &rep->status);
 
         return offset;
 }
