@@ -112,7 +112,6 @@ srvsvc_NetShareInfo1_array_decoder(struct dcerpc_context *ctx,
                 nsi1++;
         }
 
-        offset = dcerpc_process_deferred_pointers(ctx, pdu, iov, offset);
         return offset;
 }
 
@@ -132,7 +131,6 @@ srvsvc_NetShareCtr1_encoder(struct dcerpc_context *ctx,
         offset = dcerpc_encode_3264(ctx, pdu, iov, offset, 0);
         offset = dcerpc_encode_3264(ctx, pdu, iov, offset, 0);
 
-        offset = dcerpc_process_deferred_pointers(ctx, pdu, iov, offset);
         return offset;
 }
 
@@ -156,7 +154,6 @@ srvsvc_NetShareCtr1_decoder(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                                    PTR_UNIQUE,
                                    srvsvc_NetShareInfo1_array_decoder);
 
-        offset = dcerpc_process_deferred_pointers(dce, pdu, iov, offset);
         return offset;
 }
 
@@ -185,7 +182,6 @@ srvsvc_NetShareCtr_encoder(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
         offset = dcerpc_encode_ptr(dce, pdu, iov, offset, "dummy pointer",
                                    PTR_UNIQUE, srvsvc_NetShareCtr1_encoder);
 
-        offset = dcerpc_process_deferred_pointers(dce, pdu, iov, offset);
         return offset;
 }
 
@@ -208,7 +204,6 @@ srvsvc_NetShareCtr_decoder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 break;
         };
 
-        offset = dcerpc_process_deferred_pointers(ctx, pdu, iov, offset);
         return offset;
 }
 
@@ -257,8 +252,6 @@ srvsvc_NetShareEnumAll_encoder(struct dcerpc_context *ctx,
                                    PTR_REF, dcerpc_encode_32);
         offset = dcerpc_encode_ptr(ctx, pdu, iov, offset, &req->resume_handle,
                                    PTR_UNIQUE, dcerpc_encode_32);
-
-        offset = dcerpc_process_deferred_pointers(ctx, pdu, iov, offset);
         free(ucs2_unc);
 
         return offset;
@@ -377,9 +370,7 @@ srvsvc_NetShareGetInfo_encoder(struct dcerpc_context *dce,
                                    PTR_UNIQUE, dcerpc_encode_ucs2z);
         offset = dcerpc_encode_ptr(dce, pdu, iov, offset, ucs2_share,
                                    PTR_REF, dcerpc_encode_ucs2z);
-        offset = dcerpc_encode_ptr(dce, pdu, iov, offset, &req->level,
-                                   PTR_REF, dcerpc_encode_32);
-        offset = dcerpc_process_deferred_pointers(dce, pdu, iov, offset);
+        offset = dcerpc_encode_32(dce, pdu, iov, offset, &req->level);
 
         free(ucs2_unc);
         free(ucs2_share);
