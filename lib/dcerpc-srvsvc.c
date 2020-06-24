@@ -324,7 +324,7 @@ srvsvc_NetShareInfo_decoder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                                            srvsvc_NetShareInfo1_decoder);
                 break;
         };
-        offset = dcerpc_process_deferred_pointers(ctx, pdu, iov, offset);
+
         return offset;
 }
 
