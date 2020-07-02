@@ -589,7 +589,9 @@ dcerpc_encode_ptr(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
 
  out:
         if (pdu->top_level) {
+                pdu->top_level = 0;
                 offset = dcerpc_process_deferred_pointers(dce, pdu, iov, offset);
+                pdu->top_level = top_level;
         }
         return offset;
 }
