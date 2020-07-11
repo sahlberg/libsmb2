@@ -474,6 +474,7 @@ struct smb2_read_reply {
 #define SMB2_FILE_END_OF_FILE_INFORMATION       0x14
 
 /* Filesystem information class : for SMB2_0_INFO_FILESYSTEM */
+#define SMB2_FILE_FS_VOLUME_INFORMATION            1
 #define SMB2_FILE_FS_SIZE_INFORMATION              3
 #define SMB2_FILE_FS_DEVICE_INFORMATION            4
 #define SMB2_FILE_FS_CONTROL_INFORMATION           6
@@ -684,6 +685,15 @@ struct smb2_security_descriptor {
         struct smb2_sid *owner;
         struct smb2_sid *group;
         struct smb2_acl *dacl;
+};
+
+struct smb2_file_fs_volume_info {
+        struct smb2_timeval creation_time;
+        uint32_t volume_serial_number;
+        uint32_t volume_label_length;
+        uint8_t supports_objects;
+        uint8_t reserved;
+        uint8_t label[0];
 };
 
 struct smb2_file_fs_size_info {
