@@ -95,6 +95,8 @@ smb2_parse_args(struct smb2_context *smb2, const char *args)
                         smb2->seal = 1;
                 } else if (!strcmp(args, "sign")) {
                         smb2->sign = 1;
+                } else if (!strcmp(args, "ndr3264")) {
+                        smb2->ndr = 0;
                 } else if (!strcmp(args, "ndr32")) {
                         smb2->ndr = 1;
                 } else if (!strcmp(args, "ndr64")) {
@@ -263,6 +265,7 @@ struct smb2_context *smb2_init_context(void)
         smb2->fd = -1;
         smb2->sec = SMB2_SEC_UNDEFINED;
         smb2->version = SMB2_VERSION_ANY;
+        smb2->ndr = 1;
 
         for (i = 0; i < 8; i++) {
                 smb2->client_challenge[i] = random()&0xff;
