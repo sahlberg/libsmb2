@@ -284,10 +284,10 @@ lsa_TRANSLATED_NAMES_EX_coder(struct dcerpc_context *dce,
  */
 
 static int
-lsa_ObjectAttributes_encoder(struct dcerpc_context *dce,
-                             struct dcerpc_pdu *pdu,
-                             struct smb2_iovec *iov, int offset,
-                             void *ptr)
+lsa_ObjectAttributes_coder(struct dcerpc_context *dce,
+                           struct dcerpc_pdu *pdu,
+                           struct smb2_iovec *iov, int offset,
+                           void *ptr)
 {
         uint32_t len;
         uint64_t val;
@@ -378,7 +378,7 @@ lsa_OpenPolicy2_encoder(struct dcerpc_context *dce,
         offset = dcerpc_ptr_coder(dce, pdu, iov, offset, ucs2_unc,
                                    PTR_UNIQUE, dcerpc_ucs2z_coder);
         offset = dcerpc_ptr_coder(dce, pdu, iov, offset, &req->ObjectAttributes,
-                                   PTR_REF, lsa_ObjectAttributes_encoder);
+                                   PTR_REF, lsa_ObjectAttributes_coder);
         offset = dcerpc_uint32_coder(dce, pdu, iov, offset, &req->DesiredAccess);
 
         free(ucs2_unc);

@@ -721,7 +721,7 @@ dcerpc_decode_ptr(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                 break;
         case PTR_UNIQUE:
                 offset = dcerpc_decode_3264(dce, pdu, iov, offset, &p);
-                if (p == 0) {
+                if (p == 0 || ptr == NULL) {
                         return offset;
                 }
                 
