@@ -531,7 +531,7 @@ struct smb2_file_all_info {
         uint64_t current_byte_offset;
         uint32_t mode;
         uint32_t alignment_requirement;
-        uint8_t *name_information;
+        const uint8_t *name;
 };
 
 struct smb2_query_info_request {
@@ -693,7 +693,7 @@ struct smb2_file_fs_volume_info {
         uint32_t volume_label_length;
         uint8_t supports_objects;
         uint8_t reserved;
-        uint8_t label[0];
+        const uint8_t *volume_label;
 };
 
 struct smb2_file_fs_size_info {

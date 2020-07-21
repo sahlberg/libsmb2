@@ -126,6 +126,8 @@ stat_cb_2(struct smb2_context *smb2, int status,
 		fs_vol = rep->output_buffer;
 		printf("VolumeSerialNumber: 0x%0x\n",
 		       fs_vol->volume_serial_number);
+		printf("VolumeLabel: %s\n",
+		       fs_vol->volume_label);
 		break;
         case SMB2_FILE_FS_SIZE_INFORMATION:
                 fs_size = rep->output_buffer;
