@@ -238,7 +238,7 @@ struct dcerpc_pdu {
         int cur_ptr;
         int max_ptr;
         struct dcerpc_deferred_pointer ptrs[MAX_DEFERRED_PTR];
-        int encode_decode;
+        int direction;
 };
 
 int
@@ -360,7 +360,7 @@ dcerpc_destroy_context(struct dcerpc_context *dce)
         free(dce);
 }
 
-static void
+void
 dcerpc_free_pdu(struct dcerpc_context *dce, struct dcerpc_pdu *pdu)
 {
         if (pdu == NULL) {
@@ -373,8 +373,8 @@ dcerpc_free_pdu(struct dcerpc_context *dce, struct dcerpc_pdu *pdu)
         free(pdu);
 }
 
-static struct dcerpc_pdu *
-dcerpc_allocate_pdu(struct dcerpc_context *dce)
+struct dcerpc_pdu *
+dcerpc_allocate_pdu(struct dcerpc_context *dce, int direction)
 {
         struct dcerpc_pdu *pdu;
 
@@ -386,6 +386,7 @@ dcerpc_allocate_pdu(struct dcerpc_context *dce)
 
         pdu->dce = dce;
         pdu->hdr.call_id = dce->call_id++;
+        pdu->direction = direction;
 
         return pdu;
 }
@@ -455,7 +456,7 @@ int
 dcerpc_uint32_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                  struct smb2_iovec *iov, int offset, void *ptr)
 {
-        if (pdu->encode_decode == DCERPC_DECODE) {
+        if (pdu->direction == DCERPC_DECODE) {
                 return dcerpc_decode_32(ctx, pdu, iov, offset, ptr);
         } else {
                 return dcerpc_encode_32(ctx, pdu, iov, offset, ptr);
@@ -501,7 +502,7 @@ int
 dcerpc_uint16_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                  struct smb2_iovec *iov, int offset, void *ptr)
 {
-        if (pdu->encode_decode == DCERPC_DECODE) {
+        if (pdu->direction == DCERPC_DECODE) {
                 return dcerpc_decode_16(ctx, pdu, iov, offset, ptr);
         } else {
                 return dcerpc_encode_16(ctx, pdu, iov, offset, ptr);
@@ -543,7 +544,7 @@ int
 dcerpc_uint8_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                  struct smb2_iovec *iov, int offset, void *ptr)
 {
-        if (pdu->encode_decode == DCERPC_DECODE) {
+        if (pdu->direction == DCERPC_DECODE) {
                 return dcerpc_decode_8(ctx, pdu, iov, offset, ptr);
         } else {
                 return dcerpc_encode_8(ctx, pdu, iov, offset, ptr);
@@ -602,7 +603,7 @@ int
 dcerpc_uint3264_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                       struct smb2_iovec *iov, int offset, void *ptr)
 {
-        if (pdu->encode_decode == DCERPC_DECODE) {
+        if (pdu->direction == DCERPC_DECODE) {
                 return dcerpc_decode_3264(ctx, pdu, iov, offset, ptr);
         } else {
                 return dcerpc_encode_3264(ctx, pdu, iov, offset, ptr);
@@ -752,7 +753,7 @@ dcerpc_ptr_coder(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                  struct smb2_iovec *iov, int offset, void *ptr,
                  enum ptr_type type, dcerpc_coder coder)
 {
-        if (pdu->encode_decode == DCERPC_DECODE) {
+        if (pdu->direction == DCERPC_DECODE) {
                 return dcerpc_decode_ptr(dce, pdu, iov, offset, ptr,
                                          type, coder);
         } else {
@@ -827,7 +828,7 @@ dcerpc_ucs2z_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                    struct smb2_iovec *iov, int offset,
                    void *ptr)
 {
-        if (pdu->encode_decode == DCERPC_DECODE) {
+        if (pdu->direction == DCERPC_DECODE) {
                 return dcerpc_decode_ucs2z(ctx, pdu, iov, offset, ptr);
         } else {
                 return dcerpc_encode_ucs2z(ctx, pdu, iov, offset, ptr);
@@ -1005,7 +1006,7 @@ dcerpc_context_handle_coder(struct dcerpc_context *dce,
                             struct smb2_iovec *iov, int offset,
                             void *ptr)
 {
-        if (pdu->encode_decode == DCERPC_DECODE) {
+        if (pdu->direction == DCERPC_DECODE) {
                 return dcerpc_context_handle_decoder(dce, pdu, iov, offset, ptr);
         } else {
                 return dcerpc_context_handle_encoder(dce, pdu, iov, offset, ptr);
@@ -1321,7 +1322,7 @@ dcerpc_call_cb(struct smb2_context *smb2, int status,
         struct smb2_ioctl_reply *rep = command_data;
         int ret;
 
-        pdu->encode_decode = DCERPC_DECODE;
+        pdu->direction = DCERPC_DECODE;
 
         if (status != SMB2_STATUS_SUCCESS) {
                 pdu->cb(dce, -nterror_to_errno(status), NULL, pdu->cb_data);
@@ -1379,7 +1380,7 @@ dcerpc_call_async(struct dcerpc_context *dce,
         struct smb2_iovec iov;
         int offset;
 
-        pdu = dcerpc_allocate_pdu(dce);
+        pdu = dcerpc_allocate_pdu(dce, DCERPC_ENCODE);
         if (pdu == NULL) {
                 return -ENOMEM;
         }
@@ -1394,7 +1395,6 @@ dcerpc_call_async(struct dcerpc_context *dce,
         pdu->req.alloc_hint = 0;
         pdu->req.context_id = dce->tctx_id;
         pdu->req.opnum = opnum;
-        pdu->encode_decode = DCERPC_ENCODE;
 
         pdu->payload = smb2_alloc_init(dce->smb2, NSE_BUF_SIZE);
         if (pdu->payload == NULL) {
@@ -1469,7 +1469,7 @@ smb2_bind_cb(struct smb2_context *smb2, int status,
         struct smb2_ioctl_reply *rep = command_data;
         int i;
 
-        pdu->encode_decode = DCERPC_DECODE;
+        pdu->direction = DCERPC_DECODE;
 
         if (status != SMB2_STATUS_SUCCESS) {
                 pdu->cb(dce, -nterror_to_errno(status), NULL, pdu->cb_data);
@@ -1541,7 +1541,7 @@ dcerpc_bind_async(struct dcerpc_context *dce, dcerpc_cb cb,
         struct smb2_iovec iov;
         int offset;
 
-        pdu = dcerpc_allocate_pdu(dce);
+        pdu = dcerpc_allocate_pdu(dce, DCERPC_ENCODE);
         if (pdu == NULL) {
                 return -ENOMEM;
         }
@@ -1557,7 +1557,6 @@ dcerpc_bind_async(struct dcerpc_context *dce, dcerpc_cb cb,
         pdu->bind.max_recv_frag = 32768;
         pdu->bind.assoc_group_id = 0;
         pdu->bind.abstract_syntax = dce->syntax;
-        pdu->encode_decode = DCERPC_ENCODE;
 
         pdu->payload = smb2_alloc_init(dce->smb2, NSE_BUF_SIZE);
         if (pdu->payload == NULL) {
@@ -1685,7 +1684,7 @@ dcerpc_free_data(struct dcerpc_context *dce, void *data)
 int
 dcerpc_pdu_direction(struct dcerpc_pdu *pdu)
 {
-        return pdu->encode_decode;
+        return pdu->direction;
 }
 
 int

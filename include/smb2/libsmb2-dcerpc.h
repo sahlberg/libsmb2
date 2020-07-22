@@ -108,6 +108,9 @@ int dcerpc_context_handle_coder(struct dcerpc_context *dce,
                                 struct dcerpc_pdu *pdu,
                                 struct smb2_iovec *iov, int offset,
                                 void *ptr);
+struct dcerpc_pdu *dcerpc_allocate_pdu(struct dcerpc_context *dce,
+                                       int direction);
+void dcerpc_free_pdu(struct dcerpc_context *dce, struct dcerpc_pdu *pdu);
 
 #ifdef __cplusplus
 }

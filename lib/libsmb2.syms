@@ -1,9 +1,11 @@
 compound_file_id
+dcerpc_allocate_pdu
 dcerpc_call_async
 dcerpc_create_context
 dcerpc_connect_context_async
 dcerpc_destroy_context
 dcerpc_free_data
+dcerpc_free_pdu
 dcerpc_get_error
 dcerpc_context_handle_coder
 nterror_to_str
