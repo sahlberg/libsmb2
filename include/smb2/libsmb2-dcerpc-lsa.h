@@ -51,15 +51,9 @@ typedef struct RPC_SID {
         uint32_t *SubAuthority;
 } RPC_SID, *PRPC_SID;
 
-typedef struct _RPC_UNICODE_STRING {
-        uint16_t Length;
-        uint16_t MaximumLength;
-        char *Buffer;
-} RPC_UNICODE_STRING, *PRPC_UNICODE_STRING;
-
 typedef struct _LSAPR_TRANSLATED_NAME_EX {
         uint32_t Use;
-        RPC_UNICODE_STRING Name;
+        char *Name;
         uint32_t DomainIndex;
         uint32_t Flags;
 } LSAPR_TRANSLATED_NAME_EX, *PLSAPR_TRANSLATED_NAME_EX;
@@ -72,7 +66,7 @@ typedef struct _LSAPR_TRANSLATED_NAMES_EX {
 typedef struct _SID_ENUM_BUFFER {
         uint32_t Entries;
         PRPC_SID *SidInfo;
-} LSARPC_SID_ENUM_BUFFER, *PLSAPR_SID_ENUM_BUFFER;
+} LSAPR_SID_ENUM_BUFFER, *PLSAPR_SID_ENUM_BUFFER;
 
 typedef enum _LSAP_LOOKUP_LEVEL {
         LsapLookupWksta = 1,
@@ -85,7 +79,7 @@ typedef enum _LSAP_LOOKUP_LEVEL {
 } LSAP_LOOKUP_LEVEL, *PLSAP_LOOKUP_LEVEL;
 
 typedef struct _LSAPR_TRUST_INFORMATION {
-        RPC_UNICODE_STRING Name;
+        char *Name;
         RPC_SID Sid;
 } LSAPR_TRUST_INFORMATION, *PLSAPR_TRUST_INFORMATION;
 
@@ -116,7 +110,7 @@ struct lsa_close_rep {
 };
 
 struct lsa_openpolicy2_req {
-        const char *SystemName;
+        char *SystemName;
         LSAPR_OBJECT_ATTRIBUTES ObjectAttributes;
         uint32_t DesiredAccess;
 };
@@ -129,8 +123,8 @@ struct lsa_openpolicy2_rep {
 
 struct lsa_lookupsids2_req {
         struct ndr_context_handle PolicyHandle;
-        PLSAPR_SID_ENUM_BUFFER SidEnumBuffer;
-        PLSAPR_TRANSLATED_NAMES_EX TranslatedNames;
+        LSAPR_SID_ENUM_BUFFER SidEnumBuffer;
+        LSAPR_TRANSLATED_NAMES_EX TranslatedNames;
         LSAP_LOOKUP_LEVEL LookupLevel;
 };
 
@@ -142,30 +136,30 @@ struct lsa_lookupsids2_rep {
         uint32_t MappedCount;
 };
 
-int lsa_Close_decoder(struct dcerpc_context *dce,
-                      struct dcerpc_pdu *pdu,
-                      struct smb2_iovec *iov, int offset,
-                      void *ptr);
-int lsa_Close_encoder(struct dcerpc_context *dce,
-                      struct dcerpc_pdu *pdu,
-                      struct smb2_iovec *iov, int offset,
-                      void *ptr);
-int lsa_LookupSids2_decoder(struct dcerpc_context *dce,
-                            struct dcerpc_pdu *pdu,
-                            struct smb2_iovec *iov, int offset,
-                            void *ptr);
-int lsa_LookupSids2_encoder(struct dcerpc_context *dce,
-                            struct dcerpc_pdu *pdu,
-                            struct smb2_iovec *iov, int offset,
-                            void *ptr);
-int lsa_OpenPolicy2_decoder(struct dcerpc_context *dce,
-                            struct dcerpc_pdu *pdu,
-                            struct smb2_iovec *iov, int offset,
-                            void *ptr);
-int lsa_OpenPolicy2_encoder(struct dcerpc_context *dce,
-                            struct dcerpc_pdu *pdu,
-                            struct smb2_iovec *iov, int offset,
-                            void *ptr);
+int lsa_Close_rep_coder(struct dcerpc_context *dce,
+                        struct dcerpc_pdu *pdu,
+                        struct smb2_iovec *iov, int offset,
+                        void *ptr);
+int lsa_Close_req_coder(struct dcerpc_context *dce,
+                        struct dcerpc_pdu *pdu,
+                        struct smb2_iovec *iov, int offset,
+                        void *ptr);
+int lsa_LookupSids2_rep_coder(struct dcerpc_context *dce,
+                              struct dcerpc_pdu *pdu,
+                              struct smb2_iovec *iov, int offset,
+                              void *ptr);
+int lsa_LookupSids2_req_coder(struct dcerpc_context *dce,
+                              struct dcerpc_pdu *pdu,
+                              struct smb2_iovec *iov, int offset,
+                              void *ptr);
+int lsa_OpenPolicy2_rep_coder(struct dcerpc_context *dce,
+                              struct dcerpc_pdu *pdu,
+                              struct smb2_iovec *iov, int offset,
+                              void *ptr);
+int lsa_OpenPolicy2_req_coder(struct dcerpc_context *dce,
+                              struct dcerpc_pdu *pdu,
+                              struct smb2_iovec *iov, int offset,
+                              void *ptr);
 int lsa_RPC_SID_coder(struct dcerpc_context *dce,
                       struct dcerpc_pdu *pdu,
                       struct smb2_iovec *iov, int offset,

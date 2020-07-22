@@ -164,10 +164,13 @@ lsa_SID_ENUM_BUFFER_coder(struct dcerpc_context *dce,
                           void *ptr)
 {
         PLSAPR_SID_ENUM_BUFFER seb = ptr;
+        uint32_t val;
 
-        offset = dcerpc_uint32_coder(dce, pdu, iov, offset, &seb->Entries);
+        val = seb->Entries;
+        offset = dcerpc_uint32_coder(dce, pdu, iov, offset, &val);
+        seb->Entries = val;
 
-        offset = dcerpc_ptr_coder(dce, pdu, iov, offset, ptr,
+        offset = dcerpc_ptr_coder(dce, pdu, iov, offset, seb,
                                   PTR_UNIQUE, lsa_PRPC_SID_array_coder);
 
         return offset;
@@ -180,20 +183,25 @@ lsa_SID_ENUM_BUFFER_coder(struct dcerpc_context *dce,
  *       char *Buffer;
  * } RPC_UNICODE_STRING, *PRPC_UNICODE_STRING;
  */
+/* ptr is char ** */
 int
 lsa_RPC_UNICODE_STRING_coder(struct dcerpc_context *dce,
                              struct dcerpc_pdu *pdu,
                              struct smb2_iovec *iov, int offset,
                              void *ptr)
 {
-        RPC_UNICODE_STRING *str = ptr;
+        uint16_t len, maxlen;
 
         offset = dcerpc_align_3264(dce, offset);
 
-        offset = dcerpc_uint16_coder(dce, pdu, iov, offset, &str->Length);
-        offset = dcerpc_uint16_coder(dce, pdu, iov, offset, &str->MaximumLength);
-        offset = dcerpc_ptr_coder(dce, pdu, iov, offset, &str->Buffer,
-                                   PTR_UNIQUE, dcerpc_ucs2z_coder);
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
+                len = strlen(*(char **)ptr) * 2;
+                maxlen = (len & 0x02) ? len + 2 : len;
+        }
+        offset = dcerpc_uint16_coder(dce, pdu, iov, offset, &len);
+        offset = dcerpc_uint16_coder(dce, pdu, iov, offset, &maxlen);
+        offset = dcerpc_ptr_coder(dce, pdu, iov, offset, ptr,
+                                   PTR_UNIQUE, dcerpc_ucs2_coder);
 
         return offset;
 }
@@ -313,10 +321,10 @@ lsa_ObjectAttributes_coder(struct dcerpc_context *dce,
  *		);
  **********************/
 int
-lsa_Close_encoder(struct dcerpc_context *dce,
-                               struct dcerpc_pdu *pdu,
-                               struct smb2_iovec *iov, int offset,
-                               void *ptr)
+lsa_Close_req_coder(struct dcerpc_context *dce,
+                    struct dcerpc_pdu *pdu,
+                    struct smb2_iovec *iov, int offset,
+                    void *ptr)
 {
         struct lsa_close_req *req = ptr;
 
@@ -327,10 +335,10 @@ lsa_Close_encoder(struct dcerpc_context *dce,
 }
 
 int
-lsa_Close_decoder(struct dcerpc_context *dce,
-                               struct dcerpc_pdu *pdu,
-                               struct smb2_iovec *iov, int offset,
-                               void *ptr)
+lsa_Close_rep_coder(struct dcerpc_context *dce,
+                    struct dcerpc_pdu *pdu,
+                    struct smb2_iovec *iov, int offset,
+                    void *ptr)
 {
         struct lsa_close_rep *rep = ptr;
 
@@ -352,44 +360,26 @@ lsa_Close_decoder(struct dcerpc_context *dce,
  *              );
  **********************/
 int
-lsa_OpenPolicy2_encoder(struct dcerpc_context *dce,
-                               struct dcerpc_pdu *pdu,
-                               struct smb2_iovec *iov, int offset,
-                               void *ptr)
+lsa_OpenPolicy2_req_coder(struct dcerpc_context *dce,
+                          struct dcerpc_pdu *pdu,
+                          struct smb2_iovec *iov, int offset,
+                          void *ptr)
 {
         struct lsa_openpolicy2_req *req = ptr;
-        int len;
-        char *server;
-        struct ucs2 *ucs2_unc;
 
-        len = strlen(req->SystemName) + 3;
-        server = malloc(len);
-        if (server == NULL) {
-                return -1;
-        }
-
-        snprintf(server, len, "\\\\%s", req->SystemName);
-        ucs2_unc = utf8_to_ucs2(server);
-        free(server);
-        if (ucs2_unc == NULL) {
-                return -1;
-        }
-
-        offset = dcerpc_ptr_coder(dce, pdu, iov, offset, ucs2_unc,
+        offset = dcerpc_ptr_coder(dce, pdu, iov, offset, &req->SystemName,
                                    PTR_UNIQUE, dcerpc_ucs2z_coder);
         offset = dcerpc_ptr_coder(dce, pdu, iov, offset, &req->ObjectAttributes,
                                    PTR_REF, lsa_ObjectAttributes_coder);
         offset = dcerpc_uint32_coder(dce, pdu, iov, offset, &req->DesiredAccess);
-
-        free(ucs2_unc);
         return offset;
 }
 
 int
-lsa_OpenPolicy2_decoder(struct dcerpc_context *dce,
-                        struct dcerpc_pdu *pdu,
-                        struct smb2_iovec *iov, int offset,
-                        void *ptr)
+lsa_OpenPolicy2_rep_coder(struct dcerpc_context *dce,
+                          struct dcerpc_pdu *pdu,
+                          struct smb2_iovec *iov, int offset,
+                          void *ptr)
 {
         struct lsa_openpolicy2_rep *rep = ptr;
 
@@ -417,7 +407,6 @@ lsa_TRUST_INFORMATION_coder(struct dcerpc_context *dce,
 
         offset = lsa_RPC_UNICODE_STRING_coder(dce, pdu, iov, offset,
                                               &ti->Name);
-
         offset = dcerpc_ptr_coder(dce, pdu, iov, offset, &ti->Sid,
                                    PTR_UNIQUE, lsa_RPC_SID_coder);
 
@@ -436,6 +425,7 @@ RDL_DOMAINS_array_coder(struct dcerpc_context *dce,
 
         entries = rdl->Entries;
         offset = dcerpc_uint3264_coder(dce, pdu, iov, offset, &entries);
+        rdl->Entries = entries;
 
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {
                 rdl->Domains = smb2_alloc_data(dcerpc_get_smb2_context(dce),
@@ -474,7 +464,6 @@ lsa_REFERENCED_DOMAIN_LIST_coder(struct dcerpc_context *dce,
 
         offset = dcerpc_ptr_coder(dce, pdu, iov, offset, ptr,
                                    PTR_UNIQUE, RDL_DOMAINS_array_coder);
-
         offset = dcerpc_uint32_coder(dce, pdu, iov, offset, &rdl->MaxEntries);
 
         return offset;
@@ -494,22 +483,23 @@ lsa_REFERENCED_DOMAIN_LIST_coder(struct dcerpc_context *dce,
  *       );
  *******************/
 int
-lsa_LookupSids2_encoder(struct dcerpc_context *dce,
-                        struct dcerpc_pdu *pdu,
-                        struct smb2_iovec *iov, int offset,
-                        void *ptr)
+lsa_LookupSids2_req_coder(struct dcerpc_context *dce,
+                          struct dcerpc_pdu *pdu,
+                          struct smb2_iovec *iov, int offset,
+                          void *ptr)
 {
         struct lsa_lookupsids2_req *req = ptr;
         uint32_t val;
 
         offset = dcerpc_ptr_coder(dce, pdu, iov, offset, &req->PolicyHandle,
                                    PTR_REF, dcerpc_context_handle_coder);
-        offset = dcerpc_ptr_coder(dce, pdu, iov, offset, req->SidEnumBuffer,
+        offset = dcerpc_ptr_coder(dce, pdu, iov, offset, &req->SidEnumBuffer,
                                    PTR_REF, lsa_SID_ENUM_BUFFER_coder);
-        offset = dcerpc_ptr_coder(dce, pdu, iov, offset, req->TranslatedNames,
+        offset = dcerpc_ptr_coder(dce, pdu, iov, offset, &req->TranslatedNames,
                                    PTR_REF, lsa_TRANSLATED_NAMES_EX_coder);
         val = req->LookupLevel;
         offset = dcerpc_uint32_coder(dce, pdu, iov, offset, &val);
+        req->LookupLevel = val;
 
         val = 0;
         offset = dcerpc_uint32_coder(dce, pdu, iov, offset, &val);
@@ -522,10 +512,10 @@ lsa_LookupSids2_encoder(struct dcerpc_context *dce,
 }
 
 int
-lsa_LookupSids2_decoder(struct dcerpc_context *dce,
-                        struct dcerpc_pdu *pdu,
-                        struct smb2_iovec *iov, int offset,
-                        void *ptr)
+lsa_LookupSids2_rep_coder(struct dcerpc_context *dce,
+                          struct dcerpc_pdu *pdu,
+                          struct smb2_iovec *iov, int offset,
+                          void *ptr)
 {
         struct lsa_lookupsids2_rep *rep = ptr;
 

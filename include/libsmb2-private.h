@@ -430,9 +430,13 @@ int dcerpc_set_uint32(struct dcerpc_context *ctx, struct smb2_iovec *iov,
                       int offset, uint32_t value);
 int dcerpc_set_uint64(struct dcerpc_context *ctx, struct smb2_iovec *iov,
                       int offset, uint64_t value);
+int dcerpc_get_uint16(struct dcerpc_context *ctx, struct smb2_iovec *iov,
+                      int offset, uint16_t *value);
+int dcerpc_get_uint32(struct dcerpc_context *ctx, struct smb2_iovec *iov,
+                      int offset, uint32_t *value);
+int dcerpc_get_uint64(struct dcerpc_context *ctx, struct smb2_iovec *iov,
+                      int offset, uint64_t *value);
 
-#define DCERPC_DECODE 0
-#define DCERPC_ENCODE 1
 struct dcerpc_pdu;
 int dcerpc_pdu_direction(struct dcerpc_pdu *pdu);
 

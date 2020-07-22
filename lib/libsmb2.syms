@@ -103,10 +103,10 @@ srvsvc_NetShareGetInfo_decoder
 srvsvc_NetShareGetInfo_encoder
 NT_SID_AUTHORITY
 lsa_interface
-lsa_Close_decoder
-lsa_Close_encoder
-lsa_LookupSids2_decoder
-lsa_LookupSids2_encoder
-lsa_OpenPolicy2_decoder
-lsa_OpenPolicy2_encoder
+lsa_Close_rep_coder
+lsa_Close_req_coder
+lsa_LookupSids2_rep_coder
+lsa_LookupSids2_req_coder
+lsa_OpenPolicy2_rep_coder
+lsa_OpenPolicy2_req_coder
 lsa_RPC_SID_coder

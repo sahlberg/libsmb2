@@ -87,8 +87,8 @@ void *dcerpc_get_pdu_payload(struct dcerpc_pdu *pdu);
 
 int dcerpc_open_async(struct dcerpc_context *dce, dcerpc_cb cb, void *cb_data);
 int dcerpc_call_async(struct dcerpc_context *dce, int opnum,
-                      dcerpc_coder encoder, void *ptr,
-                      dcerpc_coder decoder, int decode_size,
+                      dcerpc_coder req_coder, void *req,
+                      dcerpc_coder rep_coder, int rep_size,
                       dcerpc_cb cb, void *cb_data);
 
 int dcerpc_ptr_coder(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
@@ -102,14 +102,18 @@ int dcerpc_uint32_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                      struct smb2_iovec *iov, int offset, void *ptr);
 int dcerpc_uint3264_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                        struct smb2_iovec *iov, int offset, void *ptr);
+int dcerpc_ucs2_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                      struct smb2_iovec *iov, int offset, void *ptr);
 int dcerpc_ucs2z_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                         struct smb2_iovec *iov, int offset, void *ptr);
 int dcerpc_context_handle_coder(struct dcerpc_context *dce,
                                 struct dcerpc_pdu *pdu,
                                 struct smb2_iovec *iov, int offset,
                                 void *ptr);
+#define DCERPC_DECODE 0
+#define DCERPC_ENCODE 1
 struct dcerpc_pdu *dcerpc_allocate_pdu(struct dcerpc_context *dce,
-                                       int direction);
+                                       int direction, int payload_size);
 void dcerpc_free_pdu(struct dcerpc_context *dce, struct dcerpc_pdu *pdu);
 
 #ifdef __cplusplus

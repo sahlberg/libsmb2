@@ -209,7 +209,6 @@ srvsvc_NetShareEnumAll_encoder(struct dcerpc_context *ctx,
         struct srvsvc_netsharectr ctr;
         int len;
         char *server;
-        struct ucs2 *ucs2_unc;
 
         len = strlen(req->server) + 3;
         server = malloc(len);
@@ -218,14 +217,10 @@ srvsvc_NetShareEnumAll_encoder(struct dcerpc_context *ctx,
         }
 
         snprintf(server, len, "\\\\%s", req->server);
-        ucs2_unc = utf8_to_ucs2(server);
-        free(server);
-        if (ucs2_unc == NULL) {
-                return -1;
-        }
 
-        offset = dcerpc_ptr_coder(ctx, pdu, iov, offset, ucs2_unc,
+        offset = dcerpc_ptr_coder(ctx, pdu, iov, offset, &server,
                                    PTR_UNIQUE, dcerpc_ucs2z_coder);
+        free(server);
         offset = dcerpc_ptr_coder(ctx, pdu, iov, offset, &req->level,
                                    PTR_REF, dcerpc_uint32_coder);
         ctr.level = 1;
@@ -237,7 +232,6 @@ srvsvc_NetShareEnumAll_encoder(struct dcerpc_context *ctx,
                                    PTR_REF, dcerpc_uint32_coder);
         offset = dcerpc_ptr_coder(ctx, pdu, iov, offset, &req->resume_handle,
                                    PTR_UNIQUE, dcerpc_uint32_coder);
-        free(ucs2_unc);
 
         return offset;
 }
@@ -332,7 +326,6 @@ srvsvc_NetShareGetInfo_encoder(struct dcerpc_context *dce,
         struct srvsvc_netsharegetinfo_req *req = ptr;
         int len;
         char *server;
-        struct ucs2 *ucs2_unc, *ucs2_share;
 
         len = strlen(req->server) + 3;
         server = malloc(len);
@@ -341,26 +334,15 @@ srvsvc_NetShareGetInfo_encoder(struct dcerpc_context *dce,
         }
 
         snprintf(server, len, "\\\\%s", req->server);
-        ucs2_unc = utf8_to_ucs2(server);
-        free(server);
-        if (ucs2_unc == NULL) {
-                return -1;
-        }
-        ucs2_share = utf8_to_ucs2(req->share);
-        if (ucs2_unc == NULL) {
-                free(ucs2_unc);
-                return -1;
-        }
 
-        offset = dcerpc_ptr_coder(dce, pdu, iov, offset, ucs2_unc,
-                                   PTR_UNIQUE, dcerpc_ucs2z_coder);
-        offset = dcerpc_ptr_coder(dce, pdu, iov, offset, ucs2_share,
-                                   PTR_REF, dcerpc_ucs2z_coder);
+        offset = dcerpc_ptr_coder(dce, pdu, iov, offset, &server,
+                                  PTR_UNIQUE, dcerpc_ucs2z_coder);
+        offset = dcerpc_ptr_coder(dce, pdu, iov, offset,
+                                  discard_const(&req->share),
+                                  PTR_REF, dcerpc_ucs2z_coder);
         offset = dcerpc_uint32_coder(dce, pdu, iov, offset, &req->level);
 
-        free(ucs2_unc);
-        free(ucs2_share);
-
+        free(server);
         return offset;
 }
 
