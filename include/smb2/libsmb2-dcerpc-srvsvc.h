@@ -23,8 +23,8 @@
 extern "C" {
 #endif
 
-#define SRVSVC_NETSHAREENUMALL    0x0f
-#define SRVSVC_NETSHAREGETINFO    0x10
+#define SRVSVC_NETRSHAREENUM      0x0f
+#define SRVSVC_NETRSHAREGETINFO   0x10
 
 struct dcerpc_context;
 struct dcerpc_pdu;
@@ -80,16 +80,17 @@ struct srvsvc_netshareinfo {
                 struct srvsvc_netshareinfo1 info1;
         };
 };
-struct srvsvc_netsharegetinfo_req {
-        const char *server;
-        const char *share;
-        uint32_t level;
+
+struct srvsvc_netrsharegetinfo_req {
+        const char *ServerName;
+        const char *NetName;
+        uint32_t Level;
 };
 
-struct srvsvc_netsharegetinfo_rep {
+struct srvsvc_netrsharegetinfo_rep {
         uint32_t status;
 
-        struct srvsvc_netshareinfo *info;
+        struct srvsvc_netshareinfo info;
 };
 
 struct srvsvc_rep {
@@ -113,22 +114,22 @@ struct srvsvc_rep {
 int smb2_share_enum_async(struct smb2_context *smb2,
                           smb2_command_cb cb, void *cb_data);
 
-int srvsvc_NetShareEnumAll_decoder(struct dcerpc_context *dce,
+int srvsvc_NetrShareEnum_rep_coder(struct dcerpc_context *dce,
                                    struct dcerpc_pdu *pdu,
                                    struct smb2_iovec *iov, int offset,
                                    void *ptr);
-int srvsvc_NetShareEnumAll_encoder(struct dcerpc_context *ctx,
+int srvsvc_NetrShareEnum_req_coder(struct dcerpc_context *ctx,
                                    struct dcerpc_pdu *pdu,
                                    struct smb2_iovec *iov, int offset,
                                    void *ptr);
-int srvsvc_NetShareGetInfo_decoder(struct dcerpc_context *dce,
-                                   struct dcerpc_pdu *pdu,
-                                   struct smb2_iovec *iov, int offset,
-                                   void *ptr);
-int srvsvc_NetShareGetInfo_encoder(struct dcerpc_context *ctx,
-                                   struct dcerpc_pdu *pdu,
-                                   struct smb2_iovec *iov, int offset,
-                                   void *ptr);
+int srvsvc_NetrShareGetInfo_rep_coder(struct dcerpc_context *dce,
+                                      struct dcerpc_pdu *pdu,
+                                      struct smb2_iovec *iov, int offset,
+                                      void *ptr);
+int srvsvc_NetrShareGetInfo_req_coder(struct dcerpc_context *ctx,
+                                      struct dcerpc_pdu *pdu,
+                                      struct smb2_iovec *iov, int offset,
+                                      void *ptr);
 #ifdef __cplusplus
 }
 #endif

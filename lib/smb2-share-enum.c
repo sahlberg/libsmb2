@@ -72,6 +72,7 @@ struct smb2nse {
 static void
 nse_free(struct smb2nse *nse)
 {
+        free(discard_const(nse->se_req.server));
         free(nse);
 }
 
@@ -110,9 +111,9 @@ share_enum_bind_cb(struct dcerpc_context *dce, int status,
         }
 
         status = dcerpc_call_async(dce,
-                                   SRVSVC_NETSHAREENUMALL,
-                                   srvsvc_NetShareEnumAll_encoder, &nse->se_req,
-                                   srvsvc_NetShareEnumAll_decoder,
+                                   SRVSVC_NETRSHAREENUM,
+                                   srvsvc_NetrShareEnum_req_coder, &nse->se_req,
+                                   srvsvc_NetrShareEnum_rep_coder,
                                    sizeof(struct srvsvc_netshareenumall_rep),
                                    srvsvc_ioctl_cb, nse);
         if (status) {
@@ -130,6 +131,7 @@ smb2_share_enum_async(struct smb2_context *smb2,
         struct dcerpc_context *dce;
         struct smb2nse *nse;
         int rc;
+        char *server;
 
         dce = dcerpc_create_context(smb2);
         if (dce == NULL) {
@@ -145,7 +147,17 @@ smb2_share_enum_async(struct smb2_context *smb2,
         nse->cb = cb;
         nse->cb_data = cb_data;
 
-        nse->se_req.server = smb2->server;
+        server = malloc(strlen(smb2->server) + 3);
+        if (server == NULL) {
+                free(nse);
+                smb2_set_error(smb2, "Failed to allocate server");
+                dcerpc_destroy_context(dce);
+                return -ENOMEM;
+        }
+        
+        sprintf(server, "\\\\%s", smb2->server);
+        nse->se_req.server = server;
+
         nse->se_req.level = 1;
         nse->se_req.ctr = NULL;
         nse->se_req.max_buffer = 0xffffffff;
@@ -154,7 +166,7 @@ smb2_share_enum_async(struct smb2_context *smb2,
         rc = dcerpc_connect_context_async(dce, "srvsvc", &srvsvc_interface,
                                           share_enum_bind_cb, nse);
         if (rc) {
-                free(nse);
+                nse_free(nse);
                 dcerpc_destroy_context(dce);
                 return rc;
         }

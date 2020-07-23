@@ -97,10 +97,10 @@ smb2_write_async
 smb2_echo
 smb2_echo_async
 srvsvc_interface
-srvsvc_NetShareEnumAll_decoder
-srvsvc_NetShareEnumAll_encoder
-srvsvc_NetShareGetInfo_decoder
-srvsvc_NetShareGetInfo_encoder
+srvsvc_NetrShareEnum_rep_coder
+srvsvc_NetrShareEnum_req_coder
+srvsvc_NetrShareGetInfo_rep_coder
+srvsvc_NetrShareGetInfo_req_coder
 NT_SID_AUTHORITY
 lsa_interface
 lsa_Close_rep_coder

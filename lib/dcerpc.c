@@ -640,7 +640,7 @@ static int
 dcerpc_decode_3264(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                    struct smb2_iovec *iov, int offset, void *ptr)
 {
-        uint32_t u32;
+        uint32_t u32 = 0;
 
         if (offset < 0) {
                 return offset;

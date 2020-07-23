@@ -27,6 +27,10 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "libsmb2-dcerpc.h"
 #include "libsmb2-dcerpc-srvsvc.h"
 
+#ifndef discard_const
+#define discard_const(ptr) ((void *)((intptr_t)(ptr)))
+#endif
+
 int is_finished;
 
 int usage(void)
@@ -41,7 +45,7 @@ int usage(void)
 void si_cb(struct dcerpc_context *dce, int status,
                 void *command_data, void *cb_data)
 {
-        struct srvsvc_netsharegetinfo_rep *rep = command_data;
+        struct srvsvc_netrsharegetinfo_rep *rep = command_data;
 
         free(cb_data);
         if (status) {
@@ -49,24 +53,24 @@ void si_cb(struct dcerpc_context *dce, int status,
                        strerror(-status), dcerpc_get_error(dce));
                 exit(10);
         }
-        printf("%-20s %-20s", rep->info->info1.name,
-               rep->info->info1.comment);
-        if ((rep->info->info1.type & 3) == SHARE_TYPE_DISKTREE) {
+        printf("%-20s %-20s", rep->info.info1.name,
+               rep->info.info1.comment);
+        if ((rep->info.info1.type & 3) == SHARE_TYPE_DISKTREE) {
                         printf(" DISKTREE");
         }
-        if ((rep->info->info1.type & 3) == SHARE_TYPE_PRINTQ) {
+        if ((rep->info.info1.type & 3) == SHARE_TYPE_PRINTQ) {
                 printf(" PRINTQ");
         }
-        if ((rep->info->info1.type & 3) == SHARE_TYPE_DEVICE) {
+        if ((rep->info.info1.type & 3) == SHARE_TYPE_DEVICE) {
                 printf(" DEVICE");
         }
-        if ((rep->info->info1.type & 3) == SHARE_TYPE_IPC) {
+        if ((rep->info.info1.type & 3) == SHARE_TYPE_IPC) {
                 printf(" IPC");
         }
-        if (rep->info->info1.type & SHARE_TYPE_TEMPORARY) {
+        if (rep->info.info1.type & SHARE_TYPE_TEMPORARY) {
                 printf(" TEMPORARY");
         }
-        if (rep->info->info1.type & SHARE_TYPE_HIDDEN) {
+        if (rep->info.info1.type & SHARE_TYPE_HIDDEN) {
                 printf(" HIDDEN");
         }
 
@@ -79,8 +83,9 @@ void si_cb(struct dcerpc_context *dce, int status,
 void co_cb(struct dcerpc_context *dce, int status,
            void *command_data, void *cb_data)
 {
-        struct srvsvc_netsharegetinfo_req *si_req;
+        struct srvsvc_netrsharegetinfo_req *si_req;
         struct smb2_url *url = cb_data;
+        char *server;
 
         if (status != SMB2_STATUS_SUCCESS) {
                 printf("failed to connect to SRVSVC (%s) %s\n",
@@ -88,27 +93,34 @@ void co_cb(struct dcerpc_context *dce, int status,
                 exit(10);
         }
 
-        si_req = calloc(1, sizeof(struct srvsvc_netsharegetinfo_req));
+        si_req = calloc(1, sizeof(struct srvsvc_netrsharegetinfo_req));
         if (si_req == NULL) {
                 printf("failed to allocate srvsvc_netsharegetinfo_req\n");
                 exit(10);
         }
 
-        si_req->server = url->server;
-        si_req->share = url->share;
-        si_req->level = 1;
+        server = malloc(strlen(url->server) + 3);
+        if (server == NULL) {
+                printf("failed to allocate ServerName\n");
+                exit(10);
+        }
+        sprintf(server, "\\\\%s", url->server);
+        si_req->ServerName = server;
+        si_req->NetName = url->share;
+        si_req->Level = 1;
 
         if (dcerpc_call_async(dce,
-                              SRVSVC_NETSHAREGETINFO,
-                              srvsvc_NetShareGetInfo_encoder, si_req,
-                              srvsvc_NetShareGetInfo_decoder,
-                              sizeof(struct srvsvc_netsharegetinfo_rep),
+                              SRVSVC_NETRSHAREGETINFO,
+                              srvsvc_NetrShareGetInfo_req_coder, si_req,
+                              srvsvc_NetrShareGetInfo_rep_coder,
+                              sizeof(struct srvsvc_netrsharegetinfo_rep),
                               si_cb, si_req) != 0) {
                 printf("dcerpc_call_async failed with %s\n",
                        dcerpc_get_error(dce));
                 free(si_req);
                 exit(10);
         }
+        free(server);
 }
 
 int main(int argc, char *argv[])
