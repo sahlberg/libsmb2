@@ -6,6 +6,9 @@
  */
 
 #include "sha.h"
+#include "libsmb2-config.h"
+
+#if !defined(DISABLE_SIGN) && !defined(DISABLE_SEAL)
 
 /*
  *  USHAReset
@@ -341,3 +344,5 @@ USHAHashSizeBits (enum SHAversion whichSha)
       return SHA512HashSizeBits;
     }
 }
+
+#endif /* !defined(DISABLE_SIGN) && !defined(DISABLE_SEAL) */

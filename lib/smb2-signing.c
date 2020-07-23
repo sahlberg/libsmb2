@@ -59,6 +59,9 @@
 #include "aes.h"
 #include "sha.h"
 #include "sha-private.h"
+#include "libsmb2-config.h"
+
+#if !defined(DISABLE_SIGN)
 
 #define AES128_KEY_LEN     16
 #define AES_BLOCK_SIZE     16
@@ -247,3 +250,5 @@ smb2_pdu_check_signature(struct smb2_context *smb2,
 {
         return 0;
 }
+
+#endif /* !defined(DISABLE_SIGN) */

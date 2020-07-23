@@ -44,6 +44,7 @@
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-private.h"
+#include "libsmb2-config.h"
 
 int
 smb2_process_error_fixed(struct smb2_context *smb2,

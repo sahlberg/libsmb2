@@ -25,6 +25,9 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "libsmb2.h"
 #include "libsmb2-raw.h"
 #include "libsmb2-dcerpc-srvsvc.h"
+#include "libsmb2-config.h"
+
+#if !defined(DISABLE_DCERPC_SRVSVC) && !defined(DISABLE_DCERPC)
 
 int is_finished;
 
@@ -142,3 +145,11 @@ int main(int argc, char *argv[])
         
 	return 0;
 }
+
+#else /* !defined(DISABLE_DCERPC_SRVSVC) && !defined(DISABLE_DCERPC) */
+int main(int argc, char *argv[])
+{
+        printf("No DCERPC/SRVSVC libsmb2\n");
+        return 0;
+}
+#endif /* !defined(DISABLE_DCERPC_SRVSVC) && !defined(DISABLE_DCERPC) */

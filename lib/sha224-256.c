@@ -38,6 +38,10 @@
 
 #include "sha.h"
 #include "sha-private.h"
+#include "libsmb2-config.h"
+
+#if !defined(DISABLE_SIGN) && !defined(DISABLE_SEAL)
+
 /* Define the SHA shift, rotate left and rotate right macro */
 #define SHA256_SHR(bits,word)      ((word) >> (bits))
 #define SHA256_ROTL(bits,word)                         \
@@ -606,3 +610,5 @@ SHA224_256ResultN (SHA256Context * context,
 
   return shaSuccess;
 }
+
+#endif /* !defined(DISABLE_SIGN) && !defined(DISABLE_SEAL) */

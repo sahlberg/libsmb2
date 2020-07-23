@@ -62,6 +62,9 @@
 #include "libsmb2-raw.h"
 #include "libsmb2-private.h"
 #include "smb3-seal.h"
+#include "libsmb2-config.h"
+
+#if !defined(DISABLE_SEAL)
 
 static const char xfer[4] = {0xFD, 'S', 'M', 'B'};
 
@@ -156,3 +159,5 @@ smb3_decrypt_pdu(struct smb2_context *smb2)
 
         return rc;
 }
+
+#endif /* !defined(DISABLE_SEAL) */

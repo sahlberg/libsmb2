@@ -45,6 +45,9 @@
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-private.h"
+#include "libsmb2-config.h"
+
+#if !defined(DISABLE_SEC_DESC)
 
 static struct smb2_sid *
 decode_sid(struct smb2_context *smb2, void *memctx, struct smb2_iovec *v)
@@ -350,3 +353,5 @@ smb2_decode_security_descriptor(struct smb2_context *smb2,
         
         return 0;
 }
+
+#endif /* !defined(DISABLE_SEC_DESC) */

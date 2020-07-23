@@ -44,6 +44,9 @@
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-private.h"
+#include "libsmb2-config.h"
+
+#if !defined(DISABLE_MUTATE)
 
 static int
 smb2_encode_write_request(struct smb2_context *smb2,
@@ -148,3 +151,5 @@ smb2_process_write_fixed(struct smb2_context *smb2,
 
         return 0;
 }
+
+#endif /* !defined(DISABLE_MUTATE) */

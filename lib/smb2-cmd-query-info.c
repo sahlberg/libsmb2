@@ -44,6 +44,7 @@
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-private.h"
+#include "libsmb2-config.h"
 
 
 static int
@@ -212,6 +213,7 @@ smb2_process_query_info_variable(struct smb2_context *smb2,
                         return -1;
                 }
                 break;
+#if !defined(DISABLE_SEC_DESC)
         case SMB2_0_INFO_SECURITY:
                 ptr = smb2_alloc_init(smb2,
                                       sizeof(struct smb2_security_descriptor));
@@ -222,6 +224,7 @@ smb2_process_query_info_variable(struct smb2_context *smb2,
                         return -1;
                 }
                 break;
+#endif /* !defined(DISABLE_SEC_DESC) */
         case SMB2_0_INFO_FILESYSTEM:
                 switch (pdu->file_info_class) {
 		case SMB2_FILE_FS_VOLUME_INFORMATION:

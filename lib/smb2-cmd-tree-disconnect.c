@@ -42,6 +42,7 @@
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-private.h"
+#include "libsmb2-config.h"
 
 static int
 smb2_encode_tree_disconnect_request(struct smb2_context *smb2,

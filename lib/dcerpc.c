@@ -59,6 +59,9 @@
 #include "libsmb2-dcerpc.h"
 #include "libsmb2-raw.h"
 #include "libsmb2-private.h"
+#include "libsmb2-config.h"
+
+#if !defined(DISABLE_DCERPC)
 
 #define container_of(ptr, type, member) ({                      \
         const typeof( ((type *)0)->member ) *__mptr = (ptr);    \
@@ -1780,3 +1783,5 @@ dcerpc_align_3264(struct dcerpc_context *ctx, int offset)
         }
         return offset;
 }
+
+#endif /* !defined(DISABLE_DCERPC) */

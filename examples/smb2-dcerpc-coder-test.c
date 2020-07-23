@@ -27,6 +27,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "libsmb2-dcerpc.h"
 #include "libsmb2-dcerpc-lsa.h"
 #include "libsmb2-dcerpc-srvsvc.h"
+#include "libsmb2-config.h"
 
 #ifndef discard_const
 #define discard_const(ptr) ((void *)((intptr_t)(ptr)))
@@ -41,6 +42,8 @@ int usage(void)
                 "smb2-dcerpc-coder-test\n\n");
         exit(1);
 }
+
+#if !defined(DISABLE_DCERPC_LSA) && !defined(DISABLE_DCERPC_SRVSVC) && !defined(DISABLE_DCERPC)
 
 static void test_dcerpc_codec(struct dcerpc_context *dce, char *method,
                               dcerpc_coder coder, void *req, int req_size,
@@ -139,7 +142,9 @@ static void test_dcerpc_codec(struct dcerpc_context *dce, char *method,
         dcerpc_free_pdu(dce, pdu2);
         dcerpc_free_pdu(dce, pdu3);
 }
+#endif /* !defined(DISABLE_DCERPC_LSA) && !defined(DISABLE_DCERPC_SRVSVC) && !defined(DISABLE_DCERPC) */
 
+#if !defined(DISABLE_DCERPC_LSA) && !defined(DISABLE_DCERPC)
 static void test_LSA_LookupSids2_req(struct dcerpc_context *dce)
 {
         struct lsa_lookupsids2_req req;
@@ -336,6 +341,10 @@ static void test_LSA_OpenPolicy2_rep(struct dcerpc_context *dce)
                           sizeof(buf), buf, 0);
 }
 
+#endif /* !defined(DISABLE_DCERPC_LSA) && !defined(DISABLE_DCERPC) */
+
+#if !defined(DISABLE_DCERPC_SRVSVC) && !defined(DISABLE_DCERPC)
+
 static void test_SRVSVC_NetrShareGetInfo_req(struct dcerpc_context *dce)
 {
         struct srvsvc_netrsharegetinfo_req req;
@@ -513,6 +522,9 @@ static void test_SRVSVC_NetrShareEnum_rep(struct dcerpc_context *dce)
                           sizeof(buf), buf, 0);
 }
 
+#endif /* !defined(DISABLE_DCERPC_SRVSVC) && !defined(DISABLE_DCERPC) */
+
+#if !defined(DISABLE_DCERPC)
 
 int main(int argc, char *argv[])
 {
@@ -540,19 +552,31 @@ int main(int argc, char *argv[])
         PolicyHandle.context_handle_attributes = 0;
         memcpy(&PolicyHandle.context_handle_uuid, ph, 16);
 
+#if !defined(DISABLE_DCERPC_SRVSVC)
         test_SRVSVC_NetrShareEnum_req(dce);
         test_SRVSVC_NetrShareEnum_rep(dce);
         test_SRVSVC_NetrShareGetInfo_rep(dce);
         test_SRVSVC_NetrShareGetInfo_req(dce);
+#endif /* !defined(DISABLE_DCERPC_SRVSVC) */
+#if !defined(DISABLE_DCERPC_LSA)
         test_LSA_LookupSids2_req(dce);
         test_LSA_LookupSids2_rep(dce);
         test_LSA_Close_req(dce);
         test_LSA_Close_rep(dce);
         test_LSA_OpenPolicy2_req(dce);
         test_LSA_OpenPolicy2_rep(dce);
+#endif /* !defined(DISABLE_DCERPC_LSA) */
 
         dcerpc_destroy_context(dce);
         smb2_destroy_context(smb2);
         
 	return 0;
 }
+
+#else /* !defined(DISABLE_DCERPC) */
+int main(int argc, char *argv[])
+{
+        printf("libsmb2 built without DCERPC support\n");
+        return 0;
+}
+#endif /* !defined(DISABLE_DCERPC) */

@@ -31,7 +31,9 @@ NOTE:   String length must be evenly divisible by 16byte (str_len % 16 == 0)
 #include <stdint.h>
 #include <string.h> // CBC mode, for memset
 #include "aes.h"
+#include "libsmb2-config.h"
 
+#if !defined(DISABLE_SIGN) && !defined(DISABLE_SEAL)
 
 /*****************************************************************************/
 /* Defines:                                                                  */
@@ -575,3 +577,4 @@ void AES128_CBC_decrypt_buffer(uint8_t* output, uint8_t* input, uint32_t length,
 
 #endif // #if defined(CBC) && CBC
 
+#endif /* !defined(DISABLE_SIGN) && !defined(DISABLE_SEAL) */

@@ -77,6 +77,7 @@
 #include "libsmb2.h"
 #include "libsmb2-private.h"
 #include "smb3-seal.h"
+#include "libsmb2-config.h"
 
 #define MAX_URL_SIZE 256
 
@@ -461,9 +462,11 @@ read_more_data:
                  * encrypted packet.
                  */
                 smb2->in.num_done = 0;
+#if !defined(DISABLE_SEAL)
                 if (smb3_decrypt_pdu(smb2)) {
                         return -1;
                 }
+#endif /* !defined(DISABLE_SEAL) */
                 /* We are all done now with this PDU. Reset num_done to 0
                  * and restart with a new SPL for the next chain.
                  */

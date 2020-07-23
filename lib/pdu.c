@@ -45,6 +45,7 @@
 #include "libsmb2-private.h"
 #include "smb3-seal.h"
 #include "smb2-signing.h"
+#include "libsmb2-config.h"
 
 int
 smb2_pad_to_64bit(struct smb2_context *smb2, struct smb2_io_vectors *v)
@@ -114,7 +115,9 @@ smb2_allocate_pdu(struct smb2_context *smb2, enum smb2_command command,
         switch (command) {
         case SMB2_NEGOTIATE:
         case SMB2_SESSION_SETUP:
+#if !defined(DISABLE_LOGOFF_CMD)
         case SMB2_LOGOFF:
+#endif /* !defined(DISABLE_LOGOFF_CMD) */
         case SMB2_ECHO:
         /* case SMB2_CANCEL: */
                 break;
@@ -364,6 +367,7 @@ smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
         /* Update all the PDU headers in this chain */
         for (p = pdu; p; p = p->next_compound) {
                 smb2_encode_header(smb2, &p->out.iov[0], &p->header);
+#if !defined(DISABLE_SIGN)
                 if (smb2->sign) {
                         if (smb2_pdu_add_signature(smb2, p) < 0) {
                                 smb2_set_error(smb2, "Failure to add "
@@ -371,9 +375,12 @@ smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
                                                smb2_get_error(smb2));
                         }
                 }
+#endif /* !defined(DISABLE_SIGN) */
         }
 
+#if !defined(DISABLE_SEAL)
         smb3_encrypt_pdu(smb2, pdu);
+#endif /* !defined(DISABLE_SEAL) */
 
         smb2_add_to_outqueue(smb2, pdu);
 }
@@ -418,8 +425,10 @@ smb2_get_fixed_size(struct smb2_context *smb2, struct smb2_pdu *pdu)
                 return SMB2_NEGOTIATE_REPLY_SIZE;
         case SMB2_SESSION_SETUP:
                 return SMB2_SESSION_SETUP_REPLY_SIZE;
+#if !defined(DISABLE_LOGOFF_CMD)
         case SMB2_LOGOFF:
                 return SMB2_LOGOFF_REPLY_SIZE;
+#endif /* !defined(DISABLE_LOGOFF_CMD) */
         case SMB2_TREE_CONNECT:
                 return SMB2_TREE_CONNECT_REPLY_SIZE;
         case SMB2_TREE_DISCONNECT:
@@ -442,9 +451,12 @@ smb2_get_fixed_size(struct smb2_context *smb2, struct smb2_pdu *pdu)
                 return SMB2_QUERY_INFO_REPLY_SIZE;
         case SMB2_SET_INFO:
                 return SMB2_SET_INFO_REPLY_SIZE;
+#if !defined(DISABLE_IOCTL_CMD)
         case SMB2_IOCTL:
                 return SMB2_IOCTL_REPLY_SIZE;
+#endif /* !defined(DISABLE_IOCTL_CMD) */
         }
+        
         return -1;
 }
 
@@ -460,8 +472,10 @@ smb2_process_payload_fixed(struct smb2_context *smb2, struct smb2_pdu *pdu)
                 return smb2_process_negotiate_fixed(smb2, pdu);
         case SMB2_SESSION_SETUP:
                 return smb2_process_session_setup_fixed(smb2, pdu);
+#if !defined(DISABLE_LOGOFF_CMD)
         case SMB2_LOGOFF:
                 return smb2_process_logoff_fixed(smb2, pdu);
+#endif /* !defined(DISABLE_LOGOFF_CMD) */
         case SMB2_TREE_CONNECT:
                 return smb2_process_tree_connect_fixed(smb2, pdu);
         case SMB2_TREE_DISCONNECT:
@@ -470,22 +484,26 @@ smb2_process_payload_fixed(struct smb2_context *smb2, struct smb2_pdu *pdu)
                 return smb2_process_create_fixed(smb2, pdu);
         case SMB2_CLOSE:
                 return smb2_process_close_fixed(smb2, pdu);
-        case SMB2_FLUSH:
-                return smb2_process_flush_fixed(smb2, pdu);
         case SMB2_READ:
                 return smb2_process_read_fixed(smb2, pdu);
-        case SMB2_WRITE:
-                return smb2_process_write_fixed(smb2, pdu);
         case SMB2_ECHO:
                 return smb2_process_echo_fixed(smb2, pdu);
         case SMB2_QUERY_DIRECTORY:
                 return smb2_process_query_directory_fixed(smb2, pdu);
         case SMB2_QUERY_INFO:
                 return smb2_process_query_info_fixed(smb2, pdu);
+#if !defined(DISABLE_MUTATE)
+        case SMB2_FLUSH:
+                return smb2_process_flush_fixed(smb2, pdu);
+        case SMB2_WRITE:
+                return smb2_process_write_fixed(smb2, pdu);
         case SMB2_SET_INFO:
                 return smb2_process_set_info_fixed(smb2, pdu);
+#endif /* !defined(DISABLE_MUTATE) */
+#if !defined(DISABLE_IOCTL_CMD)
         case SMB2_IOCTL:
                 return smb2_process_ioctl_fixed(smb2, pdu);
+#endif /* !defined(DISABLE_IOCTL_CMD) */
         }
         return 0;
 }
@@ -502,8 +520,10 @@ smb2_process_payload_variable(struct smb2_context *smb2, struct smb2_pdu *pdu)
                 return smb2_process_negotiate_variable(smb2, pdu);
         case SMB2_SESSION_SETUP:
                 return smb2_process_session_setup_variable(smb2, pdu);
+#if !defined(DISABLE_LOGOFF_CMD)
         case SMB2_LOGOFF:
                 return 0;
+#endif /* !defined(DISABLE_LOGOFF_CMD) */
         case SMB2_TREE_CONNECT:
                 return 0;
         case SMB2_TREE_DISCONNECT:
@@ -526,8 +546,10 @@ smb2_process_payload_variable(struct smb2_context *smb2, struct smb2_pdu *pdu)
                 return smb2_process_query_info_variable(smb2, pdu); 
         case SMB2_SET_INFO:
                 return 0;
+#if !defined(DISABLE_IOCTL_CMD)
         case SMB2_IOCTL:
                 return smb2_process_ioctl_variable(smb2, pdu); 
+#endif /* !defined(DISABLE_IOCTL_CMD) */
         }
         return 0;
 }

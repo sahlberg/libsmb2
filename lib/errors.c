@@ -21,6 +21,7 @@
 #include <sys/socket.h>
 
 #include "smb2.h"
+#include "libsmb2-config.h"
 
 const char *nterror_to_str(uint32_t status) {
         switch (status) {
@@ -30,6 +31,7 @@ const char *nterror_to_str(uint32_t status) {
                 return "STATUS_ABORTED";
         case SMB2_STATUS_PENDING:
                 return "STATUS_PENDING";
+#if !defined (DISABLE_NT_STATUS_STRINGS)
         case SMB2_STATUS_NO_MORE_FILES:
                 return "STATUS_NO_MORE_FILES";
         case SMB2_STATUS_UNSUCCESSFUL:
@@ -1038,6 +1040,7 @@ const char *nterror_to_str(uint32_t status) {
                 return "SMB2_STATUS_VOLUME_DISMOUNTED";
         case SMB2_STATUS_NOT_A_REPARSE_POINT:
                 return "STATUS_NOT_A_REPARSE_POINT";
+#endif /* !defined (DISABLE_NT_STATUS_STRINGS) */
         default:
                  return "Unknown";
         }
@@ -1052,6 +1055,7 @@ int nterror_to_errno(uint32_t status) {
                 return EAGAIN;
         case SMB2_STATUS_ABORTED:
                 return ECONNRESET;
+#if !defined (DISABLE_NT_STATUS_STRINGS)
         case SMB2_STATUS_NO_SUCH_FILE:
         case SMB2_STATUS_NO_SUCH_DEVICE:
         case SMB2_STATUS_BAD_NETWORK_NAME:
@@ -1157,6 +1161,7 @@ int nterror_to_errno(uint32_t status) {
                 return EBUSY;
         case SMB2_STATUS_INTERNAL_ERROR:
                 // Fall through.
+#endif /* !defined (DISABLE_NT_STATUS_STRINGS) */
         default:
                 return EIO;
         }

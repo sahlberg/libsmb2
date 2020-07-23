@@ -42,6 +42,9 @@
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-private.h"
+#include "libsmb2-config.h"
+
+#if !defined(DISABLE_LOGOFF_CMD)
 
 static int
 smb2_encode_logoff_request(struct smb2_context *smb2,
@@ -96,3 +99,5 @@ smb2_process_logoff_fixed(struct smb2_context *smb2,
 {
         return 0;
 }
+
+#endif /* !defined(DISABLE_LOGOFF_CMD) */

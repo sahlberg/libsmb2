@@ -60,6 +60,9 @@
 #include "libsmb2-dcerpc-lsa.h"
 #include "libsmb2-raw.h"
 #include "libsmb2-private.h"
+#include "libsmb2-config.h"
+
+#if !defined (DISABLE_DCERPC_LSA) && !defined(DISABLE_DCERPC)
 
 #define LSA_UUID    0x12345778, 0x1234, 0xabcd, 0xef000123456789ab
 
@@ -528,3 +531,5 @@ lsa_LookupSids2_rep_coder(struct dcerpc_context *dce,
 
         return offset;
 }
+
+#endif /* !defined (DISABLE_DCERPC_LSA) && !defined(DISABLE_DCERPC) */

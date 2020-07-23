@@ -42,6 +42,7 @@
 #include <smb2.h>
 #include <libsmb2.h>
 #include "libsmb2-private.h"
+#include "libsmb2-config.h"
 
 #define container_of(ptr, type, member) ({                      \
         const typeof( ((type *)0)->member ) *__mptr = (ptr);    \

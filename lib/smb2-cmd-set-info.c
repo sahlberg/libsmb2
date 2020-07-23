@@ -44,6 +44,9 @@
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-private.h"
+#include "libsmb2-config.h"
+
+#if !defined(DISABLE_MUTATE)
 
 #include <stdio.h>
 static int
@@ -191,3 +194,5 @@ smb2_process_set_info_fixed(struct smb2_context *smb2,
 {
         return 0;
 }
+
+#endif /* !defined(DISABLE_MUTATE) */

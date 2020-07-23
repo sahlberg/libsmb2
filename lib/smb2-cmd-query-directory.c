@@ -44,6 +44,7 @@
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-private.h"
+#include "libsmb2-config.h"
 
 int
 smb2_decode_fileidfulldirectoryinformation(

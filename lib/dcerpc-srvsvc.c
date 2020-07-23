@@ -60,6 +60,9 @@
 #include "libsmb2-dcerpc-srvsvc.h"
 #include "libsmb2-raw.h"
 #include "libsmb2-private.h"
+#include "libsmb2-config.h"
+
+#if !defined (DISABLE_DCERPC_SRVSVC) && !defined(DISABLE_DCERPC)
 
 #define SRVSVC_UUID    0x4b324fc8, 0x1670, 0x01d3, 0x12785a47bf6ee188
 
@@ -340,3 +343,5 @@ srvsvc_NetrShareGetInfo_rep_coder(struct dcerpc_context *dce,
 
         return offset;
 }
+
+#endif /* !defined (DISABLE_DCERPC_SRVSVC) && !defined(DISABLE_DCERPC) */

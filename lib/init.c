@@ -49,6 +49,7 @@
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-private.h"
+#include "libsmb2-config.h"
 
 #define MAX_URL_SIZE 256
 
@@ -91,10 +92,16 @@ smb2_parse_args(struct smb2_context *smb2, const char *args)
                         *(value++) = '\0';
                 }
 
-                if (!strcmp(args, "seal")) {
+                if (!strcmp(args, "timeout")) {
+                        smb2->timeout = strtol(value, NULL, 10);
+#if !defined(DISABLE_SEAL)                        
+                } else if (!strcmp(args, "seal")) {
                         smb2->seal = 1;
+#endif /* !defined(DISABLE_SEAL) */
+#if !defined(DISABLE_SIGN)
                 } else if (!strcmp(args, "sign")) {
                         smb2->sign = 1;
+#endif /* !defined(DISABLE_SIGN) */
                 } else if (!strcmp(args, "ndr3264")) {
                         smb2->ndr = 0;
                 } else if (!strcmp(args, "ndr32")) {
@@ -137,8 +144,6 @@ smb2_parse_args(struct smb2_context *smb2, const char *args)
                                                "%s", value);
                                 return -1;
                         }
-                } else if (!strcmp(args, "timeout")) {
-                        smb2->timeout = strtol(value, NULL, 10);
                 } else {
                         smb2_set_error(smb2, "Unknown argument: %s", args);
                         return -1;
@@ -146,6 +151,7 @@ smb2_parse_args(struct smb2_context *smb2, const char *args)
                 args = next;
         }
 
+#if !defined(DISABLE_SEAL)                        
         if (smb2->seal) {
                 switch (smb2->version) {
                 case SMB2_VERSION_ANY:
@@ -160,6 +166,7 @@ smb2_parse_args(struct smb2_context *smb2, const char *args)
                         return -1;
                 }
         }
+#endif /* !defined(DISABLE_SEAL) */
 
         return 0;
 }
@@ -364,6 +371,7 @@ struct smb2_iovec *smb2_add_iovector(struct smb2_context *smb2,
         return iov;
 }
 
+#if !defined(DISABLE_ERROR_STRINGS)
 void smb2_set_error(struct smb2_context *smb2, const char *error_string, ...)
 {
         va_list ap;
@@ -379,6 +387,7 @@ void smb2_set_error(struct smb2_context *smb2, const char *error_string, ...)
                 strncpy(smb2->error_string, errstr, MAX_ERROR_SIZE);
         }
 }
+#endif /* !defined(DISABLE_ERROR_STRINGS) */
 
 const char *smb2_get_error(struct smb2_context *smb2)
 {
@@ -512,15 +521,19 @@ void smb2_set_workstation(struct smb2_context *smb2, const char *workstation)
         smb2->workstation = strdup(workstation);
 }
 
+#if !defined(DISABLE_SEAL)
 void smb2_set_seal(struct smb2_context *smb2, int val)
 {
         smb2->seal = val;
 }
+#endif /* !defined(DISABLE_SEAL) */
 
+#if !defined(DISABLE_SIGN)
 void smb2_set_sign(struct smb2_context *smb2, int val)
 {
         smb2->sign = val;
 }
+#endif /* !defined(DISABLE_SIGN) */
 
 void smb2_set_authentication(struct smb2_context *smb2, int val)
 {

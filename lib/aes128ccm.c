@@ -25,6 +25,9 @@
 
 #include "portable-endian.h"
 #include "aes.h"
+#include "libsmb2-config.h"
+
+#if !defined(DISABLE_SEAL)
 
 static void aes_ccm_generate_b0(unsigned char *nonce, int nlen,
                                 int alen, int plen, int mlen,
@@ -173,3 +176,5 @@ int aes128ccm_decrypt(unsigned char *key,
 
         return memcmp(tmp, m, mlen);
 }
+
+#endif /* !defined(DISABLE_SEAL) */

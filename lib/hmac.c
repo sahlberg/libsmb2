@@ -8,6 +8,9 @@
  */
 
 #include "sha.h"
+#include "libsmb2-config.h"
+
+#if !defined(DISABLE_SIGN) && !defined(DISABLE_SEAL)
 
 /*
  *  hmac
@@ -229,3 +232,5 @@ hmacResult (HMACContext * ctx, uint8_t * digest)
     /* finish up 2nd pass */
     USHAResult (&ctx->shaContext, digest);
 }
+
+#endif /* !defined(DISABLE_SIGN) && !defined(DISABLE_SEAL) */
