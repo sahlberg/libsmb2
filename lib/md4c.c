@@ -24,8 +24,12 @@
    documentation and/or software.
  */
 
+
 #include <stdint.h>
 #include "md4.h"
+#include "libsmb2-config.h"
+
+#if !defined(DISABLE_ALL_EXCEPT_READ)
 
 /* Constants for MD4Transform routine.
  */
@@ -300,3 +304,5 @@ unsigned int len;
   for (i = 0; i < len; i++)
     ((char *)output)[i] = (char)value;
 }
+
+#endif /* !defined(DISABLE_ALL_EXCEPT_READ) */

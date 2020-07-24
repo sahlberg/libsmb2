@@ -62,6 +62,7 @@
 #include "libsmb2-private.h"
 #include "libsmb2-config.h"
 
+#if !defined(DISABLE_ALL_EXCEPT_READ)
 #if !defined(DISABLE_DCERPC_SRVSVC) && !defined(DISABLE_DCERPC)
 
 struct smb2nse {
@@ -178,3 +179,4 @@ smb2_share_enum_async(struct smb2_context *smb2,
 }
 
 #endif /* !defined(DISABLE_DCERPC_SRVSVC) && !defined(DISABLE_DCERPC) */
+#endif /* !defined(DISABLE_ALL_EXCEPT_READ) */

@@ -46,6 +46,7 @@
 #include "libsmb2-private.h"
 #include "libsmb2-config.h"
 
+#if !defined(DISABLE_ALL_EXCEPT_READ)
 
 static int
 smb2_encode_query_info_request(struct smb2_context *smb2,
@@ -307,7 +308,9 @@ smb2_process_query_info_variable(struct smb2_context *smb2,
                 return -1;
         }
 
-        rep->output_buffer = ptr;
+      rep->output_buffer = ptr;
 
         return 0;
 }
+
+#endif /* !defined(DISABLE_ALL_EXCEPT_READ) */

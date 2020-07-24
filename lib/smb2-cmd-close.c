@@ -46,6 +46,8 @@
 #include "libsmb2-private.h"
 #include "libsmb2-config.h"
 
+#if !defined(DISABLE_ALL_EXCEPT_READ)
+
 static int
 smb2_encode_close_request(struct smb2_context *smb2,
                           struct smb2_pdu *pdu,
@@ -133,3 +135,4 @@ smb2_process_close_fixed(struct smb2_context *smb2,
         return 0;
 }
         
+#endif /* !defined(DISABLE_ALL_EXCEPT_READ) */

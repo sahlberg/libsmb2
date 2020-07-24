@@ -8,6 +8,9 @@
 #endif
 
 #include "md5.h"
+#include "libsmb2-config.h"
+
+#if !defined(DISABLE_ALL_EXCEPT_READ)
 
 #ifdef _MSC_VER
 #define bzero(s, n) memset((s), 0, (n))
@@ -86,3 +89,5 @@ smb2_hmac_md5(unsigned char *text, int text_len, unsigned char *key, int key_len
                                               * hash */
         MD5Final(digest, &context);          /* finish up 2nd pass */
 }
+
+#endif /* !defined(DISABLE_ALL_EXCEPT_READ) */

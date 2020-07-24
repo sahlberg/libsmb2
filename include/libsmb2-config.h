@@ -58,3 +58,6 @@
 
 /* Uncomment to disable commands that Write or Modify data or metadata */
 #define DISABLE_MUTATE
+
+/* Remove everything except SMB2_READ */
+#define DISABLE_ALL_EXCEPT_READ

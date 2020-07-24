@@ -46,6 +46,7 @@
 #include "libsmb2-private.h"
 #include "libsmb2-config.h"
 
+#if !defined(DISABLE_ALL_EXCEPT_READ)
 #if !defined(DISABLE_MUTATE)
 
 static int
@@ -153,3 +154,4 @@ smb2_process_write_fixed(struct smb2_context *smb2,
 }
 
 #endif /* !defined(DISABLE_MUTATE) */
+#endif /* !defined(DISABLE_ALL_EXCEPT_READ) */

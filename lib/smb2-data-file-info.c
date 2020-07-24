@@ -42,6 +42,9 @@
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-private.h"
+#include "libsmb2-config.h"
+
+#if !defined(DISABLE_ALL_EXCEPT_READ)
 
 int
 smb2_decode_file_basic_info(struct smb2_context *smb2,
@@ -163,3 +166,5 @@ smb2_decode_file_all_info(struct smb2_context *smb2,
         free(discard_const(name));
         return 0;
 }
+
+#endif /* !defined(DISABLE_ALL_EXCEPT_READ) */

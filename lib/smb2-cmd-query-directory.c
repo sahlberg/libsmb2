@@ -46,6 +46,8 @@
 #include "libsmb2-private.h"
 #include "libsmb2-config.h"
 
+#if !defined(DISABLE_ALL_EXCEPT_READ)
+
 int
 smb2_decode_fileidfulldirectoryinformation(
     struct smb2_context *smb2,
@@ -238,3 +240,5 @@ smb2_process_query_directory_variable(struct smb2_context *smb2,
 
         return 0;
 }
+
+#endif /* !defined(DISABLE_ALL_EXCEPT_READ) */

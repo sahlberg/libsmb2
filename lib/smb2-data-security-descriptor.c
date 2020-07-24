@@ -47,6 +47,7 @@
 #include "libsmb2-private.h"
 #include "libsmb2-config.h"
 
+#if !defined(DISABLE_ALL_EXCEPT_READ)
 #if !defined(DISABLE_SEC_DESC)
 
 static struct smb2_sid *
@@ -355,3 +356,4 @@ smb2_decode_security_descriptor(struct smb2_context *smb2,
 }
 
 #endif /* !defined(DISABLE_SEC_DESC) */
+#endif /* !defined(DISABLE_ALL_EXCEPT_READ) */

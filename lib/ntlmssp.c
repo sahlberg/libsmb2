@@ -61,11 +61,14 @@
 #include "libsmb2.h"
 #include "libsmb2-raw.h"
 #include "libsmb2-private.h"
+#include "libsmb2-config.h"
 
 #include "md4.h"
 #include "md5.h"
 #include "hmac-md5.h"
 #include "ntlmssp.h"
+
+#if !defined(DISABLE_ALL_EXCEPT_READ)
 
 struct auth_data {
         unsigned char *buf;
@@ -588,3 +591,5 @@ ntlmssp_get_session_key(struct auth_data *auth,
 
         return 0;
 }
+
+#endif /* !defined(DISABLE_ALL_EXCEPT_READ) */

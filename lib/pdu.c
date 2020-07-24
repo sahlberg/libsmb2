@@ -468,6 +468,9 @@ smb2_process_payload_fixed(struct smb2_context *smb2, struct smb2_pdu *pdu)
         }
 
         switch (pdu->header.command) {
+        case SMB2_READ:
+                return smb2_process_read_fixed(smb2, pdu);
+#if !defined(DISABLE_ALL_EXCEPT_READ)
         case SMB2_NEGOTIATE:
                 return smb2_process_negotiate_fixed(smb2, pdu);
         case SMB2_SESSION_SETUP:
@@ -484,8 +487,6 @@ smb2_process_payload_fixed(struct smb2_context *smb2, struct smb2_pdu *pdu)
                 return smb2_process_create_fixed(smb2, pdu);
         case SMB2_CLOSE:
                 return smb2_process_close_fixed(smb2, pdu);
-        case SMB2_READ:
-                return smb2_process_read_fixed(smb2, pdu);
         case SMB2_ECHO:
                 return smb2_process_echo_fixed(smb2, pdu);
         case SMB2_QUERY_DIRECTORY:
@@ -504,6 +505,7 @@ smb2_process_payload_fixed(struct smb2_context *smb2, struct smb2_pdu *pdu)
         case SMB2_IOCTL:
                 return smb2_process_ioctl_fixed(smb2, pdu);
 #endif /* !defined(DISABLE_IOCTL_CMD) */
+#endif /* !defined(DISABLE_ALL_EXCEPT_READ) */
         }
         return 0;
 }
@@ -516,6 +518,9 @@ smb2_process_payload_variable(struct smb2_context *smb2, struct smb2_pdu *pdu)
         }
 
         switch (pdu->header.command) {
+        case SMB2_READ:
+                return 0;
+#if !defined(DISABLE_ALL_EXCEPT_READ)
         case SMB2_NEGOTIATE:
                 return smb2_process_negotiate_variable(smb2, pdu);
         case SMB2_SESSION_SETUP:
@@ -534,8 +539,6 @@ smb2_process_payload_variable(struct smb2_context *smb2, struct smb2_pdu *pdu)
                 return 0;
         case SMB2_FLUSH:
                 return 0;
-        case SMB2_READ:
-                return 0;
         case SMB2_WRITE:
                 return 0;
         case SMB2_ECHO:
@@ -550,6 +553,7 @@ smb2_process_payload_variable(struct smb2_context *smb2, struct smb2_pdu *pdu)
         case SMB2_IOCTL:
                 return smb2_process_ioctl_variable(smb2, pdu); 
 #endif /* !defined(DISABLE_IOCTL_CMD) */
+#endif /* !defined(DISABLE_ALL_EXCEPT_READ) */
         }
         return 0;
 }

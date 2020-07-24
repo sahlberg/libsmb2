@@ -44,6 +44,7 @@
 #include "libsmb2-private.h"
 #include "libsmb2-config.h"
 
+#if !defined(DISABLE_ALL_EXCEPT_READ)
 #if !defined(DISABLE_REPARSE_POINTS)
 
 int
@@ -110,3 +111,4 @@ smb2_decode_reparse_data_buffer(struct smb2_context *smb2,
 }
 
 #endif /* !defined(DISABLE_REPARSE_POINTS) */
+#endif /* !defined(DISABLE_ALL_EXCEPT_READ) */

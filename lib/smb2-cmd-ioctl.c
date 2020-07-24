@@ -46,6 +46,7 @@
 #include "libsmb2-private.h"
 #include "libsmb2-config.h"
 
+#if !defined(DISABLE_ALL_EXCEPT_READ)
 #if !defined(DISABLE_IOCTL_CMD)
 
 #define IOV_OFFSET (rep->output_offset - SMB2_HEADER_SIZE - \
@@ -200,3 +201,4 @@ smb2_cmd_ioctl_async(struct smb2_context *smb2,
         return pdu;
 }
 #endif /* !defined(DISABLE_IOCTL_CMD) */
+#endif /* !defined(DISABLE_ALL_EXCEPT_READ) */

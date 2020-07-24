@@ -32,6 +32,9 @@
 #endif
 
 #include "md5.h"
+#include "libsmb2-config.h"
+
+#if !defined(DISABLE_ALL_EXCEPT_READ)
 
 #ifdef WORDS_BIGENDIAN
 void
@@ -248,3 +251,4 @@ MD5Transform(UWORD32 buf[4], UWORD32 const in[16])
 
 #endif
 
+#endif /* !defined(DISABLE_ALL_EXCEPT_READ) */

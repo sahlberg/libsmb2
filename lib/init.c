@@ -76,6 +76,43 @@
 #endif
 #endif // __ANDROID__
 
+struct smb2_iovec *smb2_add_iovector(struct smb2_context *smb2,
+                                     struct smb2_io_vectors *v,
+                                     uint8_t *buf, int len,
+                                     void (*free)(void *))
+{
+        struct smb2_iovec *iov = &v->iov[v->niov];
+
+        v->iov[v->niov].buf = buf;
+        v->iov[v->niov].len = len;
+        v->iov[v->niov].free = free;
+        v->total_size += len;
+        v->niov++;
+
+        return iov;
+}
+
+void smb2_free_iovector(struct smb2_context *smb2, struct smb2_io_vectors *v)
+{
+        int i;
+
+        for (i = 0; i < v->niov; i++) {
+                if (v->iov[i].free) {
+                        v->iov[i].free(v->iov[i].buf);
+                }
+        }
+        v->niov = 0;
+        v->total_size = 0;
+        v->num_done = 0;
+}
+
+const char *smb2_get_error(struct smb2_context *smb2)
+{
+        return smb2 ? smb2->error_string : "";
+}
+
+#if !defined(DISABLE_ALL_EXCEPT_READ)
+
 static int
 smb2_parse_args(struct smb2_context *smb2, const char *args)
 {
@@ -341,36 +378,6 @@ void smb2_destroy_context(struct smb2_context *smb2)
         free(smb2);
 }
 
-void smb2_free_iovector(struct smb2_context *smb2, struct smb2_io_vectors *v)
-{
-        int i;
-
-        for (i = 0; i < v->niov; i++) {
-                if (v->iov[i].free) {
-                        v->iov[i].free(v->iov[i].buf);
-                }
-        }
-        v->niov = 0;
-        v->total_size = 0;
-        v->num_done = 0;
-}
-
-struct smb2_iovec *smb2_add_iovector(struct smb2_context *smb2,
-                                     struct smb2_io_vectors *v,
-                                     uint8_t *buf, int len,
-                                     void (*free)(void *))
-{
-        struct smb2_iovec *iov = &v->iov[v->niov];
-
-        v->iov[v->niov].buf = buf;
-        v->iov[v->niov].len = len;
-        v->iov[v->niov].free = free;
-        v->total_size += len;
-        v->niov++;
-
-        return iov;
-}
-
 #if !defined(DISABLE_ERROR_STRINGS)
 void smb2_set_error(struct smb2_context *smb2, const char *error_string, ...)
 {
@@ -388,11 +395,6 @@ void smb2_set_error(struct smb2_context *smb2, const char *error_string, ...)
         }
 }
 #endif /* !defined(DISABLE_ERROR_STRINGS) */
-
-const char *smb2_get_error(struct smb2_context *smb2)
-{
-        return smb2 ? smb2->error_string : "";
-}
 
 const char *smb2_get_client_guid(struct smb2_context *smb2)
 {
@@ -544,3 +546,5 @@ void smb2_set_timeout(struct smb2_context *smb2, int seconds)
 {
         smb2->timeout = seconds;
 }
+
+#endif /* !defined(DISABLE_ALL_EXCEPT_READ) */

@@ -637,6 +637,8 @@ smb2_service(struct smb2_context *smb2, int revents)
         return ret;
 }
 
+#if 0
+
 static void
 set_nonblocking(t_socket fd)
 {
@@ -823,6 +825,8 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
         return 0;
 }
 
+#endif
+ 
 void smb2_change_events(struct smb2_context *smb2, int fd, int events)
 {
         if (smb2->events == events) {

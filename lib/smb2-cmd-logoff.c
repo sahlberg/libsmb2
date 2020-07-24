@@ -44,6 +44,7 @@
 #include "libsmb2-private.h"
 #include "libsmb2-config.h"
 
+#if !defined(DISABLE_ALL_EXCEPT_READ)
 #if !defined(DISABLE_LOGOFF_CMD)
 
 static int
@@ -101,3 +102,4 @@ smb2_process_logoff_fixed(struct smb2_context *smb2,
 }
 
 #endif /* !defined(DISABLE_LOGOFF_CMD) */
+#endif /* !defined(DISABLE_ALL_EXCEPT_READ) */
