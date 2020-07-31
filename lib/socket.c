@@ -470,6 +470,11 @@ read_more_data:
                 return 0;
         }
 
+        if (smb2->in.niov < 2) {
+                smb2_set_error(smb2, "Too few io vectors in received PDU.");
+                return -1;
+        }
+
         if (smb2->hdr.status == SMB2_STATUS_PENDING) {
                 /* This was a pending command. Just ignore it and proceed
                  * to read the next chain.
@@ -478,9 +483,34 @@ read_more_data:
                 return 0;
         }
 
+        /* We don't yet have the signing key until later, once session
+         * setup has completed, so we can not yet verify the signature
+         * of the final leg of session setup.
+         */
+        if (smb2->sign &&
+            (smb2->hdr.flags & SMB2_FLAGS_SIGNED) &&
+            (smb2->hdr.command != SMB2_SESSION_SETUP) ) {
+                uint8_t signature[16];
+                memcpy(&signature[0], &smb2->in.iov[1].buf[48], 16);
+                if (smb2_calc_signature(smb2, &smb2->in.iov[1].buf[48],
+                                        &smb2->in.iov[1],
+                                        smb2->in.niov - 1) < 0) {
+                        return -1;
+                }
+                if (memcmp(&signature[0], &smb2->in.iov[1].buf[48], 16)) {
+                        smb2_set_error(smb2, "Wrong signature in received "
+                                       "PDU");
+                        return -1;
+                }
+        }
+
         is_chained = smb2->hdr.next_command;
 
         pdu->cb(smb2, smb2->hdr.status, pdu->payload, pdu->cb_data);
+        /* FIXME: If this was the final leg of session setup we will now have
+         * singing key so we can check the signature of it after the fact
+         * and invalidate the session if it was wrong.
+         */
         smb2_free_pdu(smb2, pdu);
         smb2->pdu = NULL;
 

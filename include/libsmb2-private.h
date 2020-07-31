@@ -300,6 +300,8 @@ void smb2_free_iovector(struct smb2_context *smb2, struct smb2_io_vectors *v);
 
 int smb2_decode_header(struct smb2_context *smb2, struct smb2_iovec *iov,
                        struct smb2_header *hdr);
+int smb2_calc_signature(struct smb2_context *smb2, uint8_t *signature,
+                        struct smb2_iovec *iov, int niov);
         
 int smb2_set_uint8(struct smb2_iovec *iov, int offset, uint8_t value);
 int smb2_set_uint16(struct smb2_iovec *iov, int offset, uint16_t value);
