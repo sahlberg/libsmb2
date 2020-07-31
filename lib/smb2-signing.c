@@ -166,25 +166,23 @@ smb2_calc_signature(struct smb2_context *smb2, uint8_t *signature,
         memset(iov[0].buf + 48, 0, 16);
 
         if (smb2->dialect > SMB2_VERSION_0210) {
-                int i = 0, offset = 0;
+                int i = 0, offset = 0, len = 0;
                 uint8_t aes_mac[AES_BLOCK_SIZE];
                 /* combine the buffers into one */
                 uint8_t *msg = NULL;
-                msg = (uint8_t *) malloc(4);
+
+                for (i=0; i < niov; i++) {
+                        len += iov[i].len;
+                }
+                msg = (uint8_t *) malloc(len);
                 if (msg == NULL) {
                         smb2_set_error(smb2, "Failed to allocate buffer for "
-                                       "signature");
+                                       "signature calculation");
                         return -1;
                 }
 
                 for (i=0; i < niov; i++) {
-                        msg = (uint8_t *)realloc(msg, offset + iov[i].len);
-                        if (msg == NULL) {
-                                smb2_set_error(smb2, "Failed to reallocate "
-                                               "buffer for signature");
-                                return -1;
-                        }
-                        memcpy(msg+offset, iov[i].buf, iov[i].len);
+                        memcpy(msg + offset, iov[i].buf, iov[i].len);
                         offset += iov[i].len;
                 }
                 smb3_aes_cmac_128(smb2->signing_key, msg, offset, aes_mac);
