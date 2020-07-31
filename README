@@ -50,7 +50,7 @@ Aruments supported by libsmb2 are :
  vers=<version> : Which SMB version to negotiate:
                   2: Negotiate any version of SMB2
                   3: Negotiate any version of SMB3
-		  2.02, 2.10, 3.00, 3.02 : negotiate a specific version.
+		  2.02, 2.10, 3.00, 3.02, 3.1.1 : negotiate a specific version.
 		  Default is to negotiate any SMB2 or SMB3 version.
   seal          : Enable SMB3 encryption.
   sign          : Require SMB2/3 signing.

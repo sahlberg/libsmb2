@@ -82,7 +82,8 @@ enum smb2_negotiate_version {
         SMB2_VERSION_0202 = 0x0202,
         SMB2_VERSION_0210 = 0x0210,
         SMB2_VERSION_0300 = 0x0300,
-        SMB2_VERSION_0302 = 0x0302
+        SMB2_VERSION_0302 = 0x0302,
+        SMB2_VERSION_0311 = 0x0311
 };
 
 #define SMB2_GLOBAL_CAP_DFS                0x00000001
@@ -92,6 +93,15 @@ enum smb2_negotiate_version {
 #define SMB2_GLOBAL_CAP_PERSISTENT_HANDLES 0x00000010
 #define SMB2_GLOBAL_CAP_DIRECTORY_LEASING  0x00000020
 #define SMB2_GLOBAL_CAP_ENCRYPTION         0x00000040
+
+#define SMB2_PREAUTH_INTEGRITY_CAP         0x0001
+#define SMB2_ENCRYPTION_CAP                0x0002
+
+#define SMB2_HASH_SHA_512                  0x0001
+#define SMB2_PREAUTH_HASH_SIZE             64
+
+#define SMB2_ENCRYPTION_AES_128_CCM        0x0001
+#define SMB2_ENCRYPTION_AES_128_GCM        0x0002
 
 #define SMB2_NEGOTIATE_MAX_DIALECTS 10
 
@@ -105,7 +115,8 @@ struct smb2_negotiate_request {
         uint16_t security_mode;
         uint32_t capabilities;
         smb2_guid client_guid;
-        uint64_t client_start_time;
+        uint32_t negotiate_context_offset;
+        uint16_t negotiate_context_count;
         uint16_t dialects[SMB2_NEGOTIATE_MAX_DIALECTS];
 };
 
@@ -114,6 +125,7 @@ struct smb2_negotiate_request {
 struct smb2_negotiate_reply {
         uint16_t security_mode;
         uint16_t dialect_revision;
+        uint16_t cypher;
         smb2_guid server_guid;
         uint32_t capabilities;
         uint32_t max_transact_size;
@@ -121,6 +133,8 @@ struct smb2_negotiate_reply {
         uint32_t max_write_size;
         uint64_t system_time;
         uint64_t server_start_time;
+        uint32_t negotiate_context_offset;
+        uint16_t negotiate_context_count;
         uint16_t security_buffer_length;
         uint16_t security_buffer_offset;
         uint8_t *security_buffer;

@@ -46,6 +46,61 @@
 #include "libsmb2-private.h"
 
 static int
+smb2_encode_preauth_context(struct smb2_context *smb2, struct smb2_pdu *pdu)
+{
+        uint8_t *buf;
+        int len, i;
+        struct smb2_iovec *iov;
+
+        /* Preauth integrity capability */
+        len = 8 + 38;
+        len = PAD_TO_32BIT(len);
+        buf = malloc(len);
+        if (buf == NULL) {
+                smb2_set_error(smb2, "Failed to allocate preauth context");
+                return -1;
+        }
+        memset(buf, 0, len);
+
+        iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        smb2_set_uint16(iov, 0, SMB2_PREAUTH_INTEGRITY_CAP);
+        smb2_set_uint16(iov, 2, 38);
+        smb2_set_uint16(iov, 8, 1);
+        smb2_set_uint16(iov, 10, 32);
+        smb2_set_uint16(iov, 12, SMB2_HASH_SHA_512);
+
+        for (i = 0; i < SMB2_SALT_SIZE; i++) {
+                smb2_set_uint8(iov, 14 + i, smb2->salt[i]);
+        }
+        return 0;
+}
+
+static int
+smb2_encode_encryption_context(struct smb2_context *smb2, struct smb2_pdu *pdu)
+{
+        uint8_t *buf;
+        int len;
+        struct smb2_iovec *iov;
+
+        len = 12;
+        len = PAD_TO_32BIT(len);
+        buf = malloc(len);
+        if (buf == NULL) {
+                smb2_set_error(smb2, "Failed to allocate encryption context");
+                return -1;
+        }
+        memset(buf, 0, len);
+
+        iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        smb2_set_uint16(iov, 0, SMB2_ENCRYPTION_CAP);
+        smb2_set_uint16(iov, 2, 4);
+        smb2_set_uint16(iov, 8, 1);
+        smb2_set_uint16(iov, 10, SMB2_ENCRYPTION_AES_128_CCM);
+
+        return 0;
+}
+
+static int
 smb2_encode_negotiate_request(struct smb2_context *smb2,
                               struct smb2_pdu *pdu,
                               struct smb2_negotiate_request *req)
@@ -65,12 +120,27 @@ smb2_encode_negotiate_request(struct smb2_context *smb2,
         
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
         
+        if (smb2->version == SMB2_VERSION_0311) {
+                req->negotiate_context_offset = len + SMB2_HEADER_SIZE;
+
+                if (smb2_encode_preauth_context(smb2, pdu)) {
+                        return -1;
+                }
+                req->negotiate_context_count++;
+
+                if (smb2_encode_encryption_context(smb2, pdu)) {
+                        return -1;
+                }
+                req->negotiate_context_count++;
+        }
+
         smb2_set_uint16(iov, 0, SMB2_NEGOTIATE_REQUEST_SIZE);
         smb2_set_uint16(iov, 2, req->dialect_count);
         smb2_set_uint16(iov, 4, req->security_mode);
         smb2_set_uint32(iov, 8, req->capabilities);
         memcpy(iov->buf + 12, req->client_guid, SMB2_GUID_SIZE);
-        smb2_set_uint64(iov, 28, req->client_start_time);
+        smb2_set_uint32(iov, 28, req->negotiate_context_offset);
+        smb2_set_uint16(iov, 32, req->negotiate_context_count);
         for (i = 0; i < req->dialect_count; i++) {
                 smb2_set_uint16(iov, 36 + i * sizeof(uint16_t),
                                 req->dialects[i]);
@@ -106,6 +176,54 @@ smb2_cmd_negotiate_async(struct smb2_context *smb2,
 
 #define IOV_OFFSET (rep->security_buffer_offset - SMB2_HEADER_SIZE - \
                     (SMB2_NEGOTIATE_REPLY_SIZE & 0xfffe))
+
+static int
+smb2_parse_encryption_context(struct smb2_context *smb2,
+                              struct smb2_negotiate_reply *rep,
+                              struct smb2_iovec *iov,
+                              int offset)
+{
+        smb2_get_uint16(iov, offset, &rep->cypher);
+        return 0;
+}
+
+static int
+smb2_parse_negotiate_contexts(struct smb2_context *smb2,
+                              struct smb2_negotiate_reply *rep,
+                              struct smb2_iovec *iov,
+                              int offset, int count)
+{
+        uint16_t type, len;
+
+        while (count--) {
+                smb2_get_uint16(iov, offset, &type);
+                offset += 2;
+                smb2_get_uint16(iov, offset, &len);
+                offset += 6;
+
+                switch (type) {
+                case SMB2_PREAUTH_INTEGRITY_CAP:
+                        break;
+                case SMB2_ENCRYPTION_CAP:
+                        if (smb2_parse_encryption_context(smb2, rep,
+                                                          iov, offset)) {
+                                return -1;
+                        }
+                        break;
+                default:
+                        smb2_set_error(smb2, "Unknown negotiate context "
+                                       "type 0x%04x", type);
+                        return -1;
+                }
+                offset += (len + 3) & ~3;
+                if (offset > iov->len) {
+                        smb2_set_error(smb2, "Bad len in negotiate context\n");
+                        return -1;
+                }
+        }
+
+        return 0;
+}
 
 int
 smb2_process_negotiate_fixed(struct smb2_context *smb2,
@@ -144,6 +262,11 @@ smb2_process_negotiate_fixed(struct smb2_context *smb2,
         smb2_get_uint16(iov, 56, &rep->security_buffer_offset);
         smb2_get_uint16(iov, 58, &rep->security_buffer_length);
 
+        if (rep->dialect_revision >= SMB2_VERSION_0311) {
+                smb2_get_uint16(iov, 6, &rep->negotiate_context_count);
+                smb2_get_uint32(iov, 60, &rep->negotiate_context_offset);
+        }
+
         if (rep->security_buffer_length == 0) {
                 return 0;
         }
@@ -154,10 +277,19 @@ smb2_process_negotiate_fixed(struct smb2_context *smb2,
                 return -1;
         }
 
-        /* Return the amount of data that the security buffer will take up.
-         * Including any padding before the security buffer itself.
+        /*
+         * In SMB3.1.1 and later we have negotiate contexts at the end of the
+         * blob but we can not compute how big they are from just
+         * looking at the smb2 header of the fixed part of the negotiate reply
+         * so just return all the remaining data as the variable size.
+         * The contexts are technically where padding should be.
          */
-        return IOV_OFFSET + rep->security_buffer_length;
+        if (rep->dialect_revision >= SMB2_VERSION_0311) {
+                return smb2->spl - SMB2_HEADER_SIZE -
+                        (SMB2_NEGOTIATE_REPLY_SIZE & 0xfffe);
+        } else {
+                return IOV_OFFSET + rep->security_buffer_length;
+        }
 }
 
 int
@@ -166,8 +298,25 @@ smb2_process_negotiate_variable(struct smb2_context *smb2,
 {
         struct smb2_negotiate_reply *rep = pdu->payload;
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
+        int offset;
 
         rep->security_buffer = &iov->buf[IOV_OFFSET];
+
+        if (!rep->negotiate_context_count) {
+                return 0;
+        }
+
+        offset = rep->negotiate_context_offset - SMB2_HEADER_SIZE -
+                (SMB2_NEGOTIATE_REPLY_SIZE & 0xfffe);
+
+        if (offset < 0 || offset > iov->len) {
+                return -1;
+        }
+
+        if (smb2_parse_negotiate_contexts(smb2, rep, iov, offset,
+                                          rep->negotiate_context_count)) {
+                return -1;
+        }
 
         return 0;
 }
