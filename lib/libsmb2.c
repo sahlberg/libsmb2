@@ -682,6 +682,26 @@ session_setup_cb(struct smb2_context *smb2, int status,
                         free_c_data(smb2, c_data);
                         return;
                 }
+
+                if (smb2->hdr.flags & SMB2_FLAGS_SIGNED) {
+                        uint8_t signature[16];
+
+                        memcpy(&signature[0], &smb2->in.iov[1].buf[48], 16);
+                        if (smb2_calc_signature(smb2, &smb2->in.iov[1].buf[48],
+                                                &smb2->in.iov[1],
+                                                smb2->in.niov - 1) < 0) {
+                                c_data->cb(smb2, -EINVAL, NULL, c_data->cb_data);
+                                free_c_data(smb2, c_data);
+                                return;
+                        }
+                        if (memcmp(&signature[0], &smb2->in.iov[1].buf[48], 16)) {
+                                smb2_set_error(smb2, "Wrong signature in received "
+                                               "PDU");
+                                c_data->cb(smb2, -EINVAL, NULL, c_data->cb_data);
+                                free_c_data(smb2, c_data);
+                                return;
+                        }
+                }
         }
 
         memset(&req, 0, sizeof(struct smb2_tree_connect_request));

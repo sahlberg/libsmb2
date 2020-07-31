@@ -507,10 +507,6 @@ read_more_data:
         is_chained = smb2->hdr.next_command;
 
         pdu->cb(smb2, smb2->hdr.status, pdu->payload, pdu->cb_data);
-        /* FIXME: If this was the final leg of session setup we will now have
-         * singing key so we can check the signature of it after the fact
-         * and invalidate the session if it was wrong.
-         */
         smb2_free_pdu(smb2, pdu);
         smb2->pdu = NULL;
 
