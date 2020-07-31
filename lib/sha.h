@@ -12,7 +12,7 @@
 #endif
 
 #ifndef USE_SHA384_SHA512
-  #define USE_SHA384_SHA512 0
+  #define USE_SHA384_SHA512 1
 #endif
 
 /*

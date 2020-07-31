@@ -132,6 +132,8 @@ smb2_parse_args(struct smb2_context *smb2, const char *args)
                                 smb2->version = SMB2_VERSION_0300;
                         } else if(!strcmp(value, "3.02")) {
                                 smb2->version = SMB2_VERSION_0302;
+                        } else if(!strcmp(value, "3.1.1")) {
+                                smb2->version = SMB2_VERSION_0311;
                         } else {
                                 smb2_set_error(smb2, "Unknown vers= argument: "
                                                "%s", value);
@@ -154,6 +156,7 @@ smb2_parse_args(struct smb2_context *smb2, const char *args)
                 case SMB2_VERSION_ANY3:
                 case SMB2_VERSION_0300:
                 case SMB2_VERSION_0302:
+                case SMB2_VERSION_0311:
                         break;
                 default:
                         smb2_set_error(smb2, "Can only use seal with SMB3");
@@ -253,7 +256,7 @@ struct smb2_context *smb2_init_context(void)
         int i, ret;
         static int ctr;
 
-        srandom(time(NULL) | getpid() | ctr++);
+        srandom(time(NULL) ^ getpid() ^ ctr++);
 
         smb2 = calloc(1, sizeof(struct smb2_context));
         if (smb2 == NULL) {
@@ -268,7 +271,10 @@ struct smb2_context *smb2_init_context(void)
         smb2->ndr = 1;
 
         for (i = 0; i < 8; i++) {
-                smb2->client_challenge[i] = random()&0xff;
+                smb2->client_challenge[i] = random() & 0xff;
+        }
+        for (i = 0; i < SMB2_SALT_SIZE; i++) {
+                smb2->salt[i] = random() & 0xff;
         }
 
         snprintf(smb2->client_guid, 16, "libsmb2-%d", getpid());

@@ -85,6 +85,9 @@
 #endif
 
 /* strings used to derive SMB signing and encryption keys */
+static const char SMBSigningKey[] = "SMBSigningKey";
+static const char SMBC2SCipherKey[] = "SMBC2SCipherKey";
+static const char SMBS2CCipherKey[] = "SMBS2CCipherKey";
 static const char SMB2AESCMAC[] = "SMB2AESCMAC";
 static const char SmbSign[] = "SmbSign";
 static const char SMB2AESCCM[] = "SMB2AESCCM";
@@ -93,10 +96,7 @@ static const char ServerIn[] = "ServerIn ";
 /* The following strings will be used for deriving other keys
 static const char SMB2APP[] = "SMB2APP";
 static const char SmbRpc[] = "SmbRpc";
-static const char SMBSigningKey[] = "SMBSigningKey";
 static const char SMBAppKey[] = "SMBAppKey";
-static const char SMBS2CCipherKey[] = "SMBS2CCipherKey";
-static const char SMBC2SCipherKey[] = "SMBC2SCipherKey";
 */
 
 #ifndef O_SYNC
@@ -562,6 +562,31 @@ void smb2_derive_key(
         memcpy(derived_key, digest, SMB2_KEY_SIZE);
 }
 
+/* MS-SMB2 3.2.5.2 */
+static void
+smb3_init_preauth_hash(struct smb2_context *smb2)
+{
+        memset(&smb2->preauthhash[0], 0, SMB2_PREAUTH_HASH_SIZE);
+}
+
+/* MS-SMB2 3.2.5.2 */
+static int
+smb3_update_preauth_hash(struct smb2_context *smb2, int niov,
+                         struct smb2_iovec *iov)
+{
+        int i;
+        USHAContext tctx;
+
+        USHAReset(&tctx, SHA512);
+        USHAInput(&tctx, smb2->preauthhash, SMB2_PREAUTH_HASH_SIZE);
+        for (i = 0; i < niov; i++) {
+                USHAInput(&tctx, iov[i].buf, iov[i].len);
+        }
+        USHAResult(&tctx, smb2->preauthhash);
+
+        return 0;
+}
+
 static void
 session_setup_cb(struct smb2_context *smb2, int status,
                  void *command_data, void *private_data)
@@ -573,6 +598,7 @@ session_setup_cb(struct smb2_context *smb2, int status,
         int ret;
 
         if (status == SMB2_STATUS_MORE_PROCESSING_REQUIRED) {
+                smb3_update_preauth_hash(smb2, smb2->in.niov - 1, &smb2->in.iov[1]);
                 if ((ret = send_session_setup_request(
                                 smb2, c_data, rep->security_buffer,
                                 rep->security_buffer_length)) < 0) {
@@ -675,12 +701,27 @@ session_setup_cb(struct smb2_context *smb2, int status,
                                         sizeof(ServerOut),
                                         smb2->serverout_key);
                 } else if (smb2->dialect > SMB2_VERSION_0302) {
-                        smb2_close_context(smb2);
-                        smb2_set_error(smb2, "Signing/Encryption Required. "
-                                             "Not yet implemented for SMB3.1");
-                        c_data->cb(smb2, -EINVAL, NULL, c_data->cb_data);
-                        free_c_data(smb2, c_data);
-                        return;
+                        smb2_derive_key(smb2->session_key,
+                                        smb2->session_key_size,
+                                        SMBSigningKey,
+                                        sizeof(SMBSigningKey),
+                                        (char *)smb2->preauthhash,
+                                        SMB2_PREAUTH_HASH_SIZE,
+                                        smb2->signing_key);
+                        smb2_derive_key(smb2->session_key,
+                                        smb2->session_key_size,
+                                        SMBC2SCipherKey,
+                                        sizeof(SMBC2SCipherKey),
+                                        (char *)smb2->preauthhash,
+                                        SMB2_PREAUTH_HASH_SIZE,
+                                        smb2->serverin_key);
+                        smb2_derive_key(smb2->session_key,
+                                        smb2->session_key_size,
+                                        SMBS2CCipherKey,
+                                        sizeof(SMBS2CCipherKey),
+                                        (char *)smb2->preauthhash,
+                                        SMB2_PREAUTH_HASH_SIZE,
+                                        smb2->serverout_key);
                 }
 
                 if (smb2->hdr.flags & SMB2_FLAGS_SIGNED) {
@@ -762,6 +803,7 @@ send_session_setup_request(struct smb2_context *smb2,
                 return -ENOMEM;
         }
         smb2_queue_pdu(smb2, pdu);
+        smb3_update_preauth_hash(smb2, pdu->out.niov, &pdu->out.iov[0]);
 
         return 0;
 }
@@ -773,6 +815,8 @@ negotiate_cb(struct smb2_context *smb2, int status,
         struct connect_data *c_data = private_data;
         struct smb2_negotiate_reply *rep = command_data;
         int ret;
+
+        smb3_update_preauth_hash(smb2, smb2->in.niov - 1, &smb2->in.iov[1]);
 
         if (status != SMB2_STATUS_SUCCESS) {
                 smb2_close_context(smb2);
@@ -796,6 +840,7 @@ negotiate_cb(struct smb2_context *smb2, int status,
         smb2->max_read_size     = rep->max_read_size;
         smb2->max_write_size    = rep->max_write_size;
         smb2->dialect           = rep->dialect_revision;
+        smb2->cypher            = rep->cypher;
 
         if (smb2->seal && (smb2->dialect == SMB2_VERSION_0300 ||
                            smb2->dialect == SMB2_VERSION_0302)) {
@@ -825,6 +870,10 @@ negotiate_cb(struct smb2_context *smb2, int status,
 
         if (smb2->seal) {
                 smb2->sign = 0;
+        }
+
+        if (smb2->dialect == SMB2_VERSION_0311 && !smb2->seal) {
+                smb2->sign = 1;
         }
 
         if (smb2->sec == SMB2_SEC_NTLMSSP) {
@@ -878,7 +927,8 @@ connect_cb(struct smb2_context *smb2, int status,
         req.capabilities = SMB2_GLOBAL_CAP_LARGE_MTU;
         if (smb2->seal && (smb2->version == SMB2_VERSION_ANY3 ||
                            smb2->version == SMB2_VERSION_0300 ||
-                           smb2->version == SMB2_VERSION_0302)) {
+                           smb2->version == SMB2_VERSION_0302 ||
+                           smb2->version == SMB2_VERSION_0311)) {
                 req.capabilities |= SMB2_GLOBAL_CAP_ENCRYPTION;
         }
         req.security_mode = smb2->security_mode;
@@ -904,6 +954,7 @@ connect_cb(struct smb2_context *smb2, int status,
         case SMB2_VERSION_0210:
         case SMB2_VERSION_0300:
         case SMB2_VERSION_0302:
+        case SMB2_VERSION_0311:
                 req.dialect_count = 1;
                 req.dialects[0] = smb2->version;
                 break;
@@ -918,6 +969,7 @@ connect_cb(struct smb2_context *smb2, int status,
                 smb2->sec = SMB2_SEC_NTLMSSP;
 #endif
         }
+        smb3_init_preauth_hash(smb2);
         pdu = smb2_cmd_negotiate_async(smb2, &req, negotiate_cb, c_data);
         if (pdu == NULL) {
                 c_data->cb(smb2, -ENOMEM, NULL, c_data->cb_data);
@@ -925,6 +977,7 @@ connect_cb(struct smb2_context *smb2, int status,
                 return;
         }
         smb2_queue_pdu(smb2, pdu);
+        smb3_update_preauth_hash(smb2, pdu->out.niov, &pdu->out.iov[0]);
 }
 
 int

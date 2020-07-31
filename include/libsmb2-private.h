@@ -112,6 +112,7 @@ enum smb2_sec {
 };
 
 #define MAX_CREDITS 1024
+#define SMB2_SALT_SIZE 32
 
 struct smb2_context {
 
@@ -154,6 +155,9 @@ struct smb2_context {
         uint8_t signing_key[SMB2_KEY_SIZE];
         uint8_t serverin_key[SMB2_KEY_SIZE];
         uint8_t serverout_key[SMB2_KEY_SIZE];
+        uint8_t salt[SMB2_SALT_SIZE];
+        uint16_t cypher;
+        uint8_t preauthhash[SMB2_PREAUTH_HASH_SIZE];
 
         /*
          * For handling received smb3 encrypted blobs
