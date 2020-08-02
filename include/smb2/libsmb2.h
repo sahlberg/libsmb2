@@ -176,6 +176,13 @@ int smb2_service(struct smb2_context *smb2, int revents);
 void smb2_set_timeout(struct smb2_context *smb2, int seconds);
 
 /*
+ * Set which version of SMB to negotiate.
+ * Default is to let the server pick the version.
+ */
+void smb2_set_version(struct smb2_context *smb2,
+                      enum smb2_negotiate_version version);
+
+/*
  * Set the security mode for the connection.
  * This is a combination of the flags SMB2_NEGOTIATE_SIGNING_ENABLED
  * and  SMB2_NEGOTIATE_SIGNING_REQUIRED

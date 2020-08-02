@@ -537,3 +537,10 @@ void smb2_set_timeout(struct smb2_context *smb2, int seconds)
 {
         smb2->timeout = seconds;
 }
+
+void smb2_set_version(struct smb2_context *smb2,
+                      enum smb2_negotiate_version version)
+{
+        smb2->version = version;
+}
+
