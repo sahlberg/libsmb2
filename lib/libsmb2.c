@@ -637,7 +637,7 @@ session_setup_cb(struct smb2_context *smb2, int status,
 #endif
 
 
-        if (smb2->sign || smb2->seal) {
+        if (smb2->sign || smb2->seal || smb2->dialect == SMB2_VERSION_0311) {
                 uint8_t zero_key[SMB2_KEY_SIZE] = {0};
                 int have_valid_session_key = 1;
 
@@ -870,10 +870,6 @@ negotiate_cb(struct smb2_context *smb2, int status,
 
         if (smb2->seal) {
                 smb2->sign = 0;
-        }
-
-        if (smb2->dialect == SMB2_VERSION_0311 && !smb2->seal) {
-                smb2->sign = 1;
         }
 
         if (smb2->sec == SMB2_SEC_NTLMSSP) {
