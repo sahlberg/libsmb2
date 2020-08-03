@@ -108,19 +108,29 @@ smb2_encode_negotiate_request(struct smb2_context *smb2,
         uint8_t *buf;
         int i, len;
         struct smb2_iovec *iov;
-        
+
         len = SMB2_NEGOTIATE_REQUEST_SIZE +
                 req->dialect_count * sizeof(uint16_t);
         len = PAD_TO_32BIT(len);
+        if (smb2->version == SMB2_VERSION_ANY ||
+            smb2->version == SMB2_VERSION_ANY3 ||
+            smb2->version == SMB2_VERSION_0311) {
+                /* Negotiate contexts are alinged at 64bit boundaries */
+                if (len & 0x04) {
+                        len += 4;
+                }
+        }
         buf = calloc(len, sizeof(uint8_t));
         if (buf == NULL) {
                 smb2_set_error(smb2, "Failed to allocate negotiate buffer");
                 return -1;
         }
-        
+
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
         
-        if (smb2->version == SMB2_VERSION_0311) {
+        if (smb2->version == SMB2_VERSION_ANY ||
+            smb2->version == SMB2_VERSION_ANY3 ||
+            smb2->version == SMB2_VERSION_0311) {
                 req->negotiate_context_offset = len + SMB2_HEADER_SIZE;
 
                 if (smb2_encode_preauth_context(smb2, pdu)) {
