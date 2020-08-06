@@ -3,9 +3,11 @@
 /*
 ** Function: hmac_md5
 */
-#ifndef _MSC_VER
+#if !defined(_MSC_VER) && !defined(PS2_EE_PLATFORM)
 #include <strings.h>
 #endif
+
+#include "compat.h"
 
 #include "md5.h"
 #include "libsmb2-config.h"

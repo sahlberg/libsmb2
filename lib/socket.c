@@ -36,7 +36,7 @@
 #endif
 
 #ifdef HAVE_POLL_H
-#ifdef ESP_PLATFORM
+#if defined(ESP_PLATFORM)
 #include <sys/poll.h>
 #else
 #include <poll.h>
@@ -67,17 +67,26 @@
 #include <unistd.h>
 #endif
 
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
+#endif
+
 #include "portable-endian.h"
 #include <errno.h>
 #include <fcntl.h>
+
+#ifndef PS2_EE_PLATFORM
 #include <sys/socket.h>
+#endif
+
+#include "compat.h"
 
 #include "slist.h"
 #include "smb2.h"
 #include "libsmb2.h"
-#include "libsmb2-private.h"
 #include "smb3-seal.h"
 #include "libsmb2-config.h"
+#include "libsmb2-private.h"
 
 #define MAX_URL_SIZE 256
 
@@ -740,9 +749,11 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
                     case EAI_AGAIN:
                         return -EAGAIN;
                     case EAI_NONAME:
+#if !defined(PS2_EE_PLATFORM)
 #if EAI_NODATA != EAI_NONAME /* Equal in MSCV */
                     case EAI_NODATA:
 #endif
+#endif /* !defined(PS2_EE_PLATFORM) */
                     case EAI_SERVICE:
                     case EAI_FAIL:
 #ifdef EAI_ADDRFAMILY /* Not available in MSVC */

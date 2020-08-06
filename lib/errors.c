@@ -16,9 +16,21 @@
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <errno.h>
+
+#ifdef HAVE_STDINT_H
 #include <stdint.h>
+#endif
+
+#ifndef PS2_EE_PLATFORM
 #include <sys/socket.h>
+#endif
+
+#include "compat.h"
 
 #include "smb2.h"
 #include "libsmb2-config.h"

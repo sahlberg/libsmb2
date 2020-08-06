@@ -12,6 +12,8 @@ libsmb2_la_SOURCES = \
 	aes128ccm.h \
 	aes128ccm.c \
 	alloc.c \
+	compat.c \
+	compat.h \
 	dcerpc.c \
 	dcerpc-lsa.c \
 	dcerpc-srvsvc.c \

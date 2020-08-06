@@ -56,6 +56,8 @@
 #include <stdio.h>
 #include <time.h>
 
+#include "compat.h"
+
 #include "slist.h"
 #include "smb2.h"
 #include "libsmb2.h"

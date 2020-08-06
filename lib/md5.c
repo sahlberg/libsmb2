@@ -31,6 +31,8 @@
 #include <sys/types.h>
 #endif
 
+#include "compat.h"
+
 #include "md5.h"
 #include "libsmb2-config.h"
 
