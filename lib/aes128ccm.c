@@ -15,9 +15,9 @@
    You should have received a copy of the GNU Lesser General Public License
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef _MSC_VER
+#if !defined(_MSC_VER) && !defined(PS2_EE_PLATFORM)
 #include <arpa/inet.h>
-#endif // !_MSC_VER
+#endif /* !_MSC_VER && !PS2_EE_PLATFORM */
 
 #include <stdint.h>
 #include <stdio.h>

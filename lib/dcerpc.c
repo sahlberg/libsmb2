@@ -54,6 +54,10 @@
 #include "portable-endian.h"
 #include <errno.h>
 
+#ifdef PS2_EE_PLATFORM
+#include "compat.h"
+#endif
+
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-dcerpc.h"

@@ -23,8 +23,7 @@
 #ifndef MD5_H
 #define MD5_H
 
-#if defined(_WIN32)
-#else
+#if !defined(_WIN32) && !defined(PS2_EE_PLATFORM)
 #include <netinet/in.h>
 #endif
 

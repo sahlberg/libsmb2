@@ -53,6 +53,10 @@
 
 #include <stdio.h>
 
+#ifdef PS2_EE_PLATFORM
+#include "compat.h"
+#endif
+
 #include "portable-endian.h"
 
 #include "aes128ccm.h"

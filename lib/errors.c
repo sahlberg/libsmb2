@@ -18,7 +18,10 @@
 
 #include <errno.h>
 #include <stdint.h>
+
+#ifndef PS2_EE_PLATFORM
 #include <sys/socket.h>
+#endif
 
 #include "smb2.h"
 

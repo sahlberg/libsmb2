@@ -32,14 +32,20 @@
 #endif
 
 #include <errno.h>
+#ifndef PS2_EE_PLATFORM
 #ifdef ESP_PLATFORM
 #include <sys/poll.h>
 #else
 #include <poll.h>
 #endif
+#endif
 
 #ifdef HAVE_STRING_H
 #include <string.h>
+#endif
+
+#ifdef PS2_EE_PLATFORM
+#include "compat.h"
 #endif
 
 #include "smb2.h"
