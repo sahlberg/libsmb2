@@ -56,12 +56,17 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
-#include <sys/socket.h>
 #include <time.h>
+
+#ifndef PS2_EE_PLATFORM
+#include <sys/socket.h>
+#endif
 
 #ifdef _WIN32
 #include "asprintf.h"
 #endif
+
+#include "compat.h"
 
 #include "sha.h"
 #include "sha-private.h"

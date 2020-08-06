@@ -37,6 +37,8 @@
 
 #include <time.h>
 
+#include "compat.h"
+
 #include "portable-endian.h"
 
 #include "slist.h"

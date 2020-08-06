@@ -51,6 +51,8 @@
 #include <unistd.h>
 #endif
 
+#include "compat.h"
+
 #include "smb2-signing.h"
 
 #define EBC 1

@@ -43,8 +43,13 @@
 
 #include <stdarg.h>
 #include <stdio.h>
-#include <sys/socket.h>
 #include <time.h>
+
+#ifndef PS2_EE_PLATFORM
+#include <sys/socket.h>
+#endif
+
+#include "compat.h"
 
 #include "smb2.h"
 #include "libsmb2.h"
@@ -52,6 +57,8 @@
 #include "libsmb2-config.h"
 
 #define MAX_URL_SIZE 256
+
+#include "compat.h"
 
 #ifdef _MSC_VER
 #include <errno.h>
