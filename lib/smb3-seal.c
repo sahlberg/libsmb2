@@ -53,6 +53,8 @@
 
 #include <stdio.h>
 
+#include "compat.h"
+
 #include "portable-endian.h"
 
 #include "aes128ccm.h"

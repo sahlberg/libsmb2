@@ -23,6 +23,11 @@
 #include "config.h"
 #endif
 
+#if PS2_EE_PLATFORM
+/* We need this for time_t */
+#include <time.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif

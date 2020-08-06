@@ -36,6 +36,8 @@
  *   final few bits of the input.
  */
 
+#include "compat.h"
+
 #include "sha.h"
 #include "sha-private.h"
 /* Define the SHA shift, rotate left and rotate right macro */
