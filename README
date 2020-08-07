@@ -207,3 +207,15 @@ Then to build libsmb2, run
 
 Then copy the resulting libsmb2.a as well as the include/smb2 headers to your
 project.
+
+
+IOP, IO-Processor is the secondary CPU for the PS2.
+To compile libsmb2 for the PS2 IOP, first install the PS2 toolchain and
+PS2 SDK and set it up.
+
+Then to build libsmb2, run
+  $ cd lib
+  $ make -f Makefile.PS2_IOP
+
+Then copy the resulting libsmb2.a as well as the include/smb2 headers to your
+project.

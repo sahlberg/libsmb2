@@ -73,9 +73,12 @@
 
 #include "portable-endian.h"
 #include <errno.h>
-#include <fcntl.h>
 
-#ifndef PS2_EE_PLATFORM
+#ifndef PS2_IOP_PLATFORM
+#include <fcntl.h>
+#endif
+
+#if !defined(PS2_EE_PLATFORM) && !defined(PS2_IOP_PLATFORM)
 #include <sys/socket.h>
 #endif
 
@@ -749,11 +752,11 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
                     case EAI_AGAIN:
                         return -EAGAIN;
                     case EAI_NONAME:
-#if !defined(PS2_EE_PLATFORM)
+#if !defined(PS2_EE_PLATFORM) && !defined(PS2_IOP_PLATFORM)
 #if EAI_NODATA != EAI_NONAME /* Equal in MSCV */
                     case EAI_NODATA:
 #endif
-#endif /* !defined(PS2_EE_PLATFORM) */
+#endif /* !defined(PS2_EE_PLATFORM)  && !defined(PS2_IOP_PLATFORM) */
                     case EAI_SERVICE:
                     case EAI_FAIL:
 #ifdef EAI_ADDRFAMILY /* Not available in MSVC */
@@ -812,7 +815,7 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
 
 	set_nonblocking(smb2->fd);
 	set_tcp_sockopt(smb2->fd, TCP_NODELAY, 1);
-        
+
 	if (connect(smb2->fd, (struct sockaddr *)&ss, socksize) != 0
 #ifndef _MSC_VER
 		  && errno != EINPROGRESS) {
