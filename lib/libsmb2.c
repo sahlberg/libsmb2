@@ -54,11 +54,14 @@
 #endif
 
 #include <errno.h>
-#include <fcntl.h>
 #include <stdio.h>
-#include <time.h>
 
-#ifndef PS2_EE_PLATFORM
+#ifndef PS2_IOP_PLATFORM
+#include <time.h>
+#include <fcntl.h>
+#endif
+
+#if !defined(PS2_EE_PLATFORM) && !defined(PS2_IOP_PLATFORM)
 #include <sys/socket.h>
 #endif
 

@@ -3,7 +3,7 @@
 /*
 ** Function: hmac_md5
 */
-#if !defined(_MSC_VER) && !defined(PS2_EE_PLATFORM)
+#if !defined(_MSC_VER) && !defined(PS2_EE_PLATFORM) && !defined(PS2_IOP_PLATFORM)
 #include <strings.h>
 #endif
 
@@ -13,8 +13,6 @@
 
 #ifdef _MSC_VER
 #define bzero(s, n) memset((s), 0, (n))
-
-#define bcopy(s1, s2, n) memmove((s2), (s1), (n))
 #endif // _MSC_VER
 
 /*
@@ -62,8 +60,8 @@ smb2_hmac_md5(unsigned char *text, int text_len, unsigned char *key, int key_len
         /* start out by storing key in pads */
         bzero( k_ipad, sizeof k_ipad);
         bzero( k_opad, sizeof k_opad);
-        bcopy( key, k_ipad, key_len);
-        bcopy( key, k_opad, key_len);
+        memmove(k_ipad, key, key_len);
+        memmove(k_opad, key, key_len);
 
         /* XOR key with ipad and opad values */
         for (i=0; i<64; i++) {

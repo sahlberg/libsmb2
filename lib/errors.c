@@ -26,7 +26,7 @@
 #include <stdint.h>
 #endif
 
-#ifndef PS2_EE_PLATFORM
+#if !defined(PS2_EE_PLATFORM) && !defined(PS2_IOP_PLATFORM)
 #include <sys/socket.h>
 #endif
 

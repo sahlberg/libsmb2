@@ -44,15 +44,18 @@
 #include <string.h>
 #endif
 
+
 #include "compat.h"
+
+#ifndef PS2_IOP_PLATFORM
+#include <time.h>
+#endif
 
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-raw.h"
 #include "libsmb2-private.h"
 #include "libsmb2-config.h"
-
-#include <time.h>
 
 struct sync_cb_data {
 	int is_finished;

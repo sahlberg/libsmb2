@@ -23,7 +23,7 @@
 #include <stdint.h>
 #endif
 
-#if !defined(_MSC_VER) && !defined(PS2_EE_PLATFORM)
+#if !defined(_MSC_VER) && !defined(PS2_EE_PLATFORM) && !defined(PS2_IOP_PLATFORM)
 #include <arpa/inet.h>
 #endif /* !_MSC_VER && !PS2_EE_PLATFORM */
 
