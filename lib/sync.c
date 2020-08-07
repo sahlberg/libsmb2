@@ -32,7 +32,7 @@
 #endif
 
 #include <errno.h>
-#ifndef PS2_EE_PLATFORM
+#ifdef HAVE_POLL_H
 #ifdef ESP_PLATFORM
 #include <sys/poll.h>
 #else
@@ -44,16 +44,16 @@
 #include <string.h>
 #endif
 
-#ifdef PS2_EE_PLATFORM
-#include "compat.h"
+#ifndef PS2_IOP_PLATFORM
+#include <time.h>
 #endif
+
+#include "compat.h"
 
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-raw.h"
 #include "libsmb2-private.h"
-
-#include <time.h>
 
 struct sync_cb_data {
 	int is_finished;

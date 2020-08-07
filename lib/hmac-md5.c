@@ -3,9 +3,11 @@
 /*
 ** Function: hmac_md5
 */
-#if !defined(_MSC_VER) && !defined(PS2_EE_PLATFORM)
+#if !defined(_MSC_VER) && !defined(PS2_EE_PLATFORM) && !defined(PS2_IOP_PLATFORM)
 #include <strings.h>
 #endif
+
+#include "compat.h"
 
 #include "md5.h"
 

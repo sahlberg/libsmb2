@@ -36,7 +36,14 @@
  *              SHA-512         64 byte / 512 bit
  */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#ifdef HAVE_STDINT_H
 #include <stdint.h>
+#endif
+
 /*
  * If you do not have the ISO standard stdint.h header file, then you
  * must typedef the following:

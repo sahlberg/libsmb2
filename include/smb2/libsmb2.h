@@ -19,7 +19,7 @@
 #ifndef _LIBSMB2_H_
 #define _LIBSMB2_H_
 
-#ifndef UINT64_MAX
+#if !defined(UINT64_MAX) && !defined(PS2_IOP_PLATFORM)
 #include <stdint.h>
 #endif
 
