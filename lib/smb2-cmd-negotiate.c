@@ -54,7 +54,7 @@ smb2_encode_preauth_context(struct smb2_context *smb2, struct smb2_pdu *pdu)
 
         /* Preauth integrity capability */
         len = 8 + 38;
-        len = PAD_TO_32BIT(len);
+        len = PAD_TO_64BIT(len);
         buf = malloc(len);
         if (buf == NULL) {
                 smb2_set_error(smb2, "Failed to allocate preauth context");
@@ -83,7 +83,7 @@ smb2_encode_encryption_context(struct smb2_context *smb2, struct smb2_pdu *pdu)
         struct smb2_iovec *iov;
 
         len = 12;
-        len = PAD_TO_32BIT(len);
+        len = PAD_TO_64BIT(len);
         buf = malloc(len);
         if (buf == NULL) {
                 smb2_set_error(smb2, "Failed to allocate encryption context");
@@ -142,6 +142,7 @@ smb2_encode_negotiate_request(struct smb2_context *smb2,
                         return -1;
                 }
                 req->negotiate_context_count++;
+
         }
 
         smb2_set_uint16(iov, 0, SMB2_NEGOTIATE_REQUEST_SIZE);
@@ -225,11 +226,12 @@ smb2_parse_negotiate_contexts(struct smb2_context *smb2,
                                        "type 0x%04x", type);
                         return -1;
                 }
-                offset += (len + 3) & ~3;
+                offset += len;
                 if (offset > iov->len) {
                         smb2_set_error(smb2, "Bad len in negotiate context\n");
                         return -1;
                 }
+                offset = PAD_TO_64BIT(offset);
         }
 
         return 0;
