@@ -49,12 +49,12 @@ static int
 smb2_encode_preauth_context(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
         uint8_t *buf;
-        int len, i;
+        int len, i, data_len;
         struct smb2_iovec *iov;
 
         /* Preauth integrity capability */
-        len = 8 + 38;
-        len = PAD_TO_64BIT(len);
+        data_len = PAD_TO_64BIT(38);
+        len = 8 + data_len;
         buf = malloc(len);
         if (buf == NULL) {
                 smb2_set_error(smb2, "Failed to allocate preauth context");
@@ -64,7 +64,7 @@ smb2_encode_preauth_context(struct smb2_context *smb2, struct smb2_pdu *pdu)
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
         smb2_set_uint16(iov, 0, SMB2_PREAUTH_INTEGRITY_CAP);
-        smb2_set_uint16(iov, 2, 38);
+        smb2_set_uint16(iov, 2, data_len);
         smb2_set_uint16(iov, 8, 1);
         smb2_set_uint16(iov, 10, 32);
         smb2_set_uint16(iov, 12, SMB2_HASH_SHA_512);
@@ -79,10 +79,11 @@ static int
 smb2_encode_encryption_context(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
         uint8_t *buf;
-        int len;
+        int len, data_len;
         struct smb2_iovec *iov;
 
-        len = 12;
+        data_len = PAD_TO_64BIT(4);
+        len = 8 + data_len;
         len = PAD_TO_64BIT(len);
         buf = malloc(len);
         if (buf == NULL) {
@@ -93,7 +94,7 @@ smb2_encode_encryption_context(struct smb2_context *smb2, struct smb2_pdu *pdu)
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
         smb2_set_uint16(iov, 0, SMB2_ENCRYPTION_CAP);
-        smb2_set_uint16(iov, 2, 4);
+        smb2_set_uint16(iov, 2, data_len);
         smb2_set_uint16(iov, 8, 1);
         smb2_set_uint16(iov, 10, SMB2_ENCRYPTION_AES_128_CCM);
 
@@ -142,7 +143,6 @@ smb2_encode_negotiate_request(struct smb2_context *smb2,
                         return -1;
                 }
                 req->negotiate_context_count++;
-
         }
 
         smb2_set_uint16(iov, 0, SMB2_NEGOTIATE_REQUEST_SIZE);
