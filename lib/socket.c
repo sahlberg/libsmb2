@@ -87,7 +87,7 @@
 #include "smb3-seal.h"
 #include "libsmb2-private.h"
 
-#define MAX_URL_SIZE 256
+#define MAX_URL_SIZE 1024
 
 static int
 smb2_get_credit_charge(struct smb2_context *smb2, struct smb2_pdu *pdu)

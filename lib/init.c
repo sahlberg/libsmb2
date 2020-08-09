@@ -55,7 +55,7 @@
 #include "libsmb2.h"
 #include "libsmb2-private.h"
 
-#define MAX_URL_SIZE 256
+#define MAX_URL_SIZE 1024
 
 #include "compat.h"
 
