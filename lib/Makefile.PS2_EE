@@ -56,7 +56,7 @@ EE_OBJS = aes128ccm.o \
 all: $(EE_LIB) $(EE_OBJS)
 
 clean:
-	rm -r $(EE_LIB) $(EE_OBJS)
+	rm -rf $(EE_LIB) $(EE_OBJS)
 
 reset:
 	ps2client reset
