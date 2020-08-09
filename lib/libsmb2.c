@@ -2490,6 +2490,11 @@ smb2_disconnect_share_async(struct smb2_context *smb2,
                 return -EINVAL;
         }
 
+        if (smb2->fd == -1) {
+                smb2_set_error(smb2, "connection is alreeady disconnected or was never connected");
+                return -EINVAL;
+        }
+
         dc_data = calloc(1, sizeof(struct disconnect_data));
         if (dc_data == NULL) {
                 smb2_set_error(smb2, "Failed to allocate disconnect_data");
