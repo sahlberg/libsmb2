@@ -128,6 +128,7 @@ struct iovec {
   size_t iov_len;
 };
 
+#undef connect
 #define connect(a,b,c) iop_connect(a,b,c)
 int iop_connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 
