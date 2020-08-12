@@ -69,4 +69,64 @@ long long int be64toh(long long int x);
 
 #endif
 
+#ifdef PS3_PPU_PLATFORM
+
+#include <errno.h>
+#include <sys/time.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <net/poll.h>
+
+#define getlogin_r(a,b) ENXIO
+#define srandom srand
+#define random rand
+
+
+#define	TCP_NODELAY		1  /* Don't delay send to coalesce packets  */
+
+#define EAI_FAIL        4
+#define EAI_MEMORY      6
+#define EAI_NONAME      8
+#define EAI_SERVICE     9
+
+int getaddrinfo(const char *node, const char*service,
+                const struct addrinfo *hints,
+                struct addrinfo **res);
+void freeaddrinfo(struct addrinfo *res);
+
+ssize_t writev(int fd, const struct iovec *iov, int iovcnt);
+ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
+
+#define SOL_TCP IPPROTO_TCP
+#define EAI_AGAIN EAGAIN
+
+#if !defined(HAVE_SOCKADDR_STORAGE)
+/*
+ * RFC 2553: protocol-independent placeholder for socket addresses
+ */
+#define _SS_MAXSIZE	128
+#define _SS_ALIGNSIZE	(sizeof(double))
+#define _SS_PAD1SIZE	(_SS_ALIGNSIZE - sizeof(unsigned char) * 2)
+#define _SS_PAD2SIZE	(_SS_MAXSIZE - sizeof(unsigned char) * 2 - \
+				_SS_PAD1SIZE - _SS_ALIGNSIZE)
+
+struct sockaddr_storage {
+#ifdef HAVE_SOCKADDR_LEN
+	unsigned char ss_len;		/* address length */
+	unsigned char ss_family;	/* address family */
+#else
+	unsigned short ss_family;
+#endif
+	char	__ss_pad1[_SS_PAD1SIZE];
+	double	__ss_align;	/* force desired structure storage alignment */
+	char	__ss_pad2[_SS_PAD2SIZE];
+};
+#endif
+
+
+/* just pretend they are the same so we compile */
+#define sockaddr_in6 sockaddr_in
+
+#endif
+
 #endif /* _COMPAT_H_ */

@@ -23,7 +23,7 @@
 #include "config.h"
 #endif
 
-#if PS2_EE_PLATFORM
+#if defined(PS2_EE_PLATFORM) || defined(PS3_PPU_PLATFORM)
 /* We need this for time_t */
 #include <time.h>
 #endif
