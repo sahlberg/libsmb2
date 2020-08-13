@@ -526,7 +526,7 @@ tree_connect_cb(struct smb2_context *smb2, int status,
 
         if (status != SMB2_STATUS_SUCCESS) {
                 smb2_close_context(smb2);
-                smb2_set_error(smb2, "Session setup failed with (0x%08x) %s. %s",
+                smb2_set_error(smb2, "Tree Connect failed with (0x%08x) %s. %s",
                                status, nterror_to_str(status),
                                smb2_get_error(smb2));
                 c_data->cb(smb2, -nterror_to_errno(status), NULL, c_data->cb_data);
