@@ -135,7 +135,7 @@ utf8_to_ucs2(const char *utf8)
         ucs2->len = len;
         for (i = 0; i < len; i++) {
                 validate_utf8_cp(&utf8, &ucs2->val[i]);
-                ucs2->val[i] = htole32(ucs2->val[i]);
+                ucs2->val[i] = htole16(ucs2->val[i]);
         }
         
         return ucs2;
