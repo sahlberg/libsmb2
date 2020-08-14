@@ -29,7 +29,7 @@
 
 #endif
 
-#if defined(ESP_PLATFORM) || defined(PS2_EE_PLATFORM)
+#if defined(ESP_PLATFORM) || defined(PS2_EE_PLATFORM) || defined(PS3_PPU_PLATFORM)
 ssize_t writev(int fd, const struct iovec *iov, int iovcnt)
 {
         int i, count, left, total = 0;
@@ -171,3 +171,41 @@ long long int be64toh(long long int x)
 }
 
 #endif /* PS2_EE_PLATFORM */
+
+#ifdef PS3_PPU_PLATFORM
+#include <stdlib.h>
+
+int getaddrinfo(const char *node, const char*service,
+                const struct addrinfo *hints,
+                struct addrinfo **res)
+{
+        struct sockaddr_in *sin;
+
+        sin = malloc(sizeof(struct sockaddr_in));
+        sin->sin_len = sizeof(struct sockaddr_in);
+        sin->sin_family=AF_INET;
+
+        /* Some error checking would be nice */
+        sin->sin_addr.s_addr = inet_addr(node);
+
+        sin->sin_port=0;
+        if (service) {
+                sin->sin_port=htons(atoi(service));
+        } 
+
+        *res = malloc(sizeof(struct addrinfo));
+
+        (*res)->ai_family = AF_INET;
+        (*res)->ai_addrlen = sizeof(struct sockaddr_in);
+        (*res)->ai_addr = (struct sockaddr *)sin;
+
+        return 0;
+}
+
+void freeaddrinfo(struct addrinfo *res)
+{
+        free(res->ai_addr);
+        free(res);
+}
+
+#endif /* PS3_PPU_PLATFORM */
