@@ -23,7 +23,11 @@
 
 #include <errno.h>
 #include <sys/time.h>
+
 #include <ps2ip.h>
+#define write(a,b,c) lwip_write(a,b,c)
+#define read(a,b,c) lwip_read(a,b,c)
+#define gethostbyname(a) lwip_gethostbyname(a)
 
 #define getlogin_r(a,b) ENXIO
 #define srandom srand
@@ -47,9 +51,6 @@ struct iovec {
   void  *iov_base;
   size_t iov_len;
 };
-
-#define write(a,b,c) lwip_write(a,b,c)
-#define read(a,b,c) lwip_read(a,b,c)
 
 ssize_t writev(int fd, const struct iovec *iov, int iovcnt);
 ssize_t readv(int fd, const struct iovec *iov, int iovcnt);

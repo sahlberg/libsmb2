@@ -201,12 +201,10 @@ EE, Emotion-Engine, is the main CPU for the PS2.
 To compile libsmb2 for the PS2 EE, first install the PS2 toolchain and
 PS2 SDK and set it up.
 
-Then to build libsmb2, run
+To build libsmb2.a, a version of libsmb2 for the EE tcpip stack:
   $ cd lib
-  $ make -f Makefile.PS2_EE
-
-Then copy the resulting libsmb2.a as well as the include/smb2 headers to your
-project.
+  $ make -f Makefile.PS2_EE clean
+  $ make -f Makefile.PS2_EE install
 
 PlayStation 3
 -------------

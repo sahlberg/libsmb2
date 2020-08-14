@@ -72,7 +72,9 @@ ssize_t readv(int fd, const struct iovec *iov, int iovcnt)
 #endif
 
 #ifdef PS2_EE_PLATFORM
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 int poll(struct pollfd *fds, unsigned int nfds, int timo)
 {
@@ -132,13 +134,28 @@ int getaddrinfo(const char *node, const char*service,
                 struct addrinfo **res)
 {
         struct sockaddr_in *sin;
+        struct hostent *host;
+        int i, ip[4];
 
         sin = malloc(sizeof(struct sockaddr_in));
         sin->sin_len = sizeof(struct sockaddr_in);
         sin->sin_family=AF_INET;
 
         /* Some error checking would be nice */
-        sin->sin_addr.s_addr = inet_addr(node);
+        if (sscanf(node, "%d.%d.%d.%d", ip, ip+1, ip+2, ip+3) == 4) {
+                for (i = 0; i < 4; i++) {
+                        ((char *)&sin->sin_addr.s_addr)[i] = ip[i];
+                }
+        } else {
+                host = gethostbyname(node);
+                if (host == NULL) {
+                        return -1;
+                }
+                if (host->h_addrtype != AF_INET) {
+                        return -2;
+                }
+                memcpy(&sin->sin_addr.s_addr, host->h_addr, 4);
+        }
 
         sin->sin_port=0;
         if (service) {
