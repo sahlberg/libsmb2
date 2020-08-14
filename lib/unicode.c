@@ -135,7 +135,7 @@ utf8_to_ucs2(const char *utf8)
         ucs2->len = len;
         for (i = 0; i < len; i++) {
                 validate_utf8_cp(&utf8, &ucs2->val[i]);
-                ucs2->val[i] = htole32(ucs2->val[i]);
+                ucs2->val[i] = htole16(ucs2->val[i]);
         }
         
         return ucs2;
@@ -175,7 +175,7 @@ ucs2_to_utf8(const uint16_t *ucs2, int ucs2_len)
         str[utf8_len - 1] = 0;
 
         for (i = 0; i < ucs2_len; i++) {
-                uint16_t c = le32toh(ucs2[i]);
+                uint16_t c = le16toh(ucs2[i]);
                 int l = ucs2_cp_size(c);
 
                 switch (l) {
