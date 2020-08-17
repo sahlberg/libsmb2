@@ -75,6 +75,10 @@ $(BUILD):
 	@make --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile.PS3_PPU
 
 install: $(BUILD)
+ifeq ($(PORTLIBS),)
+	@echo "$PORTLIBS is not set. Can not install libsmb2."
+	@exit 1
+endif
 	@echo Copying...
 	@[ -d $(PORTLIBS)/include/smb2 ] || mkdir -p $(PORTLIBS)/include/smb2
 	@cp -frv ../include/smb2/*.h $(PORTLIBS)/include/smb2

@@ -23,7 +23,11 @@
 
 #include <errno.h>
 #include <sys/time.h>
+
 #include <ps2ip.h>
+#define write(a,b,c) lwip_write(a,b,c)
+#define read(a,b,c) lwip_read(a,b,c)
+#define gethostbyname(a) lwip_gethostbyname(a)
 
 #define getlogin_r(a,b) ENXIO
 #define srandom srand
@@ -47,9 +51,6 @@ struct iovec {
   void  *iov_base;
   size_t iov_len;
 };
-
-#define write(a,b,c) lwip_write(a,b,c)
-#define read(a,b,c) lwip_read(a,b,c)
 
 ssize_t writev(int fd, const struct iovec *iov, int iovcnt);
 ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
@@ -80,20 +81,19 @@ long long int be64toh(long long int x);
 #define getlogin_r(a,b) ENXIO
 #define srandom srand
 #define random rand
-#define getaddrinfo smb2_getaddrinfo
-#define freeaddrinfo smb2_freeaddrinfo
 
-#define TCP_NODELAY     1  /* Don't delay send to coalesce packets  */
+
+#define	TCP_NODELAY		1  /* Don't delay send to coalesce packets  */
 
 #define EAI_FAIL        4
 #define EAI_MEMORY      6
 #define EAI_NONAME      8
 #define EAI_SERVICE     9
 
-int smb2_getaddrinfo(const char *node, const char*service,
+int getaddrinfo(const char *node, const char*service,
                 const struct addrinfo *hints,
                 struct addrinfo **res);
-void smb2_freeaddrinfo(struct addrinfo *res);
+void freeaddrinfo(struct addrinfo *res);
 
 ssize_t writev(int fd, const struct iovec *iov, int iovcnt);
 ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
