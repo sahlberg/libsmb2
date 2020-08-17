@@ -192,7 +192,7 @@ long long int be64toh(long long int x)
 #ifdef PS3_PPU_PLATFORM
 #include <stdlib.h>
 
-int getaddrinfo(const char *node, const char*service,
+int smb2_getaddrinfo(const char *node, const char*service,
                 const struct addrinfo *hints,
                 struct addrinfo **res)
 {
@@ -219,7 +219,7 @@ int getaddrinfo(const char *node, const char*service,
         return 0;
 }
 
-void freeaddrinfo(struct addrinfo *res)
+void smb2_freeaddrinfo(struct addrinfo *res)
 {
         free(res->ai_addr);
         free(res);
