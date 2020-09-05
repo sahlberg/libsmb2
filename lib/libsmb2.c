@@ -83,7 +83,7 @@
 #include "krb5-wrapper.h"
 #endif
 
-#ifdef ESP_PLATFORM
+#if defined(ESP_PLATFORM) || defined(PS2_EE_PLATFORM)
 #define DEFAULT_OUTPUT_BUFFER_LENGTH 512
 #else
 #define DEFAULT_OUTPUT_BUFFER_LENGTH 0xffff
