@@ -1510,6 +1510,8 @@ int64_t
 smb2_lseek(struct smb2_context *smb2, struct smb2fh *fh,
            int64_t offset, int whence, uint64_t *current_offset)
 {
+        struct smb2_stat_64 st;
+
         if (smb2 == NULL) {
                 return -EINVAL;
         }
@@ -1542,8 +1544,22 @@ smb2_lseek(struct smb2_context *smb2, struct smb2fh *fh,
                 }
                 return fh->offset;
         case SEEK_END:
-                smb2_set_error(smb2, "SEEK_END not implemented");
-                return -EINVAL;
+                if (smb2_fstat(smb2, fh, &st) < 0) {
+                        smb2_set_error(smb2, "Lseek() failed to stat file. %s",
+                                       smb2_get_error(smb2));
+                        return -EINVAL;
+                }
+                fh->offset = st.smb2_size;
+                if (fh->offset + offset < 0) {
+                        smb2_set_error(smb2, "Lseek() offset would become"
+                                        "negative");
+                        return -EINVAL;
+                }
+                fh->offset += offset;
+                if (current_offset) {
+                        *current_offset = fh->offset;
+                }
+                return fh->offset;
         default:
                 smb2_set_error(smb2, "Invalid whence(%d) for lseek",
                                     whence);

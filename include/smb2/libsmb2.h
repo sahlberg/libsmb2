@@ -666,7 +666,7 @@ int smb2_write(struct smb2_context *smb2, struct smb2fh *fh,
  * Sync lseek()
  */
 /*
- * smb2_seek() never blocks, thus no async version is needed.
+ * smb2_seek() may block for SEEK_END.
  */
 int64_t smb2_lseek(struct smb2_context *smb2, struct smb2fh *fh,
                    int64_t offset, int whence, uint64_t *current_offset);
