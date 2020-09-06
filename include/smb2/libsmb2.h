@@ -666,7 +666,9 @@ int smb2_write(struct smb2_context *smb2, struct smb2fh *fh,
  * Sync lseek()
  */
 /*
- * smb2_seek() may block for SEEK_END.
+ * smb2_seek() SEEK_SET and SEEK_CUR are fully supported.
+ * SEEK_END only returns the end-of-file from the original open.
+ * (it will not call fstat to discover the current file size and will not block)
  */
 int64_t smb2_lseek(struct smb2_context *smb2, struct smb2fh *fh,
                    int64_t offset, int whence, uint64_t *current_offset);

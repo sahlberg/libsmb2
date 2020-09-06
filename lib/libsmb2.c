@@ -155,6 +155,7 @@ struct smb2fh {
 
         smb2_file_id file_id;
         int64_t offset;
+        int64_t end_of_file;
 };
 
 static void
@@ -1096,6 +1097,7 @@ open_cb(struct smb2_context *smb2, int status,
         }
 
         memcpy(fh->file_id, rep->file_id, SMB2_FD_SIZE);
+        fh->end_of_file = rep->end_of_file;
         fh->cb(smb2, 0, fh, fh->cb_data);
 }
 
@@ -1510,8 +1512,6 @@ int64_t
 smb2_lseek(struct smb2_context *smb2, struct smb2fh *fh,
            int64_t offset, int whence, uint64_t *current_offset)
 {
-        struct smb2_stat_64 st;
-
         if (smb2 == NULL) {
                 return -EINVAL;
         }
@@ -1544,12 +1544,7 @@ smb2_lseek(struct smb2_context *smb2, struct smb2fh *fh,
                 }
                 return fh->offset;
         case SEEK_END:
-                if (smb2_fstat(smb2, fh, &st) < 0) {
-                        smb2_set_error(smb2, "Lseek() failed to stat file. %s",
-                                       smb2_get_error(smb2));
-                        return -EINVAL;
-                }
-                fh->offset = st.smb2_size;
+                fh->offset = fh->end_of_file;
                 if (fh->offset + offset < 0) {
                         smb2_set_error(smb2, "Lseek() offset would become"
                                         "negative");
