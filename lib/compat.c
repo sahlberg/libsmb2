@@ -33,16 +33,19 @@
 ssize_t writev(int fd, const struct iovec *iov, int iovcnt)
 {
         int i, count, left, total = 0;
+        char *ptr;
 
         for (i = 0; i < iovcnt; i++) {
                 left = iov[i].iov_len;
+                ptr = iov[i].iov_base;
                 while (left > 0) {
-                        count = write(fd, iov[i].iov_base, left);
+                        count = write(fd, ptr, left);
                         if (count == -1) {
                                 return -1;
                         }
                         total += count;
                         left -= count;
+                        ptr += count;
                 }
         }
         return total;
@@ -52,11 +55,13 @@ ssize_t readv(int fd, const struct iovec *iov, int iovcnt)
 {
         int i, left, count;
         ssize_t total = 0;
+        char *ptr;
 
         for (i = 0; i < iovcnt; i++) {
                 left = iov[i].iov_len;
+                ptr = iov[i].iov_base;
                 while (left > 0) {
-                        count = read(fd, iov[i].iov_base, left);
+                        count = read(fd, ptr, left);
                         if (count == -1) {
                                 return -1;
                         }
@@ -65,6 +70,7 @@ ssize_t readv(int fd, const struct iovec *iov, int iovcnt)
                         }
                         total += count;
                         left -= count;
+                        ptr += count;
                 }
         }
         return total;
