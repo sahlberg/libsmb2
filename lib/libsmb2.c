@@ -2427,7 +2427,6 @@ smb2_readlink_async(struct smb2_context *smb2, const char *path,
         next_pdu = smb2_cmd_ioctl_async(smb2, &io_req, readlink_cb_2,
                                         readlink_data);
         if (next_pdu == NULL) {
-                readlink_data->cb(smb2, -ENOMEM, NULL, readlink_data->cb_data);
                 free(readlink_data);
                 smb2_free_pdu(smb2, pdu);
                 return -EINVAL;
@@ -2442,7 +2441,6 @@ smb2_readlink_async(struct smb2_context *smb2, const char *path,
         next_pdu = smb2_cmd_close_async(smb2, &cl_req, readlink_cb_3,
                                         readlink_data);
         if (next_pdu == NULL) {
-                readlink_data->cb(smb2, -ENOMEM, NULL, readlink_data->cb_data);
                 free(readlink_data);
                 smb2_free_pdu(smb2, pdu);
                 return -EINVAL;
