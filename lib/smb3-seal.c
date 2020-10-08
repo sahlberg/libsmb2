@@ -19,6 +19,12 @@
 #include "config.h"
 #endif
 
+#ifdef ESP_PLATFORM
+#include <esp_system.h>
+#include <sys/types.h>
+#define random esp_random
+#endif
+
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif

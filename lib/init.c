@@ -71,6 +71,7 @@
 #include <errno.h>
 #include <esp_system.h>
 #define random esp_random
+#define srandom(seed)
 #define getlogin_r(a,b) ENXIO
 #endif
 
