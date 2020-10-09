@@ -670,7 +670,7 @@ session_setup_cb(struct smb2_context *smb2, int status,
                         smb2_set_error(smb2, "Signing required by server. Session "
                                        "Key is not available %s",
                                        smb2_get_error(smb2));
-                        c_data->cb(smb2, -1, NULL, c_data->cb_data);
+                        c_data->cb(smb2, -EACCES, NULL, c_data->cb_data);
                         free_c_data(smb2, c_data);
                         return;
                 }
