@@ -50,22 +50,22 @@ typedef struct dcerpc_uuid {
         uint16_t v2;
         uint16_t v3;
         uint64_t v4;
-} uuid_t;
+} dcerpc_uuid_t;
 
 typedef struct p_syntax_id {
-        uuid_t uuid;
+        dcerpc_uuid_t uuid;
         uint16_t vers;
         uint16_t vers_minor;
 } p_syntax_id_t;
 
 struct ndr_transfer_syntax {
-        uuid_t uuid;
+        dcerpc_uuid_t uuid;
         uint16_t vers;
 };
 
 struct ndr_context_handle {
         uint32_t context_handle_attributes;
-        uuid_t context_handle_uuid;
+        dcerpc_uuid_t context_handle_uuid;
 };
 
 extern p_syntax_id_t lsa_interface;
