@@ -131,7 +131,7 @@ struct dcerpc_bind_pdu {
 struct dcerpc_bind_context_results {
         uint16_t ack_result;
         uint16_t ack_reason;
-        uuid_t uuid;
+        dcerpc_uuid_t uuid;
         uint32_t syntax_version;
 };
 
@@ -153,7 +153,7 @@ struct dcerpc_request_pdu {
 
       /* optional field for request, only present if the PFC_OBJECT_UUID
          * field is non-zero */
-      /*  uuid_t  object;              24:16 object UID */
+      /*  dcerpc_uuid_t  object;              24:16 object UID */
 
       /* stub data, 8-octet aligned 
                    .
@@ -992,7 +992,7 @@ dcerpc_decode_header(struct smb2_iovec *iov, struct dcerpc_header *hdr)
 static int
 dcerpc_encode_uuid(struct dcerpc_context *ctx,
                    struct smb2_iovec *iov, int offset,
-                   uuid_t *uuid)
+                   dcerpc_uuid_t *uuid)
 {
         if (offset < 0) {
                 return offset;
@@ -1028,7 +1028,7 @@ dcerpc_encode_uuid(struct dcerpc_context *ctx,
 static int
 dcerpc_decode_uuid(struct dcerpc_context *ctx,
                    struct smb2_iovec *iov, int offset,
-                   uuid_t *uuid)
+                   dcerpc_uuid_t *uuid)
 {
         uint8_t ch;
         int i;
@@ -1057,7 +1057,7 @@ dcerpc_decode_uuid(struct dcerpc_context *ctx,
 /**********************
  * typedef struct ndr_context_handle {
  *    unsigned32 context_handle_attributes;
- *    uuid_t context_handle_uuid;
+ *    dcerpc_uuid_t context_handle_uuid;
  * } ndr_context_handle;
  **********************/
 static int
