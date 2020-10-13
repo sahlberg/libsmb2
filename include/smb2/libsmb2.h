@@ -932,6 +932,13 @@ int smb2_echo_async(struct smb2_context *smb2,
  */
 int smb2_echo(struct smb2_context *smb2);
 
+/*
+ * Some symbols have moved over to a different header file to allow better
+ * separation between dcerpc and smb2, so we need to include this header
+ * here to retain compatibility for apps that depend on those symbols.
+ */
+#include <libsmb2-dcerpc-srvsvc.h>
+
 #ifdef __cplusplus
 }
 #endif
