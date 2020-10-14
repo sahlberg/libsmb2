@@ -541,3 +541,6 @@
 #define SMB2_STATUS_FILE_IS_OFFLINE                    0xC0000267
 #define SMB2_STATUS_VOLUME_DISMOUNTED                  0xC000026E
 #define SMB2_STATUS_NOT_A_REPARSE_POINT                0xC0000275
+
+/* Warning codes */
+#define SMB2_STATUS_STOPPED_ON_SYMLINK  0x8000002d
