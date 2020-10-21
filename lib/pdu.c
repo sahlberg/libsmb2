@@ -405,6 +405,14 @@ smb2_is_error_response(struct smb2_context *smb2,
                 default:
                         return 1;
                 }
+        } else if ((smb2->hdr.status & SMB2_STATUS_SEVERITY_MASK) ==
+                 SMB2_STATUS_SEVERITY_WARNING) {
+                switch(smb2->hdr.status) {
+                case SMB2_STATUS_STOPPED_ON_SYMLINK:
+                        return 1;
+                default:
+                        return 0;
+                }
         }
         return 0;
 }
