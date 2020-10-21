@@ -701,15 +701,82 @@ set_tcp_sockopt(t_socket sockfd, int optname, int value)
         return setsockopt(sockfd, level, optname, (char *)&value, sizeof(value));
 }
 
+static int
+connect_async_ai(struct smb2_context *smb2, struct addrinfo *ai,
+                 smb2_command_cb cb, void *private_data)
+{
+        int family;
+        socklen_t socksize;
+        struct sockaddr_storage ss;
+
+        memset(&ss, 0, sizeof(ss));
+        switch (ai->ai_family) {
+        case AF_INET:
+                socksize = sizeof(struct sockaddr_in);
+                memcpy(&ss, ai->ai_addr, socksize);
+#ifdef HAVE_SOCK_SIN_LEN
+                ((struct sockaddr_in *)&ss)->sin_len = socksize;
+#endif
+                break;
+        case AF_INET6:
+                socksize = sizeof(struct sockaddr_in6);
+                memcpy(&ss, ai->ai_addr, socksize);
+#ifdef HAVE_SOCK_SIN_LEN
+                ((struct sockaddr_in6 *)&ss)->sin6_len = socksize;
+#endif
+                break;
+        default:
+                smb2_set_error(smb2, "Unknown address family :%d. "
+                                "Only IPv4/IPv6 supported so far.",
+                                ai->ai_family);
+                return -EINVAL;
+
+        }
+        family = ai->ai_family;
+
+        smb2->connect_cb   = cb;
+        smb2->connect_data = private_data;
+
+        smb2->fd = socket(family, SOCK_STREAM, 0);
+        if (smb2->fd == -1) {
+                smb2_set_error(smb2, "Failed to open smb2 socket. "
+                               "Errno:%s(%d).", strerror(errno), errno);
+                return -EIO;
+        }
+
+        set_nonblocking(smb2->fd);
+        set_tcp_sockopt(smb2->fd, TCP_NODELAY, 1);
+
+        if (connect(smb2->fd, (struct sockaddr *)&ss, socksize) != 0
+#ifndef _MSC_VER
+                  && errno != EINPROGRESS) {
+#else
+                  && WSAGetLastError() != WSAEWOULDBLOCK) {
+#endif
+                smb2_set_error(smb2, "Connect failed with errno : "
+                        "%s(%d)", strerror(errno), errno);
+                close(smb2->fd);
+                smb2->fd = -1;
+                return -EIO;
+        }
+
+        if (smb2->fd && smb2->change_fd) {
+                smb2->change_fd(smb2, smb2->fd, SMB2_ADD_FD);
+        }
+        if (smb2->fd && smb2->change_fd) {
+                smb2_change_events(smb2, smb2->fd, POLLOUT);
+        }
+
+        return 0;
+}
+
 int
 smb2_connect_async(struct smb2_context *smb2, const char *server,
                    smb2_command_cb cb, void *private_data)
 {
         char *addr, *host, *port;
         struct addrinfo *ai = NULL;
-        struct sockaddr_storage ss;
-        socklen_t socksize;
-        int family, err;
+        int err;
 
         if (smb2->fd != -1) {
                 smb2_set_error(smb2, "Trying to connect but already "
@@ -793,67 +860,10 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
         }
         free(addr);
 
-        memset(&ss, 0, sizeof(ss));
-        switch (ai->ai_family) {
-        case AF_INET:
-                socksize = sizeof(struct sockaddr_in);
-                memcpy(&ss, ai->ai_addr, socksize);
-#ifdef HAVE_SOCK_SIN_LEN
-                ((struct sockaddr_in *)&ss)->sin_len = socksize;
-#endif
-                break;
-        case AF_INET6:
-                socksize = sizeof(struct sockaddr_in6);
-                memcpy(&ss, ai->ai_addr, socksize);
-#ifdef HAVE_SOCK_SIN_LEN
-                ((struct sockaddr_in6 *)&ss)->sin6_len = socksize;
-#endif
-                break;
-        default:
-                smb2_set_error(smb2, "Unknown address family :%d. "
-                                "Only IPv4/IPv6 supported so far.",
-                                ai->ai_family);
-                freeaddrinfo(ai);
-                return -EINVAL;
-
-        }
-        family = ai->ai_family;
+        err = connect_async_ai(smb2, ai, cb, private_data);
         freeaddrinfo(ai);
 
-        smb2->connect_cb   = cb;
-        smb2->connect_data = private_data;
-
-        smb2->fd = socket(family, SOCK_STREAM, 0);
-        if (smb2->fd == -1) {
-                smb2_set_error(smb2, "Failed to open smb2 socket. "
-                               "Errno:%s(%d).", strerror(errno), errno);
-                return -EIO;
-        }
-
-        set_nonblocking(smb2->fd);
-        set_tcp_sockopt(smb2->fd, TCP_NODELAY, 1);
-
-        if (connect(smb2->fd, (struct sockaddr *)&ss, socksize) != 0
-#ifndef _MSC_VER
-                  && errno != EINPROGRESS) {
-#else
-                  && WSAGetLastError() != WSAEWOULDBLOCK) {
-#endif
-                smb2_set_error(smb2, "Connect failed with errno : "
-                        "%s(%d)", strerror(errno), errno);
-                close(smb2->fd);
-                smb2->fd = -1;
-                return -EIO;
-        }
-
-        if (smb2->fd && smb2->change_fd) {
-                smb2->change_fd(smb2, smb2->fd, SMB2_ADD_FD);
-        }
-        if (smb2->fd && smb2->change_fd) {
-                smb2_change_events(smb2, smb2->fd, POLLOUT);
-        }
-
-        return 0;
+        return err;
 }
 
 void smb2_change_events(struct smb2_context *smb2, int fd, int events)
