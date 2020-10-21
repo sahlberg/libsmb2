@@ -777,7 +777,7 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
                    smb2_command_cb cb, void *private_data)
 {
         char *addr, *host, *port;
-        struct addrinfo *ai = NULL;
+        struct addrinfo *ai_res = NULL;
         int err;
 
         if (smb2->fd != -1) {
@@ -819,7 +819,7 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
         }
 
         /* is it a hostname ? */
-        err = getaddrinfo(host, port, NULL, &ai);
+        err = getaddrinfo(host, port, NULL, &ai_res);
         if (err != 0) {
                 free(addr);
 #ifdef _WINDOWS
@@ -862,8 +862,19 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
         }
         free(addr);
 
-        err = connect_async_ai(smb2, ai, cb, private_data);
-        freeaddrinfo(ai);
+        for (struct addrinfo *ai = ai_res; ai != NULL; ai = ai->ai_next)
+        {
+            err = connect_async_ai(smb2, ai, cb, private_data);
+
+            if (err == 0)
+            {
+                /* clear the error that could be set by a previous ai
+                 * connection */
+                smb2_set_error(smb2, "");
+                break;
+            }
+        }
+        freeaddrinfo(ai_res);
 
         return err;
 }
