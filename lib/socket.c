@@ -734,15 +734,15 @@ connect_async_ai(struct smb2_context *smb2, struct addrinfo *ai,
         }
         family = ai->ai_family;
 
-        smb2->connect_cb   = cb;
-        smb2->connect_data = private_data;
-
         smb2->fd = socket(family, SOCK_STREAM, 0);
         if (smb2->fd == -1) {
                 smb2_set_error(smb2, "Failed to open smb2 socket. "
                                "Errno:%s(%d).", strerror(errno), errno);
                 return -EIO;
         }
+
+        smb2->connect_cb   = cb;
+        smb2->connect_data = private_data;
 
         set_nonblocking(smb2->fd);
         set_tcp_sockopt(smb2->fd, TCP_NODELAY, 1);
@@ -757,6 +757,8 @@ connect_async_ai(struct smb2_context *smb2, struct addrinfo *ai,
                         "%s(%d)", strerror(errno), errno);
                 close(smb2->fd);
                 smb2->fd = -1;
+                smb2->connect_cb = NULL;
+                smb2->connect_data = NULL;
                 return -EIO;
         }
 
