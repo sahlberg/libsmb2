@@ -665,7 +665,7 @@ session_setup_cb(struct smb2_context *smb2, int status,
                 if (smb2->session_key == NULL || memcmp(smb2->session_key, zero_key, SMB2_KEY_SIZE) == 0) {
                         have_valid_session_key = 0;
                 }
-                if (have_valid_session_key == 0) {
+                if (smb2->sign && have_valid_session_key == 0) {
                         smb2_close_context(smb2);
                         smb2_set_error(smb2, "Signing required by server. Session "
                                        "Key is not available %s",

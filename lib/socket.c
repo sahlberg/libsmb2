@@ -608,6 +608,11 @@ smb2_service(struct smb2_context *smb2, int revents)
                         smb2_set_error(smb2, "smb2_service: POLLERR, "
                                         "Unknown socket error.");
                 }
+
+                if (smb2->connect_cb) {
+                        smb2->connect_cb(smb2, err, NULL, smb2->connect_data);
+                        smb2->connect_cb = NULL;
+                }
                 ret = -1;
                 goto out;
         }
