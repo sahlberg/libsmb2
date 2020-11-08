@@ -276,10 +276,8 @@ smb2_process_negotiate_fixed(struct smb2_context *smb2,
         smb2_get_uint16(iov, 56, &rep->security_buffer_offset);
         smb2_get_uint16(iov, 58, &rep->security_buffer_length);
 
-        if (rep->dialect_revision >= SMB2_VERSION_0311) {
-                smb2_get_uint16(iov, 6, &rep->negotiate_context_count);
-                smb2_get_uint32(iov, 60, &rep->negotiate_context_offset);
-        }
+        smb2_get_uint16(iov, 6, &rep->negotiate_context_count);
+        smb2_get_uint32(iov, 60, &rep->negotiate_context_offset);
 
         if (rep->security_buffer_length == 0) {
                 return 0;
@@ -316,7 +314,8 @@ smb2_process_negotiate_variable(struct smb2_context *smb2,
 
         rep->security_buffer = &iov->buf[IOV_OFFSET];
 
-        if (!rep->negotiate_context_count) {
+        if (rep->dialect_revision < SMB2_VERSION_0311 ||
+            !rep->negotiate_context_count) {
                 return 0;
         }
 
