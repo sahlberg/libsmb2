@@ -767,10 +767,10 @@ connect_async_ai(struct smb2_context *smb2, struct addrinfo *ai,
                 return -EIO;
         }
 
-        if (smb2->fd && smb2->change_fd) {
+        if (smb2->fd != -1 && smb2->change_fd) {
                 smb2->change_fd(smb2, smb2->fd, SMB2_ADD_FD);
         }
-        if (smb2->fd && smb2->change_fd) {
+        if (smb2->fd != -1 && smb2->change_fd) {
                 smb2_change_events(smb2, smb2->fd, POLLOUT);
         }
 
