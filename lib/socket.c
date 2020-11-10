@@ -708,9 +708,9 @@ set_tcp_sockopt(t_socket sockfd, int optname, int value)
 }
 
 static int
-connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai)
+connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_out)
 {
-        int family;
+        int family, fd;
         socklen_t socksize;
         struct sockaddr_storage ss;
 
@@ -739,17 +739,17 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai)
         }
         family = ai->ai_family;
 
-        smb2->fd = socket(family, SOCK_STREAM, 0);
-        if (smb2->fd == -1) {
+        fd = socket(family, SOCK_STREAM, 0);
+        if (fd == -1) {
                 smb2_set_error(smb2, "Failed to open smb2 socket. "
                                "Errno:%s(%d).", strerror(errno), errno);
                 return -EIO;
         }
 
-        set_nonblocking(smb2->fd);
-        set_tcp_sockopt(smb2->fd, TCP_NODELAY, 1);
+        set_nonblocking(fd);
+        set_tcp_sockopt(fd, TCP_NODELAY, 1);
 
-        if (connect(smb2->fd, (struct sockaddr *)&ss, socksize) != 0
+        if (connect(fd, (struct sockaddr *)&ss, socksize) != 0
 #ifndef _MSC_VER
                   && errno != EINPROGRESS) {
 #else
@@ -757,18 +757,11 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai)
 #endif
                 smb2_set_error(smb2, "Connect failed with errno : "
                         "%s(%d)", strerror(errno), errno);
-                close(smb2->fd);
-                smb2->fd = -1;
+                close(fd);
                 return -EIO;
         }
 
-        if (smb2->fd != -1 && smb2->change_fd) {
-                smb2->change_fd(smb2, smb2->fd, SMB2_ADD_FD);
-        }
-        if (smb2->fd != -1 && smb2->change_fd) {
-                smb2_change_events(smb2, smb2->fd, POLLOUT);
-        }
-
+        *fd_out = fd;
         return 0;
 }
 
@@ -779,12 +772,18 @@ smb2_connect_async_next_addr(struct smb2_context *smb2, const struct addrinfo *b
 
         int err = -1;
         for (const struct addrinfo *ai = base; ai != NULL; ai = ai->ai_next) {
-                err = connect_async_ai(smb2, ai);
+                int fd;
+                err = connect_async_ai(smb2, ai, &fd);
 
                 if (err == 0) {
                         /* clear the error that could be set by a previous ai
                          * connection */
                         smb2_set_error(smb2, "");
+                        smb2->fd = fd;
+                        if (smb2->change_fd) {
+                                smb2->change_fd(smb2, fd, SMB2_ADD_FD);
+                                smb2_change_events(smb2, fd, POLLOUT);
+                        }
                         break;
                 }
         }
