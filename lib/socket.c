@@ -900,7 +900,7 @@ void smb2_change_events(struct smb2_context *smb2, int fd, int events)
         }
 
         if (smb2->change_events) {
-                smb2->change_events(smb2, smb2->fd, events);
+                smb2->change_events(smb2, fd, events);
                 smb2->events = events;
         }
 }
