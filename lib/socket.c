@@ -867,17 +867,15 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
         }
         free(addr);
 
-        for (struct addrinfo *ai = ai_res; ai != NULL; ai = ai->ai_next)
-        {
-            err = connect_async_ai(smb2, ai, cb, private_data);
+        for (struct addrinfo *ai = ai_res; ai != NULL; ai = ai->ai_next) {
+                err = connect_async_ai(smb2, ai, cb, private_data);
 
-            if (err == 0)
-            {
-                /* clear the error that could be set by a previous ai
-                 * connection */
-                smb2_set_error(smb2, "");
-                break;
-            }
+                if (err == 0) {
+                        /* clear the error that could be set by a previous ai
+                         * connection */
+                        smb2_set_error(smb2, "");
+                        break;
+                }
         }
         freeaddrinfo(ai_res);
 
