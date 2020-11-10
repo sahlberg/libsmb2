@@ -707,7 +707,7 @@ set_tcp_sockopt(t_socket sockfd, int optname, int value)
 }
 
 static int
-connect_async_ai(struct smb2_context *smb2, struct addrinfo *ai,
+connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai,
                  smb2_command_cb cb, void *private_data)
 {
         int family;
