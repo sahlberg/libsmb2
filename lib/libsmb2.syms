@@ -43,6 +43,7 @@ smb2_ftruncate_async
 smb2_get_client_guid
 smb2_get_error
 smb2_get_fd
+smb2_get_fds
 smb2_get_file_id
 smb2_get_max_read_size
 smb2_get_max_write_size
@@ -71,6 +72,7 @@ smb2_rmdir_async
 smb2_lseek
 smb2_seekdir
 smb2_service
+smb2_service_fd
 smb2_set_authentication
 smb2_set_security_mode
 smb2_set_version

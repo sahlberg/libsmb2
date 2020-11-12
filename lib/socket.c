@@ -90,6 +90,12 @@
 
 #define MAX_URL_SIZE 1024
 
+/* Timeout in ms between 2 consecutive socket connection.
+ * The rfc8305 recommends a timeout of 250ms and a minimum timeout of 100ms.
+ * Since the smb is most likely used on local network, use an aggressive
+ * timeout of 100ms. */
+#define HAPPY_EYEBALLS_TIMEOUT 100
+
 static int
 smb2_connect_async_next_addr(struct smb2_context *smb2, const struct addrinfo *base);
 
@@ -153,6 +159,21 @@ t_socket smb2_get_fd(struct smb2_context *smb2)
                 return smb2->connecting_fds[0];
         } else {
                 return -1;
+        }
+}
+
+const t_socket *
+smb2_get_fds(struct smb2_context *smb2, size_t *fd_count, int *timeout)
+{
+        if (smb2->fd != -1) {
+                assert(smb2->connecting_fds == NULL);
+                *fd_count = 1;
+                *timeout = -1;
+                return &smb2->fd;
+        } else {
+                *fd_count = smb2->connecting_fds_count;
+                *timeout = smb2->next_addrinfo != NULL ? HAPPY_EYEBALLS_TIMEOUT : -1;
+                return smb2->connecting_fds;
         }
 }
 
@@ -636,12 +657,18 @@ smb2_close_connecting_fd(struct smb2_context *smb2, int fd)
         assert(!"unreachable");
 }
 
-static int
+int
 smb2_service_fd(struct smb2_context *smb2, int fd, int revents)
 {
         int ret = 0;
 
         if (fd == -1) {
+                /* Connect to a new addr in parallel */
+                if (smb2->next_addrinfo != NULL) {
+                    int err = smb2_connect_async_next_addr(smb2,
+                                                           smb2->next_addrinfo);
+                    return err == 0 ? 0 : -1;
+                }
                 goto out;
         } else if (fd != smb2->fd) {
                 int fd_found = 0;
@@ -653,10 +680,11 @@ smb2_service_fd(struct smb2_context *smb2, int fd, int revents)
                         }
                 }
                 if (fd_found == 0) {
-                        smb2_set_error(smb2, "smb2_service: %s(%d).",
-                                        strerror(EINVAL), EINVAL);
-                        ret = -1;
-                        goto out;
+                        /* Not an error, this can happen if more than one
+                         * connecting fds had POLLOUT events. In that case,
+                         * only the first one is connected and all other FDs
+                         * are dropped. */
+                        return 0;
                 }
         }
 

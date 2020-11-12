@@ -128,6 +128,23 @@ t_socket smb2_get_fd(struct smb2_context *smb2);
  * Returns which events that we need to poll for for the smb2 file descriptor.
  */
 int smb2_which_events(struct smb2_context *smb2);
+
+/*
+ * Returns file descriptors that libsmb2 use or is trying to connect to
+ *
+ * This function should be used when trying to connect with more than one
+ * addresses in parallel, cf. rfc8305: Happy Eyeballs.
+ *
+ * The timeout, in ms, is valid during the socket connection step. The caller
+ * should call smb2_service_fd() with fd = -1 when the timeout is reached.
+ * This will trigger a new socket connection on the next resolved address. All
+ * connecting fds will be closed when the first fd is connected. The timeout
+ * will be -1 (infinite) once connected or if there is no next addresses to
+ * connect to.
+ */
+const t_socket *
+smb2_get_fds(struct smb2_context *smb2, size_t *fd_count, int *timeout);
+
 /*
  * A much more scalable way to use smb2_fd_event_callbacks() to register
  * callbacks for libsmb2 to call anytime a filedescriptor is changed or when
@@ -160,6 +177,23 @@ void smb2_fd_event_callbacks(struct smb2_context *smb2,
  *
  */
 int smb2_service(struct smb2_context *smb2, int revents);
+
+/*
+ * Called to process the events when events become available for the smb2
+ * file descriptor.
+ *
+ * Behave like smb2_service() with some differences:
+ *  - must be called with a fd returned by smb2_get_fd() or smb2_get_fds(),
+ *  - passing -1 as fd will trigger a new connection attempt on the next
+ *  resolved address, cf. smb2_get_fds().
+ *
+ * Returns:
+ *  0 : Success
+ * <0 : Unrecoverable failure. At this point the context can no longer be
+ *      used and must be freed by calling smb2_destroy_context().
+ *
+ */
+int smb2_service_fd(struct smb2_context *smb2, int fd, int revents);
 
 /*
  * Set the timeout in seconds after which a command will be aborted with
