@@ -707,8 +707,7 @@ set_tcp_sockopt(t_socket sockfd, int optname, int value)
 }
 
 static int
-connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai,
-                 smb2_command_cb cb, void *private_data)
+connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai)
 {
         int family;
         socklen_t socksize;
@@ -746,9 +745,6 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai,
                 return -EIO;
         }
 
-        smb2->connect_cb   = cb;
-        smb2->connect_data = private_data;
-
         set_nonblocking(smb2->fd);
         set_tcp_sockopt(smb2->fd, TCP_NODELAY, 1);
 
@@ -762,8 +758,6 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai,
                         "%s(%d)", strerror(errno), errno);
                 close(smb2->fd);
                 smb2->fd = -1;
-                smb2->connect_cb = NULL;
-                smb2->connect_data = NULL;
                 return -EIO;
         }
 
@@ -868,7 +862,7 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
         free(addr);
 
         for (struct addrinfo *ai = ai_res; ai != NULL; ai = ai->ai_next) {
-                err = connect_async_ai(smb2, ai, cb, private_data);
+                err = connect_async_ai(smb2, ai);
 
                 if (err == 0) {
                         /* clear the error that could be set by a previous ai
@@ -877,6 +871,11 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
                         break;
                 }
         }
+        if (err == 0) {
+                smb2->connect_cb   = cb;
+                smb2->connect_data = private_data;
+        }
+
         freeaddrinfo(ai_res);
 
         return err;
