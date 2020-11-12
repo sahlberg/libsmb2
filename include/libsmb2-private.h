@@ -126,6 +126,8 @@ struct smb2_context {
 
         t_socket *connecting_fds;
         size_t connecting_fds_count;
+        struct addrinfo *addrinfos;
+        const struct addrinfo *next_addrinfo;
 
         int timeout;
 

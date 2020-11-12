@@ -277,6 +277,8 @@ struct smb2_context *smb2_init_context(void)
         smb2->fd = -1;
         smb2->connecting_fds = NULL;
         smb2->connecting_fds_count = 0;
+        smb2->addrinfos = NULL;
+        smb2->next_addrinfo = NULL;
         smb2->sec = SMB2_SEC_UNDEFINED;
         smb2->version = SMB2_VERSION_ANY;
         smb2->ndr = 1;
@@ -303,6 +305,7 @@ void smb2_destroy_context(struct smb2_context *smb2)
 
         if (smb2->fd != -1) {
                 assert(smb2->connecting_fds == NULL);
+                assert(smb2->addrinfos == NULL);
                 if (smb2->change_fd) {
                         smb2->change_fd(smb2, smb2->fd, SMB2_DEL_FD);
                 }

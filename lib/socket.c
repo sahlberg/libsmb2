@@ -90,6 +90,9 @@
 
 #define MAX_URL_SIZE 1024
 
+static int
+smb2_connect_async_next_addr(struct smb2_context *smb2, const struct addrinfo *base);
+
 void
 smb2_close_connecting_fds(struct smb2_context *smb2)
 {
@@ -108,6 +111,12 @@ smb2_close_connecting_fds(struct smb2_context *smb2)
         free(smb2->connecting_fds);
         smb2->connecting_fds = NULL;
         smb2->connecting_fds_count = 0;
+
+        if (smb2->addrinfos != NULL) {
+                freeaddrinfo(smb2->addrinfos);
+                smb2->addrinfos = NULL;
+        }
+        smb2->next_addrinfo = NULL;
 }
 
 static int
@@ -610,6 +619,23 @@ smb2_read_from_buf(struct smb2_context *smb2)
         return smb2_read_data(smb2, smb2_readv_from_buf);
 }
 
+static void
+smb2_close_connecting_fd(struct smb2_context *smb2, int fd)
+{
+        close(fd);
+        /* Remove the fd from the connecting_fds array */
+        for (size_t i = 0; i < smb2->connecting_fds_count; ++i) {
+                if (fd == smb2->connecting_fds[i]) {
+                        memmove(&smb2->connecting_fds[i],
+                                &smb2->connecting_fds[i + 1],
+                                smb2->connecting_fds_count - i - 1);
+                        smb2->connecting_fds_count--;
+                        return;
+                }
+        }
+        assert(!"unreachable");
+}
+
 static int
 smb2_service_fd(struct smb2_context *smb2, int fd, int revents)
 {
@@ -617,13 +643,37 @@ smb2_service_fd(struct smb2_context *smb2, int fd, int revents)
 
         if (fd == -1) {
                 goto out;
+        } else if (fd != smb2->fd) {
+                int fd_found = 0;
+                for (size_t i = 0; i < smb2->connecting_fds_count; ++i) {
+                        if (fd == smb2->connecting_fds[i])
+                        {
+                                fd_found = 1;
+                                break;
+                        }
+                }
+                if (fd_found == 0) {
+                        smb2_set_error(smb2, "smb2_service: %s(%d).",
+                                        strerror(EINVAL), EINVAL);
+                        ret = -1;
+                        goto out;
+                }
         }
 
         if (revents & POLLERR) {
                 int err = 0;
                 socklen_t err_size = sizeof(err);
 
-                if (getsockopt(fd, SOL_SOCKET, SO_ERROR,
+                if (smb2->fd == -1 && smb2->next_addrinfo != NULL) {
+                        /* Connecting fd failed, try to connect to the next addr */
+                        smb2_close_connecting_fd(smb2, fd);
+
+                        err = smb2_connect_async_next_addr(smb2, smb2->next_addrinfo);
+                        /* error already set by connect_async_ai() */
+                        if (err == 0) {
+                                return 0;
+                        }
+                } else if (getsockopt(fd, SOL_SOCKET, SO_ERROR,
                                (char *)&err, &err_size) != 0 || err != 0) {
                         if (err == 0) {
                                 err = errno;
@@ -659,9 +709,20 @@ smb2_service_fd(struct smb2_context *smb2, int fd, int revents)
                         if (err == 0) {
                                 err = errno;
                         }
-                        smb2_set_error(smb2, "smb2_service: socket error "
-                                        "%s(%d) while connecting.",
-                                        strerror(err), err);
+                        if (smb2->next_addrinfo != NULL) {
+                                /* Connecting fd failed, try to connect to the next addr */
+                                smb2_close_connecting_fd(smb2, fd);
+
+                                err = smb2_connect_async_next_addr(smb2, smb2->next_addrinfo);
+                                /* error already set by connect_async_ai() */
+                                if (err == 0) {
+                                        return 0;
+                                }
+                        } else {
+                                smb2_set_error(smb2, "smb2_service: socket error "
+                                                "%s(%d) while connecting.",
+                                                strerror(err), err);
+                        }
                         if (smb2->connect_cb) {
                                 smb2->connect_cb(smb2, err,
                                                  NULL, smb2->connect_data);
@@ -823,6 +884,8 @@ smb2_connect_async_next_addr(struct smb2_context *smb2, const struct addrinfo *b
                                 smb2->change_fd(smb2, fd, SMB2_ADD_FD);
                                 smb2_change_events(smb2, fd, POLLOUT);
                         }
+
+                        smb2->next_addrinfo = ai->ai_next;
                         break;
                 }
         }
@@ -835,7 +898,6 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
                    smb2_command_cb cb, void *private_data)
 {
         char *addr, *host, *port;
-        struct addrinfo *ai_res = NULL;
         int err;
         size_t addr_count = 0;
 
@@ -878,7 +940,7 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
         }
 
         /* is it a hostname ? */
-        err = getaddrinfo(host, port, NULL, &ai_res);
+        err = getaddrinfo(host, port, NULL, &smb2->addrinfos);
         if (err != 0) {
                 free(addr);
 #ifdef _WINDOWS
@@ -922,15 +984,16 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
         free(addr);
 
         /* Allocate connecting fds array */
-        for (const struct addrinfo *ai = ai_res; ai != NULL; ai = ai->ai_next)
+        for (const struct addrinfo *ai = smb2->addrinfos; ai != NULL; ai = ai->ai_next)
                 addr_count++;
         smb2->connecting_fds = malloc(sizeof(int) * addr_count);
         if (smb2->connecting_fds == NULL) {
-                freeaddrinfo(ai_res);
+                freeaddrinfo(smb2->addrinfos);
+                smb2->addrinfos = NULL;
                 return -ENOMEM;
         }
 
-        err = smb2_connect_async_next_addr(smb2, ai_res);
+        err = smb2_connect_async_next_addr(smb2, smb2->addrinfos);
 
         if (err == 0) {
                 smb2->connect_cb   = cb;
@@ -938,9 +1001,11 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
         } else {
                 free(smb2->connecting_fds);
                 smb2->connecting_fds = NULL;
-        }
 
-        freeaddrinfo(ai_res);
+                freeaddrinfo(smb2->addrinfos);
+                smb2->addrinfos = NULL;
+                smb2->next_addrinfo = NULL;
+        }
 
         return err;
 }
