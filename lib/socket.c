@@ -74,6 +74,7 @@
 #include "portable-endian.h"
 #include <errno.h>
 #include <fcntl.h>
+#include <assert.h>
 
 #ifndef PS2_EE_PLATFORM
 #include <sys/socket.h>
@@ -771,6 +772,26 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai)
         return 0;
 }
 
+static int
+smb2_connect_async_next_addr(struct smb2_context *smb2, const struct addrinfo *base)
+{
+        assert(base);
+
+        int err = -1;
+        for (const struct addrinfo *ai = base; ai != NULL; ai = ai->ai_next) {
+                err = connect_async_ai(smb2, ai);
+
+                if (err == 0) {
+                        /* clear the error that could be set by a previous ai
+                         * connection */
+                        smb2_set_error(smb2, "");
+                        break;
+                }
+        }
+
+        return err;
+}
+
 int
 smb2_connect_async(struct smb2_context *smb2, const char *server,
                    smb2_command_cb cb, void *private_data)
@@ -861,16 +882,8 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
         }
         free(addr);
 
-        for (struct addrinfo *ai = ai_res; ai != NULL; ai = ai->ai_next) {
-                err = connect_async_ai(smb2, ai);
+        err = smb2_connect_async_next_addr(smb2, ai_res);
 
-                if (err == 0) {
-                        /* clear the error that could be set by a previous ai
-                         * connection */
-                        smb2_set_error(smb2, "");
-                        break;
-                }
-        }
         if (err == 0) {
                 smb2->connect_cb   = cb;
                 smb2->connect_data = private_data;
