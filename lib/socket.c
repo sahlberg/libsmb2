@@ -893,6 +893,38 @@ smb2_connect_async_next_addr(struct smb2_context *smb2, const struct addrinfo *b
         return err;
 }
 
+/* Copied from FFmpeg: libavformat/network.c */
+static void interleave_addrinfo(struct addrinfo *base)
+{
+        struct addrinfo **next = &base->ai_next;
+        while (*next) {
+                struct addrinfo *cur = *next;
+                // Iterate forward until we find an entry of a different family.
+                if (cur->ai_family == base->ai_family) {
+                        next = &cur->ai_next;
+                        continue;
+                }
+                if (cur == base->ai_next) {
+                        // If the first one following base is of a different family, just
+                        // move base forward one step and continue.
+                        base = cur;
+                        next = &base->ai_next;
+                        continue;
+                }
+                // Unchain cur from the rest of the list from its current spot.
+                *next = cur->ai_next;
+                // Hook in cur directly after base.
+                cur->ai_next = base->ai_next;
+                base->ai_next = cur;
+                // Restart with a new base. We know that before moving the cur element,
+                // everything between the previous base and cur had the same family,
+                // different from cur->ai_family. Therefore, we can keep next pointing
+                // where it was, and continue from there with base at the one after
+                // cur.
+                base = cur->ai_next;
+        }
+}
+
 int
 smb2_connect_async(struct smb2_context *smb2, const char *server,
                    smb2_command_cb cb, void *private_data)
@@ -982,6 +1014,8 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
                 }
         }
         free(addr);
+
+        interleave_addrinfo(smb2->addrinfos);
 
         /* Allocate connecting fds array */
         for (const struct addrinfo *ai = smb2->addrinfos; ai != NULL; ai = ai->ai_next)
