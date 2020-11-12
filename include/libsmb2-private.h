@@ -123,6 +123,10 @@ enum smb2_sec {
 struct smb2_context {
 
         t_socket fd;
+
+        t_socket *connecting_fds;
+        size_t connecting_fds_count;
+
         int is_connected;
         int timeout;
 
@@ -285,6 +289,8 @@ uint64_t timeval_to_win(struct smb2_timeval *tv);
 
 void smb2_set_error(struct smb2_context *smb2, const char *error_string,
                     ...);
+
+void smb2_close_connecting_fds(struct smb2_context *smb2);
 
 void *smb2_alloc_init(struct smb2_context *smb2, size_t size);
 void *smb2_alloc_data(struct smb2_context *smb2, void *memctx, size_t size);
