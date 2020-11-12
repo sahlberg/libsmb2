@@ -77,7 +77,7 @@ static int wait_for_reply(struct smb2_context *smb2,
                 if (smb2->timeout) {
                         smb2_timeout_pdus(smb2);
                 }
-		if ((!smb2->is_connected) && ((time(NULL) - t) > (smb2->timeout)))
+		if (smb2->fd == -1 && ((time(NULL) - t) > (smb2->timeout)))
 		{
 			smb2_set_error(smb2, "Timeout expired and no connection exists\n");
 			return -1;
@@ -855,7 +855,7 @@ int smb2_echo(struct smb2_context *smb2)
         struct sync_cb_data *cb_data;
         int rc = 0;
 
-        if (smb2->is_connected == 0) {
+        if (smb2->fd == -1) {
                 smb2_set_error(smb2, "Not Connected to Server");
                 return -ENOMEM;
         }

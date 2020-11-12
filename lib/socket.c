@@ -126,7 +126,7 @@ smb2_get_credit_charge(struct smb2_context *smb2, struct smb2_pdu *pdu)
 int
 smb2_which_events(struct smb2_context *smb2)
 {
-        int events = smb2->is_connected ? POLLIN : POLLOUT;
+        int events = smb2->fd != -1 ? POLLIN : POLLOUT;
 
         if (smb2->outqueue != NULL &&
             smb2_get_credit_charge(smb2, smb2->outqueue) <= smb2->credits) {
@@ -650,7 +650,7 @@ smb2_service_fd(struct smb2_context *smb2, int fd, int revents)
                 goto out;
         }
 
-        if (smb2->is_connected == 0 && revents & POLLOUT) {
+        if (smb2->fd == -1 && revents & POLLOUT) {
                 int err = 0;
                 socklen_t err_size = sizeof(err);
 
@@ -671,7 +671,6 @@ smb2_service_fd(struct smb2_context *smb2, int fd, int revents)
                         goto out;
                 }
 
-                smb2->is_connected = 1;
                 smb2->fd = fd;
 
                 smb2_close_connecting_fds(smb2);

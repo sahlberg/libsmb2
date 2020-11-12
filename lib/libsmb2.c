@@ -171,7 +171,6 @@ smb2_close_context(struct smb2_context *smb2)
         close(smb2->fd);
         smb2->fd = -1;
 
-        smb2->is_connected = 0;
         smb2->message_id = 0;
         smb2->session_id = 0;
         smb2->tree_id = 0;

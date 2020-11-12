@@ -127,7 +127,6 @@ struct smb2_context {
         t_socket *connecting_fds;
         size_t connecting_fds_count;
 
-        int is_connected;
         int timeout;
 
         enum smb2_sec sec;
