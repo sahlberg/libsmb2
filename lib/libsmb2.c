@@ -625,6 +625,11 @@ session_setup_cb(struct smb2_context *smb2, int status,
                 return;
         }
 
+        if (rep->session_flags & SMB2_SESSION_FLAG_IS_ENCRYPT_DATA) {
+                smb2->seal = 1;
+                smb2->sign = 0;
+        }
+
 #ifdef HAVE_LIBKRB5
        if (smb2->sec == SMB2_SEC_KRB5) {
                 /* For NTLM the status will be
@@ -927,11 +932,11 @@ connect_cb(struct smb2_context *smb2, int status,
 
         memset(&req, 0, sizeof(struct smb2_negotiate_request));
         req.capabilities = SMB2_GLOBAL_CAP_LARGE_MTU;
-        if (smb2->seal && (smb2->version == SMB2_VERSION_ANY  ||
-                           smb2->version == SMB2_VERSION_ANY3 ||
-                           smb2->version == SMB2_VERSION_0300 ||
-                           smb2->version == SMB2_VERSION_0302 ||
-                           smb2->version == SMB2_VERSION_0311)) {
+        if (smb2->version == SMB2_VERSION_ANY  ||
+            smb2->version == SMB2_VERSION_ANY3 ||
+            smb2->version == SMB2_VERSION_0300 ||
+            smb2->version == SMB2_VERSION_0302 ||
+            smb2->version == SMB2_VERSION_0311) {
                 req.capabilities |= SMB2_GLOBAL_CAP_ENCRYPTION;
         }
         req.security_mode = smb2->security_mode;
