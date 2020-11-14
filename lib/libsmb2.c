@@ -112,10 +112,6 @@ static const char SMBAppKey[] = "SMBAppKey";
 #define O_SYNC		(__O_SYNC|O_DSYNC)
 #endif // !O_SYNC
 
-static void
-connect_cb(struct smb2_context *smb2, int status,
-           void *command_data _U_, void *private_data);
-
 const smb2_file_id compound_file_id = {
         0xff, 0xff, 0xff, 0xff,  0xff, 0xff, 0xff, 0xff,
         0xff, 0xff, 0xff, 0xff,  0xff, 0xff, 0xff, 0xff
@@ -621,17 +617,6 @@ session_setup_cb(struct smb2_context *smb2, int status,
 
         } else if (status != SMB2_STATUS_SUCCESS) {
                 smb2_close_context(smb2);
-                if (!smb2->seal) {
-                        int rc;
-
-                        smb2->seal = 1;
-                        rc = smb2_connect_async(smb2, smb2->server, connect_cb, c_data);
-                        if (rc) {
-                                c_data->cb(smb2, rc, NULL, c_data->cb_data);
-                                free_c_data(smb2, c_data);
-                        }
-                        return;
-                }
                 smb2_set_error(smb2, "Session setup failed with (0x%08x) %s",
                                status, nterror_to_str(status));
                 c_data->cb(smb2, -nterror_to_errno(status), NULL,
