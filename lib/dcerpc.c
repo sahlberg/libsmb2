@@ -1406,6 +1406,14 @@ dce_unfragment_ioctl(struct dcerpc_context *dce, struct smb2_iovec *iov)
 }
 
 static void
+dcerpc_send_pdu_cb_and_free(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+                            int status, void *command_data)
+{
+        pdu->cb(dce, status, command_data, pdu->cb_data);
+        dcerpc_free_pdu(dce, pdu);
+}
+
+static void
 dcerpc_call_cb(struct smb2_context *smb2, int status,
                void *command_data, void *private_data)
 {
@@ -1413,13 +1421,13 @@ dcerpc_call_cb(struct smb2_context *smb2, int status,
         struct dcerpc_context *dce = pdu->dce;
         struct smb2_iovec iov;
         struct smb2_ioctl_reply *rep = command_data;
+        void *payload;
         int ret;
 
         pdu->direction = DCERPC_DECODE;
 
         if (status != SMB2_STATUS_SUCCESS) {
-                pdu->cb(dce, -nterror_to_errno(status), NULL, pdu->cb_data);
-                dcerpc_free_pdu(dce, pdu);
+                dcerpc_send_pdu_cb_and_free(dce, pdu, -nterror_to_errno(status), NULL);
                 return;
         }
 
@@ -1428,8 +1436,7 @@ dcerpc_call_cb(struct smb2_context *smb2, int status,
 
         pdu->payload = smb2_alloc_init(dce->smb2, pdu->decode_size);
         if (pdu->payload == NULL) {
-                pdu->cb(dce, -ENOMEM, NULL, pdu->cb_data);
-                dcerpc_free_pdu(dce, pdu);
+                dcerpc_send_pdu_cb_and_free(dce, pdu, -ENOMEM, NULL);
                 return;
         }
 
@@ -1441,23 +1448,21 @@ dcerpc_call_cb(struct smb2_context *smb2, int status,
 
         ret = dcerpc_decode_pdu(dce, pdu, &iov);
         if (ret < 0) {
-                pdu->cb(dce, -EINVAL, NULL, pdu->cb_data);
                 smb2_free_data(dce->smb2, rep->output);
-                dcerpc_free_pdu(dce, pdu);
+                dcerpc_send_pdu_cb_and_free(dce, pdu, -EINVAL, NULL);
                 return;
         }
         smb2_free_data(dce->smb2, rep->output);
 
         if (pdu->hdr.PTYPE != PDU_TYPE_RESPONSE) {
                 smb2_set_error(dce->smb2, "DCERPC response was not a RESPONSE");
-                pdu->cb(dce, -EINVAL, NULL, pdu->cb_data);
-                dcerpc_free_pdu(dce, pdu);
+                dcerpc_send_pdu_cb_and_free(dce, pdu, -EINVAL, NULL);
                 return;
         }
 
-        pdu->cb(dce, 0, pdu->payload, pdu->cb_data);
+        payload = pdu->payload;
         pdu->payload = NULL;
-        dcerpc_free_pdu(dce, pdu);
+        dcerpc_send_pdu_cb_and_free(dce, pdu, 0, payload);
 }
 
 int
@@ -1559,8 +1564,7 @@ smb2_bind_cb(struct smb2_context *smb2, int status,
         pdu->direction = DCERPC_DECODE;
 
         if (status != SMB2_STATUS_SUCCESS) {
-                pdu->cb(dce, -nterror_to_errno(status), NULL, pdu->cb_data);
-                dcerpc_free_pdu(dce, pdu);
+                dcerpc_send_pdu_cb_and_free(dce, pdu, -nterror_to_errno(status), NULL);
                 return;
         }
 
@@ -1568,24 +1572,21 @@ smb2_bind_cb(struct smb2_context *smb2, int status,
         iov.len = rep->output_count;
         iov.free = NULL;
         if (dcerpc_decode_pdu(dce, pdu, &iov) < 0) {
-                pdu->cb(dce, -EINVAL, NULL, pdu->cb_data);
                 smb2_free_data(dce->smb2, rep->output);
-                dcerpc_free_pdu(dce, pdu);
+                dcerpc_send_pdu_cb_and_free(dce, pdu, -EINVAL, NULL);
                 return;
         }
         smb2_free_data(dce->smb2, rep->output);
 
         if (pdu->hdr.PTYPE != PDU_TYPE_BIND_ACK) {
                 smb2_set_error(dce->smb2, "DCERPC response was not a BIND_ACK");
-                pdu->cb(dce, -EINVAL, NULL, pdu->cb_data);
-                dcerpc_free_pdu(dce, pdu);
+                dcerpc_send_pdu_cb_and_free(dce, pdu, -EINVAL, NULL);
                 return;
         }
 
         if (pdu->bind_ack.num_results < 1) {
                 smb2_set_error(smb2, "No results in BIND ACK");
-                pdu->cb(dce, -EINVAL, NULL, pdu->cb_data);
-                dcerpc_free_pdu(dce, pdu);
+                dcerpc_send_pdu_cb_and_free(dce, pdu, -EINVAL, NULL);
                 return;
         }
         for (i = 0; i < pdu->bind_ack.num_results; i++) {
@@ -1609,13 +1610,11 @@ smb2_bind_cb(struct smb2_context *smb2, int status,
         }
         if (i == pdu->bind_ack.num_results) {
                 smb2_set_error(smb2, "Bind rejected all contexts");
-                pdu->cb(dce, -EINVAL, NULL, pdu->cb_data);
-                dcerpc_free_pdu(dce, pdu);
+                dcerpc_send_pdu_cb_and_free(dce, pdu, -EINVAL, NULL);
                 return;
         }
 
-        pdu->cb(dce, 0, NULL, pdu->cb_data);
-        dcerpc_free_pdu(dce, pdu);
+        dcerpc_send_pdu_cb_and_free(dce, pdu, 0, NULL);
 }
 
 static int
