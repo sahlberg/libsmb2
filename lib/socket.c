@@ -224,7 +224,8 @@ smb2_write_to_socket(struct smb2_context *smb2)
 typedef ssize_t (*read_func)(struct smb2_context *smb2,
                              const struct iovec *iov, int iovcnt);
 
-int smb2_read_data(struct smb2_context *smb2, read_func func)
+static int smb2_read_data(struct smb2_context *smb2, read_func func,
+                          int has_xfrmhdr)
 {
         struct iovec iov[SMB2_MAX_VECTORS];
         struct iovec *tmpiov;
@@ -324,8 +325,15 @@ read_more_data:
                          * We will eventually receive a proper reply for this
                          * request sometime later.
                          */
-                        len = smb2->spl + SMB2_SPL_SIZE - smb2->in.num_done;
 
+                        len = smb2->spl - smb2->in.num_done;
+                        /* If we don't have a transform header we are reading
+                         * straight from the socket, and not a buffer,
+                         * so we need to take the SPL size into account.
+                         */
+                        if (!has_xfrmhdr) {
+                                len += SMB2_SPL_SIZE;
+                        }
                         /* Add padding before the next PDU */
                         smb2->recv_state = SMB2_RECV_PAD;
                         smb2_add_iovector(smb2, &smb2->in,
@@ -557,7 +565,7 @@ smb2_read_from_socket(struct smb2_context *smb2)
                                   SMB2_SPL_SIZE, NULL);
         }
 
-        return smb2_read_data(smb2, smb2_readv_from_socket);
+        return smb2_read_data(smb2, smb2_readv_from_socket, 0);
 }
 
 static ssize_t smb2_readv_from_buf(struct smb2_context *smb2,
@@ -580,7 +588,7 @@ static ssize_t smb2_readv_from_buf(struct smb2_context *smb2,
 int
 smb2_read_from_buf(struct smb2_context *smb2)
 {
-        return smb2_read_data(smb2, smb2_readv_from_buf);
+        return smb2_read_data(smb2, smb2_readv_from_buf, 1);
 }
 
 int
