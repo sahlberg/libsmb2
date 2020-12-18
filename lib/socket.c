@@ -74,6 +74,7 @@
 #include "portable-endian.h"
 #include <errno.h>
 #include <fcntl.h>
+#include <assert.h>
 
 #ifndef PS2_EE_PLATFORM
 #include <sys/socket.h>
@@ -88,6 +89,41 @@
 #include "libsmb2-private.h"
 
 #define MAX_URL_SIZE 1024
+
+/* Timeout in ms between 2 consecutive socket connection.
+ * The rfc8305 recommends a timeout of 250ms and a minimum timeout of 100ms.
+ * Since the smb is most likely used on local network, use an aggressive
+ * timeout of 100ms. */
+#define HAPPY_EYEBALLS_TIMEOUT 100
+
+static int
+smb2_connect_async_next_addr(struct smb2_context *smb2, const struct addrinfo *base);
+
+void
+smb2_close_connecting_fds(struct smb2_context *smb2)
+{
+        for (size_t i = 0; i < smb2->connecting_fds_count; ++i) {
+                int fd = smb2->connecting_fds[i];
+
+                /* Don't close the connected fd */
+                if (fd == smb2->fd || fd == -1)
+                        continue;
+
+                if (smb2->change_fd) {
+                        smb2->change_fd(smb2, fd, SMB2_DEL_FD);
+                }
+                close(fd);
+        }
+        free(smb2->connecting_fds);
+        smb2->connecting_fds = NULL;
+        smb2->connecting_fds_count = 0;
+
+        if (smb2->addrinfos != NULL) {
+                freeaddrinfo(smb2->addrinfos);
+                smb2->addrinfos = NULL;
+        }
+        smb2->next_addrinfo = NULL;
+}
 
 static int
 smb2_get_credit_charge(struct smb2_context *smb2, struct smb2_pdu *pdu)
@@ -105,7 +141,7 @@ smb2_get_credit_charge(struct smb2_context *smb2, struct smb2_pdu *pdu)
 int
 smb2_which_events(struct smb2_context *smb2)
 {
-        int events = smb2->is_connected ? POLLIN : POLLOUT;
+        int events = smb2->fd != -1 ? POLLIN : POLLOUT;
 
         if (smb2->outqueue != NULL &&
             smb2_get_credit_charge(smb2, smb2->outqueue) <= smb2->credits) {
@@ -117,7 +153,28 @@ smb2_which_events(struct smb2_context *smb2)
 
 t_socket smb2_get_fd(struct smb2_context *smb2)
 {
-        return smb2->fd;
+        if (smb2->fd != -1) {
+                return smb2->fd;
+        } else if (smb2->connecting_fds_count > 0) {
+                return smb2->connecting_fds[0];
+        } else {
+                return -1;
+        }
+}
+
+const t_socket *
+smb2_get_fds(struct smb2_context *smb2, size_t *fd_count, int *timeout)
+{
+        if (smb2->fd != -1) {
+                assert(smb2->connecting_fds == NULL);
+                *fd_count = 1;
+                *timeout = -1;
+                return &smb2->fd;
+        } else {
+                *fd_count = smb2->connecting_fds_count;
+                *timeout = smb2->next_addrinfo != NULL ? HAPPY_EYEBALLS_TIMEOUT : -1;
+                return smb2->connecting_fds;
+        }
 }
 
 static int
@@ -591,20 +648,68 @@ smb2_read_from_buf(struct smb2_context *smb2)
         return smb2_read_data(smb2, smb2_readv_from_buf, 1);
 }
 
+static void
+smb2_close_connecting_fd(struct smb2_context *smb2, int fd)
+{
+        close(fd);
+        /* Remove the fd from the connecting_fds array */
+        for (size_t i = 0; i < smb2->connecting_fds_count; ++i) {
+                if (fd == smb2->connecting_fds[i]) {
+                        memmove(&smb2->connecting_fds[i],
+                                &smb2->connecting_fds[i + 1],
+                                smb2->connecting_fds_count - i - 1);
+                        smb2->connecting_fds_count--;
+                        return;
+                }
+        }
+        assert(!"unreachable");
+}
+
 int
-smb2_service(struct smb2_context *smb2, int revents)
+smb2_service_fd(struct smb2_context *smb2, int fd, int revents)
 {
         int ret = 0;
 
-        if (smb2->fd < 0) {
+        if (fd == -1) {
+                /* Connect to a new addr in parallel */
+                if (smb2->next_addrinfo != NULL) {
+                    int err = smb2_connect_async_next_addr(smb2,
+                                                           smb2->next_addrinfo);
+                    return err == 0 ? 0 : -1;
+                }
                 goto out;
+        } else if (fd != smb2->fd) {
+                int fd_found = 0;
+                for (size_t i = 0; i < smb2->connecting_fds_count; ++i) {
+                        if (fd == smb2->connecting_fds[i])
+                        {
+                                fd_found = 1;
+                                break;
+                        }
+                }
+                if (fd_found == 0) {
+                        /* Not an error, this can happen if more than one
+                         * connecting fds had POLLOUT events. In that case,
+                         * only the first one is connected and all other FDs
+                         * are dropped. */
+                        return 0;
+                }
         }
 
         if (revents & POLLERR) {
                 int err = 0;
                 socklen_t err_size = sizeof(err);
 
-                if (getsockopt(smb2->fd, SOL_SOCKET, SO_ERROR,
+                if (smb2->fd == -1 && smb2->next_addrinfo != NULL) {
+                        /* Connecting fd failed, try to connect to the next addr */
+                        smb2_close_connecting_fd(smb2, fd);
+
+                        err = smb2_connect_async_next_addr(smb2, smb2->next_addrinfo);
+                        /* error already set by connect_async_ai() */
+                        if (err == 0) {
+                                return 0;
+                        }
+                } else if (getsockopt(fd, SOL_SOCKET, SO_ERROR,
                                (char *)&err, &err_size) != 0 || err != 0) {
                         if (err == 0) {
                                 err = errno;
@@ -631,18 +736,29 @@ smb2_service(struct smb2_context *smb2, int revents)
                 goto out;
         }
 
-        if (smb2->is_connected == 0 && revents & POLLOUT) {
+        if (smb2->fd == -1 && revents & POLLOUT) {
                 int err = 0;
                 socklen_t err_size = sizeof(err);
 
-                if (getsockopt(smb2->fd, SOL_SOCKET, SO_ERROR,
+                if (getsockopt(fd, SOL_SOCKET, SO_ERROR,
                                (char *)&err, &err_size) != 0 || err != 0) {
                         if (err == 0) {
                                 err = errno;
                         }
-                        smb2_set_error(smb2, "smb2_service: socket error "
-                                        "%s(%d) while connecting.",
-                                        strerror(err), err);
+                        if (smb2->next_addrinfo != NULL) {
+                                /* Connecting fd failed, try to connect to the next addr */
+                                smb2_close_connecting_fd(smb2, fd);
+
+                                err = smb2_connect_async_next_addr(smb2, smb2->next_addrinfo);
+                                /* error already set by connect_async_ai() */
+                                if (err == 0) {
+                                        return 0;
+                                }
+                        } else {
+                                smb2_set_error(smb2, "smb2_service: socket error "
+                                                "%s(%d) while connecting.",
+                                                strerror(err), err);
+                        }
                         if (smb2->connect_cb) {
                                 smb2->connect_cb(smb2, err,
                                                  NULL, smb2->connect_data);
@@ -652,7 +768,10 @@ smb2_service(struct smb2_context *smb2, int revents)
                         goto out;
                 }
 
-                smb2->is_connected = 1;
+                smb2->fd = fd;
+
+                smb2_close_connecting_fds(smb2);
+
                 smb2_change_events(smb2, smb2->fd, smb2_which_events(smb2));
                 if (smb2->connect_cb) {
                         smb2->connect_cb(smb2, 0, NULL,        smb2->connect_data);
@@ -680,6 +799,16 @@ smb2_service(struct smb2_context *smb2, int revents)
                 smb2_timeout_pdus(smb2);
         }
         return ret;
+}
+
+int
+smb2_service(struct smb2_context *smb2, int revents)
+{
+        if (smb2->connecting_fds_count > 0) {
+                return smb2_service_fd(smb2, smb2->connecting_fds[0], revents);
+        } else {
+                return smb2_service_fd(smb2, smb2->fd, revents);
+        }
 }
 
 static void
@@ -715,10 +844,9 @@ set_tcp_sockopt(t_socket sockfd, int optname, int value)
 }
 
 static int
-connect_async_ai(struct smb2_context *smb2, struct addrinfo *ai,
-                 smb2_command_cb cb, void *private_data)
+connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_out)
 {
-        int family;
+        int family, fd;
         socklen_t socksize;
         struct sockaddr_storage ss;
 
@@ -747,20 +875,17 @@ connect_async_ai(struct smb2_context *smb2, struct addrinfo *ai,
         }
         family = ai->ai_family;
 
-        smb2->fd = socket(family, SOCK_STREAM, 0);
-        if (smb2->fd == -1) {
+        fd = socket(family, SOCK_STREAM, 0);
+        if (fd == -1) {
                 smb2_set_error(smb2, "Failed to open smb2 socket. "
                                "Errno:%s(%d).", strerror(errno), errno);
                 return -EIO;
         }
 
-        smb2->connect_cb   = cb;
-        smb2->connect_data = private_data;
+        set_nonblocking(fd);
+        set_tcp_sockopt(fd, TCP_NODELAY, 1);
 
-        set_nonblocking(smb2->fd);
-        set_tcp_sockopt(smb2->fd, TCP_NODELAY, 1);
-
-        if (connect(smb2->fd, (struct sockaddr *)&ss, socksize) != 0
+        if (connect(fd, (struct sockaddr *)&ss, socksize) != 0
 #ifndef _MSC_VER
                   && errno != EINPROGRESS) {
 #else
@@ -768,21 +893,72 @@ connect_async_ai(struct smb2_context *smb2, struct addrinfo *ai,
 #endif
                 smb2_set_error(smb2, "Connect failed with errno : "
                         "%s(%d)", strerror(errno), errno);
-                close(smb2->fd);
-                smb2->fd = -1;
-                smb2->connect_cb = NULL;
-                smb2->connect_data = NULL;
+                close(fd);
                 return -EIO;
         }
 
-        if (smb2->fd != -1 && smb2->change_fd) {
-                smb2->change_fd(smb2, smb2->fd, SMB2_ADD_FD);
-        }
-        if (smb2->fd != -1 && smb2->change_fd) {
-                smb2_change_events(smb2, smb2->fd, POLLOUT);
+        *fd_out = fd;
+        return 0;
+}
+
+static int
+smb2_connect_async_next_addr(struct smb2_context *smb2, const struct addrinfo *base)
+{
+        assert(base);
+
+        int err = -1;
+        for (const struct addrinfo *ai = base; ai != NULL; ai = ai->ai_next) {
+                int fd;
+                err = connect_async_ai(smb2, ai, &fd);
+
+                if (err == 0) {
+                        /* clear the error that could be set by a previous ai
+                         * connection */
+                        smb2_set_error(smb2, "");
+                        smb2->connecting_fds[smb2->connecting_fds_count++] = fd;
+                        if (smb2->change_fd) {
+                                smb2->change_fd(smb2, fd, SMB2_ADD_FD);
+                                smb2_change_events(smb2, fd, POLLOUT);
+                        }
+
+                        smb2->next_addrinfo = ai->ai_next;
+                        break;
+                }
         }
 
-        return 0;
+        return err;
+}
+
+/* Copied from FFmpeg: libavformat/network.c */
+static void interleave_addrinfo(struct addrinfo *base)
+{
+        struct addrinfo **next = &base->ai_next;
+        while (*next) {
+                struct addrinfo *cur = *next;
+                // Iterate forward until we find an entry of a different family.
+                if (cur->ai_family == base->ai_family) {
+                        next = &cur->ai_next;
+                        continue;
+                }
+                if (cur == base->ai_next) {
+                        // If the first one following base is of a different family, just
+                        // move base forward one step and continue.
+                        base = cur;
+                        next = &base->ai_next;
+                        continue;
+                }
+                // Unchain cur from the rest of the list from its current spot.
+                *next = cur->ai_next;
+                // Hook in cur directly after base.
+                cur->ai_next = base->ai_next;
+                base->ai_next = cur;
+                // Restart with a new base. We know that before moving the cur element,
+                // everything between the previous base and cur had the same family,
+                // different from cur->ai_family. Therefore, we can keep next pointing
+                // where it was, and continue from there with base at the one after
+                // cur.
+                base = cur->ai_next;
+        }
 }
 
 int
@@ -790,8 +966,8 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
                    smb2_command_cb cb, void *private_data)
 {
         char *addr, *host, *port;
-        struct addrinfo *ai_res = NULL;
         int err;
+        size_t addr_count = 0;
 
         if (smb2->fd != -1) {
                 smb2_set_error(smb2, "Trying to connect but already "
@@ -832,7 +1008,7 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
         }
 
         /* is it a hostname ? */
-        err = getaddrinfo(host, port, NULL, &ai_res);
+        err = getaddrinfo(host, port, NULL, &smb2->addrinfos);
         if (err != 0) {
                 free(addr);
 #ifdef _WINDOWS
@@ -875,19 +1051,31 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
         }
         free(addr);
 
-        for (struct addrinfo *ai = ai_res; ai != NULL; ai = ai->ai_next)
-        {
-            err = connect_async_ai(smb2, ai, cb, private_data);
+        interleave_addrinfo(smb2->addrinfos);
 
-            if (err == 0)
-            {
-                /* clear the error that could be set by a previous ai
-                 * connection */
-                smb2_set_error(smb2, "");
-                break;
-            }
+        /* Allocate connecting fds array */
+        for (const struct addrinfo *ai = smb2->addrinfos; ai != NULL; ai = ai->ai_next)
+                addr_count++;
+        smb2->connecting_fds = malloc(sizeof(int) * addr_count);
+        if (smb2->connecting_fds == NULL) {
+                freeaddrinfo(smb2->addrinfos);
+                smb2->addrinfos = NULL;
+                return -ENOMEM;
         }
-        freeaddrinfo(ai_res);
+
+        err = smb2_connect_async_next_addr(smb2, smb2->addrinfos);
+
+        if (err == 0) {
+                smb2->connect_cb   = cb;
+                smb2->connect_data = private_data;
+        } else {
+                free(smb2->connecting_fds);
+                smb2->connecting_fds = NULL;
+
+                freeaddrinfo(smb2->addrinfos);
+                smb2->addrinfos = NULL;
+                smb2->next_addrinfo = NULL;
+        }
 
         return err;
 }
@@ -899,7 +1087,7 @@ void smb2_change_events(struct smb2_context *smb2, int fd, int events)
         }
 
         if (smb2->change_events) {
-                smb2->change_events(smb2, smb2->fd, events);
+                smb2->change_events(smb2, fd, events);
                 smb2->events = events;
         }
 }
