@@ -604,7 +604,8 @@ session_setup_cb(struct smb2_context *smb2, int status,
         struct smb2_pdu *pdu;
         int ret;
 
-        if (status == SMB2_STATUS_MORE_PROCESSING_REQUIRED) {
+        if (status == SMB2_STATUS_MORE_PROCESSING_REQUIRED &&
+            rep->security_buffer) {
                 smb3_update_preauth_hash(smb2, smb2->in.niov - 1, &smb2->in.iov[1]);
                 if ((ret = send_session_setup_request(
                                 smb2, c_data, rep->security_buffer,
