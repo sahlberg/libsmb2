@@ -74,7 +74,6 @@
 #include "portable-endian.h"
 #include <errno.h>
 #include <fcntl.h>
-#include <assert.h>
 
 #ifndef PS2_EE_PLATFORM
 #include <sys/socket.h>
@@ -166,7 +165,6 @@ const t_socket *
 smb2_get_fds(struct smb2_context *smb2, size_t *fd_count, int *timeout)
 {
         if (smb2->fd != -1) {
-                assert(smb2->connecting_fds == NULL);
                 *fd_count = 1;
                 *timeout = -1;
                 return &smb2->fd;
@@ -662,7 +660,6 @@ smb2_close_connecting_fd(struct smb2_context *smb2, int fd)
                         return;
                 }
         }
-        assert(!"unreachable");
 }
 
 int
@@ -904,8 +901,6 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_o
 static int
 smb2_connect_async_next_addr(struct smb2_context *smb2, const struct addrinfo *base)
 {
-        assert(base);
-
         int err = -1;
         for (const struct addrinfo *ai = base; ai != NULL; ai = ai->ai_next) {
                 int fd;

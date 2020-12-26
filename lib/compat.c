@@ -25,7 +25,6 @@
 #include <unistd.h>
 #include <lwip/sockets.h>
 #include <sys/uio.h>
-#include <assert.h>
 
 #endif
 

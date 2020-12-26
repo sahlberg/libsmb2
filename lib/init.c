@@ -44,7 +44,6 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <time.h>
-#include <assert.h>
 
 #ifndef PS2_EE_PLATFORM
 #include <sys/socket.h>
@@ -304,8 +303,6 @@ void smb2_destroy_context(struct smb2_context *smb2)
         }
 
         if (smb2->fd != -1) {
-                assert(smb2->connecting_fds == NULL);
-                assert(smb2->addrinfos == NULL);
                 if (smb2->change_fd) {
                         smb2->change_fd(smb2, smb2->fd, SMB2_DEL_FD);
                 }
