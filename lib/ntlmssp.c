@@ -174,10 +174,9 @@ ntlm_negotiate_message(struct smb2_context *smb2, struct auth_data *auth_data)
         u32 = htole32(NEGOTIATE_MESSAGE);
         memcpy(&ntlm[8], &u32, 4);
 
-        u32 = NTLMSSP_NEGOTIATE_56|NTLMSSP_NEGOTIATE_128|
+        u32 = NTLMSSP_NEGOTIATE_128|
                 NTLMSSP_NEGOTIATE_EXTENDED_SESSIONSECURITY|
                 //NTLMSSP_NEGOTIATE_ALWAYS_SIGN|
-                NTLMSSP_NEGOTIATE_NTLM|
                 NTLMSSP_NEGOTIATE_SEAL|
                 //NTLMSSP_NEGOTIATE_SIGN|
                 NTLMSSP_REQUEST_TARGET|NTLMSSP_NEGOTIATE_OEM|
@@ -478,10 +477,9 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
         encoder(&u32, 4, auth_data);
 
         /* negotiate flags */
-        u32 = NTLMSSP_NEGOTIATE_56|NTLMSSP_NEGOTIATE_128|
+        u32 = NTLMSSP_NEGOTIATE_128|
                 NTLMSSP_NEGOTIATE_EXTENDED_SESSIONSECURITY|
                 //NTLMSSP_NEGOTIATE_ALWAYS_SIGN|
-                NTLMSSP_NEGOTIATE_NTLM|
                 //NTLMSSP_NEGOTIATE_SIGN|
                 NTLMSSP_REQUEST_TARGET|NTLMSSP_NEGOTIATE_OEM|
                 NTLMSSP_NEGOTIATE_UNICODE;
