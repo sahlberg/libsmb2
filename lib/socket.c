@@ -101,7 +101,8 @@ smb2_connect_async_next_addr(struct smb2_context *smb2, const struct addrinfo *b
 void
 smb2_close_connecting_fds(struct smb2_context *smb2)
 {
-        for (size_t i = 0; i < smb2->connecting_fds_count; ++i) {
+        size_t i;
+        for (i = 0; i < smb2->connecting_fds_count; ++i) {
                 int fd = smb2->connecting_fds[i];
 
                 /* Don't close the connected fd */
@@ -649,9 +650,11 @@ smb2_read_from_buf(struct smb2_context *smb2)
 static void
 smb2_close_connecting_fd(struct smb2_context *smb2, int fd)
 {
+        size_t i;
+
         close(fd);
         /* Remove the fd from the connecting_fds array */
-        for (size_t i = 0; i < smb2->connecting_fds_count; ++i) {
+        for (i = 0; i < smb2->connecting_fds_count; ++i) {
                 if (fd == smb2->connecting_fds[i]) {
                         memmove(&smb2->connecting_fds[i],
                                 &smb2->connecting_fds[i + 1],
@@ -677,7 +680,8 @@ smb2_service_fd(struct smb2_context *smb2, int fd, int revents)
                 goto out;
         } else if (fd != smb2->fd) {
                 int fd_found = 0;
-                for (size_t i = 0; i < smb2->connecting_fds_count; ++i) {
+                size_t i;
+                for (i = 0; i < smb2->connecting_fds_count; ++i) {
                         if (fd == smb2->connecting_fds[i])
                         {
                                 fd_found = 1;
@@ -902,7 +906,8 @@ static int
 smb2_connect_async_next_addr(struct smb2_context *smb2, const struct addrinfo *base)
 {
         int err = -1;
-        for (const struct addrinfo *ai = base; ai != NULL; ai = ai->ai_next) {
+        const struct addrinfo *ai;
+        for (ai = base; ai != NULL; ai = ai->ai_next) {
                 int fd;
                 err = connect_async_ai(smb2, ai, &fd);
 
@@ -963,6 +968,7 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
         char *addr, *host, *port;
         int err;
         size_t addr_count = 0;
+        const struct addrinfo *ai;
 
         if (smb2->fd != -1) {
                 smb2_set_error(smb2, "Trying to connect but already "
@@ -1049,7 +1055,7 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
         interleave_addrinfo(smb2->addrinfos);
 
         /* Allocate connecting fds array */
-        for (const struct addrinfo *ai = smb2->addrinfos; ai != NULL; ai = ai->ai_next)
+        for (ai = smb2->addrinfos; ai != NULL; ai = ai->ai_next)
                 addr_count++;
         smb2->connecting_fds = malloc(sizeof(int) * addr_count);
         if (smb2->connecting_fds == NULL) {
