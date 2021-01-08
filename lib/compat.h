@@ -28,6 +28,7 @@
 #define write(a,b,c) lwip_write(a,b,c)
 #define read(a,b,c) lwip_read(a,b,c)
 #define gethostbyname(a) lwip_gethostbyname(a)
+#define close(a) lwip_close(a)
 
 #define getlogin_r(a,b) ENXIO
 #define srandom srand

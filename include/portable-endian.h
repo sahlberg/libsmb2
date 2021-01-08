@@ -24,7 +24,9 @@
 
 #elif defined(PS2_EE_PLATFORM)
 
+#       ifndef _LITTLE_ENDIAN
 #       define _LITTLE_ENDIAN LITTLE_ENDIAN
+#       endif
 #	include <machine/endian.h>
 #	include <tcpip.h>
 
