@@ -61,7 +61,7 @@ ifeq ($(PS2SDK),)
 	@exit 1
 endif
 	@echo Copying...
-	@[ -d $(PS2SKD)/ee/include/smb2 ] || mkdir -p $(PS2SDK)/ee/include/smb2
+	@[ -d $(PS2SDK)/ee/include/smb2 ] || mkdir -p $(PS2SDK)/ee/include/smb2
 	@cp -frv ../include/smb2/*.h $(PS2SDK)/ee/include/smb2
 	@cp -frv *.a $(PS2SDK)/ee/lib
 	@echo Done!
