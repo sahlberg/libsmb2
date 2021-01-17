@@ -1057,7 +1057,7 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
         /* Allocate connecting fds array */
         for (ai = smb2->addrinfos; ai != NULL; ai = ai->ai_next)
                 addr_count++;
-        smb2->connecting_fds = malloc(sizeof(int) * addr_count);
+        smb2->connecting_fds = malloc(sizeof(t_socket) * addr_count);
         if (smb2->connecting_fds == NULL) {
                 freeaddrinfo(smb2->addrinfos);
                 smb2->addrinfos = NULL;
