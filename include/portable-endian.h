@@ -15,6 +15,7 @@
 
 #if defined(ESP_PLATFORM)
 
+// These 4 #defines may be needed with older esp-idf environments
 //#       define _LITTLE_ENDIAN LITTLE_ENDIAN
 //#       define __bswap16     __bswap_16
 //#       define __bswap32     __bswap_32
