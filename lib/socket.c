@@ -565,13 +565,13 @@ read_more_data:
             (smb2->hdr.flags & SMB2_FLAGS_SIGNED) &&
             (smb2->hdr.command != SMB2_SESSION_SETUP) ) {
                 uint8_t signature[16];
-                memcpy(&signature[0], &smb2->in.iov[1].buf[48], 16);
+                memcpy(&signature[0], &smb2->in.iov[1 + iov_offset].buf[48], 16);
                 if (smb2_calc_signature(smb2, &smb2->in.iov[1 + iov_offset].buf[48],
                                         &smb2->in.iov[1 + iov_offset],
                                         smb2->in.niov - 1 - iov_offset) < 0) {
                         return -1;
                 }
-                if (memcmp(&signature[0], &smb2->in.iov[1].buf[48], 16)) {
+                if (memcmp(&signature[0], &smb2->in.iov[1 + iov_offset].buf[48], 16)) {
                         smb2_set_error(smb2, "Wrong signature in received "
                                        "PDU");
                         return -1;
