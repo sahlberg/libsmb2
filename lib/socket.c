@@ -287,6 +287,7 @@ static int smb2_read_data(struct smb2_context *smb2, read_func func,
         struct iovec *tmpiov;
         int i, niov, is_chained;
         size_t num_done;
+        size_t iov_offset = 0;
         static char smb3tfrm[4] = {0xFD, 'S', 'M', 'B'};
         struct smb2_pdu *pdu = smb2->pdu;
         ssize_t count, len;
@@ -564,13 +565,13 @@ read_more_data:
             (smb2->hdr.flags & SMB2_FLAGS_SIGNED) &&
             (smb2->hdr.command != SMB2_SESSION_SETUP) ) {
                 uint8_t signature[16];
-                memcpy(&signature[0], &smb2->in.iov[1].buf[48], 16);
-                if (smb2_calc_signature(smb2, &smb2->in.iov[1].buf[48],
-                                        &smb2->in.iov[1],
-                                        smb2->in.niov - 1) < 0) {
+                memcpy(&signature[0], &smb2->in.iov[1 + iov_offset].buf[48], 16);
+                if (smb2_calc_signature(smb2, &smb2->in.iov[1 + iov_offset].buf[48],
+                                        &smb2->in.iov[1 + iov_offset],
+                                        smb2->in.niov - 1 - iov_offset) < 0) {
                         return -1;
                 }
-                if (memcmp(&signature[0], &smb2->in.iov[1].buf[48], 16)) {
+                if (memcmp(&signature[0], &smb2->in.iov[1 + iov_offset].buf[48], 16)) {
                         smb2_set_error(smb2, "Wrong signature in received "
                                        "PDU");
                         return -1;
@@ -584,6 +585,8 @@ read_more_data:
         smb2->pdu = NULL;
 
         if (is_chained) {
+                /* Record at which iov we ended in this loop so we know where to start in the next */
+                iov_offset = smb2->in.niov - 1;
                 smb2->recv_state = SMB2_RECV_HEADER;
                 smb2_add_iovector(smb2, &smb2->in, &smb2->header[0],
                                   SMB2_HEADER_SIZE, NULL);
