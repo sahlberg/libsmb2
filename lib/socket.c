@@ -73,9 +73,12 @@
 
 #include "portable-endian.h"
 #include <errno.h>
-#include <fcntl.h>
 
-#ifndef PS2_EE_PLATFORM
+#if !defined(PS2_IOP_PLATFORM)
+#include <fcntl.h>
+#endif
+
+#if !defined(PS2_EE_PLATFORM) && !defined(PS2_IOP_PLATFORM)
 #include <sys/socket.h>
 #endif
 

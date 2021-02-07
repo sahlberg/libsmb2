@@ -35,7 +35,9 @@
 #include <string.h>
 #endif
 
+#ifndef PS2_IOP_PLATFORM
 #include <time.h>
+#endif
 
 #include "compat.h"
 

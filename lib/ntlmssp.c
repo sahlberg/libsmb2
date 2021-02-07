@@ -54,7 +54,10 @@
 #include <ctype.h>
 #include "portable-endian.h"
 #include <stdio.h>
+
+#ifndef PS2_IOP_PLATFORM
 #include <time.h>
+#endif
 
 #include "compat.h"
 
