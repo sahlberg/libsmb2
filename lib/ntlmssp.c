@@ -207,6 +207,34 @@ ntlm_challenge_message(struct auth_data *auth_data, unsigned char *buf,
 }
 
 static int
+ntlm_convert_password_hash(const char *password, unsigned char password_hash[16])
+{
+        int i, hn, ln;
+        struct ucs2 *ucs2_password = NULL;
+
+        ucs2_password = utf8_to_ucs2(password);
+        if (ucs2_password == NULL) {
+                return -1;
+        }
+
+        for (i = 0; i < 32; i++) {
+                if (islower((unsigned int) ucs2_password->val[i])) {
+                        ucs2_password->val[i] = toupper((unsigned int) ucs2_password->val[i]);
+                }
+        }
+
+        /* FreeRDP: winpr/libwinpr/sspi/NTLM/ntlm_compute.c */
+        for (i = 0; i < 32; i += 2)
+        {
+                hn = ucs2_password->val[i] > '9' ? ucs2_password->val[i] - 'A' + 10 : ucs2_password->val[i] - '0';
+                ln = ucs2_password->val[i + 1] > '9' ? ucs2_password->val[i + 1] - 'A' + 10 : ucs2_password->val[i + 1] - '0';
+                password_hash[i / 2] = (hn << 4) | ln;
+        }
+
+        return 0;
+}
+
+static int
 NTOWFv1(const char *password, unsigned char password_hash[16])
 {
         MD4_CTX ctx;
@@ -233,8 +261,15 @@ NTOWFv2(const char *user, const char *password, const char *domain,
         struct ucs2 *ucs2_userdomain = NULL;
         unsigned char ntlm_hash[16];
 
-        if (NTOWFv1(password, ntlm_hash) < 0) {
-                return -1;
+        /* ntlm:F638EDF864C4805DC65D9BF2BB77E4C0 */
+        if ((strlen(password) == 37) && (strncmp(password, "ntlm:", 5) == 0)) {
+                if (ntlm_convert_password_hash(password + 5, ntlm_hash) < 0) {
+                        return -1;
+                }
+        } else {
+                if (NTOWFv1(password, ntlm_hash) < 0) {
+                        return -1;
+                }
         }
 
         len = strlen(user) + 1;
