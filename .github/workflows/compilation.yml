@@ -46,8 +46,8 @@ jobs:
       if: ${{ success() }}
       uses: actions/upload-artifact@v2
       with:
-        name: libsmb-${{ steps.slug.outputs.sha8 }}
-        path: libsmb.a
+       name: libsmb-${{ steps.slug.outputs.sha8 }}
+       path: libsmb.a
 
     - name: Create release
       if: github.ref == 'refs/heads/master'
