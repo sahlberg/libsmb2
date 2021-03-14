@@ -18,7 +18,11 @@ jobs:
     - uses: actions/checkout@v2
     - run: |
         git fetch --prune --unshallow
-
+    
+    - name: cd 
+    - run: |
+          cd lib   
+    
     - name: Compile libsmb2
       run: |
          make all 
