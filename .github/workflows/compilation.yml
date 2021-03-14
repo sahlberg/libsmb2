@@ -19,21 +19,10 @@ jobs:
     - run: |
         git fetch --prune --unshallow
 
-    - name: cd
-      run: |
-       cd lib 
-        
-    - name: export
-    - run: |
-       export PS2DEV=/usr/local/ps2dev
-       export PS2SDK=$PS2DEV/ps2sdk
-       export GSKIT=$PS2DEV/gsKit
-       export PATH=$PATH:$PS2DEV/bin:$PS2DEV/ee/bin:$PS2DEV/iop/bin:$PS2DEV/dvp/bin:$PS2SDK/bin
-    
     - name: Compile libsmb2
       run: |
-         make -f Makefile.PS2_IOP clean
-
+         make all 
+    
     - name: Get short SHA
       id: slug
       run: echo "::set-output name=sha8::$(echo ${GITHUB_SHA} | cut -c1-8)"
@@ -43,7 +32,7 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
        name: libsmb-${{ steps.slug.outputs.sha8 }}
-       path: libsmb.a
+       path: libmb.a
 
     - name: Create release
       if: github.ref == 'refs/heads/master'
@@ -52,4 +41,4 @@ jobs:
         repo_token: "${{ secrets.GITHUB_TOKEN }}"
         automatic_release_tag: "latest"
         title: "Latest development build"
-        files: libsmb.zip
+        files: libsmb2.zip
