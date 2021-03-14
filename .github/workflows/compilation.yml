@@ -20,7 +20,7 @@ jobs:
     - run: |
         git fetch --prune --unshallow
     
-    - name:  cd lib
+    - name: cd lib
       run: |
         cd lib
   
