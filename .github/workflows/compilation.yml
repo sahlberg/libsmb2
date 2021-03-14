@@ -32,7 +32,7 @@ jobs:
     
     - name: Compile libsmb2
       run: |
-         make -f Makefile.PS2_IOP clean && make -f Makefile.PS2_IOP install
+         make -f Makefile.PS2_IOP clean
 
     - name: Get short SHA
       id: slug
