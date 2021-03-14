@@ -38,6 +38,7 @@ jobs:
         cmake --build .
 
   build-PS2:
+   name: PS2
    
    runs-on: ubuntu-latest
    
