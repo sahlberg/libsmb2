@@ -20,16 +20,17 @@ jobs:
     - run: |
         git fetch --prune --unshallow
     
-    - name:  make 
+    - name:  cd lib
       run: |
-        make
+        cd lib
   
-    - name: Upload release artifact H
-      if: ${{ success() }}
-      uses: actions/upload-artifact@v2
-      with:
-        name: NTFS
-        path: |
-          ntfs.h
+    - name: make -f clean 
+    - run: | 
+       make -f Makefile.PS2_EE clean
+    
+    - name: make -f install
+    - run: |
+       make -f Makefile.PS2_EE install
+   
    
   
