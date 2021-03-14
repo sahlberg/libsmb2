@@ -25,7 +25,7 @@ jobs:
         
     - name: Compile libsmb2
       run: |
-        make -f Makefile.PS2_EE clean
+         make -f Makefile.PS2_IOP clean
 
     - name: Get short SHA
       id: slug
