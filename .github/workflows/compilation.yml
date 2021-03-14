@@ -9,7 +9,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: fjtrujy/ps2dev:latest
+    container: ps2dev/ps2dev:latest
     steps:
     - name: Install dependencies
       run: |
