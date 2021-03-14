@@ -52,4 +52,4 @@ jobs:
         repo_token: "${{ secrets.GITHUB_TOKEN }}"
         automatic_release_tag: "latest"
         title: "Latest development build"
-        files: libsmb.7z
+        files: libsmb.zip
