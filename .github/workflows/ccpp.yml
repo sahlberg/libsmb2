@@ -36,29 +36,29 @@ jobs:
     - name: Build (MSVC)
       run: |
         cmake --build .
-        
-- build ps2:
-            name: Playstation build
- runs-on: ubuntu-latest
-  steps:
+Jobs:
+  build:
+    runs-on: ubuntu-latest
     container: ps2dev/ps2dev:latest
     steps:
+    
     - name: Install dependencies
       run: |
         apk add build-base git zip gawk
+    
     - name: git checkout
       uses: actions/checkout@v2
     - run: |
-      git fetch --prune --unshallow
-      
-  - name: cd 
-      run: |
-       cd lib
-  
-  - name: make clean
-  - run: |
-    make -f Makefile.PS2_IOP clean
+        git fetch --prune --unshallow
     
- - name: make install   
- - run: |
-      make -f Makefile.PS2_IOP install
+    - name: cd
+    - run: |
+       cd lib
+    
+    - name: make clean EE
+    - run: |
+       make -f Makefile.PS2_EE clean
+    
+    - name: make install EE 
+    - run: |
+        make -f Makefile.PS2_EE install
