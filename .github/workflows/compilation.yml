@@ -44,28 +44,20 @@ jobs:
    
    container: ps2dev/ps2dev:latest
    steps:
-    
     - name: Install dependencies
       run: |
         apk add build-base git zip gawk
-    
     - name: git checkout
       uses: actions/checkout@v2
     - run: |
         git fetch --prune --unshallow
-    
     - name: cd
     - run: |
        cd lib
-    
     - name: make clean EE
     - run: |
        make -f Makefile.PS2_EE clean
-    
     - name: make install EE 
     - run: |
         make -f Makefile.PS2_EE install
-        
-    - name: upload artifacts
-    - run: |
-       libsmb.a
+ 
