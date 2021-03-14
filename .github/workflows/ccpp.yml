@@ -65,3 +65,7 @@ jobs:
     - name: make install EE 
     - run: |
         make -f Makefile.PS2_EE install
+        
+    - name: upload artifacts
+    - run: |
+       libsmb.a
