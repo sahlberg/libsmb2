@@ -39,9 +39,7 @@ jobs:
 
   build-PS2:
    name: PS2
-   
    runs-on: ubuntu-latest
-   
    container: ps2dev/ps2dev:latest
    steps:
     
