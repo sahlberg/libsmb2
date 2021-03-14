@@ -26,12 +26,6 @@ jobs:
         make -C Makefile.PS2_EE clean
         make -C Makefile.PS2_EE all
     
-    - name: Compile libsmb2 IOP
-      run: |
-         cd lib
-         make -C Makefile.PS2_IOP clean
-         make -C Makefile.PS2_IOP all
-    
     - name: Upload artifacts
       if: ${{ success() }}
       uses: actions/upload-artifact@v2
