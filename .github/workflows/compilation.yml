@@ -1,48 +1,16 @@
-name: C/C++ CI
+name: CI-compile
 
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  repository_dispatch:
+    types: [run_build]
 
 jobs:
-  build-linux:
-    name: Linux build
-
+  build:
     runs-on: ubuntu-latest
-    
+    container: fjtrujy/ps2dev:latest
     steps:
-    - uses: actions/checkout@v1
-    - name: Install dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y libkrb5-dev
-    - name: configure
-      run: |
-        ./bootstrap
-        ./configure
-    - name: make
-      run: make
-    - name: make distcheck
-      run: make distcheck
-
-  build-windows:
-    name: Windows build
-
-    runs-on: windows-latest
-
-    steps:
-    - uses: actions/checkout@v1
-    - name: Cmake configure
-      run: |
-        cmake -G "Visual Studio 16 2019" .
-    - name: Build (MSVC)
-      run: |
-        cmake --build .
-
-  build-PS2:
-   name: PS2
-   runs-on: ubuntu-latest
-   container: ps2dev/ps2dev:latest
-   steps:
-    
     - name: Install dependencies
       run: |
         apk add build-base git zip gawk
@@ -52,15 +20,16 @@ jobs:
     - run: |
         git fetch --prune --unshallow
     
-    - name: cd
-    - run: |
-       cd lib
-    
-    - name: make clean EE
-    - run: |
-       make -f Makefile.PS2_EE clean
-    
-    - name: make install EE 
-    - run: |
-        make -f Makefile.PS2_EE install
- 
+    - name:  make 
+      run: |
+        make
+  
+    - name: Upload release artifact H
+      if: ${{ success() }}
+      uses: actions/upload-artifact@v2
+      with:
+        name: NTFS
+        path: |
+          ntfs.h
+   
+  
