@@ -292,7 +292,7 @@ struct smb2_context *smb2_init_context(void)
                 smb2->salt[i] = random() & 0xff;
         }
 
-        snprintf(smb2->client_guid, 16, "libsmb2-%d", getpid());
+        snprintf(smb2->client_guid, 16, "libsmb2-%d", (int)random());
 
         smb2->session_key = NULL;
 
