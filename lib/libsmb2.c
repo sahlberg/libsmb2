@@ -292,7 +292,7 @@ decode_dirents(struct smb2_context *smb2, struct smb2dir *dir,
                         smb2_set_error(smb2, "Malformed query reply.");
                         return -1;
                 }
-                
+
                 ent = calloc(1, sizeof(struct smb2_dirent_internal));
                 if (ent == NULL) {
                         smb2_set_error(smb2, "Failed to allocate "
@@ -330,7 +330,7 @@ decode_dirents(struct smb2_context *smb2, struct smb2dir *dir,
 
                 offset += fs.next_entry_offset;
         } while (fs.next_entry_offset);
-        
+
         return 0;
 }
 
@@ -438,7 +438,7 @@ opendir_cb(struct smb2_context *smb2, int status,
         }
 
         memcpy(dir->file_id, rep->file_id, SMB2_FD_SIZE);
-        
+
         memset(&req, 0, sizeof(struct smb2_query_directory_request));
         req.file_information_class = SMB2_FILE_ID_FULL_DIRECTORY_INFORMATION;
         req.flags = 0;
@@ -498,7 +498,7 @@ smb2_opendir_async(struct smb2_context *smb2, const char *path,
                 return -EINVAL;
         }
         smb2_queue_pdu(smb2, pdu);
-        
+
         return 0;
 }
 
@@ -1215,7 +1215,7 @@ close_cb(struct smb2_context *smb2, int status,
         fh->cb(smb2, 0, NULL, fh->cb_data);
         free_smb2fh(smb2, fh);
 }
-        
+
 int
 smb2_close_async(struct smb2_context *smb2, struct smb2fh *fh,
                  smb2_command_cb cb, void *cb_data)
@@ -1295,34 +1295,33 @@ smb2_fsync_async(struct smb2_context *smb2, struct smb2fh *fh,
         return 0;
 }
 
-struct rw_data {
+struct read_data {
         smb2_command_cb cb;
         void *cb_data;
 
-        struct smb2fh *fh;
-        uint64_t offset;
+        struct smb2_read_cb_data read_cb_data;
 };
 
 static void
 read_cb(struct smb2_context *smb2, int status,
       void *command_data, void *private_data)
 {
-        struct rw_data *rd = private_data;
+        struct read_data *rd = private_data;
         struct smb2_read_reply *rep = command_data;
 
         if (status && status != SMB2_STATUS_END_OF_FILE) {
                 smb2_set_error(smb2, "Read/Write failed with (0x%08x) %s",
                                status, nterror_to_str(status));
-                rd->cb(smb2, -nterror_to_errno(status), NULL, rd->cb_data);
+                rd->cb(smb2, -nterror_to_errno(status), &rd->read_cb_data, rd->cb_data);
                 free(rd);
                 return;
         }
 
         if (status == SMB2_STATUS_SUCCESS) {
-                rd->fh->offset = rd->offset + rep->data_length;
+                rd->read_cb_data.fh->offset = rd->read_cb_data.offset + rep->data_length;
         }
 
-        rd->cb(smb2, rep->data_length, NULL, rd->cb_data);
+        rd->cb(smb2, rep->data_length, &rd->read_cb_data, rd->cb_data);
         free(rd);
 }
 
@@ -1332,17 +1331,30 @@ smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
                  smb2_command_cb cb, void *cb_data)
 {
         struct smb2_read_request req;
-        struct rw_data *rd;
+        struct read_data *rd;
         struct smb2_pdu *pdu;
         int needed_credits;
 
         if (smb2 == NULL) {
-				return -EINVAL;
-        }	
-        if (fh == NULL) {
-				smb2_set_error(smb2, "File handle was NULL");
-				return -EINVAL;
+                return -EINVAL;
         }
+        if (fh == NULL) {
+                smb2_set_error(smb2, "File handle was NULL");
+                return -EINVAL;
+        }
+
+        rd = calloc(1, sizeof(struct read_data));
+        if (rd == NULL) {
+                smb2_set_error(smb2, "Failed to allocate read_data");
+                return -ENOMEM;
+        }
+
+        rd->cb = cb;
+        rd->cb_data = cb_data;
+        rd->read_cb_data.fh = fh;
+        rd->read_cb_data.buf = buf;
+        rd->read_cb_data.count = count;
+        rd->read_cb_data.offset = offset;
 
         if (count > smb2->max_read_size) {
                 count = smb2->max_read_size;
@@ -1364,17 +1376,6 @@ smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
         }
         needed_credits = (count - 1) / 65536 + 1;
 
-        rd = calloc(1, sizeof(struct rw_data));
-        if (rd == NULL) {
-                smb2_set_error(smb2, "Failed to allocate rw_data");
-                return -ENOMEM;
-        }
-                
-        rd->cb = cb;
-        rd->cb_data = cb_data;
-        rd->fh = fh;
-        rd->offset = offset;
-
         memset(&req, 0, sizeof(struct smb2_read_request));
         req.flags = 0;
         req.length = count;
@@ -1394,46 +1395,53 @@ smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
         smb2_queue_pdu(smb2, pdu);
 
         return 0;
-}        
+}
 
 int
 smb2_read_async(struct smb2_context *smb2, struct smb2fh *fh,
                 uint8_t *buf, uint32_t count,
                 smb2_command_cb cb, void *cb_data)
 {
-		if (smb2 == NULL) {
-				return -EINVAL;
-		}
-		if (fh == NULL) {
-				smb2_set_error(smb2, "File handle was NULL");
-				return -EINVAL;
-		}
+        if (smb2 == NULL) {
+                return -EINVAL;
+        }
+        if (fh == NULL) {
+                smb2_set_error(smb2, "File handle was NULL");
+                return -EINVAL;
+        }
 
         return smb2_pread_async(smb2, fh, buf, count, fh->offset,
                                 cb, cb_data);
 }
 
+struct write_data {
+        smb2_command_cb cb;
+        void *cb_data;
+
+        struct smb2_write_cb_data write_cb_data;
+};
+
 static void
 write_cb(struct smb2_context *smb2, int status,
       void *command_data, void *private_data)
 {
-        struct rw_data *rd = private_data;
+        struct write_data *wd = private_data;
         struct smb2_write_reply *rep = command_data;
 
         if (status && status != SMB2_STATUS_END_OF_FILE) {
                 smb2_set_error(smb2, "Read/Write failed with (0x%08x) %s",
                                status, nterror_to_str(status));
-                rd->cb(smb2, -nterror_to_errno(status), NULL, rd->cb_data);
-                free(rd);
+                wd->cb(smb2, -nterror_to_errno(status), &wd->write_cb_data, wd->cb_data);
+                free(wd);
                 return;
         }
 
         if (status == SMB2_STATUS_SUCCESS) {
-                rd->fh->offset = rd->offset + rep->count;
+                wd->write_cb_data.fh->offset = wd->write_cb_data.offset + rep->count;
         }
 
-        rd->cb(smb2, rep->count, NULL, rd->cb_data);
-        free(rd);
+        wd->cb(smb2, rep->count, &wd->write_cb_data, wd->cb_data);
+        free(wd);
 }
 
 int
@@ -1442,17 +1450,30 @@ smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
                   smb2_command_cb cb, void *cb_data)
 {
         struct smb2_write_request req;
-        struct rw_data *rd;
+        struct write_data *wr;
         struct smb2_pdu *pdu;
         int needed_credits;
 
         if (smb2 == NULL) {
-				return -EINVAL;
+                return -EINVAL;
         }
         if (fh == NULL) {
-				smb2_set_error(smb2, "File handle was NULL");
-				return -EINVAL;
+                smb2_set_error(smb2, "File handle was NULL");
+                return -EINVAL;
         }
+
+        wr = calloc(1, sizeof(struct write_data));
+        if (wr == NULL) {
+                smb2_set_error(smb2, "Failed to allocate write_data");
+                return -ENOMEM;
+        }
+
+        wr->cb = cb;
+        wr->cb_data = cb_data;
+        wr->write_cb_data.fh = fh;
+        wr->write_cb_data.buf = buf;
+        wr->write_cb_data.count = count;
+        wr->write_cb_data.offset = offset;
 
         if (count > smb2->max_write_size) {
                 count = smb2->max_write_size;
@@ -1474,17 +1495,6 @@ smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
         }
         needed_credits = (count - 1) / 65536 + 1;
 
-        rd = calloc(1, sizeof(struct rw_data));
-        if (rd == NULL) {
-                smb2_set_error(smb2, "Failed to allocate rw_data");
-                return -ENOMEM;
-        }
-                
-        rd->cb = cb;
-        rd->cb_data = cb_data;
-        rd->fh = fh;
-        rd->offset = offset;
-
         memset(&req, 0, sizeof(struct smb2_write_request));
         req.length = count;
         req.offset = offset;
@@ -1494,7 +1504,7 @@ smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
         req.remaining_bytes = 0;
         req.flags = 0;
 
-        pdu = smb2_cmd_write_async(smb2, &req, write_cb, rd);
+        pdu = smb2_cmd_write_async(smb2, &req, write_cb, wr);
         if (pdu == NULL) {
                 smb2_set_error(smb2, "Failed to create write command");
                 return -EINVAL;
@@ -1502,20 +1512,20 @@ smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
         smb2_queue_pdu(smb2, pdu);
 
         return 0;
-}        
+}
 
 int
 smb2_write_async(struct smb2_context *smb2, struct smb2fh *fh,
                  const uint8_t *buf, uint32_t count,
                  smb2_command_cb cb, void *cb_data)
 {
-		if (smb2 == NULL) {
-				return -EINVAL;
-		}
-		if (fh == NULL) {
-				smb2_set_error(smb2, "File handle was NULL");
-				return -EINVAL;
-		}
+        if (smb2 == NULL) {
+                return -EINVAL;
+        }
+        if (fh == NULL) {
+                smb2_set_error(smb2, "File handle was NULL");
+                return -EINVAL;
+        }
         return smb2_pwrite_async(smb2, fh, buf, count, fh->offset,
                                  cb, cb_data);
 }
@@ -2580,7 +2590,7 @@ smb2_echo_async(struct smb2_context *smb2,
 
         return 0;
 }
-        
+
 uint32_t
 smb2_get_max_read_size(struct smb2_context *smb2)
 {
