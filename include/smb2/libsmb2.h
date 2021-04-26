@@ -28,7 +28,7 @@ struct smb2_iovec {
         size_t len;
         void (*free)(void *);
 };
-        
+
 struct smb2_context;
 
 /*
@@ -47,28 +47,28 @@ struct smb2_stat_64 {
         uint32_t smb2_nlink;
         uint64_t smb2_ino;
         uint64_t smb2_size;
-	uint64_t smb2_atime;
-	uint64_t smb2_atime_nsec;
-	uint64_t smb2_mtime;
-	uint64_t smb2_mtime_nsec;
-	uint64_t smb2_ctime;
-	uint64_t smb2_ctime_nsec;
+        uint64_t smb2_atime;
+        uint64_t smb2_atime_nsec;
+        uint64_t smb2_mtime;
+        uint64_t smb2_mtime_nsec;
+        uint64_t smb2_ctime;
+        uint64_t smb2_ctime_nsec;
     uint64_t smb2_btime;
     uint64_t smb2_btime_nsec;
 };
 
 struct smb2_statvfs {
-	uint32_t	f_bsize;
-	uint32_t	f_frsize;
-	uint64_t	f_blocks;
-	uint64_t	f_bfree;
-	uint64_t	f_bavail;
-	uint32_t	f_files;
-	uint32_t	f_ffree;
-	uint32_t	f_favail;
-	uint32_t	f_fsid;
-	uint32_t	f_flag;
-	uint32_t	f_namemax;
+        uint32_t        f_bsize;
+        uint32_t        f_frsize;
+        uint64_t        f_blocks;
+        uint64_t        f_bfree;
+        uint64_t        f_bavail;
+        uint32_t        f_files;
+        uint32_t        f_ffree;
+        uint32_t        f_favail;
+        uint32_t        f_fsid;
+        uint32_t        f_flag;
+        uint32_t        f_namemax;
 };
 
 struct smb2dirent {
@@ -432,7 +432,7 @@ struct smb2dir;
  *          This structure is freed using smb2_closedir().
  * -errno : An error occured.
  *          Command_data is NULL.
- */       
+ */
 int smb2_opendir_async(struct smb2_context *smb2, const char *path,
                        smb2_command_cb cb, void *cb_data);
 
@@ -512,7 +512,7 @@ struct smb2fh;
  *          This structure is freed using smb2_close().
  * -errno : An error occured.
  *          Command_data is NULL.
- */       
+ */
 int smb2_open_async(struct smb2_context *smb2, const char *path, int flags,
                     smb2_command_cb cb, void *cb_data);
 
@@ -580,6 +580,20 @@ int smb2_fsync(struct smb2_context *smb2, struct smb2fh *fh);
 uint32_t smb2_get_max_read_size(struct smb2_context *smb2);
 uint32_t smb2_get_max_write_size(struct smb2_context *smb2);
 
+struct smb2_read_cb_data {
+        struct smb2fh *fh;
+        uint8_t *buf;
+        uint32_t count;
+        uint64_t offset;
+};
+
+struct smb2_write_cb_data {
+        struct smb2fh *fh;
+        const uint8_t *buf;
+        uint32_t count;
+        uint64_t offset;
+};
+
 /*
  * PREAD
  */
@@ -597,8 +611,10 @@ uint32_t smb2_get_max_write_size(struct smb2_context *smb2);
  *    >=0 : Number of bytes read.
  * -errno : An error occured.
  *
- * Command_data is always NULL.
- */       
+ * Command_data is struct smb2_read_cb_data, which holds the arguments
+ * that were given to smb2_pread_async.
+ * This structure is automatically freed.
+ */
 int smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
                      uint8_t *buf, uint32_t count, uint64_t offset,
                      smb2_command_cb cb, void *cb_data);
@@ -628,7 +644,9 @@ int smb2_pread(struct smb2_context *smb2, struct smb2fh *fh,
  *    >=0 : Number of bytes written.
  * -errno : An error occured.
  *
- * Command_data is always NULL.
+ * Command_data is struct smb2_write_cb_data, which holds the arguments
+ * that were given to smb2_pwrite_async.
+ * This structure is automatically freed.
  */
 int smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
                       const uint8_t *buf, uint32_t count, uint64_t offset,
@@ -657,7 +675,10 @@ int smb2_pwrite(struct smb2_context *smb2, struct smb2fh *fh,
  *    >=0 : Number of bytes read.
  * -errno : An error occured.
  *
- * Command_data is always NULL.
+ * Command_data is struct smb2_read_cb_data, which holds the arguments
+ * that were given to smb2_read_async. offset denotes the offset in the file
+ * at which the read took place.
+ * This structure is automatically freed.
  */
 int smb2_read_async(struct smb2_context *smb2, struct smb2fh *fh,
                     uint8_t *buf, uint32_t count,
@@ -684,7 +705,10 @@ int smb2_read(struct smb2_context *smb2, struct smb2fh *fh,
  *    >=0 : Number of bytes written.
  * -errno : An error occured.
  *
- * Command_data is always NULL.
+ * Command_data is struct smb2_write_cb_data, which holds the arguments
+ * that were given to smb2_write_async. offset denotes the offset in the file
+ * at which the write took place.
+ * This structure is automatically freed.
  */
 int smb2_write_async(struct smb2_context *smb2, struct smb2fh *fh,
                      const uint8_t *buf, uint32_t count,
@@ -871,7 +895,7 @@ int smb2_rename_async(struct smb2_context *smb2, const char *oldpath,
  */
 int smb2_rename(struct smb2_context *smb2, const char *oldpath,
               const char *newpath);
-        
+
 /*
  * Async truncate()
  *
