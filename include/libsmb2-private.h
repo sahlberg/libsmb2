@@ -148,6 +148,8 @@ struct smb2_context {
         const char *workstation;
         char client_challenge[8];
 
+        void *opaque;
+
         smb2_command_cb connect_cb;
         void *connect_data;
 

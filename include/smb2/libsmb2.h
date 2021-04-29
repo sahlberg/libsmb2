@@ -274,6 +274,17 @@ void smb2_set_domain(struct smb2_context *smb2, const char *domain);
  */
 void smb2_set_workstation(struct smb2_context *smb2, const char *workstation);
 
+/*
+ * Sets the address to some user defined object. May be used to make
+ * additional context data available in the async callbacks.
+ */
+void smb2_set_opaque(struct smb2_context *smb2, void *opaque);
+
+/*
+ * Returns the opaque pointer set with smb2_set_opaque.
+ */
+void *smb2_get_opaque(struct smb2_context *smb2);
+
 
 /*
  * Returns the client_guid for this context.
