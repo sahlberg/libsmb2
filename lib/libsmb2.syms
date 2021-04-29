@@ -47,6 +47,7 @@ smb2_get_fds
 smb2_get_file_id
 smb2_get_max_read_size
 smb2_get_max_write_size
+smb2_get_opaque
 smb2_init_context
 smb2_mkdir
 smb2_mkdir_async
@@ -80,6 +81,7 @@ smb2_set_user
 smb2_set_password
 smb2_set_domain
 smb2_set_workstation
+smb2_set_opaque
 smb2_set_seal
 smb2_set_sign
 smb2_set_timeout
