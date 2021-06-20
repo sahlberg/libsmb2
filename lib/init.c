@@ -210,14 +210,21 @@ struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url)
 
         ptr = str;
 
+        char *shared_folder = strchr(ptr, '/');
+        if (!shared_folder) {
+                smb2_set_error(smb2, "Wrong URL format");
+                return NULL;
+        }
+        int len_shared_folder = strlen(shared_folder);
+
         /* domain */
-        if ((tmp = strchr(ptr, ';')) != NULL) {
+        if ((tmp = strchr(ptr, ';')) != NULL && strlen(tmp) > len_shared_folder) {
                 *(tmp++) = '\0';
                 u->domain = strdup(ptr);
                 ptr = tmp;
         }
         /* user */
-        if ((tmp = strchr(ptr, '@')) != NULL) {
+        if ((tmp = strchr(ptr, '@')) != NULL && strlen(tmp) > len_shared_folder) {
                 *(tmp++) = '\0';
                 u->user = strdup(ptr);
                 ptr = tmp;
