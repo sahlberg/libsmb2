@@ -130,9 +130,9 @@ struct connect_data {
         const char *share;
         const char *user;
 
-        /* UNC for the share in utf8 as well as ucs2 formats */
+        /* UNC for the share in utf8 as well as utf16 formats */
         char *utf8_unc;
-        struct ucs2 *ucs2_unc;
+        struct utf16 *utf16_unc;
 
         void *auth_data;
 };
@@ -517,7 +517,7 @@ free_c_data(struct smb2_context *smb2, struct connect_data *c_data)
         }
 
         free(c_data->utf8_unc);
-        free(c_data->ucs2_unc);
+        free(c_data->utf16_unc);
         free(discard_const(c_data->server));
         free(discard_const(c_data->share));
         free(discard_const(c_data->user));
@@ -765,8 +765,8 @@ session_setup_cb(struct smb2_context *smb2, int status,
 
         memset(&req, 0, sizeof(struct smb2_tree_connect_request));
         req.flags       = 0;
-        req.path_length = 2 * c_data->ucs2_unc->len;
-        req.path        = c_data->ucs2_unc->val;
+        req.path_length = 2 * c_data->utf16_unc->len;
+        req.path        = c_data->utf16_unc->val;
 
         pdu = smb2_cmd_tree_connect_async(smb2, &req, tree_connect_cb, c_data);
         if (pdu == NULL) {
@@ -1059,9 +1059,9 @@ smb2_connect_share_async(struct smb2_context *smb2,
                 return -ENOMEM;
         }
 
-        c_data->ucs2_unc = utf8_to_ucs2(c_data->utf8_unc);
-        if (c_data->ucs2_unc == NULL) {
-                smb2_set_error(smb2, "Count not convert UNC:[%s] into UCS2",
+        c_data->utf16_unc = utf8_to_utf16(c_data->utf8_unc);
+        if (c_data->utf16_unc == NULL) {
+                smb2_set_error(smb2, "Count not convert UNC:[%s] into UTF-16",
                                c_data->utf8_unc);
                 free_c_data(smb2, c_data);
                 return -ENOMEM;

@@ -203,7 +203,7 @@ lsa_RPC_UNICODE_STRING_coder(struct dcerpc_context *dce,
         offset = dcerpc_uint16_coder(dce, pdu, iov, offset, &len);
         offset = dcerpc_uint16_coder(dce, pdu, iov, offset, &maxlen);
         offset = dcerpc_ptr_coder(dce, pdu, iov, offset, ptr,
-                                   PTR_UNIQUE, dcerpc_ucs2_coder);
+                                   PTR_UNIQUE, dcerpc_utf16_coder);
 
         return offset;
 }
@@ -370,7 +370,7 @@ lsa_OpenPolicy2_req_coder(struct dcerpc_context *dce,
         struct lsa_openpolicy2_req *req = ptr;
 
         offset = dcerpc_ptr_coder(dce, pdu, iov, offset, &req->SystemName,
-                                   PTR_UNIQUE, dcerpc_ucs2z_coder);
+                                   PTR_UNIQUE, dcerpc_utf16z_coder);
         offset = dcerpc_ptr_coder(dce, pdu, iov, offset, &req->ObjectAttributes,
                                    PTR_REF, lsa_ObjectAttributes_coder);
         offset = dcerpc_uint32_coder(dce, pdu, iov, offset, &req->DesiredAccess);
