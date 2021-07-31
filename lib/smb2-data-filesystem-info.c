@@ -60,7 +60,7 @@ smb2_decode_file_fs_volume_info(struct smb2_context *smb2,
 	smb2_get_uint32(vec, 12, &fs->volume_label_length);
 	smb2_get_uint8(vec,  16, &fs->supports_objects);
 	smb2_get_uint8(vec,  17, &fs->reserved);
-        name = ucs2_to_utf8((uint16_t *)&vec->buf[18],
+        name = utf16_to_utf8((uint16_t *)&vec->buf[18],
                             fs->volume_label_length / 2);
         fs->volume_label = smb2_alloc_data(smb2, memctx, strlen(name) + 1);
         if (fs->volume_label == NULL) {
