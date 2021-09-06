@@ -114,6 +114,9 @@ AC_CHECK_HEADERS([netinet/in.h])
 dnl  Check for arpa/inet.h
 AC_CHECK_HEADERS([arpa/inet.h])
 
+dnl  Check for time.h
+AC_CHECK_HEADERS([time.h])
+
 dnl  Check if sockaddr data struct includes a "sa_len"
 AC_CHECK_MEMBER([struct sockaddr.sa_len], [
     AC_DEFINE([HAVE_SOCKADDR_LEN], [1], [Whether sockaddr struct has sa_len])
