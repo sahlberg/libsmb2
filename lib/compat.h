@@ -31,8 +31,6 @@
 #define close(a) lwip_close(a)
 
 #define getlogin_r(a,b) ENXIO
-#define srandom srand
-#define random rand
 
 #define POLLIN      0x0001    /* There is data to read */
 #define POLLPRI     0x0002    /* There is urgent data to read */
