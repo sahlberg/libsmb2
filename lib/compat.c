@@ -144,7 +144,7 @@ int asprintf(char **strp, const char *fmt, ...)
 
 int errno;
 
-int iop_connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
+int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
 {
         int rc;
         int err = 0;

@@ -1162,7 +1162,7 @@ smb2_open_async(struct smb2_context *smb2, const char *path, int flags,
                         SMB2_FILE_WRITE_EA |
                         SMB2_FILE_WRITE_ATTRIBUTES;
         }
-        if (flags & O_RDWR || !(flags & O_WRONLY)) {
+        if (!(flags & O_WRONLY)) {
                 desired_access |= SMB2_FILE_READ_DATA |
                         SMB2_FILE_READ_EA |
                         SMB2_FILE_READ_ATTRIBUTES;

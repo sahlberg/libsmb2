@@ -1,5 +1,5 @@
 IOP_CFLAGS = -DPS2_IOP_PLATFORM -DHAVE_STRING_H \
-	  -DHAVE_SYS_TYPES_H \
+	  -DHAVE_STDINT_H -DHAVE_SYS_TYPES_H \
 	  -D_U_=/**/
 IOP_CFLAGS += -Wall -Os -I. -I../include -I../include/smb2
 
@@ -53,10 +53,10 @@ IOP_OBJS =  aes.o \
             unicode.o \
             usha.o
 
-all: $(IOP_LIB) $(IOP_OBJS)
+all: $(IOP_LIB)
 
 clean:
-	rm -f -r $(IOP_BIN) $(IOP_LIB) $(IOP_OBJS)
+	rm -f -r $(IOP_BIN) $(IOP_LIB) $(IOP_OBJS) obj
 
 install: all
 ifeq ($(PS2SDK),)
