@@ -40,7 +40,7 @@ smb://[<domain>;][<user>@]<server>[:<port>]/<share>[/path][?arg=val[&arg=val]*]
 
 <server> is either a hostname, an IPv4 or an IPv6 address.
 
-Aruments supported by libsmb2 are :
+Arguments supported by libsmb2 are :
  sec=<mech>    : Mechanism to use to authenticate to the server. Default
 	         is any available mech, but can be overridden by :
 		 krb5: Use Kerberos using credentials from kinit.
