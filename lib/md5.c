@@ -21,8 +21,6 @@
  * Still in the public domain.
  */
 
-#ifndef ESP_PLATFORM
-
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -247,6 +245,3 @@ MD5Transform(UWORD32 buf[4], UWORD32 const in[16])
 }
 
 #endif
-
-#endif
-
