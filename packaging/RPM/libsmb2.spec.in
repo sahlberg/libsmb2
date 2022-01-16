@@ -84,6 +84,9 @@ development libraries for LibSMB2
 %defattr(-,root,root)
 %{_includedir}/smb2/libsmb2.h
 %{_includedir}/smb2/libsmb2-raw.h
+%{_includedir}/smb2/libsmb2-dcerpc.h
+%{_includedir}/smb2/libsmb2-dcerpc-lsa.h
+%{_includedir}/smb2/libsmb2-dcerpc-srvsvc.h
 %{_includedir}/smb2/smb2.h
 %{_includedir}/smb2/smb2-errors.h
 %{_libdir}/libsmb2.a
@@ -91,6 +94,20 @@ development libraries for LibSMB2
 %{_libdir}/pkgconfig/libsmb2.pc
 
 %changelog
+* Mon Jan 17 2022 : Version 4.0.0
+ - Add support for SMB3 encryption
+ - Add support for Anonymous NTLMSSP logins
+ - Add support for readlink.
+ - Add API to notify application of changes to which filehandles are used by
+ libsmb2.
+ - Add suppport for Big Endian DCERPC and allow it to be controlled from the
+ URL.
+ - Add support for 3.1.1 signing
+ - Add support for PS2(EE) and PS3
+ - Fixes to UCS2 when compose characters are used.
+ 
+ - Various MacOS fixes
+ - Fix a few NULL dereferences
 * Mon Jun 10 2019 : Version 3.0.0
  - ESP32 support
  - Support specifying the port number in an SMB URL.
