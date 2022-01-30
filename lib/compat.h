@@ -137,6 +137,15 @@ ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
 
 #endif /* PS2_IOP_PLATFORM */
 
+#ifdef PS4_PLATFORM
+
+#include <netdb.h>
+#include <poll.h>
+#include <sys/uio.h>
+
+#define TCP_NODELAY     1  /* Don't delay send to coalesce packets  */
+
+#endif /* PS4_PLATFORM */
 
 #ifdef PS3_PPU_PLATFORM
 
