@@ -229,3 +229,16 @@ Then to build libsmb2, run
 
 The process will copy the resulting libsmb2.a and the include/smb2 headers to your
 PSL1GHT SDK portlibs folder.
+
+PlayStation 4
+-------------
+x86_64 is the main CPU for the PS4.
+To compile libsmb2 for the PS4 PPU, first install the PS4 toolchain and
+OpenOrbis SDK and set it up.
+
+Then to build libsmb2, run
+  $ cd lib
+  $ make -f Makefile.PS4 install
+
+The process will copy the resulting libsmb2.a and the include/smb2 headers to your
+OpenOrbis SDK include folder.
