@@ -305,7 +305,7 @@ int smb2_close(struct smb2_context *smb2, struct smb2fh *fh)
 	rc = wait_for_reply(smb2, cb_data);
         if (rc < 0) {
                 cb_data->status = SMB2_STATUS_CANCELLED;
-                return rc;
+                goto out;
 	}
 
         rc = cb_data->status;
