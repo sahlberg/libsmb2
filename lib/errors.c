@@ -1119,8 +1119,9 @@ int nterror_to_errno(uint32_t status) {
         case SMB2_STATUS_INVALID_PARAMETER:
         case SMB2_STATUS_NOT_SUPPORTED:
         case SMB2_STATUS_NOT_A_REPARSE_POINT:
-        case SMB2_STATUS_STOPPED_ON_SYMLINK:
                 return EINVAL;
+        case SMB2_STATUS_STOPPED_ON_SYMLINK:
+                return ENOLINK;
         case SMB2_STATUS_TOO_MANY_OPENED_FILES:
                 return EMFILE;
         case SMB2_STATUS_SECTION_TOO_BIG:
