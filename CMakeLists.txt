@@ -38,6 +38,16 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR}
 
 set(core_DEPENDS ${GSSAPI_LIBRARIES} CACHE STRING "" FORCE)
 
+if(MSVC AND BUILD_SHARED_LIBS)
+  # If we are building dll with msvc, then generate a def file according to the syms file
+  SET(SYMS_FILE_PATH "${PROJECT_SOURCE_DIR}/lib/libsmb2.syms")
+  SET(DEF_FILE_PATH "${PROJECT_BINARY_DIR}/lib/libsmb2.def")
+  file(READ ${SYMS_FILE_PATH} EXPORT_SYMBOLS)
+  file(WRITE ${DEF_FILE_PATH} "LIBRARY smb2\nEXPORTS\n\n${EXPORT_SYMBOLS}")
+  # Pass def file to the linker 
+  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /DEF:${DEF_FILE_PATH}")
+endif()
+
 if(CMAKE_SYSTEM_NAME MATCHES Windows)
   list(APPEND CORE_LIBRARIES ws2_32.lib)
   add_definitions(-DWIN32_LEAN_AND_MEAN -D_CRT_NONSTDC_NO_DEPRECATE -D_CRT_SECURE_NO_WARNINGS)
