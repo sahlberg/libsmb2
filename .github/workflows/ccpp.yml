@@ -32,7 +32,8 @@ jobs:
     - uses: actions/checkout@v1
     - name: Cmake configure
       run: |
-        cmake -G "Visual Studio 16 2019" .
+        cmake -G
+        cmake -G "Visual Studio Enterprise 2022" .
     - name: Build (MSVC)
       run: |
         cmake --build .
