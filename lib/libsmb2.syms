@@ -28,6 +28,7 @@ smb2_cmd_tree_disconnect_async
 smb2_connect_async
 smb2_connect_share
 smb2_connect_share_async
+smb2_decode_fileidfulldirectoryinformation
 smb2_destroy_context
 smb2_destroy_url
 smb2_disconnect_share

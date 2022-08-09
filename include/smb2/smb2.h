@@ -415,6 +415,12 @@ struct smb2_fileidfulldirectoryinformation {
         const char *name;
 };
 
+struct smb2_iovec;
+int smb2_decode_fileidfulldirectoryinformation(
+        struct smb2_context *smb2,
+        struct smb2_fileidfulldirectoryinformation *fs,
+        struct smb2_iovec *vec);
+        
 struct smb2_query_directory_request {
         uint8_t file_information_class;
         uint8_t flags;
