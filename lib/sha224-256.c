@@ -338,7 +338,7 @@ SHA256FinalBits (SHA256Context * context,
  *   sha Error Code.
  */
 int
-SHA256Result (SHA256Context * context, uint8_t Message_Digest[])
+SHA256Result (SHA256Context * context, uint8_t Message_Digest[SHA256HashSize])
 {
   return SHA224_256ResultN (context, Message_Digest, SHA256HashSize);
 }
