@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
                         rc = 1;
                         break;
                 }
-                write(0, buf, count);
+                write(STDOUT_FILENO, buf, count);
                 pos += count;
         };
                 

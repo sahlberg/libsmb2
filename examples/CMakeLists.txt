@@ -20,7 +20,7 @@ set(SOURCES smb2-cat-async
 
 foreach(TARGET ${SOURCES})
   add_executable(${TARGET} ${TARGET}.c)
-  target_link_libraries(${TARGET} ${CORE_LIBRARIES})
+  target_link_libraries(${TARGET} smb2 ${CORE_LIBRARIES})
   add_dependencies(${TARGET} smb2)
 endforeach()
 
