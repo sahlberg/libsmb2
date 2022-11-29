@@ -33,7 +33,7 @@ int usage(void)
         fprintf(stderr, "Usage:\n"
                 "smb2-share-enum <smb2-url>\n\n"
                 "URL format: "
-                "smb://[<domain;][<username>@]<host>[:<port>]/\n");
+                "smb://[<domain;][<username>[:<password>]@]<host>[:<port>]/\n");
         exit(1);
 }
 

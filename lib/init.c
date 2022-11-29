@@ -225,7 +225,14 @@ struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url)
         }
         /* user */
         if ((tmp = strchr(ptr, '@')) != NULL && strlen(tmp) > len_shared_folder) {
+                char *t = strchr(ptr, ':');
+
                 *(tmp++) = '\0';
+                /* optional password */
+                if (t && t < tmp) {
+                        *(t++) = '\0';
+                        smb2_set_password(smb2, t);
+                }
                 u->user = strdup(ptr);
                 ptr = tmp;
         }

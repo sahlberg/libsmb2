@@ -37,7 +37,7 @@ int usage(void)
         fprintf(stderr, "Usage:\n"
                 "smb2-cat-sync <smb2-url>\n\n"
                 "URL format: "
-                "smb://[<domain;][<username>@]<host>[:<port>]/<share>/<path>\n");
+                "smb://[<domain;][<username>[:<password>]@]<host>[:<port>]/<share>/<path>\n");
         exit(1);
 }
 

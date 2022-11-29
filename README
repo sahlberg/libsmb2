@@ -36,7 +36,7 @@ defined/used by the Samba project.
 The goal is to eventually support the full URL format, thus making URLs
 interchangable between Samba utilities and Libsmb2 but we are not there yet.
 
-smb://[<domain>;][<user>@]<server>[:<port>]/<share>[/path][?arg=val[&arg=val]*]
+smb://[<domain>;][<user>[:<pass>]@]<server>[:<port>]/<share>[/path][?arg=val[&arg=val]*]
 
 <server> is either a hostname, an IPv4 or an IPv6 address.
 
