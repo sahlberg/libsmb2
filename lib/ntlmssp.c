@@ -321,6 +321,7 @@ encode_temp(struct auth_data *auth_data, uint64_t t, char *client_challenge,
                                  0x00, 0x00, 0x00, 0x00};
         unsigned char zero[8] = {0x00, 0x00, 0x00, 0x00,
                                  0x00, 0x00, 0x00, 0x00};
+        uint64_t u64;
 
         if (encoder(&zero, 8, auth_data) < 0) {
                 return -1;
@@ -331,7 +332,8 @@ encode_temp(struct auth_data *auth_data, uint64_t t, char *client_challenge,
         if (encoder(sign, 8, auth_data) < 0) {
                 return -1;
         }
-        if (encoder(&t, 8, auth_data) < 0) {
+        u64 = htole64(t);
+        if (encoder(&u64, 8, auth_data) < 0) {
                 return -1;
         }
         if (encoder(client_challenge, 8, auth_data) < 0) {
