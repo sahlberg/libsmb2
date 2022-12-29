@@ -2157,10 +2157,17 @@ smb2_truncate_async(struct smb2_context *smb2, const char *path,
 }
 
 struct rename_cb_data {
+        uint8_t *newpath;
         smb2_command_cb cb;
         void *cb_data;
         uint32_t status;
 };
+
+static void free_rename_data(struct rename_cb_data *rename_data)
+{
+        free(rename_data->newpath);
+        free(rename_data);
+}
 
 static void
 rename_cb_3(struct smb2_context *smb2, int status,
@@ -2174,7 +2181,7 @@ rename_cb_3(struct smb2_context *smb2, int status,
 
         rename_data->cb(smb2, -nterror_to_errno(rename_data->status),
                         NULL, rename_data->cb_data);
-        free(rename_data);
+        free_rename_data(rename_data);
 }
 
 static void
@@ -2209,6 +2216,7 @@ smb2_rename_async(struct smb2_context *smb2, const char *oldpath,
         struct smb2_close_request cl_req;
         struct smb2_pdu *pdu, *next_pdu;
         struct smb2_file_rename_info rn_info;
+        uint8_t *ptr;
 
         if (smb2 == NULL) {
                 return -EINVAL;
@@ -2222,6 +2230,17 @@ smb2_rename_async(struct smb2_context *smb2, const char *oldpath,
 
         rename_data->cb = cb;
         rename_data->cb_data = cb_data;
+        rename_data->newpath = (uint8_t *)strdup(newpath);
+        if (rename_data->newpath == NULL) {
+                free_rename_data(rename_data);
+                smb2_set_error(smb2, "Failed to allocate rename_data->newpath");
+                return -ENOMEM;
+        }
+        for (ptr = rename_data->newpath; *ptr; ptr++) {
+                if (*ptr == '/') {
+                        *ptr = '\\';
+                }
+        }
 
         /* CREATE command */
         memset(&cr_req, 0, sizeof(struct smb2_create_request));
@@ -2237,13 +2256,13 @@ smb2_rename_async(struct smb2_context *smb2, const char *oldpath,
         pdu = smb2_cmd_create_async(smb2, &cr_req, rename_cb_1, rename_data);
         if (pdu == NULL) {
                 smb2_set_error(smb2, "Failed to create create command");
-                free(rename_data);
+                free_rename_data(rename_data);
                 return -EINVAL;
         }
 
         /* SET INFO command */
         rn_info.replace_if_exist = 0;
-        rn_info.file_name = discard_const(newpath);
+        rn_info.file_name = rename_data->newpath;
 
         memset(&si_req, 0, sizeof(struct smb2_set_info_request));
         si_req.info_type = SMB2_0_INFO_FILE;
@@ -2257,7 +2276,7 @@ smb2_rename_async(struct smb2_context *smb2, const char *oldpath,
         if (next_pdu == NULL) {
                 smb2_set_error(smb2, "Failed to create set command. %s",
                                smb2_get_error(smb2));
-                free(rename_data);
+                free_rename_data(rename_data);
                 smb2_free_pdu(smb2, pdu);
                 return -EINVAL;
         }
@@ -2271,7 +2290,7 @@ smb2_rename_async(struct smb2_context *smb2, const char *oldpath,
         next_pdu = smb2_cmd_close_async(smb2, &cl_req, rename_cb_3, rename_data);
         if (next_pdu == NULL) {
                 rename_data->cb(smb2, -ENOMEM, NULL, rename_data->cb_data);
-                free(rename_data);
+                free_rename_data(rename_data);
                 smb2_free_pdu(smb2, pdu);
                 return -EINVAL;
         }
