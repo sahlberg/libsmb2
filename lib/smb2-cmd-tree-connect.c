@@ -138,10 +138,13 @@ smb2_process_tree_connect_fixed(struct smb2_context *smb2,
                 return -1;
         }
 
-        smb2_get_uint8(&pdu->in.iov[0], 2, &rep->share_type);
-        smb2_get_uint32(&pdu->in.iov[0], 4, &rep->share_flags);
-        smb2_get_uint32(&pdu->in.iov[0], 4, &rep->capabilities);
-        smb2_get_uint32(&pdu->in.iov[0], 4, &rep->maximal_access);
+        smb2_get_uint8(iov, 2, &rep->share_type);
+        smb2_get_uint32(iov, 4, &rep->share_flags);
+        smb2_get_uint32(iov, 4, &rep->capabilities);
+        smb2_get_uint32(iov, 4, &rep->maximal_access);
+
+        if (!smb2->seal)
+                smb2->seal = !!(rep->share_flags & SMB2_SHAREFLAG_ENCRYPT_DATA);
 
         /* Update tree ID to use for future PDUs */
         smb2->tree_id = smb2->hdr.sync.tree_id;
