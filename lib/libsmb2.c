@@ -1157,15 +1157,19 @@ smb2_open_async(struct smb2_context *smb2, const char *path, int flags,
         }
 
         /* desired access */
-        if (flags & (O_RDWR | O_WRONLY)) {
-                desired_access |= SMB2_FILE_WRITE_DATA |
-                        SMB2_FILE_WRITE_EA |
-                        SMB2_FILE_WRITE_ATTRIBUTES;
-        }
-        if (!(flags & O_WRONLY)) {
-                desired_access |= SMB2_FILE_READ_DATA |
-                        SMB2_FILE_READ_EA |
-                        SMB2_FILE_READ_ATTRIBUTES;
+        switch (flags & O_ACCMODE) {
+                case O_RDWR:
+                case O_WRONLY:
+                        desired_access |= SMB2_FILE_WRITE_DATA |
+                                SMB2_FILE_WRITE_EA |
+                                SMB2_FILE_WRITE_ATTRIBUTES;
+                        if ((flags & O_ACCMODE) == O_WRONLY)
+                                break;
+                case O_RDONLY:
+                        desired_access |= SMB2_FILE_READ_DATA |
+                                SMB2_FILE_READ_EA |
+                                SMB2_FILE_READ_ATTRIBUTES;
+                        break;
         }
 
         /* create options */
