@@ -373,6 +373,8 @@ int smb2_disconnect_share(struct smb2_context *smb2);
  */
 const char *smb2_get_error(struct smb2_context *smb2);
 
+int smb2_get_nterror(struct smb2_context *smb2);
+
 struct smb2_url {
         const char *domain;
         const char *user;
