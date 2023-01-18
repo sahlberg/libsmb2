@@ -221,6 +221,7 @@ ntlm_convert_password_hash(const char *password, unsigned char password_hash[16]
         }
 
         for (i = 0; i < 32; i++) {
+                utf16_password->val[i] = le16toh(utf16_password->val[i]);
                 if (islower((unsigned int) utf16_password->val[i])) {
                         utf16_password->val[i] = toupper((unsigned int) utf16_password->val[i]);
                 }
