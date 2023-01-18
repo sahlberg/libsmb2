@@ -109,6 +109,10 @@ static const char SmbRpc[] = "SmbRpc";
 static const char SMBAppKey[] = "SMBAppKey";
 */
 
+#ifndef O_ACCMODE
+#define O_ACCMODE (O_RDWR|O_WRONLY|O_RDONLY)
+#endif // !O_ACCMODE
+
 #ifndef O_SYNC
 #ifndef O_DSYNC
 #define O_DSYNC		040000
