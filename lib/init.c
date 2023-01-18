@@ -395,29 +395,60 @@ struct smb2_iovec *smb2_add_iovector(struct smb2_context *smb2,
         return iov;
 }
 
-void smb2_set_error(struct smb2_context *smb2, const char *error_string, ...)
+static void smb2_set_error_string(struct smb2_context *smb2, const char * error_string, va_list args)
 {
 #ifndef PS2_IOP_PLATFORM
-        va_list ap;
         char errstr[MAX_ERROR_SIZE] = {0};
 
-        va_start(ap, error_string);
-        if (vsnprintf(errstr, MAX_ERROR_SIZE, error_string, ap) < 0) {
+        if (vsnprintf(errstr, MAX_ERROR_SIZE, error_string, args) < 0) {
                 strncpy(errstr, "could not format error string!",
                         MAX_ERROR_SIZE);
         }
-        va_end(ap);
-        if (smb2 != NULL) {
-                strncpy(smb2->error_string, errstr, MAX_ERROR_SIZE);
-        }
+        strncpy(smb2->error_string, errstr, MAX_ERROR_SIZE);
 #else /* PS2_IOP_PLATFORM */
         /* Dont have vs[n]printf on PS2 IOP. */
 #endif /* PS2_IOP_PLATFORM */
 }
 
+void smb2_set_error(struct smb2_context *smb2, const char *error_string, ...)
+{
+#ifndef PS2_IOP_PLATFORM
+        va_list ap;
+
+        if (!smb2)
+                return;
+        if (!error_string || !*error_string)
+                smb2->nterror = 0;
+        va_start(ap, error_string);
+        smb2_set_error_string(smb2, error_string, ap);
+        va_end(ap);
+#endif
+}
+
+void smb2_set_nterror(struct smb2_context *smb2, int nterror, const char *error_string, ...)
+{
+        if (!smb2)
+                return;
+#ifndef PS2_IOP_PLATFORM
+        {
+                va_list ap;
+
+                va_start(ap, error_string);
+                smb2_set_error_string(smb2, error_string, ap);
+                va_end(ap);
+        }
+#endif
+        smb2->nterror = nterror;
+}
+
 const char *smb2_get_error(struct smb2_context *smb2)
 {
         return smb2 ? smb2->error_string : "";
+}
+
+int smb2_get_nterror(struct smb2_context *smb2)
+{
+        return smb2 ? smb2->nterror : 0;
 }
 
 const char *smb2_get_client_guid(struct smb2_context *smb2)
