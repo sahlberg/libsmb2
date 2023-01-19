@@ -23,6 +23,25 @@
 
 #	include <endian.h>
 
+#elif defined(PICO_PLATFORM)
+
+#   include <machine/endian.h>
+#   include "lwip/def.h"
+
+#   define be16toh(x) PP_NTOHS(x)
+#   define htobe16(x) PP_HTONS(x)
+#   define htole16(x) (x)
+#   define le16toh(x) (x)
+
+#   define be32toh(x) PP_NTOHL(x)
+#   define htobe32(x) PP_HTONL(x)
+#   define htole32(x) (x)
+#   define le32toh(x) (x)
+
+#   define htobe64(x) be64toh(x)
+#   define htole64(x) (x)
+#   define le64toh(x) (x)
+
 #elif defined(PS2_IOP_PLATFORM)
 
 #	include <tcpip.h>

@@ -78,7 +78,7 @@
 #include <fcntl.h>
 #endif
 
-#if !defined(PS2_EE_PLATFORM) && !defined(PS2_IOP_PLATFORM)
+#if !defined(PS2_EE_PLATFORM) && !defined(PS2_IOP_PLATFORM) && !defined(PICO_PLATFORM)
 #include <sys/socket.h>
 #endif
 
@@ -867,10 +867,12 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_o
 #endif
                 break;
         case AF_INET6:
+#if !defined(PICO_PLATFORM) || defined(LWIP_INETV6)
                 socksize = sizeof(struct sockaddr_in6);
                 memcpy(&ss, ai->ai_addr, socksize);
 #ifdef HAVE_SOCK_SIN_LEN
                 ((struct sockaddr_in6 *)&ss)->sin6_len = socksize;
+#endif
 #endif
                 break;
         default:
