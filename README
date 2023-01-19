@@ -196,6 +196,19 @@ toolchain (Arduino is not supported). Simply clone this project in the
 'components' directory of the ESP32 project and it will automatically be
 included in the build process.
 
+Raspberry Pi Pico W (RP2040)
+----------------------------
+libsmb2 will compile on the RP2040 using gcc-arm-none-eabi, the pico-sdk
+and FreeRTOS-Kernel. In examples/picow is a CMakeLists.txt that can be
+edited to point at the pico-sdk and FreeRTOS-Kernel, and will then build
+libsmb2 and a sample - this can be used as a starting point.  Inside
+include/picow are some configuration files for lwip, FreeRTOS and any
+applications built with libsmb2.  These can also be used as a starting 
+point and adjusted as needed for your applications.
+
+The only define needed for libsmb2 on the RP2040, other than the RP2040
+defines such as PICO_BOARD=pico_w, is PICO_PLATFORM.
+
 Playstation2
 ------------
 EE, Emotion-Engine, is the main CPU for the PS2.
