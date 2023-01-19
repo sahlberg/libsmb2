@@ -31,6 +31,17 @@
 
 #endif
 
+#ifdef PICO_PLATFORM
+
+#define NEED_BE64TOH
+#define NEED_POLL
+
+#include "lwip/def.h"
+#include <unistd.h>
+#include <lwip/sockets.h>
+
+#endif /* PICO_PLATFORM */
+
 #ifdef PS2_EE_PLATFORM
 
 #define NEED_READV
