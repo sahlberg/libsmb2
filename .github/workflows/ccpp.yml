@@ -55,3 +55,28 @@ jobs:
         cd lib
         make -f Makefile.PS2_EE clean
         make -f Makefile.PS2_EE
+
+  build-ps3-ppu:
+    name: PS3 PPU build
+
+    runs-on: ubuntu-20.04
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Set env vars
+      id: slug
+      run: |
+        echo "sha_name=$(echo ${GITHUB_SHA} | cut -c1-8)" >> $GITHUB_ENV
+      # using pre-compiled sdk
+    - name: Download PSL1GHT Toolchain
+      run: |
+        curl -sL https://github.com/bucanero/ps3toolchain/releases/download/ubuntu-latest-fad3b5fb/ps3dev-ubuntu-latest-2020-08-31.tar.gz | tar xvz -C ./
+        echo "PS3DEV=${GITHUB_WORKSPACE}/ps3dev" >> $GITHUB_ENV
+        echo "PSL1GHT=${GITHUB_WORKSPACE}/ps3dev" >> $GITHUB_ENV
+    - name: build libsmb2
+      run: |
+        cd lib
+        make -f Makefile.PS3_PPU clean
+        make -f Makefile.PS3_PPU
