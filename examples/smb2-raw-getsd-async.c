@@ -384,7 +384,7 @@ int main(int argc, char *argv[])
         }
 
         if (cb_data.status != 0) {
-                printf("Compund command sequence returned error 0x%08x\n",
+                printf("Compound command sequence returned error 0x%08x\n",
                        cb_data.status);
                 exit(10);
         }

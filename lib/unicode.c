@@ -133,7 +133,7 @@ validate_utf8_cp(const char **utf8, uint16_t *ret)
         return -1;
 }
 
-/* Validate that the given string is properly formated UTF8.
+/* Validate that the given string is properly formatted UTF8.
  * Returns >=0 if valid UTF8 and -1 if not.
  */
 static int

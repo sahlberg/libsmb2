@@ -100,7 +100,7 @@ development libraries for LibSMB2
  - Add support for readlink.
  - Add API to notify application of changes to which filehandles are used by
  libsmb2.
- - Add suppport for Big Endian DCERPC and allow it to be controlled from the
+ - Add support for Big Endian DCERPC and allow it to be controlled from the
  URL.
  - Add support for 3.1.1 signing
  - Add support for PS2(EE) and PS3

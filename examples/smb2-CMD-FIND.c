@@ -69,7 +69,7 @@ void qd_3_cb(struct smb2_context *smb2, int status,
         printf("Index of first entry after restarting the scan at the second index: 0x%08x\n", fs.file_index);
         printf("Name of first entry after restarting the scan at the second index %s\n", fs.name);
         if (strcmp(fs.name, data->name_2)) {
-                 printf("ERROR: restarting the scan using SMB2_INDEX_SPECIFIED did not return the expexted second entry.\n");
+                 printf("ERROR: restarting the scan using SMB2_INDEX_SPECIFIED did not return the expected second entry.\n");
                  printf("ERROR: server does not support SMB2_INDEX_SPECIFIED.\n");
                 exit(10);
         }

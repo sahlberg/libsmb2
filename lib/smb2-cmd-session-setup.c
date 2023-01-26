@@ -155,7 +155,7 @@ smb2_process_session_setup_fixed(struct smb2_context *smb2,
         }
         if (rep->security_buffer_offset < SMB2_HEADER_SIZE +
             (SMB2_SESSION_SETUP_REPLY_SIZE & 0xfffe)) {
-                smb2_set_error(smb2, "Securty buffer overlaps with "
+                smb2_set_error(smb2, "Security buffer overlaps with "
                                "Session Setup reply header");
                 return -1;
         }

@@ -24,7 +24,7 @@
 
 #
 # The following allows environment variables to override the target directories
-#   the alternative is to have a file in your home directory calles .rpmmacros
+#   the alternative is to have a file in your home directory called .rpmmacros
 #   containing the following:
 #   %_topdir  /home/mylogin/redhat
 #
@@ -95,7 +95,7 @@ if [ $RC -ne 0 ]; then
         exit 1
 fi
 
-# At this point the SPECDIR and SRCDIR vaiables must have a value!
+# At this point the SPECDIR and SRCDIR variables must have a value!
 
 ##
 ## copy additional source files

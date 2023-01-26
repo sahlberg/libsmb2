@@ -98,7 +98,7 @@ struct smb2_pdu *smb2_cmd_tree_connect_async(struct smb2_context *smb2,
                                 smb2_command_cb cb, void *cb_data);
 
 /*
- * Asynchronous SMB2 Tree Disonnect
+ * Asynchronous SMB2 Tree Disconnect
  *
  * Returns:
  * pdu  : If the call was initiated and a connection will be attempted.
@@ -108,7 +108,7 @@ struct smb2_pdu *smb2_cmd_tree_connect_async(struct smb2_context *smb2,
  *
  * Callback parameters :
  * status can be either of :
- *    0     : Tree Disonnect was successful.
+ *    0     : Tree Disconnect was successful.
  *
  *   !0     : Status is NT status code.
  *
