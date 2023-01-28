@@ -227,7 +227,7 @@ struct smb2_context {
 
         /* dcerpc settings */
         int ndr;
-        int endianess;
+        int endianness;
 };
 
 #define SMB2_MAX_PDU_SIZE 16*1024*1024
@@ -288,7 +288,7 @@ const char *utf16_to_utf8(const uint16_t *str, int len);
 /* Convert a win timestamp to a unix timeval */
 void win_to_timeval(uint64_t smb2_time, struct smb2_timeval *tv);
 
-/* Covnert unit timeval to a win timestamp */
+/* Convert unit timeval to a win timestamp */
 uint64_t timeval_to_win(struct smb2_timeval *tv);
 
 void smb2_set_error(struct smb2_context *smb2, const char *error_string,

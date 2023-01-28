@@ -26,7 +26,7 @@ include(${FREERTOS_KERNEL_PATH}/portable/ThirdParty/GCC/RP2040/FreeRTOS_Kernel_i
 project(${PROJECT_NAME} C CXX ASM)
 pico_sdk_init()
 
-# Add a couple of defenitions that all projects/libraries can/should use
+# Add a couple of definitions that all projects/libraries can/should use
 add_definitions(-DPICO_PLATFORM=${PICO_PLATFORM})
 add_definitions(-DHAVE_CONFIG_H)
 
@@ -34,7 +34,7 @@ add_definitions(-DHAVE_CONFIG_H)
 # Build libsmb2 as a library
 add_subdirectory(${LIBSMB2_PATH} libsmb2)
 
-# The examle
+# The example
 set(PROJECT_NAME smb2-ls-sync)
 project(${PROJECT_NAME} C CXX ASM)
 

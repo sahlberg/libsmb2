@@ -234,7 +234,7 @@ smb2_write_to_socket(struct smb2_context *smb2)
 
                 tmpiov = iov;
 
-                /* Skip the vectors we have alredy written */
+                /* Skip the vectors we have already written */
                 while (num_done >= tmpiov->iov_len) {
                         num_done -= tmpiov->iov_len;
                         tmpiov++;

@@ -113,9 +113,9 @@ smb2_parse_args(struct smb2_context *smb2, const char *args)
                 } else if (!strcmp(args, "ndr64")) {
                         smb2->ndr = 2;
                 } else if (!strcmp(args, "le")) {
-                        smb2->endianess = 0;
+                        smb2->endianness = 0;
                 } else if (!strcmp(args, "be")) {
-                        smb2->endianess = 1;
+                        smb2->endianness = 1;
                 } else if (!strcmp(args, "sec")) {
                         if(!strcmp(value, "krb5")) {
                                 smb2->sec = SMB2_SEC_KRB5;

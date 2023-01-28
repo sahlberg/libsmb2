@@ -118,7 +118,7 @@ smb2_encode_negotiate_request(struct smb2_context *smb2,
         if (smb2->version == SMB2_VERSION_ANY ||
             smb2->version == SMB2_VERSION_ANY3 ||
             smb2->version == SMB2_VERSION_0311) {
-                /* Negotiate contexts are alinged at 64bit boundaries */
+                /* Negotiate contexts are aligned at 64bit boundaries */
                 if (len & 0x04) {
                         len += 4;
                 }
@@ -284,7 +284,7 @@ smb2_process_negotiate_fixed(struct smb2_context *smb2,
         }
         if (rep->security_buffer_offset < SMB2_HEADER_SIZE +
             (SMB2_NEGOTIATE_REPLY_SIZE & 0xfffe)) {
-                smb2_set_error(smb2, "Securty buffer overlaps with "
+                smb2_set_error(smb2, "Security buffer overlaps with "
                                "negotiate reply header");
                 return -1;
         }

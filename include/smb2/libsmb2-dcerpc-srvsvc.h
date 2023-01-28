@@ -109,7 +109,7 @@ struct srvsvc_rep {
  * When the callback is invoked, status indicates the result:
  *      0 : Success. Command_data is struct srvsvc_netshareenumall_rep *
  *          This pointer must be freed using smb2_free_data().
- * -errno : An error occured.
+ * -errno : An error occurred.
  */
 int smb2_share_enum_async(struct smb2_context *smb2,
                           smb2_command_cb cb, void *cb_data);

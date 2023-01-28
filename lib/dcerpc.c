@@ -165,7 +165,7 @@ struct dcerpc_response_pdu {
         uint32_t alloc_hint;
         uint16_t context_id;
         uint8_t cancel_count;
-        uint8_t reserverd;
+        uint8_t reserved;
       /* stub data, 8-octet aligned 
                    .
                    .
@@ -373,7 +373,7 @@ dcerpc_create_context(struct smb2_context *smb2)
 
         ctx = calloc(1, sizeof(struct dcerpc_context));
         if (ctx == NULL) {
-                smb2_set_error(smb2, "Failed to allcoate dcercp context.");
+                smb2_set_error(smb2, "Failed to allocate dcercp context.");
                 return NULL;
         }
 
@@ -396,7 +396,7 @@ dcerpc_connect_context_async(struct dcerpc_context *dce, const char *path,
         }
         dce->syntax = syntax;
         dce->packed_drep[0] = DCERPC_DR_ASCII;
-        if (!dce->smb2->endianess) {
+        if (!dce->smb2->endianness) {
                 dce->packed_drep[0] |= DCERPC_DR_LITTLE_ENDIAN;
         }
 
@@ -615,7 +615,7 @@ dcerpc_uint8_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         }
 }
 
-/* Encode words that vary in size depending on the tranport syntax */
+/* Encode words that vary in size depending on the transport syntax */
 static int
 dcerpc_encode_3264(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                    struct smb2_iovec *iov, int offset, void *ptr)
@@ -1259,7 +1259,7 @@ dcerpc_decode_bind_ack(struct dcerpc_context *ctx,
         smb2_get_uint32(iov, offset, &bind_ack->assoc_group_id);
         offset += 4;
 
-        /* Secondary Addres Length */
+        /* Secondary Address Length */
         smb2_get_uint16(iov, offset, &sec_addr_len);
         offset += 2;
 
