@@ -22,6 +22,10 @@
 #ifdef ESP_PLATFORM
 #include <esp_system.h>
 #include <sys/types.h>
+#include <esp_idf_version.h>
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+#include <esp_random.h>
+#endif
 #define random esp_random
 #endif
 
