@@ -75,7 +75,8 @@ if(NOT ESP_PLATFORM)
 
     project(libsmb2
             LANGUAGES C
-            VERSION 4.0.0)
+            VERSION 4.0.0
+    )
 
     set(SOVERSION 1 CACHE STRING "" FORCE)
 
@@ -90,14 +91,9 @@ if(NOT ESP_PLATFORM)
     list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
 
     find_package(GSSAPI)
-    find_package(OpenSSL)
 
     if(GSSAPI_FOUND)
       add_definitions(-DHAVE_LIBKRB5)
-    endif()
-
-    if(OPENSSL_FOUND)
-      add_definitions(-DHAVE_OPENSSL_LIBS)
     endif()
 
     include(cmake/ConfigureChecks.cmake)
@@ -105,7 +101,7 @@ if(NOT ESP_PLATFORM)
     include_directories(${CMAKE_CURRENT_BINARY_DIR}
                         include
                         include/smb2
-                        ${OPENSSL_INCLUDE_DIR})
+    )
 
     set(core_DEPENDS ${GSSAPI_LIBRARIES} CACHE STRING "" FORCE)
 
@@ -165,7 +161,7 @@ else() ##### ESP_PLATFORM
     include
     include/smb2
     include/esp
-    )
+  )
 
   set(COMPONENT_SRCS
     lib/aes.c
@@ -215,8 +211,8 @@ else() ##### ESP_PLATFORM
     lib/timestamps.c
     lib/unicode.c
     lib/usha.c
-
-    lib/compat.c)
+    lib/compat.c
+  )
 
   set(COMPONENT_NAME ".")
 
