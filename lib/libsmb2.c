@@ -641,10 +641,6 @@ session_setup_cb(struct smb2_context *smb2, int status,
                 smb2->sign = 0;
         }
 
-        if (rep->session_flags & SMB2_SESSION_FLAG_IS_GUEST) {
-                smb2->sign = 0;
-        }
-
 #ifdef HAVE_LIBKRB5
        if (smb2->sec == SMB2_SEC_KRB5) {
                 /* For NTLM the status will be
