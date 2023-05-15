@@ -198,6 +198,10 @@ static int
 ntlm_challenge_message(struct auth_data *auth_data, unsigned char *buf,
                        int len)
 {
+        /* We only support raw NTLMSSP, not wrapped in SPNEGO */
+        if (len < 7 || memcmp(buf, "NTLMSSP", 7)) {
+                return -1;
+        }
         free(auth_data->ntlm_buf);
         auth_data->ntlm_len = len;
         auth_data->ntlm_buf = malloc(auth_data->ntlm_len);
@@ -394,6 +398,10 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
                 goto finished;
         }
 
+        /* Must have at least enough bytes for server name offset */
+        if (auth_data->ntlm_len < 47) {
+                goto finished;
+        }
         /* get the server neg flags */
         memcpy(&server_neg_flags, &auth_data->ntlm_buf[20], 4);
         server_neg_flags = le32toh(server_neg_flags);
@@ -404,6 +412,11 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
 
         memcpy(&u32, &auth_data->ntlm_buf[44], 4);
         u32 = le32toh(u32);
+        /* Server name must fit in the buffer */
+        if (u32 >= auth_data->ntlm_len ||
+            (u32 + server_name_len) >= auth_data->ntlm_len) {
+                goto finished;
+        }
         server_name_buf = (char *)&auth_data->ntlm_buf[u32];
 
         if (encode_temp(auth_data, t, (char *)auth_data->client_challenge,
