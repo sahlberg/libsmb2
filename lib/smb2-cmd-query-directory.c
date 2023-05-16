@@ -210,6 +210,12 @@ smb2_process_query_directory_fixed(struct smb2_context *smb2,
 
         smb2_get_uint16(iov, 2, &rep->output_buffer_offset);
         smb2_get_uint32(iov, 4, &rep->output_buffer_length);
+        if (rep->output_buffer_length &&
+            (rep->output_buffer_offset + rep->output_buffer_length > smb2->spl)) {
+                smb2_set_error(smb2, "Output buffer extends beyond end of "
+                               "PDU");
+                return -1;
+        }
 
         if (rep->output_buffer_length == 0) {
                 return 0;

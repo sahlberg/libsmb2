@@ -122,6 +122,7 @@ smb2_process_query_info_fixed(struct smb2_context *smb2,
         struct smb2_query_info_reply *rep;
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
         uint16_t struct_size;
+        uint32_t opl;
 
         rep = malloc(sizeof(*rep));
         if (rep == NULL) {
@@ -142,7 +143,23 @@ smb2_process_query_info_fixed(struct smb2_context *smb2,
 
         smb2_get_uint16(iov, 2, &rep->output_buffer_offset);
         smb2_get_uint32(iov, 4, &rep->output_buffer_length);
-
+        opl = rep->output_buffer_offset + rep->output_buffer_length;
+        if (opl < rep->output_buffer_offset) {
+                smb2_set_error(smb2, "Output offset/length wrapped.");
+                return -1;
+        }
+        if (rep->output_buffer_length) {
+                if (opl > smb2->spl) {
+                        smb2_set_error(smb2, "Output buffer extends beyond end of "
+                                       "PDU");
+                        return -1;
+                }
+                if (smb2->hdr.next_command && opl > smb2->hdr.next_command) {
+                        smb2_set_error(smb2, "Current PDU extends into next "
+                                       "chained PDU");
+                        return -1;
+                }
+        }
         if (rep->output_buffer_length == 0) {
                 smb2_set_error(smb2, "No output buffer in Query "
                                "Info response");
