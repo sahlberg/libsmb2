@@ -276,6 +276,12 @@ smb2_process_negotiate_fixed(struct smb2_context *smb2,
         smb2_get_uint16(iov, 56, &rep->security_buffer_offset);
         smb2_get_uint16(iov, 58, &rep->security_buffer_length);
 
+        if (rep->security_buffer_length &&
+            (rep->security_buffer_offset + rep->security_buffer_length > smb2->spl)) {
+                smb2_set_error(smb2, "Security buffer extends beyond end of "
+                               "PDU");
+                return -1;
+        }
         smb2_get_uint16(iov, 6, &rep->negotiate_context_count);
         smb2_get_uint32(iov, 60, &rep->negotiate_context_offset);
 
