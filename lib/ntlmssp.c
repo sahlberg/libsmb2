@@ -414,7 +414,7 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
         u32 = le32toh(u32);
         /* Server name must fit in the buffer */
         if (u32 >= auth_data->ntlm_len ||
-            (u32 + server_name_len) >= auth_data->ntlm_len) {
+            (u32 + server_name_len) > auth_data->ntlm_len) {
                 goto finished;
         }
         server_name_buf = (char *)&auth_data->ntlm_buf[u32];
