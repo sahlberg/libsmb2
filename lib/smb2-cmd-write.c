@@ -103,14 +103,14 @@ smb2_cmd_write_async(struct smb2_context *smb2,
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
         }
-
-        smb2_add_iovector(smb2, &pdu->out, (uint8_t*)req->buf,
-                          req->length, NULL);
-        
+     
         if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
         }
+
+        smb2_add_iovector(smb2, &pdu->out, (uint8_t*)req->buf,
+                          req->length, NULL);
 
         /* Adjust credit charge for large payloads */
         if (smb2->supports_multi_credit) {
