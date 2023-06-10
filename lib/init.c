@@ -362,6 +362,10 @@ void smb2_destroy_context(struct smb2_context *smb2)
         free(discard_const(smb2->workstation));
         free(smb2->enc);
 
+        if (smb2->connect_data) {
+            free_c_data(smb2, smb2->connect_data);  /* sets smb2->connect_data to NULL */
+        }
+
         free(smb2);
 }
 
