@@ -461,6 +461,9 @@ int dcerpc_pdu_direction(struct dcerpc_pdu *pdu);
 
 int dcerpc_align_3264(struct dcerpc_context *ctx, int offset);
 
+struct connect_data;                                           /* defined in libsmb2.c */
+void free_c_data(struct smb2_context*, struct connect_data*);  /* defined in libsmb2.c */
+
 #ifdef __cplusplus
 }
 #endif

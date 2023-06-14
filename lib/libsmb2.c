@@ -506,7 +506,7 @@ smb2_opendir_async(struct smb2_context *smb2, const char *path,
         return 0;
 }
 
-static void
+extern void
 free_c_data(struct smb2_context *smb2, struct connect_data *c_data)
 {
         if (c_data->auth_data) {
@@ -526,6 +526,10 @@ free_c_data(struct smb2_context *smb2, struct connect_data *c_data)
         free(discard_const(c_data->share));
         free(discard_const(c_data->user));
         free(c_data);
+
+        if (smb2->connect_data == c_data) {
+            smb2->connect_data = NULL;  /* to prevent double-free in smb2_destroy_context */
+        }
 }
 
 
