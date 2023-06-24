@@ -43,6 +43,18 @@ AS_IF([test "x$with_libkrb5" != "xno"], [
     AC_MSG_NOTICE([Build WITHOUT gssapi_krb5 support])
 ])
 
+AC_ARG_WITH([lingering_TCP_sockets],
+            [AS_HELP_STRING([--without-lingering-TCP-sockets],
+                            [Do not allow TCP sockets to linger after closure.])])
+
+AS_IF([test "x$with_lingering_TCP_sockets" != "xno"], [
+    AC_DEFINE([CONFIGURE_OPTION_TCP_LINGER], [1], [Whether or not TCP sockets should be allowed to linger after closure])
+    AC_MSG_NOTICE([Build with lingering TCP sockets])
+], [
+    AC_DEFINE([CONFIGURE_OPTION_TCP_LINGER], [0], [Whether or not TCP sockets should be allowed to linger after closure])
+    AC_MSG_NOTICE([Build without lingering TCP sockets])
+])
+
 AC_SUBST([MAYBE_LIBKRB5])
 
 AC_ARG_ENABLE([werror],
