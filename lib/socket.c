@@ -897,7 +897,8 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_o
 #if 0 == CONFIGURE_OPTION_TCP_LINGER
         int const yes = 1;
         setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes);
-        struct linger const lin = { .l_onoff  = 1, .l_linger = 0 };   /*  if l_linger is zero, sends RST after FIN */
+        struct LingerStruct { int l_onoff; /* linger active */ int l_linger; /* how many seconds to linger for */ };
+        struct LingerStruct const lin = { .l_onoff  = 1, .l_linger = 0 };   /*  if l_linger is zero, sends RST after FIN */
         setsockopt(fd, SOL_SOCKET, SO_LINGER, &lin, sizeof lin);
 #endif
 
