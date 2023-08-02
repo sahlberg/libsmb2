@@ -90,8 +90,7 @@ static unsigned char PADDING[64] = {
 
 /* MD4 initialization. Begins an MD4 operation, writing a new context.
  */
-void MD4Init (context)
-MD4_CTX *context;                                        /* context */
+void MD4Init(MD4_CTX *context)
 {
   context->count[0] = context->count[1] = 0;
 
@@ -107,10 +106,7 @@ MD4_CTX *context;                                        /* context */
      operation, processing another message block, and updating the
      context.
  */
-void MD4Update (context, input, inputLen)
-MD4_CTX *context;                                        /* context */
-unsigned char *input;                                /* input block */
-unsigned int inputLen;                     /* length of input block */
+void MD4Update(MD4_CTX *context, unsigned char *input, unsigned int inputLen)
 {
   unsigned int i, index, partLen;
 
@@ -148,9 +144,7 @@ unsigned int inputLen;                     /* length of input block */
 /* MD4 finalization. Ends an MD4 message-digest operation, writing the
      the message digest and zeroizing the context.
  */
-void MD4Final (digest, context)
-unsigned char digest[16];                         /* message digest */
-MD4_CTX *context;                                        /* context */
+void MD4Final(unsigned char digest[16], MD4_CTX *context)
 {
   unsigned char bits[8];
   unsigned int index, padLen;
@@ -177,9 +171,7 @@ MD4_CTX *context;                                        /* context */
 
 /* MD4 basic transformation. Transforms state based on block.
  */
-static void MD4Transform (state, block)
-uint32_t state[4];
-unsigned char block[64];
+static void MD4Transform(uint32_t state[4], unsigned char block[64])
 {
   uint32_t a = state[0], b = state[1], c = state[2], d = state[3], x[16];
 
@@ -252,10 +244,7 @@ unsigned char block[64];
 /* Encodes input (uint32_t) into output (unsigned char). Assumes len is
      a multiple of 4.
  */
-static void Encode (output, input, len)
-unsigned char *output;
-uint32_t *input;
-unsigned int len;
+static void Encode(unsigned char *output, uint32_t *input, unsigned int len)
 {
   unsigned int i, j;
 
@@ -270,11 +259,7 @@ unsigned int len;
 /* Decodes input (unsigned char) into output (uint32_t). Assumes len is
      a multiple of 4.
  */
-static void Decode (output, input, len)
-
-uint32_t *output;
-unsigned char *input;
-unsigned int len;
+static void Decode(uint32_t *output, unsigned char *input, unsigned int len)
 {
   unsigned int i, j;
 
@@ -285,10 +270,7 @@ unsigned int len;
 
 /* Note: Replace "for loop" with standard memcpy if possible.
  */
-static void MD4_memcpy (output, input, len)
-unsigned char *output;
-unsigned char *input;
-unsigned int len;
+static void MD4_memcpy(unsigned char *output, unsigned char *input, unsigned int len)
 {
   unsigned int i;
 
@@ -298,10 +280,7 @@ unsigned int len;
 
 /* Note: Replace "for loop" with standard memset if possible.
  */
-static void MD4_memset (output, value, len)
-unsigned char *output;
-int value;
-unsigned int len;
+static void MD4_memset(unsigned char *output, int value, unsigned int len)
 {
   unsigned int i;
 
