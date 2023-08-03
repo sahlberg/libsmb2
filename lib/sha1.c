@@ -51,7 +51,6 @@
 /*
  * add "length" to the length
  */
-static uint32_t addTemp;
 #define SHA1AddLength(context, length)                     \
     (addTemp = (context)->Length_Low,                      \
      (context)->Corrupted =                                \
@@ -125,6 +124,8 @@ int
 SHA1Input (SHA1Context * context,
 	   const uint8_t * message_array, unsigned length)
 {
+  uint32_t addTemp;
+
   if (!length)
     return shaSuccess;
 
@@ -178,6 +179,7 @@ int
 SHA1FinalBits (SHA1Context * context, const uint8_t message_bits,
 	       unsigned int length)
 {
+  uint32_t addTemp;
   uint8_t masks[8] = {
     /* 0 0b00000000 */ 0x00, /* 1 0b10000000 */ 0x80,
     /* 2 0b11000000 */ 0xC0, /* 3 0b11100000 */ 0xE0,
