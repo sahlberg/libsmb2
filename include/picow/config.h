@@ -56,7 +56,7 @@
 #define HAVE_STDLIB_H 1
 
 /* Define to 1 if you have the <strings.h> header file. */
-#define HAVE_STRINGS_H 1
+/* #define HAVE_STRINGS_H 1 */
 
 /* Define to 1 if you have the <string.h> header file. */
 #define HAVE_STRING_H 1
@@ -68,7 +68,7 @@
 // #define HAVE_SYS_IOCTL_H 0
 
 /* Define to 1 if you have the <sys/socket.h> header file. */
-#define HAVE_SYS_SOCKET_H 1
+/* #define HAVE_SYS_SOCKET_H 1 */
 
 /* Define to 1 if you have the <sys/sockio.h> header file. */
 /* #undef HAVE_SYS_SOCKIO_H */
@@ -118,7 +118,7 @@
 #define PACKAGE_NAME "libsmb2"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "libsmb2 2.0.0"
+#define PACKAGE_STRING "libsmb2 4.0.0"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "libsmb2"
@@ -127,10 +127,10 @@
 #define PACKAGE_URL ""
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "2.0.0"
+#define PACKAGE_VERSION "4.0.0"
 
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1
 
 /* Version number of package */
-#define VERSION "2.0.0"
+#define VERSION "4.0.0"

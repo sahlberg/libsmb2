@@ -32,12 +32,11 @@
 #endif
 
 #include <errno.h>
-#if defined(HAVE_POLL_H) || defined(_WINDOWS)
-#ifdef ESP_PLATFORM
+
+#if defined(HAVE_SYS_POLL_H) || defined(ESP_PLATFORM)
 #include <sys/poll.h>
-#else
+#elif defined(HAVE_POLL_H) || defined(_WINDOWS)
 #include <poll.h>
-#endif
 #endif
 
 #ifdef HAVE_STRING_H

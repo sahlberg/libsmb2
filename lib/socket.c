@@ -35,12 +35,10 @@
 #include <netinet/in.h>
 #endif
 
-#ifdef HAVE_POLL_H
-#if defined(ESP_PLATFORM)
+#if defined(HAVE_SYS_POLL_H) || defined(ESP_PLATFORM)
 #include <sys/poll.h>
-#else
+#elif defined(HAVE_POLL_H) || defined(_WINDOWS)
 #include <poll.h>
-#endif
 #endif
 
 #ifdef HAVE_STDLIB_H
@@ -78,7 +76,7 @@
 #include <fcntl.h>
 #endif
 
-#if !defined(PS2_EE_PLATFORM) && !defined(PS2_IOP_PLATFORM) && !defined(PICO_PLATFORM)
+#if defined(HAVE_SYS_SOCKET_H) || defined(_WINDOWS) 
 #include <sys/socket.h>
 #endif
 
@@ -853,7 +851,8 @@ set_tcp_sockopt(t_socket sockfd, int optname, int value)
 static int
 connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_out)
 {
-        int family, fd;
+        int family;
+        t_socket fd;
         socklen_t socksize;
         struct sockaddr_storage ss;
 
@@ -914,7 +913,7 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_o
                 return -EIO;
         }
 
-        *fd_out = fd;
+        *fd_out = (int)fd;
         return 0;
 }
 
