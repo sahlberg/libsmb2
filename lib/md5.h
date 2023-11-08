@@ -27,7 +27,7 @@
 #include "config.h"
 #endif
 
-#if !defined(_WIN32) && !defined(PS2_EE_PLATFORM) && !defined(PS2_IOP_PLATFORM) && !defined(PICO_PLATFORM)
+#ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
 #endif
 

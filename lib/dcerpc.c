@@ -632,7 +632,7 @@ dcerpc_encode_3264(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 dcerpc_set_uint64(ctx, iov, offset, val);
                 offset += 8;
         } else {
-                dcerpc_set_uint32(ctx, iov, offset, val);
+                dcerpc_set_uint32(ctx, iov, offset, (uint32_t)val);
                 offset += 4;
         }
         return offset;

@@ -48,7 +48,7 @@
 #include <time.h>
 #endif
 
-#if !defined(PS2_EE_PLATFORM) && !defined(PS2_IOP_PLATFORM) && !defined(PICO_PLATFORM)
+#ifdef HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
 #endif
 

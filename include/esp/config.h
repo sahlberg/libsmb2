@@ -91,6 +91,9 @@
 /* Define to 1 if you have the <sys/vfs.h> header file. */
 #define HAVE_SYS_VFS_H 1
 
+/* Define to 1 if you have the <sys/poll.h> header file. */
+#define HAVE_SYS_POLL_H 1
+
 /* Define to 1 if you have the <unistd.h> header file. */
 #define HAVE_UNISTD_H 1
 

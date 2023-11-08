@@ -90,6 +90,9 @@ AC_SUBST([LIBSOCKET])
 dnl  Check for poll.h
 AC_CHECK_HEADERS([poll.h])
 
+dnl  Check for sys/poll.h
+AC_CHECK_HEADERS([sys/poll.h])
+
 dnl  Check for unistd.h
 AC_CHECK_HEADERS([unistd.h])
 
@@ -116,6 +119,9 @@ AC_CHECK_HEADERS([arpa/inet.h])
 
 dnl  Check for time.h
 AC_CHECK_HEADERS([time.h])
+
+dnl  Check for strings.h
+AC_CHECK_HEADERS([strings.h])
 
 dnl  Check if sockaddr data struct includes a "sa_len"
 AC_CHECK_MEMBER([struct sockaddr.sa_len], [
