@@ -73,6 +73,22 @@ long long int be64toh(long long int x);
 
 #endif /* PS2_EE_PLATFORM */
 
+#ifdef DC_KOS_PLATFORM
+
+#include <netdb.h>
+#include <netinet/in.h>
+#include <poll.h>
+#include <sys/errno.h>
+
+#define getlogin_r(a,b) ENXIO
+
+#define TCP_NODELAY     1  /* Don't delay send to coalesce packets  */
+#define SOL_TCP IPPROTO_TCP
+
+ssize_t writev(int fd, const struct iovec *iov, int iovcnt);
+ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
+
+#endif /* DC_KOS_PLATFORM */
 
 #ifdef PS2_IOP_PLATFORM
 

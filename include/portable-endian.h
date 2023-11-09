@@ -84,6 +84,25 @@
 #   define htole64(x) (x)
 #   define le64toh(x) (x)
 
+#elif defined(DC_KOS_PLATFORM)
+
+#	include <machine/endian.h>
+
+#   define be16toh(x) __builtin_bswap16(x)
+#   define htobe16(x) __builtin_bswap16(x)
+#   define htole16(x) (x)
+#   define le16toh(x) (x)
+
+#   define be32toh(x) __builtin_bswap32(x)
+#   define htobe32(x) __builtin_bswap32(x)
+#   define htole32(x) (x)
+#   define le32toh(x) (x)
+
+#   define be64toh(x) __builtin_bswap64(x)
+#   define htobe64(x) __builtin_bswap64(x)
+#   define htole64(x) (x)
+#   define le64toh(x) (x)
+
 #elif defined(__linux__) || defined(__CYGWIN__)
 
 #	include <endian.h>
