@@ -56,8 +56,11 @@
 #include <errno.h>
 #include <stdio.h>
 
-#ifndef PS2_IOP_PLATFORM
+#ifdef HAVE_TIME_H
 #include <time.h>
+#endif
+
+#if defined(HAVE_FCNTL_H) || defined(_MSC_VER) || defined(PS3_PPU_PLATFORM) || defined(__GNUC__)
 #include <fcntl.h>
 #endif
 

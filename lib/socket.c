@@ -72,7 +72,7 @@
 #include "portable-endian.h"
 #include <errno.h>
 
-#if !defined(PS2_IOP_PLATFORM)
+#if defined(HAVE_FCNTL_H) || defined(_MSC_VER) || defined(PS3_PPU_PLATFORM) || defined(__GNUC__)
 #include <fcntl.h>
 #endif
 
