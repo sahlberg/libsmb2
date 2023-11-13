@@ -66,7 +66,8 @@ static int wait_for_reply(struct smb2_context *smb2,
 	time_t t = time(NULL);
 
         while (!cb_data->is_finished) {
-                struct pollfd pfd;
+		struct pollfd pfd;
+		memset(&pfd, 0, sizeof(struct pollfd));
 
 		pfd.fd = smb2_get_fd(smb2);
 		pfd.events = smb2_which_events(smb2);
