@@ -77,8 +77,10 @@ long long int be64toh(long long int x);
 
 #include <netdb.h>
 #include <netinet/in.h>
-#include <poll.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/errno.h>
+#include <unistd.h>
 
 #define getlogin_r(a,b) ENXIO
 
