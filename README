@@ -255,3 +255,19 @@ Then to build libsmb2, run
 
 The process will copy the resulting libsmb2.a and the include/smb2 headers to your
 OpenOrbis SDK include folder.
+
+Dreamcast (KallistiOS)
+----------------------
+Hitachi SH4 in little-endian mode is the main CPU for the Dreamcast.
+To compile libsmb2 for the Dreamcast, first install the KOS toolchain and
+and set it up.
+
+Then to build libsmb2, run
+  $ cd lib
+  $ make -f Makefile.DC_KOS clean install
+
+The process will copy the resulting libsmb2.a and the include/smb2 headers to your
+KallistiOS toolchain install location addons folder.
+NOTE: There is not yet a kos-ports entry for libsmb2 but once a versioned release
+that includes Dreamcast support is created installing from kos-ports will become
+the preferred method of installation.
