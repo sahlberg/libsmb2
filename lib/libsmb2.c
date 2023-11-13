@@ -60,7 +60,7 @@
 #include <time.h>
 #endif
 
-#if defined(HAVE_FCNTL_H) || defined(_MSC_VER) || defined(PS3_PPU_PLATFORM) || defined(__GNUC__)
+#if !defined(PS2_IOP_PLATFORM) || defined(__GNUC__) || defined(HAVE_TIME_H) || defined(_MSC_VER)
 #include <fcntl.h>
 #endif
 
