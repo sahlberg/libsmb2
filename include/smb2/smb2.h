@@ -19,7 +19,7 @@
 #ifndef _SMB2_H_
 #define _SMB2_H_
 
-#include <smb2/smb2-errors.h>
+#include "smb2-errors.h"
 
 #ifdef __cplusplus
 extern "C" {
