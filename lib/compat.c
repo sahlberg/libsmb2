@@ -173,7 +173,13 @@ ssize_t writev(int fd, const struct iovec *vector, int count)
 {
         /* Find the total number of bytes to be written.  */
         size_t bytes = 0;
-        for (int i = 0; i < count; ++i) {
+	int i;
+	char *buffer;
+	char *bp;
+	size_t to_copy;
+	ssize_t bytes_written;
+        
+        for (i = 0; i < count; ++i) {
                 /* Check for ssize_t overflow.  */
                 if (((ssize_t)-1) - bytes < vector[i].iov_len) {
                         errno = EINVAL;
@@ -182,16 +188,16 @@ ssize_t writev(int fd, const struct iovec *vector, int count)
                 bytes += vector[i].iov_len;
         }
 
-        char *buffer = (char *)malloc(bytes);
+        buffer = (char *)malloc(bytes);
         if (buffer == NULL)
                 /* XXX I don't know whether it is acceptable to try writing
                 the data in chunks.  Probably not so we just fail here.  */
                 return -1;
 
         /* Copy the data into BUFFER.  */
-        size_t to_copy = bytes;
-        char *bp = buffer;
-        for (int i = 0; i < count; ++i) {
+        to_copy = bytes;
+        bp = buffer;
+        for (i = 0; i < count; ++i) {
                 size_t copy = (vector[i].iov_len < to_copy) ? vector[i].iov_len : to_copy;
 
                 memcpy((void *)bp, (void *)vector[i].iov_base, copy);
@@ -202,7 +208,7 @@ ssize_t writev(int fd, const struct iovec *vector, int count)
                         break;
         }
 
-        ssize_t bytes_written = write(fd, buffer, bytes);
+        bytes_written = write(fd, buffer, bytes);
 
         free(buffer);
         return bytes_written;
@@ -214,7 +220,11 @@ ssize_t readv (int fd, const struct iovec *vector, int count)
 {
         /* Find the total number of bytes to be read.  */
         size_t bytes = 0;
-        for (int i = 0; i < count; ++i)
+		int i;
+		char *buffer;
+		ssize_t bytes_read; 
+		char *bp;
+        for (i = 0; i < count; ++i)
         {
                 /* Check for ssize_t overflow.  */
                 if (((ssize_t)-1) - bytes < vector[i].iov_len) {
@@ -224,12 +234,12 @@ ssize_t readv (int fd, const struct iovec *vector, int count)
                 bytes += vector[i].iov_len;
         }
 
-        char *buffer = (char *)malloc(bytes);
+        buffer = (char *)malloc(bytes);
         if (buffer == NULL)
                 return -1;
 
         /* Read the data.  */
-        ssize_t bytes_read = read(fd, buffer, bytes);
+        bytes_read = read(fd, buffer, bytes);
         if (bytes_read < 0) {
                 free(buffer);
                 return -1;
@@ -237,8 +247,8 @@ ssize_t readv (int fd, const struct iovec *vector, int count)
 
         /* Copy the data from BUFFER into the memory specified by VECTOR.  */
         bytes = bytes_read;
-        char *bp = buffer;
-        for (int i = 0; i < count; ++i) {
+        bp = buffer;
+        for (i = 0; i < count; ++i) {
                 size_t copy = (vector[i].iov_len < bytes) ? vector[i].iov_len : bytes;
 
                 memcpy((void *)vector[i].iov_base, (void *)bp, copy);

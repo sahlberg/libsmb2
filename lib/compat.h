@@ -19,6 +19,67 @@
 #ifndef _COMPAT_H_
 #define _COMPAT_H_
 
+#ifdef _XBOX
+
+/* XBOX Defs begin */
+#include <xtl.h>
+#include <winsockx.h>
+
+#ifdef ORIGINAL_XBOX_PLATFORM /* MSVC 2003 Doesn´t have stdint.h header */
+typedef unsigned char uint8_t;
+
+#define uint64_t unsigned __int64
+#define uint32_t unsigned __int32
+#define uint16_t unsigned __int16
+#define uint_t unsigned int
+
+typedef short int16_t;
+typedef short int_least16_t;
+typedef int int32_t;
+typedef long long int64_t;
+typedef int intptr_t;
+#else
+#include <stdint.h> /* XBOX 360 */
+#endif
+
+#ifdef _XBOX
+#include "xbox/xb_emu_socket.h"
+#endif
+
+#define snprintf _snprintf
+#define _U_ 
+
+//#define offsetof(st, m) ((size_t)((char *)&((st *)(1024))->m - (char *)1024))
+
+/* XBOX Defs end */
+
+#define POLLIN      0x0001    /* There is data to read */
+#define POLLPRI     0x0002    /* There is urgent data to read */
+#define POLLOUT     0x0004    /* Writing now will not block */
+#define POLLERR     0x0008    /* Error condition */
+#define POLLHUP     0x0010    /* Hung up */
+
+struct pollfd {
+        int fd;
+        short events;
+        short revents;
+};
+
+typedef unsigned long nfds_t;
+
+#define sys_close(a) closesocket(a)
+
+#define SOL_TCP 6
+
+#define inline __inline 
+
+int poll(struct pollfd *fds, unsigned int nfds, int timo);
+
+/* just pretend they are the same so we compile */
+#define sockaddr_in6 sockaddr_in
+
+#endif //_XBOX
+
 #ifdef PICO_PLATFORM
 
 #include "lwip/netdb.h"

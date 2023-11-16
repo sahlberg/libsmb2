@@ -443,11 +443,11 @@ static void BlockCopy(uint8_t* output, uint8_t* input)
 
 void AES128_ECB_encrypt(uint8_t* input, const uint8_t* key, uint8_t* output)
 {
-  // Copy input to output, and work in-memory on output
-  BlockCopy(output, input);
-
   // The array that stores the round keys.
   uint8_t roundKey[176];
+
+  // Copy input to output, and work in-memory on output
+  BlockCopy(output, input);
 
   KeyExpansion(key, roundKey);
 
@@ -457,11 +457,11 @@ void AES128_ECB_encrypt(uint8_t* input, const uint8_t* key, uint8_t* output)
 
 void AES128_ECB_decrypt(uint8_t* input, const uint8_t* key, uint8_t *output)
 {
-  // Copy input to output, and work in-memory on output
-  BlockCopy(output, input);
-
   // The array that stores the round keys.
   uint8_t roundKey[176];
+	
+  // Copy input to output, and work in-memory on output
+  BlockCopy(output, input);
 
   // The KeyExpansion routine must be called before encryption.
   KeyExpansion(key, roundKey);

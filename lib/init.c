@@ -44,7 +44,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-#if !defined(PS2_IOP_PLATFORM)
+#ifdef HAVE_TIME_H
 #include <time.h>
 #endif
 
@@ -63,6 +63,9 @@
 #include "compat.h"
 
 #ifdef _MSC_VER
+#ifdef XBOX_360_PLATFORM
+#include <process.h>
+#endif
 #include <errno.h>
 #define getlogin_r(a,b) ENXIO
 #define srandom srand
@@ -183,6 +186,8 @@ struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url)
         struct smb2_url *u;
         char *ptr, *tmp, str[MAX_URL_SIZE];
         char *args;
+		char *shared_folder;
+		int len_shared_folder;
 
         if (strncmp(url, "smb://", 6)) {
                 smb2_set_error(smb2, "URL does not start with 'smb://'");
@@ -210,12 +215,12 @@ struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url)
 
         ptr = str;
 
-        char *shared_folder = strchr(ptr, '/');
+        shared_folder = strchr(ptr, '/');
         if (!shared_folder) {
                 smb2_set_error(smb2, "Wrong URL format");
                 return NULL;
         }
-        int len_shared_folder = strlen(shared_folder);
+        len_shared_folder = strlen(shared_folder);
 
         /* domain */
         if ((tmp = strchr(ptr, ';')) != NULL && strlen(tmp) > len_shared_folder) {
@@ -273,9 +278,11 @@ struct smb2_context *smb2_init_context(void)
         char buf[1024];
         int i, ret;
         static int ctr;
-
+#ifdef XBOX_360_PLATFORM
+        srandom(time(NULL) ^ 1 ^ ctr++);
+#else
         srandom(time(NULL) ^ getpid() ^ ctr++);
-
+#endif
         smb2 = calloc(1, sizeof(struct smb2_context));
         if (smb2 == NULL) {
                 return NULL;
@@ -469,7 +476,7 @@ void smb2_set_security_mode(struct smb2_context *smb2, uint16_t security_mode)
         smb2->security_mode = security_mode;
 }
 
-#if !defined(PS2_IOP_PLATFORM)
+#if !defined(XBOX_360_PLATFORM) && !defined(PS2_IOP_PLATFORM)
 static void smb2_set_password_from_file(struct smb2_context *smb2)
 {
         char *name = NULL;

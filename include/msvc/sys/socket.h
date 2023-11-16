@@ -6,6 +6,13 @@
 extern "C" {
 #endif
 
+#ifdef XBOX_360_PLATFORM
+#include <stdint.h>
+#include <errno.h>
+#include <xtl.h>
+#include <winsockx.h>
+#define inline __inline
+#else
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif // !WIN32_LEAN_AND_MEAN
@@ -13,7 +20,7 @@ extern "C" {
 #include <stdint.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
-
+#endif
 #include <libsmb2.h>
 
 #ifndef EBADF
