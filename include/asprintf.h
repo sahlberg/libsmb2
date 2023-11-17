@@ -11,7 +11,7 @@
 #define inline __inline
 #endif
 
-#ifndef XBOX_360_PLATFORM
+#ifndef _XBOX
 #ifndef _vscprintf
 /* For some reason, MSVC fails to honour this #ifndef. */
 /* Hence function renamed to _vscprintf_so(). */
@@ -28,7 +28,7 @@ static inline int _vscprintf_so(const char * format, va_list pargs) {
 
 #ifndef vasprintf
 static inline int vasprintf(char **strp, const char *fmt, va_list ap) {
-#ifdef XBOX_360_PLATFORM
+#ifdef _XBOX
   int len = _vscprintf(fmt, ap);
 #else
   int len = _vscprintf_so(fmt, ap);
@@ -38,7 +38,11 @@ static inline int vasprintf(char **strp, const char *fmt, va_list ap) {
   if (len == -1) return -1;
   str = malloc((size_t)len + 1);
   if (!str) return -1;
+#ifdef _XBOX
+  r = _vsnprintf(str, len + 1, fmt, ap); /* "secure" version of vsprintf */
+#else
   r = vsnprintf(str, len + 1, fmt, ap); /* "secure" version of vsprintf */
+#endif
   if (r == -1) return free(str), -1;
   *strp = str;
   return r;

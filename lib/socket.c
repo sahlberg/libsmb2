@@ -247,8 +247,12 @@ smb2_write_to_socket(struct smb2_context *smb2)
 
                 count = writev(smb2->fd, tmpiov, niov);
                 if (count == -1) {
-                        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                                return 0;
+#ifdef XBOX_PLATFORM
+                        if (errno == EAGAIN) {
+#else
+						if (errno == EAGAIN || errno == EWOULDBLOCK) {
+#endif
+							return 0;
                         }
                         smb2_set_error(smb2, "Error when writing to "
                                        "socket :%d %s", errno,
@@ -320,7 +324,7 @@ read_more_data:
         /* Read into our trimmed iovectors */
         count = func(smb2, tmpiov, niov);
         if (count < 0) {
-#if defined(_WIN32) || defined(XBOX_360_PLATFORM)
+#if defined(_WIN32) || defined(_XBOX)
                 int err = WSAGetLastError();
                 if (err == WSAEINTR || err == WSAEWOULDBLOCK) {
 #else
@@ -746,7 +750,7 @@ smb2_service_fd(struct smb2_context *smb2, int fd, int revents)
         if (smb2->fd == -1 && revents & POLLOUT) {
                 int err = 0;
                 socklen_t err_size = sizeof(err);
-#ifdef XBOX_360_PLATFORM
+#ifdef _XBOX
                 if (sckemu_getsockopt(fd, SOL_SOCKET, SO_ERROR,
                                (char *)&err, &err_size) != 0 || err != 0) {
 #else
@@ -825,7 +829,7 @@ smb2_service(struct smb2_context *smb2, int revents)
 static void
 set_nonblocking(t_socket fd)
 {
-#if defined(WIN32) || defined(XBOX_360_PLATFORM)
+#if defined(WIN32) || defined(_XBOX)
         unsigned long opt = 1;
         ioctlsocket(fd, FIONBIO, &opt);
 #else
@@ -861,10 +865,10 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_o
         t_socket fd;
         socklen_t socksize;
         struct sockaddr_storage ss;
-#ifdef XBOX_360_PLATFORM
+#ifdef _XBOX
 		BOOL bBroadcast = FALSE;
 #endif
-#ifndef XBOX_360_PLATFORM
+#if !defined(_XBOX)
 #if 0 == CONFIGURE_OPTION_TCP_LINGER
 		int yes;
 		struct LingerStruct { int l_onoff; /* linger active */ int l_linger; /* how many seconds to linger for */ };
@@ -920,7 +924,7 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_o
 
         set_nonblocking(fd);
         set_tcp_sockopt(fd, TCP_NODELAY, 1);
-#ifndef XBOX_360_PLATFORM
+#ifndef _XBOX
 #if 0 == CONFIGURE_OPTION_TCP_LINGER
         yes = 1;
         setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes);
@@ -1051,17 +1055,17 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
         }
 
         /* is it a hostname ? */
-#ifdef XBOX_360_PLATFORM
+#ifdef _XBOX
         err = sckemu_getaddrinfo(host, port, NULL, &smb2->addrinfos);
 #else
         err = getaddrinfo(host, port, NULL, &smb2->addrinfos);
 #endif
         if (err != 0) {
                 free(addr);
-#if defined(_WINDOWS) || defined(XBOX_360_PLATFORM)
+#if defined(_WINDOWS) || defined(_XBOX)
                 if (err == WSANOTINITIALISED)
                 {
-#ifdef XBOX_360_PLATFORM
+#ifdef _XBOX
   					smb2_set_error(smb2, "Winsockx was not initialized. "
                                 "Please call WSAStartup().");                      
 #else

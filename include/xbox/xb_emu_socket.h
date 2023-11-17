@@ -35,8 +35,9 @@ typedef int socklen_t;
 #define POLLERR     0x0008    /* Error condition */
 #define POLLHUP     0x0010    /* Hung up */
 
-#define ssize_t __int64
-
+#ifndef XBOX_PLATFORM
+#define ssize_t __int64 /* MSVC 2003 yells about this one. */
+#endif
 // OS support end
 
 #ifdef __cplusplus

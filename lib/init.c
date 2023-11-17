@@ -63,7 +63,7 @@
 #include "compat.h"
 
 #ifdef _MSC_VER
-#ifdef XBOX_360_PLATFORM
+#ifdef _XBOX
 #include <process.h>
 #endif
 #include <errno.h>
@@ -278,7 +278,7 @@ struct smb2_context *smb2_init_context(void)
         char buf[1024];
         int i, ret;
         static int ctr;
-#ifdef XBOX_360_PLATFORM
+#ifdef _XBOX
         srandom(time(NULL) ^ 1 ^ ctr++);
 #else
         srandom(time(NULL) ^ getpid() ^ ctr++);
@@ -414,9 +414,12 @@ static void smb2_set_error_string(struct smb2_context *smb2, const char * error_
 {
 #ifndef PS2_IOP_PLATFORM
         char errstr[MAX_ERROR_SIZE] = {0};
-
-        if (vsnprintf(errstr, MAX_ERROR_SIZE, error_string, args) < 0) {
-                strncpy(errstr, "could not format error string!",
+#ifdef _XBOX
+        if (_vsnprintf(errstr, MAX_ERROR_SIZE, error_string, args) < 0) {
+#else
+		if (vsnprintf(errstr, MAX_ERROR_SIZE, error_string, args) < 0) {
+#endif
+			strncpy(errstr, "could not format error string!",
                         MAX_ERROR_SIZE);
         }
         strncpy(smb2->error_string, errstr, MAX_ERROR_SIZE);
@@ -476,7 +479,7 @@ void smb2_set_security_mode(struct smb2_context *smb2, uint16_t security_mode)
         smb2->security_mode = security_mode;
 }
 
-#if !defined(XBOX_360_PLATFORM) && !defined(PS2_IOP_PLATFORM)
+#if !defined(_XBOX) && !defined(PS2_IOP_PLATFORM)
 static void smb2_set_password_from_file(struct smb2_context *smb2)
 {
         char *name = NULL;

@@ -76,10 +76,10 @@ struct smb2dirent {
         struct smb2_stat_64 st;
 };
 
-#if defined(_WINDOWS) && defined(_MSC_VER) && !defined(XBOX_360_PLATFORM)
+#if defined(_WINDOWS) && defined(_MSC_VER)
 #include <winsock2.h>
 typedef SOCKET t_socket;
-#elif defined(XBOX_360_PLATFORM) && defined(_MSC_VER)
+#elif defined(_XBOX) && defined(_MSC_VER)
 #include <xtl.h> 
 #include <winsockx.h>
 typedef SOCKET t_socket;
