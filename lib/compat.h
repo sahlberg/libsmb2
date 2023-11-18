@@ -24,7 +24,6 @@
 /* XBOX Defs begin */
 #include <xtl.h>
 #include <winsockx.h>
-#include <io.h>
 
 #ifdef XBOX_PLATFORM /* MSVC 2003 Doesn´t have stdint.h header */
 typedef char int8_t;
@@ -49,25 +48,12 @@ typedef unsigned int uintptr_t;
 #define snprintf _snprintf
 #define _U_ 
 
-//#define offsetof(st, m) ((size_t)((char *)&((st *)(1024))->m - (char *)1024))
-
 /* XBOX Defs end */
-
-#define POLLIN      0x0001    /* There is data to read */
-#define POLLPRI     0x0002    /* There is urgent data to read */
-#define POLLOUT     0x0004    /* Writing now will not block */
-#define POLLERR     0x0008    /* Error condition */
-#define POLLHUP     0x0010    /* Hung up */
-
 struct pollfd {
         int fd;
         short events;
         short revents;
 };
-
-typedef unsigned long nfds_t;
-
-#define sys_close(a) closesocket(a)
 
 #define SOL_TCP 6
 

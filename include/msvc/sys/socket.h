@@ -1,4 +1,3 @@
-
 #ifndef _MSVC_SYS_SOCKET_H_
 #define _MSVC_SYS_SOCKET_H_
 
@@ -13,13 +12,14 @@ extern "C" {
 #include "..\..\..\lib\compat.h"
 #endif
 #include <errno.h>
+#ifndef XBOX_PLATFORM
 #define inline __inline
+#endif
 #else
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif // !WIN32_LEAN_AND_MEAN
-
 
 #include <stdint.h>
 #include <winsock2.h>

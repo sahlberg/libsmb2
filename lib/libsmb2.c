@@ -60,7 +60,7 @@
 #include <time.h>
 #endif
 
-#if !defined(PS2_IOP_PLATFORM) || defined(__GNUC__) || defined(HAVE_FCNTL_H) || defined(_MSC_VER)
+#if defined(__GNUC__) || defined(HAVE_FCNTL_H) || defined(_MSC_VER)
 #include <fcntl.h>
 #endif
 
@@ -68,7 +68,7 @@
 #include <sys/socket.h>
 #endif
 
-#ifdef _WIN32
+#if defined(_WIN32) || defined(_XBOX)
 #include "asprintf.h"
 #endif
 
