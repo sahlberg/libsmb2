@@ -111,7 +111,8 @@
       <PreprocessorDefinitions>_DEBUG;_XBOX;_LIB;HAVE_STDINT_H;HAVE_STDLIB_H;HAVE_STRING_H;HAVE_SYS_TYPES_H;HAVE_SYS_STAT_H;HAVE_TIME_H;STDC_HEADERS;NEED_POLL;XBOX_360_PLATFORM;HAVE_SYS_SOCKET_H</PreprocessorDefinitions>
       <CallAttributedProfiling>Callcap</CallAttributedProfiling>
       <CompileAs>CompileAsC</CompileAs>
-      <AdditionalIncludeDirectories>..\include\;..\include\smb2</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\include\;..\include\smb2;..\include\msvc;..\include\msvc\sys</AdditionalIncludeDirectories>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -268,6 +269,7 @@
   <ItemGroup>
     <ClCompile Include="..\include\xbox\emu_socket.cpp">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Xbox 360'">CompileAsCpp</CompileAs>
+      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Xbox 360'">CompileAsCpp</CompileAs>
     </ClCompile>
     <ClCompile Include="..\include\xbox\getaddrinfo.c" />
     <ClCompile Include="..\include\xbox\getnameinfo.c" />

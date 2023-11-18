@@ -843,11 +843,14 @@ static int
 set_tcp_sockopt(t_socket sockfd, int optname, int value)
 {
         int level;
-#if !defined(SOL_TCP) && !defined(XBOX_360_PLATFORM)
+#if !defined(SOL_TCP)
         struct protoent *buf;
-
+#ifdef _XBOX
+        if ((buf = sckemu_getprotobyname("tcp")) != NULL) {
+#else
         if ((buf = getprotobyname("tcp")) != NULL) {
-                level = buf->p_proto;
+#endif
+			level = buf->p_proto;
         } else {
                 return -1;
         }
@@ -868,7 +871,7 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_o
 #ifdef _XBOX
 		BOOL bBroadcast = FALSE;
 #endif
-#if !defined(_XBOX)
+#ifndef _XBOX
 #if 0 == CONFIGURE_OPTION_TCP_LINGER
 		int yes;
 		struct LingerStruct { int l_onoff; /* linger active */ int l_linger; /* how many seconds to linger for */ };
