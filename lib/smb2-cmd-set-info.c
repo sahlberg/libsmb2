@@ -59,6 +59,7 @@ smb2_encode_set_info_request(struct smb2_context *smb2,
         struct smb2_iovec *iov;
         struct smb2_file_end_of_file_info *eofi;
         struct smb2_file_rename_info *rni;
+        struct utf16 *name;
 
         len = SMB2_SET_INFO_REQUEST_SIZE & 0xfffffffe;
         buf = calloc(len, sizeof(uint8_t));
@@ -112,7 +113,7 @@ smb2_encode_set_info_request(struct smb2_context *smb2,
                 case SMB2_FILE_RENAME_INFORMATION:
                         rni = req->input_data;
 
-                        struct utf16 *name = utf8_to_utf16((char *)(rni->file_name));
+                        name = utf8_to_utf16((char *)(rni->file_name));
                         if (name == NULL) {
                                 smb2_set_error(smb2, "Could not convert name into UTF-16");
                                 return -1;

@@ -183,6 +183,8 @@ struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url)
         struct smb2_url *u;
         char *ptr, *tmp, str[MAX_URL_SIZE];
         char *args;
+        char *shared_folder;
+        int len_shared_folder;
 
         if (strncmp(url, "smb://", 6)) {
                 smb2_set_error(smb2, "URL does not start with 'smb://'");
@@ -210,12 +212,12 @@ struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url)
 
         ptr = str;
 
-        char *shared_folder = strchr(ptr, '/');
+        shared_folder = strchr(ptr, '/');
         if (!shared_folder) {
                 smb2_set_error(smb2, "Wrong URL format");
                 return NULL;
         }
-        int len_shared_folder = strlen(shared_folder);
+        len_shared_folder = strlen(shared_folder);
 
         /* domain */
         if ((tmp = strchr(ptr, ';')) != NULL && strlen(tmp) > len_shared_folder) {
