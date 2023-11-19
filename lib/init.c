@@ -403,9 +403,9 @@ struct smb2_iovec *smb2_add_iovector(struct smb2_context *smb2,
         return iov;
 }
 
+#ifndef PS2_IOP_PLATFORM
 static void smb2_set_error_string(struct smb2_context *smb2, const char * error_string, va_list args)
 {
-#ifndef PS2_IOP_PLATFORM
         char errstr[MAX_ERROR_SIZE] = {0};
 
         if (vsnprintf(errstr, MAX_ERROR_SIZE, error_string, args) < 0) {
@@ -413,10 +413,8 @@ static void smb2_set_error_string(struct smb2_context *smb2, const char * error_
                         MAX_ERROR_SIZE);
         }
         strncpy(smb2->error_string, errstr, MAX_ERROR_SIZE);
-#else /* PS2_IOP_PLATFORM */
-        /* Dont have vs[n]printf on PS2 IOP. */
-#endif /* PS2_IOP_PLATFORM */
 }
+#endif /* PS2_IOP_PLATFORM */
 
 void smb2_set_error(struct smb2_context *smb2, const char *error_string, ...)
 {

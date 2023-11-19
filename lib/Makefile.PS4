@@ -31,12 +31,11 @@ endif
 TARGET		:=	libsmb2
 BUILD		:=	build-ps4
 SOURCE		:=	../lib
-INCLUDE		:=	../include ../include/smb2
+INCLUDE		:=	../include ../include/ps4 ../include/smb2
 DATA		:=	data
 LIBS		:=	 
 
-CFLAGS      += -cc1 -triple x86_64-pc-freebsd-elf -munwind-tables -fuse-init-array -emit-obj -isysroot $(OO_PS4_TOOLCHAIN) -isystem $(OO_PS4_TOOLCHAIN)/include $(INCLUDES) -DPS4_PLATFORM -DHAVE_STDINT_H -DHAVE_STRING_H \
-				-DHAVE_STDLIB_H -DHAVE_SYS_TYPES_H -DHAVE_UNISTD_H -DHAVE_TIME_H -DSTDC_HEADERS -D_U_=/**/
+CFLAGS      += -cc1 -triple x86_64-pc-freebsd-elf -munwind-tables -fuse-init-array -emit-obj -isysroot $(OO_PS4_TOOLCHAIN) -isystem $(OO_PS4_TOOLCHAIN)/include $(INCLUDES) -DPS4_PLATFORM -DHAVE_CONFIG_H -D_U_=/**/ 
 CXXFLAGS    += $(CFLAGS) -isystem $(OO_PS4_TOOLCHAIN)/include/c++/v1
 
 ifneq ($(BUILD),$(notdir $(CURDIR)))
