@@ -276,7 +276,7 @@ void smb2_destroy_url(struct smb2_url *url)
 struct smb2_context *smb2_init_context(void)
 {
         struct smb2_context *smb2;
-        char buf[1024];
+        char buf[1024] _U_;
         int i, ret;
         static int ctr;
 
