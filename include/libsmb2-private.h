@@ -437,7 +437,7 @@ void smb2_free_all_fhs(struct smb2_context *smb2);
 void smb2_free_all_dirs(struct smb2_context *smb2);
 
 int smb2_read_from_buf(struct smb2_context *smb2);
-void smb2_change_events(struct smb2_context *smb2, int fd, int events);
+void smb2_change_events(struct smb2_context *smb2, t_socket fd, int events);
 void smb2_timeout_pdus(struct smb2_context *smb2);
 
 struct dcerpc_context;

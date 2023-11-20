@@ -803,7 +803,7 @@ int smb2_readlink(struct smb2_context *smb2, const char *path,
                   char *buf, uint32_t len)
 {
         struct sync_cb_data *cb_data;
-        struct readlink_cb_data rl_data;
+        struct readlink_cb_data rl_data _U_;
         int rc = 0;
 
         cb_data = calloc(1, sizeof(struct sync_cb_data));
