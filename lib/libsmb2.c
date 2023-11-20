@@ -60,7 +60,7 @@
 #include <time.h>
 #endif
 
-#if defined(HAVE_FCNTL_H) || defined(_MSC_VER)
+#if defined(HAVE_FCNTL_H)
 #include <fcntl.h>
 #endif
 

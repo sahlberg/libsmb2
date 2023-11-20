@@ -23,7 +23,7 @@
 #include "config.h"
 #endif
 
-#if defined(ESP_PLATFORM) || defined(PICO_PLATFORM) || defined(__APPLE__) || defined(HAVE_TIME_H)
+#if defined(HAVE_TIME_H)
 /* We need this for time_t */
 #include <time.h>
 #endif
