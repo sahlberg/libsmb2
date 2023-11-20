@@ -25,6 +25,10 @@
 #define _GNU_SOURCE
 #endif
 
+#ifdef _WINDOWS
+#define HAVE_SYS_SOCKET_H 1
+#endif
+
 #ifdef HAVE_STDINT_H
 #include <stdint.h>
 #endif
@@ -186,8 +190,8 @@ struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url)
         struct smb2_url *u;
         char *ptr, *tmp, str[MAX_URL_SIZE];
         char *args;
-		char *shared_folder;
-		int len_shared_folder;
+        char *shared_folder;
+        int len_shared_folder;
 
         if (strncmp(url, "smb://", 6)) {
                 smb2_set_error(smb2, "URL does not start with 'smb://'");
@@ -275,7 +279,7 @@ void smb2_destroy_url(struct smb2_url *url)
 struct smb2_context *smb2_init_context(void)
 {
         struct smb2_context *smb2;
-        char buf[1024];
+        char buf[1024] _U_;
         int i, ret;
         static int ctr;
 #ifdef _XBOX
@@ -410,9 +414,9 @@ struct smb2_iovec *smb2_add_iovector(struct smb2_context *smb2,
         return iov;
 }
 
+#ifndef PS2_IOP_PLATFORM
 static void smb2_set_error_string(struct smb2_context *smb2, const char * error_string, va_list args)
 {
-#ifndef PS2_IOP_PLATFORM
         char errstr[MAX_ERROR_SIZE] = {0};
 #ifdef _XBOX
         if (_vsnprintf(errstr, MAX_ERROR_SIZE, error_string, args) < 0) {
@@ -423,10 +427,8 @@ static void smb2_set_error_string(struct smb2_context *smb2, const char * error_
                         MAX_ERROR_SIZE);
         }
         strncpy(smb2->error_string, errstr, MAX_ERROR_SIZE);
-#else /* PS2_IOP_PLATFORM */
-        /* Dont have vs[n]printf on PS2 IOP. */
-#endif /* PS2_IOP_PLATFORM */
 }
+#endif /* PS2_IOP_PLATFORM */
 
 void smb2_set_error(struct smb2_context *smb2, const char *error_string, ...)
 {

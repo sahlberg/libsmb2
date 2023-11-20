@@ -71,9 +71,9 @@ validate_utf8_cp(const char **utf8, uint16_t *ret)
 {
         int c = *(*utf8)++;
         int l, l_tmp;
-		uint32_t cp;
+        uint32_t cp;
         l = l_tmp = l1(c);
-
+ 
         switch (l) {
         case 0:
                 /* 7-bit ascii is always ok */
@@ -208,7 +208,7 @@ utf16_size(const uint16_t *utf16, int utf16_len)
                 } else if (code < 0xd800 || code - 0xe000 < 0x2000) {
                         length += 3;
                 } else if (code < 0xdc00) { /* Surrogate pair */
-						uint32_t trail;
+                        uint32_t trail;
                         if (utf16 == utf16_end) { /* It's possible the stream ends with a leading code unit, which is an error */
                                 return length + 3; /* Replacement char */
                         }
@@ -241,8 +241,8 @@ utf16_to_utf8(const uint16_t *utf16, int utf16_len)
 {
         int utf8_len = 1;
         char *str, *tmp;
-		const uint16_t *utf16_end;
-
+        const uint16_t *utf16_end;
+        
         /* How many bytes do we need for utf8 ? */
         utf8_len += utf16_size(utf16, utf16_len);
         str = tmp = (char*)malloc(utf8_len);
@@ -252,8 +252,7 @@ utf16_to_utf8(const uint16_t *utf16, int utf16_len)
         str[utf8_len - 1] = 0;
 
         utf16_end = utf16 + utf16_len;
-
-		while (utf16 < utf16_end) {
+        while (utf16 < utf16_end) {
                 uint32_t code = le16toh(*utf16++);
 
                 if (code < 0x80) {
@@ -266,7 +265,7 @@ utf16_to_utf8(const uint16_t *utf16, int utf16_len)
                         *tmp++ = 0x80 | ((code >>  6) & 0x3f);
                         *tmp++ = 0x80 | ((code      ) & 0x3f);
                 } else if (code < 0xdc00) { /* Surrogate pair */
-						uint32_t trail;
+                        uint32_t trail;
                         if (utf16 == utf16_end) { /* It's possible the stream ends with a leading code unit, which is an error */
                                 *tmp++ = 0xef; *tmp++ = 0xbf; *tmp++ = 0xbd; /* Replacement char */
                                 return str;

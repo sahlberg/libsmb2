@@ -220,10 +220,11 @@ ssize_t readv (int fd, const struct iovec *vector, int count)
 {
         /* Find the total number of bytes to be read.  */
         size_t bytes = 0;
-		int i;
-		char *buffer;
-		ssize_t bytes_read; 
-		char *bp;
+        int i;
+        char *buffer;
+        ssize_t bytes_read;
+        char *bp;
+
         for (i = 0; i < count; ++i)
         {
                 /* Check for ssize_t overflow.  */

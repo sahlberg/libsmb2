@@ -25,6 +25,10 @@
 #define _GNU_SOURCE
 #endif
 
+#ifdef _WINDOWS
+#define HAVE_SYS_SOCKET_H 1
+#endif
+
 #ifdef HAVE_STDINT_H
 #include <stdint.h>
 #endif
@@ -60,7 +64,7 @@
 #include <time.h>
 #endif
 
-#if defined(__GNUC__) || defined(HAVE_FCNTL_H) || defined(_MSC_VER)
+#if defined(HAVE_FCNTL_H)
 #include <fcntl.h>
 #endif
 
@@ -292,7 +296,7 @@ decode_dirents(struct smb2_context *smb2, struct smb2dir *dir,
         uint32_t offset = 0;
 
         do {
-                struct smb2_iovec tmp_vec;
+                struct smb2_iovec tmp_vec _U_;
 
                 /* Make sure we do not go beyond end of vector */
                 if (offset >= vec->len) {
@@ -368,7 +372,7 @@ query_cb(struct smb2_context *smb2, int status,
         struct smb2_query_directory_reply *rep = command_data;
 
         if (status == SMB2_STATUS_SUCCESS) {
-                struct smb2_iovec vec;
+                struct smb2_iovec vec _U_;
                 struct smb2_query_directory_request req;
                 struct smb2_pdu *pdu;
 
@@ -754,7 +758,7 @@ session_setup_cb(struct smb2_context *smb2, int status,
                 }
 
                 if (smb2->hdr.flags & SMB2_FLAGS_SIGNED) {
-                        uint8_t signature[16];
+                        uint8_t signature[16] _U_;
 
                         memcpy(&signature[0], &smb2->in.iov[1].buf[48], 16);
                         if (smb2_calc_signature(smb2, &smb2->in.iov[1].buf[48],
@@ -2097,7 +2101,7 @@ smb2_truncate_async(struct smb2_context *smb2, const char *path,
         struct smb2_set_info_request si_req;
         struct smb2_close_request cl_req;
         struct smb2_pdu *pdu, *next_pdu;
-        struct smb2_file_end_of_file_info eofi;
+        struct smb2_file_end_of_file_info eofi _U_;
 
         if (smb2 == NULL) {
                 return -EINVAL;
@@ -2230,7 +2234,7 @@ smb2_rename_async(struct smb2_context *smb2, const char *oldpath,
         struct smb2_set_info_request si_req;
         struct smb2_close_request cl_req;
         struct smb2_pdu *pdu, *next_pdu;
-        struct smb2_file_rename_info rn_info;
+        struct smb2_file_rename_info rn_info _U_;
         uint8_t *ptr;
 
         if (smb2 == NULL) {
