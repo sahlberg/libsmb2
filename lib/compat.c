@@ -173,12 +173,12 @@ ssize_t writev(int fd, const struct iovec *vector, int count)
 {
         /* Find the total number of bytes to be written.  */
         size_t bytes = 0;
-	int i;
-	char *buffer;
-	char *bp;
-	size_t to_copy;
-	ssize_t bytes_written;
-        
+        int i;
+        char *buffer;
+        size_t to_copy;
+        char *bp;
+		ssize_t bytes_written;
+
         for (i = 0; i < count; ++i) {
                 /* Check for ssize_t overflow.  */
                 if (((ssize_t)-1) - bytes < vector[i].iov_len) {
