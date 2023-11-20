@@ -23,6 +23,11 @@
 #define _GNU_SOURCE
 #endif
 
+#ifdef _WINDOWS
+#define HAVE_POLL_H 1
+#define HAVE_SYS_SOCKET_H 1
+#endif
+
 #ifdef HAVE_NETDB_H
 #include <netdb.h>
 #endif
@@ -35,9 +40,11 @@
 #include <netinet/in.h>
 #endif
 
-#if defined(HAVE_SYS_POLL_H) || defined(ESP_PLATFORM)
+#ifdef HAVE_SYS_POLL_H
 #include <sys/poll.h>
-#elif defined(HAVE_POLL_H) || defined(_WINDOWS)
+#endif
+
+#ifdef HAVE_POLL_H
 #include <poll.h>
 #endif
 
@@ -72,11 +79,11 @@
 #include "portable-endian.h"
 #include <errno.h>
 
-#if !defined(PS2_IOP_PLATFORM) || defined(__GNUC__) || defined(HAVE_TIME_H) || defined(_MSC_VER)
+#ifdef HAVE_FCNTL_H
 #include <fcntl.h>
 #endif
 
-#if defined(HAVE_SYS_SOCKET_H) || defined(_WINDOWS) 
+#ifdef HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
 #endif
 
@@ -104,7 +111,7 @@ smb2_close_connecting_fds(struct smb2_context *smb2)
 {
         size_t i;
         for (i = 0; i < smb2->connecting_fds_count; ++i) {
-                int fd = smb2->connecting_fds[i];
+                t_socket fd = smb2->connecting_fds[i];
 
                 /* Don't close the connected fd */
                 if (fd == smb2->fd || fd == -1)
@@ -188,7 +195,7 @@ smb2_write_to_socket(struct smb2_context *smb2)
         }
 
         while ((pdu = smb2->outqueue) != NULL) {
-                struct iovec iov[SMB2_MAX_VECTORS];
+                struct iovec iov[SMB2_MAX_VECTORS] _U_;
                 struct iovec *tmpiov;
                 struct smb2_pdu *tmp_pdu;
                 size_t num_done = pdu->out.num_done;
@@ -284,7 +291,7 @@ typedef ssize_t (*read_func)(struct smb2_context *smb2,
 static int smb2_read_data(struct smb2_context *smb2, read_func func,
                           int has_xfrmhdr)
 {
-        struct iovec iov[SMB2_MAX_VECTORS];
+        struct iovec iov[SMB2_MAX_VECTORS] _U_;
         struct iovec *tmpiov;
         int i, niov, is_chained;
         size_t num_done;
@@ -565,7 +572,7 @@ read_more_data:
         if (smb2->sign &&
             (smb2->hdr.flags & SMB2_FLAGS_SIGNED) &&
             (smb2->hdr.command != SMB2_SESSION_SETUP) ) {
-                uint8_t signature[16];
+                uint8_t signature[16] _U_;
                 memcpy(&signature[0], &smb2->in.iov[1 + iov_offset].buf[48], 16);
                 if (smb2_calc_signature(smb2, &smb2->in.iov[1 + iov_offset].buf[48],
                                         &smb2->in.iov[1 + iov_offset],
@@ -652,7 +659,7 @@ smb2_read_from_buf(struct smb2_context *smb2)
 }
 
 static void
-smb2_close_connecting_fd(struct smb2_context *smb2, int fd)
+smb2_close_connecting_fd(struct smb2_context *smb2, t_socket fd)
 {
         size_t i;
 
@@ -669,8 +676,8 @@ smb2_close_connecting_fd(struct smb2_context *smb2, int fd)
         }
 }
 
-int
-smb2_service_fd(struct smb2_context *smb2, int fd, int revents)
+t_socket
+smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
 {
         int ret = 0;
 
@@ -806,7 +813,7 @@ smb2_service_fd(struct smb2_context *smb2, int fd, int revents)
         return ret;
 }
 
-int
+t_socket
 smb2_service(struct smb2_context *smb2, int revents)
 {
         if (smb2->connecting_fds_count > 0) {
@@ -855,7 +862,11 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_o
         t_socket fd;
         socklen_t socksize;
         struct sockaddr_storage ss;
-
+#if 0 == CONFIGURE_OPTION_TCP_LINGER
+        int const yes = 1;
+        struct LingerStruct { int l_onoff; /* linger active */ int l_linger; /* how many seconds to linger for */ };
+        struct LingerStruct const lin = { .l_onoff  = 1, .l_linger = 0 };   /*  if l_linger is zero, sends RST after FIN */
+#endif
         memset(&ss, 0, sizeof(ss));
         switch (ai->ai_family) {
         case AF_INET:
@@ -894,10 +905,7 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_o
         set_tcp_sockopt(fd, TCP_NODELAY, 1);
 
 #if 0 == CONFIGURE_OPTION_TCP_LINGER
-        int const yes = 1;
         setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes);
-        struct LingerStruct { int l_onoff; /* linger active */ int l_linger; /* how many seconds to linger for */ };
-        struct LingerStruct const lin = { .l_onoff  = 1, .l_linger = 0 };   /*  if l_linger is zero, sends RST after FIN */
         setsockopt(fd, SOL_SOCKET, SO_LINGER, &lin, sizeof lin);
 #endif
 
@@ -1096,7 +1104,7 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
         return err;
 }
 
-void smb2_change_events(struct smb2_context *smb2, int fd, int events)
+void smb2_change_events(struct smb2_context *smb2, t_socket fd, int events)
 {
         if (smb2->events == events) {
                 return;

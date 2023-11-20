@@ -23,6 +23,10 @@
 #define _GNU_SOURCE
 #endif
 
+#ifdef _WINDOWS
+#define HAVE_POLL_H 1
+#endif
+
 #ifdef HAVE_STDINT_H
 #include <stdint.h>
 #endif
@@ -33,9 +37,11 @@
 
 #include <errno.h>
 
-#if defined(HAVE_SYS_POLL_H) || defined(ESP_PLATFORM)
+#if defined(HAVE_SYS_POLL_H)
 #include <sys/poll.h>
-#elif defined(HAVE_POLL_H) || defined(_WINDOWS)
+#endif
+
+#ifdef HAVE_POLL_H
 #include <poll.h>
 #endif
 
@@ -803,7 +809,7 @@ int smb2_readlink(struct smb2_context *smb2, const char *path,
                   char *buf, uint32_t len)
 {
         struct sync_cb_data *cb_data;
-        struct readlink_cb_data rl_data;
+        struct readlink_cb_data rl_data _U_;
         int rc = 0;
 
         cb_data = calloc(1, sizeof(struct sync_cb_data));
