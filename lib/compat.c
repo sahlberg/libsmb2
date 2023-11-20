@@ -177,6 +177,7 @@ ssize_t writev(int fd, const struct iovec *vector, int count)
         char *buffer;
         size_t to_copy;
         char *bp;
+		ssize_t bytes_written;
 
         for (i = 0; i < count; ++i) {
                 /* Check for ssize_t overflow.  */
@@ -207,7 +208,7 @@ ssize_t writev(int fd, const struct iovec *vector, int count)
                         break;
         }
 
-        ssize_t bytes_written = write(fd, buffer, bytes);
+        bytes_written = write(fd, buffer, bytes);
 
         free(buffer);
         return bytes_written;
