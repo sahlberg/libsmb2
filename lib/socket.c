@@ -855,7 +855,11 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_o
         t_socket fd;
         socklen_t socksize;
         struct sockaddr_storage ss;
-
+#if 0 == CONFIGURE_OPTION_TCP_LINGER
+        int const yes = 1;
+        struct LingerStruct { int l_onoff; /* linger active */ int l_linger; /* how many seconds to linger for */ };
+        struct LingerStruct const lin = { .l_onoff  = 1, .l_linger = 0 };   /*  if l_linger is zero, sends RST after FIN */
+#endif
         memset(&ss, 0, sizeof(ss));
         switch (ai->ai_family) {
         case AF_INET:
@@ -894,10 +898,7 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_o
         set_tcp_sockopt(fd, TCP_NODELAY, 1);
 
 #if 0 == CONFIGURE_OPTION_TCP_LINGER
-        int const yes = 1;
         setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes);
-        struct LingerStruct { int l_onoff; /* linger active */ int l_linger; /* how many seconds to linger for */ };
-        struct LingerStruct const lin = { .l_onoff  = 1, .l_linger = 0 };   /*  if l_linger is zero, sends RST after FIN */
         setsockopt(fd, SOL_SOCKET, SO_LINGER, &lin, sizeof lin);
 #endif
 
