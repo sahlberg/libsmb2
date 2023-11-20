@@ -23,6 +23,10 @@
 #define _GNU_SOURCE
 #endif
 
+#ifdef _WINDOWS
+#define HAVE_POLL_H 1
+#endif
+
 #ifdef HAVE_STDINT_H
 #include <stdint.h>
 #endif
@@ -35,7 +39,9 @@
 
 #if defined(HAVE_SYS_POLL_H)
 #include <sys/poll.h>
-#elif defined(HAVE_POLL_H) || defined(_WINDOWS)
+#endif
+
+#ifdef HAVE_POLL_H
 #include <poll.h>
 #endif
 

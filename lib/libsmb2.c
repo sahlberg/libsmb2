@@ -25,6 +25,10 @@
 #define _GNU_SOURCE
 #endif
 
+#ifdef _WINDOWS
+#define HAVE_SYS_SOCKET_H 1
+#endif
+
 #ifdef HAVE_STDINT_H
 #include <stdint.h>
 #endif
