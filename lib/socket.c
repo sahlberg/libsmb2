@@ -23,6 +23,11 @@
 #define _GNU_SOURCE
 #endif
 
+#ifdef _WINDOWS
+#define HAVE_POLL_H 1
+#define HAVE_SYS_SOCKET_H 1
+#endif
+
 #ifdef HAVE_NETDB_H
 #include <netdb.h>
 #endif
@@ -35,9 +40,11 @@
 #include <netinet/in.h>
 #endif
 
-#if defined(HAVE_SYS_POLL_H) || defined(ESP_PLATFORM)
+#ifdef HAVE_SYS_POLL_H
 #include <sys/poll.h>
-#elif defined(HAVE_POLL_H) || defined(_WINDOWS)
+#endif
+
+#ifdef HAVE_POLL_H
 #include <poll.h>
 #endif
 
@@ -72,11 +79,11 @@
 #include "portable-endian.h"
 #include <errno.h>
 
-#if !defined(PS2_IOP_PLATFORM) || defined(__GNUC__) || defined(HAVE_TIME_H) || defined(_MSC_VER)
+#ifdef HAVE_FCNTL_H
 #include <fcntl.h>
 #endif
 
-#if defined(HAVE_SYS_SOCKET_H) || defined(_WINDOWS) 
+#ifdef HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
 #endif
 

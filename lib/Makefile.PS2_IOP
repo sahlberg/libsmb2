@@ -1,7 +1,6 @@
-IOP_CFLAGS = -DPS2_IOP_PLATFORM -DHAVE_STRING_H \
-	  -DHAVE_STDINT_H -DHAVE_SYS_TYPES_H \
+IOP_CFLAGS = -DPS2_IOP_PLATFORM -DHAVE_CONFIG_H
 	  -D_U_=/**/
-IOP_CFLAGS += -Wall -Os -I. -I../include -I../include/smb2
+IOP_CFLAGS += -Wall -Os -I. -I../include -I../include/ps2 -I../include/smb2
 
 IOP_LIB = libsmb2.a
 IOP_OBJS =  aes.o \

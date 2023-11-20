@@ -25,6 +25,10 @@
 #define _GNU_SOURCE
 #endif
 
+#ifdef _WINDOWS
+#define HAVE_SYS_SOCKET_H 1
+#endif
+
 #ifdef HAVE_STDINT_H
 #include <stdint.h>
 #endif
@@ -60,7 +64,7 @@
 #include <time.h>
 #endif
 
-#if !defined(PS2_IOP_PLATFORM) || defined(__GNUC__) || defined(HAVE_TIME_H) || defined(_MSC_VER)
+#if defined(HAVE_FCNTL_H)
 #include <fcntl.h>
 #endif
 

@@ -1,17 +1,15 @@
 /* config.h.  Generated from config.h.in by configure.  */
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
-#define _U_ __attribute__((unused))
-#define SOL_TCP 6
-
 /* Whether or not TCP sockets should be allowed to linger after closure */
 #define CONFIGURE_OPTION_TCP_LINGER 1
+#define _U_ /* __attribute__((unused)) */
 
 /* Define to 1 if you have the <arpa/inet.h> header file. */
-#define HAVE_ARPA_INET_H 1
+/* #define HAVE_ARPA_INET_H 1 */
 
 /* Define to 1 if you have the <dlfcn.h> header file. */
-#define HAVE_DLFCN_H 1
+/* #define HAVE_DLFCN_H 1 */
 
 /* Define to 1 if you have the <fcntl.h> header file. */
 #define HAVE_FCNTL_H 1
@@ -32,22 +30,22 @@
 /* #undef HAVE_LIBSOCKET */
 
 /* Define to 1 if you have the <netdb.h> header file. */
-#define HAVE_NETDB_H 1
+/* #define HAVE_NETDB_H 1 */
 
 /* Define to 1 if you have the <netinet/in.h> header file. */
-#define HAVE_NETINET_IN_H 1
+/* #define HAVE_NETINET_IN_H 1 */
 
 /* Define to 1 if you have the <netinet/tcp.h> header file. */
 /* #define HAVE_NETINET_TCP_H 1 */
-  
+
 /* Define to 1 if you have the <poll.h> header file. */
-#define HAVE_POLL_H 1
+/* #define HAVE_POLL_H 1 */
 
 /* Whether sockaddr struct has sa_len */
 /* #undef HAVE_SOCKADDR_LEN */
 
 /* Whether we have sockaddr_Storage */
-#define HAVE_SOCKADDR_STORAGE 1
+/* #define HAVE_SOCKADDR_STORAGE 1 */
 
 /* Define to 1 if you have the <stdint.h> header file. */
 #define HAVE_STDINT_H 1
@@ -59,28 +57,28 @@
 #define HAVE_STDLIB_H 1
 
 /* Define to 1 if you have the <strings.h> header file. */
-#define HAVE_STRINGS_H 1
+/* #define HAVE_STRINGS_H 1 */
 
 /* Define to 1 if you have the <string.h> header file. */
 #define HAVE_STRING_H 1
 
 /* Define to 1 if you have the <sys/ioctl.h> header file. */
-#define HAVE_SYS_IOCTL_H 1
+/* #define HAVE_SYS_IOCTL_H 1 */
 
 /* Define to 1 if you have the <sys/poll.h> header file. */
-#define HAVE_SYS_POLL_H 1
+/* #define HAVE_SYS_POLL_H 1 */
 
 /* Define to 1 if you have the <sys/socket.h> header file. */
-#define HAVE_SYS_SOCKET_H 1
+/* #define HAVE_SYS_SOCKET_H 1 */
 
 /* Define to 1 if you have the <sys/stat.h> header file. */
-#define HAVE_SYS_STAT_H 1
+/* #define HAVE_SYS_STAT_H 1 */
 
 /* Define to 1 if you have the <sys/types.h> header file. */
 #define HAVE_SYS_TYPES_H 1
 
 /* Define to 1 if you have the <sys/uio.h> header file. */
-#define HAVE_SYS_UIO_H 1
+/* #define HAVE_SYS_UIO_H 1 */
 
 /* Define to 1 if you have the <time.h> header file. */
 #define HAVE_TIME_H 1
