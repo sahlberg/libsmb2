@@ -103,6 +103,12 @@
  * timeout of 100ms. */
 #define HAPPY_EYEBALLS_TIMEOUT 100
 
+struct LingerStruct 
+{
+	int		l_onoff;	/* Linger active		*/
+	int		l_linger;	/* How long to linger for	*/
+};
+
 static int
 smb2_connect_async_next_addr(struct smb2_context *smb2, const struct addrinfo *base);
 
@@ -864,8 +870,7 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_o
         struct sockaddr_storage ss;
 #if 0 == CONFIGURE_OPTION_TCP_LINGER
         int const yes = 1;
-        struct LingerStruct { int l_onoff; /* linger active */ int l_linger; /* how many seconds to linger for */ };
-        struct LingerStruct const lin = { .l_onoff  = 1, .l_linger = 0 };   /*  if l_linger is zero, sends RST after FIN */
+        struct LingerStruct const lin = { 1, 0 };   /*  if l_linger is zero, sends RST after FIN */
 #endif
         memset(&ss, 0, sizeof(ss));
         switch (ai->ai_family) {
