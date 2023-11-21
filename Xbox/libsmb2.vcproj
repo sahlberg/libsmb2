@@ -22,7 +22,7 @@
 				InlineFunctionExpansion="2"
 				OptimizeForProcessor="2"
 				AdditionalIncludeDirectories="..\include\;..\include\msvc;..\include\xbox;..\include\smb2"
-				PreprocessorDefinitions="_DEBUG;_XBOX;_LIB;XBOX_PLATFORM;HAVE_STDLIB_H;HAVE_STRING_H;HAVE_SYS_TYPES_H;HAVE_SYS_STAT_H;HAVE_TIME_H;STDC_HEADERS;NEED_POLL;HAVE_SYS_SOCKET_H"
+				PreprocessorDefinitions="_DEBUG;_XBOX;_LIB;XBOX_PLATFORM;NEED_POLL"
 				MinimalRebuild="TRUE"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
@@ -126,7 +126,7 @@
 				OmitFramePointers="TRUE"
 				OptimizeForProcessor="2"
 				AdditionalIncludeDirectories="..\include\;..\include\msvc;..\include\xbox;..\include\smb2"
-				PreprocessorDefinitions="NDEBUG;_XBOX;_LIB;XBOX_PLATFORM;HAVE_STDLIB_H;HAVE_STRING_H;HAVE_SYS_TYPES_H;HAVE_SYS_STAT_H;HAVE_TIME_H;STDC_HEADERS;NEED_POLL;HAVE_SYS_SOCKET_H"
+				PreprocessorDefinitions="NDEBUG;_XBOX;_LIB;XBOX_PLATFORM;NEED_POLL;"
 				StringPooling="TRUE"
 				RuntimeLibrary="0"
 				BufferSecurityCheck="TRUE"
@@ -222,16 +222,16 @@
 				Name="xbox"
 				Filter="">
 				<File
-					RelativePath="..\include\xbox\addrinfo.h">
+					RelativePath="..\lib\xbox\addrinfo.h">
 				</File>
 				<File
-					RelativePath="..\include\xbox\addrsize.h">
+					RelativePath="..\lib\xbox\addrsize.h">
 				</File>
 				<File
-					RelativePath="..\include\xbox\bittypes.h">
+					RelativePath="..\lib\xbox\bittypes.h">
 				</File>
 				<File
-					RelativePath="..\include\xbox\emu_socket.cpp">
+					RelativePath="..\lib\xbox\emu_socket.cpp">
 					<FileConfiguration
 						Name="Release|Xbox">
 						<Tool
@@ -240,28 +240,28 @@
 					</FileConfiguration>
 				</File>
 				<File
-					RelativePath="..\include\xbox\emu_socket.h">
+					RelativePath="..\lib\xbox\emu_socket.h">
 				</File>
 				<File
-					RelativePath="..\include\xbox\getaddrinfo.c">
+					RelativePath="..\lib\xbox\getaddrinfo.c">
 				</File>
 				<File
-					RelativePath="..\include\xbox\getnameinfo.c">
+					RelativePath="..\lib\xbox\getnameinfo.c">
 				</File>
 				<File
-					RelativePath="..\include\xbox\inet_aton.c">
+					RelativePath="..\lib\xbox\inet_aton.c">
 				</File>
 				<File
-					RelativePath="..\include\xbox\inet_ntop.c">
+					RelativePath="..\lib\xbox\inet_ntop.c">
 				</File>
 				<File
-					RelativePath="..\include\xbox\inet_pton.c">
+					RelativePath="..\lib\xbox\inet_pton.c">
 				</File>
 				<File
-					RelativePath="..\include\xbox\sockstorage.h">
+					RelativePath="..\lib\xbox\sockstorage.h">
 				</File>
 				<File
-					RelativePath="..\include\xbox\xb_emu_socket.h">
+					RelativePath="..\lib\xbox\xb_emu_socket.h">
 				</File>
 			</Filter>
 			<Filter
