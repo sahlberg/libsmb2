@@ -118,15 +118,15 @@ static const char SMBAppKey[] = "SMBAppKey";
 
 #ifndef O_ACCMODE
 #define O_ACCMODE (O_RDWR|O_WRONLY|O_RDONLY)
-#endif // !O_ACCMODE
+#endif /* !O_ACCMODE */
 
 #ifndef O_SYNC
 #ifndef O_DSYNC
 #define O_DSYNC		040000
-#endif // !O_DSYNC
+#endif /* !O_DSYNC */
 #define __O_SYNC	020000000
 #define O_SYNC		(__O_SYNC|O_DSYNC)
-#endif // !O_SYNC
+#endif /* !O_SYNC */
 
 const smb2_file_id compound_file_id = {
         0xff, 0xff, 0xff, 0xff,  0xff, 0xff, 0xff, 0xff,

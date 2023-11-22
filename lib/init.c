@@ -72,7 +72,7 @@
 #define srandom srand
 #define random rand
 #define getpid GetCurrentProcessId
-#endif // _MSC_VER
+#endif /* _MSC_VER */
 
 #ifdef ESP_PLATFORM
 #include <errno.h>
@@ -84,11 +84,11 @@
 
 #ifdef __ANDROID__
 #include <errno.h>
-// getlogin_r() was added in API 28
+/* getlogin_r() was added in API 28 */
 #if __ANDROID_API__ < 28
 #define getlogin_r(a,b) ENXIO
 #endif
-#endif // __ANDROID__
+#endif /* __ANDROID__ */
 
 static int
 smb2_parse_args(struct smb2_context *smb2, const char *args)
@@ -483,7 +483,7 @@ static void smb2_set_password_from_file(struct smb2_context *smb2)
         int finished;
 
 #ifdef _MSC_UWP
-// GetEnvironmentVariable is not available for UWP up to 10.0.16299 SDK
+/* GetEnvironmentVariable is not available for UWP up to 10.0.16299 SDK */
 #if defined(NTDDI_WIN10_RS3) && (NTDDI_VERSION >= NTDDI_WIN10_RS3)
         uint32_t name_len = GetEnvironmentVariableA("NTLM_USER_FILE", NULL, 0);
         if (name_len > 0) {
