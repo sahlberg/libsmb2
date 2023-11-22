@@ -23,7 +23,7 @@
 #include "config.h"
 #endif
 
-#if defined(ESP_PLATFORM) || defined(PICO_PLATFORM) || defined(__APPLE__) || defined(HAVE_TIME_H)
+#if defined(HAVE_TIME_H)
 /* We need this for time_t */
 #include <time.h>
 #endif
@@ -437,7 +437,7 @@ void smb2_free_all_fhs(struct smb2_context *smb2);
 void smb2_free_all_dirs(struct smb2_context *smb2);
 
 int smb2_read_from_buf(struct smb2_context *smb2);
-void smb2_change_events(struct smb2_context *smb2, int fd, int events);
+void smb2_change_events(struct smb2_context *smb2, t_socket fd, int events);
 void smb2_timeout_pdus(struct smb2_context *smb2);
 
 struct dcerpc_context;

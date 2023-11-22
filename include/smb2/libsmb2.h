@@ -161,8 +161,8 @@ smb2_get_fds(struct smb2_context *smb2, size_t *fd_count, int *timeout);
  */
 #define SMB2_ADD_FD 0
 #define SMB2_DEL_FD 1
-typedef void (*smb2_change_fd_cb)(struct smb2_context *smb2, int fd, int cmd);
-typedef void (*smb2_change_events_cb)(struct smb2_context *smb2, int fd,
+typedef void (*smb2_change_fd_cb)(struct smb2_context *smb2, t_socket fd, int cmd);
+typedef void (*smb2_change_events_cb)(struct smb2_context *smb2, t_socket fd,
                                       int events);
 void smb2_fd_event_callbacks(struct smb2_context *smb2,
                              smb2_change_fd_cb change_fd,
@@ -178,7 +178,7 @@ void smb2_fd_event_callbacks(struct smb2_context *smb2,
  *      used and must be freed by calling smb2_destroy_context().
  *
  */
-int smb2_service(struct smb2_context *smb2, int revents);
+t_socket smb2_service(struct smb2_context *smb2, int revents);
 
 /*
  * Called to process the events when events become available for the smb2
@@ -195,7 +195,7 @@ int smb2_service(struct smb2_context *smb2, int revents);
  *      used and must be freed by calling smb2_destroy_context().
  *
  */
-int smb2_service_fd(struct smb2_context *smb2, int fd, int revents);
+t_socket smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents);
 
 /*
  * Set the timeout in seconds after which a command will be aborted with

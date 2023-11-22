@@ -1365,7 +1365,7 @@ dce_unfragment_ioctl(struct dcerpc_context *dce, struct smb2_iovec *iov)
         int offset = 0;
         int unfragment_len;
         struct dcerpc_header hdr, next_hdr;
-        struct smb2_iovec tmpiov;
+        struct smb2_iovec tmpiov _U_;
 
         dcerpc_decode_header(iov, &hdr);
         if (hdr.rpc_vers != 5 || hdr.rpc_vers_minor != 0 ||
@@ -1422,7 +1422,7 @@ dcerpc_call_cb(struct smb2_context *smb2, int status,
 {
         struct dcerpc_pdu *pdu = private_data;
         struct dcerpc_context *dce = pdu->dce;
-        struct smb2_iovec iov;
+        struct smb2_iovec iov _U_;
         struct smb2_ioctl_reply *rep = command_data;
         void *payload;
         int ret;
@@ -1478,7 +1478,7 @@ dcerpc_call_async(struct dcerpc_context *dce,
         struct dcerpc_pdu *pdu;
         struct smb2_pdu *smb2_pdu;
         struct smb2_ioctl_request req;
-        struct smb2_iovec iov;
+        struct smb2_iovec iov _U_;
         int offset;
 
         pdu = dcerpc_allocate_pdu(dce, DCERPC_ENCODE, NSE_BUF_SIZE);
@@ -1560,7 +1560,7 @@ smb2_bind_cb(struct smb2_context *smb2, int status,
 {
         struct dcerpc_pdu *pdu = private_data;
         struct dcerpc_context *dce = pdu->dce;
-        struct smb2_iovec iov;
+        struct smb2_iovec iov _U_;
         struct smb2_ioctl_reply *rep = command_data;
         int i;
 
@@ -1627,7 +1627,7 @@ dcerpc_bind_async(struct dcerpc_context *dce, dcerpc_cb cb,
         struct dcerpc_pdu *pdu;
         struct smb2_pdu *smb2_pdu;
         struct smb2_ioctl_request req;
-        struct smb2_iovec iov;
+        struct smb2_iovec iov _U_;
         int offset;
 
         pdu = dcerpc_allocate_pdu(dce, DCERPC_ENCODE, NSE_BUF_SIZE);
