@@ -5,7 +5,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "aes128ccm.h"
+#include "lib/aes128ccm.h"
 
 void test_1(void)
 {
