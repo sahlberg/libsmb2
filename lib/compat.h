@@ -32,11 +32,9 @@ long long int be64toh(long long int x);
 
 #ifdef PS2_EE_PLATFORM
 
-#include <errno.h>
-#include <sys/time.h>
 
+#include <errno.h>
 #include <ps2ip.h>
-#include <fcntl.h>
 #include <unistd.h>
 
 #define getlogin_r(a,b) ENXIO

@@ -44,26 +44,17 @@
 
 #ifdef PS2_EE_PLATFORM
 
-#define NEED_READV
-#define NEED_WRITEV
-#define NEED_POLL
-#define NEED_BE64TOH
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
 
+#include <sys/time.h>
 
 #endif /* PS2_EE_PLATFORM */
 
 #ifdef PS2_IOP_PLATFORM
 #include <sysclib.h>
-
-#define NEED_BE64TOH
-#define NEED_STRDUP
-#define NEED_READV
-#define NEED_WRITEV
-#define NEED_POLL
 
 static unsigned long int next = 1; 
 
@@ -127,9 +118,6 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
 #endif /* PS2_IOP_PLATFORM */
 
 #ifdef PS3_PPU_PLATFORM
-
-#define NEED_READV
-#define NEED_WRITEV
 
 #include <stdlib.h>
 
