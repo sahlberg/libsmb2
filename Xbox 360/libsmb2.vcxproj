@@ -108,10 +108,10 @@
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <PrecompiledHeaderOutputFile>$(OutDir)$(ProjectName).pch</PrecompiledHeaderOutputFile>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <PreprocessorDefinitions>_DEBUG;_XBOX;_LIB;NEED_POLL;XBOX_360_PLATFORM</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_XBOX;_LIB;NEED_POLL;XBOX_360_PLATFORM;HAVE_CONFIG_H</PreprocessorDefinitions>
       <CallAttributedProfiling>Callcap</CallAttributedProfiling>
       <CompileAs>CompileAsC</CompileAs>
-      <AdditionalIncludeDirectories>..\include\;..\include\smb2;..\include\msvc;..\include\msvc\sys;..\include\smb2\xbox 360</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\include\;..\include\smb2;..\include\msvc;..\include\msvc\sys;..\include\xbox 360</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
     </ClCompile>
     <Link>
@@ -195,8 +195,8 @@
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <PrecompiledHeaderOutputFile>$(OutDir)$(ProjectName).pch</PrecompiledHeaderOutputFile>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <PreprocessorDefinitions>NDEBUG;_XBOX;_LIB;__BYTE_ORDER == BIG_ENDIAN;NEED_POLL;XBOX_360_PLATFORM;</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\include\;..\include\smb2;..\include\msvc;..\include\msvc\sys;..\include\smb2\xbox 360</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>NDEBUG;_XBOX;_LIB;__BYTE_ORDER == BIG_ENDIAN;NEED_POLL;XBOX_360_PLATFORM;HAVE_CONFIG_H</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\include\;..\include\smb2;..\include\msvc;..\include\msvc\sys;..\include\xbox 360</AdditionalIncludeDirectories>
       <CompileAs>CompileAsC</CompileAs>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
     </ClCompile>
@@ -247,6 +247,7 @@
     <ClInclude Include="..\include\smb2\libsmb2.h" />
     <ClInclude Include="..\include\smb2\smb2-errors.h" />
     <ClInclude Include="..\include\smb2\smb2.h" />
+    <ClInclude Include="..\include\xbox 360\config.h" />
     <ClInclude Include="..\lib\xbox\addrinfo.h" />
     <ClInclude Include="..\lib\xbox\addrsize.h" />
     <ClInclude Include="..\lib\xbox\bittypes.h" />
@@ -267,7 +268,7 @@
     <ClInclude Include="..\lib\smb3-seal.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\include\xbox\emu_socket.cpp">
+    <ClCompile Include="..\lib\xbox\emu_socket.cpp">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|Xbox 360'">CompileAsCpp</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Xbox 360'">CompileAsCpp</CompileAs>
     </ClCompile>

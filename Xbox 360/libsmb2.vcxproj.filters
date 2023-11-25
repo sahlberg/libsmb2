@@ -26,8 +26,11 @@
     <Filter Include="include\msvc\sys">
       <UniqueIdentifier>{afbefc44-9daf-45e5-aacd-fe33021175a2}</UniqueIdentifier>
     </Filter>
-    <Filter Include="include\xbox">
-      <UniqueIdentifier>{4c1d54ae-7522-4157-9082-b22eb34be541}</UniqueIdentifier>
+    <Filter Include="lib\xbox">
+      <UniqueIdentifier>{2ee310d9-8aad-4af1-9726-53f9518d0978}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\xbox 360">
+      <UniqueIdentifier>{6c01c6cd-316c-4bff-82ea-f611e60057e9}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -106,23 +109,26 @@
     <ClInclude Include="..\include\msvc\sys\socket.h">
       <Filter>include\msvc\sys</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\xbox\addrinfo.h">
-      <Filter>include\xbox</Filter>
+    <ClInclude Include="..\lib\xbox\emu_socket.h">
+      <Filter>lib\xbox</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\xbox\addrsize.h">
-      <Filter>include\xbox</Filter>
+    <ClInclude Include="..\lib\xbox\addrinfo.h">
+      <Filter>lib\xbox</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\xbox\bittypes.h">
-      <Filter>include\xbox</Filter>
+    <ClInclude Include="..\lib\xbox\addrsize.h">
+      <Filter>lib\xbox</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\xbox\emu_socket.h">
-      <Filter>include\xbox</Filter>
+    <ClInclude Include="..\lib\xbox\bittypes.h">
+      <Filter>lib\xbox</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\xbox\sockstorage.h">
-      <Filter>include\xbox</Filter>
+    <ClInclude Include="..\lib\xbox\sockstorage.h">
+      <Filter>lib\xbox</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\xbox\xb_emu_socket.h">
-      <Filter>include\xbox</Filter>
+    <ClInclude Include="..\lib\xbox\xb_emu_socket.h">
+      <Filter>lib\xbox</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\xbox 360\config.h">
+      <Filter>include\xbox 360</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -270,23 +276,21 @@
     <ClCompile Include="..\lib\usha.c">
       <Filter>lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\include\xbox\inet_pton.c">
-      <Filter>include\xbox</Filter>
+    <ClCompile Include="..\lib\xbox\inet_pton.c">
+      <Filter>lib\xbox</Filter>
     </ClCompile>
-    <ClCompile Include="..\include\xbox\emu_socket.cpp">
-      <Filter>include\xbox</Filter>
+    <ClCompile Include="..\lib\xbox\getaddrinfo.c">
+      <Filter>lib\xbox</Filter>
     </ClCompile>
-    <ClCompile Include="..\include\xbox\getaddrinfo.c">
-      <Filter>include\xbox</Filter>
+    <ClCompile Include="..\lib\xbox\getnameinfo.c">
+      <Filter>lib\xbox</Filter>
     </ClCompile>
-    <ClCompile Include="..\include\xbox\getnameinfo.c">
-      <Filter>include\xbox</Filter>
+    <ClCompile Include="..\lib\xbox\inet_aton.c">
+      <Filter>lib\xbox</Filter>
     </ClCompile>
-    <ClCompile Include="..\include\xbox\inet_aton.c">
-      <Filter>include\xbox</Filter>
+    <ClCompile Include="..\lib\xbox\inet_ntop.c">
+      <Filter>lib\xbox</Filter>
     </ClCompile>
-    <ClCompile Include="..\include\xbox\inet_ntop.c">
-      <Filter>include\xbox</Filter>
-    </ClCompile>
+    <ClCompile Include="..\lib\xbox\emu_socket.cpp" />
   </ItemGroup>
 </Project>

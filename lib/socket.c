@@ -885,6 +885,9 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_o
         int const yes = 1;
         struct LingerStruct const lin = { 1, 0 };   /*  if l_linger is zero, sends RST after FIN */
 #endif
+#ifdef _XBOX
+		BOOL bBroadcast = TRUE;
+#endif
         memset(&ss, 0, sizeof(ss));
         switch (ai->ai_family) {
         case AF_INET:
