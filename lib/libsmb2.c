@@ -64,7 +64,7 @@
 #include <time.h>
 #endif
 
-#if defined(HAVE_FCNTL_H)
+#ifdef HAVE_FCNTL_H
 #include <fcntl.h>
 #endif
 
@@ -2337,7 +2337,7 @@ smb2_ftruncate_async(struct smb2_context *smb2, struct smb2fh *fh,
 {
         struct create_cb_data *create_data;
         struct smb2_set_info_request req;
-        struct smb2_file_end_of_file_info eofi;
+        struct smb2_file_end_of_file_info eofi _U_;
         struct smb2_pdu *pdu;
 
         if (smb2 == NULL) {

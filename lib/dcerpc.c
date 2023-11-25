@@ -1761,7 +1761,7 @@ dcerpc_get_error(struct dcerpc_context *dce)
 void
 dcerpc_free_data(struct dcerpc_context *dce, void *data)
 {
-        return smb2_free_data(dcerpc_get_smb2_context(dce), data);
+        smb2_free_data(dcerpc_get_smb2_context(dce), data);
 }
 
 int
