@@ -557,11 +557,6 @@ static void smb2_set_password_from_file(struct smb2_context *smb2)
         }
         fclose(fh);
 }
-#else /* !PS2_IOP_PLATFORM */
-static void smb2_set_password_from_file(struct smb2_context *smb2)
-{
-        return;
-}
 #endif /* !PS2_IOP_PLATFORM */
 
 void smb2_set_user(struct smb2_context *smb2, const char *user)
@@ -574,7 +569,9 @@ void smb2_set_user(struct smb2_context *smb2, const char *user)
                 return;
         }
         smb2->user = strdup(user);
+#if !defined(_XBOX) && !defined(PS2_IOP_PLATFORM)
         smb2_set_password_from_file(smb2);
+#endif
 }
 
 void smb2_set_password(struct smb2_context *smb2, const char *password)
