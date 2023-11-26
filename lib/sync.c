@@ -42,11 +42,7 @@
 #endif
 
 #ifdef HAVE_POLL_H
-#ifdef ESP_PLATFORM
-#include <sys/poll.h>
-#else
 #include <poll.h>
-#endif
 #endif
 
 #ifdef HAVE_STRING_H
