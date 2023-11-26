@@ -12,7 +12,7 @@
 /* #define HAVE_DLFCN_H 1 */
 
 /* Define to 1 if you have the <fcntl.h> header file. */
-/* #define HAVE_FCNTL_H 1 */
+#define HAVE_FCNTL_H 1
 
 /* Define to 1 if you have the <gssapi/gssapi.h> header file. */
 /* #define HAVE_GSSAPI_GSSAPI_H 1 */

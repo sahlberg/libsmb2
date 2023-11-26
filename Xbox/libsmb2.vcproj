@@ -222,46 +222,7 @@
 				Name="xbox"
 				Filter="">
 				<File
-					RelativePath="..\lib\xbox\addrinfo.h">
-				</File>
-				<File
-					RelativePath="..\lib\xbox\addrsize.h">
-				</File>
-				<File
-					RelativePath="..\lib\xbox\bittypes.h">
-				</File>
-				<File
-					RelativePath="..\lib\xbox\emu_socket.cpp">
-					<FileConfiguration
-						Name="Release|Xbox">
-						<Tool
-							Name="VCCLCompilerTool"
-							CompileAs="2"/>
-					</FileConfiguration>
-				</File>
-				<File
-					RelativePath="..\lib\xbox\emu_socket.h">
-				</File>
-				<File
-					RelativePath="..\lib\xbox\getaddrinfo.c">
-				</File>
-				<File
-					RelativePath="..\lib\xbox\getnameinfo.c">
-				</File>
-				<File
-					RelativePath="..\lib\xbox\inet_aton.c">
-				</File>
-				<File
-					RelativePath="..\lib\xbox\inet_ntop.c">
-				</File>
-				<File
-					RelativePath="..\lib\xbox\inet_pton.c">
-				</File>
-				<File
-					RelativePath="..\lib\xbox\sockstorage.h">
-				</File>
-				<File
-					RelativePath="..\lib\xbox\xb_emu_socket.h">
+					RelativePath="..\include\xbox\config.h">
 				</File>
 			</Filter>
 			<Filter
@@ -473,6 +434,52 @@
 			<File
 				RelativePath="..\lib\usha.c">
 			</File>
+			<Filter
+				Name="xbox"
+				Filter="">
+				<File
+					RelativePath="..\lib\xbox\addrinfo.h">
+				</File>
+				<File
+					RelativePath="..\lib\xbox\addrsize.h">
+				</File>
+				<File
+					RelativePath="..\lib\xbox\bittypes.h">
+				</File>
+				<File
+					RelativePath="..\lib\xbox\emu_socket.cpp">
+					<FileConfiguration
+						Name="Release|Xbox">
+						<Tool
+							Name="VCCLCompilerTool"
+							CompileAs="2"/>
+					</FileConfiguration>
+				</File>
+				<File
+					RelativePath="..\lib\xbox\emu_socket.h">
+				</File>
+				<File
+					RelativePath="..\lib\xbox\getaddrinfo.c">
+				</File>
+				<File
+					RelativePath="..\lib\xbox\getnameinfo.c">
+				</File>
+				<File
+					RelativePath="..\lib\xbox\inet_aton.c">
+				</File>
+				<File
+					RelativePath="..\lib\xbox\inet_ntop.c">
+				</File>
+				<File
+					RelativePath="..\lib\xbox\inet_pton.c">
+				</File>
+				<File
+					RelativePath="..\lib\xbox\sockstorage.h">
+				</File>
+				<File
+					RelativePath="..\lib\xbox\xb_emu_socket.h">
+				</File>
+			</Filter>
 		</Filter>
 		<File
 			RelativePath="..\Copying">
