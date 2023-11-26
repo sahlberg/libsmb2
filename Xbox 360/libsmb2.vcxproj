@@ -195,7 +195,7 @@
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <PrecompiledHeaderOutputFile>$(OutDir)$(ProjectName).pch</PrecompiledHeaderOutputFile>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <PreprocessorDefinitions>NDEBUG;_XBOX;_LIB;__BYTE_ORDER == BIG_ENDIAN;NEED_POLL;XBOX_360_PLATFORM;HAVE_CONFIG_H</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_XBOX;_LIB;NEED_POLL;XBOX_360_PLATFORM;HAVE_CONFIG_H</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\include\;..\include\smb2;..\include\msvc;..\include\msvc\sys;..\include\xbox 360</AdditionalIncludeDirectories>
       <CompileAs>CompileAsC</CompileAs>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
