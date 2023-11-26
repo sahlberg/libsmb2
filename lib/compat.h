@@ -45,6 +45,26 @@ typedef unsigned int uintptr_t;
 
 #include "xbox/xb_emu_socket.h"
 
+#ifndef ENETRESET
+#define ENETRESET WSAENETRESET
+#endif
+
+#ifndef ECONNREFUSED
+#define ECONNREFUSED WSAECONNREFUSED
+#endif
+
+#ifndef ETIMEDOUT
+#define ETIMEDOUT WSAETIMEDOUT
+#endif
+
+#ifndef ECONNRESET
+#define ECONNRESET WSAECONNRESET
+#endif
+
+#ifndef ENODATA
+#define ENODATA WSANO_DATA
+#endif
+
 #define snprintf _snprintf
 #define _U_ 
 

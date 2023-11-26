@@ -1064,10 +1064,8 @@ int nterror_to_errno(uint32_t status) {
                 return 0;
         case SMB2_STATUS_PENDING:
                 return EAGAIN;
-#ifndef XBOX_PLATFORM
         case SMB2_STATUS_ABORTED:
                 return ECONNRESET;
-#endif
 		case SMB2_STATUS_NO_SUCH_FILE:
         case SMB2_STATUS_NO_SUCH_DEVICE:
         case SMB2_STATUS_BAD_NETWORK_NAME:
@@ -1109,13 +1107,10 @@ int nterror_to_errno(uint32_t status) {
         case SMB2_STATUS_CANNOT_DELETE:
         case SMB2_STATUS_FILE_DELETED:
                 return EPERM;
-#ifndef XBOX_PLATFORM
 		case SMB2_STATUS_NO_MORE_FILES:
                 return ENODATA;
-
         case SMB2_STATUS_LOGON_FAILURE:
                 return ECONNREFUSED;
-#endif
 		case SMB2_STATUS_NOT_A_DIRECTORY:
                 return ENOTDIR;
         case SMB2_STATUS_NOT_IMPLEMENTED:
@@ -1169,21 +1164,17 @@ int nterror_to_errno(uint32_t status) {
         case SMB2_STATUS_CONNECTION_INVALID:
         case SMB2_STATUS_CONNECTION_ABORTED:
         case SMB2_STATUS_NETWORK_NAME_DELETED:
-#ifndef XBOX_PLATFORM
 		case SMB2_STATUS_INVALID_NETWORK_RESPONSE:
                 // We return this errno with the intention that caller can
                 // retry when any of these are received.
                 return ENETRESET;
-#endif
 		case SMB2_STATUS_PATH_NOT_COVERED:
                 // We do not have an errno which can be an equivalent of this
                 // NT_STATUS code. To handle this, return a code which will not
                 // be used as we are operating over a network.
                 return ENOEXEC;
-#ifndef XBOX_PLATFORM
         case SMB2_STATUS_IO_TIMEOUT:
                 return ETIMEDOUT;
-#endif
 		case SMB2_STATUS_INSUFFICIENT_RESOURCES:
                 return EBUSY;
         case SMB2_STATUS_INTERNAL_ERROR:
