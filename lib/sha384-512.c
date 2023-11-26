@@ -226,7 +226,6 @@
 /*
  * add "length" to the length
  */
-
 #define SHA384_512AddLength(context, length) (                        \
     addTemp[3] = (length), SHA512_ADDTO4((context)->Length, addTemp), \
     (context)->Corrupted = (((context)->Length[3] == 0) &&            \
