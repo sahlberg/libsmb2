@@ -1299,8 +1299,8 @@ dcerpc_decode_response(struct dcerpc_context *ctx,
 #else
         const char* __mptr = rsp;
         struct dcerpc_pdu *pdu = (struct dcerpc_pdu*)((char *)__mptr - offsetof(struct dcerpc_pdu, rsp));
-#endif // !_MSC_VER
-   
+#endif /* !_MSC_VER */
+    
         if (offset < 0) {
                 return offset;
         }
