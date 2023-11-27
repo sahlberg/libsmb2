@@ -1,5 +1,5 @@
 KOS_CFLAGS = -DDC_KOS_PLATFORM -DNEED_WRITEV -DNEED_READV -DHAVE_CONFIG_H \
-	  -D_U_=/**/ -I../include -I../include/smb2 $(KOS_INC_PATHS)
+	  -D_U_=/**/ -I../include -I../include/smb2 -I../include/dc $(KOS_INC_PATHS)
 
 TARGET = libsmb2.a
 OBJS = aes128ccm.o \

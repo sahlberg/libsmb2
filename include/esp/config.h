@@ -41,7 +41,7 @@
 /* #define HAVE_NETINET_TCP_H 1 */
   
 /* Define to 1 if you have the <poll.h> header file. */
-#define HAVE_POLL_H 1
+/* #define HAVE_POLL_H 1 */
 
 /* Whether sockaddr struct has sa_len */
 /* #undef HAVE_SOCKADDR_LEN */
