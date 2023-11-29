@@ -278,7 +278,7 @@ krb5_negotiate_reply(struct smb2_context *smb2,
                 return NULL;
         }
 
-        #ifndef __APPLE__ // gss_set_neg_mechs is not defined on macOS/iOS.
+        #ifndef __APPLE__ /* gss_set_neg_mechs is not defined on macOS/iOS. */
         if (smb2->sec != SMB2_SEC_UNDEFINED) {
                 wantMech.count = 1;
                 if (smb2->sec == SMB2_SEC_KRB5) {

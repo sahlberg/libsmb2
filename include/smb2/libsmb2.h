@@ -19,7 +19,9 @@
 #ifndef _LIBSMB2_H_
 #define _LIBSMB2_H_
 
+#ifdef __APPLE__ /* Some platforms goes well without stdint.h include */
 #include <stdint.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {

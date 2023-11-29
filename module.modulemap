@@ -2,8 +2,10 @@ module SMB2 [extern_c] {
     module LibSMB2 {
         header "include/apple/config.h"
         header "include/smb2/libsmb2.h"
-        header "include/smb2/smb2.h"
-        header "include/smb2/libsmb2-dcerpc-srvsvc.h"
+		header "include/smb2/libsmb2-dcerpc.h" 
+		header "include/smb2/libsmb2-dcerpc-lsa.h" 
+        header "include/smb2/libsmb2-dcerpc-srvsvc.h"        
+		header "include/smb2/smb2.h"
         header "include/smb2/smb2-errors.h"
     }
     
