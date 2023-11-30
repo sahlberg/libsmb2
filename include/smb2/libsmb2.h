@@ -1012,7 +1012,11 @@ int smb2_echo(struct smb2_context *smb2);
  * separation between dcerpc and smb2, so we need to include this header
  * here to retain compatibility for apps that depend on those symbols.
  */
+#ifdef __APPLE__
 #include <libsmb2-dcerpc-srvsvc.h>
+#else
+#include <smb2/libsmb2-dcerpc-srvsvc.h>	
+#endif
 
 #ifdef __cplusplus
 }
