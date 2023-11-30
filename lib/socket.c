@@ -763,7 +763,7 @@ smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
         if (smb2->fd == -1 && revents & POLLOUT) {
                 int err = 0;
                 socklen_t err_size = sizeof(err);
-#ifdef _XBOX
+#ifdef XBOX_PLATFORM
                 if (sckemu_getsockopt(fd, SOL_SOCKET, SO_ERROR,
                                (char *)&err, &err_size) != 0 || err != 0) {
 #else
@@ -858,7 +858,7 @@ set_tcp_sockopt(t_socket sockfd, int optname, int value)
         int level;
 #if !defined(SOL_TCP)
         struct protoent *buf;
-#ifdef _XBOX
+#ifdef XBOX_PLATFORM
         if ((buf = sckemu_getprotobyname("tcp")) != NULL) {
 #else
         if ((buf = getprotobyname("tcp")) != NULL) {
@@ -1071,7 +1071,7 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
         }
 
         /* is it a hostname ? */
-#ifdef _XBOX
+#ifdef XBOX_PLATFORM
         err = sckemu_getaddrinfo(host, port, NULL, &smb2->addrinfos);
 #else
         err = getaddrinfo(host, port, NULL, &smb2->addrinfos);
