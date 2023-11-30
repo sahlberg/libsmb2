@@ -274,20 +274,18 @@ To compile libsmb2 for the Xbox, first install the Xbox XDK(with all features), 
 Then to build libsmb2, go to Xbox folder 
 and open the provided .sln file, Then hit the green button to build:
 
-The process will result a libsmb2.lib. So you copy the include files
+The process will result a libsmb2.lib. So you can copy the include files
 and the .lib file to your Xbox project.
-
-NOTE: This port was based on XBMC-360 port by BDC(Brent De Cartet) and now being updated to libsmb2 standards to best performance.
 
 Xbox 360 (Xbox 360 SDK)
 ----------------------
-Xbox 360 CPU is a PPC(PowerPC) Xenon which only supports big endian values.
+Xbox 360 CPU is a PPC(PowerPC) Xenon which only supports only big endian values.
 To compile libsmb2 for the Xbox 360, first install the Xbox 360 SDK(with all features), Microsoft Visual C++ 2010 Ultimate and Windows XP(Recommended) or Windows 7.
 
 Then to build libsmb2, go to Xbox 360 folder 
 and open the provided .sln file, Then hit the green button to build:
 
-The process will result a libsmb2.lib. So you copy the include files
+The process will result a libsmb2.lib. So you can copy the include files
 and the .lib file to your Xbox 360 project.
 
-NOTE: This port was based on XBMC-360 port by BDC(Brent De Cartet) and now being updated to libsmb2 standards to best performance.
+NOTE: Both ports was based on XBMC-360 port by BDC(Brent De Cartet) and now being updated to libsmb2 standards to best performance.
