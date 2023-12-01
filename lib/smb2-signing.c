@@ -161,7 +161,7 @@ void smb3_aes_cmac_128(uint8_t key[AES128_KEY_LEN],
 
 int
 smb2_calc_signature(struct smb2_context *smb2, uint8_t *signature,
-                    struct smb2_iovec *iov, int niov)
+                    struct smb2_iovec *iov, size_t niov)
 
 {
         /* Clear the smb2 header signature field field */

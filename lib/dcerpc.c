@@ -1524,7 +1524,7 @@ dcerpc_call_async(struct dcerpc_context *dce,
         memset(&req, 0, sizeof(struct smb2_ioctl_request));
         req.ctl_code = SMB2_FSCTL_PIPE_TRANSCEIVE;
         memcpy(req.file_id, dce->file_id, SMB2_FD_SIZE);
-        req.input_count = iov.len;
+        req.input_count = (uint32_t)iov.len;
         req.input = iov.buf;
         req.flags = SMB2_0_IOCTL_IS_FSCTL;
 
@@ -1663,7 +1663,7 @@ dcerpc_bind_async(struct dcerpc_context *dce, dcerpc_cb cb,
         memset(&req, 0, sizeof(struct smb2_ioctl_request));
         req.ctl_code = SMB2_FSCTL_PIPE_TRANSCEIVE;
         memcpy(req.file_id, dce->file_id, SMB2_FD_SIZE);
-        req.input_count = iov.len;
+        req.input_count = (uint32_t)iov.len;
         req.input = iov.buf;
         req.flags = SMB2_0_IOCTL_IS_FSCTL;
 

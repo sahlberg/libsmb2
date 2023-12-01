@@ -427,7 +427,7 @@ RDL_DOMAINS_array_coder(struct dcerpc_context *dce,
 
         entries = rdl->Entries;
         offset = dcerpc_uint3264_coder(dce, pdu, iov, offset, &entries);
-        rdl->Entries = entries;
+        rdl->Entries = (uint32_t)entries;
 
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {
                 rdl->Domains = smb2_alloc_data(dcerpc_get_smb2_context(dce),

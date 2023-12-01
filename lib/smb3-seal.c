@@ -156,7 +156,7 @@ smb3_decrypt_pdu(struct smb2_context *smb2)
                 smb2->in.iov[smb2->in.niov - 1].free = NULL;
                 smb2_free_iovector(smb2, &smb2->in);
 
-                smb2->spl = smb2->enc_len;
+                smb2->spl = (uint32_t)smb2->enc_len;
                 smb2->recv_state = SMB2_RECV_HEADER;
                 smb2_add_iovector(smb2, &smb2->in, &smb2->header[0],
                                   SMB2_HEADER_SIZE, NULL);
