@@ -264,7 +264,7 @@ static int
 NTOWFv2(const char *user, const char *password, const char *domain,
         unsigned char ntlmv2_hash[16])
 {
-        ssize_t i, len;
+        int64_t i, len;
         char *userdomain;
         struct utf16 *utf16_userdomain = NULL;
         unsigned char ntlm_hash[16];

@@ -44,6 +44,10 @@
 #include <stdint.h>
 #endif
 
+#ifdef HAVE_STDLIB_H
+#include <stdlib.h>
+#endif
+
 /*
  * If you do not have the ISO standard stdint.h header file, then you
  * must typedef the following:
