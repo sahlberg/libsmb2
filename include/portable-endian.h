@@ -235,9 +235,9 @@
 #   define be64toh(x) (x)
 #   define le64toh(x) _byteswap_uint64(x)
 
-#	define __BYTE_ORDER    BYTE_ORDER
+/* #	define __BYTE_ORDER    BYTE_ORDER */
 #	define __LITTLE_ENDIAN LITTLE_ENDIAN
-#	define __PDP_ENDIAN    PDP_ENDIAN
+/* #	define __PDP_ENDIAN    PDP_ENDIAN */
 
 # elif defined(__GNUC__) || defined(__clang__)
 
