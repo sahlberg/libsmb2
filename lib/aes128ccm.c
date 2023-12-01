@@ -48,7 +48,7 @@ static void aes_ccm_generate_b0(unsigned char *nonce, size_t nlen,
         buf[0] |= (((mlen - 2) / 2) << 3) & 0x38; /* M' */
         buf[0] |= (15 - nlen - 1) & 0x07;         /* L' */
 
-        len = htobe32(plen);
+        len = htobe32((uint32_t)plen);
         memcpy(&buf[12], &len, 4);
         memcpy(&buf[1], nonce, nlen);
 }
@@ -78,10 +78,10 @@ static void ccm_generate_T(unsigned char *key,
         if (alen) {
                 /* First block */
                 memset(b, 0, 16);
-                l = htobe16(alen);
+                l = htobe16((uint16_t)alen);
                 memcpy(b, &l, 2);
 
-                l = (alen > 14) ? 14 : alen;
+                l = (alen > 14) ? 14 : (uint16_t)alen;
                 memcpy(&b[2], aad, l);
                 aad  += l;
                 alen -= l;
@@ -91,7 +91,7 @@ static void ccm_generate_T(unsigned char *key,
 
                 while (alen) {
                         memset(b, 0, 16);
-                        l = (alen > 16) ? 16 : alen;
+                        l = (alen > 16) ? 16 : (uint16_t)alen;
                         memcpy(b, aad, l);
                         aad  += l;
                         alen -= l;
@@ -104,7 +104,7 @@ static void ccm_generate_T(unsigned char *key,
         /* Create Payload */
         while (plen) {
                 memset(b, 0, 16);
-                l = (plen > 16) ? 16 : plen;
+                l = (plen > 16) ? 16 : (uint16_t)plen;
                 memcpy(b, p, l);
                 p    += l;
                 plen -= l;

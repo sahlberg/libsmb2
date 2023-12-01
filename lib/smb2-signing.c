@@ -168,7 +168,8 @@ smb2_calc_signature(struct smb2_context *smb2, uint8_t *signature,
         memset(iov[0].buf + 48, 0, 16);
 
         if (smb2->dialect > SMB2_VERSION_0210) {
-                int i = 0, offset = 0, len = 0;
+                int i = 0;
+                size_t len = 0, offset = 0;
                 uint8_t aes_mac[AES_BLOCK_SIZE];
                 /* combine the buffers into one */
                 uint8_t *msg = NULL;

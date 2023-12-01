@@ -313,7 +313,7 @@ SHA256FinalBits (SHA256Context * context,
   if (context->Corrupted)
     return context->Corrupted;
 
-  SHA224_256AddLength (context, length);
+  SHA224_256AddLength (context, (uint32_t)length);
   SHA224_256Finalize (context, (uint8_t)
 		      ((message_bits & masks[length]) | markbit[length]));
 

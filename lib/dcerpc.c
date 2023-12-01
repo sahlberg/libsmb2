@@ -885,7 +885,7 @@ dcerpc_decode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 return -1;
         }
         tmp = utf16_to_utf8((uint16_t *)(&iov->buf[offset]), actual);
-        offset += actual * 2;
+        offset += (int)actual * 2;
 
         str = smb2_alloc_data(ctx->smb2, pdu->payload, strlen(tmp) + 1);
         if (str == NULL) {
@@ -1297,7 +1297,7 @@ dcerpc_decode_response(struct dcerpc_context *ctx,
 #ifndef _MSC_VER
         struct dcerpc_pdu *pdu = container_of(rsp, struct dcerpc_pdu, rsp);
 #else
-        const char* __mptr = rsp;
+        const char* __mptr = (const char*)rsp;
         struct dcerpc_pdu *pdu = (struct dcerpc_pdu*)((char *)__mptr - offsetof(struct dcerpc_pdu, rsp));
 #endif /* !_MSC_VER */
     

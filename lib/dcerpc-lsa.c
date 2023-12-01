@@ -197,7 +197,7 @@ lsa_RPC_UNICODE_STRING_coder(struct dcerpc_context *dce,
         offset = dcerpc_align_3264(dce, offset);
 
         if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
-                len = strlen(*(char **)ptr) * 2;
+                len = (uint16_t)strlen(*(char **)ptr) * 2;
                 maxlen = (len & 0x02) ? len + 2 : len;
         }
         offset = dcerpc_uint16_coder(dce, pdu, iov, offset, &len);
