@@ -283,7 +283,7 @@ struct utf16 *utf8_to_utf16(const char *utf8);
 /* Returns a string converted to UTF8 format. Use free() to release
  * the utf8 string.
  */
-const char *utf16_to_utf8(const uint16_t *str, int len);
+const char *utf16_to_utf8(const uint16_t *str, size_t len);
 
 /* Convert a win timestamp to a unix timeval */
 void win_to_timeval(uint64_t smb2_time, struct smb2_timeval *tv);
@@ -303,7 +303,7 @@ void *smb2_alloc_data(struct smb2_context *smb2, void *memctx, size_t size);
 
 struct smb2_iovec *smb2_add_iovector(struct smb2_context *smb2,
                                      struct smb2_io_vectors *v,
-                                     uint8_t *buf, int len,
+                                     uint8_t *buf, size_t len,
                                      void (*free)(void *));
 
 int smb2_pad_to_64bit(struct smb2_context *smb2, struct smb2_io_vectors *v);
@@ -323,7 +323,7 @@ void smb2_free_iovector(struct smb2_context *smb2, struct smb2_io_vectors *v);
 int smb2_decode_header(struct smb2_context *smb2, struct smb2_iovec *iov,
                        struct smb2_header *hdr);
 int smb2_calc_signature(struct smb2_context *smb2, uint8_t *signature,
-                        struct smb2_iovec *iov, int niov);
+                        struct smb2_iovec *iov, size_t niov);
         
 int smb2_set_uint8(struct smb2_iovec *iov, int offset, uint8_t value);
 int smb2_set_uint16(struct smb2_iovec *iov, int offset, uint16_t value);

@@ -75,7 +75,7 @@
 struct auth_data {
         unsigned char *buf;
         int len;
-        int allocated;
+        size_t allocated;
 
         int neg_result;
         unsigned char *ntlm_buf;
@@ -264,7 +264,7 @@ static int
 NTOWFv2(const char *user, const char *password, const char *domain,
         unsigned char ntlmv2_hash[16])
 {
-        int i, len;
+        ssize_t i, len;
         char *userdomain;
         struct utf16 *utf16_userdomain = NULL;
         unsigned char ntlm_hash[16];

@@ -644,7 +644,7 @@ smb2_read_from_socket(struct smb2_context *smb2)
 static ssize_t smb2_readv_from_buf(struct smb2_context *smb2,
                                    const struct iovec *iov, int iovcnt)
 {
-        int i, len, count = 0;
+        ssize_t i, len, count = 0;
 
         for (i=0;i<iovcnt;i++){
                 len = iov[i].iov_len;
