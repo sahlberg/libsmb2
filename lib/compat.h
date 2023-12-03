@@ -71,6 +71,64 @@ long long int be64toh(long long int x);
 
 #endif /* PS2_EE_PLATFORM */
 
+#if defined(__amigaos4__) || defined(__AMIGA__) || defined(__AROS__)
+#include <errno.h>
+#include <sys/time.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <stdlib.h>
+#if defined(__amigaos4__) || defined(__AROS__)
+#include <sys/uio.h>
+#endif
+#define getlogin_r(a,b) ENXIO
+#ifndef __AROS__
+#define srandom srand
+#define random rand
+#endif
+#define getaddrinfo smb2_getaddrinfo
+#define freeaddrinfo smb2_freeaddrinfo
+#define POLLIN      0x0001    /* There is data to read */
+#define POLLPRI     0x0002    /* There is urgent data to read */
+#define POLLOUT     0x0004    /* Writing now will not block */
+#define POLLERR     0x0008    /* Error condition */
+#define POLLHUP     0x0010    /* Hung up */
+struct pollfd {
+        int fd;
+        short events;
+        short revents;
+};
+int poll(struct pollfd *fds, unsigned int nfds, int timo);
+int smb2_getaddrinfo(const char *node, const char*service,
+                const struct addrinfo *hints,
+                struct addrinfo **res);
+void smb2_freeaddrinfo(struct addrinfo *res);
+#ifndef __amigaos4__
+ssize_t writev(int fd, const struct iovec *iov, int iovcnt);
+ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
+#endif
+#if !defined(HAVE_SOCKADDR_STORAGE)
+/*
+ * RFC 2553: protocol-independent placeholder for socket addresses
+ */
+#define _SS_MAXSIZE	128
+#define _SS_ALIGNSIZE	(sizeof(double))
+#define _SS_PAD1SIZE	(_SS_ALIGNSIZE - sizeof(unsigned char) * 2)
+#define _SS_PAD2SIZE	(_SS_MAXSIZE - sizeof(unsigned char) * 2 - \
+				_SS_PAD1SIZE - _SS_ALIGNSIZE)
+struct sockaddr_storage {
+#ifdef HAVE_SOCKADDR_LEN
+	unsigned char ss_len;		/* address length */
+	unsigned char ss_family;	/* address family */
+#else
+	unsigned short ss_family;
+#endif
+	char	__ss_pad1[_SS_PAD1SIZE];
+	double	__ss_align;	/* force desired structure storage alignment */
+	char	__ss_pad2[_SS_PAD2SIZE];
+};
+#endif
+#endif
+
 #ifdef DC_KOS_PLATFORM
 
 #include <netdb.h>

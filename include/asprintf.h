@@ -2,7 +2,9 @@
 #ifndef _ASPRINTF_H_
 #define _ASPRINTF_H_
 
+#ifndef __AROS__
 #include <malloc.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>

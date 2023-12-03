@@ -90,6 +90,19 @@
 #endif
 #endif /* __ANDROID__ */
 
+#if defined(__amigaos4__) || defined(__AMIGA__) || defined(__AROS__)
+#include <errno.h>
+#define getlogin_r(a,b) ENXIO
+#ifndef __AROS__
+#define srandom srand
+#define random rand
+#endif
+#ifndef __amigaos4__
+#include <proto/bsdsocket.h>
+#define close CloseSocket
+#endif
+#endif // __amigaos4__
+
 static int
 smb2_parse_args(struct smb2_context *smb2, const char *args)
 {
@@ -185,7 +198,11 @@ smb2_parse_args(struct smb2_context *smb2, const char *args)
 struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url)
 {
         struct smb2_url *u;
+#ifdef USE_PASSWORD
+        char *ptr, *tmp, *pwd, str[MAX_URL_SIZE];
+#else
         char *ptr, *tmp, str[MAX_URL_SIZE];
+#endif
         char *args;
         char *shared_folder;
         int len_shared_folder;
@@ -198,8 +215,11 @@ struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url)
                 smb2_set_error(smb2, "URL is too long");
                 return NULL;
         }
+#if defined(__amigaos4__) || defined(__AMIGA__) || defined(__AROS__)
+        strcpy(str, url + 6);
+#else
         strncpy(str, url + 6, MAX_URL_SIZE);
-
+#endif
         args = strchr(str, '?');
         if (args) {
                 *(args++) = '\0';
@@ -232,6 +252,13 @@ struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url)
         /* user */
         if ((tmp = strchr(ptr, '@')) != NULL && strlen(tmp) > len_shared_folder) {
                 *(tmp++) = '\0';
+#ifdef USE_PASSWORD		
+                /* password */
+                if ((pwd = strchr(ptr, ':')) != NULL) {
+                    *(pwd++) = '\0';
+                    u->password = strdup(pwd);
+                }
+#endif                
                 u->user = strdup(ptr);
                 ptr = tmp;
         }
@@ -266,6 +293,9 @@ void smb2_destroy_url(struct smb2_url *url)
         }
         free(discard_const(url->domain));
         free(discard_const(url->user));
+#ifdef USE_PASSWORD        
+        free(discard_const(url->password));
+#endif	
         free(discard_const(url->server));
         free(discard_const(url->share));
         free(discard_const(url->path));
@@ -473,7 +503,7 @@ void smb2_set_security_mode(struct smb2_context *smb2, uint16_t security_mode)
         smb2->security_mode = security_mode;
 }
 
-#ifndef PS2_IOP_PLATFORM
+#if !defined(PS2_IOP_PLATFORM) && !defined(__amigaos4__) && !defined(__AMIGA__) && !defined(__AROS__)
 static void smb2_set_password_from_file(struct smb2_context *smb2)
 {
         char *name = NULL;
@@ -561,7 +591,7 @@ void smb2_set_user(struct smb2_context *smb2, const char *user)
                 return;
         }
         smb2->user = strdup(user);
-#if !defined(PS2_IOP_PLATFORM)
+#if !defined(PS2_IOP_PLATFORM) && !defined(__amigaos4__) && !defined(__AMIGA__) && !defined(__AROS__)
         smb2_set_password_from_file(smb2);
 #endif
 }

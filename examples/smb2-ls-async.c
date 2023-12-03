@@ -14,7 +14,9 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #define _GNU_SOURCE
 
 #include <inttypes.h>
+#if !defined(__amigaos4__) && !defined(__AMIGA__) && !defined(__AROS__)
 #include <poll.h>
+#endif
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,6 +27,20 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "libsmb2.h"
 #include "libsmb2-raw.h"
 
+#ifdef __AROS__
+#include "asprintf.h"
+#endif
+
+#if defined(__amigaos4__) || defined(__AMIGA__) || defined(__AROS__)
+struct pollfd {
+        int fd;
+        short events;
+        short revents;
+};
+
+int poll(struct pollfd *fds, unsigned int nfds, int timo);
+#endif
+
 int is_finished;
 
 int usage(void)
@@ -32,7 +48,11 @@ int usage(void)
         fprintf(stderr, "Usage:\n"
                 "smb2-ls-async <smb2-url>\n\n"
                 "URL format: "
-                "smb://[<domain;][<username>@]<host>>[:<port>]/<share>/<path>\n");
+#ifdef USE_PASSWORD
+                "smb://[<domain;][<username>[:<password>]@]<host>>[:<port>]/<share>/<path>\n");
+#else
+                "smb://[<domain;][<username>@]<host>>[:<port>]/<share>/<path>\n");	
+#endif
         exit(1);
 }
 
@@ -55,7 +75,11 @@ void od_cb(struct smb2_context *smb2, int status,
         }
 
         while ((ent = smb2_readdir(smb2, dir))) {
+#ifdef USE_PASSWORD
+				const char *type;
+#else
                 char *type;
+#endif
                 time_t t;
 
                 switch (ent->st.smb2_type) {
@@ -73,7 +97,11 @@ void od_cb(struct smb2_context *smb2, int status,
                         break;
                 }
                 t = (time_t)ent->st.smb2_mtime;
-                printf("%-20s %-9s %15"PRIu64" %s\n", ent->name, type, ent->st.smb2_size, asctime(localtime(&t)));
+#ifdef USE_PASSWORD
+                printf("%-20s %-9s %15"PRIu64" %s", ent->name, type, ent->st.smb2_size, asctime(localtime(&t)));
+#else
+	            printf("%-20s %-9s %15"PRIu64" %s\n", ent->name, type, ent->st.smb2_size, asctime(localtime(&t)));
+#endif
         }
 
         smb2_closedir(smb2, dir);
@@ -139,8 +167,11 @@ int main(int argc, char *argv[])
         }
 
         smb2_set_security_mode(smb2, SMB2_NEGOTIATE_SIGNING_ENABLED);
-
+#ifdef USE_PASSWORD
+	if (smb2_connect_share_async(smb2, url->server, url->share, url->user, url->password,
+#else
 	if (smb2_connect_share_async(smb2, url->server, url->share, url->user,
+#endif
                                      cf_cb, (void *)url->path) != 0) {
 		printf("smb2_connect_share failed. %s\n", smb2_get_error(smb2));
 		exit(10);

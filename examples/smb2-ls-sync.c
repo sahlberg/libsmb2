@@ -14,7 +14,9 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #define _GNU_SOURCE
 
 #include <inttypes.h>
+#if !defined(__amigaos4__) && !defined(__AMIGA__) && !defined(__AROS__)
 #include <poll.h>
+#endif
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,12 +27,20 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "libsmb2.h"
 #include "libsmb2-raw.h"
 
+#ifdef __AROS__
+#include "asprintf.h"
+#endif
+
 int usage(void)
 {
         fprintf(stderr, "Usage:\n"
                 "smb2-ls-sync <smb2-url>\n\n"
                 "URL format: "
+#ifdef USE_PASSWORD
+                "smb://[<domain;][<username>[:<password>]@]<host>[:<port>]/<share>/<path>\n");
+#else
                 "smb://[<domain;][<username>@]<host>[:<port>]/<share>/<path>\n");
+#endif
         exit(1);
 }
 
@@ -60,8 +70,11 @@ int main(int argc, char *argv[])
         }
 
         smb2_set_security_mode(smb2, SMB2_NEGOTIATE_SIGNING_ENABLED);
-
+#ifdef USE_PASSWORD
+	if (smb2_connect_share(smb2, url->server, url->share, url->user, url->password) < 0) {
+#else
 	if (smb2_connect_share(smb2, url->server, url->share, url->user) < 0) {
+#endif
 		printf("smb2_connect_share failed. %s\n", smb2_get_error(smb2));
 		exit(10);
 	}
@@ -73,7 +86,11 @@ int main(int argc, char *argv[])
 	}
 
         while ((ent = smb2_readdir(smb2, dir))) {
+#ifdef USE_PASSWORD
+                const char *type;
+#else
                 char *type;
+#endif
                 time_t t;
 
                 t = (time_t)ent->st.smb2_mtime;

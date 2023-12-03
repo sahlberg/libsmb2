@@ -1107,6 +1107,10 @@ int nterror_to_errno(uint32_t status) {
         case SMB2_STATUS_CANNOT_DELETE:
         case SMB2_STATUS_FILE_DELETED:
                 return EPERM;
+#if defined(__amigaos4__) || defined(__AMIGA__) || defined(__AROS__)
+        case SMB2_STATUS_DIRECTORY_NOT_EMPTY:
+                return ENOTEMPTY;
+#endif
         case SMB2_STATUS_NO_MORE_FILES:
                 return ENODATA;
         case SMB2_STATUS_LOGON_FAILURE:

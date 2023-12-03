@@ -31,6 +31,77 @@
 
 #endif
 
+#if defined(__amigaos4__) || defined(__AMIGA__) || defined(__AROS__)
+#define NEED_POLL
+#ifndef __amigaos4__
+#define NEED_READV
+#define NEED_WRITEV
+#include <proto/bsdsocket.h>
+#define read(fd, buf, count) recv(fd, buf, count, 0)
+#define write(fd, buf, count) send(fd, buf, count, 0)
+#ifndef __AROS__
+#define select(nfds, readfds, writefds, exceptfds, timeout) WaitSelect(nfds, readfds, writefds, exceptfds, timeout, NULL)
+#endif
+#ifdef libnix
+StdFileDes *_lx_fhfromfd(int d) { return NULL; }
+struct MinList __filelist = { (struct MinNode *) &__filelist.mlh_Tail, NULL, (struct MinNode *) &__filelist.mlh_Head };
+#endif
+#endif
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+int smb2_getaddrinfo(const char *node, const char*service,
+                const struct addrinfo *hints,
+                struct addrinfo **res)
+{
+        struct sockaddr_in *sin;
+        struct hostent *host;
+        int i, ip[4];
+
+        sin = calloc(1, sizeof(struct sockaddr_in));
+        sin->sin_len = sizeof(struct sockaddr_in);
+        sin->sin_family=AF_INET;
+
+        /* Some error checking would be nice */
+        if (sscanf(node, "%d.%d.%d.%d", ip, ip+1, ip+2, ip+3) == 4) {
+                for (i = 0; i < 4; i++) {
+                        ((char *)&sin->sin_addr.s_addr)[i] = ip[i];
+                }
+        } else {
+                host = gethostbyname(node);
+                if (host == NULL) {
+                        return -1;
+                }
+                if (host->h_addrtype != AF_INET) {
+                        return -2;
+                }
+                memcpy(&sin->sin_addr.s_addr, host->h_addr, 4);
+        }
+
+        sin->sin_port=0;
+        if (service) {
+                sin->sin_port=htons(atoi(service));
+        }
+
+        *res = calloc(1, sizeof(struct addrinfo));
+
+        (*res)->ai_family = AF_INET;
+        (*res)->ai_addrlen = sizeof(struct sockaddr_in);
+        (*res)->ai_addr = (struct sockaddr *)sin;
+
+        return 0;
+}
+
+void smb2_freeaddrinfo(struct addrinfo *res)
+{
+        free(res->ai_addr);
+        free(res);
+}
+
+#endif
+
 #ifdef PICO_PLATFORM
 
 #define NEED_BE64TOH
@@ -254,6 +325,69 @@ ssize_t readv (int fd, const struct iovec *vector, int count)
 #endif
 
 #ifdef NEED_POLL
+#if defined(__amigaos4__) || defined(__AMIGA__) || defined(__AROS__)
+#include <proto/exec.h>
+int poll(struct pollfd *fds, unsigned int nfds, int timo)
+{
+        struct timeval timeout, *toptr = 0;
+        fd_set ifds, ofds, efds, *ip, *op;
+        unsigned int i, maxfd = 0;
+        int  rc;
+
+        FD_ZERO(&ifds);
+        FD_ZERO(&ofds);
+        FD_ZERO(&efds);
+        op = ip = 0;
+        for (i = 0; i < nfds; ++i) {
+                int fd = fds[i].fd;
+                fds[i].revents = 0;
+                if (fd < 0)
+                        continue;
+                if(fds[i].events & (POLLIN|POLLPRI)) {
+                        ip = &ifds;
+                        FD_SET(fd, ip);
+                }
+                if(fds[i].events & POLLOUT)  {
+                        op = &ofds;
+                        FD_SET(fd, op);
+                }
+                FD_SET(fd, &efds);
+                if (fd > maxfd) {
+                        maxfd = fd;
+                }
+        } 
+
+        if(timo >= 0) {
+                toptr = &timeout;
+                timeout.tv_sec = (unsigned)timo / 1000;
+                timeout.tv_usec = ((unsigned)timo % 1000) * 1000;
+        }
+
+        rc = select(maxfd + 1, ip, op, &efds, toptr);
+        if(rc <= 0)
+                return rc;
+
+        rc = 0;
+        for (i = 0; i < nfds; ++i) {
+                int fd = fds[i].fd;
+                short events = fds[i].events;
+                short revents = 0;
+                if (fd < 0)
+                        continue;
+                if(events & (POLLIN|POLLPRI) && FD_ISSET(fd, &ifds))
+                        revents |= POLLIN;
+                if(events & POLLOUT && FD_ISSET(fd, &ofds))
+                        revents |= POLLOUT;
+                if(FD_ISSET(fd, &efds))
+                        revents |= POLLHUP;
+                if (revents) {
+                        fds[i].revents = revents;
+                        rc++;
+                }
+        }
+        return rc;
+}
+#else
 int poll(struct pollfd *fds, unsigned int nfds, int timo)
 {
         struct timeval timeout, *toptr;
@@ -306,6 +440,7 @@ int poll(struct pollfd *fds, unsigned int nfds, int timo)
         }
         return rc;
 }
+#endif
 #endif
 
 #ifdef NEED_STRDUP
