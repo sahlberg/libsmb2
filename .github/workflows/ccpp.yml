@@ -55,6 +55,8 @@ jobs:
         cd lib
         make -f Makefile.PS2_EE clean
         make -f Makefile.PS2_EE
+        make -f Makefile.PS2_EE_IPS clean
+        make -f Makefile.PS2_EE_IPS
 
     - name: Compile PS2 IOP Side
       run: |

@@ -832,7 +832,7 @@ smb2_service(struct smb2_context *smb2, int revents)
 static void
 set_nonblocking(t_socket fd)
 {
-#if defined(WIN32)
+#if defined(WIN32) || defined(PS2_EE_PLATFORM) && defined(PS2_IPS)
         unsigned long opt = 1;
         ioctlsocket(fd, FIONBIO, &opt);
 #else

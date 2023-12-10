@@ -32,9 +32,15 @@ long long int be64toh(long long int x);
 
 #ifdef PS2_EE_PLATFORM
 
-
 #include <errno.h>
+#ifdef PS2_IPS
+#include <ps2ips.h>
+#define close(a) disconnect(a)
+#define write(a,b,c) send(a,b,c,0)
+#define read(a,b,c) recv(a,b,c,MSG_DONTWAIT)
+#else
 #include <ps2ip.h>
+#endif
 #include <unistd.h>
 
 #define getlogin_r(a,b) ENXIO
