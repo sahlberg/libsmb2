@@ -288,6 +288,7 @@ int poll(struct pollfd *fds, unsigned int nfds, int timo)
                  * select() is broken on the ps2ips stack so we basically have
                  * to busy-wait.
                  */
+                (void)timeout;
                 timeout.tv_sec = 0;
                 timeout.tv_usec = 10000;        
 #else

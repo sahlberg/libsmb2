@@ -55,6 +55,10 @@ jobs:
         cd lib
         make -f Makefile.PS2_EE clean
         make -f Makefile.PS2_EE
+
+    - name: Compile PS2 EE IPS Side
+      run: |
+        cd lib
         make -f Makefile.PS2_EE_IPS clean
         make -f Makefile.PS2_EE_IPS
 
