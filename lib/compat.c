@@ -48,7 +48,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
-
 #include <sys/time.h>
 
 #endif /* PS2_EE_PLATFORM */
