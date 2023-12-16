@@ -40,8 +40,6 @@ long long int be64toh(long long int x);
 #define write(a,b,c) send(a,b,c,0)
 #define read(a,b,c) recv(a,b,c,MSG_DONTWAIT)
 #endif
-#else
-#include <ps2ip.h>
 #endif
 #include <unistd.h>
 

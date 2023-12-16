@@ -39,10 +39,11 @@
 
 /* Define to 1 if you have the <netinet/in.h> header file. */
 #define HAVE_NETINET_IN_H 1
-#endif
 
 /* Define to 1 if you have the <netinet/tcp.h> header file. */
-/* #define HAVE_NETINET_TCP_H 1 */
+#define HAVE_NETINET_TCP_H 1
+#endif
+
 
 /* Define to 1 if you have the <poll.h> header file. */
 /* #define HAVE_POLL_H 1 */

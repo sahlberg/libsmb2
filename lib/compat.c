@@ -49,7 +49,9 @@
 #include <string.h>
 #include <fcntl.h>
 #include <sys/time.h>
-
+#ifndef PS2IPS
+#include <ps2ip.h>
+#endif
 #endif /* PS2_EE_PLATFORM */
 
 #ifdef PS2_IOP_PLATFORM
