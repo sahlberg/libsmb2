@@ -70,9 +70,10 @@ struct MinList __filelist = { (struct MinNode *) &__filelist.mlh_Tail, NULL, (st
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
-
 #include <sys/time.h>
-
+#ifndef PS2IPS
+#include <ps2ip.h>
+#endif
 #endif /* PS2_EE_PLATFORM */
 
 #ifdef PS2_IOP_PLATFORM
@@ -400,11 +401,21 @@ int poll(struct pollfd *fds, unsigned int nfds, int timo)
         } 
 
         if(timo < 0) {
-                toptr = 0;
+                toptr = NULL;
         } else {
+#if defined(PS2_EE_PLATFORM) && defined(PS2IPS)                
+                /*
+                 * select() is broken on the ps2ips stack so we basically have
+                 * to busy-wait.
+                 */
+                (void)timeout;
+                timeout.tv_sec = 0;
+                timeout.tv_usec = 10000;        
+#else
                 toptr = &timeout;
                 timeout.tv_sec = timo / 1000;
                 timeout.tv_usec = (timo - timeout.tv_sec * 1000) * 1000;
+#endif        
         }
 
         rc = select(maxfd + 1, ip, op, &efds, toptr);
