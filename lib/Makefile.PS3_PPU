@@ -37,7 +37,7 @@ INCLUDE		:=	../include ../include/ps3 ../include/smb2
 DATA		:=	data
 LIBS		:=	
 
-MACHDEP		:= -DPS3_PPU_PLATFORM -DHAVE_CONFIG_H -DNEED_READV -DNEED_WRITEV -D_U_=/**/
+MACHDEP		:= -DPS3_PPU_PLATFORM -DHAVE_CONFIG_H -DNEED_READV -DNEED_WRITEV -DNEED_GETADDRINFO -DNEED_FREEADDRINFO -D_U_=/**/
 
 CFLAGS		+= -O2 -Wall -mcpu=cell $(MACHDEP) -fno-strict-aliasing $(INCLUDES)
 

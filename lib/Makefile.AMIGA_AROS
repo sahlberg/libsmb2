@@ -9,7 +9,7 @@ OPTIMIZE = -O2 -fno-common -fomit-frame-pointer
 DEBUG    = -g
 WARNINGS = -Wall -Werror
 INCLUDES = -I. -I../include -I../include/smb2 -I../include/amiga_os
-DEFINES  = -DHAVE_CONFIG_H "-D_U_=__attribute__((unused))" -DUSE_PASSWORD
+DEFINES  = -DHAVE_CONFIG_H "-D_U_=__attribute__((unused))" -DUSE_PASSWORD -DNEED_POLL
 
 ifeq (x86_64,$(CPU))
 	# Fixes duplicate member th_off/th_x2 errors in <netinet/tcp.h>
