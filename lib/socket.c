@@ -1068,7 +1068,7 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
                         return -EAGAIN;
                     case EAI_NONAME:
 #ifdef EAI_NODATA
-#if EAI_NODATA != EAI_NONAME /* Equal in MSCV */
+#if EAI_NODATA != EAI_NONAME /* Equal in MSVC */
                     case EAI_NODATA:
 #endif
 #endif
