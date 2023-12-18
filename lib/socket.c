@@ -925,11 +925,15 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_o
 #ifdef _XBOX		
 		if(setsockopt(fd, SOL_SOCKET, 0x5801, (PCSTR)&bBroadcast, sizeof(BOOL) ) != 0 )
 		{
-			//return 0;
+#if 0			
+			return 0;
+#endif
 		}
 		if(setsockopt(fd, SOL_SOCKET, 0x5802, (PCSTR)&bBroadcast, sizeof(BOOL)) != 0)
 		{
-			//return 0;
+#if 0 			
+			return 0;
+#endif
 		}
 #endif
 
