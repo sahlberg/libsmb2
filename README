@@ -209,16 +209,25 @@ point and adjusted as needed for your applications.
 The only define needed for libsmb2 on the RP2040, other than the RP2040
 defines such as PICO_BOARD=pico_w, is PICO_PLATFORM.
 
-Playstation2
+Playstation 2
 ------------
 EE, Emotion-Engine, is the main CPU for the PS2.
 To compile libsmb2 for the PS2 EE, first install the PS2 toolchain and
 PS2 SDK and set it up.
 
-To build libsmb2.a, a version of libsmb2 for the EE tcpip stack:
+To build libsmb2_ip.a, a version of libsmb2 for the EE tcpip stack:
   $ cd lib
   $ make -f Makefile.PS2_EE clean
   $ make -f Makefile.PS2_EE install
+
+EE Using IOP Stack, It´s a different of EE
+version for when the LWIP stack is running on the IOP (libsmb2_ips and linking
+with -lps2ips)
+
+To build libsmb2_ips.a, a version of libsmb2 for the IOP tcpip stack:
+  $ cd lib
+  $ make -f Makefile.PS2_EE_IPS clean
+  $ make -f Makefile.PS2_EE_IPS install
 
 IOP, IO-Processor is the secondary CPU for the PS2.
 To compile libsmb2 for the PS2 IOP, first install the PS2 toolchain and

@@ -133,7 +133,9 @@ smb2_close_connecting_fds(struct smb2_context *smb2)
         smb2->connecting_fds_count = 0;
 
         if (smb2->addrinfos != NULL) {
+#ifndef PS2IPS
                 freeaddrinfo(smb2->addrinfos);
+#endif
                 smb2->addrinfos = NULL;
         }
         smb2->next_addrinfo = NULL;
@@ -846,7 +848,7 @@ smb2_service(struct smb2_context *smb2, int revents)
 static void
 set_nonblocking(t_socket fd)
 {
-#if defined(WIN32)
+#if defined(WIN32) || defined(PS2_EE_PLATFORM) && defined(PS2IPS)
         unsigned long opt = 1;
         ioctlsocket(fd, FIONBIO, &opt);
 #else
@@ -1054,9 +1056,13 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
                 port = "445";
         }
 
+#ifdef PS2IPS
+        {
+#else
         /* is it a hostname ? */
         err = getaddrinfo(host, port, NULL, &smb2->addrinfos);
         if (err != 0) {
+#endif
                 free(addr);
 #ifdef _WINDOWS
                 if (err == WSANOTINITIALISED)
@@ -1076,7 +1082,7 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
                         return -EAGAIN;
                     case EAI_NONAME:
 #ifdef EAI_NODATA
-#if EAI_NODATA != EAI_NONAME /* Equal in MSCV */
+#if EAI_NODATA != EAI_NONAME /* Equal in MSVC */
                     case EAI_NODATA:
 #endif
 #endif
@@ -1105,7 +1111,9 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
                 addr_count++;
         smb2->connecting_fds = malloc(sizeof(t_socket) * addr_count);
         if (smb2->connecting_fds == NULL) {
+#ifndef PS2IPS
                 freeaddrinfo(smb2->addrinfos);
+#endif
                 smb2->addrinfos = NULL;
                 return -ENOMEM;
         }
@@ -1118,8 +1126,9 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
         } else {
                 free(smb2->connecting_fds);
                 smb2->connecting_fds = NULL;
-
+#ifndef PS2IPS
                 freeaddrinfo(smb2->addrinfos);
+#endif
                 smb2->addrinfos = NULL;
                 smb2->next_addrinfo = NULL;
         }
