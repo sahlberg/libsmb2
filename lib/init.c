@@ -67,9 +67,6 @@
 #include "compat.h"
 
 #ifdef _MSC_VER
-#ifdef _XBOX
-#include <process.h>
-#endif
 #include <errno.h>
 #define getlogin_r(a,b) ENXIO
 #define srandom srand
