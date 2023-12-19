@@ -6,13 +6,7 @@ extern "C" {
 #endif
 
 #ifdef _XBOX
-#ifdef XBOX_360_PLATFORM
-#include <stdint.h>
-#define inline __inline
-#else
 #include "..\..\..\lib\compat.h"
-#endif
-#include <errno.h>
 #else
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN

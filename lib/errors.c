@@ -1122,10 +1122,8 @@ int nterror_to_errno(uint32_t status) {
         case SMB2_STATUS_NOT_SUPPORTED:
         case SMB2_STATUS_NOT_A_REPARSE_POINT:
                 return EINVAL;
-#ifndef XBOX_PLATFORM
         case SMB2_STATUS_STOPPED_ON_SYMLINK:
                 return ENOLINK;
-#endif
 		case SMB2_STATUS_TOO_MANY_OPENED_FILES:
                 return EMFILE;
         case SMB2_STATUS_SECTION_TOO_BIG:
@@ -1134,10 +1132,8 @@ int nterror_to_errno(uint32_t status) {
                 return ENOMEM;
         case SMB2_STATUS_NOT_SAME_DEVICE:
                 return EXDEV;
-#ifndef XBOX_PLATFORM
         case SMB2_STATUS_SHARING_VIOLATION:
                 return ETXTBSY;
-#endif
 		case SMB2_STATUS_FILE_LOCK_CONFLICT:
         case SMB2_STATUS_LOCK_NOT_GRANTED:
                 return EDEADLK;

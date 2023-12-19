@@ -85,10 +85,6 @@ struct smb2dirent {
 
 #if defined(_WINDOWS) || defined(_XBOX)
 typedef SOCKET t_socket;
-#elif defined(_XBOX)
-#include <xtl.h> 
-#include <winsockx.h>
-typedef SOCKET t_socket;
 #else
 typedef int t_socket;
 #endif

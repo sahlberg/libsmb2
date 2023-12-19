@@ -71,7 +71,9 @@
 #define getlogin_r(a,b) ENXIO
 #define srandom srand
 #define random rand
+#ifndef _XBOX
 #define getpid GetCurrentProcessId
+#endif
 #endif /* _MSC_VER */
 
 #ifdef ESP_PLATFORM
@@ -280,11 +282,11 @@ struct smb2_context *smb2_init_context(void)
         int i, ret;
         static int ctr;
 #ifdef _XBOX
-        srandom(time(NULL) ^ 1 ^ ctr++);
+        srandom(time(NULL) ^ ctr++);
 #else
         srandom(time(NULL) ^ getpid() ^ ctr++);
 #endif
-        smb2 = calloc(1, sizeof(struct smb2_context));
+		smb2 = calloc(1, sizeof(struct smb2_context));
         if (smb2 == NULL) {
                 return NULL;
         }
@@ -418,7 +420,7 @@ static void smb2_set_error_string(struct smb2_context *smb2, const char * error_
 #ifdef _XBOX
         if (_vsnprintf(errstr, MAX_ERROR_SIZE, error_string, args) < 0) {
 #else
-		if (vsnprintf(errstr, MAX_ERROR_SIZE, error_string, args) < 0) {
+	if (vsnprintf(errstr, MAX_ERROR_SIZE, error_string, args) < 0) {
 #endif
 			strncpy(errstr, "could not format error string!",
                         MAX_ERROR_SIZE);

@@ -262,11 +262,7 @@ smb2_write_to_socket(struct smb2_context *smb2)
 
                 count = writev(smb2->fd, tmpiov, niov);
                 if (count == -1) {
-#ifdef XBOX_PLATFORM
-                        if (errno == EAGAIN) {
-#else
 						if (errno == EAGAIN || errno == EWOULDBLOCK) {
-#endif
 							return 0;
                         }
                         smb2_set_error(smb2, "Error when writing to "
@@ -856,11 +852,7 @@ set_tcp_sockopt(t_socket sockfd, int optname, int value)
         int level;
 #if !defined(SOL_TCP)
         struct protoent *buf;
-#ifdef XBOX_PLATFORM
-        if ((buf = sckemu_getprotobyname("tcp")) != NULL) {
-#else
         if ((buf = getprotobyname("tcp")) != NULL) {
-#endif
 			level = buf->p_proto;
         } else {
                 return -1;
@@ -895,7 +887,7 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_o
                 ((struct sockaddr_in *)&ss)->sin_len = socksize;
 #endif
                 break;
-#ifdef ENABLE_IPV6
+#ifndef _XBOX
         case AF_INET6:
 #if !defined(PICO_PLATFORM) || defined(LWIP_INETV6)
                 socksize = sizeof(struct sockaddr_in6);
@@ -1081,13 +1073,8 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
 #if defined(_WINDOWS) || defined(_XBOX)
                 if (err == WSANOTINITIALISED)
                 {
-#ifdef _XBOX
-  					smb2_set_error(smb2, "Winsockx was not initialized. "
-                                "Please call WSAStartup().");                      
-#else
 					smb2_set_error(smb2, "Winsock was not initialized. "
                                 "Please call WSAStartup().");
-#endif
 						return -WSANOTINITIALISED; 
                 }
                 else

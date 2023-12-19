@@ -42,8 +42,7 @@ typedef unsigned int uintptr_t;
 #else
 #include <stdint.h> /* XBOX 360 */
 #endif
-
-#include "xbox/xb_emu_socket.h"
+#include <errno.h>
 
 #ifndef ENETRESET
 #define ENETRESET WSAENETRESET
@@ -65,8 +64,66 @@ typedef unsigned int uintptr_t;
 #define ENODATA WSANO_DATA
 #endif
 
+#ifndef ETXTBSY 
+#define ETXTBSY         139
+#endif
+
+#ifndef ENOLINK
+#define ENOLINK         121
+#endif
+
+#ifndef EWOULDBLOCK 
+#define EWOULDBLOCK     WSAEWOULDBLOCK
+#endif
+
 #define snprintf _snprintf
-#define _U_ 
+
+#define EAI_AGAIN EAGAIN
+#define EAI_FAIL        4
+#define EAI_MEMORY      6
+#define EAI_NONAME      8
+#define EAI_SERVICE     9
+
+typedef int socklen_t;
+
+#ifndef POLLIN
+#define POLLIN      0x0001    /* There is data to read */
+#endif
+#ifndef POLLPRI
+#define POLLPRI     0x0002    /* There is urgent data to read */
+#endif
+#ifndef POLLOUT
+#define POLLOUT     0x0004    /* Writing now will not block */
+#endif
+#ifndef POLLERR
+#define POLLERR     0x0008    /* Error condition */
+#endif
+#ifndef POLLHUP
+#define POLLHUP     0x0010    /* Hung up */
+#endif
+
+#ifndef SO_ERROR
+#define SO_ERROR 0x1007
+#endif
+
+struct sockaddr_storage {
+#ifdef HAVE_SOCKADDR_SA_LEN
+	unsigned char ss_len;
+#endif /* HAVE_SOCKADDR_SA_LEN */
+	unsigned char ss_family;
+	unsigned char fill[127];
+};
+
+struct addrinfo {
+	int	ai_flags;	/* AI_PASSIVE, AI_CANONNAME */
+	int	ai_family;	/* PF_xxx */
+	int	ai_socktype;	/* SOCK_xxx */
+	int	ai_protocol;	/* 0 or IPPROTO_xxx for IPv4 and IPv6 */
+	size_t	ai_addrlen;	/* length of ai_addr */
+	char	*ai_canonname;	/* canonical name for hostname */
+	struct sockaddr *ai_addr;	/* binary address */
+	struct addrinfo *ai_next;	/* next structure in linked list */
+};
 
 /* XBOX Defs end */
 struct pollfd {
@@ -80,6 +137,14 @@ struct pollfd {
 #define inline __inline 
 
 int poll(struct pollfd *fds, unsigned int nfds, int timo);
+
+int smb2_getaddrinfo(const char *node, const char*service,
+                const struct addrinfo *hints,
+                struct addrinfo **res);
+void smb2_freeaddrinfo(struct addrinfo *res);
+
+#define getaddrinfo smb2_getaddrinfo
+#define freeaddrinfo smb2_freeaddrinfo
 
 /* just pretend they are the same so we compile */
 #define sockaddr_in6 sockaddr_in

@@ -26,9 +26,6 @@
     <Filter Include="include\msvc\sys">
       <UniqueIdentifier>{afbefc44-9daf-45e5-aacd-fe33021175a2}</UniqueIdentifier>
     </Filter>
-    <Filter Include="lib\xbox">
-      <UniqueIdentifier>{2ee310d9-8aad-4af1-9726-53f9518d0978}</UniqueIdentifier>
-    </Filter>
     <Filter Include="include\xbox 360">
       <UniqueIdentifier>{6c01c6cd-316c-4bff-82ea-f611e60057e9}</UniqueIdentifier>
     </Filter>
@@ -108,24 +105,6 @@
     </ClInclude>
     <ClInclude Include="..\include\msvc\sys\socket.h">
       <Filter>include\msvc\sys</Filter>
-    </ClInclude>
-    <ClInclude Include="..\lib\xbox\emu_socket.h">
-      <Filter>lib\xbox</Filter>
-    </ClInclude>
-    <ClInclude Include="..\lib\xbox\addrinfo.h">
-      <Filter>lib\xbox</Filter>
-    </ClInclude>
-    <ClInclude Include="..\lib\xbox\addrsize.h">
-      <Filter>lib\xbox</Filter>
-    </ClInclude>
-    <ClInclude Include="..\lib\xbox\bittypes.h">
-      <Filter>lib\xbox</Filter>
-    </ClInclude>
-    <ClInclude Include="..\lib\xbox\sockstorage.h">
-      <Filter>lib\xbox</Filter>
-    </ClInclude>
-    <ClInclude Include="..\lib\xbox\xb_emu_socket.h">
-      <Filter>lib\xbox</Filter>
     </ClInclude>
     <ClInclude Include="..\include\xbox 360\config.h">
       <Filter>include\xbox 360</Filter>
@@ -276,21 +255,5 @@
     <ClCompile Include="..\lib\usha.c">
       <Filter>lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\lib\xbox\inet_pton.c">
-      <Filter>lib\xbox</Filter>
-    </ClCompile>
-    <ClCompile Include="..\lib\xbox\getaddrinfo.c">
-      <Filter>lib\xbox</Filter>
-    </ClCompile>
-    <ClCompile Include="..\lib\xbox\getnameinfo.c">
-      <Filter>lib\xbox</Filter>
-    </ClCompile>
-    <ClCompile Include="..\lib\xbox\inet_aton.c">
-      <Filter>lib\xbox</Filter>
-    </ClCompile>
-    <ClCompile Include="..\lib\xbox\inet_ntop.c">
-      <Filter>lib\xbox</Filter>
-    </ClCompile>
-    <ClCompile Include="..\lib\xbox\emu_socket.cpp" />
   </ItemGroup>
 </Project>

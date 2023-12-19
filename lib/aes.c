@@ -463,9 +463,6 @@ void AES128_ECB_decrypt(uint8_t* input, const uint8_t* key, uint8_t *output)
   // Copy input to output, and work in-memory on output
   BlockCopy(output, input);
 
-  // Copy input to output, and work in-memory on output
-  BlockCopy(output, input);
-
   // The KeyExpansion routine must be called before encryption.
   KeyExpansion(key, roundKey);
 
