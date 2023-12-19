@@ -224,8 +224,9 @@ struct dcerpc_pdu {
 
         /* optional authentication verifier */
         /* following fields present iff auth_length != 0 */
-        /*auth_verifier_co_t   auth_verifier; */
-
+#if 0
+        auth_verifier_co_t   auth_verifier; 
+#endif
         struct dcerpc_context *dce;
         dcerpc_cb cb;
         void *cb_data;
