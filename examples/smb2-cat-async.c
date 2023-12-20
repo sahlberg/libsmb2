@@ -48,11 +48,7 @@ int usage(void)
         fprintf(stderr, "Usage:\n"
                 "smb2-cat-async <smb2-url>\n\n"
                 "URL format: "
-#ifdef USE_PASSWORD
-                "smb://[<domain;][<username>[:<password>]@]<host>[:<port>]/<share>/<path>\n");     
-#else
                 "smb://[<domain;][<username>@]<host>[:<port>]/<share>/<path>\n");
-#endif
         exit(1);
 }
 
@@ -153,11 +149,7 @@ int main(int argc, char *argv[])
         }
 
         smb2_set_security_mode(smb2, SMB2_NEGOTIATE_SIGNING_ENABLED);
-#ifdef USE_PASSWORD
-	if (smb2_connect_share_async(smb2, url->server, url->share, url->user, url->password,
-#else
 	if (smb2_connect_share_async(smb2, url->server, url->share, url->user,
-#endif
                                      cf_cb, (void *)url->path) != 0) {
 		printf("smb2_connect_share failed. %s\n", smb2_get_error(smb2));
 		exit(10);

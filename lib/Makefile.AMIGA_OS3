@@ -7,7 +7,7 @@ OPTIMIZE = -O2 -noixemul -fno-common -fomit-frame-pointer
 DEBUG    = -g
 WARNINGS = -Wall -Wno-pointer-sign -Wno-discarded-qualifiers -Werror
 INCLUDES = -I. -I../include -I../include/smb2 -I../include/amiga_os
-DEFINES  = -DHAVE_CONFIG_H "-D_U_=__attribute__((unused))" -DUSE_PASSWORD -DNEED_POLL -DNEED_GETADDRINFO -DNEED_FREEADDRINFO
+DEFINES  = -DHAVE_CONFIG_H "-D_U_=__attribute__((unused))" -DNEED_POLL -DNEED_GETADDRINFO -DNEED_FREEADDRINFO
 
 CFLAGS  = $(OPTIMIZE) $(DEBUG) $(WARNINGS) $(INCLUDES) $(DEFINES)
 

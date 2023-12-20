@@ -129,10 +129,7 @@ static void connect_cb(struct smb2_context *smb2, int status,
  */
 int smb2_connect_share(struct smb2_context *smb2,
                        const char *server,
-                       const char *share,
-#ifdef USE_PASSWORD		        
-                       const char *password,
-#endif                       
+                       const char *share,                      
                        const char *user)
 {
         struct sync_cb_data *cb_data;
@@ -143,11 +140,9 @@ int smb2_connect_share(struct smb2_context *smb2,
                 smb2_set_error(smb2, "Failed to allocate sync_cb_data");
                 return -ENOMEM;
         }
-#ifdef USE_PASSWORD
-	rc = smb2_connect_share_async(smb2, server, share, user, password, connect_cb, cb_data);
-#else
+
 	rc = smb2_connect_share_async(smb2, server, share, user, connect_cb, cb_data);
-#endif
+
         if (rc < 0) {
                 goto out;
 	}

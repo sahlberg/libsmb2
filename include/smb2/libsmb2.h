@@ -327,9 +327,6 @@ int smb2_connect_share_async(struct smb2_context *smb2,
                              const char *server,
                              const char *share,
                              const char *user,
-#ifdef USE_PASSWORD
-			     const char *password,
-#endif
                              smb2_command_cb cb, void *cb_data);
 
 /*
@@ -343,9 +340,6 @@ int smb2_connect_share_async(struct smb2_context *smb2,
 int smb2_connect_share(struct smb2_context *smb2,
                        const char *server,
                        const char *share,
-#ifdef USE_PASSWORD		       
-                       const char *password,
-#endif
                        const char *user);
 
 /*
@@ -384,9 +378,6 @@ int smb2_get_nterror(struct smb2_context *smb2);
 struct smb2_url {
         const char *domain;
         const char *user;
-#ifdef USE_PASSWORD
-        const char *password;
-#endif
         const char *server;
         const char *share;
         const char *path;

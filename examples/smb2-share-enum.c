@@ -44,11 +44,7 @@ int usage(void)
         fprintf(stderr, "Usage:\n"
                 "smb2-share-enum <smb2-url>\n\n"
                 "URL format: "
-#ifdef USE_PASSWORD
-                "smb://[<domain;][<username>[:<password>]@]<host>[:<port>]/\n");
-#else
                 "smb://[<domain;][<username>@]<host>[:<port>]/\n");
-#endif
         exit(1);
 }
 
@@ -122,11 +118,7 @@ int main(int argc, char *argv[])
 
         smb2_set_security_mode(smb2, SMB2_NEGOTIATE_SIGNING_ENABLED);
 
-#ifdef USE_PASSWORD
-        if (smb2_connect_share(smb2, url->server, "IPC$", NULL, NULL) < 0) {
-#else
         if (smb2_connect_share(smb2, url->server, "IPC$", NULL) < 0) {
-#endif
 		printf("Failed to connect to IPC$. %s\n",
                        smb2_get_error(smb2));
 		exit(10);
