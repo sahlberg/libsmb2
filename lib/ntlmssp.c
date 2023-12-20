@@ -264,7 +264,8 @@ static int
 NTOWFv2(const char *user, const char *password, const char *domain,
         unsigned char ntlmv2_hash[16])
 {
-        int64_t i, len;
+        int64_t i;
+        size_t len;
         char *userdomain;
         struct utf16 *utf16_userdomain = NULL;
         unsigned char ntlm_hash[16];
@@ -290,7 +291,7 @@ NTOWFv2(const char *user, const char *password, const char *domain,
         }
 
         strcpy(userdomain, user);
-        for (i = strlen(userdomain) - 1; i >=0; i--) {
+        for (i = strlen(userdomain) - 1; i >= 0; i--) {
                 if (islower((unsigned int) userdomain[i])) {
                         userdomain[i] = toupper((unsigned int) userdomain[i]);
                 }
@@ -548,7 +549,7 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
 
         if (!anonymous) {
                 /* append domain */
-                u32 = (uint32_t)htole32(auth_data->len);
+                u32 = (uint32_t)htole32(auth_data->len);    
                 memcpy(&auth_data->buf[32], &u32, 4);
                 if (utf16_domain) {
                         encoder(utf16_domain->val, utf16_domain->len * 2,

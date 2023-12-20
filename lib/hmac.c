@@ -103,7 +103,7 @@ hmacReset (HMACContext * ctx, enum SHAversion whichSha,
    * If key is longer than the hash blocksize,
    * reset it to key = HASH(key).
    */
-  if (key_len > blocksize)
+  if (key_len > (size_t)blocksize)
     {
       USHAContext tctx;
       int err = USHAReset (&tctx, whichSha) ||
@@ -127,7 +127,7 @@ hmacReset (HMACContext * ctx, enum SHAversion whichSha,
    */
 
   /* store key into the pads, XOR'd with ipad and opad values */
-  for (i = 0; i < key_len; i++)
+  for (i = 0; i < (int)key_len; i++)
     {
       k_ipad[i] = key[i] ^ 0x36;
       ctx->k_opad[i] = key[i] ^ 0x5c;

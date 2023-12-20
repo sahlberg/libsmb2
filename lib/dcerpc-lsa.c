@@ -101,7 +101,7 @@ lsa_RPC_SID_coder(struct dcerpc_context *dce,
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {
                 sid->SubAuthority = smb2_alloc_data(dcerpc_get_smb2_context(dce),
                                                     dcerpc_get_pdu_payload(pdu),
-                                                    count * sizeof(uint32_t));
+                                                    (size_t)count * sizeof(uint32_t));
                 if (sid->SubAuthority == NULL) {
                         return -1;
                 }
@@ -130,7 +130,7 @@ lsa_PRPC_SID_array_coder(struct dcerpc_context *dce,
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {
                 seb->SidInfo = smb2_alloc_data(dcerpc_get_smb2_context(dce),
                                                dcerpc_get_pdu_payload(pdu),
-                                               val * sizeof(PRPC_SID));
+                                               (size_t)val * sizeof(PRPC_SID));
                 if (seb->SidInfo == NULL) {
                         return -1;
                 }
@@ -254,7 +254,7 @@ TN_array_coder(struct dcerpc_context *dce,
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {
                 tn->Names = smb2_alloc_data(dcerpc_get_smb2_context(dce),
                                             dcerpc_get_pdu_payload(pdu),
-                                            count * sizeof(LSAPR_TRANSLATED_NAME_EX));
+                                            (size_t)count * sizeof(LSAPR_TRANSLATED_NAME_EX));
                 if (tn->Names == NULL) {
                         return -1;
                 }

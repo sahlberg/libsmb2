@@ -57,7 +57,7 @@ static inline void bxory(unsigned char *b, unsigned char *y, size_t num)
 {
         int i;
 
-        for(i = 0; i< num; i++) {
+        for(i = 0; i < (int)num; i++) {
                 b[i] = b[i] ^ y[i];
         }
 }

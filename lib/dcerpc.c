@@ -885,7 +885,7 @@ dcerpc_decode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         if (offset + actual * 2 > iov->len) {
                 return -1;
         }
-        tmp = utf16_to_utf8((uint16_t *)(&iov->buf[offset]), actual);
+        tmp = utf16_to_utf8((uint16_t *)(&iov->buf[offset]), (size_t)actual);
         offset += (int)actual * 2;
 
         str = smb2_alloc_data(ctx->smb2, pdu->payload, strlen(tmp) + 1);

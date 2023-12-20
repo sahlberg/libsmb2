@@ -148,9 +148,9 @@ void smb3_aes_cmac_128(uint8_t key[AES128_KEY_LEN],
                 memcpy(scratch, &msg[i*AES128_KEY_LEN], AES128_KEY_LEN);
                 aes_cmac_xor(scratch, sub_key1);
         } else {
-                memcpy(scratch, &msg[i*AES128_KEY_LEN], rem);
+                memcpy(scratch, &msg[i*AES128_KEY_LEN], (size_t)rem);
                 scratch[rem] = 0x80;
-                memset(&scratch[rem + 1], 0, AES128_KEY_LEN - (rem + 1));
+                memset(&scratch[rem + 1], 0, AES128_KEY_LEN - ((size_t)rem + 1));
                 aes_cmac_xor(scratch, sub_key2);
         }
 
@@ -174,7 +174,7 @@ smb2_calc_signature(struct smb2_context *smb2, uint8_t *signature,
                 /* combine the buffers into one */
                 uint8_t *msg = NULL;
 
-                for (i=0; i < niov; i++) {
+                for (i=0; (size_t)i < niov; i++) {
                         len += iov[i].len;
                 }
                 msg = (uint8_t *) malloc(len);
@@ -184,7 +184,7 @@ smb2_calc_signature(struct smb2_context *smb2, uint8_t *signature,
                         return -1;
                 }
 
-                for (i=0; i < niov; i++) {
+                for (i=0; (size_t)i < niov; i++) {
                         memcpy(msg + offset, iov[i].buf, iov[i].len);
                         offset += iov[i].len;
                 }
@@ -197,7 +197,7 @@ smb2_calc_signature(struct smb2_context *smb2, uint8_t *signature,
                 int i;
 
                 hmacReset(&ctx, SHA256, &smb2->signing_key[0], SMB2_KEY_SIZE);
-                for (i=0; i < niov; i++) {
+                for (i=0; (size_t)i < niov; i++) {
                         hmacInput(&ctx, iov[i].buf, iov[i].len);
                 }
                 hmacResult(&ctx, digest);

@@ -229,7 +229,7 @@ smb2_parse_negotiate_contexts(struct smb2_context *smb2,
                         return -1;
                 }
                 offset += len;
-                if (offset > iov->len) {
+                if (offset > (int)iov->len) {
                         smb2_set_error(smb2, "Bad len in negotiate context\n");
                         return -1;
                 }
@@ -328,7 +328,7 @@ smb2_process_negotiate_variable(struct smb2_context *smb2,
         offset = rep->negotiate_context_offset - SMB2_HEADER_SIZE -
                 (SMB2_NEGOTIATE_REPLY_SIZE & 0xfffe);
 
-        if (offset < 0 || offset > iov->len) {
+        if (offset < 0 || offset > (int)iov->len) {
                 return -1;
         }
 

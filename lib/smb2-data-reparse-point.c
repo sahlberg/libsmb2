@@ -61,7 +61,7 @@ smb2_decode_reparse_data_buffer(struct smb2_context *smb2,
         smb2_get_uint32(vec, 0, &rp->reparse_tag);
         smb2_get_uint16(vec, 4, &rp->reparse_data_length);
 
-        if (vec->len < rp->reparse_data_length + 8) {
+        if ((uint16_t)vec->len < rp->reparse_data_length + 8) {
                 return -1;
         }
         switch (rp->reparse_tag) {
