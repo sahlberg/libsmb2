@@ -118,11 +118,12 @@ static const char SmbSign[] = "SmbSign";
 static const char SMB2AESCCM[] = "SMB2AESCCM";
 static const char ServerOut[] = "ServerOut";
 static const char ServerIn[] = "ServerIn ";
-/* The following strings will be used for deriving other keys
+/* The following strings will be used for deriving other keys */
+#if 0
 static const char SMB2APP[] = "SMB2APP";
 static const char SmbRpc[] = "SmbRpc";
 static const char SMBAppKey[] = "SMBAppKey";
-*/
+#endif
 
 #ifndef O_ACCMODE
 #define O_ACCMODE (O_RDWR|O_WRONLY|O_RDONLY)
