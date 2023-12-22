@@ -234,4 +234,16 @@ struct sockaddr_storage {
 
 #endif
 
+#ifdef __SWITCH__
+
+#include <errno.h>
+#define getlogin_r(a,b) ENXIO
+
+#include <sys/types.h>
+#include <sys/_iovec.h>
+ssize_t writev(int fd, const struct iovec *iov, int iovcnt);
+ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
+
+#endif
+
 #endif /* _COMPAT_H_ */
