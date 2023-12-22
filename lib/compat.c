@@ -197,57 +197,9 @@ ifree (char **ptrp)
    are taken from VECTOR instead of a contiguous buffer.  */
 ssize_t
 __writev (int fd, const struct iovec *vector, int count)
-{
-  /* Find the total number of bytes to be written.  */
-  size_t bytes = 0;
-  for (int i = 0; i < count; ++i)
-    {
-      /* Check for ssize_t overflow.  */
-      if (SSIZE_MAX - bytes < vector[i].iov_len)
-        {
-          __set_errno (EINVAL);
-          return -1;
-        }
-      bytes += vector[i].iov_len;
-    }
-
-  /* Allocate a temporary buffer to hold the data.  We should normally
-     use alloca since it's faster and does not require synchronization
-     with other threads.  But we cannot if the amount of memory
-     required is too large.  */
-  char *buffer;
-  char *malloced_buffer __attribute__ ((__cleanup__ (ifree))) = NULL;
-  if (__libc_use_alloca (bytes))
-    buffer = (char *) __alloca (bytes);
-  else
-    {
-      malloced_buffer = buffer = (char *) malloc (bytes);
-      if (buffer == NULL)
-        /* XXX I don't know whether it is acceptable to try writing
-           the data in chunks.  Probably not so we just fail here.  */
-        return -1;
-    }
-
-  /* Copy the data into BUFFER.  */
-  size_t to_copy = bytes;
-  char *bp = buffer;
-  for (int i = 0; i < count; ++i)
-    {
-      size_t copy = MIN (vector[i].iov_len, to_copy);
-
-      bp = __mempcpy ((void *) bp, (void *) vector[i].iov_base, copy);
-
-      to_copy -= copy;
-      if (to_copy == 0)
-        break;
-    }
-
-  ssize_t bytes_written = __write (fd, buffer, bytes);
-
-  return bytes_written;
-}
 #else
 ssize_t writev(int fd, const struct iovec *vector, int count)
+#endif
 {
         /* Find the total number of bytes to be written.  */
         size_t bytes = 0;
@@ -256,7 +208,34 @@ ssize_t writev(int fd, const struct iovec *vector, int count)
         size_t to_copy;
         char *bp;
 		ssize_t bytes_written;
+#ifdef __SWITCH__
+		char *malloced_buffer __attribute__ ((__cleanup__ (ifree))) = NULL;
+		for (i = 0; i < count; ++i)
+		{
+			/* Check for ssize_t overflow.  */
+			if (SSIZE_MAX - bytes < vector[i].iov_len)
+			{
+				__set_errno (EINVAL);
+				return -1;
+			}
+			bytes += vector[i].iov_len;
+		}
 
+		/* Allocate a temporary buffer to hold the data.  We should normally
+		   use alloca since it's faster and does not require synchronization
+		   with other threads.  But we cannot if the amount of memory
+		   required is too large.  */
+		if (__libc_use_alloca (bytes))
+			buffer = (char *) __alloca (bytes);
+		else
+		{
+			malloced_buffer = buffer = (char *) malloc (bytes);
+			if (buffer == NULL)
+				/* XXX I don't know whether it is acceptable to try writing
+				the data in chunks.  Probably not so we just fail here.  */
+			return -1;
+		}
+#else
         for (i = 0; i < count; ++i) {
                 /* Check for ssize_t overflow.  */
                 if (((ssize_t)-1) - bytes < vector[i].iov_len) {
@@ -271,27 +250,31 @@ ssize_t writev(int fd, const struct iovec *vector, int count)
                 /* XXX I don't know whether it is acceptable to try writing
                 the data in chunks.  Probably not so we just fail here.  */
                 return -1;
-
+#endif
         /* Copy the data into BUFFER.  */
         to_copy = bytes;
         bp = buffer;
         for (i = 0; i < count; ++i) {
+#ifdef __SWITCH__
+				size_t copy = MIN (vector[i].iov_len, to_copy);
+
+				bp = __mempcpy ((void *) bp, (void *) vector[i].iov_base, copy);
+#else
                 size_t copy = (vector[i].iov_len < to_copy) ? vector[i].iov_len : to_copy;
 
                 memcpy((void *)bp, (void *)vector[i].iov_base, copy);
+                
+				bp += copy;
+#endif
 
-                bp += copy;
                 to_copy -= copy;
                 if (to_copy == 0)
                         break;
         }
-
         bytes_written = write(fd, buffer, bytes);
-
         free(buffer);
         return bytes_written;
 }
-#endif
 #endif
 
 #ifdef NEED_READV
@@ -303,58 +286,9 @@ ssize_t writev(int fd, const struct iovec *vector, int count)
    put in VECTOR instead of a contiguous buffer.  */
 ssize_t
 __readv (int fd, const struct iovec *vector, int count)
-{
-  /* Find the total number of bytes to be read.  */
-  size_t bytes = 0;
-  for (int i = 0; i < count; ++i)
-    {
-      /* Check for ssize_t overflow.  */
-      if (SSIZE_MAX - bytes < vector[i].iov_len)
-        {
-          __set_errno (EINVAL);
-          return -1;
-        }
-      bytes += vector[i].iov_len;
-    }
-
-  /* Allocate a temporary buffer to hold the data.  We should normally
-     use alloca since it's faster and does not require synchronization
-     with other threads.  But we cannot if the amount of memory
-     required is too large.  */
-  char *buffer;
-  char *malloced_buffer __attribute__ ((__cleanup__ (ifree))) = NULL;
-  if (__libc_use_alloca (bytes))
-    buffer = (char *) __alloca (bytes);
-  else
-    {
-      malloced_buffer = buffer = (char *) malloc (bytes);
-      if (buffer == NULL)
-        return -1;
-    }
-
-  /* Read the data.  */
-  ssize_t bytes_read = __read (fd, buffer, bytes);
-  if (bytes_read < 0)
-    return -1;
-
-  /* Copy the data from BUFFER into the memory specified by VECTOR.  */
-  bytes = bytes_read;
-  for (int i = 0; i < count; ++i)
-    {
-      size_t copy = MIN (vector[i].iov_len, bytes);
-
-      (void) memcpy ((void *) vector[i].iov_base, (void *) buffer, copy);
-
-      buffer += copy;
-      bytes -= copy;
-      if (bytes == 0)
-        break;
-    }
-
-  return bytes_read;
-}
 #else
 ssize_t readv (int fd, const struct iovec *vector, int count)
+#endif
 {
         /* Find the total number of bytes to be read.  */
         size_t bytes = 0;
@@ -362,7 +296,30 @@ ssize_t readv (int fd, const struct iovec *vector, int count)
         char *buffer;
         ssize_t bytes_read;
         char *bp;
-
+#ifdef __SWITCH
+		char *malloced_buffer __attribute__ ((__cleanup__ (ifree))) = NULL;
+		for (i = 0; i < count; ++i)
+		{
+				/* Check for ssize_t overflow.  */
+				if (SSIZE_MAX - bytes < vector[i].iov_len) {
+					__set_errno (EINVAL);
+					return -1;
+				}		
+				bytes += vector[i].iov_len;
+        }
+		/*  Allocate a temporary buffer to hold the data.  We should normally
+			use alloca since it's faster and does not require synchronization
+			with other threads.  But we cannot if the amount of memory
+			required is too large.  */
+		if (__libc_use_alloca (bytes))
+			buffer = (char *) __alloca (bytes);
+		else
+		{
+			malloced_buffer = buffer = (char *) malloc (bytes);
+			if (buffer == NULL)
+			return -1;
+		}
+#else
         for (i = 0; i < count; ++i)
         {
                 /* Check for ssize_t overflow.  */
@@ -372,13 +329,17 @@ ssize_t readv (int fd, const struct iovec *vector, int count)
                 }
                 bytes += vector[i].iov_len;
         }
-
         buffer = (char *)malloc(bytes);
         if (buffer == NULL)
                 return -1;
+#endif
 
         /* Read the data.  */
+#ifdef __SWITCH__
         bytes_read = read(fd, buffer, bytes);
+#else
+        bytes_read = __read(fd, buffer, bytes);
+#endif
         if (bytes_read < 0) {
                 free(buffer);
                 return -1;
@@ -386,22 +347,26 @@ ssize_t readv (int fd, const struct iovec *vector, int count)
 
         /* Copy the data from BUFFER into the memory specified by VECTOR.  */
         bytes = bytes_read;
-        bp = buffer;
-        for (i = 0; i < count; ++i) {
-                size_t copy = (vector[i].iov_len < bytes) ? vector[i].iov_len : bytes;
+		bp = buffer;
+		for (i = 0; i < count; ++i) {
+#ifdef __SWITCH__
+			size_t copy = MIN (vector[i].iov_len, bytes);
 
-                memcpy((void *)vector[i].iov_base, (void *)bp, copy);
+			(void) memcpy ((void *) vector[i].iov_base, (void *) buffer, copy);
+#else
+            size_t copy = (vector[i].iov_len < bytes) ? vector[i].iov_len : bytes;
 
-                bp += copy;
-                bytes -= copy;
-                if (bytes == 0)
-                        break;
-        }
+            memcpy((void *)vector[i].iov_base, (void *)bp, copy);	
+#endif
+			bp += copy;
+			bytes -= copy;
+			if (bytes == 0)
+				break;
+		}
 
         free(buffer);
         return bytes_read;
 }
-#endif
 #endif
 
 #ifdef NEED_POLL
