@@ -9,6 +9,9 @@
 /* Define to 1 if you have the <fcntl.h> header file. */
 #cmakedefine HAVE_FCNTL_H
 
+/* Define to 1 if you have the <sys/fcntl.h> header file. */
+#cmakedefine HAVE_SYS_FCNTL_H
+
 /* Define to 1 if you have the <gssapi/gssapi.h> header file. */
 #cmakedefine HAVE_GSSAPI_GSSAPI_H
 
@@ -69,8 +72,14 @@
 /* Define to 1 if you have the <time.h> header file. */
 #cmakedefine HAVE_TIME_H
 
+/* Define to 1 if you have the <sys/time.h> header file. */
+#cmakedefine HAVE_SYS_TIME_H
+
 /* Define to 1 if you have the <unistd.h> header file. */
 #cmakedefine HAVE_UNISTD_H
+
+/* Define to 1 if you have the <sys/unistd.h> header file. */
+#cmakedefine HAVE_SYS_UNISTD_H
 
 /* Define to 1 if all of the C90 standard headers exist (not just the ones
    required in a freestanding environment). This macro is provided for

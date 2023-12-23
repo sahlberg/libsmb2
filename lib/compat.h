@@ -100,9 +100,6 @@ ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
 
 #include <alloc.h>
 #include <errno.h>
-#include <types.h>
-#include <sys/time.h>
-#include <sys/fcntl.h>
 #include <stdint.h>
 #include <ps2ip.h>
 #include <loadcore.h>
