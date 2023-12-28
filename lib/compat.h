@@ -33,14 +33,6 @@ long long int be64toh(long long int x);
 #ifdef PS2_EE_PLATFORM
 
 #include <errno.h>
-#ifdef PS2IPS
-#include <ps2ips.h>
-#if 0
-#define close(a) disconnect(a)
-#define write(a,b,c) send(a,b,c,0)
-#define read(a,b,c) recv(a,b,c,MSG_DONTWAIT)
-#endif
-#endif
 #include <unistd.h>
 
 #define getlogin_r(a,b) ENXIO
@@ -100,9 +92,6 @@ ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
 
 #include <alloc.h>
 #include <errno.h>
-#include <types.h>
-#include <sys/time.h>
-#include <sys/fcntl.h>
 #include <stdint.h>
 #include <ps2ip.h>
 #include <loadcore.h>
@@ -177,7 +166,6 @@ ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
 
 #include <errno.h>
 #include <sys/time.h>
-#include <netinet/in.h>
 #include <netdb.h>
 #include <net/poll.h>
 

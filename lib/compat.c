@@ -49,13 +49,19 @@
 #include <string.h>
 #include <fcntl.h>
 #include <sys/time.h>
-#ifndef PS2IPS
+#ifdef PS2IPS
+#include <ps2ips.h>
+#else
 #include <ps2ip.h>
 #endif
 #endif /* PS2_EE_PLATFORM */
 
 #ifdef PS2_IOP_PLATFORM
 #include <sysclib.h>
+#include <thbase.h>
+#include <stdio.h>
+#include <stdarg.h>
+
 
 static unsigned long int next = 1; 
 
@@ -70,7 +76,7 @@ void srandom(unsigned int seed)
     next = seed; 
 }
 
-#include <thbase.h>
+
 time_t time(time_t *tloc)
 {
         u32 sec, usec;
@@ -82,8 +88,7 @@ time_t time(time_t *tloc)
         return sec;
 }
 
-#include <stdio.h>
-#include <stdarg.h>
+
 int asprintf(char **strp, const char *fmt, ...)
 {
         int len;
@@ -121,6 +126,8 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
 #ifdef PS3_PPU_PLATFORM
 
 #include <stdlib.h>
+#include <string.h>
+#include <netinet/in.h>
 
 int smb2_getaddrinfo(const char *node, const char*service,
                 const struct addrinfo *hints,
