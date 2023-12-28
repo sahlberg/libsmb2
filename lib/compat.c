@@ -58,7 +58,7 @@
 
 #ifdef PS2_IOP_PLATFORM
 #include <sysclib.h>
-#include <thbase.h> /* time_t time(time_t *tLoc) */
+#include <thbase.h>
 #include <stdio.h>
 #include <stdarg.h>
 
