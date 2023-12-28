@@ -45,11 +45,19 @@
 #include <unistd.h>
 #endif
 
+#ifdef HAVE_SYS_UNISTD_H
+#include <sys/unistd.h>
+#endif
+
 #include <stdarg.h>
 #include <stdio.h>
 
 #ifdef HAVE_TIME_H
 #include <time.h>
+#endif
+
+#ifdef HAVE_SYS_TIME_H
+#include <sys/time.h>
 #endif
 
 #ifdef HAVE_SYS_SOCKET_H
