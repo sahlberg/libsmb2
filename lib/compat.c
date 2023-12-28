@@ -126,6 +126,8 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
 #ifdef PS3_PPU_PLATFORM
 
 #include <stdlib.h>
+#include <string.h>
+#include <netinet/in.h>
 
 int smb2_getaddrinfo(const char *node, const char*service,
                 const struct addrinfo *hints,

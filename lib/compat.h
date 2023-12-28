@@ -166,7 +166,6 @@ ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
 
 #include <errno.h>
 #include <sys/time.h>
-#include <netinet/in.h>
 #include <netdb.h>
 #include <net/poll.h>
 
