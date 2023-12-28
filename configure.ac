@@ -96,6 +96,9 @@ AC_CHECK_HEADERS([sys/poll.h])
 dnl  Check for unistd.h
 AC_CHECK_HEADERS([unistd.h])
 
+dnl  Check for sys/unistd.h
+AC_CHECK_HEADERS([sys/unistd.h])
+
 dnl  Check for netdb.h
 AC_CHECK_HEADERS([netdb.h])
 
@@ -120,11 +123,17 @@ AC_CHECK_HEADERS([arpa/inet.h])
 dnl  Check for time.h
 AC_CHECK_HEADERS([time.h])
 
+dnl  Check for sys/time.h
+AC_CHECK_HEADERS([sys/time.h])
+
 dnl  Check for strings.h
 AC_CHECK_HEADERS([strings.h])
 
 dnl  Check for fcntl.h
 AC_CHECK_HEADERS([fcntl.h])
+
+dnl  Check for sys/fcntl.h
+AC_CHECK_HEADERS([sys/fcntl.h])
 
 dnl  Check if sockaddr data struct includes a "sa_len"
 AC_CHECK_MEMBER([struct sockaddr.sa_len], [
