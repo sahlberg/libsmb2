@@ -1066,7 +1066,7 @@ int nterror_to_errno(uint32_t status) {
                 return EAGAIN;
         case SMB2_STATUS_ABORTED:
                 return ECONNRESET;
-		case SMB2_STATUS_NO_SUCH_FILE:
+        case SMB2_STATUS_NO_SUCH_FILE:
         case SMB2_STATUS_NO_SUCH_DEVICE:
         case SMB2_STATUS_BAD_NETWORK_NAME:
         case SMB2_STATUS_OBJECT_NAME_NOT_FOUND:
@@ -1107,24 +1107,22 @@ int nterror_to_errno(uint32_t status) {
         case SMB2_STATUS_CANNOT_DELETE:
         case SMB2_STATUS_FILE_DELETED:
                 return EPERM;
-		case SMB2_STATUS_NO_MORE_FILES:
+        case SMB2_STATUS_NO_MORE_FILES:
                 return ENODATA;
         case SMB2_STATUS_LOGON_FAILURE:
                 return ECONNREFUSED;
-		case SMB2_STATUS_NOT_A_DIRECTORY:
+        case SMB2_STATUS_NOT_A_DIRECTORY:
                 return ENOTDIR;
         case SMB2_STATUS_NOT_IMPLEMENTED:
         case SMB2_STATUS_INVALID_DEVICE_REQUEST:
-
         case SMB2_STATUS_ILLEGAL_FUNCTION:
-
-		case SMB2_STATUS_INVALID_PARAMETER:
+        case SMB2_STATUS_INVALID_PARAMETER:
         case SMB2_STATUS_NOT_SUPPORTED:
         case SMB2_STATUS_NOT_A_REPARSE_POINT:
                 return EINVAL;
         case SMB2_STATUS_STOPPED_ON_SYMLINK:
                 return ENOLINK;
-		case SMB2_STATUS_TOO_MANY_OPENED_FILES:
+        case SMB2_STATUS_TOO_MANY_OPENED_FILES:
                 return EMFILE;
         case SMB2_STATUS_SECTION_TOO_BIG:
         case SMB2_STATUS_TOO_MANY_PAGING_FILES:
@@ -1134,7 +1132,7 @@ int nterror_to_errno(uint32_t status) {
                 return EXDEV;
         case SMB2_STATUS_SHARING_VIOLATION:
                 return ETXTBSY;
-		case SMB2_STATUS_FILE_LOCK_CONFLICT:
+        case SMB2_STATUS_FILE_LOCK_CONFLICT:
         case SMB2_STATUS_LOCK_NOT_GRANTED:
                 return EDEADLK;
         case SMB2_STATUS_OBJECT_NAME_COLLISION:
@@ -1175,7 +1173,7 @@ int nterror_to_errno(uint32_t status) {
                 return ENOEXEC;
         case SMB2_STATUS_IO_TIMEOUT:
                 return ETIMEDOUT;
-		case SMB2_STATUS_INSUFFICIENT_RESOURCES:
+        case SMB2_STATUS_INSUFFICIENT_RESOURCES:
                 return EBUSY;
         case SMB2_STATUS_INTERNAL_ERROR:
                 /* Fall through. */

@@ -459,7 +459,7 @@ void AES128_ECB_decrypt(uint8_t* input, const uint8_t* key, uint8_t *output)
 {
   // The array that stores the round keys.
   uint8_t roundKey[176];
-	
+
   // Copy input to output, and work in-memory on output
   BlockCopy(output, input);
 

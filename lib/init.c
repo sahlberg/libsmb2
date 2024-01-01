@@ -294,7 +294,7 @@ struct smb2_context *smb2_init_context(void)
 #else
         srandom(time(NULL) ^ getpid() ^ ctr++);
 #endif
-		smb2 = calloc(1, sizeof(struct smb2_context));
+        smb2 = calloc(1, sizeof(struct smb2_context));
         if (smb2 == NULL) {
                 return NULL;
         }

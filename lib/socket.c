@@ -103,8 +103,6 @@
 #include "smb3-seal.h"
 #include "libsmb2-private.h"
 
-
-
 #define MAX_URL_SIZE 1024
 
 /* Timeout in ms between 2 consecutive socket connection.
@@ -270,8 +268,8 @@ smb2_write_to_socket(struct smb2_context *smb2)
 
                 count = writev(smb2->fd, tmpiov, niov);
                 if (count == -1) {
-						if (errno == EAGAIN || errno == EWOULDBLOCK) {
-							return 0;
+                        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                                return 0;
                         }
                         smb2_set_error(smb2, "Error when writing to "
                                        "socket :%d %s", errno,
@@ -861,7 +859,7 @@ set_tcp_sockopt(t_socket sockfd, int optname, int value)
 #if !defined(SOL_TCP)
         struct protoent *buf;
         if ((buf = getprotobyname("tcp")) != NULL) {
-			level = buf->p_proto;
+                level = buf->p_proto;
         } else {
                 return -1;
         }
@@ -884,7 +882,7 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_o
         struct LingerStruct const lin = { 1, 0 };   /*  if l_linger is zero, sends RST after FIN */
 #endif
 #ifdef _XBOX
-		BOOL bBroadcast = TRUE;
+        BOOL bBroadcast = TRUE;
 #endif
         memset(&ss, 0, sizeof(ss));
         switch (ai->ai_family) {
@@ -923,18 +921,18 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_o
         }
 
 #ifdef _XBOX		
-		if(setsockopt(fd, SOL_SOCKET, 0x5801, (PCSTR)&bBroadcast, sizeof(BOOL) ) != 0 )
-		{
+        if(setsockopt(fd, SOL_SOCKET, 0x5801, (PCSTR)&bBroadcast, sizeof(BOOL) ) != 0 )
+        {
 #if 0			
-			return 0;
+                return 0;
 #endif
-		}
-		if(setsockopt(fd, SOL_SOCKET, 0x5802, (PCSTR)&bBroadcast, sizeof(BOOL)) != 0)
-		{
+        }
+        if(setsockopt(fd, SOL_SOCKET, 0x5802, (PCSTR)&bBroadcast, sizeof(BOOL)) != 0)
+        {
 #if 0 			
-			return 0;
+                return 0;
 #endif
-		}
+        }
 #endif
 
         set_nonblocking(fd);
@@ -952,7 +950,7 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_o
 #endif
                 smb2_set_error(smb2, "Connect failed with errno : "
                         "%s(%d)", strerror(errno), errno);
-				close(fd);
+                close(fd);
                 return -EIO;
         }
 
@@ -1081,9 +1079,9 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
 #if defined(_WINDOWS) || defined(_XBOX)
                 if (err == WSANOTINITIALISED)
                 {
-					smb2_set_error(smb2, "Winsock was not initialized. "
+                        smb2_set_error(smb2, "Winsock was not initialized. "
                                 "Please call WSAStartup().");
-						return -WSANOTINITIALISED; 
+                        return -WSANOTINITIALISED; 
                 }
                 else
 #endif
