@@ -57,6 +57,10 @@
 #include <unistd.h>
 #endif
 
+#ifdef HAVE_SYS_UNISTD_H
+#include <sys/unistd.h>
+#endif
+
 #include <errno.h>
 #include <stdio.h>
 
@@ -64,8 +68,16 @@
 #include <time.h>
 #endif
 
+#ifdef HAVE_SYS_TIME_H
+#include <sys/time.h>
+#endif
+
 #ifdef HAVE_FCNTL_H
 #include <fcntl.h>
+#endif
+
+#ifdef HAVE_SYS_FCNTL_H
+#include <sys/fcntl.h>
 #endif
 
 #ifdef HAVE_SYS_SOCKET_H
