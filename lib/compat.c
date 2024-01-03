@@ -343,9 +343,9 @@ ssize_t readv (int fd, const struct iovec *vector, int count)
 
         /* Read the data.  */
 #ifdef __SWITCH__
-        bytes_read = read(fd, buffer, bytes);
-#else
         bytes_read = __read(fd, buffer, bytes);
+#else
+	bytes_read = read(fd, buffer, bytes);
 #endif
         if (bytes_read < 0) {
                 free(buffer);
