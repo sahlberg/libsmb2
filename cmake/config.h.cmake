@@ -81,6 +81,12 @@
 /* Define to 1 if you have the <sys/unistd.h> header file. */
 #cmakedefine HAVE_SYS_UNISTD_H
 
+/* Define to 1 if you have the <errno.h> header file. */
+#cmakedefine HAVE_ERRNO_H 
+
+/* Define to 1 if you have the <sys/errno.h> header file. */
+#cmakedefine HAVE_SYS_ERRNO_H
+
 /* Define to 1 if all of the C90 standard headers exist (not just the ones
    required in a freestanding environment). This macro is provided for
    backward compatibility; new code need not use it. */

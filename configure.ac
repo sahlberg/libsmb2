@@ -135,6 +135,12 @@ AC_CHECK_HEADERS([fcntl.h])
 dnl  Check for sys/fcntl.h
 AC_CHECK_HEADERS([sys/fcntl.h])
 
+dnl  Check for errno.h
+AC_CHECK_HEADERS([errno.h])
+
+dnl  Check for sys/errno.h
+AC_CHECK_HEADERS([sys/errno.h])
+
 dnl  Check if sockaddr data struct includes a "sa_len"
 AC_CHECK_MEMBER([struct sockaddr.sa_len], [
     AC_DEFINE([HAVE_SOCKADDR_LEN], [1], [Whether sockaddr struct has sa_len])
