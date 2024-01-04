@@ -1069,7 +1069,7 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
 #endif
                 {
                         smb2_set_error(smb2, "Invalid address:%s  "
-                                "Can not resolv into IPv4/v6.", server);
+                                "Can not resolve into IPv4/v6.", server);
                 }
                 switch (err) {
                     case EAI_AGAIN:
