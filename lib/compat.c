@@ -42,6 +42,42 @@
 
 #endif /* PICO_PLATFORM */
 
+#ifdef _XBOX
+
+int smb2_getaddrinfo(const char *node, const char*service,
+                const struct addrinfo *hints,
+                struct addrinfo **res)
+{
+        struct sockaddr_in *sin;
+
+        sin = malloc(sizeof(struct sockaddr_in));
+        sin->sin_family=AF_INET;
+
+        /* Some error checking would be nice */
+        sin->sin_addr.s_addr = inet_addr(node);
+
+        sin->sin_port=0;
+        if (service) {
+                sin->sin_port=htons(atoi(service));
+        } 
+
+        *res = malloc(sizeof(struct addrinfo));
+
+        (*res)->ai_family = AF_INET;
+        (*res)->ai_addrlen = sizeof(struct sockaddr_in);
+        (*res)->ai_addr = (struct sockaddr *)sin;
+
+        return 0;
+}
+
+void smb2_freeaddrinfo(struct addrinfo *res)
+{
+        free(res->ai_addr);
+        free(res);
+}
+
+#endif
+
 #ifdef PS2_EE_PLATFORM
 
 #include <stdio.h>
