@@ -12,13 +12,14 @@ if(NOT ESP_PLATFORM)
             lib/aes.c
             lib/aes128ccm.c
             lib/alloc.c
+			lib/compat.c
             lib/dcerpc.c
             lib/dcerpc-lsa.c
             lib/dcerpc-srvsvc.c
             lib/errors.c
-            lib/init.c
-            lib/hmac.c
+			lib/hmac.c
             lib/hmac-md5.c
+            lib/init.c
             lib/krb5-wrapper.c
             lib/libsmb2.c
             lib/md4c.c
@@ -56,7 +57,6 @@ if(NOT ESP_PLATFORM)
             lib/timestamps.c
             lib/unicode.c
             lib/usha.c
-            lib/compat.c
     )
 
     include_directories(libsmb2 STATIC
@@ -167,6 +167,7 @@ else() ##### ESP_PLATFORM
     lib/aes.c
     lib/aes128ccm.c
     lib/alloc.c
+	lib/compat.c
     lib/dcerpc.c
     lib/dcerpc-lsa.c
     lib/dcerpc-srvsvc.c
@@ -211,7 +212,6 @@ else() ##### ESP_PLATFORM
     lib/timestamps.c
     lib/unicode.c
     lib/usha.c
-    lib/compat.c
   )
 
   set(COMPONENT_NAME ".")

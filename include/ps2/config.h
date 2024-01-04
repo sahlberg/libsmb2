@@ -113,6 +113,12 @@
 #define HAVE_SYS_UNISTD_H 1
 #endif
 
+/* Define to 1 if you have the <errno.h> header file. */
+#define HAVE_ERRNO_H 1
+
+/* Define to 1 if you have the <sys/errno.h> header file. */
+/* #undef HAVE_SYS_ERRNO_H 1 */
+
 /* Define to the sub-directory where libtool stores uninstalled libraries. */
 #define LT_OBJDIR ".libs/"
 
