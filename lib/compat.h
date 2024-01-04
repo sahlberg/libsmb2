@@ -145,6 +145,9 @@ void smb2_freeaddrinfo(struct addrinfo *res);
 #define getaddrinfo smb2_getaddrinfo
 #define freeaddrinfo smb2_freeaddrinfo
 
+#define srandom srand
+#define random rand
+
 /* just pretend they are the same so we compile */
 #define sockaddr_in6 sockaddr_in
 
