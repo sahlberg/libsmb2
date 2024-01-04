@@ -50,6 +50,7 @@
 #endif
 
 #if defined(__amigaos4__) || defined(__AMIGA__) || defined(__AROS__)
+#define login_num ENXIO
 #ifndef __amigaos4__
 #define NEED_READV
 #define NEED_WRITEV

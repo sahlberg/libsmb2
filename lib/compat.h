@@ -242,7 +242,7 @@ long long int be64toh(long long int x);
 #if defined(__amigaos4__) || defined(__AROS__)
 #include <sys/uio.h>
 #endif
-#define getlogin_r(a,b) ENXIO
+int getlogin_r(char *buf, size_t size);
 #ifndef __AROS__
 #define srandom srand
 #define random rand
