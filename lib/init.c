@@ -64,6 +64,14 @@
 #include <sys/socket.h>
 #endif
 
+#ifdef HAVE_ERRNO_H
+#include <errno.h>
+#endif
+
+#ifdef HAVE_SYS_ERRNO_H
+#include <sys/errno.h>
+#endif
+
 #include "compat.h"
 
 #include "smb2.h"
@@ -74,31 +82,7 @@
 
 #include "compat.h"
 
-#ifdef _MSC_VER
-#include <errno.h>
-#define getlogin_r(a,b) ENXIO
-#define srandom srand
-#define random rand
-#ifndef _XBOX
-#define getpid GetCurrentProcessId
-#endif
-#endif /* _MSC_VER */
 
-#ifdef ESP_PLATFORM
-#include <errno.h>
-#include <esp_system.h>
-#define random esp_random
-#define srandom(seed)
-#define getlogin_r(a,b) ENXIO
-#endif
-
-#ifdef __ANDROID__
-#include <errno.h>
-/* getlogin_r() was added in API 28 */
-#if __ANDROID_API__ < 28
-#define getlogin_r(a,b) ENXIO
-#endif
-#endif /* __ANDROID__ */
 
 static int
 smb2_parse_args(struct smb2_context *smb2, const char *args)
@@ -289,11 +273,9 @@ struct smb2_context *smb2_init_context(void)
         char buf[1024] _U_;
         int i, ret;
         static int ctr;
-#ifdef _XBOX
-        srandom(time(NULL) ^ ctr++);
-#else
+
         srandom(time(NULL) ^ getpid() ^ ctr++);
-#endif
+        
         smb2 = calloc(1, sizeof(struct smb2_context));
         if (smb2 == NULL) {
                 return NULL;
