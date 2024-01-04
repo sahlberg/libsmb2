@@ -1,13 +1,14 @@
 set(SOURCES aes.c
             aes128ccm.c
             alloc.c
+			compat.c
             dcerpc.c
             dcerpc-lsa.c
             dcerpc-srvsvc.c
             errors.c
-            init.c
             hmac.c
-            hmac-md5.c
+            hmac-md5.c			
+            init.c
             krb5-wrapper.c
             libsmb2.c
             md4c.c

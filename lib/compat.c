@@ -18,6 +18,24 @@
 
 #include "compat.h"
 
+#if defined(_MSC_VER) && defined(_WINDOWS)
+#include <errno.h>
+#include <Windows.h>
+#define NEED_GETLOGIN_R
+#define NEED_GETPID
+#define login_num ENXIO
+#define getpid_num GetCurrentProcessId
+#endif
+
+#if defined(_MSC_VER) && defined(_XBOX)
+#define login_num 0
+#define getpid_num 0
+#endif
+
+#ifdef DC_KOS_PLATFORM
+#define login_num ENXIO
+#endif
+
 #ifdef ESP_PLATFORM
 
 #define NEED_READV
@@ -35,10 +53,13 @@
 
 #define NEED_BE64TOH
 #define NEED_POLL
+#define NEED_GETLOGIN_R
 
 #include "lwip/def.h"
 #include <unistd.h>
 #include <lwip/sockets.h>
+
+#define login_num 1 
 
 #endif /* PICO_PLATFORM */
 
@@ -90,6 +111,9 @@ void smb2_freeaddrinfo(struct addrinfo *res)
 #else
 #include <ps2ip.h>
 #endif
+#include <errno.h>
+
+#define login_num ENXIO
 #endif /* PS2_EE_PLATFORM */
 
 #ifdef PS2_IOP_PLATFORM
@@ -97,7 +121,10 @@ void smb2_freeaddrinfo(struct addrinfo *res)
 #include <thbase.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <errno.h>
 
+#define login_num ENXIO
+#define getpid_num 27
 
 static unsigned long int next = 1; 
 
@@ -159,11 +186,28 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
 
 #endif /* PS2_IOP_PLATFORM */
 
+#ifdef __ANDROID__
+/* getlogin_r() was added in API 28 */
+#if __ANDROID_API__ < 28
+#define NEED_GETLOGIN_R
+#define login_num ENXIO
+#endif
+#endif
+
+#ifdef ESP_PLATFORM
+#include <errno.h>
+#define NEED_GETLOGIN_R
+#define login_num ENXIO
+#endif
+
 #ifdef PS3_PPU_PLATFORM
 
 #include <stdlib.h>
 #include <string.h>
 #include <netinet/in.h>
+#include <errno.h>
+
+#define login_num ENXIO
 
 int smb2_getaddrinfo(const char *node, const char*service,
                 const struct addrinfo *hints,
@@ -199,6 +243,20 @@ void smb2_freeaddrinfo(struct addrinfo *res)
 }
 
 #endif /* PS3_PPU_PLATFORM */
+
+#ifdef NEED_GETPID
+int getpid()
+{
+	return getpid_num;
+};
+#endif
+
+#ifdef NEED_GETLOGIN_R
+int getlogin_r(char *buf, size_t size)
+{
+	return login_num;
+}
+#endif
 
 #ifdef NEED_WRITEV
 ssize_t writev(int fd, const struct iovec *vector, int count)
