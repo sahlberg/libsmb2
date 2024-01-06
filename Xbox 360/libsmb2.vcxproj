@@ -108,7 +108,7 @@
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <PrecompiledHeaderOutputFile>$(OutDir)$(ProjectName).pch</PrecompiledHeaderOutputFile>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <PreprocessorDefinitions>_DEBUG;_XBOX;_LIB;NEED_POLL;NEED_GETPID;HAVE_GETLOGIN_R;NEED_GETADDRINFO;NEED_FREEADDRINFO;XBOX_360_PLATFORM;HAVE_CONFIG_H</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_XBOX;_LIB;NEED_POLL;NEED_GETPID;NEED_GETLOGIN_R;NEED_RANDOM;NEED_SRANDOM;NEED_GETADDRINFO;NEED_FREEADDRINFO;XBOX_360_PLATFORM;HAVE_CONFIG_H</PreprocessorDefinitions>
       <CallAttributedProfiling>Callcap</CallAttributedProfiling>
       <CompileAs>CompileAsC</CompileAs>
       <AdditionalIncludeDirectories>..\include\;..\include\smb2;..\include\msvc;..\include\msvc\sys;..\include\xbox 360</AdditionalIncludeDirectories>
@@ -195,7 +195,7 @@
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <PrecompiledHeaderOutputFile>$(OutDir)$(ProjectName).pch</PrecompiledHeaderOutputFile>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <PreprocessorDefinitions>NDEBUG;_XBOX;_LIB;NEED_POLL;NEED_GETLOGIN_R;NEED_GETPID;NEED_GETADDRINFO;NEED_FREEADDRINFO;XBOX_360_PLATFORM;HAVE_CONFIG_H</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_XBOX;_LIB;NEED_POLL;NEED_GETPID;NEED_GETLOGIN_R;NEED_RANDOM;NEED_SRANDOM;NEED_GETADDRINFO;NEED_FREEADDRINFO;XBOX_360_PLATFORM;HAVE_CONFIG_H</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\include\;..\include\smb2;..\include\msvc;..\include\msvc\sys;..\include\xbox 360</AdditionalIncludeDirectories>
       <CompileAs>CompileAsC</CompileAs>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>

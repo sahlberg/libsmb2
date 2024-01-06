@@ -145,8 +145,8 @@ void smb2_freeaddrinfo(struct addrinfo *res);
 #define getaddrinfo smb2_getaddrinfo
 #define freeaddrinfo smb2_freeaddrinfo
 
-#define srandom srand
-#define random rand
+void srandom(unsigned int seed);
+int random(void);
 
 /* just pretend they are the same so we compile */
 #define sockaddr_in6 sockaddr_in
@@ -158,8 +158,8 @@ int getpid();
 #endif /* _XBOX */
 
 #if defined(_MSC_VER) && defined(_WINDOWS)
-#define srandom srand
-#define random rand
+void srandom(unsigned int seed);
+int random(void);
 #include <stddef.h>
 int getlogin_r(char *buf, size_t size);	
 int getpid();
@@ -362,8 +362,8 @@ ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
 #include <net/poll.h>
 
 int getlogin_r(char *buf, size_t size);
-#define srandom srand
-#define random rand
+void srandom(unsigned int seed);
+int random(void);
 #define getaddrinfo smb2_getaddrinfo
 #define freeaddrinfo smb2_freeaddrinfo
 
@@ -425,10 +425,9 @@ struct sockaddr_storage {
 #endif /* PS4_PLATFORM */
 
 #ifdef ESP_PLATFORM
-#include <esp_system.h>
 #include <stddef.h>
-#define random esp_random
-#define srandom(seed)
+void srandom(unsigned int seed);
+int random(void);
 int getlogin_r(char *buf, size_t size);
 #endif
 
