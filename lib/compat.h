@@ -25,7 +25,7 @@
 #include <xtl.h>
 #include <winsockx.h>
 
-#ifdef XBOX_PLATFORM /* MSVC 2003 Doesn´t have stdint.h header */
+#ifdef XBOX_PLATFORM /* MSVC 2003 DoesnÂ´t have stdint.h header */
 typedef char int8_t;
 typedef short int16_t;
 typedef short int_least16_t;
@@ -145,28 +145,61 @@ void smb2_freeaddrinfo(struct addrinfo *res);
 #define getaddrinfo smb2_getaddrinfo
 #define freeaddrinfo smb2_freeaddrinfo
 
+void srandom(unsigned int seed);
+int random(void);
+
 /* just pretend they are the same so we compile */
 #define sockaddr_in6 sockaddr_in
 
+int getlogin_r(char *buf, size_t size);
+
+int getpid();
+
 #endif /* _XBOX */
+
+#if defined(_MSC_VER) && defined(_WINDOWS)
+void srandom(unsigned int seed);
+int random(void);
+#include <stddef.h>
+int getlogin_r(char *buf, size_t size);	
+int getpid();
+#endif /* _MSC_VER */
 
 #ifdef PICO_PLATFORM
 
 #include "lwip/netdb.h"
 #include "lwip/sockets.h"
 
-long long int be64toh(long long int x);
-#define getlogin_r(x,y) 1
 #define EAI_AGAIN EAGAIN
+long long int be64toh(long long int x);
+int getlogin_r(char *buf, size_t size);
 
 #endif /* PICO_PLATFORM */
 
-#ifdef PS2_EE_PLATFORM
+#ifdef DC_KOS_PLATFORM
 
-#include <errno.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/errno.h>
 #include <unistd.h>
 
-#define getlogin_r(a,b) ENXIO
+#define TCP_NODELAY     1  /* Don't delay send to coalesce packets  */
+#define SOL_TCP IPPROTO_TCP
+
+ssize_t writev(int fd, const struct iovec *iov, int iovcnt);
+ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
+
+int getlogin_r(char *buf, size_t size);
+
+#endif /* DC_KOS_PLATFORM */
+
+#ifdef PS2_EE_PLATFORM
+
+#include <unistd.h>
+
+int getlogin_r(char *buf, size_t size);
 
 #define POLLIN      0x0001    /* There is data to read */
 #define POLLPRI     0x0002    /* There is urgent data to read */
@@ -200,29 +233,9 @@ long long int be64toh(long long int x);
 
 #endif /* PS2_EE_PLATFORM */
 
-#ifdef DC_KOS_PLATFORM
-
-#include <netdb.h>
-#include <netinet/in.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/errno.h>
-#include <unistd.h>
-
-#define getlogin_r(a,b) ENXIO
-
-#define TCP_NODELAY     1  /* Don't delay send to coalesce packets  */
-#define SOL_TCP IPPROTO_TCP
-
-ssize_t writev(int fd, const struct iovec *iov, int iovcnt);
-ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
-
-#endif /* DC_KOS_PLATFORM */
-
 #ifdef PS2_IOP_PLATFORM
 
 #include <alloc.h>
-#include <errno.h>
 #include <stdint.h>
 #include <ps2ip.h>
 #include <loadcore.h>
@@ -238,10 +251,11 @@ void srandom(unsigned int seed);
 time_t time(time_t *tloc);
 int asprintf(char **strp, const char *fmt, ...);
 
-#define getlogin_r(a,b) ENXIO
+int getlogin_r(char *buf, size_t size);
+int getpid();
+
 #define close(x) lwip_close(x)
 #define snprintf(format, n, ...) sprintf(format, __VA_ARGS__)
-#define getpid() 27
 #define fcntl(a,b,c) lwip_fcntl(a,b,c)
 
 #define POLLIN      0x0001    /* There is data to read */
@@ -283,26 +297,15 @@ ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
 
 #endif /* PS2_IOP_PLATFORM */
 
-#ifdef PS4_PLATFORM
-
-#include <netdb.h>
-#include <poll.h>
-#include <sys/uio.h>
-
-#define TCP_NODELAY     1  /* Don't delay send to coalesce packets  */
-
-#endif /* PS4_PLATFORM */
-
 #ifdef PS3_PPU_PLATFORM
 
-#include <errno.h>
 #include <sys/time.h>
 #include <netdb.h>
 #include <net/poll.h>
 
-#define getlogin_r(a,b) ENXIO
-#define srandom srand
-#define random rand
+int getlogin_r(char *buf, size_t size);
+void srandom(unsigned int seed);
+int random(void);
 #define getaddrinfo smb2_getaddrinfo
 #define freeaddrinfo smb2_freeaddrinfo
 
@@ -352,5 +355,30 @@ struct sockaddr_storage {
 #define sockaddr_in6 sockaddr_in
 
 #endif
+
+#ifdef PS4_PLATFORM
+
+#include <netdb.h>
+#include <poll.h>
+#include <sys/uio.h>
+
+#define TCP_NODELAY     1  /* Don't delay send to coalesce packets  */
+
+#endif /* PS4_PLATFORM */
+
+#ifdef ESP_PLATFORM
+#include <stddef.h>
+void srandom(unsigned int seed);
+int random(void);
+int getlogin_r(char *buf, size_t size);
+#endif
+
+#ifdef __ANDROID__
+#include <stddef.h>
+/* getlogin_r() was added in API 28 */
+#if __ANDROID_API__ < 28
+int getlogin_r(char *buf, size_t size);
+#endif
+#endif /* __ANDROID__ */
 
 #endif /* _COMPAT_H_ */
