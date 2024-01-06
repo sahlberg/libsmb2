@@ -244,8 +244,8 @@ long long int be64toh(long long int x);
 #endif
 int getlogin_r(char *buf, size_t size);
 #ifndef __AROS__
-#define srandom srand
-#define random rand
+int random(void);
+void srandom(unsigned int seed);
 #endif
 #define getaddrinfo smb2_getaddrinfo
 #define freeaddrinfo smb2_freeaddrinfo

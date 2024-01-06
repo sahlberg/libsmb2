@@ -67,6 +67,8 @@
 #define write(fd, buf, count) send(fd, buf, count, 0)
 #ifndef __AROS__
 #define select(nfds, readfds, writefds, exceptfds, timeout) WaitSelect(nfds, readfds, writefds, exceptfds, timeout, NULL)
+#define smb2_random rand
+#define smb2_srandom srand
 #endif
 #ifdef libnix
 StdFileDes *_lx_fhfromfd(int d) { return NULL; }
