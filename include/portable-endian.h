@@ -7,10 +7,8 @@
 #ifndef PORTABLE_ENDIAN_H__
 #define PORTABLE_ENDIAN_H__
 
-#if (defined(_WIN16) || defined(_WIN32) || defined(_WIN64)) && !defined(__WINDOWS__)
-
-#	define __WINDOWS__
-
+#if (defined(_WIN16) || defined(_WIN32) || defined(_WIN64)) && !defined(__WINDOWS__) && !defined(_XBOX) 
+#define __WINDOWS__
 #endif
 
 #if defined(ESP_PLATFORM)
@@ -207,7 +205,6 @@
 #   define htole64(x) (x)
 #   define be64toh(x) _byteswap_uint64(x)
 #   define le64toh(x) (x)
-
 # elif defined(__GNUC__) || defined(__clang__)
 
 #   define htobe16(x) __builtin_bswap16(x)
@@ -228,6 +225,72 @@
 #   else
 #     error platform not supported
 #   endif
+
+#elif defined(XBOX_360_PLATFORM)
+#   include <xtl.h>
+
+#   include <stdlib.h>
+
+#   define htobe16(x) (x)
+#   define htole16(x) _byteswap_ushort(x)
+#   define be16toh(x) (x)
+#   define le16toh(x) _byteswap_ushort(x)
+
+#   define htobe32(x) (x)
+#   define htole32(x) _byteswap_ulong(x)
+#   define be32toh(x) (x)
+#   define le32toh(x) _byteswap_ulong(x)
+
+#   define htobe64(x) (x)
+#   define htole64(x) _byteswap_uint64(x)
+#   define be64toh(x) (x)
+#   define le64toh(x) _byteswap_uint64(x)
+
+#	define __BYTE_ORDER    BYTE_ORDER
+#	define __BIG_ENDIAN    BIG_ENDIAN
+#	define __LITTLE_ENDIAN LITTLE_ENDIAN
+#	define __PDP_ENDIAN    PDP_ENDIAN
+
+# elif defined(XBOX_PLATFORM)
+#   include <xtl.h>
+
+#   include <stdlib.h>
+
+#   define htobe16(x) (x)
+#   define htole16(x) _byteswap_ushort(x)
+#   define be16toh(x) (x)
+#   define le16toh(x) _byteswap_ushort(x)
+
+#   define htobe32(x) (x)
+#   define htole32(x) _byteswap_ulong(x)
+#   define be32toh(x) (x)
+#   define le32toh(x) _byteswap_ulong(x)
+
+#   define htobe64(x) (x)
+#   define htole64(x) _byteswap_uint64(x)
+#   define be64toh(x) (x)
+#   define le64toh(x) _byteswap_uint64(x)
+
+/* #	define __BYTE_ORDER    BYTE_ORDER */
+#	define __LITTLE_ENDIAN LITTLE_ENDIAN
+/* #	define __PDP_ENDIAN    PDP_ENDIAN */
+
+# elif defined(__GNUC__) || defined(__clang__)
+
+#   define htobe16(x) __builtin_bswap16(x)
+#   define htole16(x) (x)
+#   define be16toh(x) __builtin_bswap16(x)
+#   define le16toh(x) (x)
+
+#   define htobe32(x) __builtin_bswap32(x)
+#   define htole32(x) (x)
+#   define be32toh(x) __builtin_bswap32(x)
+#   define le32toh(x) (x)
+
+#   define htobe64(x) __builtin_bswap64(x)
+#   define htole64(x) (x)
+#   define be64toh(x) __builtin_bswap64(x)
+#   define le64toh(x) (x)
 
 #else
 #  error platform not supported

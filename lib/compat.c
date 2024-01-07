@@ -18,6 +18,32 @@
 
 #include "compat.h"
 
+#if defined(_MSC_VER) && defined(_WINDOWS)
+#include <errno.h>
+#include <Windows.h>
+#include <stdlib.h>
+#define NEED_GETLOGIN_R
+#define NEED_GETPID
+#define NEED_RANDOM
+#define NEED_SRANDOM
+#define login_num ENXIO
+#define getpid_num GetCurrentProcessId
+#define smb2_random rand
+#define smb2_srandom srand
+#endif
+
+#if defined(_MSC_VER) && defined(_XBOX)
+#define login_num 0
+#define getpid_num 0
+#include <stdlib.h>
+#define smb2_random rand
+#define smb2_srandom srand
+#endif
+
+#ifdef DC_KOS_PLATFORM
+#define login_num ENXIO
+#endif
+
 #ifdef ESP_PLATFORM
 
 #define NEED_READV
@@ -35,12 +61,51 @@
 
 #define NEED_BE64TOH
 #define NEED_POLL
+#define NEED_GETLOGIN_R
 
 #include "lwip/def.h"
 #include <unistd.h>
 #include <lwip/sockets.h>
 
+#define login_num 1 
+
 #endif /* PICO_PLATFORM */
+
+#ifdef _XBOX
+
+int smb2_getaddrinfo(const char *node, const char*service,
+                const struct addrinfo *hints,
+                struct addrinfo **res)
+{
+        struct sockaddr_in *sin;
+
+        sin = malloc(sizeof(struct sockaddr_in));
+        sin->sin_family=AF_INET;
+
+        /* Some error checking would be nice */
+        sin->sin_addr.s_addr = inet_addr(node);
+
+        sin->sin_port=0;
+        if (service) {
+                sin->sin_port=htons(atoi(service));
+        } 
+
+        *res = malloc(sizeof(struct addrinfo));
+
+        (*res)->ai_family = AF_INET;
+        (*res)->ai_addrlen = sizeof(struct sockaddr_in);
+        (*res)->ai_addr = (struct sockaddr *)sin;
+
+        return 0;
+}
+
+void smb2_freeaddrinfo(struct addrinfo *res)
+{
+        free(res->ai_addr);
+        free(res);
+}
+
+#endif
 
 #ifdef PS2_EE_PLATFORM
 
@@ -54,6 +119,9 @@
 #else
 #include <ps2ip.h>
 #endif
+#include <errno.h>
+
+#define login_num ENXIO
 #endif /* PS2_EE_PLATFORM */
 
 #ifdef PS2_IOP_PLATFORM
@@ -61,21 +129,12 @@
 #include <thbase.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <errno.h>
 
+#define login_num ENXIO
+#define getpid_num 27
 
 static unsigned long int next = 1; 
-
-int random(void)
-{ 
-    next = next * 1103515245 + 12345; 
-    return (unsigned int)(next/65536) % 32768; 
-} 
-
-void srandom(unsigned int seed) 
-{ 
-    next = seed; 
-}
-
 
 time_t time(time_t *tloc)
 {
@@ -87,7 +146,6 @@ time_t time(time_t *tloc)
 
         return sec;
 }
-
 
 int asprintf(char **strp, const char *fmt, ...)
 {
@@ -123,11 +181,35 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
 
 #endif /* PS2_IOP_PLATFORM */
 
+#ifdef __ANDROID__
+/* getlogin_r() was added in API 28 */
+#if __ANDROID_API__ < 28
+#define NEED_GETLOGIN_R
+#define login_num ENXIO
+#endif
+#endif
+
+#ifdef ESP_PLATFORM
+#include <errno.h>
+#include <esp_system.h>
+#define NEED_GETLOGIN_R
+#define NEED_RANDOM
+#define NEED_SRANDOM
+#define login_num ENXIO
+#define smb2_random esp_random
+#define smb2_srandom(seed)
+#endif
+
 #ifdef PS3_PPU_PLATFORM
 
 #include <stdlib.h>
 #include <string.h>
 #include <netinet/in.h>
+#include <errno.h>
+
+#define login_num ENXIO
+#define smb2_random rand
+#define smb2_srandom srand
 
 int smb2_getaddrinfo(const char *node, const char*service,
                 const struct addrinfo *hints,
@@ -194,6 +276,43 @@ ifree (char **ptrp)
 }
 
 #endif /* __SWITCH__ */
+
+#ifdef NEED_RANDOM
+int random(void)
+{ 
+#ifdef PS2_IOP_PLATFORM
+    next = next * 1103515245 + 12345; 
+    return (unsigned int)(next/65536) % 32768; 
+#else
+    return smb2_random();
+#endif
+} 
+#endif
+
+#ifdef NEED_SRANDOM
+void srandom(unsigned int seed) 
+{ 
+#ifdef PS2_IOP_PLATFORM
+    next = seed; 
+#else
+    smb2_srandom(seed);
+#endif
+}
+#endif
+
+#ifdef NEED_GETPID
+int getpid()
+{
+     return getpid_num;
+};
+#endif
+
+#ifdef NEED_GETLOGIN_R
+int getlogin_r(char *buf, size_t size)
+{
+     return login_num;
+}
+#endif
 
 #ifdef NEED_WRITEV
 #ifdef __SWITCH__
