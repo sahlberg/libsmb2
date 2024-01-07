@@ -179,11 +179,7 @@ smb2_parse_args(struct smb2_context *smb2, const char *args)
 struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url)
 {
         struct smb2_url *u;
-#ifdef USE_PASSWORD
-        char *ptr, *tmp, *pwd, str[MAX_URL_SIZE];
-#else
         char *ptr, *tmp, str[MAX_URL_SIZE];
-#endif
         char *args;
         char *shared_folder;
         int len_shared_folder;
@@ -229,14 +225,89 @@ struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url)
         }
         /* user */
         if ((tmp = strchr(ptr, '@')) != NULL && strlen(tmp) > len_shared_folder) {
+                *(tmp++) = '\0';    
+                u->user = strdup(ptr);
+                ptr = tmp;
+        }
+        /* server */
+        if ((tmp = strchr(ptr, '/')) != NULL) {
                 *(tmp++) = '\0';
-#ifdef USE_PASSWORD		
+                u->server = strdup(ptr);
+                ptr = tmp;
+        }
+
+        /* Do we just have a share or do we have both a share and an object */
+        tmp = strchr(ptr, '/');
+        
+        /* We only have a share */
+        if (tmp == NULL) {
+                u->share = strdup(ptr);
+                return u;
+        }
+
+        /* we have both share and object path */
+        *(tmp++) = '\0';
+        u->share = strdup(ptr);
+        u->path = strdup(tmp);
+
+        return u;
+}
+
+struct smb2_url *smb2_parse_url_with_password(struct smb2_context *smb2, const char *url)
+{
+        struct smb2_url *u;
+        char *ptr, *tmp, *pwd, str[MAX_URL_SIZE];
+        char *args;
+        char *shared_folder;
+        int len_shared_folder;
+
+        if (strncmp(url, "smb://", 6)) {
+                smb2_set_error(smb2, "URL does not start with 'smb://'");
+                return NULL;
+        }
+        if (strlen(url + 6) >= MAX_URL_SIZE) {
+                smb2_set_error(smb2, "URL is too long");
+                return NULL;
+        }
+        strncpy(str, url + 6, MAX_URL_SIZE);
+
+        args = strchr(str, '?');
+        if (args) {
+                *(args++) = '\0';
+                if (smb2_parse_args(smb2, args) != 0) {
+                        return NULL;
+                }
+        }
+
+        u = calloc(1, sizeof(struct smb2_url));
+        if (u == NULL) {
+                smb2_set_error(smb2, "Failed to allocate smb2_url");
+                return NULL;
+        }
+
+        ptr = str;
+
+        shared_folder = strchr(ptr, '/');
+        if (!shared_folder) {
+                smb2_set_error(smb2, "Wrong URL format");
+                return NULL;
+        }
+        len_shared_folder = strlen(shared_folder);
+
+        /* domain */
+        if ((tmp = strchr(ptr, ';')) != NULL && strlen(tmp) > len_shared_folder) {
+                *(tmp++) = '\0';
+                u->domain = strdup(ptr);
+                ptr = tmp;
+        }
+        /* user */
+        if ((tmp = strchr(ptr, '@')) != NULL && strlen(tmp) > len_shared_folder) {
+                *(tmp++) = '\0';	
                 /* password */
                 if ((pwd = strchr(ptr, ':')) != NULL) {
                     *(pwd++) = '\0';
                     u->password = strdup(pwd);
-                }
-#endif       
+                }     
                 u->user = strdup(ptr);
                 ptr = tmp;
         }
@@ -271,9 +342,7 @@ void smb2_destroy_url(struct smb2_url *url)
         }
         free(discard_const(url->domain));
         free(discard_const(url->user));
-#ifdef USE_PASSWORD        
         free(discard_const(url->password));
-#endif	
         free(discard_const(url->server));
         free(discard_const(url->share));
         free(discard_const(url->path));

@@ -51,8 +51,12 @@ int main(int argc, char *argv[])
                 fprintf(stderr, "Failed to init context\n");
                 exit(0);
         }
-
+        
+#ifdef USE_PASSWORD
+        url = smb2_parse_url_with_password(smb2, argv[1]);
+#else
         url = smb2_parse_url(smb2, argv[1]);
+#endif
         if (url == NULL) {
                 fprintf(stderr, "Failed to parse url: %s\n",
                         smb2_get_error(smb2));

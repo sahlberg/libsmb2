@@ -69,7 +69,11 @@ int main(int argc, char *argv[])
                 exit(0);
         }
 
-        url = smb2_parse_url(smb2, argv[2]);
+#ifdef USE_PASSWORD
+        url = smb2_parse_url_with_password(smb2, argv[1]);
+#else
+        url = smb2_parse_url(smb2, argv[1]);
+#endif
         if (url == NULL) {
                 fprintf(stderr, "Failed to parse url: %s\n",
                         smb2_get_error(smb2));
@@ -78,7 +82,7 @@ int main(int argc, char *argv[])
 
         smb2_set_security_mode(smb2, SMB2_NEGOTIATE_SIGNING_ENABLED);
 #ifdef USE_PASSWORD
-	if (smb2_connect_share(smb2, url->server, url->share, url->user, url->password) != 0) {
+	if (smb2_connect_share_with_password(smb2, url->server, url->share, url->user, url->password) != 0) {
 #else
 	if (smb2_connect_share(smb2, url->server, url->share, url->user) != 0) {
 #endif

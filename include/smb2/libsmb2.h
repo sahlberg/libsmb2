@@ -332,10 +332,29 @@ int smb2_connect_share_async(struct smb2_context *smb2,
                              const char *server,
                              const char *share,
                              const char *user,
-#ifdef USE_PASSWORD
-			     const char *password,
-#endif
                              smb2_command_cb cb, void *cb_data);
+
+/*
+ * Async call to connect to a share with password.
+ * On unix, if user is NULL then default to the current user.
+ *
+ * Returns:
+ *  0 if the call was initiated and a connection will be attempted. Result of
+ * the connection will be reported through the callback function.
+ * -errno if there was an error. The callback function will not be invoked.
+ *
+ * Callback parameters :
+ * status can be either of :
+ *    0     : Connection was successful. Command_data is NULL.
+ *
+ *   -errno : Failed to connect to the share. Command_data is NULL.
+ */
+int smb2_connect_share_with_password_async(struct smb2_context *smb2,
+                             const char *server,
+                             const char *share,
+                             const char *user,
+			     const char *password,
+                             smb2_command_cb cb, void *cb_data);                             
 
 /*
  * Sync call to connect to a share.
@@ -348,10 +367,21 @@ int smb2_connect_share_async(struct smb2_context *smb2,
 int smb2_connect_share(struct smb2_context *smb2,
                        const char *server,
                        const char *share,
-#ifdef USE_PASSWORD		       
-                       const char *password,
-#endif
                        const char *user);
+
+/*
+ * Sync call to connect to a share with password.
+ * On unix, if user is NULL then default to the current user.
+ *
+ * Returns:
+ * 0      : Connected to the share successfully.
+ * -errno : Failure.
+ */
+int smb2_connect_share_with_password(struct smb2_context *smb2,
+                       const char *server,
+                       const char *share,		       
+                       const char *password,
+                       const char *user);                       
 
 /*
  * Async call to disconnect from a share/
@@ -389,9 +419,7 @@ int smb2_get_nterror(struct smb2_context *smb2);
 struct smb2_url {
         const char *domain;
         const char *user;
-#ifdef USE_PASSWORD
-        const char *password;
-#endif        
+        const char *password;     
         const char *server;
         const char *share;
         const char *path;
@@ -417,6 +445,23 @@ int nterror_to_errno(uint32_t status);
  * The returned structure is freed by calling smb2_destroy_url()
  */
 struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url);
+
+/*
+ * This function is used to parse an SMB2 URL into as smb2_url structure.
+ * SMB2 URL format:
+ *   smb2://[<domain;][<username>@]<server>/<share>/<path>
+ * where <server> has the format:
+ * [:<password>]@]
+ *   <host>[:<port>].
+ *
+ * Function will return a pointer to an iscsi smb2 structure if successful,
+ * or it will return NULL and set smb2_get_error() accordingly if there was
+ * a problem with the URL.
+ *
+ * The returned structure is freed by calling smb2_destroy_url()
+ */
+struct smb2_url *smb2_parse_url_with_password(struct smb2_context *smb2, const char *url);
+
 void smb2_destroy_url(struct smb2_url *url);
 
 struct smb2_pdu;

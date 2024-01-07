@@ -1029,9 +1029,6 @@ int
 smb2_connect_share_async(struct smb2_context *smb2,
                          const char *server,
                          const char *share, const char *user,
-#ifdef USE_PASSWORD			 
-                         const char *password,
-#endif 
                          smb2_command_cb cb, void *cb_data)
 {
         struct connect_data *c_data;
@@ -1060,11 +1057,92 @@ smb2_connect_share_async(struct smb2_context *smb2,
                 smb2_set_user(smb2, user);
         }
 
-#ifdef USE_PASSWORD		
+        c_data = calloc(1, sizeof(struct connect_data));
+        if (c_data == NULL) {
+                smb2_set_error(smb2, "Failed to allocate connect_data");
+                return -ENOMEM;
+        }
+        c_data->server = strdup(smb2->server);
+        if (c_data->server == NULL) {
+                free_c_data(smb2, c_data);
+                smb2_set_error(smb2, "Failed to strdup(server)");
+                return -ENOMEM;
+        }
+        c_data->share = strdup(smb2->share);
+        if (c_data->share == NULL) {
+                free_c_data(smb2, c_data);
+                smb2_set_error(smb2, "Failed to strdup(share)");
+                return -ENOMEM;
+        }
+        c_data->user = strdup(smb2->user);
+        if (c_data->user == NULL) {
+                free_c_data(smb2, c_data);
+                smb2_set_error(smb2, "Failed to strdup(user)");
+                return -ENOMEM;
+        }
+        if (asprintf(&c_data->utf8_unc, "\\\\%s\\%s", c_data->server,
+                     c_data->share) < 0) {
+                free_c_data(smb2, c_data);
+                smb2_set_error(smb2, "Failed to allocate unc string.");
+                return -ENOMEM;
+        }
+
+        c_data->utf16_unc = utf8_to_utf16(c_data->utf8_unc);
+        if (c_data->utf16_unc == NULL) {
+                smb2_set_error(smb2, "Count not convert UNC:[%s] into UTF-16",
+                               c_data->utf8_unc);
+                free_c_data(smb2, c_data);
+                return -ENOMEM;
+        }
+
+        c_data->cb = cb;
+        c_data->cb_data = cb_data;
+
+        err = smb2_connect_async(smb2, server, connect_cb, c_data);
+        if (err != 0) {
+                free_c_data(smb2, c_data);
+                return err;
+        }
+
+        return 0;
+}
+
+int smb2_connect_share_with_password_async(struct smb2_context *smb2,
+                             const char *server,
+                             const char *share,
+                             const char *user,
+			     const char *password,
+                             smb2_command_cb cb, void *cb_data)
+{
+        struct connect_data *c_data;
+        int err;
+
+        if (smb2 == NULL) {
+                return -EINVAL;
+        }
+
+        if (smb2->server != NULL) {
+                free(discard_const(smb2->server));
+                smb2->server = NULL;
+        }
+        if (server == NULL) {
+                smb2_set_error(smb2, "No server name provided");
+                return -EINVAL;
+        }
+        smb2->server = strdup(server);
+
+        if (smb2->share) {
+                free(discard_const(smb2->share));
+        }
+        smb2->share = strdup(share);
+
+        if (user) {
+                smb2_set_user(smb2, user);
+        }
+	
         if (password) {
                 smb2_set_password(smb2, password);
         }
-#endif
 
         c_data = calloc(1, sizeof(struct connect_data));
         if (c_data == NULL) {

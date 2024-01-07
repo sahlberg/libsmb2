@@ -134,9 +134,6 @@ static void connect_cb(struct smb2_context *smb2, int status,
 int smb2_connect_share(struct smb2_context *smb2,
                        const char *server,
                        const char *share,
-#ifdef USE_PASSWORD		        
-                       const char *password,
-#endif
                        const char *user)
 {
         struct sync_cb_data *cb_data;
@@ -148,11 +145,44 @@ int smb2_connect_share(struct smb2_context *smb2,
                 return -ENOMEM;
         }
 
-#ifdef USE_PASSWORD
-	rc = smb2_connect_share_async(smb2, server, share, user, password, connect_cb, cb_data);
-#else
 	rc = smb2_connect_share_async(smb2, server, share, user, connect_cb, cb_data);
-#endif
+
+        if (rc < 0) {
+                goto out;
+	}
+
+	rc = wait_for_reply(smb2, cb_data);
+        if (rc < 0) {
+                cb_data->status = SMB2_STATUS_CANCELLED;
+                return rc;
+	}
+
+        rc = cb_data->status;
+ out:
+        free(cb_data);
+
+	return rc;
+}
+
+/*
+ * Connect to the server and mount the share.
+ */
+int smb2_connect_share_with_password(struct smb2_context *smb2,
+                       const char *server,
+                       const char *share,		       
+                       const char *password,
+                       const char *user)
+{
+        struct sync_cb_data *cb_data;
+        int rc = 0;
+
+        cb_data = calloc(1, sizeof(struct sync_cb_data));
+        if (cb_data == NULL) {
+                smb2_set_error(smb2, "Failed to allocate sync_cb_data");
+                return -ENOMEM;
+        }
+
+	rc = smb2_connect_share_with_password_async(smb2, server, share, user, password, connect_cb, cb_data);
 
         if (rc < 0) {
                 goto out;

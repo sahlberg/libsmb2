@@ -132,8 +132,11 @@ int main(int argc, char *argv[])
                 fprintf(stderr, "Failed to init context\n");
                 exit(0);
         }
-
+#ifdef USE_PASSWORD
+        url = smb2_parse_url_with_password(smb2, argv[1]);
+#else
         url = smb2_parse_url(smb2, argv[1]);
+#endif
         if (url == NULL) {
                 fprintf(stderr, "Failed to parse url: %s\n",
                         smb2_get_error(smb2));
@@ -142,11 +145,10 @@ int main(int argc, char *argv[])
 
         smb2_set_security_mode(smb2, SMB2_NEGOTIATE_SIGNING_ENABLED);
 #ifdef USE_PASSWORD
-	if (smb2_connect_share_async(smb2, url->server, url->share, url->user, url->password,
+	if (smb2_connect_share_with_password_async(smb2, url->server, url->share, url->user, url->password, cf_cb, (void *)url->path) != 0) {
 #else
-	if (smb2_connect_share_async(smb2, url->server, url->share, url->user,
+	if (smb2_connect_share_async(smb2, url->server, url->share, url->user, cf_cb, (void *)url->path) != 0) {
 #endif
-                                     cf_cb, (void *)url->path) != 0) {
 		printf("smb2_connect_share failed. %s\n", smb2_get_error(smb2));
 		exit(10);
 	}

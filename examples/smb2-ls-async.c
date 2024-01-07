@@ -60,7 +60,7 @@ void od_cb(struct smb2_context *smb2, int status,
 
         while ((ent = smb2_readdir(smb2, dir))) {
 #ifdef USE_PASSWORD
-				const char *type;
+		const char *type;
 #else
                 char *type;
 #endif
@@ -84,7 +84,7 @@ void od_cb(struct smb2_context *smb2, int status,
 #ifdef USE_PASSWORD
                 printf("%-20s %-9s %15"PRIu64" %s", ent->name, type, ent->st.smb2_size, asctime(localtime(&t)));
 #else
-	            printf("%-20s %-9s %15"PRIu64" %s\n", ent->name, type, ent->st.smb2_size, asctime(localtime(&t)));
+	        printf("%-20s %-9s %15"PRIu64" %s\n", ent->name, type, ent->st.smb2_size, asctime(localtime(&t)));
 #endif
         }
 
@@ -143,7 +143,11 @@ int main(int argc, char *argv[])
         }
         smb2_fd_event_callbacks(smb2, fd_cb, events_cb);
 
+#ifdef USE_PASSWORD
+        url = smb2_parse_url_with_password(smb2, argv[1]);
+#else
         url = smb2_parse_url(smb2, argv[1]);
+#endif
         if (url == NULL) {
                 fprintf(stderr, "Failed to parse url: %s\n",
                         smb2_get_error(smb2));
