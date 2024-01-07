@@ -248,15 +248,19 @@ void smb2_freeaddrinfo(struct addrinfo *res)
 
 #ifdef __SWITCH__
 
-#define NEED_READV
-#define NEED_WRITEV
-
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <alloca.h>
 #include <sys/socket.h>
 #include <switch/types.h>
+
+#define NEED_READV
+#define NEED_WRITEV
+#define NEED_GETLOGIN_R 
+
+#define login_num ENXIO
 
 #define __set_errno(e) (errno = (e))
 #define __libc_use_alloca(size) ((size) <= __MAX_ALLOCA_CUTOFF)
