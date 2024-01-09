@@ -191,12 +191,15 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
 
 #ifdef ESP_PLATFORM
 #include <errno.h>
-#include <esp_system.h>
 #define NEED_GETLOGIN_R
+#if ESP_IDF_VERSION_MAJOR <= 4
 #define NEED_RANDOM
+#endif
 #define NEED_SRANDOM
 #define login_num ENXIO
+#if ESP_IDF_VERSION_MAJOR <= 4
 #define smb2_random esp_random
+#endif
 #define smb2_srandom(seed)
 #endif
 
