@@ -28,16 +28,6 @@
 #define HAVE_SYS_SOCKET_H 1
 #endif
 
-#if !defined(__amigaos4__) && (defined(__AMIGA__) || defined(__AROS__))
-#include <sys/ioctl.h>
-#include <proto/bsdsocket.h>
-#undef getaddrinfo
-#undef freeaddrinfo
-#undef HAVE_UNISTD_H
-#define close CloseSocket
-#endif
-
-
 #ifdef HAVE_NETDB_H
 #include <netdb.h>
 #endif

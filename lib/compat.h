@@ -247,6 +247,14 @@ int getlogin_r(char *buf, size_t size);
 int random(void);
 void srandom(unsigned int seed);
 #endif
+#if !defined(__amigaos4__) && (defined(__AMIGA__) || defined(__AROS__))
+#include <proto/bsdsocket.h>
+#undef HAVE_UNISTD_H
+#define close CloseSocket
+#undef getaddrinfo
+#undef freeaddrinfo
+#endif
+#define strncpy(a,b,c) strcpy(a,b)
 #define getaddrinfo smb2_getaddrinfo
 #define freeaddrinfo smb2_freeaddrinfo
 #define POLLIN      0x0001    /* There is data to read */
