@@ -19,6 +19,10 @@
 #ifndef _LIBSMB2_H_
 #define _LIBSMB2_H_
 
+#ifdef __APPLE__ /* Some platforms doesn´t support stdint.h */
+#include <stdint.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -53,8 +57,8 @@ struct smb2_stat_64 {
         uint64_t smb2_mtime_nsec;
         uint64_t smb2_ctime;
         uint64_t smb2_ctime_nsec;
-    uint64_t smb2_btime;
-    uint64_t smb2_btime_nsec;
+        uint64_t smb2_btime;
+        uint64_t smb2_btime_nsec;
 };
 
 struct smb2_statvfs {
@@ -1067,7 +1071,11 @@ int smb2_echo(struct smb2_context *smb2);
  * separation between dcerpc and smb2, so we need to include this header
  * here to retain compatibility for apps that depend on those symbols.
  */
-#include <smb2/libsmb2-dcerpc-srvsvc.h>
+#ifdef __APPLE__
+#include <libsmb2-dcerpc-srvsvc.h>
+#else
+#include <smb2/libsmb2-dcerpc-srvsvc.h>	
+#endif
 
 #ifdef __cplusplus
 }
