@@ -41,6 +41,8 @@ typedef unsigned int uint_t;
 typedef unsigned int uintptr_t;
 #endif
 
+#include <time.h>
+
 #include <errno.h>
 
 #ifndef ENETRESET
@@ -154,6 +156,12 @@ int random(void);
 int getlogin_r(char *buf, size_t size);
 
 int getpid();
+
+#pragma warning( disable : 4018 )
+#pragma warning( disable : 4090 ) 
+#ifdef XBOX_PLATFORM
+#pragma warning( disable : 4244 ) 
+#endif
 
 #endif /* _XBOX */
 
