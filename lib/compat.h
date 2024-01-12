@@ -436,11 +436,8 @@ struct sockaddr_storage {
 #include <stddef.h>
 #include <esp_system.h>
 #include <sys/types.h>
-#include <esp_idf_version.h>
 void srandom(unsigned int seed);
-#if ESP_IDF_VERSION_MAJOR <= 4
-int random(void);
-#endif
+long random(void);
 int getlogin_r(char *buf, size_t size);
 #endif
 
