@@ -454,9 +454,14 @@ int poll(struct pollfd *fds, unsigned int nfds, int timo)
                         FD_SET(fds[i].fd, op);
                 }
                 FD_SET(fds[i].fd, &efds);
+#ifdef _XBOX
+                if (fds[i].fd > (int)maxfd) {
+                    maxfd = fds[i].fd;
+#else
                 if (fds[i].fd > maxfd) {
-                        maxfd = fds[i].fd;
-                }
+                    maxfd = fds[i].fd;
+#endif
+				}
         } 
 #endif
 

@@ -1010,21 +1010,21 @@ dcerpc_encode_uuid(struct dcerpc_context *ctx,
         dcerpc_set_uint16(ctx, iov, offset, uuid->v3);
         offset += 2;
 
-        dcerpc_set_uint8(ctx, iov, offset, (uuid->v4 >> 56) & 0xff);
+        dcerpc_set_uint64(ctx, iov, offset, (uuid->v4 >> 56) & 0xff);
         offset += 1;
-        dcerpc_set_uint8(ctx, iov, offset, (uuid->v4 >> 48) & 0xff);
+        dcerpc_set_uint64(ctx, iov, offset, (uuid->v4 >> 48) & 0xff);
         offset += 1;
-        dcerpc_set_uint8(ctx, iov, offset, (uuid->v4 >> 40) & 0xff);
+        dcerpc_set_uint64(ctx, iov, offset, (uuid->v4 >> 40) & 0xff);
         offset += 1;
-        dcerpc_set_uint8(ctx, iov, offset, (uuid->v4 >> 32) & 0xff);
+        dcerpc_set_uint64(ctx, iov, offset, (uuid->v4 >> 32) & 0xff);
         offset += 1;
-        dcerpc_set_uint8(ctx, iov, offset, (uuid->v4 >> 24) & 0xff);
+        dcerpc_set_uint64(ctx, iov, offset, (uuid->v4 >> 24) & 0xff);
         offset += 1;
-        dcerpc_set_uint8(ctx, iov, offset, (uuid->v4 >> 16) & 0xff);
+        dcerpc_set_uint64(ctx, iov, offset, (uuid->v4 >> 16) & 0xff);
         offset += 1;
-        dcerpc_set_uint8(ctx, iov, offset, (uuid->v4 >>  8) & 0xff);
+        dcerpc_set_uint64(ctx, iov, offset, (uuid->v4 >>  8) & 0xff);
         offset += 1;
-        dcerpc_set_uint8(ctx, iov, offset, (uuid->v4      ) & 0xff);
+        dcerpc_set_uint64(ctx, iov, offset, (uuid->v4      ) & 0xff);
         offset += 1;
 
         return offset;

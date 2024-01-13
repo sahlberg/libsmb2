@@ -66,5 +66,5 @@ void
 win_to_timeval(uint64_t smb2_time, struct smb2_timeval *tv)
 {
         tv->tv_usec = (smb2_time / 10) % 1000000;
-        tv->tv_sec  = (smb2_time - 116444736000000000) / 10000000;
+        tv->tv_sec  = (time_t)(smb2_time - 116444736000000000) / 10000000;
 }
