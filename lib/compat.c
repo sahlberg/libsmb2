@@ -34,7 +34,7 @@
 
 #if defined(_MSC_VER) && defined(_XBOX)
 #define login_num 0
-#define getpid_num 0
+#define getpid_num() 0
 #include <stdlib.h>
 #define smb2_random rand
 #define smb2_srandom srand
@@ -122,7 +122,7 @@ struct MinList __filelist = { (struct MinNode *) &__filelist.mlh_Tail, NULL, (st
 #include <errno.h>
 
 #define login_num ENXIO
-#define getpid_num 27
+#define getpid_num() 27
 
 static unsigned long int next = 1; 
 
@@ -303,7 +303,7 @@ void srandom(unsigned int seed)
 #ifdef NEED_GETPID
 int getpid()
 {
-     return getpid_num;
+     return getpid_num();
 };
 #endif
 
