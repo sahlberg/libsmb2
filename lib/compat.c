@@ -18,6 +18,32 @@
 
 #include "compat.h"
 
+#if defined(_MSC_VER) && defined(_WINDOWS)
+#include <errno.h>
+#include <Windows.h>
+#include <stdlib.h>
+#define NEED_GETLOGIN_R
+#define NEED_GETPID
+#define NEED_RANDOM
+#define NEED_SRANDOM
+#define login_num ENXIO
+#define getpid_num GetCurrentProcessId
+#define smb2_random rand
+#define smb2_srandom srand
+#endif
+
+#if defined(_MSC_VER) && defined(_XBOX)
+#define login_num 0
+#define getpid_num 0
+#include <stdlib.h>
+#define smb2_random rand
+#define smb2_srandom srand
+#endif
+
+#ifdef DC_KOS_PLATFORM
+#define login_num ENXIO
+#endif
+
 #ifdef ESP_PLATFORM
 
 #define NEED_READV
@@ -31,14 +57,43 @@
 
 #endif
 
+#if defined(__amigaos4__) || defined(__AMIGA__) || defined(__AROS__)
+#define login_num ENXIO
+#ifndef __amigaos4__
+#define NEED_READV
+#define NEED_WRITEV
+#include <proto/bsdsocket.h>
+#define read(fd, buf, count) recv(fd, buf, count, 0)
+#define write(fd, buf, count) send(fd, buf, count, 0)
+#ifndef __AROS__
+#define select(nfds, readfds, writefds, exceptfds, timeout) WaitSelect(nfds, readfds, writefds, exceptfds, timeout, NULL)
+#define smb2_random rand
+#define smb2_srandom srand
+#endif
+#ifdef libnix
+StdFileDes *_lx_fhfromfd(int d) { return NULL; }
+struct MinList __filelist = { (struct MinNode *) &__filelist.mlh_Tail, NULL, (struct MinNode *) &__filelist.mlh_Head };
+#endif
+#endif
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <proto/exec.h>
+
+#endif
+
 #ifdef PICO_PLATFORM
 
 #define NEED_BE64TOH
 #define NEED_POLL
+#define NEED_GETLOGIN_R
 
 #include "lwip/def.h"
 #include <unistd.h>
 #include <lwip/sockets.h>
+
+#define login_num 1 
 
 #endif /* PICO_PLATFORM */
 
@@ -48,28 +103,29 @@
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
-
 #include <sys/time.h>
+#ifdef PS2IPS
+#include <ps2ips.h>
+#else
+#include <ps2ip.h>
+#endif
+#include <errno.h>
 
+#define login_num ENXIO
 #endif /* PS2_EE_PLATFORM */
 
 #ifdef PS2_IOP_PLATFORM
 #include <sysclib.h>
+#include <thbase.h>
+#include <stdio.h>
+#include <stdarg.h>
+#include <errno.h>
+
+#define login_num ENXIO
+#define getpid_num 27
 
 static unsigned long int next = 1; 
 
-int random(void)
-{ 
-    next = next * 1103515245 + 12345; 
-    return (unsigned int)(next/65536) % 32768; 
-} 
-
-void srandom(unsigned int seed) 
-{ 
-    next = seed; 
-}
-
-#include <thbase.h>
 time_t time(time_t *tloc)
 {
         u32 sec, usec;
@@ -81,8 +137,6 @@ time_t time(time_t *tloc)
         return sec;
 }
 
-#include <stdio.h>
-#include <stdarg.h>
 int asprintf(char **strp, const char *fmt, ...)
 {
         int len;
@@ -117,20 +171,82 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
 
 #endif /* PS2_IOP_PLATFORM */
 
+#ifdef __ANDROID__
+/* getlogin_r() was added in API 28 */
+#if __ANDROID_API__ < 28
+#define NEED_GETLOGIN_R
+#define login_num ENXIO
+#endif
+#endif
+
+#ifdef ESP_PLATFORM
+#include <errno.h>
+#define NEED_GETLOGIN_R
+#define NEED_RANDOM
+#define NEED_SRANDOM
+#define login_num ENXIO
+#define smb2_random esp_random
+#define smb2_srandom(seed)
+#endif
+
 #ifdef PS3_PPU_PLATFORM
 
 #include <stdlib.h>
+#include <string.h>
+#include <netinet/in.h>
+#include <errno.h>
 
+#define login_num ENXIO
+#define smb2_random rand
+#define smb2_srandom srand
+
+#endif /* PS3_PPU_PLATFORM */
+
+#ifdef NEED_GETADDRINFO
 int smb2_getaddrinfo(const char *node, const char*service,
                 const struct addrinfo *hints,
                 struct addrinfo **res)
 {
         struct sockaddr_in *sin;
+#if defined(__amigaos4__) || defined(__AMIGA__) || defined(__AROS__)
+        struct hostent *host;
+        int i, ip[4];
+#endif
 
+#if defined(__amigaos4__) || defined(__AMIGA__) || defined(__AROS__)
+        sin = calloc(1, sizeof(struct sockaddr_in));
+#else
         sin = malloc(sizeof(struct sockaddr_in));
+#endif
+#ifndef _XBOX
         sin->sin_len = sizeof(struct sockaddr_in);
-        sin->sin_family=AF_INET;
+#endif
+		sin->sin_family=AF_INET;
 
+#if defined(__amigaos4__) || defined(__AMIGA__) || defined(__AROS__)
+        /* Some error checking would be nice */
+        if (sscanf(node, "%d.%d.%d.%d", ip, ip+1, ip+2, ip+3) == 4) {
+                for (i = 0; i < 4; i++) {
+                        ((char *)&sin->sin_addr.s_addr)[i] = ip[i];
+                }
+        } else {
+                host = gethostbyname(node);
+                if (host == NULL) {
+                        return -1;
+                }
+                if (host->h_addrtype != AF_INET) {
+                        return -2;
+                }
+                memcpy(&sin->sin_addr.s_addr, host->h_addr, 4);
+        }
+
+        sin->sin_port=0;
+        if (service) {
+                sin->sin_port=htons(atoi(service));
+        }
+
+        *res = calloc(1, sizeof(struct addrinfo));
+#else
         /* Some error checking would be nice */
         sin->sin_addr.s_addr = inet_addr(node);
 
@@ -140,21 +256,63 @@ int smb2_getaddrinfo(const char *node, const char*service,
         } 
 
         *res = malloc(sizeof(struct addrinfo));
-
+#endif
         (*res)->ai_family = AF_INET;
         (*res)->ai_addrlen = sizeof(struct sockaddr_in);
         (*res)->ai_addr = (struct sockaddr *)sin;
 
         return 0;
 }
+#endif
 
+#ifdef NEED_FREEADDRINFO
 void smb2_freeaddrinfo(struct addrinfo *res)
 {
         free(res->ai_addr);
         free(res);
 }
+#endif
 
-#endif /* PS3_PPU_PLATFORM */
+#ifdef NEED_RANDOM
+#ifdef ESP_PLATFORM
+long random(void)
+#else
+int random(void)
+#endif
+{ 
+#ifdef PS2_IOP_PLATFORM
+    next = next * 1103515245 + 12345; 
+    return (unsigned int)(next/65536) % 32768; 
+#else
+    return smb2_random();
+#endif
+} 
+#endif
+
+#ifdef NEED_SRANDOM
+void srandom(unsigned int seed) 
+{ 
+#ifdef PS2_IOP_PLATFORM
+    next = seed; 
+#else
+    smb2_srandom(seed);
+#endif
+}
+#endif
+
+#ifdef NEED_GETPID
+int getpid()
+{
+     return getpid_num;
+};
+#endif
+
+#ifdef NEED_GETLOGIN_R
+int getlogin_r(char *buf, size_t size)
+{
+     return login_num;
+}
+#endif
 
 #ifdef NEED_WRITEV
 ssize_t writev(int fd, const struct iovec *vector, int count)
@@ -264,6 +422,27 @@ int poll(struct pollfd *fds, unsigned int nfds, int timo)
         FD_ZERO(&ifds);
         FD_ZERO(&ofds);
         FD_ZERO(&efds);
+#if defined(__amigaos4__) || defined(__AMIGA__) || defined(__AROS__)
+        op = ip = 0;
+        for (i = 0; i < nfds; ++i) {
+                int fd = fds[i].fd;
+                fds[i].revents = 0;
+                if (fd < 0)
+                        continue;
+                if(fds[i].events & (POLLIN|POLLPRI)) {
+                        ip = &ifds;
+                        FD_SET(fd, ip);
+                }
+                if(fds[i].events & POLLOUT)  {
+                        op = &ofds;
+                        FD_SET(fd, op);
+                }
+                FD_SET(fd, &efds);
+                if (fd > maxfd) {
+                        maxfd = fd;
+                }
+        }
+#else
         for (i = 0, op = ip = 0; i < nfds; ++i) {
                 fds[i].revents = 0;
                 if(fds[i].events & (POLLIN|POLLPRI)) {
@@ -279,13 +458,33 @@ int poll(struct pollfd *fds, unsigned int nfds, int timo)
                         maxfd = fds[i].fd;
                 }
         } 
+#endif
 
+#if defined(__amigaos4__) || defined(__AMIGA__) || defined(__AROS__)
+        if(timo >= 0) {
+                toptr = &timeout;
+                timeout.tv_sec = (unsigned)timo / 1000;
+                timeout.tv_usec = ((unsigned)timo % 1000) * 1000;
+        }
+
+#else
         if(timo < 0) {
-                toptr = 0;
+                toptr = NULL;
         } else {
+#if defined(PS2_EE_PLATFORM) && defined(PS2IPS)                
+                /*
+                 * select() is broken on the ps2ips stack so we basically have
+                 * to busy-wait.
+                 */
+                (void)timeout;
+                timeout.tv_sec = 0;
+                timeout.tv_usec = 10000;        
+#else
                 toptr = &timeout;
                 timeout.tv_sec = timo / 1000;
                 timeout.tv_usec = (timo - timeout.tv_sec * 1000) * 1000;
+#endif        
+#endif
         }
 
         rc = select(maxfd + 1, ip, op, &efds, toptr);
@@ -293,6 +492,26 @@ int poll(struct pollfd *fds, unsigned int nfds, int timo)
         if(rc <= 0)
                 return rc;
 
+#if defined(__amigaos4__) || defined(__AMIGA__) || defined(__AROS__)
+        rc = 0;
+        for (i = 0; i < nfds; ++i) {
+                int fd = fds[i].fd;
+                short events = fds[i].events;
+                short revents = 0;
+                if (fd < 0)
+                        continue;
+                if(events & (POLLIN|POLLPRI) && FD_ISSET(fd, &ifds))
+                        revents |= POLLIN;
+                if(events & POLLOUT && FD_ISSET(fd, &ofds))
+                        revents |= POLLOUT;
+                if(FD_ISSET(fd, &efds))
+                        revents |= POLLHUP;
+                if (revents) {
+                        fds[i].revents = revents;
+                        rc++;
+                }
+        }
+#else
         if(rc > 0)  {
                 for (i = 0; i < nfds; ++i) {
                         int fd = fds[i].fd;
@@ -304,6 +523,7 @@ int poll(struct pollfd *fds, unsigned int nfds, int timo)
                                 fds[i].revents |= POLLHUP;
                 }
         }
+#endif
         return rc;
 }
 #endif

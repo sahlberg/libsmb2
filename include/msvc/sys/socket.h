@@ -1,4 +1,3 @@
-
 #ifndef _MSVC_SYS_SOCKET_H_
 #define _MSVC_SYS_SOCKET_H_
 
@@ -6,6 +5,9 @@
 extern "C" {
 #endif
 
+#ifdef _XBOX
+#include "..\..\..\lib\compat.h"
+#else
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif // !WIN32_LEAN_AND_MEAN
@@ -13,6 +15,7 @@ extern "C" {
 #include <stdint.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#endif
 
 #include <libsmb2.h>
 

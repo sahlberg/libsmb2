@@ -15,7 +15,9 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 #include <fcntl.h>
 #include <inttypes.h>
+#if !defined(__amigaos4__) && !defined(__AMIGA__) && !defined(__AROS__)
 #include <poll.h>
+#endif
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -32,7 +34,7 @@ int usage(void)
 {
         fprintf(stderr, "Usage:\n"
                 "smb2-statvfs-sync <smb2-url>\n\n"
-                "URL format: "
+                "URL format: "			
                 "smb://[<domain;][<username>@]<host>[:<port>]/<share>/<path>\n");
         exit(1);
 }

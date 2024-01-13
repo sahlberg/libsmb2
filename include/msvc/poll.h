@@ -10,7 +10,7 @@ extern "C" {
 
 static inline int poll(struct pollfd pfd[], uint32_t size, int nvecs)
 {
-  return WSAPoll(pfd, size, nvecs);
+  return WSAPoll(pfd, (unsigned long)size, nvecs);
 }
 
 #ifdef __cplusplus

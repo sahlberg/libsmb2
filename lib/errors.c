@@ -1103,10 +1103,11 @@ int nterror_to_errno(uint32_t status) {
         case SMB2_STATUS_FILE_IS_A_DIRECTORY:
         case SMB2_STATUS_FILE_RENAMED:
         case SMB2_STATUS_PROCESS_IS_TERMINATING:
-        case SMB2_STATUS_DIRECTORY_NOT_EMPTY:
         case SMB2_STATUS_CANNOT_DELETE:
         case SMB2_STATUS_FILE_DELETED:
                 return EPERM;
+        case SMB2_STATUS_DIRECTORY_NOT_EMPTY:
+                return ENOTEMPTY;
         case SMB2_STATUS_NO_MORE_FILES:
                 return ENODATA;
         case SMB2_STATUS_LOGON_FAILURE:
@@ -1176,7 +1177,7 @@ int nterror_to_errno(uint32_t status) {
         case SMB2_STATUS_INSUFFICIENT_RESOURCES:
                 return EBUSY;
         case SMB2_STATUS_INTERNAL_ERROR:
-                // Fall through.
+                /* Fall through. */
         default:
                 return EIO;
         }

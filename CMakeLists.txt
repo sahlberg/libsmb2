@@ -12,13 +12,14 @@ if(NOT ESP_PLATFORM)
             lib/aes.c
             lib/aes128ccm.c
             lib/alloc.c
+			lib/compat.c
             lib/dcerpc.c
             lib/dcerpc-lsa.c
             lib/dcerpc-srvsvc.c
             lib/errors.c
-            lib/init.c
-            lib/hmac.c
+			lib/hmac.c
             lib/hmac-md5.c
+            lib/init.c
             lib/krb5-wrapper.c
             lib/libsmb2.c
             lib/md4c.c
@@ -56,7 +57,6 @@ if(NOT ESP_PLATFORM)
             lib/timestamps.c
             lib/unicode.c
             lib/usha.c
-            lib/compat.c
     )
 
     include_directories(libsmb2 STATIC
@@ -90,10 +90,12 @@ if(NOT ESP_PLATFORM)
 
     list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
 
-    find_package(GSSAPI)
+    if(IOS)
+        find_package(GSSAPI)
 
-    if(GSSAPI_FOUND)
-      add_definitions(-DHAVE_LIBKRB5)
+        if(GSSAPI_FOUND)
+            add_definitions(-DHAVE_LIBKRB5)
+        endif()
     endif()
 
     include(cmake/ConfigureChecks.cmake)
@@ -103,7 +105,9 @@ if(NOT ESP_PLATFORM)
                         include/smb2
     )
 
-    set(core_DEPENDS ${GSSAPI_LIBRARIES} CACHE STRING "" FORCE)
+    if(IOS)
+        set(core_DEPENDS ${GSSAPI_LIBRARIES} CACHE STRING "" FORCE)
+    endif()
 
     if(MSVC AND BUILD_SHARED_LIBS)
       # If we are building dll with msvc, then generate a def file according to the syms file
@@ -167,6 +171,7 @@ else() ##### ESP_PLATFORM
     lib/aes.c
     lib/aes128ccm.c
     lib/alloc.c
+	lib/compat.c
     lib/dcerpc.c
     lib/dcerpc-lsa.c
     lib/dcerpc-srvsvc.c
@@ -211,7 +216,6 @@ else() ##### ESP_PLATFORM
     lib/timestamps.c
     lib/unicode.c
     lib/usha.c
-    lib/compat.c
   )
 
   set(COMPONENT_NAME ".")

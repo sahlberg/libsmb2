@@ -51,6 +51,10 @@
 #include <unistd.h>
 #endif
 
+#ifdef HAVE_SYS_UNISTD_H
+#include <sys/unistd.h>
+#endif
+
 #include "portable-endian.h"
 #include <errno.h>
 
@@ -81,11 +85,11 @@ struct dcerpc_deferred_pointer {
  */
 
 p_syntax_id_t ndr32_syntax = {
-        {NDR32_UUID}, 2
+        {NDR32_UUID}, 2, 0
 };
 
 p_syntax_id_t ndr64_syntax = {
-        {NDR64_UUID}, 1
+        {NDR64_UUID}, 1, 0
 };
 
 struct dcerpc_context {
@@ -224,8 +228,9 @@ struct dcerpc_pdu {
 
         /* optional authentication verifier */
         /* following fields present iff auth_length != 0 */
-        /*auth_verifier_co_t   auth_verifier; */
-
+#if 0
+        auth_verifier_co_t   auth_verifier; 
+#endif
         struct dcerpc_context *dce;
         dcerpc_cb cb;
         void *cb_data;

@@ -35,7 +35,7 @@ INCLUDE		:=	../include ../include/ps4 ../include/smb2
 DATA		:=	data
 LIBS		:=	 
 
-CFLAGS      += -cc1 -triple x86_64-pc-freebsd-elf -munwind-tables -fuse-init-array -emit-obj -isysroot $(OO_PS4_TOOLCHAIN) -isystem $(OO_PS4_TOOLCHAIN)/include $(INCLUDES) -DPS4_PLATFORM -DHAVE_CONFIG_H -D_U_=/**/ 
+CFLAGS      += -cc1 -triple x86_64-pc-freebsd-elf -munwind-tables -fuse-init-array -emit-obj -isysroot $(OO_PS4_TOOLCHAIN) -isystem $(OO_PS4_TOOLCHAIN)/include $(INCLUDES) -DPS4_PLATFORM -DHAVE_CONFIG_H -DNEED_GETPID -D_U_=/**/ 
 CXXFLAGS    += $(CFLAGS) -isystem $(OO_PS4_TOOLCHAIN)/include/c++/v1
 
 ifneq ($(BUILD),$(notdir $(CURDIR)))

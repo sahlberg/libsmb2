@@ -72,6 +72,10 @@
 #include <unistd.h>
 #endif
 
+#ifdef HAVE_SYS_UNISTD_H
+#include <sys/unistd.h>
+#endif
+
 #ifdef HAVE_STDINT_H
 #include <stdint.h>
 #endif
@@ -81,6 +85,10 @@
 
 #ifdef HAVE_FCNTL_H
 #include <fcntl.h>
+#endif
+
+#ifdef HAVE_SYS_FCNTL_H
+#include <sys/fcntl.h>
 #endif
 
 #ifdef HAVE_SYS_SOCKET_H
@@ -133,7 +141,9 @@ smb2_close_connecting_fds(struct smb2_context *smb2)
         smb2->connecting_fds_count = 0;
 
         if (smb2->addrinfos != NULL) {
+#ifndef PS2IPS
                 freeaddrinfo(smb2->addrinfos);
+#endif
                 smb2->addrinfos = NULL;
         }
         smb2->next_addrinfo = NULL;
@@ -331,7 +341,7 @@ read_more_data:
         /* Read into our trimmed iovectors */
         count = func(smb2, tmpiov, niov);
         if (count < 0) {
-#ifdef _WIN32
+#if defined(_WIN32) || defined(_XBOX)
                 int err = WSAGetLastError();
                 if (err == WSAEINTR || err == WSAEWOULDBLOCK) {
 #else
@@ -832,9 +842,12 @@ smb2_service(struct smb2_context *smb2, int revents)
 static void
 set_nonblocking(t_socket fd)
 {
-#if defined(WIN32)
+#if defined(WIN32) || defined(_XBOX) || defined(PS2_EE_PLATFORM) && defined(PS2IPS)
         unsigned long opt = 1;
         ioctlsocket(fd, FIONBIO, &opt);
+#elif (defined(__AMIGA__) || defined(__AROS__)) && !defined(__amigaos4__)
+        unsigned long opt = 0;
+        IoctlSocket(fd, FIONBIO, (char *)&opt);		
 #else
         unsigned v;
         v = fcntl(fd, F_GETFL, 0);
@@ -846,9 +859,8 @@ static int
 set_tcp_sockopt(t_socket sockfd, int optname, int value)
 {
         int level;
-#ifndef SOL_TCP
+#if !defined(SOL_TCP)
         struct protoent *buf;
-
         if ((buf = getprotobyname("tcp")) != NULL) {
                 level = buf->p_proto;
         } else {
@@ -872,6 +884,9 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_o
         int const yes = 1;
         struct LingerStruct const lin = { 1, 0 };   /*  if l_linger is zero, sends RST after FIN */
 #endif
+#ifdef _XBOX
+        BOOL bBroadcast = TRUE;
+#endif
         memset(&ss, 0, sizeof(ss));
         switch (ai->ai_family) {
         case AF_INET:
@@ -881,6 +896,7 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_o
                 ((struct sockaddr_in *)&ss)->sin_len = socksize;
 #endif
                 break;
+#ifdef AF_INET6				
         case AF_INET6:
 #if !defined(PICO_PLATFORM) || defined(LWIP_INETV6)
                 socksize = sizeof(struct sockaddr_in6);
@@ -890,6 +906,7 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_o
 #endif
 #endif
                 break;
+#endif
         default:
                 smb2_set_error(smb2, "Unknown address family :%d. "
                                 "Only IPv4/IPv6 supported so far.",
@@ -906,9 +923,23 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_o
                 return -EIO;
         }
 
+#ifdef _XBOX		
+        if(setsockopt(fd, SOL_SOCKET, 0x5801, (PCSTR)&bBroadcast, sizeof(BOOL) ) != 0 )
+        {
+#if 0			
+                return 0;
+#endif
+        }
+        if(setsockopt(fd, SOL_SOCKET, 0x5802, (PCSTR)&bBroadcast, sizeof(BOOL)) != 0)
+        {
+#if 0 			
+                return 0;
+#endif
+        }
+#endif
+
         set_nonblocking(fd);
         set_tcp_sockopt(fd, TCP_NODELAY, 1);
-
 #if 0 == CONFIGURE_OPTION_TCP_LINGER
         setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes);
         setsockopt(fd, SOL_SOCKET, SO_LINGER, &lin, sizeof lin);
@@ -1040,11 +1071,15 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
                 port = "445";
         }
 
+#ifdef PS2IPS
+        {
+#else
         /* is it a hostname ? */
         err = getaddrinfo(host, port, NULL, &smb2->addrinfos);
         if (err != 0) {
+#endif
                 free(addr);
-#ifdef _WINDOWS
+#if defined(_WINDOWS) || defined(_XBOX)
                 if (err == WSANOTINITIALISED)
                 {
                         smb2_set_error(smb2, "Winsock was not initialized. "
@@ -1055,14 +1090,14 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
 #endif
                 {
                         smb2_set_error(smb2, "Invalid address:%s  "
-                                "Can not resolv into IPv4/v6.", server);
+                                "Can not resolve into IPv4/v6.", server);
                 }
                 switch (err) {
                     case EAI_AGAIN:
                         return -EAGAIN;
                     case EAI_NONAME:
 #ifdef EAI_NODATA
-#if EAI_NODATA != EAI_NONAME /* Equal in MSCV */
+#if EAI_NODATA != EAI_NONAME /* Equal in MSVC */
                     case EAI_NODATA:
 #endif
 #endif
@@ -1091,7 +1126,9 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
                 addr_count++;
         smb2->connecting_fds = malloc(sizeof(t_socket) * addr_count);
         if (smb2->connecting_fds == NULL) {
+#ifndef PS2IPS
                 freeaddrinfo(smb2->addrinfos);
+#endif
                 smb2->addrinfos = NULL;
                 return -ENOMEM;
         }
@@ -1104,8 +1141,9 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
         } else {
                 free(smb2->connecting_fds);
                 smb2->connecting_fds = NULL;
-
+#ifndef PS2IPS
                 freeaddrinfo(smb2->addrinfos);
+#endif
                 smb2->addrinfos = NULL;
                 smb2->next_addrinfo = NULL;
         }
