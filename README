@@ -265,6 +265,23 @@ Then to build libsmb2, run
 The process will copy the resulting libsmb2.a and the include/smb2 headers to your
 OpenOrbis SDK include folder.
 
+Amiga (AmigaOS)
+----------------------
+AmigaOS is Operating system which the main processor is a Microprocessor PowerPC.
+There are 3 versions:
+AmigaOS4(Makefile.AMIGA)
+AmigaOS3(Makefile.AMIGA_OS3)
+AmigaAROS(Makefile.AMIGA_AROS)
+To compile libsmb2 for the AmigaOS, you need to set newlib.library V53.40 or newer (or V53.30 as included in 4.1 FE) and 
+filesysbox.library 54.4 or newer to set it up.
+
+Then to build libsmb2, choose the makefile acording your AmigaOS system and hit
+  $ cd lib
+  $ make -f Makefile.YOUR_AMIGA_OS_USED clean install
+
+The process will copy the resulting libsmb2.a and the include/smb2 headers in the bin folder inside of the lib folder  
+NOTE: Amiga AROS is a Open Source version of AmigaOS, So do not build this version unless you are using the AmigaAROS.
+
 Dreamcast (KallistiOS)
 ----------------------
 Hitachi SH4 in little-endian mode is the main CPU for the Dreamcast.

@@ -226,6 +226,112 @@
 #     error platform not supported
 #   endif
 
+#elif defined(__amigaos4__) || defined(__AMIGA__)
+
+# if defined(__NEWLIB__)
+#   include <machine/endian.h>
+
+#   define htobe16(x) (x)
+#   define htole16(x) __bswap16(x)
+#   define be16toh(x) (x)
+#   define le16toh(x) __bswap16(x)
+
+#   define htobe32(x) (x)
+#   define htole32(x) __bswap32(x)
+#   define be32toh(x) (x)
+#   define le32toh(x) __bswap32(x)
+
+#   define htobe64(x) (x)
+#   define htole64(x) __bswap64(x)
+#   define be64toh(x) (x)
+#   define le64toh(x) __bswap64(x)
+
+# elif defined(__GNUC__)
+
+#   define htobe16(x) (x)
+#   define htole16(x) __builtin_bswap16(x)
+#   define be16toh(x) (x)
+#   define le16toh(x) __builtin_bswap16(x)
+
+#   define htobe32(x) (x)
+#   define htole32(x) __builtin_bswap32(x)
+#   define be32toh(x) (x)
+#   define le32toh(x) __builtin_bswap32(x)
+
+#   define htobe64(x) (x)
+#   define htole64(x) __builtin_bswap64(x)
+#   define be64toh(x) (x)
+#   define le64toh(x) __builtin_bswap64(x)
+
+# else
+#   error platform not supported
+# endif
+
+#elif defined(__AROS__)
+
+# include <endian.h>
+
+# if defined(__GNUC__) && (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR >= 8))
+
+#   define __bswap16(x) __builtin_bswap16(x)
+#   define __bswap32(x) __builtin_bswap32(x)
+#   define __bswap64(x) __builtin_bswap64(x)
+
+# else
+
+#   define __bswap16(x) ((((uint16_t)(x) & 0xFF00) >> 8) | \
+                         (((uint16_t)(x) & 0x00FF) << 8))
+#   define __bswap32(x) ((((uint32_t)(x) & 0xFF000000) >> 24) | \
+                         (((uint32_t)(x) & 0x00FF0000) >>  8) | \
+                         (((uint32_t)(x) & 0x0000FF00) <<  8) | \
+                         (((uint32_t)(x) & 0x000000FF) << 24))
+#   define __bswap64(x) ((((uint64_t)(x) & 0xFF00000000000000) >> 56) | \
+                         (((uint64_t)(x) & 0x00FF000000000000) >> 40) | \
+                         (((uint64_t)(x) & 0x0000FF0000000000) >> 24) | \
+                         (((uint64_t)(x) & 0x000000FF00000000) >>  8) | \
+                         (((uint64_t)(x) & 0x00000000FF000000) <<  8) | \
+                         (((uint64_t)(x) & 0x0000000000FF0000) << 24) | \
+                         (((uint64_t)(x) & 0x000000000000FF00) << 40) | \
+                         (((uint64_t)(x) & 0x00000000000000FF) << 56))
+
+# endif
+
+# if _BYTE_ORDER == _LITTLE_ENDIAN
+
+#   define htobe16(x) __bswap16(x)
+#   define htole16(x) (x)
+#   define be16toh(x) __bswap16(x)
+#   define le16toh(x) (x)
+
+#   define htobe32(x) __bswap32(x)
+#   define htole32(x) (x)
+#   define be32toh(x) __bswap32(x)
+#   define le32toh(x) (x)
+
+#   define htobe64(x) __bswap64(x)
+#   define htole64(x) (x)
+#   define be64toh(x) __bswap64(x)
+#   define le64toh(x) (x)
+
+# else
+
+#   define htobe16(x) (x)
+#   define htole16(x) __bswap16(x)
+#   define be16toh(x) (x)
+#   define le16toh(x) __bswap16(x)
+
+#   define htobe32(x) (x)
+#   define htole32(x) __bswap32(x)
+#   define be32toh(x) (x)
+#   define le32toh(x) __bswap32(x)
+
+#   define htobe64(x) (x)
+#   define htole64(x) __bswap64(x)
+#   define be64toh(x) (x)
+#   define le64toh(x) __bswap64(x)
+
+# endif
+
 #elif defined(XBOX_360_PLATFORM)
 #   include <xtl.h>
 
@@ -251,7 +357,7 @@
 #	define __LITTLE_ENDIAN LITTLE_ENDIAN
 #	define __PDP_ENDIAN    PDP_ENDIAN
 
-# elif defined(XBOX_PLATFORM)
+#elif defined(XBOX_PLATFORM)
 #   include <xtl.h>
 
 #   include <stdlib.h>
