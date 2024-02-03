@@ -19,11 +19,27 @@
 #ifndef _COMPAT_H_
 #define _COMPAT_H_
 
-#ifdef _XBOX
+#ifdef __cplusplus
+extern "C" {
+#endif
 
+#if defined(_XBOX) || defined(_WINDOWS)
+
+#ifdef _XBOX
 /* XBOX Defs begin */
 #include <xtl.h>
 #include <winsockx.h>
+#else
+#include <windows.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#endif
+#include <stddef.h>
+#include <errno.h>
+
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif // !WIN32_LEAN_AND_MEAN
 
 #ifdef XBOX_PLATFORM /* MSVC 2003 Doesn´t have stdint.h header */
 typedef char int8_t;
@@ -39,9 +55,15 @@ typedef unsigned int uint32_t;
 typedef unsigned long long uint64_t;
 typedef unsigned int uint_t;
 typedef unsigned int uintptr_t;
+#else
+#include <stdint.h>
 #endif
 
-#include <errno.h>
+#if defined(_WINDOWS) || defined(_XBOX)
+typedef SOCKET t_socket;
+#else
+typedef int t_socket;
+#endif
 
 #ifndef ENETRESET
 #define ENETRESET WSAENETRESET
@@ -75,15 +97,37 @@ typedef unsigned int uintptr_t;
 #define EWOULDBLOCK     WSAEWOULDBLOCK
 #endif
 
+#ifndef EBADF
+#define EBADF WSAENOTSOCK
+#endif
+
+#ifdef _XBOX
 #define snprintf _snprintf
+#endif
 
+#ifndef EAI_AGAIN
 #define EAI_AGAIN EAGAIN
-#define EAI_FAIL        4
-#define EAI_MEMORY      6
-#define EAI_NONAME      8
-#define EAI_SERVICE     9
+#endif
 
+#ifndef EAI_FAIL
+#define EAI_FAIL        4
+#endif
+
+#ifndef EAI_MEMORY
+#define EAI_MEMORY      6
+#endif
+
+#ifndef EAI_NONAME
+#define EAI_NONAME      8
+#endif
+
+#ifndef EAI_SERVICE
+#define EAI_SERVICE     9
+#endif
+
+#ifdef _XBOX
 typedef int socklen_t;
+#endif
 
 #ifndef POLLIN
 #define POLLIN      0x0001    /* There is data to read */
@@ -105,6 +149,7 @@ typedef int socklen_t;
 #define SO_ERROR 0x1007
 #endif
 
+#ifdef _XBOX
 struct sockaddr_storage {
 #ifdef HAVE_SOCKADDR_SA_LEN
 	unsigned char ss_len;
@@ -134,7 +179,17 @@ struct pollfd {
 #define SOL_TCP 6
 
 #define inline __inline 
+#endif
 
+typedef SSIZE_T ssize_t;
+
+struct iovec
+{
+  unsigned long iov_len; // from WSABUF
+  void *iov_base;        
+};	
+
+#ifdef _XBOX
 int poll(struct pollfd *fds, unsigned int nfds, int timo);
 
 int smb2_getaddrinfo(const char *node, const char*service,
@@ -145,25 +200,53 @@ void smb2_freeaddrinfo(struct addrinfo *res);
 #define getaddrinfo smb2_getaddrinfo
 #define freeaddrinfo smb2_freeaddrinfo
 
+#else
+
+#undef poll
+#define poll WSAPoll
+
+#endif
+
+inline int writev(t_socket sock, struct iovec *iov, int nvecs)
+{
+  DWORD ret;
+
+  int res = WSASend(sock, (LPWSABUF)iov, nvecs, &ret, 0, NULL, NULL);
+
+  if (res == 0) {
+    return (int)ret;
+  }
+  return -1;
+}
+
+inline int readv(t_socket sock, struct iovec *iov, int nvecs)
+{
+  DWORD ret;
+  DWORD flags = 0;
+
+  int res = WSARecv(sock, (LPWSABUF)iov, nvecs, &ret, &flags, NULL, NULL);
+
+  if (res == 0) {
+    return (int)ret;
+  }
+  return -1;
+}
+
+#define close closesocket
+
 void srandom(unsigned int seed);
 int random(void);
-
-/* just pretend they are the same so we compile */
-#define sockaddr_in6 sockaddr_in
 
 int getlogin_r(char *buf, size_t size);
 
 int getpid();
 
-#endif /* _XBOX */
+#ifdef _XBOX
+/* just pretend they are the same so we compile */
+#define sockaddr_in6 sockaddr_in
+#endif
 
-#if defined(_MSC_VER) && defined(_WINDOWS)
-void srandom(unsigned int seed);
-int random(void);
-#include <stddef.h>
-int getlogin_r(char *buf, size_t size);	
-int getpid();
-#endif /* _MSC_VER */
+#endif /* _XBOX */
 
 #ifdef PICO_PLATFORM
 
@@ -448,5 +531,9 @@ int getlogin_r(char *buf, size_t size);
 int getlogin_r(char *buf, size_t size);
 #endif
 #endif /* __ANDROID__ */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _COMPAT_H_ */
