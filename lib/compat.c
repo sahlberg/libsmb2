@@ -221,7 +221,7 @@ int smb2_getaddrinfo(const char *node, const char*service,
 #ifndef _XBOX
         sin->sin_len = sizeof(struct sockaddr_in);
 #endif
-		sin->sin_family=AF_INET;
+	sin->sin_family=AF_INET;
 
 #if defined(__amigaos4__) || defined(__AMIGA__) || defined(__AROS__)
         /* Some error checking would be nice */
@@ -454,14 +454,9 @@ int poll(struct pollfd *fds, unsigned int nfds, int timo)
                         FD_SET(fds[i].fd, op);
                 }
                 FD_SET(fds[i].fd, &efds);
-#ifdef _XBOX
                 if (fds[i].fd > (int)maxfd) {
                     maxfd = fds[i].fd;
-#else
-                if (fds[i].fd > maxfd) {
-                    maxfd = fds[i].fd;
-#endif
-				}
+		}
         } 
 #endif
 
