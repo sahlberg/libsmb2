@@ -23,10 +23,6 @@
 #define _GNU_SOURCE
 #endif
 
-#ifdef _WINDOWS
-#define HAVE_POLL_H 1
-#endif
-
 #ifdef HAVE_STDINT_H
 #include <stdint.h>
 #endif
