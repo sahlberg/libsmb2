@@ -23,7 +23,7 @@
 extern "C" {
 #endif
 
-#if defined(_XBOX) || defined(_WINDOWS)
+#if defined(_XBOX) || defined(_WINDOWS) || defined(__MINGW32__)
 
 #ifdef _XBOX
 /* XBOX Defs begin */
@@ -101,7 +101,7 @@ typedef int t_socket;
 #define EBADF WSAENOTSOCK
 #endif
 
-#ifdef _XBOX
+#if defined(_XBOX) || defined(__MINGW32__)
 #define snprintf _snprintf
 #endif
 
