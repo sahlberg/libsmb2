@@ -30,6 +30,7 @@ check_include_file("stddef.h" STDC_HEADERS)
 include(CheckStructHasMember)
 check_struct_has_member("struct sockaddr" sa_len sys/socket.h HAVE_SOCKADDR_LEN)
 check_struct_has_member("struct sockaddr_storage" ss_family sys/socket.h HAVE_SOCKADDR_STORAGE)
+check_struct_has_member("struct linger" l_linger sys/socket.h HAVE_LINGER)
 
 include(CheckCCompilerFlag)
 if(CMAKE_COMPILER_IS_GNUCC)

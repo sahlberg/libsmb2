@@ -46,6 +46,9 @@
 /* Whether we have sockaddr_Storage */
 /* #undef HAVE_SOCKADDR_STORAGE */
 
+/* Whether we have linger */
+/* #undef HAVE_LINGER */
+
 /* Define to 1 if you have the <stdint.h> header file. */
 #define HAVE_STDINT_H 1
 
