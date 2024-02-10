@@ -618,6 +618,20 @@ void smb2_set_timeout(struct smb2_context *smb2, int seconds)
 void smb2_set_version(struct smb2_context *smb2,
                       enum smb2_negotiate_version version)
 {
-        smb2->version = version;
+    smb2->version = version;
 }
 
+void smb2_set_negotiate_version(struct smb2_context* smb2, enum smb2_negotiate_version version)
+{
+    smb2->version = version;
+}
+
+enum smb2_negotiate_version smb2_get_negotiate_version(struct smb2_context* smb2)
+{
+    return smb2->version;
+}
+
+enum smb2_negotiate_version smb2_get_dialect_version(struct smb2_context* smb2)
+{
+    return smb2->dialect;
+}

@@ -231,6 +231,13 @@ enum smb2_negotiate_version {
 
 void smb2_set_version(struct smb2_context *smb2,
                       enum smb2_negotiate_version version);
+					  
+void smb2_set_negotiate_version(struct smb2_context* smb2,
+                                enum smb2_negotiate_version version);
+
+enum smb2_negotiate_version smb2_get_negotiate_version(struct smb2_context* smb2);
+
+enum smb2_negotiate_version smb2_get_dialect_version(struct smb2_context* smb2);
 
 /*
  * Set the security mode for the connection.
