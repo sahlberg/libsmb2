@@ -261,7 +261,13 @@ smb2_write_to_socket(struct smb2_context *smb2)
                 tmpiov->iov_base = (char *)tmpiov->iov_base + num_done;
                 tmpiov->iov_len -= num_done;
 
-                count = writev(smb2->fd, tmpiov, niov);
+                for (;;)
+                {
+                    count = writev(smb2->fd, tmpiov, niov);
+                    if (count < 0 && errno == EINTR)
+                        continue;
+                    break;
+                }
                 if (count == -1) {
                         if (errno == EAGAIN || errno == EWOULDBLOCK) {
                                 return 0;
@@ -623,7 +629,15 @@ read_more_data:
 static ssize_t smb2_readv_from_socket(struct smb2_context *smb2,
                                       const struct iovec *iov, int iovcnt)
 {
-        return readv(smb2->fd, iov, iovcnt);
+        for (;;)
+        {
+            int ret = readv(smb2->fd, iov, iovcnt);
+            if (ret < 0 && errno == EINTR)
+            {
+                continue;
+            }
+            return ret;
+        }
 }
 
 static int
@@ -940,7 +954,15 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_o
         setsockopt(fd, SOL_SOCKET, SO_LINGER, &lin, sizeof lin);
 #endif
 
-        if (connect(fd, (struct sockaddr *)&ss, socksize) != 0
+        int conn_ret = 0;
+        for (;;)
+        {
+            conn_ret = connect(fd, (struct sockaddr*)&ss, socksize);
+            if (conn_ret < 0 && errno == EINTR)
+                continue;
+            break;
+        }
+        if (conn_ret != 0
 #ifndef _MSC_VER
                   && errno != EINPROGRESS) {
 #else
