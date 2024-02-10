@@ -991,6 +991,13 @@ connect_cb(struct smb2_context *smb2, int status,
                 req.dialects[1] = SMB2_VERSION_0302;
                 req.dialects[2] = SMB2_VERSION_0311;
                 break;
+        case SMB2_VERSION_ANYEXCEPT0311:
+                req.dialect_count = 4;
+                req.dialects[0] = SMB2_VERSION_0202;
+                req.dialects[1] = SMB2_VERSION_0210;
+                req.dialects[2] = SMB2_VERSION_0300;
+                req.dialects[3] = SMB2_VERSION_0302;
+                break;				
         case SMB2_VERSION_0202:
         case SMB2_VERSION_0210:
         case SMB2_VERSION_0300:
