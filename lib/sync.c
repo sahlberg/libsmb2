@@ -170,7 +170,13 @@ static void share_enum_cb(struct smb2_context* smb2, int status,
 {
     struct sync_cb_data* cb_data = private_data;
     struct srvsvc_netshareenumall_rep* rep = command_data;
-
+	
+    if (cb_data->status == SMB2_STATUS_CANCELLED)
+    {
+        free(cb_data);
+        return;
+    }
+	
     if (status != SMB2_STATUS_SUCCESS) {
         smb2_set_error(smb2, "share_enum_cb status=%d", status);
         cb_data->is_finished = 1;
