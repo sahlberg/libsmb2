@@ -34,6 +34,7 @@ extern "C" {
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #endif
+#include <time.h>
 #include <stddef.h>
 #include <errno.h>
 
