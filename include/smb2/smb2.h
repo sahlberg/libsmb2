@@ -329,6 +329,8 @@ typedef uint8_t smb2_file_id[SMB2_FD_SIZE];
 
 struct smb2fh;
 smb2_file_id *smb2_get_file_id(struct smb2fh *fh);
+int64_t smb2_get_offset(struct smb2fh* fh);
+int64_t smb2_get_file_size(struct smb2fh* fh);
 
 /*
  * This creates a new smb2fh based on fileid.

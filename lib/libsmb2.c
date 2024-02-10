@@ -2655,6 +2655,18 @@ smb2_get_file_id(struct smb2fh *fh)
         return &fh->file_id;
 }
 
+int64_t
+smb2_get_offset(struct smb2fh* fh)
+{
+    return fh->offset;
+}
+
+int64_t
+smb2_get_file_size(struct smb2fh* fh)
+{
+    return fh->end_of_file;
+}
+
 struct smb2fh *
 smb2_fh_from_file_id(struct smb2_context *smb2, smb2_file_id *fileid)
 {
