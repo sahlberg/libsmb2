@@ -359,6 +359,16 @@ int smb2_connect_share(struct smb2_context *smb2,
                        const char *user);
 
 /*
+ * Sync share_enum()
+ * This function only works when connected to the IPC$ share.
+ *
+ * Returns
+ *  0     : Get share list of the server successfully.
+ * -errno : Failure.
+ */
+char** smb2_share_enum(struct smb2_context* smb2);
+
+/*
  * Async call to disconnect from a share/
  *
  * Returns:

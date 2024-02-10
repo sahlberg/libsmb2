@@ -163,6 +163,67 @@ out:
 }
 
 /*
+ * Get the share list of the server, only works when connected to the IPC$ share.
+ */
+static void share_enum_cb(struct smb2_context* smb2, int status,
+    void* command_data, void* private_data)
+{
+    struct sync_cb_data* cb_data = private_data;
+    struct srvsvc_netshareenumall_rep* rep = command_data;
+
+    if (status != SMB2_STATUS_SUCCESS) {
+        smb2_set_error(smb2, "share_enum_cb status=%d", status);
+        cb_data->is_finished = 1;
+        cb_data->status = status;
+        return;
+    }
+
+    char** shareList = calloc(rep->ctr->ctr1.count + 1, sizeof(char*));
+    int index = 0;
+    for (unsigned int i = 0; i < rep->ctr->ctr1.count; ++i)
+    {
+        if (((rep->ctr->ctr1.array[i].type & 3) == SHARE_TYPE_DISKTREE) &&
+            !(rep->ctr->ctr1.array[i].type & SHARE_TYPE_HIDDEN))
+        {
+            shareList[index++] = strdup(rep->ctr->ctr1.array[i].name);
+        }
+    }
+
+    cb_data->ptr = shareList;
+    smb2_free_data(smb2, rep);
+
+    cb_data->is_finished = 1;
+    cb_data->status = status;
+}
+
+char** smb2_share_enum(struct smb2_context* smb2)
+{
+    struct sync_cb_data* cb_data;
+    void* ptr;
+
+    cb_data = calloc(1, sizeof(struct sync_cb_data));
+    if (cb_data == NULL) {
+        smb2_set_error(smb2, "Failed to allocate sync_cb_data");
+        return NULL;
+    }
+
+    if (smb2_share_enum_async(smb2, share_enum_cb, cb_data) != 0) {
+        smb2_set_error(smb2, "smb2_share_enum_async failed");
+        free(cb_data);
+        return NULL;
+    }
+
+    if (wait_for_reply(smb2, cb_data) < 0) {
+        cb_data->status = SMB2_STATUS_CANCELLED;
+        return NULL;
+    }
+
+    ptr = cb_data->ptr;
+    free(cb_data);
+    return ptr;
+}
+
+/*
  * Disconnect from share
  */
 int smb2_disconnect_share(struct smb2_context* smb2)

@@ -91,6 +91,7 @@ smb2_set_opaque
 smb2_set_seal
 smb2_set_sign
 smb2_set_timeout
+smb2_share_enum
 smb2_stat
 smb2_stat_async
 smb2_statvfs
