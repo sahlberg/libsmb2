@@ -97,8 +97,15 @@ typedef int t_socket;
 #define EWOULDBLOCK     WSAEWOULDBLOCK
 #endif
 
+#if 0
 #ifndef EBADF
 #define EBADF WSAENOTSOCK
+#endif
+#else
+#ifdef EBADF
+#undef EBADF
+#define EBADF WSAENOTSOCK
+#endif	
 #endif
 
 #if defined(_XBOX) || defined(__MINGW32__)
@@ -245,6 +252,25 @@ int getpid();
 /* just pretend they are the same so we compile */
 #define sockaddr_in6 sockaddr_in
 #endif
+
+inline void gettimeofday(struct timeval* tp, void* tzp)
+{
+    time_t clock;
+    struct tm time;
+    SYSTEMTIME wtm;
+    GetLocalTime(&wtm);
+    time.tm_year = wtm.wYear - 1900;
+    time.tm_mon = wtm.wMonth - 1;
+    time.tm_mday = wtm.wDay;
+    time.tm_hour = wtm.wHour;
+    time.tm_min = wtm.wMinute;
+    time.tm_sec = wtm.wSecond;
+    time.tm_isdst = -1;
+    clock = mktime(&time);
+    tp->tv_sec = clock;
+    tp->tv_usec = wtm.wMilliseconds * 1000;
+    return;
+}
 
 #endif /* _XBOX */
 

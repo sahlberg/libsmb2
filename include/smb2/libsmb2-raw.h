@@ -19,6 +19,8 @@
 #ifndef _LIBSMB2_RAW_H_
 #define _LIBSMB2_RAW_H_
 
+#include "smb2.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
