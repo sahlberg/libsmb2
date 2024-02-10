@@ -20,8 +20,10 @@
 #define _SMB2_H_
 
 #ifdef __APPLE__
+#include <smb2_export.h>
 #include <smb2-errors.h>
-#else
+#else	
+#include <smb2/smb2_export.h>
 #include <smb2/smb2-errors.h>
 #endif
 
@@ -328,16 +330,16 @@ struct smb2_create_request {
 typedef uint8_t smb2_file_id[SMB2_FD_SIZE];
 
 struct smb2fh;
-smb2_file_id *smb2_get_file_id(struct smb2fh *fh);
-int64_t smb2_get_offset(struct smb2fh* fh);
-int64_t smb2_get_file_size(struct smb2fh* fh);
+SMB2_EXPORT smb2_file_id *smb2_get_file_id(struct smb2fh *fh);
+SMB2_EXPORT int64_t smb2_get_offset(struct smb2fh* fh);
+SMB2_EXPORT int64_t smb2_get_file_size(struct smb2fh* fh);
 
 /*
  * This creates a new smb2fh based on fileid.
  * Free it with smb2_close_async()
  */
 struct smb2_context;
-struct smb2fh *smb2_fh_from_file_id(struct smb2_context *smb2,
+SMB2_EXPORT struct smb2fh *smb2_fh_from_file_id(struct smb2_context *smb2,
                                     smb2_file_id *fileid);
 
 struct smb2_create_reply {
@@ -422,7 +424,7 @@ struct smb2_fileidfulldirectoryinformation {
 };
 
 struct smb2_iovec;
-int smb2_decode_fileidfulldirectoryinformation(
+SMB2_EXPORT int smb2_decode_fileidfulldirectoryinformation(
         struct smb2_context *smb2,
         struct smb2_fileidfulldirectoryinformation *fs,
         struct smb2_iovec *vec);
