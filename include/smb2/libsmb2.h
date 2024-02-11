@@ -24,9 +24,9 @@
 #endif
 
 #ifdef __APPLE__
-#include <smb2_export.h>
+#include <smb2-exports.h>
 #else
-#include <smb2/smb2_export.h>
+#include <smb2/smb2-exports.h>
 #endif
 
 #ifdef __cplusplus

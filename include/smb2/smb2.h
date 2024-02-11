@@ -20,10 +20,10 @@
 #define _SMB2_H_
 
 #ifdef __APPLE__
-#include <smb2_export.h>
+#include <smb2-exports.h>
 #include <smb2-errors.h>
 #else	
-#include <smb2/smb2_export.h>
+#include <smb2/smb2-exports.h>
 #include <smb2/smb2-errors.h>
 #endif
 
