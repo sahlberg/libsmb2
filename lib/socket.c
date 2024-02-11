@@ -23,11 +23,6 @@
 #define _GNU_SOURCE
 #endif
 
-#ifdef _WINDOWS
-#define HAVE_POLL_H 1
-#define HAVE_SYS_SOCKET_H 1
-#endif
-
 #ifdef HAVE_NETDB_H
 #include <netdb.h>
 #endif

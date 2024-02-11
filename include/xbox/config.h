@@ -72,7 +72,7 @@
 /* #define HAVE_SYS_POLL_H 1 */
 
 /* Define to 1 if you have the <sys/socket.h> header file. */
-#define HAVE_SYS_SOCKET_H 1
+/* #undef HAVE_SYS_SOCKET_H 1 */
 
 /* Define to 1 if you have the <sys/stat.h> header file. */
 #define HAVE_SYS_STAT_H 1

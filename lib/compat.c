@@ -18,24 +18,20 @@
 
 #include "compat.h"
 
-#if defined(_MSC_VER) && defined(_WINDOWS)
+#if defined(_WINDOWS) || defined(_XBOX)
 #include <errno.h>
-#include <Windows.h>
 #include <stdlib.h>
+#ifdef _WINDOWS
 #define NEED_GETLOGIN_R
 #define NEED_GETPID
 #define NEED_RANDOM
 #define NEED_SRANDOM
 #define login_num ENXIO
 #define getpid_num GetCurrentProcessId
-#define smb2_random rand
-#define smb2_srandom srand
-#endif
-
-#if defined(_MSC_VER) && defined(_XBOX)
+#else
 #define login_num 0
-#define getpid_num 0
-#include <stdlib.h>
+#define getpid_num 0	
+#endif
 #define smb2_random rand
 #define smb2_srandom srand
 #endif
