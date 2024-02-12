@@ -896,6 +896,7 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_o
 #ifdef _XBOX
         BOOL bBroadcast = TRUE;
 #endif
+        int conn_ret = 0;
         memset(&ss, 0, sizeof(ss));
         switch (ai->ai_family) {
         case AF_INET:
@@ -954,7 +955,6 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_o
         setsockopt(fd, SOL_SOCKET, SO_LINGER, &lin, sizeof lin);
 #endif
 
-        int conn_ret = 0;
         for (;;)
         {
             conn_ret = connect(fd, (struct sockaddr*)&ss, socksize);
