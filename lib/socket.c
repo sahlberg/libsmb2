@@ -105,13 +105,13 @@
  * Since the smb is most likely used on local network, use an aggressive
  * timeout of 100ms. */
 #define HAPPY_EYEBALLS_TIMEOUT 100
-
-struct LingerStruct 
+#if !defined(HAVE_LINGER) && !defined(_WINDOWS)
+struct linger 
 {
 	int		l_onoff;	/* Linger active		*/
 	int		l_linger;	/* How long to linger for	*/
 };
-
+#endif
 static int
 smb2_connect_async_next_addr(struct smb2_context *smb2, const struct addrinfo *base);
 
@@ -877,7 +877,7 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_o
         struct sockaddr_storage ss;
 #if 0 == CONFIGURE_OPTION_TCP_LINGER
         int const yes = 1;
-        struct LingerStruct const lin = { 1, 0 };   /*  if l_linger is zero, sends RST after FIN */
+        struct linger const lin = { 1, 0 };   /*  if l_linger is zero, sends RST after FIN */
 #endif
 #ifdef _XBOX
         BOOL bBroadcast = TRUE;

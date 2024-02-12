@@ -36,6 +36,9 @@
 /* Whether we have sockaddr_Storage */
 #cmakedefine HAVE_SOCKADDR_STORAGE
 
+/* Whether we have linger */
+#cmakedefine HAVE_LINGER
+
 /* Define to 1 if you have the <stdint.h> header file. */
 #cmakedefine HAVE_STDINT_H
 
