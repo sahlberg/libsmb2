@@ -305,44 +305,6 @@ int getlogin_r(char *buf, size_t size);
 
 #endif /* DC_KOS_PLATFORM */
 
-#ifdef PS2_EE_PLATFORM
-
-#include <unistd.h>
-
-int getlogin_r(char *buf, size_t size);
-
-#define POLLIN      0x0001    /* There is data to read */
-#define POLLPRI     0x0002    /* There is urgent data to read */
-#define POLLOUT     0x0004    /* Writing now will not block */
-#define POLLERR     0x0008    /* Error condition */
-#define POLLHUP     0x0010    /* Hung up */
-
-struct pollfd {
-        int fd;
-        short events;
-        short revents;
-};
-
-int poll(struct pollfd *fds, unsigned int nfds, int timo);
-
-struct iovec {
-  void  *iov_base;
-  size_t iov_len;
-};
-
-ssize_t writev(int fd, const struct iovec *iov, int iovcnt);
-ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
-
-long long int be64toh(long long int x);
-
-#define SOL_TCP IPPROTO_TCP
-#define EAI_AGAIN EAGAIN
-
-/* just pretend they are the same so we compile */
-#define sockaddr_in6 sockaddr_in
-
-#endif /* PS2_EE_PLATFORM */
-
 #if defined(__amigaos4__) || defined(__AMIGA__) || defined(__AROS__)
 #include <errno.h>
 #include <sys/time.h>
@@ -409,36 +371,62 @@ struct sockaddr_storage {
 #endif
 #endif
 
-#ifdef PS2_IOP_PLATFORM
+#ifdef PS2_PLATFORM
 
+#ifdef PS2_EE_PLATFORM
+#include <unistd.h>
+#else
 #include <alloc.h>
 #include <stdint.h>
 #include <ps2ip.h>
 #include <loadcore.h>
+#endif
 
+#ifdef PS2_IOP_PLATFORM
 typedef uint32_t UWORD32;
 typedef size_t ssize_t;
+#endif
 
 long long int be64toh(long long int x);
+#ifdef PS2_IOP_PLATFORM
 char *strdup(const char *s);
 
 int random(void);
 void srandom(unsigned int seed);
 time_t time(time_t *tloc);
 int asprintf(char **strp, const char *fmt, ...);
-
+#endif
 int getlogin_r(char *buf, size_t size);
-int getpid();
 
+#ifdef PS2_IOP_PLATFORM
+int getpid();
+#endif
+
+#ifdef PS2_IOP_PLATFORM
 #define close(x) lwip_close(x)
 #define snprintf(format, n, ...) sprintf(format, __VA_ARGS__)
 #define fcntl(a,b,c) lwip_fcntl(a,b,c)
+#endif
 
+#ifndef POLLIN
 #define POLLIN      0x0001    /* There is data to read */
+#endif
+
+#ifndef POLLPRI
 #define POLLPRI     0x0002    /* There is urgent data to read */
+#endif
+
+#ifndef POLLOUT
 #define POLLOUT     0x0004    /* Writing now will not block */
+#endif
+
+#ifndef POLLERR
 #define POLLERR     0x0008    /* Error condition */
+#endif
+
+#ifndef POLLHUP
 #define POLLHUP     0x0010    /* Hung up */
+#endif
 
 struct pollfd {
         int fd;
@@ -453,12 +441,14 @@ struct iovec {
   size_t iov_len;
 };
 
+#ifdef PS2_IOP_PLATFORM
 #undef connect
 #define connect(a,b,c) iop_connect(a,b,c)
 int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen);
 
 #define write(a,b,c) lwip_send(a,b,c,MSG_DONTWAIT)
 #define read(a,b,c) lwip_recv(a,b,c,MSG_DONTWAIT)
+#endif
 
 ssize_t writev(int fd, const struct iovec *iov, int iovcnt);
 ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
@@ -466,12 +456,14 @@ ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
 #define SOL_TCP IPPROTO_TCP
 #define EAI_AGAIN EAGAIN
 
+#ifdef PS2_IOP_PLATFORM
 #define strerror(x) "Unknown"
+#endif
 
 /* just pretend they are the same so we compile */
 #define sockaddr_in6 sockaddr_in
 
-#endif /* PS2_IOP_PLATFORM */
+#endif /* PS2_PLATFORM */
 
 #ifdef PS3_PPU_PLATFORM
 

@@ -246,6 +246,27 @@ SMB2_EXPORT enum smb2_negotiate_version smb2_get_negotiate_version(struct smb2_c
 
 SMB2_EXPORT enum smb2_negotiate_version smb2_get_dialect_version(struct smb2_context* smb2);
 
+/* 
+ * Sets which version libsmb2 uses.
+*/
+#define LIBSMB2_MAJOR_VERSION 4
+#define LIBSMB2_MINOR_VERSION 0
+#define LIBSMB2_PATCH_VERSION 0
+
+struct smb2_libversion
+{
+     uint8_t major_version;
+     uint8_t minor_version;
+     uint8_t patch_version;
+};
+
+/*
+ * Gets the libsmb2 version being linked while used.
+ * This function will be available on 5.x 
+ * @param struct smb2_libversion
+*/
+void smb2_get_libsmb2Version(struct smb2_libversion *smb2_ver);
+
 /*
  * Set the security mode for the connection.
  * This is a combination of the flags SMB2_NEGOTIATE_SIGNING_ENABLED

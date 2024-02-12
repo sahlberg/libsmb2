@@ -635,3 +635,10 @@ enum smb2_negotiate_version smb2_get_dialect_version(struct smb2_context* smb2)
 {
     return smb2->dialect;
 }
+
+void smb2_get_libsmb2Version(struct smb2_libversion *smb2_ver)
+{
+        smb2_ver->major_version = LIBSMB2_MAJOR_VERSION;
+        smb2_ver->minor_version = LIBSMB2_MINOR_VERSION;
+        smb2_ver->patch_version = LIBSMB2_MAJOR_VERSION;
+}
