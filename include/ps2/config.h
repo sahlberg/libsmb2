@@ -36,15 +36,16 @@
 /* Define to 1 if you have the `socket' library (-lsocket). */
 /* #undef HAVE_LIBSOCKET */
 
+#ifndef _IOP
 /* Define to 1 if you have the <netdb.h> header file. */
-/* #undef HAVE_NETDB_H 1 */
+#define HAVE_NETDB_H 1 
 
 /* Define to 1 if you have the <netinet/in.h> header file. */
-/* #undef HAVE_NETINET_IN_H 1 */
+#define HAVE_NETINET_IN_H 1
 
 /* Define to 1 if you have the <netinet/tcp.h> header file. */
-/* #undef HAVE_NETINET_TCP_H 1 */
-
+#define HAVE_NETINET_TCP_H 1 
+#endif
 /* Define to 1 if you have the <poll.h> header file. */
 /* #define HAVE_POLL_H 1 */
 
@@ -53,6 +54,9 @@
 
 /* Whether we have sockaddr_Storage */
 #define HAVE_SOCKADDR_STORAGE 1
+
+/* Whether we have linger */
+#define HAVE_LINGER 1
 
 /* Define to 1 if you have the <stdint.h> header file. */
 #define HAVE_STDINT_H 1
@@ -76,11 +80,10 @@
 
 /* Define to 1 if you have the <sys/poll.h> header file. */
 /* #define HAVE_SYS_POLL_H 1 */
-
-/* Define to 1 if you have the <sys/socket.h> header file. */
-/* #undef HAVE_SYS_SOCKET_H 1 */
-
 #ifndef _IOP
+/* Define to 1 if you have the <sys/socket.h> header file. */
+#define HAVE_SYS_SOCKET_H 1
+
 /* Define to 1 if you have the <sys/stat.h> header file. */
 #define HAVE_SYS_STAT_H 1
 #endif
