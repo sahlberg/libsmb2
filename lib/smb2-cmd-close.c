@@ -72,7 +72,7 @@ smb2_encode_close_request(struct smb2_context *smb2,
         return 0;
 }
 
-struct smb2_pdu *
+struct smb2_pdu * SMB2APIENTRY
 smb2_cmd_close_async(struct smb2_context *smb2,
                      struct smb2_close_request *req,
                      smb2_command_cb cb, void *cb_data)

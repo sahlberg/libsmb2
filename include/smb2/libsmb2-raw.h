@@ -19,7 +19,11 @@
 #ifndef _LIBSMB2_RAW_H_
 #define _LIBSMB2_RAW_H_
 
-#include "smb2.h"
+#ifdef __APPLE__
+#include <smb2.h>
+#else
+#include <smb2/smb2.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -36,7 +40,7 @@ extern const smb2_file_id compound_file_id;
 /*
  * This function is used to free the data returned by the query functions.
  */
-void smb2_free_data(struct smb2_context *smb2, void *ptr);
+SMB2_API void SMB2APIENTRY smb2_free_data(struct smb2_context *smb2, void *ptr);
 
 /*
  * Asynchronous SMB2 Negotiate
@@ -54,7 +58,7 @@ void smb2_free_data(struct smb2_context *smb2, void *ptr);
  *
  *   !0     : Status is NT status code. Command_data is NULL.
  */
-struct smb2_pdu *smb2_cmd_negotiate_async(struct smb2_context *smb2,
+SMB2_API struct smb2_pdu * SMB2APIENTRY smb2_cmd_negotiate_async(struct smb2_context *smb2,
                                           struct smb2_negotiate_request *req,
                                           smb2_command_cb cb, void *cb_data);
 
@@ -75,7 +79,7 @@ struct smb2_pdu *smb2_cmd_negotiate_async(struct smb2_context *smb2,
  *
  *   !0     : Status is NT status code.
  */
-struct smb2_pdu *smb2_cmd_session_setup_async(struct smb2_context *smb2,
+SMB2_API struct smb2_pdu * SMB2APIENTRY smb2_cmd_session_setup_async(struct smb2_context *smb2,
                                  struct smb2_session_setup_request *req,
                                  smb2_command_cb cb, void *cb_data);
 
@@ -95,7 +99,7 @@ struct smb2_pdu *smb2_cmd_session_setup_async(struct smb2_context *smb2,
  *
  *   !0     : Status is NT status code. Command_data is NULL.
  */
-struct smb2_pdu *smb2_cmd_tree_connect_async(struct smb2_context *smb2,
+SMB2_API struct smb2_pdu * SMB2APIENTRY smb2_cmd_tree_connect_async(struct smb2_context *smb2,
                                 struct smb2_tree_connect_request *req,
                                 smb2_command_cb cb, void *cb_data);
 
@@ -116,7 +120,7 @@ struct smb2_pdu *smb2_cmd_tree_connect_async(struct smb2_context *smb2,
  *
  * Command_data is always NULL.
  */
-struct smb2_pdu *smb2_cmd_tree_disconnect_async(struct smb2_context *smb2,
+SMB2_API struct smb2_pdu * SMB2APIENTRY smb2_cmd_tree_disconnect_async(struct smb2_context *smb2,
                                   smb2_command_cb cb, void *cb_data);
 
 /*
@@ -134,7 +138,7 @@ struct smb2_pdu *smb2_cmd_tree_disconnect_async(struct smb2_context *smb2,
  *
  *   !0     : Status is NT status code. Command_data is NULL.
  */
-struct smb2_pdu *smb2_cmd_create_async(struct smb2_context *smb2,
+SMB2_API struct smb2_pdu * SMB2APIENTRY smb2_cmd_create_async(struct smb2_context *smb2,
                                        struct smb2_create_request *req,
                                        smb2_command_cb cb, void *cb_data);
 
@@ -153,7 +157,7 @@ struct smb2_pdu *smb2_cmd_create_async(struct smb2_context *smb2,
  *
  *   !0     : Status is NT status code. Command_data is NULL.
  */
-struct smb2_pdu *smb2_cmd_close_async(struct smb2_context *smb2,
+SMB2_API struct smb2_pdu * SMB2APIENTRY smb2_cmd_close_async(struct smb2_context *smb2,
                                       struct smb2_close_request *req,
                                       smb2_command_cb cb, void *cb_data);
 
@@ -173,7 +177,7 @@ struct smb2_pdu *smb2_cmd_close_async(struct smb2_context *smb2,
  *
  * command_data is always NULL.
  */
-struct smb2_pdu *smb2_cmd_read_async(struct smb2_context *smb2,
+SMB2_API struct smb2_pdu * SMB2APIENTRY smb2_cmd_read_async(struct smb2_context *smb2,
                                      struct smb2_read_request *req,
                                      smb2_command_cb cb, void *cb_data);
 
@@ -193,7 +197,7 @@ struct smb2_pdu *smb2_cmd_read_async(struct smb2_context *smb2,
  *
  * command_data is always NULL.
  */
-struct smb2_pdu *smb2_cmd_write_async(struct smb2_context *smb2,
+SMB2_API struct smb2_pdu * SMB2APIENTRY smb2_cmd_write_async(struct smb2_context *smb2,
                                       struct smb2_write_request *req,
                                       smb2_command_cb cb, void *cb_data);
 
@@ -212,7 +216,7 @@ struct smb2_pdu *smb2_cmd_write_async(struct smb2_context *smb2,
  *
  *   !0     : Status is NT status code. Command_data is NULL.
  */
-struct smb2_pdu *smb2_cmd_query_directory_async(struct smb2_context *smb2,
+SMB2_API struct smb2_pdu * SMB2APIENTRY smb2_cmd_query_directory_async(struct smb2_context *smb2,
                              struct smb2_query_directory_request *req,
                              smb2_command_cb cb, void *cb_data);
 
@@ -234,7 +238,7 @@ struct smb2_pdu *smb2_cmd_query_directory_async(struct smb2_context *smb2,
  *
  *   !0     : Status is NT status code. Command_data is NULL.
  */
-struct smb2_pdu *smb2_cmd_query_info_async(struct smb2_context *smb2,
+SMB2_API struct smb2_pdu * SMB2APIENTRY smb2_cmd_query_info_async(struct smb2_context *smb2,
                                            struct smb2_query_info_request *req,
                                            smb2_command_cb cb, void *cb_data);
 
@@ -253,7 +257,7 @@ struct smb2_pdu *smb2_cmd_query_info_async(struct smb2_context *smb2,
  *
  *   !0     : Status is NT status code. Command_data is NULL.
  */
-struct smb2_pdu *smb2_cmd_set_info_async(struct smb2_context *smb2,
+SMB2_API struct smb2_pdu * SMB2APIENTRY smb2_cmd_set_info_async(struct smb2_context *smb2,
                                          struct smb2_set_info_request *req,
                                          smb2_command_cb cb, void *cb_data);
 
@@ -275,7 +279,7 @@ struct smb2_pdu *smb2_cmd_set_info_async(struct smb2_context *smb2,
  *
  *   !0     : Status is NT status code. Command_data is NULL.
  */
-struct smb2_pdu *smb2_cmd_ioctl_async(struct smb2_context *smb2,
+SMB2_API struct smb2_pdu * SMB2APIENTRY smb2_cmd_ioctl_async(struct smb2_context *smb2,
                                       struct smb2_ioctl_request *req,
                                       smb2_command_cb cb, void *cb_data);
 
@@ -295,7 +299,7 @@ struct smb2_pdu *smb2_cmd_ioctl_async(struct smb2_context *smb2,
  *
  * command_data is always NULL.
  */
-struct smb2_pdu *smb2_cmd_echo_async(struct smb2_context *smb2,
+SMB2_API struct smb2_pdu * SMB2APIENTRY smb2_cmd_echo_async(struct smb2_context *smb2,
                                      smb2_command_cb cb, void *cb_data);
 
 /*
@@ -314,7 +318,7 @@ struct smb2_pdu *smb2_cmd_echo_async(struct smb2_context *smb2,
  *
  * command_data is always NULL.
  */
-struct smb2_pdu *smb2_cmd_logoff_async(struct smb2_context *smb2,
+SMB2_API struct smb2_pdu * SMB2APIENTRY smb2_cmd_logoff_async(struct smb2_context *smb2,
                                        smb2_command_cb cb, void *cb_data);
 
 /*
@@ -333,7 +337,7 @@ struct smb2_pdu *smb2_cmd_logoff_async(struct smb2_context *smb2,
  *
  * command_data is always NULL.
  */
-struct smb2_pdu *smb2_cmd_flush_async(struct smb2_context *smb2,
+SMB2_API struct smb2_pdu * SMB2APIENTRY smb2_cmd_flush_async(struct smb2_context *smb2,
                                       struct smb2_flush_request *req,
                                       smb2_command_cb cb, void *cb_data);
 

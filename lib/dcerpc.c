@@ -260,8 +260,7 @@ dcerpc_set_uint8(struct dcerpc_context *ctx, struct smb2_iovec *iov,
         return 0;
 }
 
-int
-dcerpc_set_uint16(struct dcerpc_context *ctx, struct smb2_iovec *iov,
+int dcerpc_set_uint16(struct dcerpc_context *ctx, struct smb2_iovec *iov,
                   int offset, uint16_t value)
 {
         if (offset + sizeof(uint16_t) > iov->len) {
@@ -275,8 +274,7 @@ dcerpc_set_uint16(struct dcerpc_context *ctx, struct smb2_iovec *iov,
         return 0;
 }
 
-int
-dcerpc_set_uint32(struct dcerpc_context *ctx, struct smb2_iovec *iov,
+int dcerpc_set_uint32(struct dcerpc_context *ctx, struct smb2_iovec *iov,
                   int offset, uint32_t value)
 {
         if (offset + sizeof(uint32_t) > iov->len) {
@@ -290,8 +288,7 @@ dcerpc_set_uint32(struct dcerpc_context *ctx, struct smb2_iovec *iov,
         return 0;
 }
 
-int
-dcerpc_get_uint16(struct dcerpc_context *ctx, struct smb2_iovec *iov,
+int dcerpc_get_uint16(struct dcerpc_context *ctx, struct smb2_iovec *iov,
                   int offset, uint16_t *value)
 {
         uint16_t val;
@@ -308,8 +305,7 @@ dcerpc_get_uint16(struct dcerpc_context *ctx, struct smb2_iovec *iov,
         return 0;
 }
 
-int
-dcerpc_get_uint32(struct dcerpc_context *ctx, struct smb2_iovec *iov,
+int dcerpc_get_uint32(struct dcerpc_context *ctx, struct smb2_iovec *iov,
                   int offset, uint32_t *value)
 {
         uint32_t val;
@@ -326,8 +322,7 @@ dcerpc_get_uint32(struct dcerpc_context *ctx, struct smb2_iovec *iov,
         return 0;
 }
 
-int
-dcerpc_get_uint64(struct dcerpc_context *ctx, struct smb2_iovec *iov,
+int dcerpc_get_uint64(struct dcerpc_context *ctx, struct smb2_iovec *iov,
                   int offset, uint64_t *value)
 {
         uint64_t val;
@@ -344,8 +339,7 @@ dcerpc_get_uint64(struct dcerpc_context *ctx, struct smb2_iovec *iov,
         return 0;
 }
 
-int
-dcerpc_set_uint64(struct dcerpc_context *ctx, struct smb2_iovec *iov,
+int dcerpc_set_uint64(struct dcerpc_context *ctx, struct smb2_iovec *iov,
                   int offset, uint64_t value)
 {
         if (offset + sizeof(uint64_t) > iov->len) {
@@ -360,19 +354,19 @@ dcerpc_set_uint64(struct dcerpc_context *ctx, struct smb2_iovec *iov,
 }
 
 struct smb2_context *
-dcerpc_get_smb2_context(struct dcerpc_context *dce)
+SMB2APIENTRY dcerpc_get_smb2_context(struct dcerpc_context *dce)
 {
         return dce->smb2;
 }
 
 void *
-dcerpc_get_pdu_payload(struct dcerpc_pdu *pdu)
+SMB2APIENTRY dcerpc_get_pdu_payload(struct dcerpc_pdu *pdu)
 {
         return pdu->payload;
 }
 
 struct dcerpc_context *
-dcerpc_create_context(struct smb2_context *smb2)
+SMB2APIENTRY dcerpc_create_context(struct smb2_context *smb2)
 {
         struct dcerpc_context *ctx;
 
@@ -388,7 +382,7 @@ dcerpc_create_context(struct smb2_context *smb2)
 }
 
 int
-dcerpc_connect_context_async(struct dcerpc_context *dce, const char *path,
+SMB2APIENTRY dcerpc_connect_context_async(struct dcerpc_context *dce, const char *path,
                              p_syntax_id_t *syntax,
                              dcerpc_cb cb, void *cb_data)
 {
@@ -413,7 +407,7 @@ dcerpc_connect_context_async(struct dcerpc_context *dce, const char *path,
 }
 
 void
-dcerpc_destroy_context(struct dcerpc_context *dce)
+SMB2APIENTRY dcerpc_destroy_context(struct dcerpc_context *dce)
 {
         if (dce == NULL) {
                 return;
@@ -423,7 +417,7 @@ dcerpc_destroy_context(struct dcerpc_context *dce)
 }
 
 void
-dcerpc_free_pdu(struct dcerpc_context *dce, struct dcerpc_pdu *pdu)
+SMB2APIENTRY dcerpc_free_pdu(struct dcerpc_context *dce, struct dcerpc_pdu *pdu)
 {
         if (pdu == NULL) {
                 return;
@@ -436,7 +430,7 @@ dcerpc_free_pdu(struct dcerpc_context *dce, struct dcerpc_pdu *pdu)
 }
 
 struct dcerpc_pdu *
-dcerpc_allocate_pdu(struct dcerpc_context *dce, int direction, int payload_size)
+SMB2APIENTRY dcerpc_allocate_pdu(struct dcerpc_context *dce, int direction, int payload_size)
 {
         struct dcerpc_pdu *pdu;
 
@@ -522,7 +516,7 @@ dcerpc_encode_32(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 }
 
 int
-dcerpc_uint32_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+SMB2APIENTRY dcerpc_uint32_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                  struct smb2_iovec *iov, int offset, void *ptr)
 {
         if (pdu->direction == DCERPC_DECODE) {
@@ -568,7 +562,7 @@ dcerpc_encode_16(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
 }
 
 int
-dcerpc_uint16_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+SMB2APIENTRY dcerpc_uint16_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                  struct smb2_iovec *iov, int offset, void *ptr)
 {
         if (pdu->direction == DCERPC_DECODE) {
@@ -610,7 +604,7 @@ dcerpc_encode_8(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
 }
 
 int
-dcerpc_uint8_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+SMB2APIENTRY dcerpc_uint8_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                  struct smb2_iovec *iov, int offset, void *ptr)
 {
         if (pdu->direction == DCERPC_DECODE) {
@@ -667,7 +661,7 @@ dcerpc_decode_3264(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 }
 
 int
-dcerpc_uint3264_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+SMB2APIENTRY dcerpc_uint3264_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                       struct smb2_iovec *iov, int offset, void *ptr)
 {
         if (pdu->direction == DCERPC_DECODE) {
@@ -816,7 +810,7 @@ dcerpc_decode_ptr(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
 }
 
 int
-dcerpc_ptr_coder(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+SMB2APIENTRY dcerpc_ptr_coder(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                  struct smb2_iovec *iov, int offset, void *ptr,
                  enum ptr_type type, dcerpc_coder coder)
 {
@@ -909,7 +903,7 @@ dcerpc_decode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 /* Handle \0 terminated utf16 strings */
 /* ptr is char ** */
 int
-dcerpc_utf16z_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+SMB2APIENTRY dcerpc_utf16z_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                    struct smb2_iovec *iov, int offset,
                    void *ptr)
 {
@@ -922,7 +916,7 @@ dcerpc_utf16z_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 
 /* Handle utf16 strings that are NOT \0 terminated */
 int
-dcerpc_utf16_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+SMB2APIENTRY dcerpc_utf16_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                   struct smb2_iovec *iov, int offset,
                   void *ptr)
 {
@@ -1099,7 +1093,7 @@ dcerpc_context_handle_decoder(struct dcerpc_context *dce,
 }
 
 int
-dcerpc_context_handle_coder(struct dcerpc_context *dce,
+SMB2APIENTRY dcerpc_context_handle_coder(struct dcerpc_context *dce,
                             struct dcerpc_pdu *pdu,
                             struct smb2_iovec *iov, int offset,
                             void *ptr)
@@ -1474,7 +1468,7 @@ dcerpc_call_cb(struct smb2_context *smb2, int status,
 }
 
 int
-dcerpc_call_async(struct dcerpc_context *dce,
+SMB2APIENTRY dcerpc_call_async(struct dcerpc_context *dce,
                   int opnum,
                   dcerpc_coder encoder, void *ptr,
                   dcerpc_coder decoder, int decode_size,
@@ -1710,7 +1704,7 @@ smb2_open_cb(struct smb2_context *smb2, int status,
 }
 
 int
-dcerpc_open_async(struct dcerpc_context *dce, dcerpc_cb cb,
+SMB2APIENTRY dcerpc_open_async(struct dcerpc_context *dce, dcerpc_cb cb,
                   void *cb_data)
 {
         struct smb2_create_request req;
@@ -1758,19 +1752,19 @@ dcerpc_open_async(struct dcerpc_context *dce, dcerpc_cb cb,
 }
 
 const char *
-dcerpc_get_error(struct dcerpc_context *dce)
+SMB2APIENTRY dcerpc_get_error(struct dcerpc_context *dce)
 {
         return smb2_get_error(dcerpc_get_smb2_context(dce));
 }
 
 void
-dcerpc_free_data(struct dcerpc_context *dce, void *data)
+SMB2APIENTRY dcerpc_free_data(struct dcerpc_context *dce, void *data)
 {
         smb2_free_data(dcerpc_get_smb2_context(dce), data);
 }
 
 int
-dcerpc_pdu_direction(struct dcerpc_pdu *pdu)
+ dcerpc_pdu_direction(struct dcerpc_pdu *pdu)
 {
         return pdu->direction;
 }

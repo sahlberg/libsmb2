@@ -20,10 +20,10 @@
 #define _SMB2_H_
 
 #ifdef __APPLE__
-#include <smb2-exports.h>
+#include <smb2-dllapi.h>
 #include <smb2-errors.h>
 #else	
-#include <smb2/smb2-exports.h>
+#include <smb2/smb2-dllapi.h>
 #include <smb2/smb2-errors.h>
 #endif
 
@@ -89,7 +89,7 @@ enum smb2_command {
 #define SMB2_GLOBAL_CAP_DIRECTORY_LEASING  0x00000020
 #define SMB2_GLOBAL_CAP_ENCRYPTION         0x00000040
 
-#define SMB2_PREAUTH_INTEGRITY_CAP         0x0001
+#define SMB2_PREAUTH_INTEGRITY_CAP         0x0001F
 #define SMB2_ENCRYPTION_CAP                0x0002
 
 #define SMB2_HASH_SHA_512                  0x0001
@@ -330,16 +330,16 @@ struct smb2_create_request {
 typedef uint8_t smb2_file_id[SMB2_FD_SIZE];
 
 struct smb2fh;
-SMB2_EXPORT smb2_file_id *smb2_get_file_id(struct smb2fh *fh);
-SMB2_EXPORT int64_t smb2_get_offset(struct smb2fh* fh);
-SMB2_EXPORT int64_t smb2_get_file_size(struct smb2fh* fh);
+SMB2_API smb2_file_id * SMB2APIENTRY smb2_get_file_id(struct smb2fh *fh);
+SMB2_API int64_t SMB2APIENTRY smb2_get_offset(struct smb2fh* fh);
+SMB2_API int64_t SMB2APIENTRY smb2_get_file_size(struct smb2fh* fh);
 
 /*
  * This creates a new smb2fh based on fileid.
  * Free it with smb2_close_async()
  */
 struct smb2_context;
-SMB2_EXPORT struct smb2fh *smb2_fh_from_file_id(struct smb2_context *smb2,
+SMB2_API struct smb2fh * SMB2APIENTRY smb2_fh_from_file_id(struct smb2_context *smb2,
                                     smb2_file_id *fileid);
 
 struct smb2_create_reply {
@@ -424,7 +424,7 @@ struct smb2_fileidfulldirectoryinformation {
 };
 
 struct smb2_iovec;
-SMB2_EXPORT int smb2_decode_fileidfulldirectoryinformation(
+SMB2_API int SMB2APIENTRY smb2_decode_fileidfulldirectoryinformation(
         struct smb2_context *smb2,
         struct smb2_fileidfulldirectoryinformation *fs,
         struct smb2_iovec *vec);

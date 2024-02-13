@@ -17,15 +17,37 @@
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef SMB2_EXPORT_H
-#define SMB2_EXPORT_H
+#ifndef SMB2_DLLAPI_H
+#define SMB2_DLLAPI_H
 
-#if defined (_WIN32)
-# define SMB2_EXPORT __declspec(dllexport)
+#ifdef IMPORT_DLL
+#if defined(_MSC_VER) && defined(_WINDOWS) || defined(__MINGW32__)
+#define SMB2_API __declspec(dllimport)
 #elif defined (__GNUC__)
-# define SMB2_EXPORT __attribute__((visibility("default")))
+#define SMB2_API __attribute__((visibility("default")))
+#elif defined(__CYGWIN__)
+#define SMB2_API extern
 #else
-# define SMB2_EXPORT
+#define SMB2_API
+#endif
+#else
+#if defined(_MSC_VER) && defined(_WINDOWS) || defined(__MINGW32__)
+#define SMB2_API __declspec(dllexport)
+#elif defined (__GNUC__)
+#define SMB2_API __attribute__((visibility("default")))
+#elif defined(__CYGWIN__)
+#define SMB2_API extern
+#else
+#define SMB2_API
+#endif
 #endif
 
-#endif /* SMB2_EXPORT_H */
+#if defined(_MSC_VER) && defined(_WINDOWS) || defined(__MINGW32__) 
+#define SMB2APIENTRY WINAPI
+#elif defined(__CYGWIN__)
+#define SMB2APIENTRY __stdcall
+#else
+#define SMB2APIENTRY
+#endif
+
+#endif /* SMB2_DLLAPI_H */

@@ -19,6 +19,12 @@
 #ifndef _LIBSMB2_DCERPC_H_
 #define _LIBSMB2_DCERPC_H_
 
+#ifdef __APPLE__
+#include <smb2-dllapi.h>
+#else
+#include <smb2/smb2-dllapi.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -74,47 +80,47 @@ extern p_syntax_id_t srvsvc_interface;
 typedef void (*dcerpc_cb)(struct dcerpc_context *dce, int status,
                           void *command_data, void *cb_data);
 
-struct dcerpc_context *dcerpc_create_context(struct smb2_context *smb2);
-void dcerpc_free_data(struct dcerpc_context *dce, void *data);
-const char *dcerpc_get_error(struct dcerpc_context *dce);
-int dcerpc_connect_context_async(struct dcerpc_context *dce,
+SMB2_API struct dcerpc_context * SMB2APIENTRY dcerpc_create_context(struct smb2_context *smb2);
+SMB2_API void SMB2APIENTRY dcerpc_free_data(struct dcerpc_context *dce, void *data);
+SMB2_API const char * SMB2APIENTRY dcerpc_get_error(struct dcerpc_context *dce);
+SMB2_API int SMB2APIENTRY dcerpc_connect_context_async(struct dcerpc_context *dce,
                                  const char *path, p_syntax_id_t *syntax,
                                  dcerpc_cb cb, void *cb_data);
-void dcerpc_destroy_context(struct dcerpc_context *dce);
+SMB2_API void SMB2APIENTRY dcerpc_destroy_context(struct dcerpc_context *dce);
 
-struct smb2_context *dcerpc_get_smb2_context(struct dcerpc_context *dce);
-void *dcerpc_get_pdu_payload(struct dcerpc_pdu *pdu);
+SMB2_API struct smb2_context * SMB2APIENTRY dcerpc_get_smb2_context(struct dcerpc_context *dce);
+SMB2_API void * SMB2APIENTRY dcerpc_get_pdu_payload(struct dcerpc_pdu *pdu);
 
-int dcerpc_open_async(struct dcerpc_context *dce, dcerpc_cb cb, void *cb_data);
-int dcerpc_call_async(struct dcerpc_context *dce, int opnum,
+SMB2_API int SMB2APIENTRY dcerpc_open_async(struct dcerpc_context *dce, dcerpc_cb cb, void *cb_data);
+SMB2_API int SMB2APIENTRY dcerpc_call_async(struct dcerpc_context *dce, int opnum,
                       dcerpc_coder req_coder, void *req,
                       dcerpc_coder rep_coder, int rep_size,
                       dcerpc_cb cb, void *cb_data);
 
-int dcerpc_ptr_coder(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+SMB2_API int SMB2APIENTRY dcerpc_ptr_coder(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                      struct smb2_iovec *iov, int offset, void *ptr,
                      enum ptr_type type, dcerpc_coder coder);
-int dcerpc_uint8_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+SMB2_API int SMB2APIENTRY dcerpc_uint8_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                     struct smb2_iovec *iov, int offset, void *ptr);
-int dcerpc_uint16_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+SMB2_API int SMB2APIENTRY dcerpc_uint16_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                      struct smb2_iovec *iov, int offset, void *ptr);
-int dcerpc_uint32_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+SMB2_API int SMB2APIENTRY dcerpc_uint32_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                      struct smb2_iovec *iov, int offset, void *ptr);
-int dcerpc_uint3264_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+SMB2_API int SMB2APIENTRY dcerpc_uint3264_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                        struct smb2_iovec *iov, int offset, void *ptr);
-int dcerpc_utf16_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+SMB2_API int SMB2APIENTRY dcerpc_utf16_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                       struct smb2_iovec *iov, int offset, void *ptr);
-int dcerpc_utf16z_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+SMB2_API int SMB2APIENTRY dcerpc_utf16z_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                         struct smb2_iovec *iov, int offset, void *ptr);
-int dcerpc_context_handle_coder(struct dcerpc_context *dce,
+SMB2_API int SMB2APIENTRY dcerpc_context_handle_coder(struct dcerpc_context *dce,
                                 struct dcerpc_pdu *pdu,
                                 struct smb2_iovec *iov, int offset,
                                 void *ptr);
 #define DCERPC_DECODE 0
 #define DCERPC_ENCODE 1
-struct dcerpc_pdu *dcerpc_allocate_pdu(struct dcerpc_context *dce,
+SMB2_API struct dcerpc_pdu * SMB2APIENTRY dcerpc_allocate_pdu(struct dcerpc_context *dce,
                                        int direction, int payload_size);
-void dcerpc_free_pdu(struct dcerpc_context *dce, struct dcerpc_pdu *pdu);
+SMB2_API void SMB2APIENTRY dcerpc_free_pdu(struct dcerpc_context *dce, struct dcerpc_pdu *pdu);
 
 #ifdef __cplusplus
 }

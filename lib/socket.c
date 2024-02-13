@@ -157,7 +157,7 @@ smb2_get_credit_charge(struct smb2_context *smb2, struct smb2_pdu *pdu)
         return credits;
 }
 
-int
+int SMB2APIENTRY
 smb2_which_events(struct smb2_context *smb2)
 {
         int events = smb2->fd != -1 ? POLLIN : POLLOUT;
@@ -170,7 +170,7 @@ smb2_which_events(struct smb2_context *smb2)
         return events;
 }
 
-t_socket smb2_get_fd(struct smb2_context *smb2)
+t_socket SMB2APIENTRY smb2_get_fd(struct smb2_context *smb2)
 {
         if (smb2->fd != -1) {
                 return smb2->fd;
@@ -181,7 +181,7 @@ t_socket smb2_get_fd(struct smb2_context *smb2)
         }
 }
 
-const t_socket *
+const t_socket * SMB2APIENTRY
 smb2_get_fds(struct smb2_context *smb2, size_t *fd_count, int *timeout)
 {
         if (smb2->fd != -1) {
@@ -701,7 +701,7 @@ smb2_close_connecting_fd(struct smb2_context *smb2, t_socket fd)
         }
 }
 
-t_socket
+t_socket SMB2APIENTRY
 smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
 {
         int ret = 0;
@@ -838,7 +838,7 @@ smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
         return ret;
 }
 
-t_socket
+t_socket SMB2APIENTRY
 smb2_service(struct smb2_context *smb2, int revents)
 {
         if (smb2->connecting_fds_count > 0) {
@@ -1041,7 +1041,7 @@ static void interleave_addrinfo(struct addrinfo *base)
         }
 }
 
-int
+int SMB2APIENTRY
 smb2_connect_async(struct smb2_context *smb2, const char *server,
                    smb2_command_cb cb, void *private_data)
 {

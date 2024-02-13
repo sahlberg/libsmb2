@@ -47,7 +47,7 @@
 #include "libsmb2.h"
 #include "libsmb2-private.h"
 
-int
+int SMB2APIENTRY
 smb2_decode_fileidfulldirectoryinformation(
     struct smb2_context *smb2,
     struct smb2_fileidfulldirectoryinformation *fs,
@@ -149,7 +149,7 @@ smb2_encode_query_directory_request(struct smb2_context *smb2,
         return 0;
 }
 
-struct smb2_pdu *
+struct smb2_pdu * SMB2APIENTRY
 smb2_cmd_query_directory_async(struct smb2_context *smb2,
                                struct smb2_query_directory_request *req,
                                smb2_command_cb cb, void *cb_data)

@@ -24,9 +24,9 @@
 #endif
 
 #ifdef __APPLE__
-#include <smb2-exports.h>
+#include <smb2-dllapi.h>
 #else
-#include <smb2/smb2-exports.h>
+#include <smb2/smb2-dllapi.h>
 #endif
 
 #ifdef __cplusplus
@@ -104,7 +104,7 @@ typedef int t_socket;
  *  NULL  : Failed to create a context.
  *  *smb2 : A pointer to an smb2 context.
  */
-SMB2_EXPORT struct smb2_context *smb2_init_context(void);
+SMB2_API struct smb2_context * SMB2APIENTRY smb2_init_context(void);
 
 /*
  * Destroy an smb2 context.
@@ -115,7 +115,7 @@ SMB2_EXPORT struct smb2_context *smb2_init_context(void);
  * any "struct smb2dir" after the context is destroyed.
  * Any pending async commands will be aborted with -ECONNRESET.
  */
-SMB2_EXPORT void smb2_destroy_context(struct smb2_context *smb2);
+SMB2_API void SMB2APIENTRY smb2_destroy_context(struct smb2_context *smb2);
 
 /*
  * EVENT SYSTEM INTEGRATION
@@ -138,11 +138,11 @@ SMB2_EXPORT void smb2_destroy_context(struct smb2_context *smb2);
 /*
  * Returns the file descriptor that libsmb2 uses.
  */
-SMB2_EXPORT t_socket smb2_get_fd(struct smb2_context *smb2);
+SMB2_API t_socket SMB2APIENTRY smb2_get_fd(struct smb2_context *smb2);
 /*
  * Returns which events that we need to poll for for the smb2 file descriptor.
  */
-SMB2_EXPORT int smb2_which_events(struct smb2_context *smb2);
+SMB2_API int SMB2APIENTRY smb2_which_events(struct smb2_context *smb2);
 
 /*
  * Returns file descriptors that libsmb2 use or is trying to connect to
@@ -157,7 +157,7 @@ SMB2_EXPORT int smb2_which_events(struct smb2_context *smb2);
  * will be -1 (infinite) once connected or if there is no next addresses to
  * connect to.
  */
-SMB2_EXPORT const t_socket *
+SMB2_API const t_socket * SMB2APIENTRY
 smb2_get_fds(struct smb2_context *smb2, size_t *fd_count, int *timeout);
 
 /*
@@ -177,7 +177,7 @@ smb2_get_fds(struct smb2_context *smb2, size_t *fd_count, int *timeout);
 typedef void (*smb2_change_fd_cb)(struct smb2_context *smb2, t_socket fd, int cmd);
 typedef void (*smb2_change_events_cb)(struct smb2_context *smb2, t_socket fd,
                                       int events);
-SMB2_EXPORT void smb2_fd_event_callbacks(struct smb2_context *smb2,
+SMB2_API void SMB2APIENTRY smb2_fd_event_callbacks(struct smb2_context *smb2,
                              smb2_change_fd_cb change_fd,
                              smb2_change_events_cb change_events);
 
@@ -191,7 +191,7 @@ SMB2_EXPORT void smb2_fd_event_callbacks(struct smb2_context *smb2,
  *      used and must be freed by calling smb2_destroy_context().
  *
  */
-SMB2_EXPORT t_socket smb2_service(struct smb2_context *smb2, int revents);
+SMB2_API t_socket SMB2APIENTRY smb2_service(struct smb2_context *smb2, int revents);
 
 /*
  * Called to process the events when events become available for the smb2
@@ -208,7 +208,7 @@ SMB2_EXPORT t_socket smb2_service(struct smb2_context *smb2, int revents);
  *      used and must be freed by calling smb2_destroy_context().
  *
  */
-SMB2_EXPORT t_socket smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents);
+SMB2_API t_socket SMB2APIENTRY smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents);
 
 /*
  * Set the timeout in seconds after which a command will be aborted with
@@ -218,7 +218,7 @@ SMB2_EXPORT t_socket smb2_service_fd(struct smb2_context *smb2, t_socket fd, int
  *
  * Default is 0: No timeout.
  */
-SMB2_EXPORT void smb2_set_timeout(struct smb2_context *smb2, int seconds);
+SMB2_API void SMB2APIENTRY smb2_set_timeout(struct smb2_context *smb2, int seconds);
 
 /*
  * Set which version of SMB to negotiate.
@@ -236,15 +236,15 @@ enum smb2_negotiate_version {
         SMB2_VERSION_0311 = 0x0311	
 };
 
-SMB2_EXPORT void smb2_set_version(struct smb2_context *smb2,
+SMB2_API void SMB2APIENTRY smb2_set_version(struct smb2_context *smb2,
                       enum smb2_negotiate_version version);
 					  
-SMB2_EXPORT void smb2_set_negotiate_version(struct smb2_context* smb2,
+SMB2_API void SMB2APIENTRY smb2_set_negotiate_version(struct smb2_context* smb2,
                                 enum smb2_negotiate_version version);
 
-SMB2_EXPORT enum smb2_negotiate_version smb2_get_negotiate_version(struct smb2_context* smb2);
+SMB2_API enum smb2_negotiate_version SMB2APIENTRY smb2_get_negotiate_version(struct smb2_context* smb2);
 
-SMB2_EXPORT enum smb2_negotiate_version smb2_get_dialect_version(struct smb2_context* smb2);
+SMB2_API enum smb2_negotiate_version SMB2APIENTRY smb2_get_dialect_version(struct smb2_context* smb2);
 
 /* 
  * Sets which version libsmb2 uses.
@@ -265,7 +265,7 @@ struct smb2_libversion
  * This function will be available on 5.x 
  * @param struct smb2_libversion
 */
-void smb2_get_libsmb2Version(struct smb2_libversion *smb2_ver);
+SMB2_API void SMB2APIENTRY smb2_get_libsmb2Version(struct smb2_libversion *smb2_ver);
 
 /*
  * Set the security mode for the connection.
@@ -273,21 +273,21 @@ void smb2_get_libsmb2Version(struct smb2_libversion *smb2_ver);
  * and  SMB2_NEGOTIATE_SIGNING_REQUIRED
  * Default is 0.
  */
-SMB2_EXPORT void smb2_set_security_mode(struct smb2_context *smb2, uint16_t security_mode);
+SMB2_API void SMB2APIENTRY smb2_set_security_mode(struct smb2_context *smb2, uint16_t security_mode);
 
 /*
  * Set whether smb3 encryption should be used or not.
  * 0  : disable encryption. This is the default.
  * !0 : enable encryption.
  */
-SMB2_EXPORT void smb2_set_seal(struct smb2_context *smb2, int val);
+SMB2_API void SMB2APIENTRY smb2_set_seal(struct smb2_context *smb2, int val);
 
 /*
  * Set whether smb2 signing should be required or not
  * 0  : do not require signing. This is the default.
  * !0 : require signing.
  */
-SMB2_EXPORT void smb2_set_sign(struct smb2_context *smb2, int val);
+SMB2_API void SMB2APIENTRY smb2_set_sign(struct smb2_context *smb2, int val);
 
 /*
  * Set authentication method.
@@ -295,45 +295,45 @@ SMB2_EXPORT void smb2_set_sign(struct smb2_context *smb2, int val);
  * SMB2_SEC_NTLMSSP
  * SMB2_SEC_KRB5
  */
-SMB2_EXPORT void smb2_set_authentication(struct smb2_context *smb2, int val);
+SMB2_API void SMB2APIENTRY smb2_set_authentication(struct smb2_context *smb2, int val);
 
 /*
  * Set the username that we will try to authenticate as.
  * Default is to try to authenticate as the current user.
  */
-SMB2_EXPORT void smb2_set_user(struct smb2_context *smb2, const char *user);
+SMB2_API void SMB2APIENTRY smb2_set_user(struct smb2_context *smb2, const char *user);
 /*
  * Set the password that we will try to authenticate as.
  * This function is only needed when libsmb2 is built --without-libkrb5
  */
-SMB2_EXPORT void smb2_set_password(struct smb2_context *smb2, const char *password);
+SMB2_API void SMB2APIENTRY smb2_set_password(struct smb2_context *smb2, const char *password);
 /*
  * Set the domain when authenticating.
  * This function is only needed when libsmb2 is built --without-libkrb5
  */
-SMB2_EXPORT void smb2_set_domain(struct smb2_context *smb2, const char *domain);
+SMB2_API void SMB2APIENTRY smb2_set_domain(struct smb2_context *smb2, const char *domain);
 /*
  * Set the workstation when authenticating.
  * This function is only needed when libsmb2 is built --without-libkrb5
  */
-SMB2_EXPORT void smb2_set_workstation(struct smb2_context *smb2, const char *workstation);
+SMB2_API void SMB2APIENTRY smb2_set_workstation(struct smb2_context *smb2, const char *workstation);
 
 /*
  * Sets the address to some user defined object. May be used to make
  * additional context data available in the async callbacks.
  */
-SMB2_EXPORT void smb2_set_opaque(struct smb2_context *smb2, void *opaque);
+SMB2_API void SMB2APIENTRY smb2_set_opaque(struct smb2_context *smb2, void *opaque);
 
 /*
  * Returns the opaque pointer set with smb2_set_opaque.
  */
-SMB2_EXPORT void *smb2_get_opaque(struct smb2_context *smb2);
+SMB2_API void * SMB2APIENTRY smb2_get_opaque(struct smb2_context *smb2);
 
 
 /*
  * Returns the client_guid for this context.
  */
-SMB2_EXPORT const char *smb2_get_client_guid(struct smb2_context *smb2);
+SMB2_API const char * SMB2APIENTRY smb2_get_client_guid(struct smb2_context *smb2);
 
 /*
  * Asynchronous call to connect a TCP connection to the server
@@ -349,7 +349,7 @@ SMB2_EXPORT const char *smb2_get_client_guid(struct smb2_context *smb2);
  *
  *   -errno : Failed to establish the connection. Command_data is NULL.
  */
-SMB2_EXPORT int smb2_connect_async(struct smb2_context *smb2, const char *server,
+SMB2_API int SMB2APIENTRY smb2_connect_async(struct smb2_context *smb2, const char *server,
                        smb2_command_cb cb, void *cb_data);
 
 /*
@@ -367,7 +367,7 @@ SMB2_EXPORT int smb2_connect_async(struct smb2_context *smb2, const char *server
  *
  *   -errno : Failed to connect to the share. Command_data is NULL.
  */
-SMB2_EXPORT int smb2_connect_share_async(struct smb2_context *smb2,
+SMB2_API int SMB2APIENTRY smb2_connect_share_async(struct smb2_context *smb2,
                              const char *server,
                              const char *share,
                              const char *user,
@@ -381,7 +381,7 @@ SMB2_EXPORT int smb2_connect_share_async(struct smb2_context *smb2,
  * 0      : Connected to the share successfully.
  * -errno : Failure.
  */
-SMB2_EXPORT int smb2_connect_share(struct smb2_context *smb2,
+SMB2_API int SMB2APIENTRY smb2_connect_share(struct smb2_context *smb2,
                        const char *server,
                        const char *share,
                        const char *user);
@@ -394,7 +394,7 @@ SMB2_EXPORT int smb2_connect_share(struct smb2_context *smb2,
  *  0     : Get share list of the server successfully.
  * -errno : Failure.
  */
-SMB2_EXPORT char** smb2_share_enum(struct smb2_context* smb2);
+SMB2_API char** SMB2APIENTRY smb2_share_enum(struct smb2_context* smb2);
 
 /*
  * Async call to disconnect from a share/
@@ -410,7 +410,7 @@ SMB2_EXPORT char** smb2_share_enum(struct smb2_context* smb2);
  *
  *   -errno : Failed to disconnect the share. Command_data is NULL.
  */
-SMB2_EXPORT int smb2_disconnect_share_async(struct smb2_context *smb2,
+SMB2_API int SMB2APIENTRY smb2_disconnect_share_async(struct smb2_context *smb2,
                                 smb2_command_cb cb, void *cb_data);
 
 /*
@@ -420,14 +420,14 @@ SMB2_EXPORT int smb2_disconnect_share_async(struct smb2_context *smb2,
  * 0      : Disconnected from the share successfully.
  * -errno : Failure.
  */
-SMB2_EXPORT int smb2_disconnect_share(struct smb2_context *smb2);
+SMB2_API int SMB2APIENTRY smb2_disconnect_share(struct smb2_context *smb2);
 
 /*
  * This function returns a description of the last encountered error.
  */
-SMB2_EXPORT const char *smb2_get_error(struct smb2_context *smb2);
+SMB2_API const char * SMB2APIENTRY smb2_get_error(struct smb2_context *smb2);
 
-SMB2_EXPORT int smb2_get_nterror(struct smb2_context *smb2);
+SMB2_API int SMB2APIENTRY smb2_get_nterror(struct smb2_context *smb2);
 
 struct smb2_url {
         const char *domain;
@@ -438,10 +438,10 @@ struct smb2_url {
 };
 
 /* Convert an smb2/nt error code into a string */
-SMB2_EXPORT const char *nterror_to_str(uint32_t status);
+SMB2_API const char * SMB2APIENTRY nterror_to_str(uint32_t status);
 
 /* Convert an smb2/nt error code into an errno value */
-SMB2_EXPORT int nterror_to_errno(uint32_t status);
+SMB2_API int SMB2APIENTRY nterror_to_errno(uint32_t status);
 
 /*
  * This function is used to parse an SMB2 URL into as smb2_url structure.
@@ -456,8 +456,8 @@ SMB2_EXPORT int nterror_to_errno(uint32_t status);
  *
  * The returned structure is freed by calling smb2_destroy_url()
  */
-SMB2_EXPORT struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url);
-SMB2_EXPORT void smb2_destroy_url(struct smb2_url *url);
+SMB2_API struct smb2_url * SMB2APIENTRY smb2_parse_url(struct smb2_context *smb2, const char *url);
+SMB2_API void SMB2APIENTRY smb2_destroy_url(struct smb2_url *url);
 
 struct smb2_pdu;
 /*
@@ -476,10 +476,10 @@ struct smb2_pdu;
  * See libsmb2.c and smb2-raw-stat-async.c for examples on how to use
  * this interface.
  */
-SMB2_EXPORT void smb2_add_compound_pdu(struct smb2_context *smb2,
+SMB2_API void SMB2APIENTRY smb2_add_compound_pdu(struct smb2_context *smb2,
                            struct smb2_pdu *pdu, struct smb2_pdu *next_pdu);
-SMB2_EXPORT void smb2_free_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu);
-SMB2_EXPORT void smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu);
+SMB2_API void SMB2APIENTRY smb2_free_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu);
+SMB2_API void SMB2APIENTRY smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu);
 
 /*
  * OPENDIR
@@ -500,7 +500,7 @@ struct smb2dir;
  * -errno : An error occurred.
  *          Command_data is NULL.
  */
-SMB2_EXPORT int smb2_opendir_async(struct smb2_context *smb2, const char *path,
+SMB2_API int SMB2APIENTRY smb2_opendir_async(struct smb2_context *smb2, const char *path,
                        smb2_command_cb cb, void *cb_data);
 
 /*
@@ -508,7 +508,7 @@ SMB2_EXPORT int smb2_opendir_async(struct smb2_context *smb2, const char *path,
  *
  * Returns NULL on failure.
  */
-SMB2_EXPORT struct smb2dir *smb2_opendir(struct smb2_context *smb2, const char *path);
+SMB2_API struct smb2dir * SMB2APIENTRY smb2_opendir(struct smb2_context *smb2, const char *path);
 
 /*
  * closedir()
@@ -516,7 +516,7 @@ SMB2_EXPORT struct smb2dir *smb2_opendir(struct smb2_context *smb2, const char *
 /*
  * smb2_closedir() never blocks, thus no async version is needed.
  */
-SMB2_EXPORT void smb2_closedir(struct smb2_context *smb2, struct smb2dir *smb2dir);
+SMB2_API void SMB2APIENTRY smb2_closedir(struct smb2_context *smb2, struct smb2dir *smb2dir);
 
 /*
  * readdir()
@@ -524,7 +524,7 @@ SMB2_EXPORT void smb2_closedir(struct smb2_context *smb2, struct smb2dir *smb2di
 /*
  * smb2_readdir() never blocks, thus no async version is needed.
  */
-SMB2_EXPORT struct smb2dirent *smb2_readdir(struct smb2_context *smb2,
+SMB2_API struct smb2dirent * SMB2APIENTRY smb2_readdir(struct smb2_context *smb2,
                                 struct smb2dir *smb2dir);
 
 /*
@@ -533,7 +533,7 @@ SMB2_EXPORT struct smb2dirent *smb2_readdir(struct smb2_context *smb2,
 /*
  * smb2_rewinddir() never blocks, thus no async version is needed.
  */
-SMB2_EXPORT void smb2_rewinddir(struct smb2_context *smb2, struct smb2dir *smb2dir);
+SMB2_API void SMB2APIENTRY smb2_rewinddir(struct smb2_context *smb2, struct smb2dir *smb2dir);
 
 /*
  * telldir()
@@ -541,7 +541,7 @@ SMB2_EXPORT void smb2_rewinddir(struct smb2_context *smb2, struct smb2dir *smb2d
 /*
  * smb2_telldir() never blocks, thus no async version is needed.
  */
-SMB2_EXPORT long smb2_telldir(struct smb2_context *smb2, struct smb2dir *smb2dir);
+SMB2_API long SMB2APIENTRY smb2_telldir(struct smb2_context *smb2, struct smb2dir *smb2dir);
 
 /*
  * seekdir()
@@ -549,7 +549,7 @@ SMB2_EXPORT long smb2_telldir(struct smb2_context *smb2, struct smb2dir *smb2dir
 /*
  * smb2_seekdir() never blocks, thus no async version is needed.
  */
-SMB2_EXPORT void smb2_seekdir(struct smb2_context *smb2, struct smb2dir *smb2dir,
+SMB2_API void SMB2APIENTRY smb2_seekdir(struct smb2_context *smb2, struct smb2dir *smb2dir,
                   long loc);
 
 /*
@@ -580,7 +580,7 @@ struct smb2fh;
  * -errno : An error occurred.
  *          Command_data is NULL.
  */
-SMB2_EXPORT int smb2_open_async(struct smb2_context *smb2, const char *path, int flags,
+SMB2_API int SMB2APIENTRY smb2_open_async(struct smb2_context *smb2, const char *path, int flags,
                     smb2_command_cb cb, void *cb_data);
 
 /*
@@ -588,7 +588,7 @@ SMB2_EXPORT int smb2_open_async(struct smb2_context *smb2, const char *path, int
  *
  * Returns NULL on failure.
  */
-SMB2_EXPORT struct smb2fh *smb2_open(struct smb2_context *smb2, const char *path, int flags);
+SMB2_API struct smb2fh * SMB2APIENTRY smb2_open(struct smb2_context *smb2, const char *path, int flags);
 
 /*
  * CLOSE
@@ -607,13 +607,13 @@ SMB2_EXPORT struct smb2fh *smb2_open(struct smb2_context *smb2, const char *path
  *
  * Command_data is always NULL.
  */
-SMB2_EXPORT int smb2_close_async(struct smb2_context *smb2, struct smb2fh *fh,
+SMB2_API int SMB2APIENTRY smb2_close_async(struct smb2_context *smb2, struct smb2fh *fh,
                      smb2_command_cb cb, void *cb_data);
 
 /*
  * Sync close()
  */
-SMB2_EXPORT int smb2_close(struct smb2_context *smb2, struct smb2fh *fh);
+SMB2_API int SMB2APIENTRY smb2_close(struct smb2_context *smb2, struct smb2fh *fh);
 
 /*
  * FSYNC
@@ -632,20 +632,20 @@ SMB2_EXPORT int smb2_close(struct smb2_context *smb2, struct smb2fh *fh);
  *
  * Command_data is always NULL.
  */
-SMB2_EXPORT int smb2_fsync_async(struct smb2_context *smb2, struct smb2fh *fh,
+SMB2_API int SMB2APIENTRY smb2_fsync_async(struct smb2_context *smb2, struct smb2fh *fh,
                      smb2_command_cb cb, void *cb_data);
 
 /*
  * Sync fsync()
  */
-SMB2_EXPORT int smb2_fsync(struct smb2_context *smb2, struct smb2fh *fh);
+SMB2_API int SMB2APIENTRY smb2_fsync(struct smb2_context *smb2, struct smb2fh *fh);
 
 /*
  * GetMaxReadWriteSize
  * SMB2 servers have a maximum size for read/write data that they support.
  */
-SMB2_EXPORT uint32_t smb2_get_max_read_size(struct smb2_context *smb2);
-SMB2_EXPORT uint32_t smb2_get_max_write_size(struct smb2_context *smb2);
+SMB2_API uint32_t SMB2APIENTRY smb2_get_max_read_size(struct smb2_context *smb2);
+SMB2_API uint32_t SMB2APIENTRY smb2_get_max_write_size(struct smb2_context *smb2);
 
 struct smb2_read_cb_data {
         struct smb2fh *fh;
@@ -682,7 +682,7 @@ struct smb2_write_cb_data {
  * that were given to smb2_pread_async.
  * This structure is automatically freed.
  */
-SMB2_EXPORT int smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
+SMB2_API int SMB2APIENTRY smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
                      uint8_t *buf, uint32_t count, uint64_t offset,
                      smb2_command_cb cb, void *cb_data);
 
@@ -691,7 +691,7 @@ SMB2_EXPORT int smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
  * Use smb2_get_max_read_size to discover the maximum data size that the
  * server supports.
  */
-SMB2_EXPORT int smb2_pread(struct smb2_context *smb2, struct smb2fh *fh,
+SMB2_API int SMB2APIENTRY smb2_pread(struct smb2_context *smb2, struct smb2fh *fh,
                uint8_t *buf, uint32_t count, uint64_t offset);
 
 /*
@@ -715,7 +715,7 @@ SMB2_EXPORT int smb2_pread(struct smb2_context *smb2, struct smb2fh *fh,
  * that were given to smb2_pwrite_async.
  * This structure is automatically freed.
  */
-SMB2_EXPORT int smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
+SMB2_API int SMB2APIENTRY smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
                       const uint8_t *buf, uint32_t count, uint64_t offset,
                       smb2_command_cb cb, void *cb_data);
 
@@ -724,7 +724,7 @@ SMB2_EXPORT int smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
  * Use smb2_get_max_write_size to discover the maximum data size that the
  * server supports.
  */
-SMB2_EXPORT int smb2_pwrite(struct smb2_context *smb2, struct smb2fh *fh,
+SMB2_API int SMB2APIENTRY smb2_pwrite(struct smb2_context *smb2, struct smb2fh *fh,
                 const uint8_t *buf, uint32_t count, uint64_t offset);
 
 /*
@@ -747,14 +747,14 @@ SMB2_EXPORT int smb2_pwrite(struct smb2_context *smb2, struct smb2fh *fh,
  * at which the read took place.
  * This structure is automatically freed.
  */
-SMB2_EXPORT int smb2_read_async(struct smb2_context *smb2, struct smb2fh *fh,
+SMB2_API int SMB2APIENTRY smb2_read_async(struct smb2_context *smb2, struct smb2fh *fh,
                     uint8_t *buf, uint32_t count,
                     smb2_command_cb cb, void *cb_data);
 
 /*
  * Sync read()
  */
-SMB2_EXPORT int smb2_read(struct smb2_context *smb2, struct smb2fh *fh,
+SMB2_API int SMB2APIENTRY smb2_read(struct smb2_context *smb2, struct smb2fh *fh,
               uint8_t *buf, uint32_t count);
 
 /*
@@ -777,14 +777,14 @@ SMB2_EXPORT int smb2_read(struct smb2_context *smb2, struct smb2fh *fh,
  * at which the write took place.
  * This structure is automatically freed.
  */
-SMB2_EXPORT int smb2_write_async(struct smb2_context *smb2, struct smb2fh *fh,
+SMB2_API int SMB2APIENTRY smb2_write_async(struct smb2_context *smb2, struct smb2fh *fh,
                      const uint8_t *buf, uint32_t count,
                      smb2_command_cb cb, void *cb_data);
 
 /*
  * Sync write()
  */
-SMB2_EXPORT int smb2_write(struct smb2_context *smb2, struct smb2fh *fh,
+SMB2_API int SMB2APIENTRY smb2_write(struct smb2_context *smb2, struct smb2fh *fh,
                const uint8_t *buf, uint32_t count);
 
 /*
@@ -795,7 +795,7 @@ SMB2_EXPORT int smb2_write(struct smb2_context *smb2, struct smb2fh *fh,
  * SEEK_END only returns the end-of-file from the original open.
  * (it will not call fstat to discover the current file size and will not block)
  */
-SMB2_EXPORT int64_t smb2_lseek(struct smb2_context *smb2, struct smb2fh *fh,
+SMB2_API int64_t SMB2APIENTRY smb2_lseek(struct smb2_context *smb2, struct smb2fh *fh,
                    int64_t offset, int whence, uint64_t *current_offset);
 
 /*
@@ -815,13 +815,13 @@ SMB2_EXPORT int64_t smb2_lseek(struct smb2_context *smb2, struct smb2fh *fh,
  *
  * Command_data is always NULL.
  */
-SMB2_EXPORT int smb2_unlink_async(struct smb2_context *smb2, const char *path,
+SMB2_API int SMB2APIENTRY smb2_unlink_async(struct smb2_context *smb2, const char *path,
                       smb2_command_cb cb, void *cb_data);
 
 /*
  * Sync unlink()
  */
-SMB2_EXPORT int smb2_unlink(struct smb2_context *smb2, const char *path);
+SMB2_API int SMB2APIENTRY smb2_unlink(struct smb2_context *smb2, const char *path);
 
 /*
  * RMDIR
@@ -840,13 +840,13 @@ SMB2_EXPORT int smb2_unlink(struct smb2_context *smb2, const char *path);
  *
  * Command_data is always NULL.
  */
-SMB2_EXPORT int smb2_rmdir_async(struct smb2_context *smb2, const char *path,
+SMB2_API int SMB2APIENTRY smb2_rmdir_async(struct smb2_context *smb2, const char *path,
                      smb2_command_cb cb, void *cb_data);
 
 /*
  * Sync rmdir()
  */
-SMB2_EXPORT int smb2_rmdir(struct smb2_context *smb2, const char *path);
+SMB2_API int SMB2APIENTRY smb2_rmdir(struct smb2_context *smb2, const char *path);
 
 /*
  * MKDIR
@@ -865,13 +865,13 @@ SMB2_EXPORT int smb2_rmdir(struct smb2_context *smb2, const char *path);
  *
  * Command_data is always NULL.
  */
-SMB2_EXPORT int smb2_mkdir_async(struct smb2_context *smb2, const char *path,
+SMB2_API int SMB2APIENTRY smb2_mkdir_async(struct smb2_context *smb2, const char *path,
                      smb2_command_cb cb, void *cb_data);
 
 /*
  * Sync mkdir()
  */
-SMB2_EXPORT int smb2_mkdir(struct smb2_context *smb2, const char *path);
+SMB2_API int SMB2APIENTRY smb2_mkdir(struct smb2_context *smb2, const char *path);
 
 /*
  * STATVFS
@@ -888,13 +888,13 @@ SMB2_EXPORT int smb2_mkdir(struct smb2_context *smb2, const char *path);
  *      0 : Success. Command_data is struct smb2_statvfs
  * -errno : An error occurred.
  */
-SMB2_EXPORT int smb2_statvfs_async(struct smb2_context *smb2, const char *path,
+SMB2_API int SMB2APIENTRY smb2_statvfs_async(struct smb2_context *smb2, const char *path,
                        struct smb2_statvfs *statvfs,
                        smb2_command_cb cb, void *cb_data);
 /*
  * Sync statvfs()
  */
-SMB2_EXPORT int smb2_statvfs(struct smb2_context *smb2, const char *path,
+SMB2_API int SMB2APIENTRY smb2_statvfs(struct smb2_context *smb2, const char *path,
                  struct smb2_statvfs *statvfs);
 
 /*
@@ -912,13 +912,13 @@ SMB2_EXPORT int smb2_statvfs(struct smb2_context *smb2, const char *path,
  *      0 : Success. Command_data is struct smb2_stat_64
  * -errno : An error occurred.
  */
-SMB2_EXPORT int smb2_fstat_async(struct smb2_context *smb2, struct smb2fh *fh,
+SMB2_API int SMB2APIENTRY smb2_fstat_async(struct smb2_context *smb2, struct smb2fh *fh,
                      struct smb2_stat_64 *st,
                      smb2_command_cb cb, void *cb_data);
 /*
  * Sync fstat()
  */
-SMB2_EXPORT int smb2_fstat(struct smb2_context *smb2, struct smb2fh *fh,
+SMB2_API int SMB2APIENTRY smb2_fstat(struct smb2_context *smb2, struct smb2fh *fh,
                struct smb2_stat_64 *st);
 
 /*
@@ -933,13 +933,13 @@ SMB2_EXPORT int smb2_fstat(struct smb2_context *smb2, struct smb2fh *fh,
  *      0 : Success. Command_data is struct smb2_stat_64
  * -errno : An error occurred.
  */
-SMB2_EXPORT int smb2_stat_async(struct smb2_context *smb2, const char *path,
+SMB2_API int SMB2APIENTRY smb2_stat_async(struct smb2_context *smb2, const char *path,
                     struct smb2_stat_64 *st,
                     smb2_command_cb cb, void *cb_data);
 /*
  * Sync stat()
  */
-SMB2_EXPORT int smb2_stat(struct smb2_context *smb2, const char *path,
+SMB2_API int SMB2APIENTRY smb2_stat(struct smb2_context *smb2, const char *path,
               struct smb2_stat_64 *st);
 
 /*
@@ -954,13 +954,13 @@ SMB2_EXPORT int smb2_stat(struct smb2_context *smb2, const char *path,
  *      0 : Success.
  * -errno : An error occurred.
  */
-SMB2_EXPORT int smb2_rename_async(struct smb2_context *smb2, const char *oldpath,
+SMB2_API int SMB2APIENTRY smb2_rename_async(struct smb2_context *smb2, const char *oldpath,
                       const char *newpath, smb2_command_cb cb, void *cb_data);
 
 /*
  * Sync rename()
  */
-SMB2_EXPORT int smb2_rename(struct smb2_context *smb2, const char *oldpath,
+SMB2_API int SMB2APIENTRY smb2_rename(struct smb2_context *smb2, const char *oldpath,
               const char *newpath);
 
 /*
@@ -975,7 +975,7 @@ SMB2_EXPORT int smb2_rename(struct smb2_context *smb2, const char *oldpath,
  *      0 : Success.
  * -errno : An error occurred.
  */
-SMB2_EXPORT int smb2_truncate_async(struct smb2_context *smb2, const char *path,
+SMB2_API int SMB2APIENTRY smb2_truncate_async(struct smb2_context *smb2, const char *path,
                         uint64_t length, smb2_command_cb cb, void *cb_data);
 /*
  * Sync truncate()
@@ -983,7 +983,7 @@ SMB2_EXPORT int smb2_truncate_async(struct smb2_context *smb2, const char *path,
  *      0 : Success
  * -errno : An error occurred.
  */
-SMB2_EXPORT int smb2_truncate(struct smb2_context *smb2, const char *path,
+SMB2_API int SMB2APIENTRY smb2_truncate(struct smb2_context *smb2, const char *path,
                   uint64_t length);
 
 /*
@@ -998,7 +998,7 @@ SMB2_EXPORT int smb2_truncate(struct smb2_context *smb2, const char *path,
  *      0 : Success.
  * -errno : An error occurred.
  */
-SMB2_EXPORT int smb2_ftruncate_async(struct smb2_context *smb2, struct smb2fh *fh,
+SMB2_API int SMB2APIENTRY smb2_ftruncate_async(struct smb2_context *smb2, struct smb2fh *fh,
                          uint64_t length, smb2_command_cb cb, void *cb_data);
 /*
  * Sync ftruncate()
@@ -1006,7 +1006,7 @@ SMB2_EXPORT int smb2_ftruncate_async(struct smb2_context *smb2, struct smb2fh *f
  *      0 : Success
  * -errno : An error occurred.
  */
-SMB2_EXPORT int smb2_ftruncate(struct smb2_context *smb2, struct smb2fh *fh,
+SMB2_API int SMB2APIENTRY smb2_ftruncate(struct smb2_context *smb2, struct smb2fh *fh,
                    uint64_t length);
 
 
@@ -1025,13 +1025,13 @@ SMB2_EXPORT int smb2_ftruncate(struct smb2_context *smb2, struct smb2fh *fh,
  *      0 : Success. Command_data is the link content.
  * -errno : An error occurred.
  */
-SMB2_EXPORT int smb2_readlink_async(struct smb2_context *smb2, const char *path,
+SMB2_API int SMB2APIENTRY smb2_readlink_async(struct smb2_context *smb2, const char *path,
                         smb2_command_cb cb, void *cb_data);
 
 /*
  * Sync readlink()
  */
-SMB2_EXPORT int smb2_readlink(struct smb2_context *smb2, const char *path, char *buf, uint32_t bufsiz);
+SMB2_API int SMB2APIENTRY smb2_readlink(struct smb2_context *smb2, const char *path, char *buf, uint32_t bufsiz);
 
 /*
  * Async echo()
@@ -1045,7 +1045,7 @@ SMB2_EXPORT int smb2_readlink(struct smb2_context *smb2, const char *path, char 
  *      0 : Success.
  * -errno : An error occurred.
  */
-SMB2_EXPORT int smb2_echo_async(struct smb2_context *smb2,
+SMB2_API int SMB2APIENTRY smb2_echo_async(struct smb2_context *smb2,
                     smb2_command_cb cb, void *cb_data);
 
 /*
@@ -1055,7 +1055,7 @@ SMB2_EXPORT int smb2_echo_async(struct smb2_context *smb2,
  * 0      : successfully send the message and received a reply.
  * -errno : Failure.
  */
-SMB2_EXPORT int smb2_echo(struct smb2_context *smb2);
+SMB2_API int SMB2APIENTRY smb2_echo(struct smb2_context *smb2);
 
 /*
  * Some symbols have moved over to a different header file to allow better

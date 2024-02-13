@@ -131,7 +131,7 @@ share_enum_bind_cb(struct dcerpc_context *dce, int status,
 }
 
 int
-smb2_share_enum_async(struct smb2_context *smb2,
+SMB2APIENTRY smb2_share_enum_async(struct smb2_context *smb2,
                       smb2_command_cb cb, void *cb_data)
 {
         struct dcerpc_context *dce;

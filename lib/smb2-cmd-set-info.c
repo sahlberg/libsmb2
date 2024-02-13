@@ -163,7 +163,7 @@ smb2_encode_set_info_request(struct smb2_context *smb2,
         return 0;
 }
 
-struct smb2_pdu *
+struct smb2_pdu * SMB2APIENTRY
 smb2_cmd_set_info_async(struct smb2_context *smb2,
                         struct smb2_set_info_request *req,
                         smb2_command_cb cb, void *cb_data)

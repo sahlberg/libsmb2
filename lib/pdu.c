@@ -54,7 +54,7 @@
 #include "smb3-seal.h"
 #include "smb2-signing.h"
 
-int
+int 
 smb2_pad_to_64bit(struct smb2_context *smb2, struct smb2_io_vectors *v)
 {
         static uint8_t zero_bytes[7];
@@ -160,7 +160,7 @@ smb2_allocate_pdu(struct smb2_context *smb2, enum smb2_command command,
         return pdu;
 }
 
-void
+void SMB2APIENTRY
 smb2_add_compound_pdu(struct smb2_context *smb2,
                       struct smb2_pdu *pdu, struct smb2_pdu *next_pdu)
 {
@@ -185,7 +185,7 @@ smb2_add_compound_pdu(struct smb2_context *smb2,
         smb2_set_uint32(&next_pdu->out.iov[0], 16, next_pdu->header.flags);
 }
 
-void
+void SMB2APIENTRY
 smb2_free_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
         if (pdu->next_compound) {
@@ -364,7 +364,7 @@ smb2_add_to_outqueue(struct smb2_context *smb2, struct smb2_pdu *pdu)
         smb2_change_events(smb2, smb2->fd, smb2_which_events(smb2));
 }
 
-void
+void SMB2APIENTRY
 smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
         struct smb2_pdu *p;
@@ -507,7 +507,7 @@ smb2_process_payload_fixed(struct smb2_context *smb2, struct smb2_pdu *pdu)
         return 0;
 }
 
-int
+int 
 smb2_process_payload_variable(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
         if (smb2_is_error_response(smb2, pdu)) {
@@ -549,7 +549,7 @@ smb2_process_payload_variable(struct smb2_context *smb2, struct smb2_pdu *pdu)
         return 0;
 }
 
-void smb2_timeout_pdus(struct smb2_context *smb2)
+void smb2_timeout_pdus(struct smb2_context* smb2)
 {
         struct smb2_pdu *pdu, *next;
         time_t t = time(NULL);

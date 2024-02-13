@@ -170,7 +170,7 @@ smb2_parse_args(struct smb2_context *smb2, const char *args)
         return 0;
 }
 
-struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url)
+struct smb2_url * SMB2APIENTRY smb2_parse_url(struct smb2_context *smb2, const char *url)
 {
         struct smb2_url *u;
         char *ptr, *tmp, str[MAX_URL_SIZE];
@@ -247,7 +247,7 @@ struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url)
         return u;
 }
 
-void smb2_destroy_url(struct smb2_url *url)
+void SMB2APIENTRY smb2_destroy_url(struct smb2_url *url)
 {
         if (url == NULL) {
                 return;
@@ -261,7 +261,7 @@ void smb2_destroy_url(struct smb2_url *url)
 }
 
 
-struct smb2_context *smb2_init_context(void)
+struct smb2_context * SMB2APIENTRY smb2_init_context(void)
 {
         struct smb2_context *smb2;
         char buf[1024] _U_;
@@ -300,7 +300,7 @@ struct smb2_context *smb2_init_context(void)
         return smb2;
 }
 
-void smb2_destroy_context(struct smb2_context *smb2)
+void SMB2APIENTRY smb2_destroy_context(struct smb2_context *smb2)
 {
         if (smb2 == NULL) {
                 return;
@@ -413,7 +413,7 @@ static void smb2_set_error_string(struct smb2_context *smb2, const char * error_
 }
 #endif /* PS2_IOP_PLATFORM */
 
-void smb2_set_error(struct smb2_context *smb2, const char *error_string, ...)
+void smb2_set_error(struct smb2_context* smb2, const char* error_string, ...)
 {
 #ifndef PS2_IOP_PLATFORM
         va_list ap;
@@ -444,22 +444,22 @@ void smb2_set_nterror(struct smb2_context *smb2, int nterror, const char *error_
         smb2->nterror = nterror;
 }
 
-const char *smb2_get_error(struct smb2_context *smb2)
+const char * SMB2APIENTRY smb2_get_error(struct smb2_context *smb2)
 {
         return smb2 ? smb2->error_string : "";
 }
 
-int smb2_get_nterror(struct smb2_context *smb2)
+int SMB2APIENTRY smb2_get_nterror(struct smb2_context *smb2)
 {
         return smb2 ? smb2->nterror : 0;
 }
 
-const char *smb2_get_client_guid(struct smb2_context *smb2)
+const char * SMB2APIENTRY smb2_get_client_guid(struct smb2_context *smb2)
 {
         return smb2->client_guid;
 }
 
-void smb2_set_security_mode(struct smb2_context *smb2, uint16_t security_mode)
+void SMB2APIENTRY smb2_set_security_mode(struct smb2_context *smb2, uint16_t security_mode)
 {
         smb2->security_mode = security_mode;
 }
@@ -542,7 +542,7 @@ static void smb2_set_password_from_file(struct smb2_context *smb2)
 }
 #endif /* !PS2_IOP_PLATFORM */
 
-void smb2_set_user(struct smb2_context *smb2, const char *user)
+void SMB2APIENTRY smb2_set_user(struct smb2_context *smb2, const char *user)
 {
         if (smb2->user) {
                 free(discard_const(smb2->user));
@@ -557,7 +557,7 @@ void smb2_set_user(struct smb2_context *smb2, const char *user)
 #endif
 }
 
-void smb2_set_password(struct smb2_context *smb2, const char *password)
+void SMB2APIENTRY smb2_set_password(struct smb2_context *smb2, const char *password)
 {
         if (smb2->password) {
                 free(discard_const(smb2->password));
@@ -569,7 +569,7 @@ void smb2_set_password(struct smb2_context *smb2, const char *password)
         smb2->password = strdup(password);
 }
 
-void smb2_set_domain(struct smb2_context *smb2, const char *domain)
+void SMB2APIENTRY smb2_set_domain(struct smb2_context *smb2, const char *domain)
 {
         if (smb2->domain) {
                 free(discard_const(smb2->domain));
@@ -577,7 +577,7 @@ void smb2_set_domain(struct smb2_context *smb2, const char *domain)
         smb2->domain = strdup(domain);
 }
 
-void smb2_set_workstation(struct smb2_context *smb2, const char *workstation)
+void SMB2APIENTRY smb2_set_workstation(struct smb2_context *smb2, const char *workstation)
 {
         if (smb2->workstation) {
                 free(discard_const(smb2->workstation));
@@ -585,58 +585,58 @@ void smb2_set_workstation(struct smb2_context *smb2, const char *workstation)
         smb2->workstation = strdup(workstation);
 }
 
-void smb2_set_opaque(struct smb2_context *smb2, void *opaque)
+void SMB2APIENTRY smb2_set_opaque(struct smb2_context *smb2, void *opaque)
 {
         smb2->opaque = opaque;
 }
 
-void *smb2_get_opaque(struct smb2_context *smb2)
+void * SMB2APIENTRY smb2_get_opaque(struct smb2_context *smb2)
 {
         return smb2->opaque;
 }
 
-void smb2_set_seal(struct smb2_context *smb2, int val)
+void SMB2APIENTRY smb2_set_seal(struct smb2_context *smb2, int val)
 {
         smb2->seal = val;
 }
 
-void smb2_set_sign(struct smb2_context *smb2, int val)
+void SMB2APIENTRY smb2_set_sign(struct smb2_context *smb2, int val)
 {
         smb2->sign = val;
 }
 
-void smb2_set_authentication(struct smb2_context *smb2, int val)
+void SMB2APIENTRY smb2_set_authentication(struct smb2_context *smb2, int val)
 {
         smb2->sec = val;
 }
 
-void smb2_set_timeout(struct smb2_context *smb2, int seconds)
+void SMB2APIENTRY smb2_set_timeout(struct smb2_context *smb2, int seconds)
 {
         smb2->timeout = seconds;
 }
 
-void smb2_set_version(struct smb2_context *smb2,
+void SMB2APIENTRY smb2_set_version(struct smb2_context *smb2,
                       enum smb2_negotiate_version version)
 {
     smb2->version = version;
 }
 
-void smb2_set_negotiate_version(struct smb2_context* smb2, enum smb2_negotiate_version version)
+void SMB2APIENTRY smb2_set_negotiate_version(struct smb2_context* smb2, enum smb2_negotiate_version version)
 {
     smb2->version = version;
 }
 
-enum smb2_negotiate_version smb2_get_negotiate_version(struct smb2_context* smb2)
+enum smb2_negotiate_version SMB2APIENTRY smb2_get_negotiate_version(struct smb2_context* smb2)
 {
     return smb2->version;
 }
 
-enum smb2_negotiate_version smb2_get_dialect_version(struct smb2_context* smb2)
+enum smb2_negotiate_version SMB2APIENTRY smb2_get_dialect_version(struct smb2_context* smb2)
 {
     return smb2->dialect;
 }
 
-void smb2_get_libsmb2Version(struct smb2_libversion *smb2_ver)
+void SMB2APIENTRY smb2_get_libsmb2Version(struct smb2_libversion *smb2_ver)
 {
         smb2_ver->major_version = LIBSMB2_MAJOR_VERSION;
         smb2_ver->minor_version = LIBSMB2_MINOR_VERSION;
