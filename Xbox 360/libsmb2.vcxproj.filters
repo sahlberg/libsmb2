@@ -109,6 +109,9 @@
     <ClInclude Include="..\include\xbox 360\config.h">
       <Filter>include\xbox 360</Filter>
     </ClInclude>
+    <ClInclude Include="..\include\smb2\smb2-dllapi.h">
+      <Filter>include\smb2</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\lib\aes.c">
