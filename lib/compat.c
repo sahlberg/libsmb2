@@ -252,6 +252,7 @@ int smb2_getaddrinfo(const char *node, const char*service,
         } 
 
         *res = malloc(sizeof(struct addrinfo));
+        memset(*res, 0, sizeof(struct addrinfo));
 #endif
         (*res)->ai_family = AF_INET;
         (*res)->ai_addrlen = sizeof(struct sockaddr_in);
