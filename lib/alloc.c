@@ -72,8 +72,7 @@ struct smb2_alloc_header {
         char buf[0];
 };
 
-void *
-smb2_alloc_init(struct smb2_context *smb2, size_t size)
+void *smb2_alloc_init(struct smb2_context *smb2, size_t size)
 {
         struct smb2_alloc_header *ptr;
 
@@ -87,8 +86,7 @@ smb2_alloc_init(struct smb2_context *smb2, size_t size)
         return &ptr->buf[0];
 }
 
-void *
-smb2_alloc_data(struct smb2_context *smb2, void *memctx, size_t size)
+void *smb2_alloc_data(struct smb2_context *smb2, void *memctx, size_t size)
 {
         struct smb2_alloc_header *hdr;
         struct smb2_alloc_entry *ptr;
@@ -117,7 +115,7 @@ smb2_alloc_data(struct smb2_context *smb2, void *memctx, size_t size)
 }
 
 void
-smb2_free_data(struct smb2_context *smb2, void *ptr)
+SMB2APIENTRY smb2_free_data(struct smb2_context *smb2, void *ptr)
 {
         struct smb2_alloc_header *hdr;
         struct smb2_alloc_entry *ent;

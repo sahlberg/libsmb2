@@ -209,7 +209,7 @@ srvsvc_NetShareCtr_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
  *		);
  ******************/
 int
-srvsvc_NetrShareEnum_req_coder(struct dcerpc_context *ctx,
+SMB2APIENTRY srvsvc_NetrShareEnum_req_coder(struct dcerpc_context *ctx,
                                struct dcerpc_pdu *pdu,
                                struct smb2_iovec *iov, int offset,
                                void *ptr)
@@ -235,7 +235,7 @@ srvsvc_NetrShareEnum_req_coder(struct dcerpc_context *ctx,
 }
 
 int
-srvsvc_NetrShareEnum_rep_coder(struct dcerpc_context *dce,
+SMB2APIENTRY srvsvc_NetrShareEnum_rep_coder(struct dcerpc_context *dce,
                                struct dcerpc_pdu *pdu,
                                struct smb2_iovec *iov, int offset,
                                void *ptr)
@@ -317,7 +317,7 @@ srvsvc_NetShareInfo_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
  *		);
  ******************/
 int
-srvsvc_NetrShareGetInfo_req_coder(struct dcerpc_context *dce,
+SMB2APIENTRY srvsvc_NetrShareGetInfo_req_coder(struct dcerpc_context *dce,
                                   struct dcerpc_pdu *pdu,
                                   struct smb2_iovec *iov, int offset,
                                   void *ptr)
@@ -335,7 +335,7 @@ srvsvc_NetrShareGetInfo_req_coder(struct dcerpc_context *dce,
 }
 
 int
-srvsvc_NetrShareGetInfo_rep_coder(struct dcerpc_context *dce,
+SMB2APIENTRY srvsvc_NetrShareGetInfo_rep_coder(struct dcerpc_context *dce,
                                   struct dcerpc_pdu *pdu,
                                   struct smb2_iovec *iov, int offset,
                                   void *ptr)

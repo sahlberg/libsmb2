@@ -245,6 +245,7 @@
     <ClInclude Include="..\include\smb2\libsmb2-dcerpc.h" />
     <ClInclude Include="..\include\smb2\libsmb2-raw.h" />
     <ClInclude Include="..\include\smb2\libsmb2.h" />
+    <ClInclude Include="..\include\smb2\smb2-dllapi.h" />
     <ClInclude Include="..\include\smb2\smb2-errors.h" />
     <ClInclude Include="..\include\smb2\smb2.h" />
     <ClInclude Include="..\include\xbox 360\config.h" />

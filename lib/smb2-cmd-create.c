@@ -134,7 +134,7 @@ smb2_encode_create_request(struct smb2_context *smb2,
         return 0;
 }
 
-struct smb2_pdu *
+struct smb2_pdu * SMB2APIENTRY
 smb2_cmd_create_async(struct smb2_context *smb2,
                       struct smb2_create_request *req,
                       smb2_command_cb cb, void *cb_data)

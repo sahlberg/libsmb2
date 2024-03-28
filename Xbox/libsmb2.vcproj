@@ -244,6 +244,9 @@
 					RelativePath="..\include\smb2\libsmb2.h">
 				</File>
 				<File
+					RelativePath="..\include\smb2\smb2-dllapi.h">
+				</File>
+				<File
 					RelativePath="..\include\smb2\smb2-errors.h">
 				</File>
 				<File

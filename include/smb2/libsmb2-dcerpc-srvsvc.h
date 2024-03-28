@@ -19,6 +19,12 @@
 #ifndef _LIBSMB2_DCERPC_SRVSVC_H_
 #define _LIBSMB2_DCERPC_SRVSVC_H_
 
+#ifdef __APPLE__
+#include <smb2-dllapi.h>
+#else
+#include <smb2/smb2-dllapi.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -111,22 +117,22 @@ struct srvsvc_rep {
  *          This pointer must be freed using smb2_free_data().
  * -errno : An error occurred.
  */
-int smb2_share_enum_async(struct smb2_context *smb2,
+SMB2_API int SMB2APIENTRY smb2_share_enum_async(struct smb2_context *smb2,
                           smb2_command_cb cb, void *cb_data);
 
-int srvsvc_NetrShareEnum_rep_coder(struct dcerpc_context *dce,
+SMB2_API int SMB2APIENTRY srvsvc_NetrShareEnum_rep_coder(struct dcerpc_context *dce,
                                    struct dcerpc_pdu *pdu,
                                    struct smb2_iovec *iov, int offset,
                                    void *ptr);
-int srvsvc_NetrShareEnum_req_coder(struct dcerpc_context *ctx,
+SMB2_API int SMB2APIENTRY srvsvc_NetrShareEnum_req_coder(struct dcerpc_context *ctx,
                                    struct dcerpc_pdu *pdu,
                                    struct smb2_iovec *iov, int offset,
                                    void *ptr);
-int srvsvc_NetrShareGetInfo_rep_coder(struct dcerpc_context *dce,
+SMB2_API int SMB2APIENTRY srvsvc_NetrShareGetInfo_rep_coder(struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
                                       struct smb2_iovec *iov, int offset,
                                       void *ptr);
-int srvsvc_NetrShareGetInfo_req_coder(struct dcerpc_context *ctx,
+SMB2_API int SMB2APIENTRY srvsvc_NetrShareGetInfo_req_coder(struct dcerpc_context *ctx,
                                       struct dcerpc_pdu *pdu,
                                       struct smb2_iovec *iov, int offset,
                                       void *ptr);

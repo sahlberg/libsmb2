@@ -68,7 +68,7 @@ smb2_encode_echo_request(struct smb2_context *smb2,
         return 0;
 }
 
-struct smb2_pdu *
+struct smb2_pdu * SMB2APIENTRY
 smb2_cmd_echo_async(struct smb2_context *smb2,
                     smb2_command_cb cb, void *cb_data)
 {

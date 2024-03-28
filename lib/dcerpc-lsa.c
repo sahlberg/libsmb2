@@ -84,7 +84,7 @@ unsigned char NT_SID_AUTHORITY[6] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x05 };
  * } RPC_SID, *PRPC_SID, *PSID;
  */
 int
-lsa_RPC_SID_coder(struct dcerpc_context *dce,
+SMB2APIENTRY lsa_RPC_SID_coder(struct dcerpc_context *dce,
                   struct dcerpc_pdu *pdu,
                   struct smb2_iovec *iov, int offset,
                   void *ptr)
@@ -191,7 +191,7 @@ lsa_SID_ENUM_BUFFER_coder(struct dcerpc_context *dce,
  */
 /* ptr is char ** */
 int
-lsa_RPC_UNICODE_STRING_coder(struct dcerpc_context *dce,
+SMB2APIENTRY lsa_RPC_UNICODE_STRING_coder(struct dcerpc_context *dce,
                              struct dcerpc_pdu *pdu,
                              struct smb2_iovec *iov, int offset,
                              void *ptr)
@@ -327,7 +327,7 @@ lsa_ObjectAttributes_coder(struct dcerpc_context *dce,
  *		);
  **********************/
 int
-lsa_Close_req_coder(struct dcerpc_context *dce,
+SMB2APIENTRY lsa_Close_req_coder(struct dcerpc_context *dce,
                     struct dcerpc_pdu *pdu,
                     struct smb2_iovec *iov, int offset,
                     void *ptr)
@@ -341,7 +341,7 @@ lsa_Close_req_coder(struct dcerpc_context *dce,
 }
 
 int
-lsa_Close_rep_coder(struct dcerpc_context *dce,
+SMB2APIENTRY lsa_Close_rep_coder(struct dcerpc_context *dce,
                     struct dcerpc_pdu *pdu,
                     struct smb2_iovec *iov, int offset,
                     void *ptr)
@@ -366,7 +366,7 @@ lsa_Close_rep_coder(struct dcerpc_context *dce,
  *              );
  **********************/
 int
-lsa_OpenPolicy2_req_coder(struct dcerpc_context *dce,
+SMB2APIENTRY lsa_OpenPolicy2_req_coder(struct dcerpc_context *dce,
                           struct dcerpc_pdu *pdu,
                           struct smb2_iovec *iov, int offset,
                           void *ptr)
@@ -382,7 +382,7 @@ lsa_OpenPolicy2_req_coder(struct dcerpc_context *dce,
 }
 
 int
-lsa_OpenPolicy2_rep_coder(struct dcerpc_context *dce,
+SMB2APIENTRY lsa_OpenPolicy2_rep_coder(struct dcerpc_context *dce,
                           struct dcerpc_pdu *pdu,
                           struct smb2_iovec *iov, int offset,
                           void *ptr)
@@ -489,7 +489,7 @@ lsa_REFERENCED_DOMAIN_LIST_coder(struct dcerpc_context *dce,
  *       );
  *******************/
 int
-lsa_LookupSids2_req_coder(struct dcerpc_context *dce,
+SMB2APIENTRY lsa_LookupSids2_req_coder(struct dcerpc_context *dce,
                           struct dcerpc_pdu *pdu,
                           struct smb2_iovec *iov, int offset,
                           void *ptr)
@@ -518,7 +518,7 @@ lsa_LookupSids2_req_coder(struct dcerpc_context *dce,
 }
 
 int
-lsa_LookupSids2_rep_coder(struct dcerpc_context *dce,
+SMB2APIENTRY lsa_LookupSids2_rep_coder(struct dcerpc_context *dce,
                           struct dcerpc_pdu *pdu,
                           struct smb2_iovec *iov, int offset,
                           void *ptr)
