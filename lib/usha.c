@@ -81,7 +81,7 @@ USHAReset (USHAContext * ctx, enum SHAversion whichSha)
  *
  */
 int
-USHAInput (USHAContext * ctx, const uint8_t * bytes, unsigned int bytecount)
+USHAInput (USHAContext * ctx, const uint8_t * bytes, size_t bytecount)
 {
   if (ctx)
     {
@@ -133,7 +133,7 @@ USHAInput (USHAContext * ctx, const uint8_t * bytes, unsigned int bytecount)
  *   sha Error Code.
  */
 int
-USHAFinalBits (USHAContext * ctx, const uint8_t bits, unsigned int bitcount)
+USHAFinalBits (USHAContext * ctx, const uint8_t bits, size_t bitcount)
 {
   if (ctx)
     {

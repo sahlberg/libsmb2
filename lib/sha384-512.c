@@ -346,7 +346,7 @@ SHA384Reset (SHA384Context * context)
  */
 int
 SHA384Input (SHA384Context * context,
-	     const uint8_t * message_array, unsigned int length)
+	     const uint8_t * message_array, size_t length)
 {
   return SHA512Input (context, message_array, length);
 }
@@ -373,7 +373,7 @@ SHA384Input (SHA384Context * context,
  */
 int
 SHA384FinalBits (SHA384Context * context,
-		 const uint8_t message_bits, unsigned int length)
+		 const uint8_t message_bits, size_t length)
 {
   return SHA512FinalBits (context, message_bits, length);
 }
@@ -446,7 +446,7 @@ SHA512Reset (SHA512Context * context)
  */
 int
 SHA512Input (SHA512Context * context,
-	     const uint8_t * message_array, unsigned int length)
+	     const uint8_t * message_array, size_t length)
 {
 #ifdef USE_32BIT_ONLY
   /* nothing */
@@ -506,7 +506,7 @@ SHA512Input (SHA512Context * context,
  */
 int
 SHA512FinalBits (SHA512Context * context,
-		 const uint8_t message_bits, unsigned int length)
+		 const uint8_t message_bits, size_t length)
 {
 #ifdef USE_32BIT_ONLY
   /* nothing */

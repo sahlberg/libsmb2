@@ -35,8 +35,8 @@
 #include "portable-endian.h"
 #include "aes.h"
 
-static void aes_ccm_generate_b0(unsigned char *nonce, int nlen,
-                                int alen, int plen, int mlen,
+static void aes_ccm_generate_b0(unsigned char *nonce, size_t nlen,
+                                size_t alen, size_t plen, size_t mlen,
                                 unsigned char *buf)
 {
         uint32_t len;
@@ -53,7 +53,7 @@ static void aes_ccm_generate_b0(unsigned char *nonce, int nlen,
         memcpy(&buf[1], nonce, nlen);
 }
 
-static inline void bxory(unsigned char *b, unsigned char *y, int num)
+static inline void bxory(unsigned char *b, unsigned char *y, size_t num)
 {
         int i;
 
@@ -63,10 +63,10 @@ static inline void bxory(unsigned char *b, unsigned char *y, int num)
 }
 
 static void ccm_generate_T(unsigned char *key,
-                           unsigned char *nonce, int nlen,
-                           unsigned char *aad, int alen,
-                           unsigned char *p, int plen,
-                           unsigned char *m, int mlen)
+                           unsigned char *nonce, size_t nlen,
+                           unsigned char *aad, size_t alen,
+                           unsigned char *p, size_t plen,
+                           unsigned char *m, size_t mlen)
 {
         unsigned char b[16], y[16];
         uint16_t l;
@@ -116,8 +116,8 @@ static void ccm_generate_T(unsigned char *key,
         memcpy(m, y, mlen);
 }
 
-static void ccm_generate_s(unsigned char *key, unsigned char *nonce, int nlen,
-                           int plen, int i, unsigned char *s)
+static void ccm_generate_s(unsigned char *key, unsigned char *nonce, size_t nlen,
+                           size_t plen, int i, unsigned char *s)
 {
         uint32_t l;
 
@@ -133,10 +133,11 @@ static void ccm_generate_s(unsigned char *key, unsigned char *nonce, int nlen,
 }
 
 static void aes_ccm_crypt(unsigned char *key,
-                          unsigned char *nonce, int nlen,
-                          unsigned char *p, int plen)
+                          unsigned char *nonce, size_t nlen,
+                          unsigned char *p, size_t plen)
 {
-        int j, l;
+        int j;
+        size_t l;
         unsigned char s[16];
 
         j = 0;
@@ -151,10 +152,10 @@ static void aes_ccm_crypt(unsigned char *key,
 }
 
 void aes128ccm_encrypt(unsigned char *key,
-                       unsigned char *nonce, int nlen,
-                       unsigned char *aad, int alen,
-                       unsigned char *p, int plen,
-                       unsigned char *m, int mlen)
+                       unsigned char *nonce, size_t nlen,
+                       unsigned char *aad, size_t alen,
+                       unsigned char *p, size_t plen,
+                       unsigned char *m, size_t mlen)
 {
         unsigned char s[16];
 
@@ -166,10 +167,10 @@ void aes128ccm_encrypt(unsigned char *key,
 }
 
 int aes128ccm_decrypt(unsigned char *key,
-                      unsigned char *nonce, int nlen,
-                      unsigned char *aad, int alen,
-                      unsigned char *p, int plen,
-                      unsigned char *m, int mlen)
+                      unsigned char *nonce, size_t nlen,
+                      unsigned char *aad, size_t alen,
+                      unsigned char *p, size_t plen,
+                      unsigned char *m, size_t mlen)
 {
         unsigned char s[16];
         unsigned char tmp[16];

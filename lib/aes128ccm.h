@@ -16,13 +16,13 @@
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 void aes128ccm_encrypt(unsigned char *key,
-		       unsigned char *nonce, int nlen,
-		       unsigned char *aad, int alen,
-		       unsigned char *p, int plen,
-		       unsigned char *m, int mlen);
+		       unsigned char *nonce, size_t nlen,
+		       unsigned char *aad, size_t alen,
+		       unsigned char *p, size_t plen,
+		       unsigned char *m, size_t mlen);
 
 int aes128ccm_decrypt(unsigned char *key,
-		      unsigned char *nonce, int nlen,
-		      unsigned char *aad, int alen,
-		      unsigned char *p, int plen,
-		      unsigned char *m, int mlen);
+		      unsigned char *nonce, size_t nlen,
+		      unsigned char *aad, size_t alen,
+		      unsigned char *p, size_t plen,
+		      unsigned char *m, size_t mlen);
