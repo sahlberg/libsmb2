@@ -24,6 +24,11 @@ extern "C" {
 #endif
 
 #if defined(_WINDOWS) || defined(_XBOX)
+#if defined(_WINDOWS)
+#include <winsock2.h>
+#elif defined(_XBOX)
+#include <winsockx.h>
+#endif
 typedef SOCKET t_socket;
 #define VALID_SOCKET(sock)	((sock) != INVALID_SOCKET)
 #else
@@ -37,10 +42,8 @@ typedef int t_socket;
 #ifdef _XBOX
 /* XBOX Defs begin */
 #include <xtl.h>
-#include <winsockx.h>
 #else
 #include <windows.h>
-#include <winsock2.h>
 #include <ws2tcpip.h>
 #endif
 #include <stddef.h>
