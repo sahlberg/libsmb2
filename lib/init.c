@@ -277,7 +277,7 @@ struct smb2_context * SMB2APIENTRY smb2_init_context(void)
 
         ret = getlogin_r(buf, sizeof(buf));
         smb2_set_user(smb2, ret == 0 ? buf : "Guest");
-        smb2->fd = -1;
+        smb2->fd = INVALID_SOCKET;
         smb2->connecting_fds = NULL;
         smb2->connecting_fds_count = 0;
         smb2->addrinfos = NULL;
@@ -306,12 +306,12 @@ void SMB2APIENTRY smb2_destroy_context(struct smb2_context *smb2)
                 return;
         }
 
-        if (smb2->fd != -1) {
+        if (VALID_SOCKET(smb2->fd)) {
                 if (smb2->change_fd) {
                         smb2->change_fd(smb2, smb2->fd, SMB2_DEL_FD);
                 }
                 close(smb2->fd);
-                smb2->fd = -1;
+                smb2->fd = INVALID_SOCKET;
         }
         else {
                 smb2_close_connecting_fds(smb2);

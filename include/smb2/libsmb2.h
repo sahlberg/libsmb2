@@ -191,7 +191,7 @@ SMB2_API void SMB2APIENTRY smb2_fd_event_callbacks(struct smb2_context *smb2,
  *      used and must be freed by calling smb2_destroy_context().
  *
  */
-SMB2_API t_socket SMB2APIENTRY smb2_service(struct smb2_context *smb2, int revents);
+SMB2_API int SMB2APIENTRY smb2_service(struct smb2_context *smb2, int revents);
 
 /*
  * Called to process the events when events become available for the smb2
@@ -208,7 +208,7 @@ SMB2_API t_socket SMB2APIENTRY smb2_service(struct smb2_context *smb2, int reven
  *      used and must be freed by calling smb2_destroy_context().
  *
  */
-SMB2_API t_socket SMB2APIENTRY smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents);
+SMB2_API int SMB2APIENTRY smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents);
 
 /*
  * Set the timeout in seconds after which a command will be aborted with

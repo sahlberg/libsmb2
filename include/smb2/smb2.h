@@ -664,7 +664,7 @@ struct smb2_ace {
          * SMB2_DENIED_ALLOWED_CALLBACK_ACE_TYPE,
          * SMB2_SYSTEM_RESOURCE_ATTRIBUTE_ACE_TYPE
          */
-        int   ad_len;
+        size_t ad_len;
         char *ad_data;
 
         /* raw blob, used for unknown ACE types */
