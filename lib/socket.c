@@ -966,7 +966,7 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_o
 #ifndef _MSC_VER
                   && errno != EINPROGRESS) {
 #else
-                  && WSAGetLastError() != WSAEINPROGRESS) {
+                  && WSAGetLastError() != WSAEWOULDBLOCK) {
 #endif
                 smb2_set_error(smb2, "Connect failed with errno : "
                         "%s(%d)", strerror(errno), errno);

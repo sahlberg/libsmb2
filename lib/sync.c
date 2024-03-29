@@ -80,7 +80,7 @@ static int wait_for_reply(struct smb2_context* smb2,
 
         if (poll(&pfd, 1, 1000) < 0) {
 #ifdef _MSC_VER
-            if (WSAGetLastError() == WSAEINPROGRESS || WSAGetLastError() == WSAEINTR)
+            if (WSAGetLastError() == WSAEWOULDBLOCK || WSAGetLastError() == WSAEINTR)
 #else
             if (errno == EINPROGRESS || errno == EINTR)
 #endif
