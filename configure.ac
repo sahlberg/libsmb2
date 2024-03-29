@@ -157,6 +157,14 @@ AC_CHECK_MEMBER([struct sockaddr_storage.ss_family], [
 #include <sys/socket.h>
 ])
 
+dnl  Check if sockaddr_storage struct includes a "l_linger"
+AC_CHECK_MEMBER([struct linger.l_linger], [
+    AC_DEFINE([HAVE_LINGER], [1], [Whether we have linger])
+], [], [
+#include <sys/types.h>
+#include <sys/socket.h>
+])
+
 dnl  Output
 AC_CONFIG_FILES([
     Makefile

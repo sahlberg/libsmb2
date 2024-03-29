@@ -103,7 +103,7 @@
 
 #if defined(ESP_PLATFORM)
 #define DEFAULT_OUTPUT_BUFFER_LENGTH 512
-#elif defined(PS2_EE_PLATFORM) || defined(PS2_IOP_PLATFORM)
+#elif defined(PS2_PLATFORM)
 #define DEFAULT_OUTPUT_BUFFER_LENGTH 4096
 #else
 #define DEFAULT_OUTPUT_BUFFER_LENGTH 0xffff
@@ -190,12 +190,12 @@ smb2_close_context(struct smb2_context *smb2)
                 return;
         }
 
-        if (smb2->fd != -1) {
+        if (VALID_SOCKET(smb2->fd)) {
                 if (smb2->change_fd) {
                         smb2->change_fd(smb2, smb2->fd, SMB2_DEL_FD);
                 }
                 close(smb2->fd);
-                smb2->fd = -1;
+                smb2->fd = INVALID_SOCKET;
         }
 
         smb2->message_id = 0;
@@ -2537,7 +2537,7 @@ disconnect_cb_2(struct smb2_context *smb2, int status,
                 smb2->change_fd(smb2, smb2->fd, SMB2_DEL_FD);
         }
         close(smb2->fd);
-        smb2->fd = -1;
+        smb2->fd = INVALID_SOCKET;
 }
 
 static void
@@ -2567,7 +2567,7 @@ smb2_disconnect_share_async(struct smb2_context *smb2,
                 return -EINVAL;
         }
 
-        if (smb2->fd == -1) {
+        if (!VALID_SOCKET(smb2->fd)) {
                 smb2_set_error(smb2, "connection is alreeady disconnected or was never connected");
                 return -EINVAL;
         }

@@ -185,7 +185,7 @@ void smb2_fd_event_callbacks(struct smb2_context *smb2,
  *      used and must be freed by calling smb2_destroy_context().
  *
  */
-t_socket smb2_service(struct smb2_context *smb2, int revents);
+int smb2_service(struct smb2_context *smb2, int revents);
 
 /*
  * Called to process the events when events become available for the smb2
@@ -202,7 +202,7 @@ t_socket smb2_service(struct smb2_context *smb2, int revents);
  *      used and must be freed by calling smb2_destroy_context().
  *
  */
-t_socket smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents);
+int smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents);
 
 /*
  * Set the timeout in seconds after which a command will be aborted with
@@ -231,6 +231,27 @@ enum smb2_negotiate_version {
 
 void smb2_set_version(struct smb2_context *smb2,
                       enum smb2_negotiate_version version);
+
+/* 
+ * Sets which version libsmb2 uses.
+*/
+#define LIBSMB2_MAJOR_VERSION 4
+#define LIBSMB2_MINOR_VERSION 0
+#define LIBSMB2_PATCH_VERSION 0
+
+struct smb2_libversion
+{
+     uint8_t major_version;
+     uint8_t minor_version;
+     uint8_t patch_version;
+};
+
+/*
+ * Gets the libsmb2 version being linked while used.
+ * This function will be available on 5.x 
+ * @param struct smb2_libversion
+*/
+void smb2_get_libsmb2Version(struct smb2_libversion *smb2_ver);
 
 /*
  * Set the security mode for the connection.

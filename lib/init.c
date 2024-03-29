@@ -277,7 +277,7 @@ struct smb2_context *smb2_init_context(void)
 
         ret = getlogin_r(buf, sizeof(buf));
         smb2_set_user(smb2, ret == 0 ? buf : "Guest");
-        smb2->fd = -1;
+        smb2->fd = INVALID_SOCKET;
         smb2->connecting_fds = NULL;
         smb2->connecting_fds_count = 0;
         smb2->addrinfos = NULL;
@@ -306,12 +306,12 @@ void smb2_destroy_context(struct smb2_context *smb2)
                 return;
         }
 
-        if (smb2->fd != -1) {
+        if (VALID_SOCKET(smb2->fd)) {
                 if (smb2->change_fd) {
                         smb2->change_fd(smb2, smb2->fd, SMB2_DEL_FD);
                 }
                 close(smb2->fd);
-                smb2->fd = -1;
+                smb2->fd = INVALID_SOCKET;
         }
         else {
                 smb2_close_connecting_fds(smb2);
@@ -621,3 +621,9 @@ void smb2_set_version(struct smb2_context *smb2,
         smb2->version = version;
 }
 
+void smb2_get_libsmb2Version(struct smb2_libversion *smb2_ver)
+{
+        smb2_ver->major_version = LIBSMB2_MAJOR_VERSION;
+        smb2_ver->minor_version = LIBSMB2_MINOR_VERSION;
+        smb2_ver->patch_version = LIBSMB2_MAJOR_VERSION;
+}
