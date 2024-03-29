@@ -47,8 +47,20 @@ set(SOURCES aes.c
             unicode.c
 	    usha.c)
 
-add_library(smb2 ${SOURCES})
+set(INCLUDE_PATH ../include)
+set(SMB2_INCLUDE "${INCLUDE_PATH}/smb2")
+set(HEADERS
+    ${SMB2_INCLUDE}/libsmb2-dcerpc-lsa.h
+    ${SMB2_INCLUDE}/libsmb2-dcerpc-srvsvc.h
+    ${SMB2_INCLUDE}/libsmb2-dcerpc.h
+    ${SMB2_INCLUDE}/libsmb2-raw.h
+    ${SMB2_INCLUDE}/libsmb2.h
+    ${SMB2_INCLUDE}/smb2-errors.h
+    ${SMB2_INCLUDE}/smb2.h)
+
+add_library(smb2 ${SOURCES} ${HEADERS})
 target_link_libraries(smb2 PUBLIC ${core_DEPENDS} ${CORE_LIBRARIES})
+target_include_directories(smb2 PUBLIC ${INCLUDE_PATH})
 set_target_properties(smb2 PROPERTIES
                            VERSION ${PROJECT_VERSION}
                            SOVERSION ${SOVERSION})

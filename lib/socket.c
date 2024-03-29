@@ -123,7 +123,7 @@ smb2_close_connecting_fds(struct smb2_context *smb2)
                 t_socket fd = smb2->connecting_fds[i];
 
                 /* Don't close the connected fd */
-                if (fd == smb2->fd || fd == -1)
+                if (fd == smb2->fd || !VALID_SOCKET(fd))
                         continue;
 
                 if (smb2->change_fd) {
@@ -160,7 +160,7 @@ smb2_get_credit_charge(struct smb2_context *smb2, struct smb2_pdu *pdu)
 int
 smb2_which_events(struct smb2_context *smb2)
 {
-        int events = smb2->fd != -1 ? POLLIN : POLLOUT;
+        int events = VALID_SOCKET(smb2->fd) ? POLLIN : POLLOUT;
 
         if (smb2->outqueue != NULL &&
             smb2_get_credit_charge(smb2, smb2->outqueue) <= smb2->credits) {
@@ -172,7 +172,7 @@ smb2_which_events(struct smb2_context *smb2)
 
 t_socket smb2_get_fd(struct smb2_context *smb2)
 {
-        if (smb2->fd != -1) {
+        if (VALID_SOCKET(smb2->fd)) {
                 return smb2->fd;
         } else if (smb2->connecting_fds_count > 0) {
                 return smb2->connecting_fds[0];
@@ -184,7 +184,7 @@ t_socket smb2_get_fd(struct smb2_context *smb2)
 const t_socket *
 smb2_get_fds(struct smb2_context *smb2, size_t *fd_count, int *timeout)
 {
-        if (smb2->fd != -1) {
+        if (VALID_SOCKET(smb2->fd)) {
                 *fd_count = 1;
                 *timeout = -1;
                 return &smb2->fd;
@@ -200,7 +200,7 @@ smb2_write_to_socket(struct smb2_context *smb2)
 {
         struct smb2_pdu *pdu;
 
-        if (smb2->fd == -1) {
+        if (!VALID_SOCKET(smb2->fd)) {
                 smb2_set_error(smb2, "trying to write but not connected");
                 return -1;
         }
@@ -687,12 +687,12 @@ smb2_close_connecting_fd(struct smb2_context *smb2, t_socket fd)
         }
 }
 
-t_socket
+int
 smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
 {
         int ret = 0;
 
-        if (fd == -1) {
+        if (!VALID_SOCKET(fd)) {
                 /* Connect to a new addr in parallel */
                 if (smb2->next_addrinfo != NULL) {
                     int err = smb2_connect_async_next_addr(smb2,
@@ -723,7 +723,7 @@ smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
                 int err = 0;
                 socklen_t err_size = sizeof(err);
 
-                if (smb2->fd == -1 && smb2->next_addrinfo != NULL) {
+                if (!VALID_SOCKET(smb2->fd) && smb2->next_addrinfo != NULL) {
                         /* Connecting fd failed, try to connect to the next addr */
                         smb2_close_connecting_fd(smb2, fd);
 
@@ -759,7 +759,7 @@ smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
                 goto out;
         }
 
-        if (smb2->fd == -1 && revents & POLLOUT) {
+        if (!VALID_SOCKET(smb2->fd) && revents & POLLOUT) {
                 int err = 0;
                 socklen_t err_size = sizeof(err);
 
@@ -824,7 +824,7 @@ smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
         return ret;
 }
 
-t_socket
+int
 smb2_service(struct smb2_context *smb2, int revents)
 {
         if (smb2->connecting_fds_count > 0) {
@@ -912,7 +912,7 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_o
         family = ai->ai_family;
 
         fd = socket(family, SOCK_STREAM, 0);
-        if (fd == -1) {
+        if (!VALID_SOCKET(fd)) {
                 smb2_set_error(smb2, "Failed to open smb2 socket. "
                                "Errno:%s(%d).", strerror(errno), errno);
                 return -EIO;
@@ -1028,7 +1028,7 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
         size_t addr_count = 0;
         const struct addrinfo *ai;
 
-        if (smb2->fd != -1) {
+        if (VALID_SOCKET(smb2->fd)) {
                 smb2_set_error(smb2, "Trying to connect but already "
                                "connected.");
                 return -EINVAL;

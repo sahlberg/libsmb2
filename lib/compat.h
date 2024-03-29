@@ -61,8 +61,11 @@ typedef unsigned int uintptr_t;
 
 #if defined(_WINDOWS) || defined(_XBOX)
 typedef SOCKET t_socket;
+#define VALID_SOCKET(sock)	((sock) != INVALID_SOCKET)
 #else
 typedef int t_socket;
+#define VALID_SOCKET(sock)	((sock) >= 0)
+#define INVALID_SOCKET		-1
 #endif
 
 #ifndef ENETRESET

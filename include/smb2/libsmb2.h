@@ -185,7 +185,7 @@ void smb2_fd_event_callbacks(struct smb2_context *smb2,
  *      used and must be freed by calling smb2_destroy_context().
  *
  */
-t_socket smb2_service(struct smb2_context *smb2, int revents);
+int smb2_service(struct smb2_context *smb2, int revents);
 
 /*
  * Called to process the events when events become available for the smb2
@@ -202,7 +202,7 @@ t_socket smb2_service(struct smb2_context *smb2, int revents);
  *      used and must be freed by calling smb2_destroy_context().
  *
  */
-t_socket smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents);
+int smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents);
 
 /*
  * Set the timeout in seconds after which a command will be aborted with
