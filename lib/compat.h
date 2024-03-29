@@ -23,6 +23,15 @@
 extern "C" {
 #endif
 
+#if defined(_WINDOWS) || defined(_XBOX)
+typedef SOCKET t_socket;
+#define VALID_SOCKET(sock)	((sock) != INVALID_SOCKET)
+#else
+typedef int t_socket;
+#define VALID_SOCKET(sock)	((sock) >= 0)
+#define INVALID_SOCKET		-1
+#endif
+
 #if defined(_XBOX) || defined(_WINDOWS) || defined(__MINGW32__)
 
 #ifdef _XBOX
@@ -57,15 +66,6 @@ typedef unsigned int uint_t;
 typedef unsigned int uintptr_t;
 #else
 #include <stdint.h>
-#endif
-
-#if defined(_WINDOWS) || defined(_XBOX)
-typedef SOCKET t_socket;
-#define VALID_SOCKET(sock)	((sock) != INVALID_SOCKET)
-#else
-typedef int t_socket;
-#define VALID_SOCKET(sock)	((sock) >= 0)
-#define INVALID_SOCKET		-1
 #endif
 
 #ifndef ENETRESET
