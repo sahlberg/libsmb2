@@ -54,16 +54,16 @@ smb2_decode_file_basic_info(struct smb2_context *smb2,
         uint64_t t;
 
         smb2_get_uint64(vec, 0, &t);
-        win_to_timeval(t, &fs->creation_time);
+        smb2_win_to_timeval(t, &fs->creation_time);
 
         smb2_get_uint64(vec, 8, &t);
-        win_to_timeval(t, &fs->last_access_time);
+        smb2_win_to_timeval(t, &fs->last_access_time);
 
         smb2_get_uint64(vec, 16, &t);
-        win_to_timeval(t, &fs->last_write_time);
+        smb2_win_to_timeval(t, &fs->last_write_time);
 
         smb2_get_uint64(vec, 24, &t);
-        win_to_timeval(t, &fs->change_time);
+        smb2_win_to_timeval(t, &fs->change_time);
 
         smb2_get_uint32(vec, 32, &fs->file_attributes);
 
@@ -71,7 +71,7 @@ smb2_decode_file_basic_info(struct smb2_context *smb2,
 }
 
 static uint64_t
-smb2_timeval_to_win(struct smb2_timeval *tv){
+smb2_tv_timeval_to_win(struct smb2_timeval *tv){
         if (tv->tv_sec == 0 &&
             tv->tv_usec == 0) {
                 return 0;
@@ -79,7 +79,7 @@ smb2_timeval_to_win(struct smb2_timeval *tv){
                    tv->tv_usec == 0xffffffff) {
                return 0xffffffffffffffffULL;
         }
-        return timeval_to_win(tv);
+        return smb2_timeval_to_win(tv);
 }
 
 int
@@ -89,16 +89,16 @@ smb2_encode_file_basic_info(struct smb2_context *smb2,
 {
         uint64_t t;
 
-        t = smb2_timeval_to_win(&fs->creation_time);
+        t = smb2_tv_timeval_to_win(&fs->creation_time);
         smb2_set_uint64(vec, 0, t);
 
-        t = smb2_timeval_to_win(&fs->last_access_time);
+        t = smb2_tv_timeval_to_win(&fs->last_access_time);
         smb2_set_uint64(vec, 8, t);
 
-        t = smb2_timeval_to_win(&fs->last_write_time);
+        t = smb2_tv_timeval_to_win(&fs->last_write_time);
         smb2_set_uint64(vec, 16, t);
 
-        t = smb2_timeval_to_win(&fs->change_time);
+        t = smb2_tv_timeval_to_win(&fs->change_time);
         smb2_set_uint64(vec, 24, t);
 
         smb2_set_uint32(vec, 32, fs->file_attributes);
@@ -155,7 +155,7 @@ smb2_decode_file_all_info(struct smb2_context *smb2,
         smb2_get_uint32(vec, 92, &fs->alignment_requirement);
         smb2_get_uint16(vec, 96, &name_len);
 
-        name = utf16_to_utf8((uint16_t *)&vec->buf[100], name_len / 2);
+        name = smb2_utf16_to_utf8((uint16_t *)&vec->buf[100], name_len / 2);
         fs->name = smb2_alloc_data(smb2, memctx, strlen(name) + 1);
         if (fs->name == NULL) {
                 free(discard_const(name));

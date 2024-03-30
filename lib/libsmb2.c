@@ -152,7 +152,7 @@ struct connect_data {
 
         /* UNC for the share in utf8 as well as utf16 formats */
         char *utf8_unc;
-        struct utf16 *utf16_unc;
+        struct smb2_utf16 *utf16_unc;
 
         void *auth_data;
 };
@@ -1082,7 +1082,7 @@ smb2_connect_share_async(struct smb2_context *smb2,
                 return -ENOMEM;
         }
 
-        c_data->utf16_unc = utf8_to_utf16(c_data->utf8_unc);
+        c_data->utf16_unc = smb2_utf8_to_utf16(c_data->utf8_unc);
         if (c_data->utf16_unc == NULL) {
                 smb2_set_error(smb2, "Count not convert UNC:[%s] into UTF-16",
                                c_data->utf8_unc);

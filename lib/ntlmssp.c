@@ -225,9 +225,9 @@ static int
 ntlm_convert_password_hash(const char *password, unsigned char password_hash[16])
 {
         int i, hn, ln;
-        struct utf16 *utf16_password = NULL;
+        struct smb2_utf16 *utf16_password = NULL;
 
-        utf16_password = utf8_to_utf16(password);
+        utf16_password = smb2_utf8_to_utf16(password);
         if (utf16_password == NULL) {
                 return -1;
         }
@@ -254,9 +254,9 @@ static int
 NTOWFv1(const char *password, unsigned char password_hash[16])
 {
         MD4_CTX ctx;
-        struct utf16 *utf16_password = NULL;
+        struct smb2_utf16 *utf16_password = NULL;
 
-        utf16_password = utf8_to_utf16(password);
+        utf16_password = smb2_utf8_to_utf16(password);
         if (utf16_password == NULL) {
                 return -1;
         }
@@ -274,7 +274,7 @@ NTOWFv2(const char *user, const char *password, const char *domain,
 {
         int i, len;
         char *userdomain;
-        struct utf16 *utf16_userdomain = NULL;
+        struct smb2_utf16 *utf16_userdomain = NULL;
         unsigned char ntlm_hash[16];
 
         /* ntlm:F638EDF864C4805DC65D9BF2BB77E4C0 */
@@ -307,7 +307,7 @@ NTOWFv2(const char *user, const char *password, const char *domain,
                 strcat(userdomain, domain);
         }
 
-        utf16_userdomain = utf8_to_utf16(userdomain);
+        utf16_userdomain = smb2_utf8_to_utf16(userdomain);
         if (utf16_userdomain == NULL) {
                 free(userdomain);
                 return -1;
@@ -373,9 +373,9 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
         unsigned char lm_buf[16];
         unsigned char *NTChallengeResponse_buf = NULL;
         unsigned char ResponseKeyNT[16];
-        struct utf16 *utf16_domain = NULL;
-        struct utf16 *utf16_user = NULL;
-        struct utf16 *utf16_workstation = NULL;
+        struct smb2_utf16 *utf16_domain = NULL;
+        struct smb2_utf16 *utf16_user = NULL;
+        struct smb2_utf16 *utf16_workstation = NULL;
         int NTChallengeResponse_len = 0;
         unsigned char NTProofStr[16];
         unsigned char LMStr[16];
@@ -390,7 +390,7 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
 
         tv.tv_sec = ti;
         tv.tv_usec = 0;
-        t = timeval_to_win(&tv);
+        t = smb2_timeval_to_win(&tv);
 
         if (auth_data->password == NULL) {
                 anonymous = 1;
@@ -484,7 +484,7 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
 
         /* domain name fields */
         if (!anonymous && auth_data->domain) {
-                utf16_domain = utf8_to_utf16(auth_data->domain);
+                utf16_domain = smb2_utf8_to_utf16(auth_data->domain);
                 if (utf16_domain == NULL) {
                         goto finished;
                 }
@@ -501,7 +501,7 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
 
         /* user name fields */
         if (!anonymous) {
-                utf16_user = utf8_to_utf16(auth_data->user);
+                utf16_user = smb2_utf8_to_utf16(auth_data->user);
                 if (utf16_user == NULL) {
                         goto finished;
                 }
@@ -518,7 +518,7 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
 
         /* workstation name fields */
         if (!anonymous && auth_data->workstation) {
-                utf16_workstation = utf8_to_utf16(auth_data->workstation);
+                utf16_workstation = smb2_utf8_to_utf16(auth_data->workstation);
                 if (utf16_workstation == NULL) {
                         goto finished;
                 }
