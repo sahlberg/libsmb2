@@ -252,6 +252,7 @@ int smb2_getaddrinfo(const char *node, const char*service,
         } 
 
         *res = malloc(sizeof(struct addrinfo));
+        memset(*res, 0, sizeof(struct addrinfo));
 #endif
         (*res)->ai_family = AF_INET;
         (*res)->ai_addrlen = sizeof(struct sockaddr_in);
@@ -542,7 +543,7 @@ int poll(struct pollfd *fds, unsigned int nfds, int timo)
         for (i = 0; i < nfds; ++i) {
                 int fd = fds[i].fd;
                 fds[i].revents = 0;
-                if (fd < 0)
+                if (!VALID_SOCKET(fd))
                         continue;
                 if(fds[i].events & (POLLIN|POLLPRI)) {
                         ip = &ifds;
@@ -613,7 +614,7 @@ int poll(struct pollfd *fds, unsigned int nfds, int timo)
                 int fd = fds[i].fd;
                 short events = fds[i].events;
                 short revents = 0;
-                if (fd < 0)
+                if (!VALID_SOCKET(fd))
                         continue;
                 if(events & (POLLIN|POLLPRI) && FD_ISSET(fd, &ifds))
                         revents |= POLLIN;
