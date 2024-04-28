@@ -454,7 +454,7 @@ ssize_t readv (int fd, const struct iovec *vector, int count)
         char *buffer;
         ssize_t bytes_read;
         char *bp;
-#ifdef __SWITCH
+#ifdef __SWITCH__
 		char *malloced_buffer __attribute__ ((__cleanup__ (ifree))) = NULL;
 		for (i = 0; i < count; ++i)
 		{
