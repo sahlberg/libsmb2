@@ -63,7 +63,7 @@
 
 struct smb2_alloc_entry {
         struct smb2_alloc_entry *next;
-#if 0 /* TODO: */
+#if 0 /* UNUSED. */
         size_t len;
 #endif
         char buf[0];

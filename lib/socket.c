@@ -325,7 +325,7 @@ read_more_data:
         niov = smb2->in.niov;
         for (i = 0; i < niov; i++) {
                 iov[i].iov_base = smb2->in.iov[i].buf;
-#ifdef _WIN32
+#if defined(_WIN32) || defined(_XBOX)
                 iov[i].iov_len = (unsigned long)smb2->in.iov[i].len;
 #else
                 iov[i].iov_len = (size_t)smb2->in.iov[i].len;
@@ -342,7 +342,7 @@ read_more_data:
 
         /* Adjust the first vector to read */
         tmpiov->iov_base = (char *)tmpiov->iov_base + num_done;
-#ifdef _WIN32
+#if defined(_WIN32) || defined(_XBOX)
         tmpiov->iov_len -= (unsigned long)num_done;
 #else
         tmpiov->iov_len -= (size_t)num_done;

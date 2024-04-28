@@ -172,13 +172,13 @@ smb2_calc_signature(struct smb2_context *smb2, uint8_t *signature,
         memset(iov[0].buf + 48, 0, 16);
 
         if (smb2->dialect > SMB2_VERSION_0210) {
-                int i = 0;
+                size_t i = 0;
                 size_t len = 0, offset = 0;
                 uint8_t aes_mac[AES_BLOCK_SIZE];
                 /* combine the buffers into one */
                 uint8_t *msg = NULL;
 
-                for (i=0; (size_t)i < niov; i++) {
+                for (i=0; i < niov; i++) {
                         len += iov[i].len;
                 }
                 msg = (uint8_t *) malloc(len);
@@ -188,7 +188,7 @@ smb2_calc_signature(struct smb2_context *smb2, uint8_t *signature,
                         return -1;
                 }
 
-                for (i=0; (size_t)i < niov; i++) {
+                for (i=0; i < niov; i++) {
                         memcpy(msg + offset, iov[i].buf, iov[i].len);
                         offset += iov[i].len;
                 }
@@ -201,7 +201,7 @@ smb2_calc_signature(struct smb2_context *smb2, uint8_t *signature,
                 int i;
 
                 hmacReset(&ctx, SHA256, &smb2->signing_key[0], SMB2_KEY_SIZE);
-                for (i=0; (size_t)i < niov; i++) {
+                for (i=0; i < niov; i++) {
                         hmacInput(&ctx, iov[i].buf, iov[i].len);
                 }
                 hmacResult(&ctx, digest);
