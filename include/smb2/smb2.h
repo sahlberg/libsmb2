@@ -31,9 +31,8 @@ extern "C" {
 
 struct smb2_timeval {
         time_t tv_sec;
-        uint64_t tv_usec;
+        long tv_usec; 
 };
-
 #define SMB2_ERROR_REPLY_SIZE 9
 
 struct smb2_error_reply {

@@ -888,7 +888,7 @@ SHA384_512ProcessMessageBlock (SHA512Context * context)
   };
   int t, t8;			/* Loop counter */
   uint64_t temp1, temp2;	/* Temporary word value */
-  uint64_t W[80];		/* Word sequence */
+  uint64_t W[80] _U_;		/* Word sequence */
   uint64_t A, B, C, D, E, F, G, H;	/* Word buffers */
 
   /*

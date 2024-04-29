@@ -27,10 +27,10 @@
 #define NEED_RANDOM
 #define NEED_SRANDOM
 #define login_num ENXIO
-#define getpid_num GetCurrentProcessId
+#define getpid_num() GetCurrentProcessId()
 #else
 #define login_num 0
-#define getpid_num 0	
+#define getpid_num() 0	
 #endif
 #define smb2_random rand
 #define smb2_srandom srand
@@ -217,7 +217,7 @@ int smb2_getaddrinfo(const char *node, const char*service,
 #ifndef _XBOX
         sin->sin_len = sizeof(struct sockaddr_in);
 #endif
-	sin->sin_family=AF_INET;
+        sin->sin_family=AF_INET;
 
 #if defined(__amigaos4__) || defined(__AMIGA__) || defined(__AROS__)
         /* Some error checking would be nice */

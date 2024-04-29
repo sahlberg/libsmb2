@@ -68,7 +68,7 @@ static void ccm_generate_T(unsigned char *key,
                            unsigned char *p, size_t plen,
                            unsigned char *m, size_t mlen)
 {
-        unsigned char b[16], y[16];
+        unsigned char b[16] _U_, y[16]_U_;
         uint16_t l;
 
         aes_ccm_generate_b0(nonce, nlen, alen, plen, mlen, &b[0]);
@@ -138,7 +138,7 @@ static void aes_ccm_crypt(unsigned char *key,
 {
         int j;
         size_t l;
-        unsigned char s[16];
+        unsigned char s[16] _U_;
 
         j = 0;
         while (plen) {
@@ -157,7 +157,7 @@ void aes128ccm_encrypt(unsigned char *key,
                        unsigned char *p, size_t plen,
                        unsigned char *m, size_t mlen)
 {
-        unsigned char s[16];
+        unsigned char s[16] _U_;
 
         ccm_generate_T(key, nonce, nlen, aad, alen, p, plen, m, mlen);
         ccm_generate_s(key, nonce, nlen, plen, 0, &s[0]);
@@ -172,7 +172,7 @@ int aes128ccm_decrypt(unsigned char *key,
                       unsigned char *p, size_t plen,
                       unsigned char *m, size_t mlen)
 {
-        unsigned char s[16];
+        unsigned char s[16] _U_;
         unsigned char tmp[16];
 
         aes_ccm_crypt(key, nonce, nlen, p, plen);

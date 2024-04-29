@@ -329,7 +329,7 @@ NTOWFv2(const char *user, const char *password, const char *domain,
  */
 static int
 encode_temp(struct auth_data *auth_data, uint64_t t, char *client_challenge,
-            char *server_challenge, char *server_name, int server_name_len)
+            char *server_challenge, char *server_name, size_t server_name_len)
 {
         unsigned char sign[8] = {0x01, 0x01, 0x00, 0x00,
                                  0x00, 0x00, 0x00, 0x00};
@@ -371,17 +371,17 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
                  struct auth_data *auth_data, char *server_challenge)
 {
         int ret = -1;
-        unsigned char lm_buf[16];
+        unsigned char lm_buf[16] _U_;
         unsigned char *NTChallengeResponse_buf = NULL;
         unsigned char ResponseKeyNT[16];
         struct utf16 *utf16_domain = NULL;
         struct utf16 *utf16_user = NULL;
         struct utf16 *utf16_workstation = NULL;
-        int NTChallengeResponse_len = 0;
+        unsigned int NTChallengeResponse_len = 0;
         unsigned char NTProofStr[16];
         unsigned char LMStr[16];
-        uint64_t t;
-        struct smb2_timeval tv;
+        time_t t;
+        struct smb2_timeval tv _U_;
         char *server_name_buf;
         uint32_t server_name_len;
         uint32_t u32;
@@ -413,14 +413,14 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
         }
         /* get the server neg flags */
         memcpy(&server_neg_flags, &auth_data->ntlm_buf[20], 4);
-        server_neg_flags = (uint32_t)le32toh(server_neg_flags);
+        server_neg_flags = le32toh(server_neg_flags);
 
         memcpy(&u32, &auth_data->ntlm_buf[40], 4);
-        u32 = (uint32_t)le32toh(u32);
+        u32 = le32toh(u32);
         server_name_len = u32 >> 16;
 
         memcpy(&u32, &auth_data->ntlm_buf[44], 4);
-        u32 = (uint32_t)le32toh(u32);
+        u32 = le32toh(u32);
         /* Server name must fit in the buffer */
         if (u32 >= auth_data->ntlm_len ||
             (u32 + server_name_len) > auth_data->ntlm_len) {
@@ -434,12 +434,12 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
                 return -1;
         }
 
-        smb2_hmac_md5(&auth_data->buf[8], (int)auth_data->len-8,
+        smb2_hmac_md5(&auth_data->buf[8], (unsigned int)auth_data->len-8,
                  ResponseKeyNT, 16, NTProofStr);
         memcpy(auth_data->buf, NTProofStr, 16);
 
         NTChallengeResponse_buf = auth_data->buf;
-        NTChallengeResponse_len = (int)auth_data->len;
+        NTChallengeResponse_len = (unsigned int)auth_data->len;
         auth_data->buf = NULL;
         auth_data->len = 0;
         auth_data->allocated = 0;
@@ -457,7 +457,7 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
         encoder("NTLMSSP", 8, auth_data);
 
         /* message type */
-        u32 = (uint32_t)htole32(AUTHENTICATION_MESSAGE);
+        u32 = htole32(AUTHENTICATION_MESSAGE);
         encoder(&u32, 4, auth_data);
 
         /* lm challenge response fields */
@@ -466,7 +466,7 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
                 memcpy(&lm_buf[8], auth_data->client_challenge, 8);
                 smb2_hmac_md5(&lm_buf[0], 16,
                               ResponseKeyNT, 16, LMStr);
-                u32 = (uint32_t)htole32(0x00180018);
+                u32 = htole32(0x00180018);
                 encoder(&u32, 4, auth_data);
                 u32 = 0;
                 encoder(&u32, 4, auth_data);
@@ -477,7 +477,7 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
         }
 
         /* nt challenge response fields */
-        u32 = (uint32_t)htole32((NTChallengeResponse_len<<16)|
+        u32 = htole32((NTChallengeResponse_len<<16)|
                       NTChallengeResponse_len);
         encoder(&u32, 4, auth_data);
         u32 = 0;
@@ -490,7 +490,7 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
                         goto finished;
                 }
                 u32 = utf16_domain->len * 2;
-                u32 = (uint32_t)htole32((u32 << 16) | u32);
+                u32 = htole32((u32 << 16) | u32);
                 encoder(&u32, 4, auth_data);
                 u32 = 0;
                 encoder(&u32, 4, auth_data);
@@ -507,7 +507,7 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
                         goto finished;
                 }
                 u32 = utf16_user->len * 2;
-                u32 = (uint32_t)htole32((u32 << 16) | u32);
+                u32 = htole32((u32 << 16) | u32);
                 encoder(&u32, 4, auth_data);
                 u32 = 0;
                 encoder(&u32, 4, auth_data);
@@ -524,7 +524,7 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
                         goto finished;
                 }
                 u32 = utf16_workstation->len * 2;
-                u32 = (uint32_t)htole32((u32 << 16) | u32);
+                u32 = htole32((u32 << 16) | u32);
                 encoder(&u32, 4, auth_data);
                 u32 = 0;
                 encoder(&u32, 4, auth_data);
@@ -552,12 +552,12 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
         else
                 u32 |= NTLMSSP_NEGOTIATE_SEAL;
 
-        u32 = (uint32_t)htole32(u32);
+        u32 = htole32(u32);
         encoder(&u32, 4, auth_data);
 
         if (!anonymous) {
                 /* append domain */
-                u32 = (uint32_t)htole32(auth_data->len);    
+                u32 = htole32((uint32_t)auth_data->len);
                 memcpy(&auth_data->buf[32], &u32, 4);
                 if (utf16_domain) {
                         encoder(utf16_domain->val, utf16_domain->len * 2,
@@ -565,12 +565,12 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
                 }
 
                 /* append user */
-                u32 = (uint32_t)htole32(auth_data->len);
+                u32 = htole32((uint32_t)auth_data->len);
                 memcpy(&auth_data->buf[40], &u32, 4);
                 encoder(utf16_user->val, utf16_user->len * 2, auth_data);
 
                 /* append workstation */
-                u32 = (uint32_t)htole32(auth_data->len);
+                u32 = htole32((uint32_t)auth_data->len);
                 memcpy(&auth_data->buf[48], &u32, 4);
                 if (utf16_workstation) {
                         encoder(utf16_workstation->val,
@@ -578,13 +578,13 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
                 }
 
                 /* append LMChallengeResponse */
-                u32 = (uint32_t)htole32(auth_data->len);
+                u32 = htole32((uint32_t)auth_data->len);
                 memcpy(&auth_data->buf[16], &u32, 4);
                 encoder(LMStr, 16, auth_data);
                 encoder(auth_data->client_challenge, 8, auth_data);
 
                 /* append NTChallengeResponse */
-                u32 = (uint32_t)htole32(auth_data->len);
+                u32 = htole32((uint32_t)auth_data->len);
                 memcpy(&auth_data->buf[24], &u32, 4);
                 encoder(NTChallengeResponse_buf, NTChallengeResponse_len,
                         auth_data);
