@@ -883,8 +883,8 @@ dcerpc_decode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         if (offset + actual * 2 > iov->len) {
                 return -1;
         }
-        tmp = utf16_to_utf8((uint16_t *)(&iov->buf[offset]), actual);
-        offset += actual * 2;
+        tmp = utf16_to_utf8((uint16_t *)(&iov->buf[offset]), (size_t)actual);
+        offset += (int)actual * 2;
 
         str = smb2_alloc_data(ctx->smb2, pdu->payload, strlen(tmp) + 1);
         if (str == NULL) {
@@ -1004,21 +1004,21 @@ dcerpc_encode_uuid(struct dcerpc_context *ctx,
         dcerpc_set_uint16(ctx, iov, offset, uuid->v3);
         offset += 2;
 
-        dcerpc_set_uint8(ctx, iov, offset, (uuid->v4 >> 56) & 0xff);
+        dcerpc_set_uint64(ctx, iov, offset, (uuid->v4 >> 56) & 0xff);
         offset += 1;
-        dcerpc_set_uint8(ctx, iov, offset, (uuid->v4 >> 48) & 0xff);
+        dcerpc_set_uint64(ctx, iov, offset, (uuid->v4 >> 48) & 0xff);
         offset += 1;
-        dcerpc_set_uint8(ctx, iov, offset, (uuid->v4 >> 40) & 0xff);
+        dcerpc_set_uint64(ctx, iov, offset, (uuid->v4 >> 40) & 0xff);
         offset += 1;
-        dcerpc_set_uint8(ctx, iov, offset, (uuid->v4 >> 32) & 0xff);
+        dcerpc_set_uint64(ctx, iov, offset, (uuid->v4 >> 32) & 0xff);
         offset += 1;
-        dcerpc_set_uint8(ctx, iov, offset, (uuid->v4 >> 24) & 0xff);
+        dcerpc_set_uint64(ctx, iov, offset, (uuid->v4 >> 24) & 0xff);
         offset += 1;
-        dcerpc_set_uint8(ctx, iov, offset, (uuid->v4 >> 16) & 0xff);
+        dcerpc_set_uint64(ctx, iov, offset, (uuid->v4 >> 16) & 0xff);
         offset += 1;
-        dcerpc_set_uint8(ctx, iov, offset, (uuid->v4 >>  8) & 0xff);
+        dcerpc_set_uint64(ctx, iov, offset, (uuid->v4 >>  8) & 0xff);
         offset += 1;
-        dcerpc_set_uint8(ctx, iov, offset, (uuid->v4      ) & 0xff);
+        dcerpc_set_uint64(ctx, iov, offset, (uuid->v4      ) & 0xff);
         offset += 1;
 
         return offset;
@@ -1296,7 +1296,7 @@ dcerpc_decode_response(struct dcerpc_context *ctx,
 #ifndef _MSC_VER
         struct dcerpc_pdu *pdu = container_of(rsp, struct dcerpc_pdu, rsp);
 #else
-        const char* __mptr = rsp;
+        const char* __mptr = (const char*)rsp;
         struct dcerpc_pdu *pdu = (struct dcerpc_pdu*)((char *)__mptr - offsetof(struct dcerpc_pdu, rsp));
 #endif /* !_MSC_VER */
     
@@ -1523,7 +1523,7 @@ SMB2APIENTRY dcerpc_call_async(struct dcerpc_context *dce,
         memset(&req, 0, sizeof(struct smb2_ioctl_request));
         req.ctl_code = SMB2_FSCTL_PIPE_TRANSCEIVE;
         memcpy(req.file_id, dce->file_id, SMB2_FD_SIZE);
-        req.input_count = iov.len;
+        req.input_count = (uint32_t)iov.len;
         req.input = iov.buf;
         req.flags = SMB2_0_IOCTL_IS_FSCTL;
 
@@ -1662,7 +1662,7 @@ dcerpc_bind_async(struct dcerpc_context *dce, dcerpc_cb cb,
         memset(&req, 0, sizeof(struct smb2_ioctl_request));
         req.ctl_code = SMB2_FSCTL_PIPE_TRANSCEIVE;
         memcpy(req.file_id, dce->file_id, SMB2_FD_SIZE);
-        req.input_count = iov.len;
+        req.input_count = (uint32_t)iov.len;
         req.input = iov.buf;
         req.flags = SMB2_0_IOCTL_IS_FSCTL;
 

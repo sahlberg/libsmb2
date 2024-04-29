@@ -28,7 +28,7 @@ extern "C" {
 #endif
 
 void
-smb2_hmac_md5(unsigned char *text, int text_len, unsigned char *key, int key_len,
+smb2_hmac_md5(unsigned char *text, int text_len, unsigned char *key, unsigned int key_len,
 	 unsigned char *digest);
 
 #ifdef __cplusplus

@@ -346,7 +346,7 @@ SHA384Reset (SHA384Context * context)
  */
 int
 SHA384Input (SHA384Context * context,
-	     const uint8_t * message_array, unsigned int length)
+	     const uint8_t * message_array, size_t length)
 {
   return SHA512Input (context, message_array, length);
 }
@@ -373,7 +373,7 @@ SHA384Input (SHA384Context * context,
  */
 int
 SHA384FinalBits (SHA384Context * context,
-		 const uint8_t message_bits, unsigned int length)
+		 const uint8_t message_bits, size_t length)
 {
   return SHA512FinalBits (context, message_bits, length);
 }
@@ -446,7 +446,7 @@ SHA512Reset (SHA512Context * context)
  */
 int
 SHA512Input (SHA512Context * context,
-	     const uint8_t * message_array, unsigned int length)
+	     const uint8_t * message_array, size_t length)
 {
 #ifdef USE_32BIT_ONLY
   /* nothing */
@@ -506,7 +506,7 @@ SHA512Input (SHA512Context * context,
  */
 int
 SHA512FinalBits (SHA512Context * context,
-		 const uint8_t message_bits, unsigned int length)
+		 const uint8_t message_bits, size_t length)
 {
 #ifdef USE_32BIT_ONLY
   /* nothing */
@@ -888,7 +888,7 @@ SHA384_512ProcessMessageBlock (SHA512Context * context)
   };
   int t, t8;			/* Loop counter */
   uint64_t temp1, temp2;	/* Temporary word value */
-  uint64_t W[80];		/* Word sequence */
+  uint64_t W[80] _U_;		/* Word sequence */
   uint64_t A, B, C, D, E, F, G, H;	/* Word buffers */
 
   /*

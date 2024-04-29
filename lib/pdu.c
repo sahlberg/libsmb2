@@ -61,7 +61,7 @@ smb2_pad_to_64bit(struct smb2_context *smb2, struct smb2_io_vectors *v)
         int i, len = 0;
 
         for (i = 0; i < v->niov; i++) {
-                len += v->iov[i].len;
+                len += (int)v->iov[i].len;
         }
         if ((len & 0x07) == 0) {
                 return 0;
@@ -174,7 +174,7 @@ smb2_add_compound_pdu(struct smb2_context *smb2,
 
         /* Fixup the next offset in the header */
         for (i = 0, offset = 0; i < pdu->out.niov; i++) {
-                offset += pdu->out.iov[i].len;
+                offset += (int)pdu->out.iov[i].len;
         }
 
         pdu->header.next_command = offset;

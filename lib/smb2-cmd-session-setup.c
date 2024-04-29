@@ -147,7 +147,7 @@ smb2_process_session_setup_fixed(struct smb2_context *smb2,
         smb2_get_uint16(iov, 4, &rep->security_buffer_offset);
         smb2_get_uint16(iov, 6, &rep->security_buffer_length);
         if (rep->security_buffer_length &&
-            (rep->security_buffer_offset + rep->security_buffer_length > smb2->spl)) {
+            (rep->security_buffer_offset + rep->security_buffer_length > (uint16_t)smb2->spl)) {
                 smb2_set_error(smb2, "Security buffer extends beyond end of "
                                "PDU");
                 return -1;
