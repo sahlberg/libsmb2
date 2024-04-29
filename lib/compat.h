@@ -511,6 +511,11 @@ struct sockaddr_storage {
 
 #define TCP_NODELAY     1  /* Don't delay send to coalesce packets  */
 
+
+#ifndef ENODATA
+#define ENODATA 98
+#endif
+
 #endif /* PS4_PLATFORM */
 
 #ifdef ESP_PLATFORM
