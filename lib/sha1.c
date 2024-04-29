@@ -122,7 +122,7 @@ SHA1Reset (SHA1Context * context)
  */
 int
 SHA1Input (SHA1Context * context,
-	   const uint8_t * message_array, unsigned length)
+	   const uint8_t * message_array, size_t length)
 {
   uint32_t addTemp;
 
@@ -177,7 +177,7 @@ SHA1Input (SHA1Context * context,
  */
 int
 SHA1FinalBits (SHA1Context * context, const uint8_t message_bits,
-	       unsigned int length)
+	       size_t length)
 {
   uint32_t addTemp;
   uint8_t masks[8] = {

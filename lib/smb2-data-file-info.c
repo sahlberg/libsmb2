@@ -127,7 +127,7 @@ smb2_decode_file_all_info(struct smb2_context *smb2,
                           struct smb2_file_all_info *fs,
                           struct smb2_iovec *vec)
 {
-        struct smb2_iovec v;
+        struct smb2_iovec v _U_;
         uint16_t name_len;
         const char *name;
 

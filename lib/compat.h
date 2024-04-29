@@ -247,6 +247,8 @@ int getlogin_r(char *buf, size_t size);
 
 int getpid();
 
+#pragma warning( disable : 4090 ) 
+
 #ifdef _XBOX
 /* just pretend they are the same so we compile */
 #define sockaddr_in6 sockaddr_in

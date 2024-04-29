@@ -152,9 +152,9 @@ void smb3_aes_cmac_128(uint8_t key[AES128_KEY_LEN],
                 memcpy(scratch, &msg[i*AES128_KEY_LEN], AES128_KEY_LEN);
                 aes_cmac_xor(scratch, sub_key1);
         } else {
-                memcpy(scratch, &msg[i*AES128_KEY_LEN], rem);
+                memcpy(scratch, &msg[i*AES128_KEY_LEN], (size_t)rem);
                 scratch[rem] = 0x80;
-                memset(&scratch[rem + 1], 0, AES128_KEY_LEN - (rem + 1));
+                memset(&scratch[rem + 1], 0, AES128_KEY_LEN - ((size_t)rem + 1));
                 aes_cmac_xor(scratch, sub_key2);
         }
 
@@ -165,14 +165,15 @@ void smb3_aes_cmac_128(uint8_t key[AES128_KEY_LEN],
 
 int
 smb2_calc_signature(struct smb2_context *smb2, uint8_t *signature,
-                    struct smb2_iovec *iov, int niov)
+                    struct smb2_iovec *iov, size_t niov)
 
 {
         /* Clear the smb2 header signature field field */
         memset(iov[0].buf + 48, 0, 16);
 
         if (smb2->dialect > SMB2_VERSION_0210) {
-                int i = 0, offset = 0, len = 0;
+                size_t i = 0;
+                size_t len = 0, offset = 0;
                 uint8_t aes_mac[AES_BLOCK_SIZE];
                 /* combine the buffers into one */
                 uint8_t *msg = NULL;
