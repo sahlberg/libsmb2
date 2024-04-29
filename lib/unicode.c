@@ -202,7 +202,7 @@ smb2_utf8_to_utf16(const char *utf8)
 }
 
 static int
-utf16_size(const uint16_t *utf16, int utf16_len)
+utf16_size(const uint16_t *utf16, size_t utf16_len)
 {
         int length = 0;
         const uint16_t *utf16_end = utf16 + utf16_len;
@@ -245,7 +245,7 @@ utf16_size(const uint16_t *utf16, int utf16_len)
  * Convert a UTF-16LE string into UTF8
  */
 const char *
-smb2_utf16_to_utf8(const uint16_t *utf16, int utf16_len)
+smb2_utf16_to_utf8(const uint16_t *utf16, size_t utf16_len)
 {
         int utf8_len = 1;
         char *str, *tmp;

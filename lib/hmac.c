@@ -7,6 +7,18 @@
  *      various SHA algorithms.
  */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
+#endif
+
+#ifdef HAVE_STDLIB_H
+#include <stdlib.h>
+#endif
+
 #include "compat.h"
 
 #include "sha.h"
@@ -38,8 +50,8 @@
  *
  */
 int
-hmac (SHAversion whichSha, const unsigned char *text, int text_len,
-      const unsigned char *key, int key_len, uint8_t digest[USHAMaxHashSize])
+hmac (SHAversion whichSha, const unsigned char *text, size_t text_len,
+      const unsigned char *key, size_t key_len, uint8_t digest[USHAMaxHashSize])
 {
   HMACContext ctx;
   return hmacReset (&ctx, whichSha, key, key_len) ||
@@ -69,7 +81,7 @@ hmac (SHAversion whichSha, const unsigned char *text, int text_len,
  */
 int
 hmacReset (HMACContext * ctx, enum SHAversion whichSha,
-	   const unsigned char *key, int key_len)
+	   const unsigned char *key, size_t key_len)
 {
   int i, blocksize, hashsize;
 
@@ -91,7 +103,7 @@ hmacReset (HMACContext * ctx, enum SHAversion whichSha,
    * If key is longer than the hash blocksize,
    * reset it to key = HASH(key).
    */
-  if (key_len > blocksize)
+  if (key_len > (size_t)blocksize)
     {
       USHAContext tctx;
       int err = USHAReset (&tctx, whichSha) ||
@@ -115,7 +127,7 @@ hmacReset (HMACContext * ctx, enum SHAversion whichSha,
    */
 
   /* store key into the pads, XOR'd with ipad and opad values */
-  for (i = 0; i < key_len; i++)
+  for (i = 0; i < (int)key_len; i++)
     {
       k_ipad[i] = key[i] ^ 0x36;
       ctx->k_opad[i] = key[i] ^ 0x5c;
@@ -155,7 +167,7 @@ hmacReset (HMACContext * ctx, enum SHAversion whichSha,
  *
  */
 int
-hmacInput (HMACContext * ctx, const unsigned char *text, int text_len)
+hmacInput (HMACContext * ctx, const unsigned char *text, size_t text_len)
 {
   if (!ctx)
     return shaNull;
@@ -183,7 +195,7 @@ hmacInput (HMACContext * ctx, const unsigned char *text, int text_len)
  *   sha Error Code.
  */
 int
-hmacFinalBits (HMACContext * ctx, const uint8_t bits, unsigned int bitcount)
+hmacFinalBits (HMACContext * ctx, const uint8_t bits, size_t bitcount)
 {
   if (!ctx)
     return shaNull;
