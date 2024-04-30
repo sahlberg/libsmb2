@@ -211,7 +211,7 @@ smb2_write_to_socket(struct smb2_context *smb2)
                 struct smb2_pdu *tmp_pdu;
                 size_t num_done = pdu->out.num_done;
                 int i, niov = 1;
-                ssize_t count;
+                size_t count;
                 uint32_t spl = 0, tmp_spl, credit_charge = 0;
 
                 for (tmp_pdu = pdu; tmp_pdu; tmp_pdu = tmp_pdu->next_compound) {
@@ -237,7 +237,7 @@ smb2_write_to_socket(struct smb2_context *smb2)
                                 for (i = 0; i < tmp_pdu->out.niov;
                                      i++, niov++) {
                                         iov[niov].iov_base = tmp_pdu->out.iov[i].buf;
-#ifdef _WIN32
+#if defined(_WIN32) || defined(_XBOX)
                                         iov[niov].iov_len = (unsigned long)tmp_pdu->out.iov[i].len;
 #else
                                         iov[niov].iov_len = (size_t)tmp_pdu->out.iov[i].len;
@@ -263,7 +263,7 @@ smb2_write_to_socket(struct smb2_context *smb2)
 
                 /* Adjust the first vector to send */
                 tmpiov->iov_base = (char *)tmpiov->iov_base + num_done;
-#ifdef _WIN32
+#if defined(_WIN32) || defined(_XBOX)
                 tmpiov->iov_len -= (unsigned long)num_done;
 #else
                 tmpiov->iov_len -= (size_t)num_done;
@@ -303,7 +303,7 @@ smb2_write_to_socket(struct smb2_context *smb2)
         return 0;
 }
 
-typedef ssize_t (*read_func)(struct smb2_context *smb2,
+typedef size_t (*read_func)(struct smb2_context *smb2,
                              const struct iovec *iov, int iovcnt);
 
 static int smb2_read_data(struct smb2_context *smb2, read_func func,
@@ -316,7 +316,7 @@ static int smb2_read_data(struct smb2_context *smb2, read_func func,
         size_t iov_offset = 0;
         static char smb3tfrm[4] = {0xFD, 'S', 'M', 'B'};
         struct smb2_pdu *pdu = smb2->pdu;
-        ssize_t count, len;
+        size_t count, len;
 
 read_more_data:
         num_done = smb2->in.num_done;
@@ -634,7 +634,7 @@ read_more_data:
         return 0;
 }
 
-static ssize_t smb2_readv_from_socket(struct smb2_context *smb2,
+static size_t smb2_readv_from_socket(struct smb2_context *smb2,
                                       const struct iovec *iov, int iovcnt)
 {
         return readv(smb2->fd, (struct iovec*) iov, iovcnt);
@@ -660,14 +660,14 @@ smb2_read_from_socket(struct smb2_context *smb2)
         return smb2_read_data(smb2, smb2_readv_from_socket, 0);
 }
 
-static ssize_t smb2_readv_from_buf(struct smb2_context *smb2,
+static size_t smb2_readv_from_buf(struct smb2_context *smb2,
                                    const struct iovec *iov, int iovcnt)
 {
-        ssize_t i, len, count = 0;
+        size_t i, len, count = 0;
 
-        for (i=0;i<iovcnt;i++){
+        for (i=0;(int)i<iovcnt;i++){
                 len = iov[i].iov_len;
-                if (len > (ssize_t)smb2->enc_len - smb2->enc_pos) {
+                if (len > smb2->enc_len - smb2->enc_pos) {
                         len = smb2->enc_len - smb2->enc_pos;
                 }
                 memcpy(iov[i].iov_base, &smb2->enc[smb2->enc_pos], len);

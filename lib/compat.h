@@ -23,10 +23,13 @@
 extern "C" {
 #endif
 
-#if defined(_WINDOWS) || defined(_XBOX)
-#if defined(_WINDOWS)
+#if defined(_XBOX) || defined(_WINDOWS) || defined(__MINGW32__)
+#if defined(_WINDOWS) || defined(__MINGW32__)
+#include <windows.h>
+#include <ws2tcpip.h>
 #include <winsock2.h>
 #elif defined(_XBOX)
+#include <xtl.h>
 #include <winsockx.h>
 #endif
 typedef SOCKET t_socket;
@@ -39,19 +42,12 @@ typedef int t_socket;
 
 #if defined(_XBOX) || defined(_WINDOWS) || defined(__MINGW32__)
 
-#ifdef _XBOX
-/* XBOX Defs begin */
-#include <xtl.h>
-#else
-#include <windows.h>
-#include <ws2tcpip.h>
-#endif
 #include <stddef.h>
 #include <errno.h>
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
-#endif // !WIN32_LEAN_AND_MEAN
+#endif /* !WIN32_LEAN_AND_MEAN */
 
 #ifdef XBOX_PLATFORM /* MSVC 2003 Doesn´t have stdint.h header */
 typedef char int8_t;
@@ -67,6 +63,7 @@ typedef unsigned int uint32_t;
 typedef unsigned long long uint64_t;
 typedef unsigned int uint_t;
 typedef unsigned int uintptr_t;
+#include <time.h> /* for time_t */
 #else
 #include <stdint.h>
 #endif

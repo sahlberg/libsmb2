@@ -54,8 +54,8 @@ smb2_decode_file_fs_volume_info(struct smb2_context *smb2,
         uint64_t t;
         const char *name;
 
-        smb2_get_uint64(vec,  0, &t);
-        win_to_timeval(t, &fs->creation_time);
+        smb2_get_uint64(vec,  0,&t);
+        win_to_timeval((time_t)t, &fs->creation_time);
 	smb2_get_uint32(vec,  8, &fs->volume_serial_number);
 	smb2_get_uint32(vec, 12, &fs->volume_label_length);
 	smb2_get_uint8(vec,  16, &fs->supports_objects);
