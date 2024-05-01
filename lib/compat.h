@@ -505,6 +505,19 @@ struct sockaddr_storage {
 
 #endif
 
+#ifdef __vita__
+#include <errno.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+
+int getlogin_r(char *buf, size_t size);
+#define SOL_TCP IPPROTO_TCP
+
+ssize_t writev(int fd, const struct iovec *iov, int iovcnt);
+ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
+
+#endif
+
 #ifdef PS4_PLATFORM
 
 #include <netdb.h>

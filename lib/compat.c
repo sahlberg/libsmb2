@@ -198,6 +198,16 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
 
 #endif /* PS3_PPU_PLATFORM */
 
+
+#ifdef __vita__
+
+#define NEED_READV
+#define NEED_WRITEV
+#define login_num ENXIO
+#define NEED_GETLOGIN_R
+
+#endif
+
 #ifdef NEED_GETADDRINFO
 int smb2_getaddrinfo(const char *node, const char*service,
                 const struct addrinfo *hints,
