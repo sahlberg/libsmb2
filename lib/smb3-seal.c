@@ -74,7 +74,7 @@ smb3_encrypt_pdu(struct smb2_context *smb2,
         spl = 52;  /* transform header */
         for (tmp_pdu = pdu; tmp_pdu; tmp_pdu = tmp_pdu->next_compound) {
                 for (i = 0; i < tmp_pdu->out.niov; i++) {
-                        spl += tmp_pdu->out.iov[i].len;
+                        spl += (uint32_t)tmp_pdu->out.iov[i].len;
                 }
         }
         pdu->crypt = calloc(spl, sizeof(uint8_t));
@@ -98,7 +98,7 @@ smb3_encrypt_pdu(struct smb2_context *smb2,
                 for (i = 0; i < tmp_pdu->out.niov; i++) {
                         memcpy(&pdu->crypt[spl], tmp_pdu->out.iov[i].buf,
                                tmp_pdu->out.iov[i].len);
-                        spl += tmp_pdu->out.iov[i].len;
+                        spl += (uint32_t)tmp_pdu->out.iov[i].len;
                 }
         }
 
@@ -134,7 +134,7 @@ smb3_decrypt_pdu(struct smb2_context *smb2)
                 smb2->in.iov[smb2->in.niov - 1].free = NULL;
                 smb2_free_iovector(smb2, &smb2->in);
 
-                smb2->spl = smb2->enc_len;
+                smb2->spl = (uint32_t)smb2->enc_len;
                 smb2->recv_state = SMB2_RECV_HEADER;
                 smb2_add_iovector(smb2, &smb2->in, &smb2->header[0],
                                   SMB2_HEADER_SIZE, NULL);

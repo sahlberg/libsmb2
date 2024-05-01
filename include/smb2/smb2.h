@@ -30,10 +30,9 @@ extern "C" {
 #endif
 
 struct smb2_timeval {
-        uint32_t tv_sec;
-        uint32_t tv_usec;
+        time_t tv_sec;
+        long tv_usec; 
 };
-
 #define SMB2_ERROR_REPLY_SIZE 9
 
 struct smb2_error_reply {
@@ -664,7 +663,7 @@ struct smb2_ace {
         char *ad_data;
 
         /* raw blob, used for unknown ACE types */
-        int   raw_len;
+        size_t   raw_len;
         char *raw_data;
 };
 

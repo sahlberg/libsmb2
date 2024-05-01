@@ -247,6 +247,8 @@ int getlogin_r(char *buf, size_t size);
 
 int getpid();
 
+#pragma warning( disable : 4090 ) 
+
 #ifdef _XBOX
 /* just pretend they are the same so we compile */
 #define sockaddr_in6 sockaddr_in
@@ -523,6 +525,11 @@ int getlogin_r(char *buf, size_t size);
 
 #define TCP_NODELAY     1  /* Don't delay send to coalesce packets  */
 
+
+#ifndef ENODATA
+#define ENODATA 98
+#endif
+
 #endif /* PS4_PLATFORM */
 
 #ifdef ESP_PLATFORM
@@ -532,6 +539,7 @@ int getlogin_r(char *buf, size_t size);
 void srandom(unsigned int seed);
 long random(void);
 int getlogin_r(char *buf, size_t size);
+#define HAVE_LINGER 1
 #endif
 
 #ifdef __ANDROID__

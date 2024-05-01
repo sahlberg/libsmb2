@@ -143,7 +143,7 @@ smb2_parse_args(struct smb2_context *smb2, const char *args)
                                 return -1;
                         }
                 } else if (!strcmp(args, "timeout")) {
-                        smb2->timeout = strtol(value, NULL, 10);
+                        smb2->timeout = (int)strtol(value, NULL, 10);
                 } else {
                         smb2_set_error(smb2, "Unknown argument: %s", args);
                         return -1;
@@ -176,7 +176,7 @@ struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url)
         char *ptr, *tmp, str[MAX_URL_SIZE];
         char *args;
         char *shared_folder;
-        int len_shared_folder;
+        size_t len_shared_folder;
 
         if (strncmp(url, "smb://", 6)) {
                 smb2_set_error(smb2, "URL does not start with 'smb://'");
@@ -268,8 +268,8 @@ struct smb2_context *smb2_init_context(void)
         int i, ret;
         static int ctr;
 
-        srandom(time(NULL) ^ getpid() ^ ctr++);
-        
+        srandom((unsigned)time(NULL) ^ getpid() ^ ctr++);
+
         smb2 = calloc(1, sizeof(struct smb2_context));
         if (smb2 == NULL) {
                 return NULL;
@@ -383,7 +383,7 @@ void smb2_free_iovector(struct smb2_context *smb2, struct smb2_io_vectors *v)
 
 struct smb2_iovec *smb2_add_iovector(struct smb2_context *smb2,
                                      struct smb2_io_vectors *v,
-                                     uint8_t *buf, int len,
+                                     uint8_t *buf, size_t len,
                                      void (*free)(void *))
 {
         struct smb2_iovec *iov = &v->iov[v->niov];

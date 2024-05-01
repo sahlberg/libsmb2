@@ -813,7 +813,7 @@ send_session_setup_request(struct smb2_context *smb2,
 
         /* Session setup request. */
         memset(&req, 0, sizeof(struct smb2_session_setup_request));
-        req.security_mode = smb2->security_mode;
+        req.security_mode = (uint8_t)smb2->security_mode;
 
         if (smb2->sec == SMB2_SEC_NTLMSSP) {
                 if (ntlmssp_generate_blob(smb2, time(NULL), c_data->auth_data,
