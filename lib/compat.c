@@ -91,31 +91,25 @@ struct MinList __filelist = { (struct MinNode *) &__filelist.mlh_Tail, NULL, (st
 
 #endif /* PICO_PLATFORM */
 
-#ifdef PS2_EE_PLATFORM
+#ifdef PS2_PLATFORM
 
+#ifdef PS2_EE_PLATFORM
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
 #include <sys/time.h>
-#ifdef PS2IPS
-#include <ps2ips.h>
 #else
-#include <ps2ip.h>
-#endif
-#include <errno.h>
-
-#define login_num ENXIO
-#endif /* PS2_EE_PLATFORM */
-
-#ifdef PS2_IOP_PLATFORM
 #include <sysclib.h>
 #include <thbase.h>
 #include <stdio.h>
 #include <stdarg.h>
+#endif
 #include <errno.h>
 
 #define login_num ENXIO
+
+#ifdef PS2_IOP_PLATFORM
 #define getpid_num() 27
 
 static unsigned long int next = 1; 
@@ -162,8 +156,9 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
 
         return rc;
 }
+#endif
 
-#endif /* PS2_IOP_PLATFORM */
+#endif /* PS2_PLATFORM */
 
 #ifdef __ANDROID__
 /* getlogin_r() was added in API 28 */
