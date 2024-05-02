@@ -363,6 +363,12 @@ struct sockaddr_storage {
 #include <loadcore.h>
 #endif
 
+#ifdef PS2IPS
+#include <ps2ips.h>
+#else
+#include <ps2ip.h>
+#endif
+
 #ifdef PS2_IOP_PLATFORM
 typedef uint32_t UWORD32;
 typedef size_t ssize_t;
