@@ -3,24 +3,28 @@
 
 /* Whether or not TCP sockets should be allowed to linger after closure */
 #define CONFIGURE_OPTION_TCP_LINGER 1
+#define _U_ /* __attribute__((unused)) */
 
 /* Define to 1 if you have the <arpa/inet.h> header file. */
 #define HAVE_ARPA_INET_H 1
 
 /* Define to 1 if you have the <dlfcn.h> header file. */
-/* #define HAVE_DLFCN_H 1 */
+#define HAVE_DLFCN_H 1
+
+/* Define to 1 if you have the <errno.h> header file. */
+#define HAVE_ERRNO_H 1
 
 /* Define to 1 if you have the <fcntl.h> header file. */
 #define HAVE_FCNTL_H 1
 
 /* Define to 1 if you have the <gssapi/gssapi.h> header file. */
-/* #define HAVE_GSSAPI_GSSAPI_H 1 */
+/* #undef HAVE_GSSAPI_GSSAPI_H */
 
 /* Define to 1 if you have the <inttypes.h> header file. */
-#define HAVE_INTTYPES_H 1 
+#define HAVE_INTTYPES_H 1
 
 /* Whether we use gssapi_krb5 or not */
-/* #define HAVE_LIBKRB5 1 */
+/* #undef HAVE_LIBKRB5 */
 
 /* Define to 1 if you have the `nsl' library (-lnsl). */
 /* #undef HAVE_LIBNSL */
@@ -41,10 +45,13 @@
 #define HAVE_POLL_H 1
 
 /* Whether sockaddr struct has sa_len */
-#define HAVE_SOCKADDR_LEN 1
+/* #undef HAVE_SOCKADDR_LEN */
 
 /* Whether we have sockaddr_Storage */
-#define HAVE_SOCKADDR_STORAGE 1
+/* #define HAVE_SOCKADDR_STORAGE 1 */
+
+/* Whether we have linger */
+#define HAVE_LINGER 1
 
 /* Define to 1 if you have the <stdint.h> header file. */
 #define HAVE_STDINT_H 1
@@ -61,11 +68,17 @@
 /* Define to 1 if you have the <string.h> header file. */
 #define HAVE_STRING_H 1
 
+/* Define to 1 if you have the <sys/errno.h> header file. */
+#define HAVE_SYS_ERRNO_H 1
+
+/* Define to 1 if you have the <sys/fcntl.h> header file. */
+#define HAVE_SYS_FCNTL_H 1
+
 /* Define to 1 if you have the <sys/ioctl.h> header file. */
 #define HAVE_SYS_IOCTL_H 1
 
 /* Define to 1 if you have the <sys/poll.h> header file. */
-#define HAVE_SYS_POLL_H 1
+/* #undef HAVE_SYS_POLL_H  */
 
 /* Define to 1 if you have the <sys/socket.h> header file. */
 #define HAVE_SYS_SOCKET_H 1
@@ -73,30 +86,23 @@
 /* Define to 1 if you have the <sys/stat.h> header file. */
 #define HAVE_SYS_STAT_H 1
 
+/* Define to 1 if you have the <sys/time.h> header file. */
+#define HAVE_SYS_TIME_H 1
+
 /* Define to 1 if you have the <sys/types.h> header file. */
 #define HAVE_SYS_TYPES_H 1
 
 /* Define to 1 if you have the <sys/uio.h> header file. */
-/* #define HAVE_SYS_UIO_H 1 */
+/* #undef HAVE_SYS_UIO_H 0 */
+
+/* Define to 1 if you have the <sys/unistd.h> header file. */
+#define HAVE_SYS_UNISTD_H 1
 
 /* Define to 1 if you have the <time.h> header file. */
 #define HAVE_TIME_H 1
 
-/* Define to 1 if you have the <sys/time.h> header file. */
-/* #undef HAVE_SYS_TIME_H 1 */
-
 /* Define to 1 if you have the <unistd.h> header file. */
 #define HAVE_UNISTD_H 1
-
-/* Define to 1 if you have the <sys/unistd.h> header file. */
-/* #define HAVE_SYS_UNISTD_H 1 */
-
-/* Define to 1 if you have the <errno.h> header file. */
-#define HAVE_ERRNO_H 1 
-
-/* Define to 1 if you have the <sys/errno.h> header file. */
-/* #undef HAVE_SYS_ERRNO_H 1 */
-
 
 /* Define to the sub-directory where libtool stores uninstalled libraries. */
 #define LT_OBJDIR ".libs/"

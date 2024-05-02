@@ -511,12 +511,31 @@ struct sockaddr_storage {
 
 #endif
 
-#ifdef __SWITCH__
+#if defined(__SWITCH__) || defined(__3DS__)
 
 #include <sys/types.h>
+#ifdef __3DS__
+struct iovec {
+  void  *iov_base;
+  size_t iov_len;
+};	
+#define sockaddr_in6 sockaddr_in
+#else
 #include <sys/_iovec.h>
-#include <sys/errno.h>
-#include <sys/socket.h>
+#endif
+
+#ifndef EAI_AGAIN
+#define EAI_AGAIN EAGAIN
+#endif
+
+#ifndef EAI_FAIL
+#define EAI_FAIL        4
+#endif
+
+#ifndef EAI_SERVICE
+#define EAI_SERVICE     9
+#endif
+
 ssize_t writev(int fd, const struct iovec *iov, int iovcnt);
 ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
 int getlogin_r(char *buf, size_t size);

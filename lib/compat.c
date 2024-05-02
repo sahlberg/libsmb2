@@ -265,7 +265,7 @@ void smb2_freeaddrinfo(struct addrinfo *res)
 }
 #endif
 
-#ifdef __SWITCH__
+#if defined(__SWITCH__) || defined(__3DS__)
 
 #include <errno.h>
 #include <stdlib.h>
@@ -273,14 +273,15 @@ void smb2_freeaddrinfo(struct addrinfo *res)
 #include <unistd.h>
 #include <alloca.h>
 #include <sys/socket.h>
+#ifdef __SWITCH__
 #include <switch/types.h>
-
-#define NEED_READV
-#define NEED_WRITEV
-#define NEED_GETLOGIN_R 
+#else
+#include <3ds/types.h>	
+#endif
 
 #define login_num ENXIO
 
+#ifdef __SWITCH__
 #define __set_errno(e) (errno = (e))
 #define __libc_use_alloca(size) ((size) <= __MAX_ALLOCA_CUTOFF)
 #define __MAX_ALLOCA_CUTOFF 32768
@@ -292,11 +293,13 @@ void smb2_freeaddrinfo(struct addrinfo *res)
 #define __readv readv
 #define __mempcpy mempcpy
 
+
 static void
 ifree (char **ptrp)
 {
   free (*ptrp);
 }
+#endif
 
 #endif /* __SWITCH__ */
 
@@ -491,7 +494,7 @@ ssize_t readv (int fd, const struct iovec *vector, int count)
 #ifdef __SWITCH__
         bytes_read = __read(fd, buffer, bytes);
 #else
-	bytes_read = read(fd, buffer, bytes);
+        bytes_read = read(fd, buffer, bytes);
 #endif
         if (bytes_read < 0) {
                 free(buffer);
