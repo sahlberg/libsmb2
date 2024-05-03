@@ -667,7 +667,7 @@ static ssize_t smb2_readv_from_buf(struct smb2_context *smb2,
         size_t i, len;
         ssize_t count = 0;
 
-        for (i=0;i<iovcnt;i++){
+        for (i=0;(int)i<iovcnt;i++){
                 len = iov[i].iov_len;
                 if (len > smb2->enc_len - smb2->enc_pos) {
                         len = smb2->enc_len - smb2->enc_pos;
