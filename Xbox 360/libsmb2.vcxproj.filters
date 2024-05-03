@@ -73,9 +73,6 @@
     <ClInclude Include="..\lib\hmac-md5.h">
       <Filter>lib</Filter>
     </ClInclude>
-    <ClInclude Include="..\lib\krb5-wrapper.h">
-      <Filter>lib</Filter>
-    </ClInclude>
     <ClInclude Include="..\lib\md4.h">
       <Filter>lib</Filter>
     </ClInclude>
@@ -144,9 +141,6 @@
     <ClCompile Include="..\lib\init.c">
       <Filter>lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\lib\krb5-wrapper.c">
-      <Filter>lib</Filter>
-    </ClCompile>
     <ClCompile Include="..\lib\libsmb2.c">
       <Filter>lib</Filter>
     </ClCompile>
@@ -160,9 +154,6 @@
       <Filter>lib</Filter>
     </ClCompile>
     <ClCompile Include="..\lib\pdu.c">
-      <Filter>lib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\lib\sha1.c">
       <Filter>lib</Filter>
     </ClCompile>
     <ClCompile Include="..\lib\sha224-256.c">

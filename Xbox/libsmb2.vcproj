@@ -306,12 +306,6 @@
 				RelativePath="..\lib\init.c">
 			</File>
 			<File
-				RelativePath="..\lib\krb5-wrapper.c">
-			</File>
-			<File
-				RelativePath="..\lib\krb5-wrapper.h">
-			</File>
-			<File
 				RelativePath="..\lib\libsmb2.c">
 			</File>
 			<File
@@ -340,9 +334,6 @@
 			</File>
 			<File
 				RelativePath="..\lib\sha.h">
-			</File>
-			<File
-				RelativePath="..\lib\sha1.c">
 			</File>
 			<File
 				RelativePath="..\lib\sha224-256.c">

@@ -188,7 +188,7 @@ typedef SSIZE_T ssize_t;
 
 struct iovec
 {
-  unsigned long iov_len; // from WSABUF
+  unsigned long iov_len; /* from WSABUF */
   void *iov_base;        
 };	
 

@@ -257,7 +257,6 @@
     <ClInclude Include="..\lib\aes128ccm.h" />
     <ClInclude Include="..\lib\compat.h" />
     <ClInclude Include="..\lib\hmac-md5.h" />
-    <ClInclude Include="..\lib\krb5-wrapper.h" />
     <ClInclude Include="..\lib\md4.h" />
     <ClInclude Include="..\lib\md5.h" />
     <ClInclude Include="..\lib\ntlmssp.h" />
@@ -278,13 +277,11 @@
     <ClCompile Include="..\lib\hmac-md5.c" />
     <ClCompile Include="..\lib\hmac.c" />
     <ClCompile Include="..\lib\init.c" />
-    <ClCompile Include="..\lib\krb5-wrapper.c" />
     <ClCompile Include="..\lib\libsmb2.c" />
     <ClCompile Include="..\lib\md4c.c" />
     <ClCompile Include="..\lib\md5.c" />
     <ClCompile Include="..\lib\ntlmssp.c" />
     <ClCompile Include="..\lib\pdu.c" />
-    <ClCompile Include="..\lib\sha1.c" />
     <ClCompile Include="..\lib\sha224-256.c" />
     <ClCompile Include="..\lib\sha384-512.c" />
     <ClCompile Include="..\lib\smb2-cmd-close.c" />
