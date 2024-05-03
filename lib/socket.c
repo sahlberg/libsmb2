@@ -868,7 +868,7 @@ smb2_service(struct smb2_context *smb2, int revents)
 static void
 set_nonblocking(t_socket fd)
 {
-#if defined(WIN32) || defined(_XBOX) || defined(PS2_EE_PLATFORM) && defined(PS2IPS)
+#if defined(WIN32) || defined(_XBOX) || defined(PS2_EE_PLATFORM)
         unsigned long opt = 1;
         ioctlsocket(fd, FIONBIO, &opt);
 #elif (defined(__AMIGA__) || defined(__AROS__)) && !defined(__amigaos4__)

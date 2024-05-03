@@ -390,6 +390,12 @@ struct sockaddr_storage {
 #include <loadcore.h>
 #endif
 
+#ifdef PS2IPS
+#include <ps2ips.h>
+#else
+#include <ps2ip.h>
+#endif
+
 #ifdef PS2_IOP_PLATFORM
 typedef uint32_t UWORD32;
 typedef size_t ssize_t;
@@ -554,7 +560,6 @@ struct sockaddr_storage {
 void srandom(unsigned int seed);
 long random(void);
 int getlogin_r(char *buf, size_t size);
-#define HAVE_LINGER 1
 #endif
 
 #ifdef __ANDROID__
