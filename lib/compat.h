@@ -564,7 +564,6 @@ int getlogin_r(char *buf, size_t size);
 void srandom(unsigned int seed);
 long random(void);
 int getlogin_r(char *buf, size_t size);
-#define HAVE_LINGER 1
 #endif
 
 #ifdef __ANDROID__
