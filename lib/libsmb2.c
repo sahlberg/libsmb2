@@ -190,12 +190,12 @@ smb2_close_context(struct smb2_context *smb2)
                 return;
         }
 
-        if (VALID_SOCKET(smb2->fd)) {
+        if (SMB2_VALID_SOCKET(smb2->fd)) {
                 if (smb2->change_fd) {
                         smb2->change_fd(smb2, smb2->fd, SMB2_DEL_FD);
                 }
                 close(smb2->fd);
-                smb2->fd = INVALID_SOCKET;
+                smb2->fd = SMB2_INVALID_SOCKET;
         }
 
         smb2->message_id = 0;
@@ -2537,7 +2537,7 @@ disconnect_cb_2(struct smb2_context *smb2, int status,
                 smb2->change_fd(smb2, smb2->fd, SMB2_DEL_FD);
         }
         close(smb2->fd);
-        smb2->fd = INVALID_SOCKET;
+        smb2->fd = SMB2_INVALID_SOCKET;
 }
 
 static void
@@ -2567,7 +2567,7 @@ smb2_disconnect_share_async(struct smb2_context *smb2,
                 return -EINVAL;
         }
 
-        if (!VALID_SOCKET(smb2->fd)) {
+        if (!SMB2_VALID_SOCKET(smb2->fd)) {
                 smb2_set_error(smb2, "connection is alreeady disconnected or was never connected");
                 return -EINVAL;
         }
