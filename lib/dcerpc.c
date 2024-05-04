@@ -890,7 +890,7 @@ dcerpc_decode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 return -1;
         }
         tmp = smb2_utf16_to_utf8((uint16_t *)(&iov->buf[offset]), (size_t)actual);
-        offset += actual * 2;
+        offset += (int)actual * 2;
 
         str = smb2_alloc_data(ctx->smb2, pdu->payload, strlen(tmp) + 1);
         if (str == NULL) {
