@@ -2,7 +2,7 @@ ifeq ($(strip $(DEVKITARM)),)
 $(error "Please set DEVKITARM in your environment. export DEVKITARM=<path to>devkitARM")
 endif
 
-include $(DEVKITARM)/base_tools
+include $(DEVKITARM)/3ds_rules
 
 TARGET_LIB = libsmb2.a 
 OBJS = aes128ccm.o \
@@ -54,7 +54,6 @@ OBJS = aes128ccm.o \
 	socket.o \
 	sync.o
 
-CTRULIB	:= $(DEVKITPRO)/libctru
 INCLUDES = -I../include -I../include/n3ds -I../include/smb2 -I$(CTRULIB)/include
 
 #---------------------------------------------------------------------------------
@@ -77,20 +76,6 @@ all: $(OBJS) $(TARGET_LIB)
 
 $(TARGET_LIB): $(OBJS)
 	$(AR) -rc $@ $^
-
-#---------------------------------------------------------------------------------
-# rules for assembling GPU shaders
-#---------------------------------------------------------------------------------
-
-%.shbin.o: %.pica
-	@echo $(notdir $<)
-	$(eval CURBIN := $(patsubst %.pica,%.shbin,$(notdir $<)))
-	$(eval CURH := $(patsubst %.pica,%.psh.h,$(notdir $<)))
-	@picasso -h $(CURH) -o $(CURBIN) $<
-	@bin2s $(CURBIN) | $(AS) -o $@
-	@echo "extern const u8" `(echo $(CURBIN) | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`"_end[];" > `(echo $(CURBIN) | tr . _)`.h
-	@echo "extern const u8" `(echo $(CURBIN) | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`"[];" >> `(echo $(CURBIN) | tr . _)`.h
-	@echo "extern const u32" `(echo $(CURBIN) | sed -e 's/^\([0-9]\)/_\1/' | tr . _)`_size";" >> `(echo $(CURBIN) | tr . _)`.h
 
 install: $(TARGET_LIB)
 	@cp  $(TARGET_LIB) "$(DEVKITPRO)/portlibs/3ds/lib"
