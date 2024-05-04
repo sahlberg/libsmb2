@@ -123,7 +123,7 @@ smb2_close_connecting_fds(struct smb2_context *smb2)
                 t_socket fd = smb2->connecting_fds[i];
 
                 /* Don't close the connected fd */
-                if (fd == smb2->fd || !VALID_SOCKET(fd))
+                if (fd == smb2->fd || !SMB2_VALID_SOCKET(fd))
                         continue;
 
                 if (smb2->change_fd) {
@@ -160,7 +160,7 @@ smb2_get_credit_charge(struct smb2_context *smb2, struct smb2_pdu *pdu)
 int
 smb2_which_events(struct smb2_context *smb2)
 {
-        int events = VALID_SOCKET(smb2->fd) ? POLLIN : POLLOUT;
+        int events = SMB2_VALID_SOCKET(smb2->fd) ? POLLIN : POLLOUT;
 
         if (smb2->outqueue != NULL &&
             smb2_get_credit_charge(smb2, smb2->outqueue) <= smb2->credits) {
@@ -172,7 +172,7 @@ smb2_which_events(struct smb2_context *smb2)
 
 t_socket smb2_get_fd(struct smb2_context *smb2)
 {
-        if (VALID_SOCKET(smb2->fd)) {
+        if (SMB2_VALID_SOCKET(smb2->fd)) {
                 return smb2->fd;
         } else if (smb2->connecting_fds_count > 0) {
                 return smb2->connecting_fds[0];
@@ -184,7 +184,7 @@ t_socket smb2_get_fd(struct smb2_context *smb2)
 const t_socket *
 smb2_get_fds(struct smb2_context *smb2, size_t *fd_count, int *timeout)
 {
-        if (VALID_SOCKET(smb2->fd)) {
+        if (SMB2_VALID_SOCKET(smb2->fd)) {
                 *fd_count = 1;
                 *timeout = -1;
                 return &smb2->fd;
@@ -200,7 +200,7 @@ smb2_write_to_socket(struct smb2_context *smb2)
 {
         struct smb2_pdu *pdu;
 
-        if (!VALID_SOCKET(smb2->fd)) {
+        if (!SMB2_VALID_SOCKET(smb2->fd)) {
                 smb2_set_error(smb2, "trying to write but not connected");
                 return -1;
         }
@@ -706,7 +706,7 @@ smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
 {
         int ret = 0;
 
-        if (!VALID_SOCKET(fd)) {
+        if (!SMB2_VALID_SOCKET(fd)) {
                 /* Connect to a new addr in parallel */
                 if (smb2->next_addrinfo != NULL) {
                     int err = smb2_connect_async_next_addr(smb2,
@@ -737,7 +737,7 @@ smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
                 int err = 0;
                 socklen_t err_size = sizeof(err);
 
-                if (!VALID_SOCKET(smb2->fd) && smb2->next_addrinfo != NULL) {
+                if (!SMB2_VALID_SOCKET(smb2->fd) && smb2->next_addrinfo != NULL) {
                         /* Connecting fd failed, try to connect to the next addr */
                         smb2_close_connecting_fd(smb2, fd);
 
@@ -747,7 +747,11 @@ smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
                                 return 0;
                         }
                 } else if (getsockopt(fd, SOL_SOCKET, SO_ERROR,
-                               (char *)&err, &err_size) != 0 || err != 0) {
+#if defined(__WII__) || defined(__GC__)
+                               (char *)&err, err_size) != 0 || err != 0) { /* André 04/04/2024: The implementation of getsockopt of libogc is pretty diffrent... */ 
+#else
+                               (char *)&err, &err_size) != 0 || err != 0) {  
+#endif
                         if (err == 0) {
                                 err = errno;
                         }
@@ -773,12 +777,16 @@ smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
                 goto out;
         }
 
-        if (!VALID_SOCKET(smb2->fd) && revents & POLLOUT) {
+        if (!SMB2_VALID_SOCKET(smb2->fd) && revents & POLLOUT) {
                 int err = 0;
                 socklen_t err_size = sizeof(err);
 
                 if (getsockopt(fd, SOL_SOCKET, SO_ERROR,
+#if defined(__WII__) || defined(__GC__)
+                               (char *)&err, err_size) != 0 || err != 0)  { /* André 04/04/2024: The implementation of getsockopt of libogc is pretty diffrent... */ 
+#else
                                (char *)&err, &err_size) != 0 || err != 0) {
+#endif
                         if (err == 0) {
                                 err = errno;
                         }
@@ -868,7 +876,7 @@ static int
 set_tcp_sockopt(t_socket sockfd, int optname, int value)
 {
         int level;
-#if !defined(SOL_TCP)
+#if !defined(SOL_TCP) 
         struct protoent *buf;
         if ((buf = getprotobyname("tcp")) != NULL) {
                 level = buf->p_proto;
@@ -926,7 +934,7 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_o
         family = ai->ai_family;
 
         fd = socket(family, SOCK_STREAM, 0);
-        if (!VALID_SOCKET(fd)) {
+        if (!SMB2_VALID_SOCKET(fd)) {
                 smb2_set_error(smb2, "Failed to open smb2 socket. "
                                "Errno:%s(%d).", strerror(errno), errno);
                 return -EIO;
@@ -1042,7 +1050,7 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
         size_t addr_count = 0;
         const struct addrinfo *ai;
 
-        if (VALID_SOCKET(smb2->fd)) {
+        if (SMB2_VALID_SOCKET(smb2->fd)) {
                 smb2_set_error(smb2, "Trying to connect but already "
                                "connected.");
                 return -EINVAL;

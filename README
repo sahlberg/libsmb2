@@ -289,6 +289,19 @@ Then to build libsmb2, run
 The process will copy the resulting libsmb2.a and the include/smb2 headers to your
 devkitPro switch portlibs folder.
 
+Nintendo Wii/Gamecube
+-------------
+Nintendo Wii CPU is a Broadway PowerPC processor while Nintendo GameCube CPU is a IBM "Gekko" PowerPC CPU.
+To compile libsmb2 for the Nintendo Wii/Gamecube, first install the devkitPro with libogc using pacman to set it up.
+
+Then to build libsmb2, run
+  $ cd lib
+  $ make -f Makefile.WII install
+  $ make -f Makefile.GC install
+
+The process will copy the resulting libsmb2.a and the include/smb2 headers to your
+devkitPro wii or gamecube portlibs folder.
+
 Amiga (AmigaOS)
 ----------------------
 AmigaOS is Operating system which the main processor is a Microprocessor PowerPC.

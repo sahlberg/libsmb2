@@ -181,6 +181,47 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
 
 #endif /* PS3_PPU_PLATFORM */
 
+#if defined(__SWITCH__) || defined(__3DS__) || defined(__WII__) || defined(__GC__)
+
+#include <errno.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <alloca.h>
+#if !defined(__WII__) && !defined(__GC__)
+#include <sys/socket.h>
+#endif
+#if defined(__SWITCH__)
+#include <switch/types.h>
+#elif defined(__3DS__)
+#include <3ds/types.h>	
+#elif defined(__WII__) || defined(__GC__)
+#include <gctypes.h>
+#endif
+
+#define login_num ENXIO
+
+#ifdef __SWITCH__
+#define __set_errno(e) (errno = (e))
+#define __libc_use_alloca(size) ((size) <= __MAX_ALLOCA_CUTOFF)
+#define __MAX_ALLOCA_CUTOFF 32768
+#define MIN(a,b) (((a) < (b)) ? (a) : (b))
+#define __alloca alloca
+#define __write write
+#define __read read
+#define __writev writev
+#define __readv readv
+#define __mempcpy mempcpy
+
+static void
+ifree (char **ptrp)
+{
+  free (*ptrp);
+}
+#endif
+
+#endif /* __SWITCH__ */
+
 #ifdef NEED_GETADDRINFO
 int smb2_getaddrinfo(const char *node, const char*service,
                 const struct addrinfo *hints,
@@ -252,44 +293,6 @@ void smb2_freeaddrinfo(struct addrinfo *res)
         free(res);
 }
 #endif
-
-#if defined(__SWITCH__) || defined(__3DS__)
-
-#include <errno.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <alloca.h>
-#include <sys/socket.h>
-#ifdef __SWITCH__
-#include <switch/types.h>
-#else
-#include <3ds/types.h>	
-#endif
-
-#define login_num ENXIO
-
-#ifdef __SWITCH__
-#define __set_errno(e) (errno = (e))
-#define __libc_use_alloca(size) ((size) <= __MAX_ALLOCA_CUTOFF)
-#define __MAX_ALLOCA_CUTOFF 32768
-#define MIN(a,b) (((a) < (b)) ? (a) : (b))
-#define __alloca alloca
-#define __write write
-#define __read read
-#define __writev writev
-#define __readv readv
-#define __mempcpy mempcpy
-
-
-static void
-ifree (char **ptrp)
-{
-  free (*ptrp);
-}
-#endif
-
-#endif /* __SWITCH__ */
 
 #ifdef NEED_RANDOM
 #ifdef ESP_PLATFORM
@@ -529,7 +532,7 @@ int poll(struct pollfd *fds, unsigned int nfds, int timo)
         for (i = 0; i < nfds; ++i) {
                 int fd = fds[i].fd;
                 fds[i].revents = 0;
-                if (!VALID_SOCKET(fd))
+                if (!SMB2_VALID_SOCKET(fd))
                         continue;
                 if(fds[i].events & (POLLIN|POLLPRI)) {
                         ip = &ifds;
@@ -600,7 +603,7 @@ int poll(struct pollfd *fds, unsigned int nfds, int timo)
                 int fd = fds[i].fd;
                 short events = fds[i].events;
                 short revents = 0;
-                if (!VALID_SOCKET(fd))
+                if (!SMB2_VALID_SOCKET(fd))
                         continue;
                 if(events & (POLLIN|POLLPRI) && FD_ISSET(fd, &ifds))
                         revents |= POLLIN;
