@@ -512,11 +512,11 @@ struct sockaddr_storage {
 
 #endif
 
-#if defined(__SWITCH__) || defined(__3DS__) || defined(__WII__) || defined(__GC__)
+#if defined(__SWITCH__) || defined(__3DS__) || defined(__WII__) || defined(__GC__) || defined(__WIIU__)
 
 #include <sys/types.h>
 
-#if defined(__3DS__) || defined(__WII__) || defined(__GC__)
+#if defined(__3DS__) || defined(__WII__) || defined(__GC__) || defined(__WIIU__)
 struct iovec {
   void  *iov_base;
   size_t iov_len;

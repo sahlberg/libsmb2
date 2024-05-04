@@ -181,7 +181,7 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
 
 #endif /* PS3_PPU_PLATFORM */
 
-#if defined(__SWITCH__) || defined(__3DS__) || defined(__WII__) || defined(__GC__)
+#if defined(__SWITCH__) || defined(__3DS__) || defined(__WII__) || defined(__GC__) || defined(__WIIU__)
 
 #include <errno.h>
 #include <stdlib.h>
@@ -197,6 +197,8 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
 #include <3ds/types.h>	
 #elif defined(__WII__) || defined(__GC__)
 #include <gctypes.h>
+#elif defined(__WIIU__)
+#include <wut_types.h>
 #endif
 
 #define login_num ENXIO

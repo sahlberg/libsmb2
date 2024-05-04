@@ -133,7 +133,7 @@
 #   define be64toh(x) (x)
 #   define le64toh(x) __builtin_bswap64(x)
 
-#elif defined(__SWITCH__) || defined(__N3DS__) || defined(__WII__) || defined(__GC__)
+#elif defined(__SWITCH__) || defined(__N3DS__) || defined(__WII__) || defined(__GC__) || defined(__WIIU__)
 
 #	include <machine/endian.h>
 #   define htobe16(x) __bswap16(x)

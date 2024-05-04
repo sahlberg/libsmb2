@@ -302,6 +302,18 @@ Then to build libsmb2, run
 The process will copy the resulting libsmb2.a and the include/smb2 headers to your
 devkitPro wii or gamecube portlibs folder.
 
+Nintendo WII-U
+-------------
+Nintendo Wii-U CPU is a IBM "Espresso" PowerPC-based 45 nm, with 4 cores and a clock speed of 1.24 GHz.
+To compile libsmb2 for the Nintendo WII-U, first install the devkitPro with libwut using pacman to set it up.
+
+Then to build libsmb2, run
+  $ cd lib
+  $ make -f Makefile.WIIU install
+
+The process will copy the resulting libsmb2.a and the include/smb2 headers to your
+devkitPro wiiu portlibs folder.
+
 Amiga (AmigaOS)
 ----------------------
 AmigaOS is Operating system which the main processor is a Microprocessor PowerPC.
