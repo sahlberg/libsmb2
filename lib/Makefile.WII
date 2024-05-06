@@ -11,9 +11,6 @@ include $(DEVKITPPC)/wii_rules
 
 TARGET_LIB = libsmb2.a
 
-# Tools.
-PIPE_TO_SED := 2>&1 | sed "s/:\([0-9]*\):/\(\1\) :/"
-
 # Library object files.
 OBJS := aes128ccm.o \
 	aes.o \

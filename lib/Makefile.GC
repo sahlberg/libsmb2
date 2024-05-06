@@ -11,9 +11,6 @@ include $(DEVKITPPC)/gamecube_rules
 
 TARGET_LIB = libsmb2.a
 
-# Tools.
-PIPE_TO_SED := 2>&1 | sed "s/:\([0-9]*\):/\(\1\) :/"
-
 # Library object files.
 OBJS := aes128ccm.o \
 	aes.o \
@@ -67,7 +64,7 @@ OBJS := aes128ccm.o \
 # Compilation flags.
 COMMON_FLAGS	:= -g -O3 -Wall $(MACHDEP) 
 INCLUDES		:= -I../include -I../include/gamecube -I../include/smb2 -I$(LIBOGC_INC)
-DEFINES			:= -DGEKKO -DHAVE_CONFIG_H -D__GC__ -DHW_RVL -DNEED_READV -DNEED_WRITEV -DNEED_GETLOGIN_R -DNEED_GETADDRINFO -DNEED_FREEADDRINFO -DNEED_POLL 
+DEFINES			:= -DGEKKO -DHAVE_CONFIG_H -D__GC__ -DNEED_READV -DNEED_WRITEV -DNEED_GETLOGIN_R -DNEED_GETADDRINFO -DNEED_FREEADDRINFO -DNEED_POLL 
 CFLAGS			:= $(COMMON_FLAGS) $(INCLUDES) $(DEFINES)
 
 # Test link flags.

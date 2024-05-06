@@ -607,6 +607,7 @@ void smb2_freeaddrinfo(struct addrinfo *res);
 #define socket net_socket 
 #define setsockopt net_setsockopt
 #define getsockopt net_getsockopt
+#define select net_select
 
 struct pollfd {
         int fd;
