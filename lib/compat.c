@@ -181,6 +181,25 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
 
 #endif /* PS3_PPU_PLATFORM */
 
+
+#if defined(__SWITCH__) || defined(__3DS__)
+
+#include <errno.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <alloca.h>
+#include <sys/socket.h>
+#ifdef __SWITCH__
+#include <switch/types.h>
+#else
+#include <3ds/types.h>	
+#endif
+
+#define login_num ENXIO
+
+#endif /* __SWITCH__ */
+
 #ifdef NEED_GETADDRINFO
 int smb2_getaddrinfo(const char *node, const char*service,
                 const struct addrinfo *hints,
@@ -252,24 +271,6 @@ void smb2_freeaddrinfo(struct addrinfo *res)
         free(res);
 }
 #endif
-
-#if defined(__SWITCH__) || defined(__3DS__)
-
-#include <errno.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <alloca.h>
-#include <sys/socket.h>
-#ifdef __SWITCH__
-#include <switch/types.h>
-#else
-#include <3ds/types.h>	
-#endif
-
-#define login_num ENXIO
-
-#endif /* __SWITCH__ */
 
 #ifdef NEED_RANDOM
 #ifdef ESP_PLATFORM

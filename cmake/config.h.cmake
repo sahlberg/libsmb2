@@ -72,6 +72,9 @@
 /* Define to 1 if you have the <sys/uio.h> header file. */
 #cmakedefine HAVE_SYS_UIO_H
 
+/* Define to 1 if you have the <sys/_iovec.h> header file. */
+#cmakedefine HAVE_SYS__IOVEC_H
+
 /* Define to 1 if you have the <time.h> header file. */
 #cmakedefine HAVE_TIME_H
 
