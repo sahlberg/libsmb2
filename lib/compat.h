@@ -546,8 +546,6 @@ struct addrinfo {
 
 #endif
 #define sockaddr_in6 sockaddr_in
-#else
-#include <sys/_iovec.h>
 #endif
 
 #ifndef EAI_AGAIN

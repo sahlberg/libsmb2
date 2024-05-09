@@ -39,6 +39,10 @@
 #include <sys/uio.h>
 #endif
 
+#ifdef HAVE_SYS__IOVEC_H
+#include <sys/_iovec.h>
+#endif
+
 #include <stdio.h>
 
 #include "compat.h"
