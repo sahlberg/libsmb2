@@ -64,7 +64,7 @@ INCLUDES = -I./include -I$(LIBNX)/include
 #---------------------------------------------------------------------------------
 ARCH		:=	-march=armv8-a -mtp=soft -fPIE
 CFLAGS		:=	-g -Wall -O2 -ffast-math $(ARCH)
-CFLAGS		+=	$(INCLUDES) -Wno-unused-variable -DARM11 -DSWITCH -D__SWITCH__ -DHAVE_CONFIG_H -DNEED_READV -DNEED_WRITEV -DNEED_GETLOGIN_R -I../include -I../include/switch -I../include/smb2
+CFLAGS		+=	$(INCLUDES) -Wno-unused-variable -DARM11 -DSWITCH -D__SWITCH__ -DHAVE_CONFIG_H -DNEED_READV -DNEED_WRITEV -DNEED_GETLOGIN_R -DHAVE_SYS__IOVEC_H -I../include -I../include/switch -I../include/smb2
 CXXFLAGS	:=  $(CFLAGS) -fno-rtti -std=gnu++11
 ASFLAGS		:=	-g $(ARCH)
 LDFLAGS		:=	-specs=switch.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
