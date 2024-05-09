@@ -63,9 +63,6 @@ typedef unsigned int uint32_t;
 typedef unsigned long long uint64_t;
 typedef unsigned int uint_t;
 typedef unsigned int uintptr_t;
-#include <time.h> /* for time_t */
-#else
-#include <stdint.h>
 #endif
 
 #ifndef ENETRESET
