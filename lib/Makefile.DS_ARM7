@@ -1,0 +1,103 @@
+ifeq ($(strip $(DEVKITPRO)),)
+$(error "Please set DEVKITPRO in your environment. export DEVKITPRO=<path to>devkitPro)
+endif
+ifeq ($(strip $(DEVKITARM)),)
+DEVKITARM := $(DEVKITPRO)/devkitARM
+endif
+PORTLIBS := $(DEVKITPRO)/portlibs/nds
+
+SRCS = aes128ccm.o \
+	aes.o \
+	alloc.o \
+	compat.o \
+	dcerpc.o \
+	dcerpc-lsa.o \
+	dcerpc-srvsvc.o \
+	errors.o \
+	hmac.o \
+	hmac-md5.o \
+	init.o \
+	krb5-wrapper.o \
+	libsmb2.o \
+	md4c.o \
+	md5.o \
+	ntlmssp.o \
+	pdu.o \
+	sha1.o \
+	sha224-256.o \
+	sha384-512.o \
+	smb2-cmd-close.o \
+	smb2-cmd-create.o \
+	smb2-cmd-echo.o \
+	smb2-cmd-error.o \
+	smb2-cmd-flush.o \
+	smb2-cmd-ioctl.o \
+	smb2-cmd-logoff.o \
+	smb2-cmd-negotiate.o \
+	smb2-cmd-query-directory.o \
+	smb2-cmd-query-info.o \
+	smb2-cmd-read.o \
+	smb2-cmd-session-setup.o \
+	smb2-cmd-set-info.o \
+	smb2-cmd-tree-connect.o \
+	smb2-cmd-tree-disconnect.o \
+	smb2-cmd-write.o \
+	smb2-data-file-info.o \
+	smb2-data-filesystem-info.o \
+	smb2-data-security-descriptor.o \
+	smb2-data-reparse-point.o \
+	smb2-share-enum.o \
+	smb3-seal.o \
+	smb2-signing.o \
+	timestamps.o \
+	unicode.o \
+	usha.o \
+	socket.o \
+	sync.o 
+	
+OBJS = $(SRCS:.c=.o) 
+
+SUBDIRS=
+
+CC=/opt/devkitpro/devkitARM/bin/arm-none-eabi-gcc
+CXX=/opt/devkitpro/devkitARM/bin/arm-none-eabi-g++
+LDSHARED=$(CXX)
+AR=/opt/devkitpro/devkitARM/bin/arm-none-eabi-ar rc
+RANLIB=/opt/devkitpro/devkitARM/bin/arm-none-eabi-ranlib
+
+ARCH = -marm -march=armv5te -mtune=arm946e-s
+CFLAGS = $(ARCH) -Wall -O3 -mword-relocations -fomit-frame-pointer -ffast-math -Wwrite-strings -Wno-format -Wpointer-arith
+CPPFLAGS = -DARM7 -D__NDS__ -DHAVE_CONFIG_H -DNEED_READV -DNEED_WRITEV -DNEED_GETLOGIN_R -DNEED_GETADDRINFO -DNEED_FREEADDRINFO -DNEED_POLL  -I$(DEVKITPRO)/libnds/include -I../include -I../include/nds -I../include/smb2
+LDFLAGS = -specs=ds_arm9.specs -g $(ARCH) -L$(DEVKITPRO)/libnds/lib
+LIBS = -lmm7 -lnds7
+
+CXXFLAGS += $(CFLAGS)
+
+all: libsmb2_arm7.a 
+
+libsmb2_arm7.a: $(OBJS)
+	$(AR) $@ $(OBJS)
+	$(RANLIB) $@
+
+install: libsmb2_arm7.a
+	@mkdir -p $(PORTLIBS)/include/smb2/
+	@cp ../include/smb2/*.h $(PORTLIBS)/include/smb2/
+	@mkdir -p $(PORTLIBS)/lib	
+	@cp -r libsmb2_arm7.a $(PORTLIBS)/lib/libsmb2_arm7.a
+
+clean: 
+	find . -name "*.o" |xargs rm -f
+	find . -name "*.d" |xargs rm -f
+
+subdirs: $(patsubst %, _dir_%, $(SUBDIRS))
+
+$(patsubst %, _dir_%, $(SUBDIRS)):
+	$(MAKE) -C $(patsubst _dir_%, %, $@)
+
+clean_subdirs: $(patsubst %, _clean_dir_%, $(SUBDIRS))
+
+$(patsubst %, _clean_dir_%, $(SUBDIRS)):
+	$(MAKE) -C $(patsubst _clean_dir_%, %, $@) clean
+
+#include $(DEVKITARM)/ds_rules
+

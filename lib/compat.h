@@ -512,18 +512,19 @@ struct sockaddr_storage {
 
 #endif
 
-#if defined(__SWITCH__) || defined(__3DS__) || defined(__WII__) || defined(__GC__) || defined(__WIIU__)
+#if defined(__SWITCH__) || defined(__3DS__) || defined(__WII__) || defined(__GC__) || defined(__WIIU__) || defined(__NDS__)
 
 #include <sys/types.h>
 
-#if defined(__3DS__) || defined(__WII__) || defined(__GC__) || defined(__WIIU__)
+#if defined(__3DS__) || defined(__WII__) || defined(__GC__) || defined(__WIIU__) || defined(__NDS__)
 struct iovec {
   void  *iov_base;
   size_t iov_len;
 };	
-#if defined(__WII__) || defined(__GC__)
+#if defined(__WII__) || defined(__GC__) || defined(__NDS__)
+#ifndef __NDS__
 #include <network.h>
-
+#endif
 struct sockaddr_storage {
 #ifdef HAVE_SOCKADDR_SA_LEN
 	unsigned char ss_len;
@@ -543,6 +544,9 @@ struct addrinfo {
 	struct addrinfo *ai_next;	/* next structure in linked list */
 };
 
+#ifdef __NDS__
+typedef int socklen_t;
+#endif
 
 #endif
 #define sockaddr_in6 sockaddr_in
@@ -586,15 +590,24 @@ struct addrinfo {
 #define POLLHUP     0x0010    /* Hung up */
 #endif
 
+#ifndef TCP_NODELAY
+#define TCP_NODELAY     1  /* Don't delay send to coalesce packets  */
+#endif
+
+#ifdef __NDS__
+#ifndef SOL_TCP
+#define SOL_TCP 6
+#endif
+#else
 #ifndef SOL_TCP
 #define SOL_TCP IPPROTO_TCP
 #endif
-
+#endif
 ssize_t writev(int fd, const struct iovec *iov, int iovcnt);
 ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
 int getlogin_r(char *buf, size_t size);
 
-#if defined(__WII__) || defined(__GC__)
+#if defined(__WII__) || defined(__GC__) || defined(__NDS__)
 int smb2_getaddrinfo(const char *node, const char*service,
                 const struct addrinfo *hints,
                 struct addrinfo **res);
@@ -603,11 +616,13 @@ void smb2_freeaddrinfo(struct addrinfo *res);
 #define getaddrinfo smb2_getaddrinfo
 #define freeaddrinfo smb2_freeaddrinfo
 
+#ifndef __NDS__
 #define connect net_connect
 #define socket net_socket 
 #define setsockopt net_setsockopt
 #define getsockopt net_getsockopt
 #define select net_select
+#endif
 
 struct pollfd {
         int fd;

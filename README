@@ -302,6 +302,19 @@ Then to build libsmb2, run
 The process will copy the resulting libsmb2.a and the include/smb2 headers to your
 devkitPro wii or gamecube portlibs folder.
 
+Nintendo DS 
+-------------
+Nintendo DS CPU is both ARM7TDMI and ARM946E-S.
+To compile libsmb2 for the Nintendo DS both arch´s, first install the devkitPro with libnds using pacman to set it up.
+
+Then to build libsmb2, run
+  $ cd lib
+  $ make -f Makefile.DS_ARM7 install
+  $ make -f Makefile.DS_ARM9 install
+
+The process will copy the resulting libsmb2_arm7.a or libsmb2_arm9.a(recommended) and the include/smb2 headers to your
+devkitPro ds portlibs folder on: lib/arm7 or lib/arm9.
+
 Nintendo WII-U
 -------------
 Nintendo Wii-U CPU is a IBM "Espresso" PowerPC-based 45 nm, with 4 cores and a clock speed of 1.24 GHz.

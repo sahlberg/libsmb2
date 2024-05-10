@@ -181,7 +181,7 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
 
 #endif /* PS3_PPU_PLATFORM */
 
-#if defined(__SWITCH__) || defined(__3DS__) || defined(__WII__) || defined(__GC__) || defined(__WIIU__)
+#if defined(__SWITCH__) || defined(__3DS__) || defined(__WII__) || defined(__GC__) || defined(__WIIU__) || defined(__NDS__)
 
 #include <errno.h>
 #include <stdlib.h>
@@ -191,6 +191,9 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
 #if !defined(__WII__) && !defined(__GC__)
 #include <sys/socket.h>
 #endif
+#if defined(__NDS__)
+#include <netinet/in.h>
+#endif
 #if defined(__SWITCH__)
 #include <switch/types.h>
 #elif defined(__3DS__)
@@ -199,6 +202,8 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
 #include <gctypes.h>
 #elif defined(__WIIU__)
 #include <wut_types.h>
+#elif defined(__NDS__)
+#include <mm_types.h>
 #endif
 
 #define login_num ENXIO
@@ -221,7 +226,7 @@ int smb2_getaddrinfo(const char *node, const char*service,
 #else
         sin = malloc(sizeof(struct sockaddr_in));
 #endif
-#ifndef _XBOX
+#if !defined(_XBOX) && !defined(__NDS__)
         sin->sin_len = sizeof(struct sockaddr_in);
 #endif
         sin->sin_family=AF_INET;
