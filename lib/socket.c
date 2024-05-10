@@ -750,19 +750,18 @@ smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
                         if (err == 0) {
                                 return 0;
                         }
-                } else if (getsockopt(fd, SOL_SOCKET, SO_ERROR,
-#if defined(__WII__) || defined(__GC__)
-                               (char *)&err, err_size) != 0 || err != 0) { /* André 04/04/2024: The implementation of getsockopt of libogc is pretty diffrent... */ 
-#else
-                               (char *)&err, &err_size) != 0 || err != 0) {  
-#endif
+                } 
+#if !defined(__WII__) && !defined(__GC__)				
+				else if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (char *)&err, &err_size) != 0 || err != 0) {  
                         if (err == 0) {
                                 err = errno;
                         }
                         smb2_set_error(smb2, "smb2_service: socket error "
                                         "%s(%d).",
                                         strerror(err), err);
-                } else {
+                } 
+#endif				
+				else {
                         smb2_set_error(smb2, "smb2_service: POLLERR, "
                                         "Unknown socket error.");
                 }
@@ -783,14 +782,9 @@ smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
 
         if (!SMB2_VALID_SOCKET(smb2->fd) && revents & POLLOUT) {
                 int err = 0;
+#if !defined(__WII__) && !defined(__GC__)				
                 socklen_t err_size = sizeof(err);
-
-                if (getsockopt(fd, SOL_SOCKET, SO_ERROR,
-#if defined(__WII__) || defined(__GC__)
-                               (char *)&err, err_size) != 0 || err != 0)  { /* André 04/04/2024: The implementation of getsockopt of libogc is pretty diffrent... */ 
-#else
-                               (char *)&err, &err_size) != 0 || err != 0) {
-#endif
+                if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (char *)&err, &err_size) != 0 || err != 0) {
                         if (err == 0) {
                                 err = errno;
                         }
@@ -803,11 +797,14 @@ smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
                                 if (err == 0) {
                                         return 0;
                                 }
-                        } else {
+                        } 
+					
+						else {
                                 smb2_set_error(smb2, "smb2_service: socket error "
                                                 "%s(%d) while connecting.",
                                                 strerror(err), err);
                         }
+						
                         if (smb2->connect_cb) {
                                 smb2->connect_cb(smb2, err,
                                                  NULL, smb2->connect_data);
@@ -816,7 +813,7 @@ smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
                         ret = -1;
                         goto out;
                 }
-
+#endif	
                 smb2->fd = fd;
 
                 smb2_close_connecting_fds(smb2);

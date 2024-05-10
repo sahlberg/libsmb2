@@ -203,25 +203,6 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
 
 #define login_num ENXIO
 
-#ifdef __SWITCH__
-#define __set_errno(e) (errno = (e))
-#define __libc_use_alloca(size) ((size) <= __MAX_ALLOCA_CUTOFF)
-#define __MAX_ALLOCA_CUTOFF 32768
-#define MIN(a,b) (((a) < (b)) ? (a) : (b))
-#define __alloca alloca
-#define __write write
-#define __read read
-#define __writev writev
-#define __readv readv
-#define __mempcpy mempcpy
-
-static void
-ifree (char **ptrp)
-{
-  free (*ptrp);
-}
-#endif
-
 #endif /* __SWITCH__ */
 
 #ifdef NEED_GETADDRINFO
