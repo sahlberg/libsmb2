@@ -188,6 +188,7 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
 #include <string.h>
 #include <unistd.h>
 #include <alloca.h>
+#include <stdio.h>
 #if !defined(__WII__) && !defined(__GC__)
 #include <sys/socket.h>
 #endif
@@ -207,6 +208,15 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
 #endif
 
 #define login_num ENXIO
+
+#if defined(__WII__) || defined(__GC__) 
+s32 getsockopt(int sockfd, int level, int optname, void *optval,
+socklen_t *optlen)
+{
+	 printf("not yet supported");
+	 return 0;
+}
+#endif
 
 #endif /* __SWITCH__ */
 

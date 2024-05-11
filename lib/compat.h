@@ -594,15 +594,16 @@ typedef int socklen_t;
 #define TCP_NODELAY     1  /* Don't delay send to coalesce packets  */
 #endif
 
-#ifdef __NDS__
-#ifndef SOL_TCP
-#define SOL_TCP 6
+#ifndef __NDS__
+#ifndef IPPROTO_TCP
+#define IPPROTO_TCP 6
 #endif
-#else
+
 #ifndef SOL_TCP
 #define SOL_TCP IPPROTO_TCP
 #endif
 #endif
+
 ssize_t writev(int fd, const struct iovec *iov, int iovcnt);
 ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
 int getlogin_r(char *buf, size_t size);
@@ -620,7 +621,7 @@ void smb2_freeaddrinfo(struct addrinfo *res);
 #define connect net_connect
 #define socket net_socket 
 #define setsockopt net_setsockopt
-#define getsockopt net_getsockopt
+s32 getsockopt(int sockfd, int level, int optname, void *optval, socklen_t *optlen);
 #define select net_select
 #endif
 
