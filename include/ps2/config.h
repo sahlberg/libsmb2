@@ -13,8 +13,10 @@
 /* Define to 1 if you have the <errno.h> header file. */
 #define HAVE_ERRNO_H 1
 
+#ifndef _IOP
 /* Define to 1 if you have the <fcntl.h> header file. */
 #define HAVE_FCNTL_H 1
+#endif
 
 /* Define to 1 if you have the <gssapi/gssapi.h> header file. */
 #define HAVE_GSSAPI_GSSAPI_H 1
