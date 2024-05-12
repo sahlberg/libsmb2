@@ -42,14 +42,16 @@
 
 #ifdef ESP_PLATFORM
 
-#define NEED_READV
-#define NEED_WRITEV
-
 #include <stdio.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <lwip/sockets.h>
 #include <sys/uio.h>
+#include <errno.h>
+
+#define login_num ENXIO
+#define smb2_random esp_random
+#define smb2_srandom(seed)
 
 #endif
 
@@ -80,10 +82,6 @@ struct MinList __filelist = { (struct MinNode *) &__filelist.mlh_Tail, NULL, (st
 #endif
 
 #ifdef PICO_PLATFORM
-
-#define NEED_BE64TOH
-#define NEED_POLL
-#define NEED_GETLOGIN_R
 
 #include "lwip/def.h"
 #include <unistd.h>
@@ -168,16 +166,6 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
 #define NEED_GETLOGIN_R
 #define login_num ENXIO
 #endif
-#endif
-
-#ifdef ESP_PLATFORM
-#include <errno.h>
-#define NEED_GETLOGIN_R
-#define NEED_RANDOM
-#define NEED_SRANDOM
-#define login_num ENXIO
-#define smb2_random esp_random
-#define smb2_srandom(seed)
 #endif
 
 #ifdef PS3_PPU_PLATFORM
