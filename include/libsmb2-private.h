@@ -286,7 +286,7 @@ struct utf16 *utf8_to_utf16(const char *utf8);
 const char *utf16_to_utf8(const uint16_t *str, size_t len);
 
 /* Convert a win timestamp to a unix timeval */
-void win_to_timeval(time_t smb2_time, struct smb2_timeval *tv);
+void win_to_timeval(uint64_t smb2_time, struct smb2_timeval *tv);
 
 /* Convert unit timeval to a win timestamp */
 time_t timeval_to_win(struct smb2_timeval *tv);
