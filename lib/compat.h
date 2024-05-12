@@ -512,12 +512,14 @@ struct sockaddr_storage {
 #endif
 
 #ifdef __vita__
-#include <errno.h>
+
 #include <netinet/in.h>
-#include <sys/socket.h>
 
 int getlogin_r(char *buf, size_t size);
+
+#ifndef SOL_TCP
 #define SOL_TCP IPPROTO_TCP
+#endif
 
 ssize_t writev(int fd, const struct iovec *iov, int iovcnt);
 ssize_t readv(int fd, const struct iovec *iov, int iovcnt);

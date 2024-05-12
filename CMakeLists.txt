@@ -137,7 +137,11 @@ elseif(ESP_PLATFORM)
 
   register_component()  
 else() 
-    cmake_minimum_required(VERSION 3.5)
+    if(VITA)
+      cmake_minimum_required(VERSION 3.2) 
+    else()
+      cmake_minimum_required(VERSION 3.5)
+    endif()
 
     project(libsmb2
             LANGUAGES C
@@ -150,8 +154,13 @@ else()
     set(INSTALL_INC_DIR "${CMAKE_INSTALL_PREFIX}/include" CACHE PATH "Installation directory for headers")
     set(INSTALL_PKGCONFIG_DIR "${CMAKE_INSTALL_PREFIX}/lib${LIB_SUFFIX}/pkgconfig" CACHE PATH "Installation directory for pkgconfig (.pc) files")
     set(INSTALL_CMAKE_DIR "${CMAKE_INSTALL_PREFIX}/lib${LIB_SUFFIX}/cmake/libsmb2" CACHE PATH "Installation directory for cmake (.cmake) files")
-
-    option(BUILD_SHARED_LIBS "Build shared libraries" ON)
+    
+    if(VITA) 
+      option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
+    else()
+      option(BUILD_SHARED_LIBS "Build shared libraries" ON)
+    endif()
+    
     option(ENABLE_EXAMPLES "Build example programs" OFF)
 
     list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
@@ -189,6 +198,8 @@ else()
       list(APPEND CORE_LIBRARIES ws2_32.lib)
       add_definitions(-DWIN32_LEAN_AND_MEAN -D_CRT_NONSTDC_NO_DEPRECATE -D_CRT_SECURE_NO_WARNINGS)
       include_directories(include/msvc)
+    elseif(VITA)
+      add_definitions(-DNEED_READV -DNEED_WRITEV -DNEED_GETLOGIN_R)
     elseif(CMAKE_SYSTEM_NAME STREQUAL Solaris)
       find_library(SOCKET_LIBRARY socket)
       find_library(NSL_LIBRARY nsl)

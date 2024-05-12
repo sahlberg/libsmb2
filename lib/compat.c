@@ -183,11 +183,12 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
 
 
 #ifdef __vita__
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <errno.h>
 
-#define NEED_READV
-#define NEED_WRITEV
 #define login_num ENXIO
-#define NEED_GETLOGIN_R
 
 #endif
 

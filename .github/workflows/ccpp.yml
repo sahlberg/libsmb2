@@ -68,6 +68,23 @@ jobs:
         make -f Makefile.PS2_IOP clean
         make -f Makefile.PS2_IOP
 
+  build-vita:
+    name: VITA build
+
+    runs-on: ubuntu-latest
+    container: gnuton/vitasdk-docker:latest
+    steps:
+    - name: Install dependencies
+      run: |
+        sudo apt-get install -qq -y pkg-config
+
+    - name: git checkout
+      uses: actions/checkout@v3
+
+    - name: Compile VITA
+      run: |
+        sh ./build_vita.sh
+
   build-ps3-ppu:
     name: PS3 PPU build
 
