@@ -21,8 +21,8 @@
 				Optimization="0"
 				InlineFunctionExpansion="2"
 				OptimizeForProcessor="2"
-				AdditionalIncludeDirectories="..\include\;..\include\msvc;..\include\xbox;..\include\smb2"
-				PreprocessorDefinitions="_DEBUG;_XBOX;_LIB;XBOX_PLATFORM;NEED_POLL;NEED_GETADDRINFO;NEED_FREEADDRINFO;NEED_GETPID;NEED_GETLOGIN_R;NEED_RANDOM;NEED_SRANDOM;HAVE_CONFIG_H"
+				AdditionalIncludeDirectories="..\include\;..\include\xbox;..\include\smb2"
+				PreprocessorDefinitions="_DEBUG;_XBOX;_LIB;XBOX_PLATFORM;NEED_POLL;NEED_GETADDRINFO;NEED_FREEADDRINFO;NEED_GETPID;NEED_GETLOGIN_R;NEED_RANDOM;NEED_SRANDOM;HAVE_CONFIG_H;_U_=/**/"
 				MinimalRebuild="TRUE"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
@@ -30,8 +30,10 @@
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile="$(OutDir)/$(ProjectName).pch"
 				WarningLevel="3"
+				WarnAsError="TRUE"
 				Detect64BitPortabilityProblems="FALSE"
-				DebugInformationFormat="3"/>
+				DebugInformationFormat="3"
+				CompileAs="1"/>
 			<Tool
 				Name="VCCustomBuildTool"/>
 			<Tool
@@ -125,8 +127,8 @@
 				InlineFunctionExpansion="2"
 				OmitFramePointers="TRUE"
 				OptimizeForProcessor="2"
-				AdditionalIncludeDirectories="..\include\;..\include\msvc;..\include\xbox;..\include\smb2"
-				PreprocessorDefinitions="NDEBUG;_XBOX;_LIB;XBOX_PLATFORM;NEED_POLL;NEED_GETADDRINFO;NEED_FREEADDRINFO;NEED_GETPID;NEED_GETLOGIN_R;NEED_RANDOM;NEED_SRANDOM;HAVE_CONFIG_H"
+				AdditionalIncludeDirectories="..\include\;..\include\xbox;..\include\smb2"
+				PreprocessorDefinitions="NDEBUG;_XBOX;_LIB;XBOX_PLATFORM;NEED_POLL;NEED_GETADDRINFO;NEED_FREEADDRINFO;NEED_GETPID;NEED_GETLOGIN_R;NEED_RANDOM;NEED_SRANDOM;HAVE_CONFIG_H;_U_=/**/"
 				StringPooling="TRUE"
 				RuntimeLibrary="0"
 				BufferSecurityCheck="TRUE"
@@ -135,6 +137,7 @@
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile="$(OutDir)/$(ProjectName).pch"
 				WarningLevel="3"
+				WarnAsError="TRUE"
 				Detect64BitPortabilityProblems="FALSE"
 				DebugInformationFormat="3"
 				CompileAs="1"/>
@@ -162,7 +165,8 @@
 				Optimization="3"
 				OmitFramePointers="TRUE"
 				OptimizeForProcessor="2"
-				PreprocessorDefinitions="NDEBUG;_XBOX;LTCG;_LIB"
+				AdditionalIncludeDirectories="..\include\;..\include\xbox;..\include\smb2"
+				PreprocessorDefinitions="NDEBUG;_XBOX;LTCG;_LIB;XBOX_PLATFORM;NEED_POLL;NEED_GETADDRINFO;NEED_FREEADDRINFO;NEED_GETPID;NEED_GETLOGIN_R;NEED_RANDOM;NEED_SRANDOM;HAVE_CONFIG_H;_U_=/**/"
 				StringPooling="TRUE"
 				RuntimeLibrary="0"
 				BufferSecurityCheck="TRUE"
@@ -171,8 +175,10 @@
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile="$(OutDir)/$(ProjectName).pch"
 				WarningLevel="3"
+				WarnAsError="TRUE"
 				Detect64BitPortabilityProblems="FALSE"
-				DebugInformationFormat="3"/>
+				DebugInformationFormat="3"
+				CompileAs="1"/>
 			<Tool
 				Name="VCCustomBuildTool"/>
 			<Tool
@@ -204,20 +210,6 @@
 			<File
 				RelativePath="..\include\slist.h">
 			</File>
-			<Filter
-				Name="msvc"
-				Filter="">
-				<File
-					RelativePath="..\include\msvc\poll.h">
-				</File>
-				<Filter
-					Name="sys"
-					Filter="">
-					<File
-						RelativePath="..\include\msvc\sys\socket.h">
-					</File>
-				</Filter>
-			</Filter>
 			<Filter
 				Name="xbox"
 				Filter="">
@@ -303,12 +295,6 @@
 				RelativePath="..\lib\init.c">
 			</File>
 			<File
-				RelativePath="..\lib\krb5-wrapper.c">
-			</File>
-			<File
-				RelativePath="..\lib\krb5-wrapper.h">
-			</File>
-			<File
 				RelativePath="..\lib\libsmb2.c">
 			</File>
 			<File
@@ -337,9 +323,6 @@
 			</File>
 			<File
 				RelativePath="..\lib\sha.h">
-			</File>
-			<File
-				RelativePath="..\lib\sha1.c">
 			</File>
 			<File
 				RelativePath="..\lib\sha224-256.c">
@@ -430,6 +413,24 @@
 			</File>
 			<File
 				RelativePath="..\lib\timestamps.c">
+				<FileConfiguration
+					Name="Debug|Xbox">
+					<Tool
+						Name="VCCLCompilerTool"
+						DisableSpecificWarnings="4244"/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Xbox">
+					<Tool
+						Name="VCCLCompilerTool"
+						DisableSpecificWarnings="4244"/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release_LTCG|Xbox">
+					<Tool
+						Name="VCCLCompilerTool"
+						DisableSpecificWarnings="4244"/>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath="..\lib\unicode.c">

@@ -39,6 +39,14 @@
 #include <stddef.h>
 #endif
 
+#ifdef HAVE_TIME_H
+#include <time.h>
+#endif
+
+#ifdef HAVE_SYS_TIME_H
+#include <sys/time.h>
+#endif
+
 #include <errno.h>
 
 #include "compat.h"
@@ -76,19 +84,19 @@ smb2_decode_fileidfulldirectoryinformation(
         smb2_get_uint32(vec, 64, &fs->ea_size);
         smb2_get_uint64(vec, 72, &fs->file_id);
 
-        fs->name = utf16_to_utf8((uint16_t *)&vec->buf[80], name_len / 2);
+        fs->name = smb2_utf16_to_utf8((uint16_t *)&vec->buf[80], name_len / 2);
 
         smb2_get_uint64(vec, 8, &t);
-        win_to_timeval(t, &fs->creation_time);
+        smb2_win_to_timeval(t, &fs->creation_time);
 
         smb2_get_uint64(vec, 16, &t);
-        win_to_timeval(t, &fs->last_access_time);
+        smb2_win_to_timeval(t, &fs->last_access_time);
 
         smb2_get_uint64(vec, 24, &t);
-        win_to_timeval(t, &fs->last_write_time);
+        smb2_win_to_timeval(t, &fs->last_write_time);
 
         smb2_get_uint64(vec, 32, &t);
-        win_to_timeval(t, &fs->change_time);
+        smb2_win_to_timeval(t, &fs->change_time);
 
         return 0;
 }
@@ -100,7 +108,7 @@ smb2_encode_query_directory_request(struct smb2_context *smb2,
 {
         int len;
         uint8_t *buf;
-        struct utf16 *name = NULL;
+        struct smb2_utf16 *name = NULL;
         struct smb2_iovec *iov;
 
         len = SMB2_QUERY_DIRECTORY_REQUEST_SIZE & 0xfffffffe;
@@ -114,7 +122,7 @@ smb2_encode_query_directory_request(struct smb2_context *smb2,
 
         /* Name */
         if (req->name && req->name[0]) {
-                name = utf8_to_utf16(req->name);
+                name = smb2_utf8_to_utf16(req->name);
                 if (name == NULL) {
                         smb2_set_error(smb2, "Could not convert name into UTF-16");
                         return -1;

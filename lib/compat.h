@@ -23,38 +23,34 @@
 extern "C" {
 #endif
 
-#if defined(_WINDOWS) || defined(_XBOX)
-#if defined(_WINDOWS)
+#if defined(_XBOX) || defined(_WINDOWS) || defined(__MINGW32__)
+#if defined(_WINDOWS) || defined(__MINGW32__)
+#include <windows.h>
+#include <ws2tcpip.h>
 #include <winsock2.h>
 #elif defined(_XBOX)
+#include <xtl.h>
 #include <winsockx.h>
 #endif
 typedef SOCKET t_socket;
-#define VALID_SOCKET(sock)	((sock) != INVALID_SOCKET)
+#define SMB2_INVALID_SOCKET INVALID_SOCKET
+#define SMB2_VALID_SOCKET(sock)	((sock) != SMB2_INVALID_SOCKET)
 #else
 typedef int t_socket;
-#define VALID_SOCKET(sock)	((sock) >= 0)
-#define INVALID_SOCKET		-1
+#define SMB2_VALID_SOCKET(sock)	((sock) >= 0)
+#define SMB2_INVALID_SOCKET		-1
 #endif
 
 #if defined(_XBOX) || defined(_WINDOWS) || defined(__MINGW32__)
 
-#ifdef _XBOX
-/* XBOX Defs begin */
-#include <xtl.h>
-#else
-#include <windows.h>
-#include <ws2tcpip.h>
-#endif
-#include <time.h>
 #include <stddef.h>
 #include <errno.h>
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
-#endif // !WIN32_LEAN_AND_MEAN
+#endif /* !WIN32_LEAN_AND_MEAN */
 
-#ifdef XBOX_PLATFORM /* MSVC 2003 Doesn´t have stdint.h header */
+#ifdef XBOX_PLATFORM /* MSVC 2003 and Xbox XDK Doesn´t have stdint.h header */
 typedef char int8_t;
 typedef short int16_t;
 typedef short int_least16_t;
@@ -68,8 +64,6 @@ typedef unsigned int uint32_t;
 typedef unsigned long long uint64_t;
 typedef unsigned int uint_t;
 typedef unsigned int uintptr_t;
-#else
-#include <stdint.h>
 #endif
 
 #ifndef ENETRESET
@@ -199,7 +193,7 @@ typedef SSIZE_T ssize_t;
 
 struct iovec
 {
-  unsigned long iov_len; // from WSABUF
+  unsigned long iov_len; /* from WSABUF */
   void *iov_base;        
 };	
 
@@ -287,6 +281,10 @@ inline void gettimeofday(struct timeval* tp, void* tzp)
 
 #include "lwip/netdb.h"
 #include "lwip/sockets.h"
+
+#ifndef SOL_TCP
+#define SOL_TCP 6
+#endif
 
 #define EAI_AGAIN EAGAIN
 long long int be64toh(long long int x);
@@ -557,6 +555,11 @@ struct sockaddr_storage {
 #include <stddef.h>
 #include <esp_system.h>
 #include <sys/types.h>
+
+#ifndef SOL_TCP
+#define SOL_TCP 6
+#endif
+
 void srandom(unsigned int seed);
 long random(void);
 int getlogin_r(char *buf, size_t size);

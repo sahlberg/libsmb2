@@ -152,7 +152,7 @@ struct connect_data {
 
         /* UNC for the share in utf8 as well as utf16 formats */
         char *utf8_unc;
-        struct utf16 *utf16_unc;
+        struct smb2_utf16 *utf16_unc;
 
         void *auth_data;
 };
@@ -190,12 +190,12 @@ smb2_close_context(struct smb2_context *smb2)
                 return;
         }
 
-        if (VALID_SOCKET(smb2->fd)) {
+        if (SMB2_VALID_SOCKET(smb2->fd)) {
                 if (smb2->change_fd) {
                         smb2->change_fd(smb2, smb2->fd, SMB2_DEL_FD);
                 }
                 close(smb2->fd);
-                smb2->fd = INVALID_SOCKET;
+                smb2->fd = SMB2_INVALID_SOCKET;
         }
 
         smb2->message_id = 0;
@@ -1089,7 +1089,7 @@ smb2_connect_share_async(struct smb2_context *smb2,
                 return -ENOMEM;
         }
 
-        c_data->utf16_unc = utf8_to_utf16(c_data->utf8_unc);
+        c_data->utf16_unc = smb2_utf8_to_utf16(c_data->utf8_unc);
         if (c_data->utf16_unc == NULL) {
                 smb2_set_error(smb2, "Count not convert UNC:[%s] into UTF-16",
                                c_data->utf8_unc);
@@ -2544,7 +2544,7 @@ disconnect_cb_2(struct smb2_context *smb2, int status,
                 smb2->change_fd(smb2, smb2->fd, SMB2_DEL_FD);
         }
         close(smb2->fd);
-        smb2->fd = INVALID_SOCKET;
+        smb2->fd = SMB2_INVALID_SOCKET;
 }
 
 static void
@@ -2574,7 +2574,7 @@ smb2_disconnect_share_async(struct smb2_context *smb2,
                 return -EINVAL;
         }
 
-        if (!VALID_SOCKET(smb2->fd)) {
+        if (!SMB2_VALID_SOCKET(smb2->fd)) {
                 smb2_set_error(smb2, "connection is alreeady disconnected or was never connected");
                 return -EINVAL;
         }

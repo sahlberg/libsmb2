@@ -198,7 +198,7 @@ smb2_calc_signature(struct smb2_context *smb2, uint8_t *signature,
         } else {
                 HMACContext ctx;
                 uint8_t digest[USHAMaxHashSize];
-                int i;
+                size_t i;
 
                 hmacReset(&ctx, SHA256, &smb2->signing_key[0], SMB2_KEY_SIZE);
                 for (i=0; i < niov; i++) {
