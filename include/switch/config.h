@@ -53,9 +53,6 @@
 /* Whether we have linger */
 #define HAVE_LINGER 1
 
-/* Whether we have linger */
-#define HAVE_LINGER 1
-
 /* Define to 1 if you have the <stdint.h> header file. */
 #define HAVE_STDINT_H 1
 
@@ -100,6 +97,9 @@
 
 /* Define to 1 if you have the <sys/unistd.h> header file. */
 #define HAVE_SYS_UNISTD_H 1
+
+/* Define to 1 if you have the <sys/_iovec.h> header file. */
+#define HAVE_SYS__IOVEC_H 1
 
 /* Define to 1 if you have the <time.h> header file. */
 #define HAVE_TIME_H 1
