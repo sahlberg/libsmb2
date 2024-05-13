@@ -39,6 +39,14 @@
 #include <stddef.h>
 #endif
 
+#ifdef HAVE_TIME_H
+#include <time.h>
+#endif
+
+#ifdef HAVE_SYS_TIME_H
+#include <sys/time.h>
+#endif
+
 #include <errno.h>
 
 #include "compat.h"
@@ -79,16 +87,16 @@ smb2_decode_fileidfulldirectoryinformation(
         fs->name = utf16_to_utf8((uint16_t *)&vec->buf[80], name_len / 2);
 
         smb2_get_uint64(vec, 8, &t);
-        win_to_timeval(t, &fs->creation_time);
+        win_to_timeval((time_t)t, &fs->creation_time);
 
         smb2_get_uint64(vec, 16, &t);
-        win_to_timeval(t, &fs->last_access_time);
+        win_to_timeval((time_t)t, &fs->last_access_time);
 
         smb2_get_uint64(vec, 24, &t);
-        win_to_timeval(t, &fs->last_write_time);
+        win_to_timeval((time_t)t, &fs->last_write_time);
 
         smb2_get_uint64(vec, 32, &t);
-        win_to_timeval(t, &fs->change_time);
+        win_to_timeval((time_t)t, &fs->change_time);
 
         return 0;
 }
