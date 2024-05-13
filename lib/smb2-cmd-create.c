@@ -63,7 +63,7 @@ smb2_encode_create_request(struct smb2_context *smb2,
         int i, len;
         uint8_t *buf;
         uint16_t ch;
-        struct utf16 *name = NULL;
+        struct smb2_utf16 *name = NULL;
         struct smb2_iovec *iov;
 
         len = SMB2_CREATE_REQUEST_SIZE & 0xfffffffe;
@@ -77,7 +77,7 @@ smb2_encode_create_request(struct smb2_context *smb2,
 
         /* Name */
         if (req->name && req->name[0]) {
-                name = utf8_to_utf16(req->name);
+                name = smb2_utf8_to_utf16(req->name);
                 if (name == NULL) {
                         smb2_set_error(smb2, "Could not convert name into UTF-16");
                         return -1;

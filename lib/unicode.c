@@ -163,10 +163,10 @@ validate_utf8_str(const char *utf8)
 }
 
 /* Convert a UTF8 string into UTF-16LE */
-struct utf16 *
-utf8_to_utf16(const char *utf8)
+struct smb2_utf16 *
+smb2_utf8_to_utf16(const char *utf8)
 {
-        struct utf16 *utf16;
+        struct smb2_utf16 *utf16;
         int i, len;
 
         len = validate_utf8_str(utf8);
@@ -174,7 +174,7 @@ utf8_to_utf16(const char *utf8)
                 return NULL;
         }
 
-        utf16 = (struct utf16 *)(malloc(offsetof(struct utf16, val) + 2 * len));
+        utf16 = (struct smb2_utf16 *)(malloc(offsetof(struct smb2_utf16, val) + 2 * len));
         if (utf16 == NULL) {
                 return NULL;
         }
@@ -245,7 +245,7 @@ utf16_size(const uint16_t *utf16, size_t utf16_len)
  * Convert a UTF-16LE string into UTF8
  */
 const char *
-utf16_to_utf8(const uint16_t *utf16, size_t utf16_len)
+smb2_utf16_to_utf8(const uint16_t *utf16, size_t utf16_len)
 {
         int utf8_len = 1;
         char *str, *tmp;

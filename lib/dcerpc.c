@@ -837,9 +837,9 @@ dcerpc_encode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         uint16_t zero = 0;
         int i;
         uint64_t val;
-        struct utf16 *utf16;
+        struct smb2_utf16 *utf16;
 
-        utf16 = utf8_to_utf16(*(char **)ptr);
+        utf16 = smb2_utf8_to_utf16(*(char **)ptr);
         if (utf16 == NULL) {
                 return -1;
         }
@@ -889,7 +889,7 @@ dcerpc_decode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         if (offset + actual * 2 > iov->len) {
                 return -1;
         }
-        tmp = utf16_to_utf8((uint16_t *)(&iov->buf[offset]), (size_t)actual);
+        tmp = smb2_utf16_to_utf8((uint16_t *)(&iov->buf[offset]), (size_t)actual);
         offset += (int)actual * 2;
 
         str = smb2_alloc_data(ctx->smb2, pdu->payload, strlen(tmp) + 1);
