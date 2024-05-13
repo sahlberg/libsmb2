@@ -111,6 +111,9 @@ AC_CHECK_HEADERS([sys/socket.h])
 dnl  Check for sys/uio.h
 AC_CHECK_HEADERS([sys/uio.h])
 
+dnl  Check for sys/_iovec.h
+AC_CHECK_HEADERS([sys/_iovec.h])
+
 dnl  Check for netinet/tcp.h
 AC_CHECK_HEADERS([netinet/tcp.h])
 
