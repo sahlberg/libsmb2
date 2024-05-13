@@ -620,7 +620,11 @@ void smb2_freeaddrinfo(struct addrinfo *res);
 #define connect net_connect
 #define socket net_socket 
 #define setsockopt net_setsockopt
+#ifdef __GC__
+#define getsockopt net_getsockopt
+#else
 s32 getsockopt(int sockfd, int level, int optname, void *optval, socklen_t *optlen);
+#endif
 #define select net_select
 #endif
 

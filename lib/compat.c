@@ -209,7 +209,7 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
 
 #define login_num ENXIO
 
-#if defined(__WII__) || defined(__GC__) 
+#if defined(__WII__) 
 s32 getsockopt(int sockfd, int level, int optname, void *optval,
 socklen_t *optlen)
 {
