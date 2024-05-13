@@ -105,7 +105,12 @@
 #ifndef _IOP
 /* Define to 1 if you have the <sys/unistd.h> header file. */
 #define HAVE_SYS_UNISTD_H 1
+#endif
 
+/* Define to 1 if you have the <sys/_iovec.h> header file. */
+/* #undef HAVE_SYS__IOVEC_H */
+
+#ifndef _IOP
 /* Define to 1 if you have the <time.h> header file. */
 #define HAVE_TIME_H 1
 
