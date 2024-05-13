@@ -521,6 +521,7 @@ struct iovec {
 #define sockaddr_in6 sockaddr_in
 #else
 #include <sys/_iovec.h>
+#define HAVE_SYS__IOVEC_H 1 /* TODO: Move this to a config.h file */
 #endif
 
 #ifndef EAI_AGAIN
