@@ -33,11 +33,12 @@ extern "C" {
 #include <winsockx.h>
 #endif
 typedef SOCKET t_socket;
-#define VALID_SOCKET(sock)	((sock) != INVALID_SOCKET)
+#define SMB2_INVALID_SOCKET INVALID_SOCKET
+#define SMB2_VALID_SOCKET(sock)	((sock) != SMB2_INVALID_SOCKET)
 #else
 typedef int t_socket;
-#define VALID_SOCKET(sock)	((sock) >= 0)
-#define INVALID_SOCKET		-1
+#define SMB2_VALID_SOCKET(sock)	((sock) >= 0)
+#define SMB2_INVALID_SOCKET		-1
 #endif
 
 #if defined(_XBOX) || defined(_WINDOWS) || defined(__MINGW32__)

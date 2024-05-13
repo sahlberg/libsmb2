@@ -273,7 +273,7 @@ struct smb2_pdu {
 };
 
 /* SMB's UTF-16 is always in Little Endian */
-struct utf16 {
+struct smb2_utf16 {
         int len;
         uint16_t val[1];
 };
@@ -281,18 +281,18 @@ struct utf16 {
 /* Returns a string converted to UTF-16 format. Use free() to release
  * the utf16 string.
  */
-struct utf16 *utf8_to_utf16(const char *utf8);
+struct smb2_utf16 *smb2_utf8_to_utf16(const char *utf8);
         
 /* Returns a string converted to UTF8 format. Use free() to release
  * the utf8 string.
  */
-const char *utf16_to_utf8(const uint16_t *str, size_t len);
+const char *smb2_utf16_to_utf8(const uint16_t *str, size_t len);
 
 /* Convert a win timestamp to a unix timeval */
-void win_to_timeval(uint64_t smb2_time, struct smb2_timeval *tv);
+void smb2_win_to_timeval(uint64_t smb2_time, struct smb2_timeval *tv);
 
 /* Convert unit timeval to a win timestamp */
-time_t timeval_to_win(struct smb2_timeval *tv);
+time_t smb2_timeval_to_win(struct smb2_timeval *tv);
 
 void smb2_set_error(struct smb2_context *smb2, const char *error_string,
                     ...);
