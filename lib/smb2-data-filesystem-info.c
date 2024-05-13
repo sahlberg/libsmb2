@@ -39,6 +39,14 @@
 #include <stddef.h>
 #endif
 
+#ifdef HAVE_TIME_H
+#include <time.h>
+#endif
+
+#ifdef HAVE_SYS_TIME_H
+#include <sys/time.h>
+#endif
+
 #include "compat.h"
 
 #include "smb2.h"
@@ -56,10 +64,10 @@ smb2_decode_file_fs_volume_info(struct smb2_context *smb2,
 
         smb2_get_uint64(vec,  0, &t);
         smb2_win_to_timeval(t, &fs->creation_time);
-	smb2_get_uint32(vec,  8, &fs->volume_serial_number);
-	smb2_get_uint32(vec, 12, &fs->volume_label_length);
-	smb2_get_uint8(vec,  16, &fs->supports_objects);
-	smb2_get_uint8(vec,  17, &fs->reserved);
+ 	      smb2_get_uint32(vec,  8, &fs->volume_serial_number);
+	      smb2_get_uint32(vec, 12, &fs->volume_label_length);
+	      smb2_get_uint8(vec,  16, &fs->supports_objects);
+	      smb2_get_uint8(vec,  17, &fs->reserved);
         name = smb2_utf16_to_utf8((uint16_t *)&vec->buf[18],
                             fs->volume_label_length / 2);
         fs->volume_label = smb2_alloc_data(smb2, memctx, strlen(name) + 1);
