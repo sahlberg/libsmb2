@@ -45,10 +45,7 @@ typedef int t_socket;
 
 #include <stddef.h>
 #include <errno.h>
-
-#ifdef _WIN32
 #include <time.h>
-#endif
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
