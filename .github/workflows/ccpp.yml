@@ -157,7 +157,7 @@ jobs:
     - name: git checkout
       uses: actions/checkout@v3
 
-    - name: Compile Nintendo Gamecube
+    - name: Compile WII-U
       run: |
         cd lib
         make -f Makefile.WIIU clean

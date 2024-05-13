@@ -752,7 +752,11 @@ smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
                         if (err == 0) {
                                 return 0;
                         }
+#ifdef __GC__
+                } else if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (char *)&err, err_size) != 0 || err != 0) {  
+#else
                 } else if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (char *)&err, &err_size) != 0 || err != 0) {  
+#endif
                         if (err == 0) {
                                 err = errno;
                         }
@@ -781,7 +785,11 @@ smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
         if (!SMB2_VALID_SOCKET(smb2->fd) && revents & POLLOUT) {
                 int err = 0;		
                 socklen_t err_size = sizeof(err);
+#ifdef __GC__
+                if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (char *)&err, err_size) != 0 || err != 0) {
+#else
                 if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (char *)&err, &err_size) != 0 || err != 0) {
+#endif
                         if (err == 0) {
                                 err = errno;
                         }
