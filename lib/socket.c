@@ -287,7 +287,7 @@ smb2_write_to_socket(struct smb2_context *smb2)
                         return -1;
                 }
 
-                pdu->out.num_done += count;
+                pdu->out.num_done += (size_t)count;
 
                 if (pdu->out.num_done == SMB2_SPL_SIZE + spl) {
                         SMB2_LIST_REMOVE(&smb2->outqueue, pdu);
@@ -376,7 +376,7 @@ read_more_data:
                 /* remote side has closed the socket. */
                 return -1;
         }
-        smb2->in.num_done += count;
+        smb2->in.num_done += (size_t)count;
 
         if (smb2->in.num_done < smb2->in.total_size) {
                 goto read_more_data;
