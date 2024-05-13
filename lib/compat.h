@@ -256,6 +256,10 @@ int getpid();
 #include "lwip/netdb.h"
 #include "lwip/sockets.h"
 
+#ifndef SOL_TCP
+#define SOL_TCP 6
+#endif
+
 #define EAI_AGAIN EAGAIN
 long long int be64toh(long long int x);
 int getlogin_r(char *buf, size_t size);
@@ -525,6 +529,11 @@ struct sockaddr_storage {
 #include <stddef.h>
 #include <esp_system.h>
 #include <sys/types.h>
+
+#ifndef SOL_TCP
+#define SOL_TCP 6
+#endif
+
 void srandom(unsigned int seed);
 long random(void);
 int getlogin_r(char *buf, size_t size);
