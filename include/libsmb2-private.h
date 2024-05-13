@@ -24,8 +24,11 @@
 #endif
 
 #ifdef HAVE_TIME_H
-/* We need this for time_t */
 #include <time.h>
+#endif
+
+#ifdef HAVE_SYS_TIME_H
+#include <sys/time.h>
 #endif
 
 #ifdef __cplusplus

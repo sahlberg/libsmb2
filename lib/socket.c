@@ -241,7 +241,7 @@ smb2_write_to_socket(struct smb2_context *smb2)
                                 for (i = 0; i < tmp_pdu->out.niov;
                                      i++, niov++) {
                                         iov[niov].iov_base = tmp_pdu->out.iov[i].buf;
-#ifdef _WIN32
+#if defined(_WIN32) || defined(_XBOX)
                                         iov[niov].iov_len = (unsigned long)tmp_pdu->out.iov[i].len;
 #else
                                         iov[niov].iov_len = (size_t)tmp_pdu->out.iov[i].len;
@@ -267,7 +267,7 @@ smb2_write_to_socket(struct smb2_context *smb2)
 
                 /* Adjust the first vector to send */
                 tmpiov->iov_base = (char *)tmpiov->iov_base + num_done;
-#ifdef _WIN32
+#if defined(_WIN32) || defined(_XBOX)
                 tmpiov->iov_len -= (unsigned long)num_done;
 #else
                 tmpiov->iov_len -= (size_t)num_done;
@@ -320,7 +320,8 @@ static int smb2_read_data(struct smb2_context *smb2, read_func func,
         size_t iov_offset = 0;
         static char smb3tfrm[4] = {0xFD, 'S', 'M', 'B'};
         struct smb2_pdu *pdu = smb2->pdu;
-        ssize_t count, len;
+        ssize_t count;
+        size_t len;
 
 read_more_data:
         num_done = smb2->in.num_done;
@@ -667,11 +668,12 @@ smb2_read_from_socket(struct smb2_context *smb2)
 static ssize_t smb2_readv_from_buf(struct smb2_context *smb2,
                                    const struct iovec *iov, int iovcnt)
 {
-        ssize_t i, len, count = 0;
+        size_t i, len;
+        ssize_t count = 0;
 
-        for (i=0;i<iovcnt;i++){
+        for (i=0;(int)i<iovcnt;i++){
                 len = iov[i].iov_len;
-                if (len > (ssize_t)smb2->enc_len - smb2->enc_pos) {
+                if (len > smb2->enc_len - smb2->enc_pos) {
                         len = smb2->enc_len - smb2->enc_pos;
                 }
                 memcpy(iov[i].iov_base, &smb2->enc[smb2->enc_pos], len);
