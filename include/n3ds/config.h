@@ -93,7 +93,7 @@
 #define HAVE_SYS_TYPES_H 1
 
 /* Define to 1 if you have the <sys/uio.h> header file. */
-/* #undef HAVE_SYS_UIO_H 0 */
+/* #undef HAVE_SYS_UIO_H */
 
 /* Define to 1 if you have the <sys/unistd.h> header file. */
 #define HAVE_SYS_UNISTD_H 1
