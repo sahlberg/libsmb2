@@ -65,7 +65,7 @@ if(PICO_BOARD)
             include/picow
     )
 
-	add_definitions(-DNEED_BE64TOH -DNEED_POLL -DNEED_GETLOGIN_R)
+	add_definitions(-DNEED_BE64TOH -DNEED_POLL -DNEED_GETLOGIN_R -D_U_=__attribute__((unused)))
 
  ##### END PICO_BOARD
 elseif(ESP_PLATFORM)
@@ -73,7 +73,7 @@ elseif(ESP_PLATFORM)
     add_definitions(-DHAVE_CONFIG_H)
   endif()
   
-  add_definitions(-DNEED_READV -DNEED_WRITEV -DNEED_GETLOGIN_R -DNEED_RANDOM -DNEED_SRANDOM)
+  add_definitions(-DNEED_READV -DNEED_WRITEV -DNEED_GETLOGIN_R -DNEED_RANDOM -DNEED_SRANDOM -D_U_=__attribute__((unused)))
 
   set(COMPONENT_ADD_INCLUDEDIRS
     "lib"
@@ -188,7 +188,6 @@ else()
     if(CMAKE_SYSTEM_NAME MATCHES Windows)
       list(APPEND CORE_LIBRARIES ws2_32.lib)
       add_definitions(-DWIN32_LEAN_AND_MEAN -D_CRT_NONSTDC_NO_DEPRECATE -D_CRT_SECURE_NO_WARNINGS)
-      include_directories(include/msvc)
     elseif(CMAKE_SYSTEM_NAME STREQUAL Solaris)
       find_library(SOCKET_LIBRARY socket)
       find_library(NSL_LIBRARY nsl)

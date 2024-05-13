@@ -39,6 +39,14 @@
 #include <stddef.h>
 #endif
 
+#ifdef HAVE_TIME_H
+#include <time.h>
+#endif
+
+#ifdef HAVE_SYS_TIME_H
+#include <sys/time.h>
+#endif
+
 #include "compat.h"
 
 #include "smb2.h"
@@ -77,7 +85,7 @@ smb2_decode_reparse_data_buffer(struct smb2_context *smb2,
                         return -1;
                 }
 
-                tmp = utf16_to_utf8((uint16_t *)(&vec->buf[suboffset + 20]),
+                tmp = smb2_utf16_to_utf8((uint16_t *)(&vec->buf[suboffset + 20]),
                                    sublen / 2);
                 rp->symlink.subname = smb2_alloc_data(smb2, rp,
                                                       strlen(tmp) + 1);
@@ -93,7 +101,7 @@ smb2_decode_reparse_data_buffer(struct smb2_context *smb2,
                 if (printoffset + printlen + 12 > rp->reparse_data_length) {
                         return -1;
                 }
-                tmp = utf16_to_utf8((uint16_t *)(&vec->buf[printoffset + 20]),
+                tmp = smb2_utf16_to_utf8((uint16_t *)(&vec->buf[printoffset + 20]),
                                    printlen / 2);
                 rp->symlink.printname = smb2_alloc_data(smb2, rp,
                                                         strlen(tmp) + 1);
