@@ -25,10 +25,6 @@
 #include <smb2/smb2-errors.h>
 #endif
 
-#ifdef __NDS__
-#include <time.h>
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif
