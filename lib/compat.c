@@ -342,7 +342,7 @@ ssize_t writev(int fd, const struct iovec *vector, int count)
         char *buffer;
         size_t to_copy;
         char *bp;
-		ssize_t bytes_written;
+	ssize_t bytes_written;
         for (i = 0; i < count; ++i) {
                 /* Check for ssize_t overflow.  */
                 if (((ssize_t)-1) - bytes < vector[i].iov_len) {
@@ -365,7 +365,7 @@ ssize_t writev(int fd, const struct iovec *vector, int count)
 
                 memcpy((void *)bp, (void *)vector[i].iov_base, copy);
                 
-				bp += copy;
+		bp += copy;
 
                 to_copy -= copy;
                 if (to_copy == 0)
@@ -408,16 +408,16 @@ ssize_t readv (int fd, const struct iovec *vector, int count)
 
         /* Copy the data from BUFFER into the memory specified by VECTOR.  */
         bytes = bytes_read;
-		bp = buffer;
-		for (i = 0; i < count; ++i) {
+	bp = buffer;
+        for (i = 0; i < count; ++i) {
             size_t copy = (vector[i].iov_len < bytes) ? vector[i].iov_len : bytes;
 
             memcpy((void *)vector[i].iov_base, (void *)bp, copy);	
-			bp += copy;
-			bytes -= copy;
-			if (bytes == 0)
-				break;
-		}
+	    bp += copy;
+	    bytes -= copy;
+	    if (bytes == 0)
+	    break;
+	}
 
         free(buffer);
         return bytes_read;
