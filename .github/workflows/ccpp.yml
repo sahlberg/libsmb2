@@ -176,12 +176,6 @@ jobs:
     - name: git checkout
       uses: actions/checkout@v3
 
-    - name: Compile NDS ARM7 
-      run: |
-        cd lib
-        make -f Makefile.DS_ARM7 clean
-        make -f Makefile.DS_ARM7
-
     - name: Compile NDS ARM9
       run: |
         cd lib

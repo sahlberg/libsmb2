@@ -64,7 +64,7 @@ OBJS := aes128ccm.o \
 # Compilation flags.
 COMMON_FLAGS	:= -g -O3 -Wall $(MACHDEP) 
 INCLUDES		:= -I../include -I../include/wiiu -I../include/smb2 -I$(WUT_ROOT)/include
-DEFINES			:= -DHAVE_CONFIG_H -D__WIIU__ -DNEED_READV -DNEED_WRITEV -DNEED_GETLOGIN_R
+DEFINES			:= -DHAVE_CONFIG_H -D__WIIU__ -DNEED_READV -DNEED_WRITEV -DNEED_GETLOGIN_R -D_U_=/**/
 CFLAGS			:= $(COMMON_FLAGS) $(INCLUDES) $(DEFINES)
 
 # Test link flags.

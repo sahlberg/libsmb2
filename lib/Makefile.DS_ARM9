@@ -67,7 +67,7 @@ RANLIB=/opt/devkitpro/devkitARM/bin/arm-none-eabi-ranlib
 
 ARCH = -marm -march=armv5te -mtune=arm946e-s
 CFLAGS = $(ARCH) -Wall -O3 -mword-relocations -fomit-frame-pointer -ffast-math -Wwrite-strings -Wno-format -Wpointer-arith
-CPPFLAGS = -DARM9 -D__NDS__ -DHAVE_CONFIG_H -DNEED_READV -DNEED_WRITEV -DNEED_GETLOGIN_R -DNEED_GETADDRINFO -DNEED_FREEADDRINFO -DNEED_POLL  -I$(DEVKITPRO)/libnds/include -I../include -I../include/nds -I../include/smb2
+CPPFLAGS = -DARM9 -D__NDS__ -DHAVE_CONFIG_H -DNEED_READV -DNEED_WRITEV -DNEED_GETLOGIN_R -DNEED_GETADDRINFO -DNEED_FREEADDRINFO -DNEED_POLL -D_U_=/**/ -I$(DEVKITPRO)/libnds/include -I../include -I../include/nds -I../include/smb2
 LDFLAGS = -specs=ds_arm9.specs -g $(ARCH) -L$(DEVKITPRO)/libnds/lib
 LIBS = -lmm9 -lnds9
 

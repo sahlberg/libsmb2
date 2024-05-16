@@ -3,7 +3,6 @@
 
 /* Whether or not TCP sockets should be allowed to linger after closure */
 #define CONFIGURE_OPTION_TCP_LINGER 1
-#define _U_ /* __attribute__((unused)) */
 
 /* Define to 1 if you have the <arpa/inet.h> header file. */
 #define HAVE_ARPA_INET_H 1

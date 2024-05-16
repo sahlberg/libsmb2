@@ -289,31 +289,41 @@ Then to build libsmb2, run
 The process will copy the resulting libsmb2.a and the include/smb2 headers to your
 devkitPro switch portlibs folder.
 
-Nintendo Wii/Gamecube
+Nintendo Wii
 -------------
-Nintendo Wii CPU is a Broadway PowerPC processor while Nintendo GameCube CPU is a IBM "Gekko" PowerPC CPU.
-To compile libsmb2 for the Nintendo Wii/Gamecube, first install the devkitPro with libogc using pacman to set it up.
+Nintendo Wii CPU is a Broadway PowerPC processor.
+To compile libsmb2 for the Nintendo Wii, first install the devkitPro with libogc using pacman to set it up.
 
 Then to build libsmb2, run
   $ cd lib
   $ make -f Makefile.WII install
+
+The process will copy the resulting libsmb2.a and the include/smb2 headers to your
+devkitPro wii portlibs folder.
+
+Nintendo Gamecube
+-------------
+Nintendo GameCube CPU is a IBM "Gekko" PowerPC CPU.
+To compile libsmb2 for the Gamecube, first install the devkitPro with libogc using pacman to set it up.
+
+Then to build libsmb2, run
+  $ cd lib
   $ make -f Makefile.GC install
 
 The process will copy the resulting libsmb2.a and the include/smb2 headers to your
-devkitPro wii or gamecube portlibs folder.
+devkitPro gamecube portlibs folder.
 
 Nintendo DS 
 -------------
 Nintendo DS CPU is both ARM7TDMI and ARM946E-S.
-To compile libsmb2 for the Nintendo DS both arch´s, first install the devkitPro with libnds using pacman to set it up.
+To compile libsmb2 for the Nintendo DS, first install the devkitPro with libnds using pacman to set it up.
 
 Then to build libsmb2, run
   $ cd lib
-  $ make -f Makefile.DS_ARM7 install
   $ make -f Makefile.DS_ARM9 install
 
-The process will copy the resulting libsmb2_arm7.a or libsmb2_arm9.a(recommended) and the include/smb2 headers to your
-devkitPro ds portlibs folder on: lib/arm7 or lib/arm9.
+The process will copy the resulting libsmb2_arm9.a and the include/smb2 headers to your
+devkitPro ds portlibs folder on: lib/arm9.
 
 Nintendo WII-U
 -------------
