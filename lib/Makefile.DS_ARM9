@@ -6,6 +6,8 @@ DEVKITARM := $(DEVKITPRO)/devkitARM
 endif
 PORTLIBS := $(DEVKITPRO)/portlibs/nds
 
+TARGET_LIB = libsmb29.a
+
 SRCS = aes128ccm.o \
 	aes.o \
 	alloc.o \
@@ -73,17 +75,17 @@ LIBS = -lmm9 -lnds9
 
 CXXFLAGS += $(CFLAGS)
 
-all: libsmb2_arm9.a 
+all: $(TARGET_LIB)
 
-libsmb2_arm9.a: $(OBJS)
+$(TARGET_LIB): $(OBJS)
 	$(AR) $@ $(OBJS)
 	$(RANLIB) $@
 
-install: libsmb2_arm9.a
+install: $(TARGET_LIB)
 	@mkdir -p $(PORTLIBS)/include/smb2/
 	@cp ../include/smb2/*.h $(PORTLIBS)/include/smb2/
 	@mkdir -p $(PORTLIBS)/lib	
-	@cp -r libsmb2_arm9.a $(PORTLIBS)/lib/libsmb2_arm9.a
+	@cp -r $(TARGET_LIB) $(PORTLIBS)/lib
 
 clean: 
 	find . -name "*.o" |xargs rm -f
@@ -100,4 +102,3 @@ $(patsubst %, _clean_dir_%, $(SUBDIRS)):
 	$(MAKE) -C $(patsubst _clean_dir_%, %, $@) clean
 
 #include $(DEVKITARM)/ds_rules
-

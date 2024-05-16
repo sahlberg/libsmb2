@@ -9,8 +9,7 @@ endif
 
 include $(DEVKITPRO)/wut/share/wut_rules
 
-TARGET_LIB = libsmb2.a
-
+TARGET_LIB = libsmb2.a 
 # Library object files.
 OBJS := aes128ccm.o \
 	aes.o \
@@ -61,7 +60,9 @@ OBJS := aes128ccm.o \
 	socket.o \
 	sync.o
 
-# Compilation flags.
+#---------------------------------------------------------------------------------
+# options for code generation
+#---------------------------------------------------------------------------------
 COMMON_FLAGS	:= -g -O3 -Wall $(MACHDEP) 
 INCLUDES		:= -I../include -I../include/wiiu -I../include/smb2 -I$(WUT_ROOT)/include
 DEFINES			:= -DHAVE_CONFIG_H -D__WIIU__ -DNEED_READV -DNEED_WRITEV -DNEED_GETLOGIN_R -D_U_=/**/
@@ -70,20 +71,17 @@ CFLAGS			:= $(COMMON_FLAGS) $(INCLUDES) $(DEFINES)
 # Test link flags.
 LDFLAGS			:= $(COMMON_FLAGS) -L$(WUT_ROOT)/lib -lwut
 
-# What's a full build?
 all: $(OBJS) $(TARGET_LIB)
 
-# How to delete the intermediate files.
-clean:
-	@echo Cleaning $(TARGET_LIB) $(OBJS)
-	@rm -fr $(TARGET_LIB) $(OBJS)
+$(TARGET_LIB): $(OBJS)
+	$(AR) -rc $@ $^
 
-install: all
+install: $(TARGET_LIB)
 	@cp  $(TARGET_LIB) "$(DEVKITPRO)/portlibs/wiiu/lib"
 	@mkdir -p "$(DEVKITPRO)/portlibs/wiiu/include/smb2"
 	@cp ../include/smb2/*.h "$(DEVKITPRO)/portlibs/wiiu/include/smb2"
 	@echo "Installed!"
 
-# How to build a library.
-$(TARGET_LIB): $(OBJS)
-	$(AR) -rc $@ $^	
+clean:
+	@echo Cleaning $(TARGET_LIB) $(OBJS)
+	@rm -rf $(OBJS) $(TARGET_LIB)

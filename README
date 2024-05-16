@@ -322,7 +322,7 @@ Then to build libsmb2, run
   $ cd lib
   $ make -f Makefile.DS_ARM9 install
 
-The process will copy the resulting libsmb2_arm9.a and the include/smb2 headers to your
+The process will copy the resulting libsmb29.a and the include/smb2 headers to your
 devkitPro ds portlibs folder on: lib/arm9.
 
 Nintendo WII-U
