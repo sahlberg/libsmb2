@@ -39,6 +39,14 @@
 #include <stddef.h>
 #endif
 
+#ifdef HAVE_TIME_H
+#include <time.h>
+#endif
+
+#ifdef HAVE_SYS_TIME_H
+#include <sys/time.h>
+#endif
+
 #include <errno.h>
 
 #include "compat.h"
@@ -59,7 +67,7 @@ smb2_encode_set_info_request(struct smb2_context *smb2,
         struct smb2_iovec *iov;
         struct smb2_file_end_of_file_info *eofi;
         struct smb2_file_rename_info *rni;
-        struct utf16 *name;
+        struct smb2_utf16 *name;
 
         len = SMB2_SET_INFO_REQUEST_SIZE & 0xfffffffe;
         buf = calloc(len, sizeof(uint8_t));
@@ -113,7 +121,7 @@ smb2_encode_set_info_request(struct smb2_context *smb2,
                 case SMB2_FILE_RENAME_INFORMATION:
                         rni = req->input_data;
 
-                        name = utf8_to_utf16((char *)(rni->file_name));
+                        name = smb2_utf8_to_utf16((char *)(rni->file_name));
                         if (name == NULL) {
                                 smb2_set_error(smb2, "Could not convert name into UTF-16");
                                 return -1;

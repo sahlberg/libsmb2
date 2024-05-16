@@ -3,15 +3,16 @@
 
 /* Whether or not TCP sockets should be allowed to linger after closure */
 #define CONFIGURE_OPTION_TCP_LINGER 1
+#define _U_ /* __attribute__((unused)) */
 
 /* Define to 1 if you have the <arpa/inet.h> header file. */
-/* #undef HAVE_ARPA_INET_H */
+#define HAVE_ARPA_INET_H 1
 
 /* Define to 1 if you have the <dlfcn.h> header file. */
-/* #undef HAVE_DLFCN_H */
+#define HAVE_DLFCN_H 1
 
 /* Define to 1 if you have the <errno.h> header file. */
-/* #undef HAVE_ERRNO_H */
+#define HAVE_ERRNO_H 1
 
 /* Define to 1 if you have the <fcntl.h> header file. */
 #define HAVE_FCNTL_H 1
@@ -20,7 +21,7 @@
 /* #undef HAVE_GSSAPI_GSSAPI_H */
 
 /* Define to 1 if you have the <inttypes.h> header file. */
-/* #undef HAVE_INTTYPES_H */
+#define HAVE_INTTYPES_H 1
 
 /* Whether we use gssapi_krb5 or not */
 /* #undef HAVE_LIBKRB5 */
@@ -31,9 +32,6 @@
 /* Define to 1 if you have the `socket' library (-lsocket). */
 /* #undef HAVE_LIBSOCKET */
 
-/* Whether we have linger */
-/* #undef HAVE_LINGER */
-
 /* Define to 1 if you have the <netdb.h> header file. */
 #define HAVE_NETDB_H 1
 
@@ -41,7 +39,7 @@
 #define HAVE_NETINET_IN_H 1
 
 /* Define to 1 if you have the <netinet/tcp.h> header file. */
-/* #undef HAVE_NETINET_TCP_H */
+#define HAVE_NETINET_TCP_H 1
 
 /* Define to 1 if you have the <poll.h> header file. */
 #define HAVE_POLL_H 1
@@ -50,7 +48,10 @@
 /* #undef HAVE_SOCKADDR_LEN */
 
 /* Whether we have sockaddr_Storage */
-#define HAVE_SOCKADDR_STORAGE 1
+/* #define HAVE_SOCKADDR_STORAGE 1 */
+
+/* Whether we have linger */
+#define HAVE_LINGER 1
 
 /* Define to 1 if you have the <stdint.h> header file. */
 #define HAVE_STDINT_H 1
@@ -62,22 +63,22 @@
 #define HAVE_STDLIB_H 1
 
 /* Define to 1 if you have the <strings.h> header file. */
-/* #undef HAVE_STRINGS_H */
+#define HAVE_STRINGS_H 1
 
 /* Define to 1 if you have the <string.h> header file. */
 #define HAVE_STRING_H 1
 
 /* Define to 1 if you have the <sys/errno.h> header file. */
-/* #undef HAVE_SYS_ERRNO_H */
+#define HAVE_SYS_ERRNO_H 1
 
 /* Define to 1 if you have the <sys/fcntl.h> header file. */
-/* #undef HAVE_SYS_FCNTL_H */
+#define HAVE_SYS_FCNTL_H 1
 
 /* Define to 1 if you have the <sys/ioctl.h> header file. */
-/* #undef HAVE_SYS_IOCTL_H */
+#define HAVE_SYS_IOCTL_H 1
 
 /* Define to 1 if you have the <sys/poll.h> header file. */
-/* #undef HAVE_SYS_POLL_H */
+#define HAVE_SYS_POLL_H 1
 
 /* Define to 1 if you have the <sys/socket.h> header file. */
 #define HAVE_SYS_SOCKET_H 1
@@ -86,7 +87,7 @@
 #define HAVE_SYS_STAT_H 1
 
 /* Define to 1 if you have the <sys/time.h> header file. */
-/* #undef HAVE_SYS_TIME_H */
+#define HAVE_SYS_TIME_H 1
 
 /* Define to 1 if you have the <sys/types.h> header file. */
 #define HAVE_SYS_TYPES_H 1
@@ -95,10 +96,10 @@
 /* #undef HAVE_SYS_UIO_H */
 
 /* Define to 1 if you have the <sys/unistd.h> header file. */
-/* #undef HAVE_SYS_UNISTD_H */
+#define HAVE_SYS_UNISTD_H 1
 
 /* Define to 1 if you have the <sys/_iovec.h> header file. */
-/* #undef HAVE_SYS__IOVEC_H */
+#define HAVE_SYS__IOVEC_H 1
 
 /* Define to 1 if you have the <time.h> header file. */
 #define HAVE_TIME_H 1

@@ -181,7 +181,6 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
 
 #endif /* PS3_PPU_PLATFORM */
 
-
 #ifdef __vita__
 #include <string.h>
 #include <stdlib.h>
@@ -191,6 +190,24 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
 #define login_num ENXIO
 
 #endif
+
+#if defined(__SWITCH__) || defined(__3DS__)
+
+#include <errno.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <alloca.h>
+#include <sys/socket.h>
+#ifdef __SWITCH__
+#include <switch/types.h>
+#else
+#include <3ds/types.h>	
+#endif
+
+#define login_num ENXIO
+
+#endif /* __SWITCH__ */
 
 #ifdef NEED_GETADDRINFO
 int smb2_getaddrinfo(const char *node, const char*service,
@@ -315,7 +332,6 @@ ssize_t writev(int fd, const struct iovec *vector, int count)
         size_t to_copy;
         char *bp;
 		ssize_t bytes_written;
-
         for (i = 0; i < count; ++i) {
                 /* Check for ssize_t overflow.  */
                 if (((ssize_t)-1) - bytes < vector[i].iov_len) {
@@ -330,7 +346,6 @@ ssize_t writev(int fd, const struct iovec *vector, int count)
                 /* XXX I don't know whether it is acceptable to try writing
                 the data in chunks.  Probably not so we just fail here.  */
                 return -1;
-
         /* Copy the data into BUFFER.  */
         to_copy = bytes;
         bp = buffer;
@@ -338,15 +353,14 @@ ssize_t writev(int fd, const struct iovec *vector, int count)
                 size_t copy = (vector[i].iov_len < to_copy) ? vector[i].iov_len : to_copy;
 
                 memcpy((void *)bp, (void *)vector[i].iov_base, copy);
+                
+				bp += copy;
 
-                bp += copy;
                 to_copy -= copy;
                 if (to_copy == 0)
                         break;
         }
-
         bytes_written = write(fd, buffer, bytes);
-
         free(buffer);
         return bytes_written;
 }
@@ -361,7 +375,6 @@ ssize_t readv (int fd, const struct iovec *vector, int count)
         char *buffer;
         ssize_t bytes_read;
         char *bp;
-
         for (i = 0; i < count; ++i)
         {
                 /* Check for ssize_t overflow.  */
@@ -371,7 +384,6 @@ ssize_t readv (int fd, const struct iovec *vector, int count)
                 }
                 bytes += vector[i].iov_len;
         }
-
         buffer = (char *)malloc(bytes);
         if (buffer == NULL)
                 return -1;
@@ -385,17 +397,16 @@ ssize_t readv (int fd, const struct iovec *vector, int count)
 
         /* Copy the data from BUFFER into the memory specified by VECTOR.  */
         bytes = bytes_read;
-        bp = buffer;
-        for (i = 0; i < count; ++i) {
-                size_t copy = (vector[i].iov_len < bytes) ? vector[i].iov_len : bytes;
+		bp = buffer;
+		for (i = 0; i < count; ++i) {
+            size_t copy = (vector[i].iov_len < bytes) ? vector[i].iov_len : bytes;
 
-                memcpy((void *)vector[i].iov_base, (void *)bp, copy);
-
-                bp += copy;
-                bytes -= copy;
-                if (bytes == 0)
-                        break;
-        }
+            memcpy((void *)vector[i].iov_base, (void *)bp, copy);	
+			bp += copy;
+			bytes -= copy;
+			if (bytes == 0)
+				break;
+		}
 
         free(buffer);
         return bytes_read;
@@ -418,7 +429,7 @@ int poll(struct pollfd *fds, unsigned int nfds, int timo)
         for (i = 0; i < nfds; ++i) {
                 int fd = fds[i].fd;
                 fds[i].revents = 0;
-                if (!VALID_SOCKET(fd))
+                if (!SMB2_VALID_SOCKET(fd))
                         continue;
                 if(fds[i].events & (POLLIN|POLLPRI)) {
                         ip = &ifds;
@@ -489,7 +500,7 @@ int poll(struct pollfd *fds, unsigned int nfds, int timo)
                 int fd = fds[i].fd;
                 short events = fds[i].events;
                 short revents = 0;
-                if (!VALID_SOCKET(fd))
+                if (!SMB2_VALID_SOCKET(fd))
                         continue;
                 if(events & (POLLIN|POLLPRI) && FD_ISSET(fd, &ifds))
                         revents |= POLLIN;

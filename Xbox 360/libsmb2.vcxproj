@@ -108,11 +108,12 @@
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <PrecompiledHeaderOutputFile>$(OutDir)$(ProjectName).pch</PrecompiledHeaderOutputFile>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <PreprocessorDefinitions>_DEBUG;_XBOX;_LIB;NEED_POLL;NEED_GETPID;NEED_GETLOGIN_R;NEED_RANDOM;NEED_SRANDOM;NEED_GETADDRINFO;NEED_FREEADDRINFO;XBOX_360_PLATFORM;HAVE_CONFIG_H</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_XBOX;_LIB;NEED_POLL;NEED_GETPID;NEED_GETLOGIN_R;NEED_RANDOM;NEED_SRANDOM;NEED_GETADDRINFO;NEED_FREEADDRINFO;XBOX_360_PLATFORM;HAVE_CONFIG_H;_U_=/**/</PreprocessorDefinitions>
       <CallAttributedProfiling>Callcap</CallAttributedProfiling>
       <CompileAs>CompileAsC</CompileAs>
-      <AdditionalIncludeDirectories>..\include\;..\include\smb2;..\include\msvc;..\include\msvc\sys;..\include\xbox 360</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\include\;..\include\smb2;..\include\xbox 360</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -195,10 +196,11 @@
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <PrecompiledHeaderOutputFile>$(OutDir)$(ProjectName).pch</PrecompiledHeaderOutputFile>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <PreprocessorDefinitions>NDEBUG;_XBOX;_LIB;NEED_POLL;NEED_GETPID;NEED_GETLOGIN_R;NEED_RANDOM;NEED_SRANDOM;NEED_GETADDRINFO;NEED_FREEADDRINFO;XBOX_360_PLATFORM;HAVE_CONFIG_H</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\include\;..\include\smb2;..\include\msvc;..\include\msvc\sys;..\include\xbox 360</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>NDEBUG;_XBOX;_LIB;NEED_POLL;NEED_GETPID;NEED_GETLOGIN_R;NEED_RANDOM;NEED_SRANDOM;NEED_GETADDRINFO;NEED_FREEADDRINFO;XBOX_360_PLATFORM;HAVE_CONFIG_H;_U_=/**/</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\include\;..\include\smb2;..\include\xbox 360</AdditionalIncludeDirectories>
       <CompileAs>CompileAsC</CompileAs>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -219,7 +221,10 @@
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <PrecompiledHeaderOutputFile>$(OutDir)$(ProjectName).pch</PrecompiledHeaderOutputFile>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <PreprocessorDefinitions>NDEBUG;_XBOX;LTCG;_LIB</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_XBOX;LTCG;_LIB;NEED_POLL;NEED_GETPID;NEED_GETLOGIN_R;NEED_RANDOM;NEED_SRANDOM;NEED_GETADDRINFO;NEED_FREEADDRINFO;XBOX_360_PLATFORM;HAVE_CONFIG_H;_U_=/**/</PreprocessorDefinitions>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <AdditionalIncludeDirectories>..\include\;..\include\smb2;..\include\xbox 360</AdditionalIncludeDirectories>
+      <CompileAs>CompileAsC</CompileAs>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -236,8 +241,6 @@
   <ItemGroup>
     <ClInclude Include="..\include\asprintf.h" />
     <ClInclude Include="..\include\libsmb2-private.h" />
-    <ClInclude Include="..\include\msvc\poll.h" />
-    <ClInclude Include="..\include\msvc\sys\socket.h" />
     <ClInclude Include="..\include\portable-endian.h" />
     <ClInclude Include="..\include\slist.h" />
     <ClInclude Include="..\include\smb2\libsmb2-dcerpc-lsa.h" />
@@ -252,7 +255,6 @@
     <ClInclude Include="..\lib\aes128ccm.h" />
     <ClInclude Include="..\lib\compat.h" />
     <ClInclude Include="..\lib\hmac-md5.h" />
-    <ClInclude Include="..\lib\krb5-wrapper.h" />
     <ClInclude Include="..\lib\md4.h" />
     <ClInclude Include="..\lib\md5.h" />
     <ClInclude Include="..\lib\ntlmssp.h" />
@@ -273,13 +275,11 @@
     <ClCompile Include="..\lib\hmac-md5.c" />
     <ClCompile Include="..\lib\hmac.c" />
     <ClCompile Include="..\lib\init.c" />
-    <ClCompile Include="..\lib\krb5-wrapper.c" />
     <ClCompile Include="..\lib\libsmb2.c" />
     <ClCompile Include="..\lib\md4c.c" />
     <ClCompile Include="..\lib\md5.c" />
     <ClCompile Include="..\lib\ntlmssp.c" />
     <ClCompile Include="..\lib\pdu.c" />
-    <ClCompile Include="..\lib\sha1.c" />
     <ClCompile Include="..\lib\sha224-256.c" />
     <ClCompile Include="..\lib\sha384-512.c" />
     <ClCompile Include="..\lib\smb2-cmd-close.c" />

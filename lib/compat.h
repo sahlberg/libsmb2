@@ -23,37 +23,34 @@
 extern "C" {
 #endif
 
-#if defined(_WINDOWS) || defined(_XBOX)
-#if defined(_WINDOWS)
+#if defined(_XBOX) || defined(_WINDOWS) || defined(__MINGW32__)
+#if defined(_WINDOWS) || defined(__MINGW32__)
+#include <windows.h>
+#include <ws2tcpip.h>
 #include <winsock2.h>
 #elif defined(_XBOX)
+#include <xtl.h>
 #include <winsockx.h>
 #endif
 typedef SOCKET t_socket;
-#define VALID_SOCKET(sock)	((sock) != INVALID_SOCKET)
+#define SMB2_INVALID_SOCKET INVALID_SOCKET
+#define SMB2_VALID_SOCKET(sock)	((sock) != SMB2_INVALID_SOCKET)
 #else
 typedef int t_socket;
-#define VALID_SOCKET(sock)	((sock) >= 0)
-#define INVALID_SOCKET		-1
+#define SMB2_VALID_SOCKET(sock)	((sock) >= 0)
+#define SMB2_INVALID_SOCKET		-1
 #endif
 
 #if defined(_XBOX) || defined(_WINDOWS) || defined(__MINGW32__)
 
-#ifdef _XBOX
-/* XBOX Defs begin */
-#include <xtl.h>
-#else
-#include <windows.h>
-#include <ws2tcpip.h>
-#endif
 #include <stddef.h>
 #include <errno.h>
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
-#endif // !WIN32_LEAN_AND_MEAN
+#endif /* !WIN32_LEAN_AND_MEAN */
 
-#ifdef XBOX_PLATFORM /* MSVC 2003 Doesn´t have stdint.h header */
+#ifdef XBOX_PLATFORM /* MSVC 2003 and Xbox XDK Doesn´t have stdint.h header */
 typedef char int8_t;
 typedef short int16_t;
 typedef short int_least16_t;
@@ -67,8 +64,6 @@ typedef unsigned int uint32_t;
 typedef unsigned long long uint64_t;
 typedef unsigned int uint_t;
 typedef unsigned int uintptr_t;
-#else
-#include <stdint.h>
 #endif
 
 #ifndef ENETRESET
@@ -191,7 +186,7 @@ typedef SSIZE_T ssize_t;
 
 struct iovec
 {
-  unsigned long iov_len; // from WSABUF
+  unsigned long iov_len; /* from WSABUF */
   void *iov_base;        
 };	
 
@@ -260,6 +255,10 @@ int getpid();
 
 #include "lwip/netdb.h"
 #include "lwip/sockets.h"
+
+#ifndef SOL_TCP
+#define SOL_TCP 6
+#endif
 
 #define EAI_AGAIN EAGAIN
 long long int be64toh(long long int x);
@@ -521,8 +520,36 @@ int getlogin_r(char *buf, size_t size);
 #define SOL_TCP IPPROTO_TCP
 #endif
 
+#endif
+
+#if defined(__SWITCH__) || defined(__3DS__)
+
+#include <sys/types.h>
+#ifdef __3DS__
+struct iovec {
+  void  *iov_base;
+  size_t iov_len;
+};	
+#define sockaddr_in6 sockaddr_in
+#else
+#include <sys/_iovec.h>
+#endif
+
+#ifndef EAI_AGAIN
+#define EAI_AGAIN EAGAIN
+#endif
+
+#ifndef EAI_FAIL
+#define EAI_FAIL        4
+#endif
+
+#ifndef EAI_SERVICE
+#define EAI_SERVICE     9
+#endif
+
 ssize_t writev(int fd, const struct iovec *iov, int iovcnt);
 ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
+int getlogin_r(char *buf, size_t size);
 
 #endif
 
@@ -545,6 +572,11 @@ ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
 #include <stddef.h>
 #include <esp_system.h>
 #include <sys/types.h>
+
+#ifndef SOL_TCP
+#define SOL_TCP 6
+#endif
+
 void srandom(unsigned int seed);
 long random(void);
 int getlogin_r(char *buf, size_t size);

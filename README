@@ -278,6 +278,30 @@ Then to build libsmb2, run
 The process will copy the resulting libsmb2.a and the include/smb2 headers to your
 OpenOrbis SDK include folder.
 
+Nintendo 3DS
+-------------
+Nintendo 3DS CPU is a ARM11 MPCore variant.
+To compile libsmb2 for the Nintendo 3DS, first install the devkitPro with libctru to set it up.
+
+Then to build libsmb2, run
+  $ cd lib
+  $ make -f Makefile.3DS install
+
+The process will copy the resulting libsmb2.a and the include/smb2 headers to your
+devkitPro 3ds portlibs folder.
+
+Nintendo Switch
+-------------
+Nintendo Switch CPU is a Custom Nvidia Tegra X1.
+To compile libsmb2 for the Nintendo Switch, first install the devkitPro with libnx to set it up.
+
+Then to build libsmb2, run
+  $ cd lib
+  $ make -f Makefile.SWITCH install
+
+The process will copy the resulting libsmb2.a and the include/smb2 headers to your
+devkitPro switch portlibs folder.
+
 Amiga (AmigaOS)
 ----------------------
 AmigaOS is Operating system which the main processor is a Microprocessor PowerPC.
@@ -313,7 +337,7 @@ the preferred method of installation.
 
 Xbox (Xbox XDK)
 ----------------------
-Xbox CPU is acustom Intel Pentium III Coppermine-based processor which only supports litlle endian values.
+Xbox CPU is a custom Intel Pentium III Coppermine-based processor which only supports litlle endian values.
 To compile libsmb2 for the Xbox, first install the Xbox XDK(with all features), Microsoft Visual C++ 2003 Professional and Windows XP.
 
 Then to build libsmb2, go to Xbox folder 

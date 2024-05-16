@@ -63,6 +63,10 @@
 #include <sys/uio.h>
 #endif
 
+#ifdef HAVE_SYS__IOVEC_H
+#include <sys/_iovec.h>
+#endif
+
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
@@ -123,7 +127,7 @@ smb2_close_connecting_fds(struct smb2_context *smb2)
                 t_socket fd = smb2->connecting_fds[i];
 
                 /* Don't close the connected fd */
-                if (fd == smb2->fd || !VALID_SOCKET(fd))
+                if (fd == smb2->fd || !SMB2_VALID_SOCKET(fd))
                         continue;
 
                 if (smb2->change_fd) {
@@ -160,7 +164,7 @@ smb2_get_credit_charge(struct smb2_context *smb2, struct smb2_pdu *pdu)
 int
 smb2_which_events(struct smb2_context *smb2)
 {
-        int events = VALID_SOCKET(smb2->fd) ? POLLIN : POLLOUT;
+        int events = SMB2_VALID_SOCKET(smb2->fd) ? POLLIN : POLLOUT;
 
         if (smb2->outqueue != NULL &&
             smb2_get_credit_charge(smb2, smb2->outqueue) <= smb2->credits) {
@@ -172,7 +176,7 @@ smb2_which_events(struct smb2_context *smb2)
 
 t_socket smb2_get_fd(struct smb2_context *smb2)
 {
-        if (VALID_SOCKET(smb2->fd)) {
+        if (SMB2_VALID_SOCKET(smb2->fd)) {
                 return smb2->fd;
         } else if (smb2->connecting_fds_count > 0) {
                 return smb2->connecting_fds[0];
@@ -184,7 +188,7 @@ t_socket smb2_get_fd(struct smb2_context *smb2)
 const t_socket *
 smb2_get_fds(struct smb2_context *smb2, size_t *fd_count, int *timeout)
 {
-        if (VALID_SOCKET(smb2->fd)) {
+        if (SMB2_VALID_SOCKET(smb2->fd)) {
                 *fd_count = 1;
                 *timeout = -1;
                 return &smb2->fd;
@@ -200,7 +204,7 @@ smb2_write_to_socket(struct smb2_context *smb2)
 {
         struct smb2_pdu *pdu;
 
-        if (!VALID_SOCKET(smb2->fd)) {
+        if (!SMB2_VALID_SOCKET(smb2->fd)) {
                 smb2_set_error(smb2, "trying to write but not connected");
                 return -1;
         }
@@ -237,7 +241,7 @@ smb2_write_to_socket(struct smb2_context *smb2)
                                 for (i = 0; i < tmp_pdu->out.niov;
                                      i++, niov++) {
                                         iov[niov].iov_base = tmp_pdu->out.iov[i].buf;
-#ifdef _WIN32
+#if defined(_WIN32) || defined(_XBOX)
                                         iov[niov].iov_len = (unsigned long)tmp_pdu->out.iov[i].len;
 #else
                                         iov[niov].iov_len = (size_t)tmp_pdu->out.iov[i].len;
@@ -263,7 +267,7 @@ smb2_write_to_socket(struct smb2_context *smb2)
 
                 /* Adjust the first vector to send */
                 tmpiov->iov_base = (char *)tmpiov->iov_base + num_done;
-#ifdef _WIN32
+#if defined(_WIN32) || defined(_XBOX)
                 tmpiov->iov_len -= (unsigned long)num_done;
 #else
                 tmpiov->iov_len -= (size_t)num_done;
@@ -279,7 +283,7 @@ smb2_write_to_socket(struct smb2_context *smb2)
                         return -1;
                 }
 
-                pdu->out.num_done += count;
+                pdu->out.num_done += (size_t)count;
 
                 if (pdu->out.num_done == SMB2_SPL_SIZE + spl) {
                         SMB2_LIST_REMOVE(&smb2->outqueue, pdu);
@@ -316,7 +320,8 @@ static int smb2_read_data(struct smb2_context *smb2, read_func func,
         size_t iov_offset = 0;
         static char smb3tfrm[4] = {0xFD, 'S', 'M', 'B'};
         struct smb2_pdu *pdu = smb2->pdu;
-        ssize_t count, len;
+        ssize_t count;
+        size_t len;
 
 read_more_data:
         num_done = smb2->in.num_done;
@@ -367,7 +372,7 @@ read_more_data:
                 /* remote side has closed the socket. */
                 return -1;
         }
-        smb2->in.num_done += count;
+        smb2->in.num_done += (size_t)count;
 
         if (smb2->in.num_done < smb2->in.total_size) {
                 goto read_more_data;
@@ -663,11 +668,12 @@ smb2_read_from_socket(struct smb2_context *smb2)
 static ssize_t smb2_readv_from_buf(struct smb2_context *smb2,
                                    const struct iovec *iov, int iovcnt)
 {
-        ssize_t i, len, count = 0;
+        size_t i, len;
+        ssize_t count = 0;
 
-        for (i=0;i<iovcnt;i++){
+        for (i=0;(int)i<iovcnt;i++){
                 len = iov[i].iov_len;
-                if (len > (ssize_t)smb2->enc_len - smb2->enc_pos) {
+                if (len > smb2->enc_len - smb2->enc_pos) {
                         len = smb2->enc_len - smb2->enc_pos;
                 }
                 memcpy(iov[i].iov_base, &smb2->enc[smb2->enc_pos], len);
@@ -706,7 +712,7 @@ smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
 {
         int ret = 0;
 
-        if (!VALID_SOCKET(fd)) {
+        if (!SMB2_VALID_SOCKET(fd)) {
                 /* Connect to a new addr in parallel */
                 if (smb2->next_addrinfo != NULL) {
                     int err = smb2_connect_async_next_addr(smb2,
@@ -737,7 +743,7 @@ smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
                 int err = 0;
                 socklen_t err_size = sizeof(err);
 
-                if (!VALID_SOCKET(smb2->fd) && smb2->next_addrinfo != NULL) {
+                if (!SMB2_VALID_SOCKET(smb2->fd) && smb2->next_addrinfo != NULL) {
                         /* Connecting fd failed, try to connect to the next addr */
                         smb2_close_connecting_fd(smb2, fd);
 
@@ -773,7 +779,7 @@ smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
                 goto out;
         }
 
-        if (!VALID_SOCKET(smb2->fd) && revents & POLLOUT) {
+        if (!SMB2_VALID_SOCKET(smb2->fd) && revents & POLLOUT) {
                 int err = 0;
                 socklen_t err_size = sizeof(err);
 
@@ -926,7 +932,7 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_o
         family = ai->ai_family;
 
         fd = socket(family, SOCK_STREAM, 0);
-        if (!VALID_SOCKET(fd)) {
+        if (!SMB2_VALID_SOCKET(fd)) {
                 smb2_set_error(smb2, "Failed to open smb2 socket. "
                                "Errno:%s(%d).", strerror(errno), errno);
                 return -EIO;
@@ -1042,7 +1048,7 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
         size_t addr_count = 0;
         const struct addrinfo *ai;
 
-        if (VALID_SOCKET(smb2->fd)) {
+        if (SMB2_VALID_SOCKET(smb2->fd)) {
                 smb2_set_error(smb2, "Trying to connect but already "
                                "connected.");
                 return -EINVAL;
