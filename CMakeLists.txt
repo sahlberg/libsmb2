@@ -187,7 +187,7 @@ else()
 
     if(CMAKE_SYSTEM_NAME MATCHES Windows)
       list(APPEND CORE_LIBRARIES ws2_32.lib)
-      add_definitions(-DWIN32_LEAN_AND_MEAN -D_CRT_NONSTDC_NO_DEPRECATE -D_CRT_SECURE_NO_WARNINGS)
+      add_definitions(-DWIN32_LEAN_AND_MEAN -D_CRT_SECURE_NO_WARNINGS)
     elseif(CMAKE_SYSTEM_NAME STREQUAL Solaris)
       find_library(SOCKET_LIBRARY socket)
       find_library(NSL_LIBRARY nsl)
