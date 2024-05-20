@@ -109,7 +109,7 @@
  * Since the smb is most likely used on local network, use an aggressive
  * timeout of 100ms. */
 #define HAPPY_EYEBALLS_TIMEOUT 100
-#if !defined(HAVE_LINGER) && !defined(_WINDOWS)
+#if !defined(HAVE_LINGER)
 struct linger 
 {
 	int		l_onoff;	/* Linger active		*/
