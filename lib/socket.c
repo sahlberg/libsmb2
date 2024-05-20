@@ -360,7 +360,7 @@ read_more_data:
                 if (err == WSAEINTR || err == WSAEWOULDBLOCK) {
 #else
                 int err = errno;
-                if (err == EINTR || err == EAGAIN) {
+                if (err == EINTR || err == EAGAIN || err == EWOULDBLOCK) {
 #endif
                         return 0;
                 }
