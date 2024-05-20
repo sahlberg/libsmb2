@@ -26,8 +26,12 @@ extern "C" {
 #if defined(_XBOX) || defined(_WINDOWS) || defined(__MINGW32__)
 #if defined(_WINDOWS) || defined(__MINGW32__)
 #include <windows.h>
+#ifdef __USE_WINSOCK__
+#include <winsock.h>
+#else
 #include <ws2tcpip.h>
 #include <winsock2.h>
+#endif
 #elif defined(_XBOX)
 #include <xtl.h>
 #include <winsockx.h>
@@ -45,6 +49,10 @@ typedef int t_socket;
 
 #include <stddef.h>
 #include <errno.h>
+
+#ifdef __USE_WINSOCK__
+#include <io.h>
+#endif
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -126,7 +134,7 @@ typedef unsigned int uintptr_t;
 #define EAI_SERVICE     9
 #endif
 
-#ifdef _XBOX
+#if defined(_XBOX) || defined(__USE_WINSOCK__)
 typedef int socklen_t;
 #endif
 
@@ -150,7 +158,7 @@ typedef int socklen_t;
 #define SO_ERROR 0x1007
 #endif
 
-#ifdef _XBOX
+#if defined(_XBOX) || defined(__USE_WINSOCK__)
 struct sockaddr_storage {
 #ifdef HAVE_SOCKADDR_SA_LEN
 	unsigned char ss_len;
@@ -177,9 +185,14 @@ struct pollfd {
         short revents;
 };
 
-#define SOL_TCP 6
+#ifndef SOL_TCP
+#define SOL_TCP IPPROTO_TCP
+#endif
 
+#ifdef _XBOX
 #define inline __inline 
+#endif
+
 #endif
 
 typedef SSIZE_T ssize_t;
@@ -190,9 +203,15 @@ struct iovec
   void *iov_base;        
 };	
 
-#ifdef _XBOX
+#if defined(_XBOX) || defined(__USE_WINSOCK__)
 int poll(struct pollfd *fds, unsigned int nfds, int timo);
 
+#ifdef __USE_WINSOCK__
+#define write(fd, buf, maxcount) _write(fd, buf, (unsigned int)maxcount)
+#define read(fd, buf, maxcount) _read(fd, buf, (unsigned int)maxcount)
+#endif
+
+#ifdef _XBOX 
 int smb2_getaddrinfo(const char *node, const char*service,
                 const struct addrinfo *hints,
                 struct addrinfo **res);
@@ -200,6 +219,7 @@ void smb2_freeaddrinfo(struct addrinfo *res);
 
 #define getaddrinfo smb2_getaddrinfo
 #define freeaddrinfo smb2_freeaddrinfo
+#endif
 
 #else
 
@@ -207,6 +227,13 @@ void smb2_freeaddrinfo(struct addrinfo *res);
 #define poll WSAPoll
 
 #endif
+
+#ifdef __USE_WINSOCK__
+
+ssize_t writev(int fd, const struct iovec* vector, int count);
+ssize_t readv(int fd, const struct iovec* vector, int count);
+
+#else
 
 inline int writev(t_socket sock, struct iovec *iov, int nvecs)
 {
@@ -232,8 +259,13 @@ inline int readv(t_socket sock, struct iovec *iov, int nvecs)
   }
   return -1;
 }
+#endif
 
+#ifdef __USE_WINSOCK__
+#define close(x) _close((int)x)
+#else
 #define close closesocket
+#endif
 
 void srandom(unsigned int seed);
 int random(void);

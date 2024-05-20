@@ -272,7 +272,11 @@ smb2_write_to_socket(struct smb2_context *smb2)
 #else
                 tmpiov->iov_len -= (size_t)num_done;
 #endif
+#ifdef __USE_WINSOCK__
+                count = writev((int)smb2->fd, tmpiov, niov);
+#else
                 count = writev(smb2->fd, tmpiov, niov);
+#endif
                 if (count == -1) {
                         if (errno == EAGAIN || errno == EWOULDBLOCK) {
                                 return 0;
@@ -642,7 +646,11 @@ read_more_data:
 static ssize_t smb2_readv_from_socket(struct smb2_context *smb2,
                                       const struct iovec *iov, int iovcnt)
 {
+#ifdef __USE_WINSOCK__
+        return readv((int)smb2->fd, (struct iovec*)iov, iovcnt);
+#else
         return readv(smb2->fd, (struct iovec*) iov, iovcnt);
+#endif
 }
 
 static int
