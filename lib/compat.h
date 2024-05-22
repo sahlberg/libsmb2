@@ -180,7 +180,7 @@ struct addrinfo {
 
 /* XBOX Defs end */
 struct pollfd {
-        int fd;
+        t_socket fd;
         short events;
         short revents;
 };
@@ -211,7 +211,6 @@ int poll(struct pollfd *fds, unsigned int nfds, int timo);
 #define read(fd, buf, maxcount) _read(fd, buf, (unsigned int)maxcount)
 #endif
 
-#ifdef _XBOX 
 int smb2_getaddrinfo(const char *node, const char*service,
                 const struct addrinfo *hints,
                 struct addrinfo **res);
@@ -219,7 +218,6 @@ void smb2_freeaddrinfo(struct addrinfo *res);
 
 #define getaddrinfo smb2_getaddrinfo
 #define freeaddrinfo smb2_freeaddrinfo
-#endif
 
 #else
 
@@ -230,8 +228,8 @@ void smb2_freeaddrinfo(struct addrinfo *res);
 
 #ifdef __USE_WINSOCK__
 
-ssize_t writev(int fd, const struct iovec* vector, int count);
-ssize_t readv(int fd, const struct iovec* vector, int count);
+ssize_t writev(t_socket fd, const struct iovec* vector, int count);
+ssize_t readv(t_socket fd, const struct iovec* vector, int count);
 
 #else
 
