@@ -1,0 +1,18 @@
+.PHONY: switch_all switch_install 3ds_all 3ds_install
+
+switch_all:
+	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=${DEVKITPRO}/cmake/Switch.cmake" 
+	cmake --build build
+
+switch_install: switch_all
+	cmake --build build --target install
+
+3ds_all:
+	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=${DEVKITPRO}/cmake/3DS.cmake" 
+	cmake --build build
+
+3ds_install: 3ds_all
+	cmake --build build --target install
+
+clean:
+	rm -rf build
