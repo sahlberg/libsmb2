@@ -83,9 +83,7 @@ jobs:
 
     - name: Compile Nintendo Switch
       run: |
-        cd lib
-        make -f Makefile.SWITCH clean
-        make -f Makefile.SWITCH
+        make -f Makefile.platform switch_all clean
 
   build-3ds:
     name: 3DS build
@@ -102,9 +100,7 @@ jobs:
 
     - name: Compile Nintendo 3DS
       run: |
-        cd lib
-        make -f Makefile.3DS clean
-        make -f Makefile.3DS
+        make -f Makefile.platform 3ds_all clean
 
   build-ps3-ppu:
     name: PS3 PPU build
