@@ -184,8 +184,8 @@ else()
 
     if(MSVC AND BUILD_SHARED_LIBS)
       # If we are building dll with msvc, then generate a def file according to the syms file
-      SET(SYMS_FILE_PATH "${PROJECT_SOURCE_DIR}/lib/libsmb2.syms")
-      SET(DEF_FILE_PATH "${PROJECT_BINARY_DIR}/lib/libsmb2.def")
+      set(SYMS_FILE_PATH "${PROJECT_SOURCE_DIR}/lib/libsmb2.syms")
+      set(DEF_FILE_PATH "${PROJECT_BINARY_DIR}/lib/libsmb2.def")
       file(READ ${SYMS_FILE_PATH} EXPORT_SYMBOLS)
       file(WRITE ${DEF_FILE_PATH} "LIBRARY smb2\nEXPORTS\n\n${EXPORT_SYMBOLS}")
       # Pass def file to the linker
