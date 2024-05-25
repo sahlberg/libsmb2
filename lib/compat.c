@@ -22,9 +22,6 @@
 #include <errno.h>
 #include <stdlib.h>
 
-#ifdef __USE_WINSOCK__
-#include <io.h>
-#endif
 #ifdef _WINDOWS
 #define NEED_GETLOGIN_R
 #define NEED_GETPID
