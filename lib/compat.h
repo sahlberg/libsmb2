@@ -37,6 +37,9 @@ extern "C" {
 #include <winsockx.h>
 #endif
 typedef SOCKET t_socket;
+#ifndef INVALID_SOCKET
+#define INVALID_SOCKET  (t_socket)(~0)
+#endif
 #define SMB2_INVALID_SOCKET INVALID_SOCKET
 #define SMB2_VALID_SOCKET(sock)	((sock) != SMB2_INVALID_SOCKET)
 #else
@@ -310,8 +313,8 @@ int getlogin_r(char *buf, size_t size);
 #define TCP_NODELAY     1  /* Don't delay send to coalesce packets  */
 #define SOL_TCP IPPROTO_TCP
 
-ssize_t writev(int fd, const struct iovec *iov, int iovcnt);
-ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
+ssize_t writev(t_socket fd, const struct iovec *iov, int iovcnt);
+ssize_t readv(t_socket fd, const struct iovec *iov, int iovcnt);
 
 int getlogin_r(char *buf, size_t size);
 
@@ -357,8 +360,8 @@ int smb2_getaddrinfo(const char *node, const char*service,
                 struct addrinfo **res);
 void smb2_freeaddrinfo(struct addrinfo *res);
 #ifndef __amigaos4__
-ssize_t writev(int fd, const struct iovec *iov, int iovcnt);
-ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
+ssize_t writev(t_socket fd, const struct iovec *iov, int iovcnt);
+ssize_t readv(t_socket fd, const struct iovec *iov, int iovcnt);
 #endif
 #if !defined(HAVE_SOCKADDR_STORAGE)
 /*
@@ -468,8 +471,8 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen);
 #define read(a,b,c) lwip_recv(a,b,c,MSG_DONTWAIT)
 #endif
 
-ssize_t writev(int fd, const struct iovec *iov, int iovcnt);
-ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
+ssize_t writev(t_socket fd, const struct iovec *iov, int iovcnt);
+ssize_t readv(t_socket fd, const struct iovec *iov, int iovcnt);
 
 #define SOL_TCP IPPROTO_TCP
 #define EAI_AGAIN EAGAIN
@@ -507,8 +510,8 @@ int smb2_getaddrinfo(const char *node, const char*service,
                 struct addrinfo **res);
 void smb2_freeaddrinfo(struct addrinfo *res);
 
-ssize_t writev(int fd, const struct iovec *iov, int iovcnt);
-ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
+ssize_t writev(t_socket fd, const struct iovec *iov, int iovcnt);
+ssize_t readv(t_socket fd, const struct iovec *iov, int iovcnt);
 
 #define SOL_TCP IPPROTO_TCP
 #define EAI_AGAIN EAGAIN
@@ -567,8 +570,8 @@ struct iovec {
 #define EAI_SERVICE     9
 #endif
 
-ssize_t writev(int fd, const struct iovec *iov, int iovcnt);
-ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
+ssize_t writev(t_socket fd, const struct iovec *iov, int iovcnt);
+ssize_t readv(t_socket fd, const struct iovec *iov, int iovcnt);
 int getlogin_r(char *buf, size_t size);
 
 #endif

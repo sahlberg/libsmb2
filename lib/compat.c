@@ -315,11 +315,7 @@ int getlogin_r(char *buf, size_t size)
 #endif
 
 #ifdef NEED_WRITEV
-#ifdef __USE_WINSOCK__
 ssize_t writev(t_socket fd, const struct iovec* vector, int count)
-#else
-ssize_t writev(int fd, const struct iovec *vector, int count)
-#endif
 {
         /* Find the total number of bytes to be written.  */
         size_t bytes = 0;
@@ -356,22 +352,14 @@ ssize_t writev(int fd, const struct iovec *vector, int count)
                 if (to_copy == 0)
                         break;
         }
-#ifdef __USE_WINSOCK__
         bytes_written = write((int)fd, buffer, bytes);
-#else
-        bytes_written = write(fd, buffer, bytes);
-#endif
         free(buffer);
         return bytes_written;
 }
 #endif
 
 #ifdef NEED_READV
-#ifdef __USE_WINSOCK__
 ssize_t readv(t_socket fd, const struct iovec* vector, int count)
-#else
-ssize_t readv (int fd, const struct iovec *vector, int count)
-#endif
 {
         /* Find the total number of bytes to be read.  */
         size_t bytes = 0;
@@ -393,11 +381,7 @@ ssize_t readv (int fd, const struct iovec *vector, int count)
                 return -1;
 
         /* Read the data.  */
-#ifdef __USE_WINSOCK__
         bytes_read = read((int)fd, buffer, bytes);
-#else
-        bytes_read = read(fd, buffer, bytes);
-#endif
         if (bytes_read < 0) {
                 free(buffer);
                 return -1;
