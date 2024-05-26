@@ -543,13 +543,6 @@ int getlogin_r(char *buf, size_t size);
 
 #ifdef PS4_PLATFORM
 
-#include <netdb.h>
-#include <poll.h>
-#include <sys/uio.h>
-
-#define TCP_NODELAY     1  /* Don't delay send to coalesce packets  */
-
-
 #ifndef ENODATA
 #define ENODATA 98
 #endif

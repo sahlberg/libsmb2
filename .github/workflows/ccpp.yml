@@ -126,3 +126,25 @@ jobs:
         cd lib
         make -f Makefile.PS3_PPU clean
         make -f Makefile.PS3_PPU
+    
+  build-ps4:
+    name: PS4
+      
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Create Build Environment
+      run: >
+        sudo apt-get update &&
+        sudo apt-get install -y wget cmake git gettext smpq &&
+        wget https://github.com/PacBrew/pacbrew-pacman/releases/download/v1.1/pacbrew-pacman-1.1.deb &&
+        sudo dpkg -i pacbrew-pacman-1.1.deb && sudo pacbrew-pacman -Sy &&
+        sudo pacbrew-pacman --noconfirm -S ps4-openorbis ps4-openorbis-portlibs 
+        
+    - name: build libsmb2
+      run: |
+        make -f Makefile.platform ps4_all clean
