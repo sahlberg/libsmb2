@@ -137,23 +137,28 @@ elseif(ESP_PLATFORM)
 
   register_component()  
 else() 
+  if(CMAKE_SYSTEM_NAME MATCHES NintendoSwitch OR CMAKE_SYSTEM_NAME MATCHES Nintendo3DS)
+    cmake_minimum_required(VERSION 3.13)
+  else()
     cmake_minimum_required(VERSION 3.5)
-
+  endif()
     project(libsmb2
             LANGUAGES C
             VERSION 4.0.0
     )
-
     set(SOVERSION 1 CACHE STRING "" FORCE)
 
     set(INSTALL_LIB_DIR "${CMAKE_INSTALL_PREFIX}/lib${LIB_SUFFIX}" CACHE PATH "Installation directory for libraries")
     set(INSTALL_INC_DIR "${CMAKE_INSTALL_PREFIX}/include" CACHE PATH "Installation directory for headers")
     set(INSTALL_PKGCONFIG_DIR "${CMAKE_INSTALL_PREFIX}/lib${LIB_SUFFIX}/pkgconfig" CACHE PATH "Installation directory for pkgconfig (.pc) files")
     set(INSTALL_CMAKE_DIR "${CMAKE_INSTALL_PREFIX}/lib${LIB_SUFFIX}/cmake/libsmb2" CACHE PATH "Installation directory for cmake (.cmake) files")
-
+  if(CMAKE_SYSTEM_NAME MATCHES NintendoSwitch OR CMAKE_SYSTEM_NAME MATCHES Nintendo3DS OR PS4)
+    option(BUILD_SHARED_LIBS "Build shared libraries" OFF)  
+  else()
     option(BUILD_SHARED_LIBS "Build shared libraries" ON)
+  endif()
     option(ENABLE_EXAMPLES "Build example programs" OFF)
-
+    
     list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
 
     if(IOS)
@@ -177,8 +182,8 @@ else()
 
     if(MSVC AND BUILD_SHARED_LIBS)
       # If we are building dll with msvc, then generate a def file according to the syms file
-      SET(SYMS_FILE_PATH "${PROJECT_SOURCE_DIR}/lib/libsmb2.syms")
-      SET(DEF_FILE_PATH "${PROJECT_BINARY_DIR}/lib/libsmb2.def")
+      set(SYMS_FILE_PATH "${PROJECT_SOURCE_DIR}/lib/libsmb2.syms")
+      set(DEF_FILE_PATH "${PROJECT_BINARY_DIR}/lib/libsmb2.def")
       file(READ ${SYMS_FILE_PATH} EXPORT_SYMBOLS)
       file(WRITE ${DEF_FILE_PATH} "LIBRARY smb2\nEXPORTS\n\n${EXPORT_SYMBOLS}")
       # Pass def file to the linker
@@ -188,6 +193,30 @@ else()
     if(CMAKE_SYSTEM_NAME MATCHES Windows)
       list(APPEND CORE_LIBRARIES ws2_32.lib)
       add_definitions(-DWIN32_LEAN_AND_MEAN -D_CRT_NONSTDC_NO_DEPRECATE -D_CRT_SECURE_NO_WARNINGS)
+    elseif(CMAKE_SYSTEM_NAME MATCHES NintendoSwitch)
+      add_definitions(-DARM11 -DSWITCH -D__SWITCH__ -DNEED_READV -DNEED_WRITEV -DNEED_GETLOGIN_R)
+      set(ARCH "-march=armv8-a -mtp=soft -fPIE")
+      set(CMAKE_C_FLAGS "-g -Wall -O2 -ffast-math ${ARCH}")
+      include_directories(include include/smb2)
+      set(CMAKE_C_FLAGS "-Wno-unused-variable")
+      set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -fno-rtti -std=gnu++11")
+      set(CMAKE_C_LDFLAGS "${CMAKE_C_FLAGS} -specs=switch.specs -g ${ARCH} -Wl,-Map,$(notdir $*.map)")
+      add_compile_options("${CMAKE_C_FLAGS} ${CMAKE_LDFLAGS}")
+    elseif(CMAKE_SYSTEM_NAME MATCHES Nintendo3DS)
+      add_definitions(-DARM11 -D_3DS -D__3DS__ -DNEED_READV -DNEED_WRITEV -DNEED_GETLOGIN_R)
+      set(ARCH "-march=armv6k -mfloat-abi=hard -mtune=mpcore -mtp=soft -fPIE")
+      set(CMAKE_C_FLAGS "-Wno-unused-variable -g -Wall -O2 -mword-relocations -fomit-frame-pointer -ffast-math ${ARCH}")
+      include_directories(include include/smb2)
+      set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -fno-rtti -fno-exceptions -std=gnu++11")
+      set(CMAKE_C_LDFLAGS "${CMAKE_C_FLAGS} -specs=3dsx.specs -g ${ARCH} -Wl,-Map,$(notdir $*.map)")
+      add_compile_options("${CMAKE_C_FLAGS} ${CMAKE_LDFLAGS}") 
+    elseif(PS4)
+      add_definitions(-DPS4_PLATFORM)
+      set(CMAKE_C_FLAGS "-funwind-tables")
+      #-fuse-init-array -emit-llvm broken...
+      include_directories(include include/smb2 sysroot ${OO_PS4_TOOLCHAIN} system ${OO_PS4_TOOLCHAIN}/include ${OO_PS4_TOOLCHAIN}/include/c++/v1)
+      set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS}")    
+      add_compile_options("${CMAKE_C_FLAGS}")          
     elseif(CMAKE_SYSTEM_NAME STREQUAL Solaris)
       find_library(SOCKET_LIBRARY socket)
       find_library(NSL_LIBRARY nsl)
