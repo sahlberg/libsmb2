@@ -103,7 +103,7 @@
 
 #if defined(ESP_PLATFORM)
 #define DEFAULT_OUTPUT_BUFFER_LENGTH 512
-#elif defined(PS2_PLATFORM)
+#elif defined(__PS2__)
 #define DEFAULT_OUTPUT_BUFFER_LENGTH 4096
 #else
 #define DEFAULT_OUTPUT_BUFFER_LENGTH 0xffff

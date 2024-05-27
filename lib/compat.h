@@ -351,9 +351,9 @@ struct sockaddr_storage {
 #endif
 #endif
 
-#ifdef PS2_PLATFORM
+#ifdef __PS2__
 
-#ifdef PS2_EE_PLATFORM
+#ifdef _EE
 #include <unistd.h>
 #else
 #include <alloc.h>
@@ -368,13 +368,14 @@ struct sockaddr_storage {
 #include <ps2ip.h>
 #endif
 
-#ifdef PS2_IOP_PLATFORM
+#ifdef _IOP
 typedef uint32_t UWORD32;
 typedef size_t ssize_t;
+#include <tcpip.h>
 #endif
 
 long long int be64toh(long long int x);
-#ifdef PS2_IOP_PLATFORM
+#ifdef _IOP
 char *strdup(const char *s);
 
 int random(void);
@@ -384,11 +385,11 @@ int asprintf(char **strp, const char *fmt, ...);
 #endif
 int getlogin_r(char *buf, size_t size);
 
-#ifdef PS2_IOP_PLATFORM
+#ifdef _IOP
 int getpid();
 #endif
 
-#ifdef PS2_IOP_PLATFORM
+#ifdef _IOP
 #define close(x) lwip_close(x)
 #define snprintf(format, n, ...) sprintf(format, __VA_ARGS__)
 #define fcntl(a,b,c) lwip_fcntl(a,b,c)
@@ -427,7 +428,7 @@ struct iovec {
   size_t iov_len;
 };
 
-#ifdef PS2_IOP_PLATFORM
+#ifdef _IOP
 #undef connect
 #define connect(a,b,c) iop_connect(a,b,c)
 int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen);
@@ -442,14 +443,14 @@ ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
 #define SOL_TCP IPPROTO_TCP
 #define EAI_AGAIN EAGAIN
 
-#ifdef PS2_IOP_PLATFORM
+#ifdef _IOP
 #define strerror(x) "Unknown"
 #endif
 
 /* just pretend they are the same so we compile */
 #define sockaddr_in6 sockaddr_in
 
-#endif /* PS2_PLATFORM */
+#endif /* __PS2__ */
 
 #ifdef PS3_PPU_PLATFORM
 

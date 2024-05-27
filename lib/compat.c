@@ -91,9 +91,9 @@ struct MinList __filelist = { (struct MinNode *) &__filelist.mlh_Tail, NULL, (st
 
 #endif /* PICO_PLATFORM */
 
-#ifdef PS2_PLATFORM
+#ifdef __PS2__
 
-#ifdef PS2_EE_PLATFORM
+#ifdef _EE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -109,7 +109,7 @@ struct MinList __filelist = { (struct MinNode *) &__filelist.mlh_Tail, NULL, (st
 
 #define login_num ENXIO
 
-#ifdef PS2_IOP_PLATFORM
+#ifdef _IOP
 #define getpid_num() 27
 
 static unsigned long int next = 1; 
@@ -158,7 +158,7 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
 }
 #endif
 
-#endif /* PS2_PLATFORM */
+#endif /* __PS2__ */
 
 #ifdef __ANDROID__
 /* getlogin_r() was added in API 28 */
@@ -279,7 +279,7 @@ long random(void)
 int random(void)
 #endif
 { 
-#ifdef PS2_IOP_PLATFORM
+#ifdef _IOP
     next = next * 1103515245 + 12345; 
     return (unsigned int)(next/65536) % 32768; 
 #else
@@ -291,7 +291,7 @@ int random(void)
 #ifdef NEED_SRANDOM
 void srandom(unsigned int seed) 
 { 
-#ifdef PS2_IOP_PLATFORM
+#ifdef _IOP
     next = seed; 
 #else
     smb2_srandom(seed);
@@ -464,7 +464,7 @@ int poll(struct pollfd *fds, unsigned int nfds, int timo)
         if(timo < 0) {
                 toptr = NULL;
         } else {
-#if defined(PS2_EE_PLATFORM) && defined(PS2IPS)                
+#if defined(_EE) && defined(PS2IPS)                
                 /*
                  * select() is broken on the ps2ips stack so we basically have
                  * to busy-wait.
@@ -530,9 +530,9 @@ char *strdup(const char *s)
         len = strlen(s) + 1;
         str = malloc(len);
         if (str == NULL) {
-#ifndef PS2_IOP_PLATFORM
+#ifndef _IOP
                 errno = ENOMEM;
-#endif /* !PS2_IOP_PLATFORM */
+#endif /* !_IOP */
                 return NULL;
         }
         memcpy(str, s, len + 1);

@@ -1,4 +1,4 @@
-.PHONY: switch_all switch_install 3ds_all 3ds_install ps4_all ps4_install
+.PHONY: switch_all switch_install 3ds_all 3ds_install ps4_all ps4_install ps2_all ps2_install
 
 switch_all:
 	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=${DEVKITPRO}/cmake/Switch.cmake" 
@@ -19,6 +19,27 @@ ps4_all:
 	cmake --build build
 
 ps4_install: ps4_all
+	cmake --build build --target install
+
+ps2_ee_all:
+	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=${PS2DEV}/ps2sdk/ps2dev.cmake" "-DCMAKE_INSTALL_PREFIX=${PS2SDK}/ee" "-DCMAKE_PREFIX_PATH=${PS2SDK}/ee"
+	cmake --build build
+
+ps2_ee_install: ps2_ee_all
+	cmake --build build --target install
+
+ps2_ips_all:
+	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=cmake/PS2/ps2dev_ee_ips.cmake" "-DCMAKE_INSTALL_PREFIX=${PS2SDK}/ee" "-DCMAKE_PREFIX_PATH=${PS2SDK}/ee"
+	cmake --build build
+
+ps2_ips_install: ps2_ips_all
+	cmake --build build --target install
+
+ps2_iop_all:
+	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=cmake/PS2/ps2dev_iop.cmake" "-DCMAKE_INSTALL_PREFIX=${PS2SDK}/iop" "-DCMAKE_PREFIX_PATH=${PS2SDK}/iop"
+	cmake --build build
+
+ps2_iop_install: ps2_iop_all
 	cmake --build build --target install
 
 clean:

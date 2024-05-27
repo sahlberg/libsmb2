@@ -11,18 +11,17 @@
 #define __WINDOWS__
 #endif
 
-#if defined(PS2_PLATFORM) || defined(PICO_PLATFORM)
+#if defined(__PS2__) || defined(PICO_PLATFORM)
 
 #ifndef _LITTLE_ENDIAN
 #define _LITTLE_ENDIAN LITTLE_ENDIAN
 #endif
-#if defined(PS2_EE_PLATFORM) || defined(PICO_PLATFORM)
+#if defined(_EE) || defined(PICO_PLATFORM)
 #include <machine/endian.h>
 #ifdef PICO_PLATFORM
 #include "lwip/def.h"
 #endif
 #endif
-
 
 #define be16toh(x) PP_NTOHS(x)
 #define htobe16(x) PP_HTONS(x)
