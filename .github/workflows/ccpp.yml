@@ -68,6 +68,10 @@ jobs:
         make -f Makefile.PS2_IOP clean
         make -f Makefile.PS2_IOP
 
+    - name: Compile PS2 IOP Side(Cmake)
+      run: |
+        make -f Makefile.platform ps2_iop_all clean
+     
   build-switch:
     name: SWITCH build
 
