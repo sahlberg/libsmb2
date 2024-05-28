@@ -52,26 +52,19 @@ jobs:
 
     - name: Compile PS2 EE Side
       run: |
-        cd lib
-        make -f Makefile.PS2_EE clean
-        make -f Makefile.PS2_EE
+        make -f Makefile.platform ps2_ee_all clean
+     
 
     - name: Compile PS2 EE IPS Side
       run: |
-        cd lib
-        make -f Makefile.PS2_EE_IPS clean
-        make -f Makefile.PS2_EE_IPS
-
+        make -f Makefile.platform ps2_ips_all clean
+     
     - name: Compile PS2 IOP Side
       run: |
         cd lib
         make -f Makefile.PS2_IOP clean
         make -f Makefile.PS2_IOP
 
-    - name: Compile PS2 IOP Side(Cmake)
-      run: |
-        make -f Makefile.platform ps2_iop_all clean
-     
   build-switch:
     name: SWITCH build
 
