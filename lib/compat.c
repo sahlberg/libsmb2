@@ -36,7 +36,10 @@
 #define smb2_srandom srand
 #endif
 
-#ifdef DC_KOS_PLATFORM
+#ifdef _arch_dreamcast
+#include <stdlib.h>
+#include <string.h>
+#include <sys/errno.h>
 #define login_num ENXIO
 #endif
 

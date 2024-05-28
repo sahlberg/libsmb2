@@ -1,4 +1,4 @@
-.PHONY: switch_all switch_install 3ds_all 3ds_install ps4_all ps4_install ps2_all ps2_install
+.PHONY: switch_all switch_install 3ds_all 3ds_install ps4_all ps4_install ps2_ee_all ps2_ee_install ps2_ips_all ps2_ips_install ps2_iop_all ps2_iop_install
 
 switch_all:
 	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=${DEVKITPRO}/cmake/Switch.cmake" 
@@ -40,6 +40,13 @@ ps2_iop_all:
 	cmake --build build
 
 ps2_iop_install: ps2_iop_all
+	cmake --build build --target install
+
+dc_all:
+	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=${KOS_CMAKE_TOOLCHAIN}" "-DCMAKE_INSTALL_PREFIX=${KOS_BASE}/addons/" "-DCMAKE_PREFIX_PATH=${KOS_BASE}/addons/"
+	cmake --build build
+
+dc_install: dc_all
 	cmake --build build --target install
 
 clean:

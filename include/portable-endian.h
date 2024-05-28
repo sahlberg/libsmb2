@@ -37,7 +37,7 @@
 #define htole64(x) (x)
 #define le64toh(x) (x)
 
-#elif defined(DC_KOS_PLATFORM)
+#elif defined(_arch_dreamcast)
 
 #include <machine/endian.h>
 

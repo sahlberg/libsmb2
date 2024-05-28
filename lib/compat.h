@@ -266,24 +266,21 @@ int getlogin_r(char *buf, size_t size);
 
 #endif /* PICO_PLATFORM */
 
-#ifdef DC_KOS_PLATFORM
+#ifdef _arch_dreamcast
 
 #include <netdb.h>
-#include <netinet/in.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/errno.h>
 #include <unistd.h>
 
-#define TCP_NODELAY     1  /* Don't delay send to coalesce packets  */
+#ifndef SOL_TCP
 #define SOL_TCP IPPROTO_TCP
+#endif
 
 ssize_t writev(int fd, const struct iovec *iov, int iovcnt);
 ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
 
 int getlogin_r(char *buf, size_t size);
 
-#endif /* DC_KOS_PLATFORM */
+#endif /* _arch_dreamcast */
 
 #if defined(__amigaos4__) || defined(__AMIGA__) || defined(__AROS__)
 #include <errno.h>
