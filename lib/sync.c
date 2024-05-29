@@ -89,14 +89,7 @@ static int wait_for_reply(struct smb2_context *smb2,
 		{
 			smb2_set_error(smb2, "Timeout expired and no connection exists\n");
 			return -1;
-		}
-#if defined (_EE) && defined(PS2IPS)
-                /* select() is broken on ps2ips :-( */
-                pfd.revents |= POLLOUT;
-                if (SMB2_VALID_SOCKET(smb2->fd)) {
-                        pfd.revents |= POLLIN;
-                }
-#endif                
+		}                
                 if (pfd.revents == 0) {
                         continue;
                 }
