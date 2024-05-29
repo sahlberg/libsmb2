@@ -439,8 +439,13 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen);
 ssize_t writev(int fd, const struct iovec *iov, int iovcnt);
 ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
 
+#ifndef SOL_TCP
 #define SOL_TCP IPPROTO_TCP
+#endif
+
+#ifndef EAI_AGAIN
 #define EAI_AGAIN EAGAIN
+#endif
 
 #ifdef PS2_IOP_PLATFORM
 #define strerror(x) "Unknown"
