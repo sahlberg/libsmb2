@@ -26,13 +26,20 @@ extern "C" {
 #if defined(_XBOX) || defined(_WINDOWS) || defined(__MINGW32__)
 #if defined(_WINDOWS) || defined(__MINGW32__)
 #include <windows.h>
+#ifdef __USE_WINSOCK__
+#include <winsock.h>
+#else
 #include <ws2tcpip.h>
 #include <winsock2.h>
+#endif
 #elif defined(_XBOX)
 #include <xtl.h>
 #include <winsockx.h>
 #endif
 typedef SOCKET t_socket;
+#ifndef INVALID_SOCKET
+#define INVALID_SOCKET  (t_socket)(~0)
+#endif
 #define SMB2_INVALID_SOCKET INVALID_SOCKET
 #define SMB2_VALID_SOCKET(sock)	((sock) != SMB2_INVALID_SOCKET)
 #else
@@ -45,6 +52,10 @@ typedef int t_socket;
 
 #include <stddef.h>
 #include <errno.h>
+
+#ifdef __USE_WINSOCK__
+#include <io.h>
+#endif
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -126,7 +137,7 @@ typedef unsigned int uintptr_t;
 #define EAI_SERVICE     9
 #endif
 
-#ifdef _XBOX
+#if defined(_XBOX) || defined(__USE_WINSOCK__)
 typedef int socklen_t;
 #endif
 
@@ -150,7 +161,7 @@ typedef int socklen_t;
 #define SO_ERROR 0x1007
 #endif
 
-#ifdef _XBOX
+#if defined(_XBOX) || defined(__USE_WINSOCK__)
 struct sockaddr_storage {
 #ifdef HAVE_SOCKADDR_SA_LEN
 	unsigned char ss_len;
@@ -172,14 +183,19 @@ struct addrinfo {
 
 /* XBOX Defs end */
 struct pollfd {
-        int fd;
+        t_socket fd;
         short events;
         short revents;
 };
 
-#define SOL_TCP 6
+#ifndef SOL_TCP
+#define SOL_TCP IPPROTO_TCP
+#endif
 
+#ifdef _XBOX
 #define inline __inline 
+#endif
+
 #endif
 
 typedef SSIZE_T ssize_t;
@@ -190,8 +206,13 @@ struct iovec
   void *iov_base;        
 };	
 
-#ifdef _XBOX
+#if defined(_XBOX) || defined(__USE_WINSOCK__)
 int poll(struct pollfd *fds, unsigned int nfds, int timo);
+
+#ifdef __USE_WINSOCK__
+#define write(fd, buf, maxcount) _write(fd, buf, (unsigned int)maxcount)
+#define read(fd, buf, maxcount) _read(fd, buf, (unsigned int)maxcount)
+#endif
 
 int smb2_getaddrinfo(const char *node, const char*service,
                 const struct addrinfo *hints,
@@ -207,6 +228,13 @@ void smb2_freeaddrinfo(struct addrinfo *res);
 #define poll WSAPoll
 
 #endif
+
+#ifdef __USE_WINSOCK__
+
+ssize_t writev(t_socket fd, const struct iovec* vector, int count);
+ssize_t readv(t_socket fd, const struct iovec* vector, int count);
+
+#else
 
 inline int writev(t_socket sock, struct iovec *iov, int nvecs)
 {
@@ -232,8 +260,13 @@ inline int readv(t_socket sock, struct iovec *iov, int nvecs)
   }
   return -1;
 }
+#endif
 
+#ifdef __USE_WINSOCK__
+#define close(x) _close((int)x)
+#else
 #define close closesocket
+#endif
 
 void srandom(unsigned int seed);
 int random(void);
@@ -280,8 +313,8 @@ int getlogin_r(char *buf, size_t size);
 #define TCP_NODELAY     1  /* Don't delay send to coalesce packets  */
 #define SOL_TCP IPPROTO_TCP
 
-ssize_t writev(int fd, const struct iovec *iov, int iovcnt);
-ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
+ssize_t writev(t_socket fd, const struct iovec *iov, int iovcnt);
+ssize_t readv(t_socket fd, const struct iovec *iov, int iovcnt);
 
 int getlogin_r(char *buf, size_t size);
 
@@ -327,8 +360,8 @@ int smb2_getaddrinfo(const char *node, const char*service,
                 struct addrinfo **res);
 void smb2_freeaddrinfo(struct addrinfo *res);
 #ifndef __amigaos4__
-ssize_t writev(int fd, const struct iovec *iov, int iovcnt);
-ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
+ssize_t writev(t_socket fd, const struct iovec *iov, int iovcnt);
+ssize_t readv(t_socket fd, const struct iovec *iov, int iovcnt);
 #endif
 #if !defined(HAVE_SOCKADDR_STORAGE)
 /*
@@ -438,8 +471,8 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen);
 #define read(a,b,c) lwip_recv(a,b,c,MSG_DONTWAIT)
 #endif
 
-ssize_t writev(int fd, const struct iovec *iov, int iovcnt);
-ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
+ssize_t writev(t_socket fd, const struct iovec *iov, int iovcnt);
+ssize_t readv(t_socket fd, const struct iovec *iov, int iovcnt);
 
 #ifndef SOL_TCP
 #define SOL_TCP IPPROTO_TCP
@@ -482,8 +515,8 @@ int smb2_getaddrinfo(const char *node, const char*service,
                 struct addrinfo **res);
 void smb2_freeaddrinfo(struct addrinfo *res);
 
-ssize_t writev(int fd, const struct iovec *iov, int iovcnt);
-ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
+ssize_t writev(t_socket fd, const struct iovec *iov, int iovcnt);
+ssize_t readv(t_socket fd, const struct iovec *iov, int iovcnt);
 
 #define SOL_TCP IPPROTO_TCP
 #define EAI_AGAIN EAGAIN

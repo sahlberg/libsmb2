@@ -271,6 +271,7 @@ smb2_write_to_socket(struct smb2_context *smb2)
                 tmpiov->iov_len -= (size_t)num_done;
 #endif
                 count = writev(smb2->fd, tmpiov, niov);
+
                 if (count == -1) {
                         if (errno == EAGAIN || errno == EWOULDBLOCK) {
                                 return 0;
