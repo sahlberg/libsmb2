@@ -1,11 +1,17 @@
-ifeq ($(strip $(DEVKITARM)),)
-$(error "Please set DEVKITARM in your environment. export DEVKITARM=<path to>devkitARM")
+#---------------------------------------------------------------------------------
+# Clear the implicit built in rules
+#---------------------------------------------------------------------------------
+.SUFFIXES:
+#---------------------------------------------------------------------------------
+ifeq ($(strip $(DEVKITPPC)),)
+$(error "Please set DEVKITPPC in your environment. export DEVKITPPC=<path to>devkitPPC")
 endif
 
-include $(DEVKITARM)/3ds_rules
+include $(DEVKITPPC)/gamecube_rules
 
 TARGET_LIB = libsmb2.a 
-OBJS = aes128ccm.o \
+# Library object files.
+OBJS := aes128ccm.o \
 	aes.o \
 	alloc.o \
 	compat.o \
@@ -54,23 +60,16 @@ OBJS = aes128ccm.o \
 	socket.o \
 	sync.o
 
-INCLUDES = -I../include -I../include/n3ds -I../include/smb2 -I$(CTRULIB)/include
-
 #---------------------------------------------------------------------------------
 # options for code generation
 #---------------------------------------------------------------------------------
-ARCH		:=	-march=armv6k -mtune=mpcore -mfloat-abi=hard
-CFLAGS		:=	-g -Wall -O2 -mword-relocations \
-				-fomit-frame-pointer -ffast-math \
-				$(ARCH)
-CFLAGS		+=	$(INCLUDES) -DARM11 -D_3DS -D__3DS__ -DHAVE_CONFIG_H -DNEED_READV -DNEED_WRITEV -DNEED_GETLOGIN_R -D_U_=/**/
-CXXFLAGS	:=  $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11
-ASFLAGS		:=	-g $(ARCH)
-LDFLAGS		:=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
+COMMON_FLAGS	:= -g -O3 -Wall $(MACHDEP) 
+INCLUDES		:= -I../include -I../include/gamecube -I../include/smb2 -I$(LIBOGC_INC)
+DEFINES			:= -DGEKKO -DHAVE_CONFIG_H -D__GC__ -DNEED_READV -DNEED_WRITEV -DNEED_GETLOGIN_R -DNEED_GETADDRINFO -DNEED_FREEADDRINFO -DNEED_POLL -D_U_=/**/
+CFLAGS			:= $(COMMON_FLAGS) $(INCLUDES) $(DEFINES)
 
-CFLAGS		+= -Wno-unused-variable
-
-LIBS	:= -lcitro3d -lctru -lm
+# Test link flags.
+LDFLAGS			:= $(COMMON_FLAGS) -L$(LIBOGC_LIB) -lbte -logc -lm 
 
 all: $(OBJS) $(TARGET_LIB)
 
@@ -78,10 +77,11 @@ $(TARGET_LIB): $(OBJS)
 	$(AR) -rc $@ $^
 
 install: $(TARGET_LIB)
-	@cp  $(TARGET_LIB) "$(DEVKITPRO)/portlibs/3ds/lib"
-	@mkdir -p "$(DEVKITPRO)/portlibs/3ds/include/smb2"
-	@cp ../include/smb2/*.h "$(DEVKITPRO)/portlibs/3ds/include/smb2"
+	@cp  $(TARGET_LIB) "$(DEVKITPRO)/portlibs/gamecube/lib"
+	@mkdir -p "$(DEVKITPRO)/portlibs/gamecube/include/smb2"
+	@cp ../include/smb2/*.h "$(DEVKITPRO)/portlibs/gamecube/include/smb2"
 	@echo "Installed!"
 
 clean:
+	@echo Cleaning $(TARGET_LIB) $(OBJS)
 	@rm -rf $(OBJS) $(TARGET_LIB)

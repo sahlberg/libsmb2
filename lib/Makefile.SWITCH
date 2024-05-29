@@ -57,14 +57,14 @@ OBJS = aes128ccm.o \
 	sync.o
 
 LIBNX	:= $(DEVKITPRO)/libnx
-INCLUDES = -I./include -I$(LIBNX)/include 
+INCLUDES = -I../include -I../include/switch -I../include/smb2 -I$(LIBNX)/include 
 
 #---------------------------------------------------------------------------------
 # options for code generation
 #---------------------------------------------------------------------------------
 ARCH		:=	-march=armv8-a -mtp=soft -fPIE
 CFLAGS		:=	-g -Wall -O2 -ffast-math $(ARCH)
-CFLAGS		+=	$(INCLUDES) -Wno-unused-variable -DARM11 -DSWITCH -D__SWITCH__ -DHAVE_CONFIG_H -DNEED_READV -DNEED_WRITEV -DNEED_GETLOGIN_R -I../include -I../include/switch -I../include/smb2
+CFLAGS		+=	$(INCLUDES) -Wno-unused-variable -DARM11 -DSWITCH -D__SWITCH__ -DHAVE_CONFIG_H -DNEED_READV -DNEED_WRITEV -DNEED_GETLOGIN_R -D_U_=/**/ -I../include -I../include/switch -I../include/smb2
 CXXFLAGS	:=  $(CFLAGS) -fno-rtti -std=gnu++11
 ASFLAGS		:=	-g $(ARCH)
 LDFLAGS		:=	-specs=switch.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)

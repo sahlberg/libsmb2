@@ -22,10 +22,6 @@
 #include <errno.h>
 #include <stdlib.h>
 #ifdef _WINDOWS
-#define NEED_GETLOGIN_R
-#define NEED_GETPID
-#define NEED_RANDOM
-#define NEED_SRANDOM
 #define login_num ENXIO
 #define getpid_num() GetCurrentProcessId()
 #else
@@ -181,22 +177,42 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
 
 #endif /* PS3_PPU_PLATFORM */
 
-
-#if defined(__SWITCH__) || defined(__3DS__)
+#if defined(__SWITCH__) || defined(__3DS__) || defined(__WII__) || defined(__GC__) || defined(__WIIU__) || defined(__NDS__)
 
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <alloca.h>
+#include <stdio.h>
+#if !defined(__WII__) && !defined(__GC__)
 #include <sys/socket.h>
-#ifdef __SWITCH__
+#endif
+#if defined(__NDS__)
+#include <netinet/in.h>
+#endif
+#if defined(__SWITCH__)
 #include <switch/types.h>
-#else
+#elif defined(__3DS__)
 #include <3ds/types.h>	
+#elif defined(__WII__) || defined(__GC__)
+#include <gctypes.h>
+#elif defined(__WIIU__)
+#include <wut_types.h>
+#elif defined(__NDS__)
+#include <mm_types.h>
 #endif
 
 #define login_num ENXIO
+
+#if defined(__WII__) 
+s32 getsockopt(int sockfd, int level, int optname, void *optval,
+socklen_t *optlen)
+{
+	 printf("not yet supported");
+	 return 0;
+}
+#endif
 
 #endif /* __SWITCH__ */
 
@@ -216,7 +232,7 @@ int smb2_getaddrinfo(const char *node, const char*service,
 #else
         sin = malloc(sizeof(struct sockaddr_in));
 #endif
-#ifndef _XBOX
+#if !defined(_XBOX) && !defined(__NDS__)
         sin->sin_len = sizeof(struct sockaddr_in);
 #endif
         sin->sin_family=AF_INET;
@@ -322,7 +338,7 @@ ssize_t writev(int fd, const struct iovec *vector, int count)
         char *buffer;
         size_t to_copy;
         char *bp;
-		ssize_t bytes_written;
+	ssize_t bytes_written;
         for (i = 0; i < count; ++i) {
                 /* Check for ssize_t overflow.  */
                 if (((ssize_t)-1) - bytes < vector[i].iov_len) {
@@ -345,7 +361,7 @@ ssize_t writev(int fd, const struct iovec *vector, int count)
 
                 memcpy((void *)bp, (void *)vector[i].iov_base, copy);
                 
-				bp += copy;
+		bp += copy;
 
                 to_copy -= copy;
                 if (to_copy == 0)
@@ -388,16 +404,16 @@ ssize_t readv (int fd, const struct iovec *vector, int count)
 
         /* Copy the data from BUFFER into the memory specified by VECTOR.  */
         bytes = bytes_read;
-		bp = buffer;
-		for (i = 0; i < count; ++i) {
+	bp = buffer;
+        for (i = 0; i < count; ++i) {
             size_t copy = (vector[i].iov_len < bytes) ? vector[i].iov_len : bytes;
 
             memcpy((void *)vector[i].iov_base, (void *)bp, copy);	
-			bp += copy;
-			bytes -= copy;
-			if (bytes == 0)
-				break;
-		}
+	    bp += copy;
+	    bytes -= copy;
+	    if (bytes == 0)
+	    break;
+	}
 
         free(buffer);
         return bytes_read;
@@ -464,21 +480,11 @@ int poll(struct pollfd *fds, unsigned int nfds, int timo)
         if(timo < 0) {
                 toptr = NULL;
         } else {
-#if defined(PS2_EE_PLATFORM) && defined(PS2IPS)                
-                /*
-                 * select() is broken on the ps2ips stack so we basically have
-                 * to busy-wait.
-                 */
-                (void)timeout;
-                timeout.tv_sec = 0;
-                timeout.tv_usec = 10000;        
-#else
                 toptr = &timeout;
                 timeout.tv_sec = timo / 1000;
-                timeout.tv_usec = (timo - timeout.tv_sec * 1000) * 1000;
-#endif        
-#endif
+                timeout.tv_usec = (timo - timeout.tv_sec * 1000) * 1000;       
         }
+#endif
 
         rc = select(maxfd + 1, ip, op, &efds, toptr);
 
