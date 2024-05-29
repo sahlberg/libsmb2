@@ -22,10 +22,6 @@
 #include <errno.h>
 #include <stdlib.h>
 #ifdef _WINDOWS
-#define NEED_GETLOGIN_R
-#define NEED_GETPID
-#define NEED_RANDOM
-#define NEED_SRANDOM
 #define login_num ENXIO
 #define getpid_num() GetCurrentProcessId()
 #else

@@ -92,6 +92,7 @@ typedef SOCKET t_socket;
 #else
 typedef int t_socket;
 #endif
+
 /*
  * Create an SMB2 context.
  * Function returns

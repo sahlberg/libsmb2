@@ -244,6 +244,8 @@ int getpid();
 
 #pragma warning( disable : 4090 ) 
 
+#define strdup _strdup
+
 #ifdef _XBOX
 /* just pretend they are the same so we compile */
 #define sockaddr_in6 sockaddr_in
