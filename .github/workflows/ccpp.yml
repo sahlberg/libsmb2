@@ -54,7 +54,6 @@ jobs:
       run: |
         make -f Makefile.platform ps2_ee_all clean
      
-
     - name: Compile PS2 EE IPS Side
       run: |
         make -f Makefile.platform ps2_ips_all clean
