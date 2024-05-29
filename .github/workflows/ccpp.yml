@@ -113,9 +113,7 @@ jobs:
 
     - name: Compile Nintendo WII
       run: |
-        cd lib
-        make -f Makefile.WII clean
-        make -f Makefile.WII
+        make -f Makefile.platform wii_all clean
 
   build-gc:
     name: GameCube build
@@ -132,9 +130,7 @@ jobs:
 
     - name: Compile Nintendo WII-U
       run: |
-        cd lib
-        make -f Makefile.GC clean
-        make -f Makefile.GC
+        make -f Makefile.platform gc_all clean
 
   build-wiiu:
     name: WII-U Build
@@ -151,9 +147,7 @@ jobs:
 
     - name: Compile WII-U
       run: |
-        cd lib
-        make -f Makefile.WIIU clean
-        make -f Makefile.WIIU
+        make -f Makefile.platform wiiu_all clean
 
   build-ds:
     name: DS build
@@ -170,9 +164,7 @@ jobs:
 
     - name: Compile NDS ARM9
       run: |
-        cd lib
-        make -f Makefile.DS_ARM9 clean
-        make -f Makefile.DS_ARM9
+        make -f Makefile.platform nds_all clean
 
   build-ps3-ppu:
     name: PS3 PPU build
