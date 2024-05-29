@@ -510,14 +510,43 @@ struct sockaddr_storage {
 
 #endif
 
-#if defined(__SWITCH__) || defined(__3DS__)
+#if defined(__SWITCH__) || defined(__3DS__) || defined(__WII__) || defined(__GC__) || defined(__WIIU__) || defined(__NDS__)
 
 #include <sys/types.h>
-#ifdef __3DS__
+
+#if defined(__3DS__) || defined(__WII__) || defined(__GC__) || defined(__WIIU__) || defined(__NDS__)
 struct iovec {
   void  *iov_base;
   size_t iov_len;
 };	
+#if defined(__WII__) || defined(__GC__) || defined(__NDS__)
+#ifndef __NDS__
+#include <network.h>
+#endif
+struct sockaddr_storage {
+#ifdef HAVE_SOCKADDR_SA_LEN
+	unsigned char ss_len;
+#endif /* HAVE_SOCKADDR_SA_LEN */
+	unsigned char ss_family;
+	unsigned char fill[127];
+};
+
+struct addrinfo {
+	int	ai_flags;	/* AI_PASSIVE, AI_CANONNAME */
+	int	ai_family;	/* PF_xxx */
+	int	ai_socktype;	/* SOCK_xxx */
+	int	ai_protocol;	/* 0 or IPPROTO_xxx for IPv4 and IPv6 */
+	size_t	ai_addrlen;	/* length of ai_addr */
+	char	*ai_canonname;	/* canonical name for hostname */
+	struct sockaddr *ai_addr;	/* binary address */
+	struct addrinfo *ai_next;	/* next structure in linked list */
+};
+
+#ifdef __NDS__
+typedef int socklen_t;
+#endif
+
+#endif
 #define sockaddr_in6 sockaddr_in
 #else
 #include <sys/_iovec.h>
@@ -531,13 +560,82 @@ struct iovec {
 #define EAI_FAIL        4
 #endif
 
+#ifndef EAI_MEMORY
+#define EAI_MEMORY      6
+#endif
+
+#ifndef EAI_NONAME
+#define EAI_NONAME      8
+#endif
+
 #ifndef EAI_SERVICE
 #define EAI_SERVICE     9
+#endif
+
+#ifndef POLLIN
+#define POLLIN      0x0001    /* There is data to read */
+#endif
+#ifndef POLLPRI
+#define POLLPRI     0x0002    /* There is urgent data to read */
+#endif
+#ifndef POLLOUT
+#define POLLOUT     0x0004    /* Writing now will not block */
+#endif
+#ifndef POLLERR
+#define POLLERR     0x0008    /* Error condition */
+#endif
+#ifndef POLLHUP
+#define POLLHUP     0x0010    /* Hung up */
+#endif
+
+#ifndef TCP_NODELAY
+#define TCP_NODELAY     1  /* Don't delay send to coalesce packets  */
+#endif
+
+#ifndef __NDS__
+#ifndef IPPROTO_TCP
+#define IPPROTO_TCP 6
+#endif
+
+#ifndef SOL_TCP
+#define SOL_TCP IPPROTO_TCP
+#endif
 #endif
 
 ssize_t writev(int fd, const struct iovec *iov, int iovcnt);
 ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
 int getlogin_r(char *buf, size_t size);
+
+#if defined(__WII__) || defined(__GC__) || defined(__NDS__)
+int smb2_getaddrinfo(const char *node, const char*service,
+                const struct addrinfo *hints,
+                struct addrinfo **res);
+void smb2_freeaddrinfo(struct addrinfo *res);
+
+#define getaddrinfo smb2_getaddrinfo
+#define freeaddrinfo smb2_freeaddrinfo
+
+#ifndef __NDS__
+#define connect net_connect
+#define socket net_socket 
+#define setsockopt net_setsockopt
+#ifdef __GC__
+#define getsockopt net_getsockopt
+#else
+s32 getsockopt(int sockfd, int level, int optname, void *optval, socklen_t *optlen);
+#endif
+#define select net_select
+#endif
+
+struct pollfd {
+        int fd;
+        short events;
+        short revents;
+};
+
+int poll(struct pollfd *fds, unsigned int nfds, int timo);
+
+#endif
 
 #endif
 

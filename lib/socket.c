@@ -752,8 +752,11 @@ smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
                         if (err == 0) {
                                 return 0;
                         }
-                } else if (getsockopt(fd, SOL_SOCKET, SO_ERROR,
-                               (char *)&err, &err_size) != 0 || err != 0) {
+#ifdef __GC__
+                } else if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (char *)&err, err_size) != 0 || err != 0) {  
+#else
+                } else if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (char *)&err, &err_size) != 0 || err != 0) {  
+#endif
                         if (err == 0) {
                                 err = errno;
                         }
@@ -780,11 +783,13 @@ smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
         }
 
         if (!SMB2_VALID_SOCKET(smb2->fd) && revents & POLLOUT) {
-                int err = 0;
+                int err = 0;		
                 socklen_t err_size = sizeof(err);
-
-                if (getsockopt(fd, SOL_SOCKET, SO_ERROR,
-                               (char *)&err, &err_size) != 0 || err != 0) {
+#ifdef __GC__
+                if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (char *)&err, err_size) != 0 || err != 0) {
+#else
+                if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (char *)&err, &err_size) != 0 || err != 0) {
+#endif
                         if (err == 0) {
                                 err = errno;
                         }
@@ -802,6 +807,7 @@ smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
                                                 "%s(%d) while connecting.",
                                                 strerror(err), err);
                         }
+						
                         if (smb2->connect_cb) {
                                 smb2->connect_cb(smb2, err,
                                                  NULL, smb2->connect_data);
@@ -810,7 +816,6 @@ smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
                         ret = -1;
                         goto out;
                 }
-
                 smb2->fd = fd;
 
                 smb2_close_connecting_fds(smb2);
@@ -874,7 +879,7 @@ static int
 set_tcp_sockopt(t_socket sockfd, int optname, int value)
 {
         int level;
-#if !defined(SOL_TCP)
+#if !defined(SOL_TCP) 
         struct protoent *buf;
         if ((buf = getprotobyname("tcp")) != NULL) {
                 level = buf->p_proto;
