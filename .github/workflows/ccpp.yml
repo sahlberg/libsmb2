@@ -106,6 +106,82 @@ jobs:
         make -f Makefile.3DS clean
         make -f Makefile.3DS
 
+  build-wii:
+    name: WII build
+
+    runs-on: ubuntu-latest
+    container: devkitpro/devkitppc:latest
+    steps:
+    - name: Install dependencies
+      run: |
+        apt-get update -y && apt-get install -y ffmpeg gettext smpq
+
+    - name: git checkout
+      uses: actions/checkout@v3
+
+    - name: Compile Nintendo WII
+      run: |
+        cd lib
+        make -f Makefile.WII clean
+        make -f Makefile.WII
+
+  build-gc:
+    name: GameCube build
+
+    runs-on: ubuntu-latest
+    container: devkitpro/devkitppc:latest
+    steps:
+    - name: Install dependencies
+      run: |
+        apt-get update -y && apt-get install -y ffmpeg gettext smpq
+
+    - name: git checkout
+      uses: actions/checkout@v3
+
+    - name: Compile Nintendo Gamecube
+      run: |
+        cd lib
+        make -f Makefile.GC clean
+        make -f Makefile.GC
+
+  build-wiiu:
+    name: WII-U Build
+
+    runs-on: ubuntu-latest
+    container: devkitpro/devkitppc:latest
+    steps:
+    - name: Install dependencies
+      run: |
+        apt-get update -y && apt-get install -y ffmpeg gettext smpq
+
+    - name: git checkout
+      uses: actions/checkout@v3
+
+    - name: Compile WII-U
+      run: |
+        cd lib
+        make -f Makefile.WIIU clean
+        make -f Makefile.WIIU
+
+  build-ds:
+    name: DS build
+
+    runs-on: ubuntu-latest
+    container: devkitpro/devkitarm:latest
+    steps:
+    - name: Install dependencies
+      run: |
+        apt-get update -y && apt-get install -y ffmpeg gettext smpq
+
+    - name: git checkout
+      uses: actions/checkout@v3
+
+    - name: Compile NDS ARM9
+      run: |
+        cd lib
+        make -f Makefile.DS_ARM9 clean
+        make -f Makefile.DS_ARM9
+
   build-ps3-ppu:
     name: PS3 PPU build
 

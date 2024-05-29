@@ -140,9 +140,7 @@ smb2_close_connecting_fds(struct smb2_context *smb2)
         smb2->connecting_fds_count = 0;
 
         if (smb2->addrinfos != NULL) {
-#ifndef PS2IPS
                 freeaddrinfo(smb2->addrinfos);
-#endif
                 smb2->addrinfos = NULL;
         }
         smb2->next_addrinfo = NULL;
@@ -753,8 +751,11 @@ smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
                         if (err == 0) {
                                 return 0;
                         }
-                } else if (getsockopt(fd, SOL_SOCKET, SO_ERROR,
-                               (char *)&err, &err_size) != 0 || err != 0) {
+#ifdef __GC__
+                } else if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (char *)&err, err_size) != 0 || err != 0) {  
+#else
+                } else if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (char *)&err, &err_size) != 0 || err != 0) {  
+#endif
                         if (err == 0) {
                                 err = errno;
                         }
@@ -781,11 +782,13 @@ smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
         }
 
         if (!SMB2_VALID_SOCKET(smb2->fd) && revents & POLLOUT) {
-                int err = 0;
+                int err = 0;		
                 socklen_t err_size = sizeof(err);
-
-                if (getsockopt(fd, SOL_SOCKET, SO_ERROR,
-                               (char *)&err, &err_size) != 0 || err != 0) {
+#ifdef __GC__
+                if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (char *)&err, err_size) != 0 || err != 0) {
+#else
+                if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (char *)&err, &err_size) != 0 || err != 0) {
+#endif
                         if (err == 0) {
                                 err = errno;
                         }
@@ -803,6 +806,7 @@ smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
                                                 "%s(%d) while connecting.",
                                                 strerror(err), err);
                         }
+						
                         if (smb2->connect_cb) {
                                 smb2->connect_cb(smb2, err,
                                                  NULL, smb2->connect_data);
@@ -811,7 +815,6 @@ smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
                         ret = -1;
                         goto out;
                 }
-
                 smb2->fd = fd;
 
                 smb2_close_connecting_fds(smb2);
@@ -858,7 +861,7 @@ smb2_service(struct smb2_context *smb2, int revents)
 static void
 set_nonblocking(t_socket fd)
 {
-#if defined(WIN32) || defined(_XBOX) || defined(PS2_EE_PLATFORM)
+#if defined(WIN32) || defined(_XBOX)
         unsigned long opt = 1;
         ioctlsocket(fd, FIONBIO, &opt);
 #elif (defined(__AMIGA__) || defined(__AROS__)) && !defined(__amigaos4__)
@@ -875,7 +878,7 @@ static int
 set_tcp_sockopt(t_socket sockfd, int optname, int value)
 {
         int level;
-#if !defined(SOL_TCP)
+#if !defined(SOL_TCP) 
         struct protoent *buf;
         if ((buf = getprotobyname("tcp")) != NULL) {
                 level = buf->p_proto;
@@ -1087,13 +1090,9 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
                 port = "445";
         }
 
-#ifdef PS2IPS
-        {
-#else
         /* is it a hostname ? */
         err = getaddrinfo(host, port, NULL, &smb2->addrinfos);
         if (err != 0) {
-#endif
                 free(addr);
 #if defined(_WINDOWS) || defined(_XBOX)
                 if (err == WSANOTINITIALISED)
@@ -1142,9 +1141,7 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
                 addr_count++;
         smb2->connecting_fds = malloc(sizeof(t_socket) * addr_count);
         if (smb2->connecting_fds == NULL) {
-#ifndef PS2IPS
                 freeaddrinfo(smb2->addrinfos);
-#endif
                 smb2->addrinfos = NULL;
                 return -ENOMEM;
         }
@@ -1157,9 +1154,7 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
         } else {
                 free(smb2->connecting_fds);
                 smb2->connecting_fds = NULL;
-#ifndef PS2IPS
                 freeaddrinfo(smb2->addrinfos);
-#endif
                 smb2->addrinfos = NULL;
                 smb2->next_addrinfo = NULL;
         }

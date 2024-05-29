@@ -19,18 +19,6 @@
 #ifndef _LIBSMB2_PRIVATE_H_
 #define _LIBSMB2_PRIVATE_H_
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#ifdef HAVE_TIME_H
-#include <time.h>
-#endif
-
-#ifdef HAVE_SYS_TIME_H
-#include <sys/time.h>
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif
