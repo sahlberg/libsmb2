@@ -22,7 +22,7 @@ ps4_install: ps4_all
 	cmake --build build --target install
 
 ps2_ee_all:
-	cmake -S . -B build -Wno-dev "-DCMAKE_TOOLCHAIN_FILE=${PS2SDK}/ps2dev.cmake" "-DCMAKE_INSTALL_PREFIX=${PS2SDK}/ports" -DCMAKE_BUILD_TYPE=RelWithDebInfo "-DCMAKE_PREFIX_PATH=${PS2SDK}/ports"
+	cmake -S . -B build -Wno-dev "-DCMAKE_TOOLCHAIN_FILE=${PS2SDK}/ps2dev.cmake" "-DCMAKE_INSTALL_PREFIX=${PS2SDK}/ee" "-DCMAKE_PREFIX_PATH=${PS2SDK}/ee"
 	cmake --build build
 
 ps2_ee_install: ps2_ee_all
