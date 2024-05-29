@@ -21,6 +21,7 @@
 #if defined(_WINDOWS) || defined(_XBOX)
 #include <errno.h>
 #include <stdlib.h>
+
 #ifdef _WINDOWS
 #define login_num ENXIO
 #define getpid_num() GetCurrentProcessId()
@@ -232,7 +233,7 @@ int smb2_getaddrinfo(const char *node, const char*service,
 #else
         sin = malloc(sizeof(struct sockaddr_in));
 #endif
-#if !defined(_XBOX) && !defined(__NDS__)
+#if !defined(_XBOX) && !defined(__NDS__) && !defined(__USE_WINSOCK__)
         sin->sin_len = sizeof(struct sockaddr_in);
 #endif
         sin->sin_family=AF_INET;
@@ -330,7 +331,7 @@ int getlogin_r(char *buf, size_t size)
 #endif
 
 #ifdef NEED_WRITEV
-ssize_t writev(int fd, const struct iovec *vector, int count)
+ssize_t writev(t_socket fd, const struct iovec* vector, int count)
 {
         /* Find the total number of bytes to be written.  */
         size_t bytes = 0;
@@ -367,14 +368,14 @@ ssize_t writev(int fd, const struct iovec *vector, int count)
                 if (to_copy == 0)
                         break;
         }
-        bytes_written = write(fd, buffer, bytes);
+        bytes_written = write((int)fd, buffer, bytes);
         free(buffer);
         return bytes_written;
 }
 #endif
 
 #ifdef NEED_READV
-ssize_t readv (int fd, const struct iovec *vector, int count)
+ssize_t readv(t_socket fd, const struct iovec* vector, int count)
 {
         /* Find the total number of bytes to be read.  */
         size_t bytes = 0;
@@ -396,7 +397,7 @@ ssize_t readv (int fd, const struct iovec *vector, int count)
                 return -1;
 
         /* Read the data.  */
-        bytes_read = read(fd, buffer, bytes);
+        bytes_read = read((int)fd, buffer, bytes);
         if (bytes_read < 0) {
                 free(buffer);
                 return -1;

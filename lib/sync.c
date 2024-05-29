@@ -69,7 +69,7 @@ struct sync_cb_data {
 static int wait_for_reply(struct smb2_context* smb2,
     struct sync_cb_data* cb_data)
 {
-    time_t t = time(NULL);
+        time_t t = time(NULL);
 
     while (!cb_data->is_finished) {
         struct pollfd pfd;
