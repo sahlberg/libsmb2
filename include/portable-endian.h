@@ -332,7 +332,7 @@
 
 #endif
 
-#elif defined(__GNUC__) || defined(__clang__) || defined(__vita__)
+#elif defined(__GNUC__) || defined(__clang__)
 
 #ifdef __vita__
 #include <machine/endian.h>

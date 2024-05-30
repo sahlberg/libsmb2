@@ -562,6 +562,9 @@ struct sockaddr_storage {
 
 int getlogin_r(char *buf, size_t size);
 
+ssize_t writev(t_socket fd, const struct iovec *iov, int iovcnt);
+ssize_t readv(t_socket fd, const struct iovec *iov, int iovcnt);
+
 #ifndef SOL_TCP
 #define SOL_TCP IPPROTO_TCP
 #endif
