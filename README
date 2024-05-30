@@ -252,6 +252,19 @@ Then to build libsmb2, run
 The process will copy the resulting libsmb2.a and the include/smb2 headers to your
 PSL1GHT SDK portlibs folder.
 
+PlayStation Vita
+-------------
+ARM® Cortex™ - A9 core (4 core), is the main CPU for the PSVITA.
+To compile libsmb2 for the PSVITA, first install the VitaSDK using
+vdpm 
+
+Then to build libsmb2, run
+  $ cd lib
+  $ sh ./build_vita.sh
+
+The process will copy the resulting libsmb2.a and the include/smb2 headers to your
+VitaSDK libs folder.
+
 PlayStation 4
 -------------
 x86_64 is the main CPU for the PS4.

@@ -116,10 +116,6 @@
 #define be32toh(x) betoh32(x)
 #endif
 
-#ifndef le32toh
-#define le32toh(x) letoh32(x)
-#endif
-
 #ifndef be64toh
 #define be64toh(x) betoh64(x)
 #endif
@@ -336,7 +332,11 @@
 
 #endif
 
-#elif defined(__GNUC__) || defined(__clang__)
+#elif defined(__GNUC__) || defined(__clang__) || defined(__vita__)
+
+#ifdef __vita__
+#include <machine/endian.h>
+#endif
 
 #define htobe16(x) __builtin_bswap16(x)
 #define htole16(x) (x)

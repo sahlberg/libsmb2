@@ -98,6 +98,22 @@ jobs:
       run: |
         make -f Makefile.platform 3ds_all clean
 
+  build-vita:
+    name: VITA build
+
+    runs-on: ubuntu-latest
+    container: gnuton/vitasdk-docker:latest
+    steps:
+    - name: Install dependencies
+      run: |
+        sudo apt-get install -qq -y pkg-config
+    - name: git checkout
+      uses: actions/checkout@v3
+
+    - name: Compile VITA
+      run: |
+        sh ./build_vita.sh   
+             
   build-wii:
     name: WII build
 
