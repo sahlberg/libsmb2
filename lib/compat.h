@@ -548,6 +548,14 @@ struct sockaddr_storage {
 
 #endif
 
+#ifdef PS4_PLATFORM
+
+#ifndef ENODATA
+#define ENODATA 98
+#endif
+
+#endif /* PS4_PLATFORM */
+
 #if defined(__SWITCH__) || defined(__3DS__) || defined(__WII__) || defined(__GC__) || defined(__WIIU__) || defined(__NDS__)
 
 #include <sys/types.h>
@@ -657,11 +665,7 @@ void smb2_freeaddrinfo(struct addrinfo *res);
 #define connect net_connect
 #define socket net_socket 
 #define setsockopt net_setsockopt
-#ifdef __GC__
-#define getsockopt net_getsockopt
-#else
 s32 getsockopt(int sockfd, int level, int optname, void *optval, socklen_t *optlen);
-#endif
 #define select net_select
 #endif
 
@@ -676,14 +680,6 @@ int poll(struct pollfd *fds, unsigned int nfds, int timo);
 #endif
 
 #endif
-
-#ifdef PS4_PLATFORM
-
-#ifndef ENODATA
-#define ENODATA 98
-#endif
-
-#endif /* PS4_PLATFORM */
 
 #ifdef ESP_PLATFORM
 #include <stddef.h>
