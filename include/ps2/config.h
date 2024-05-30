@@ -13,10 +13,8 @@
 /* Define to 1 if you have the <errno.h> header file. */
 #define HAVE_ERRNO_H 1
 
-#ifndef _IOP
 /* Define to 1 if you have the <fcntl.h> header file. */
-#define HAVE_FCNTL_H 1
-#endif
+/* #undef HAVE_FCNTL_H */
 
 /* Define to 1 if you have the <gssapi/gssapi.h> header file. */
 #define HAVE_GSSAPI_GSSAPI_H 1
@@ -36,16 +34,14 @@
 /* Whether we have linger */
 #define HAVE_LINGER 1
 
-#ifndef _IOP
 /* Define to 1 if you have the <netdb.h> header file. */
-#define HAVE_NETDB_H 1
+/* #undef HAVE_NETDB_H 1 */
 
 /* Define to 1 if you have the <netinet/in.h> header file. */
-#define HAVE_NETINET_IN_H 1
+/* #undef HAVE_NETINET_IN_H */
 
 /* Define to 1 if you have the <netinet/tcp.h> header file. */
-#define HAVE_NETINET_TCP_H 1
-#endif
+/* #undef HAVE_NETINET_TCP_H */
 
 /* Define to 1 if you have the <poll.h> header file. */
 /* #undef HAVE_POLL_H */
@@ -62,10 +58,8 @@
 /* Define to 1 if you have the <stdio.h> header file. */
 #define HAVE_STDIO_H 1
 
-#ifndef _IOP
 /* Define to 1 if you have the <stdlib.h> header file. */
-#define HAVE_STDLIB_H 1
-#endif
+/* #undef HAVE_STDLIB_H */
 
 /* Define to 1 if you have the <strings.h> header file. */
 #define HAVE_STRINGS_H 1
@@ -85,13 +79,11 @@
 /* Define to 1 if you have the <sys/poll.h> header file. */
 /* #undef HAVE_SYS_POLL_H */
 
-#ifndef _IOP
 /* Define to 1 if you have the <sys/socket.h> header file. */
-#define HAVE_SYS_SOCKET_H 1
+/* #undef HAVE_SYS_SOCKET_H */
 
 /* Define to 1 if you have the <sys/stat.h> header file. */
-#define HAVE_SYS_STAT_H 1
-#endif
+/* #undef HAVE_SYS_STAT_H 1 */
 
 /* Define to 1 if you have the <sys/time.h> header file. */
 #define HAVE_SYS_TIME_H 1
@@ -102,21 +94,17 @@
 /* Define to 1 if you have the <sys/uio.h> header file. */
 /* #undef HAVE_SYS_UIO_H */
 
-#ifndef _IOP
 /* Define to 1 if you have the <sys/unistd.h> header file. */
-#define HAVE_SYS_UNISTD_H 1
-#endif
+/* #undef HAVE_SYS_UNISTD_H 1 */
 
 /* Define to 1 if you have the <sys/_iovec.h> header file. */
 /* #undef HAVE_SYS__IOVEC_H */
 
-#ifndef _IOP
 /* Define to 1 if you have the <time.h> header file. */
-#define HAVE_TIME_H 1
+/* #undef HAVE_TIME_H 1 */
 
 /* Define to 1 if you have the <unistd.h> header file. */
-#define HAVE_UNISTD_H 1
-#endif
+/* #undef HAVE_UNISTD_H 1 */
 
 /* Define to the sub-directory where libtool stores uninstalled libraries. */
 #define LT_OBJDIR ".libs/"
