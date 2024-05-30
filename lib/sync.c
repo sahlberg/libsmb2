@@ -69,12 +69,11 @@ struct sync_cb_data {
 static int wait_for_reply(struct smb2_context *smb2,
                           struct sync_cb_data *cb_data)
 {
-	time_t t = time(NULL);
+        time_t t = time(NULL);
 
         while (!cb_data->is_finished) {
 		struct pollfd pfd;
 		memset(&pfd, 0, sizeof(struct pollfd));
-
 		pfd.fd = smb2_get_fd(smb2);
 		pfd.events = smb2_which_events(smb2);
 
@@ -89,14 +88,7 @@ static int wait_for_reply(struct smb2_context *smb2,
 		{
 			smb2_set_error(smb2, "Timeout expired and no connection exists\n");
 			return -1;
-		}
-#if defined (PS2_EE_PLATFORM) && defined(PS2IPS)
-                /* select() is broken on ps2ips :-( */
-                pfd.revents |= POLLOUT;
-                if (SMB2_VALID_SOCKET(smb2->fd)) {
-                        pfd.revents |= POLLIN;
-                }
-#endif                
+		}                
                 if (pfd.revents == 0) {
                         continue;
                 }

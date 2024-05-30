@@ -81,7 +81,12 @@ struct smb2dirent {
 };
 
 #if defined(_WINDOWS)
+#ifdef __USE_WINSOCK__
+#include <winsock.h>
+#else
+#include <ws2tcpip.h>
 #include <winsock2.h>
+#endif
 #elif defined(_XBOX)
 #include <xtl.h> 
 #include <winsockx.h>
@@ -92,6 +97,7 @@ typedef SOCKET t_socket;
 #else
 typedef int t_socket;
 #endif
+
 /*
  * Create an SMB2 context.
  * Function returns
