@@ -388,7 +388,13 @@ struct sockaddr_storage {
 #ifdef _EE
 #include <unistd.h>
 #else
+#ifdef __PS2SDK_IOP__
+#include "sysclib.h"
+#include "sysmem.h"
+#include "intrman.h"
+#else
 #include <alloc.h>
+#endif
 #include <stdint.h>
 #include <ps2ip.h>
 #include <loadcore.h>
@@ -407,8 +413,16 @@ typedef size_t ssize_t;
 #endif
 
 long long int be64toh(long long int x);
-#ifdef _IOP
+#ifdef __PS2SDK_IOP__
 char *strdup(const char *s);
+
+#ifdef __PS2SDK_IOP__
+void *malloc(int size);
+
+void free(void *ptr);
+
+void *calloc(size_t nmemb, size_t size);
+#endif
 
 int random(void);
 void srandom(unsigned int seed);
