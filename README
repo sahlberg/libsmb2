@@ -233,8 +233,8 @@ PS2 SDK and set it up.
 
 Then to build libsmb2, run
   $ cd lib
-  $ make -f Makefile.PS2_IOP clean
-  $ make -f Makefile.PS2_IOP install
+  $ make -f Makefile.platform clean
+  $ make -f Makefile.platform ps2_iop_install
 
 
 PlayStation 3

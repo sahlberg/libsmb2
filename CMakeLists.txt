@@ -169,9 +169,9 @@ else()
             add_definitions(-DHAVE_LIBKRB5)
         endif()
     endif()
-
+  if(NOT PS2_IOP)
     include(cmake/ConfigureChecks.cmake)
-
+  endif()
     include_directories(${CMAKE_CURRENT_BINARY_DIR}
                         include
                         include/smb2
@@ -241,6 +241,7 @@ else()
     elseif(PS2_IOP)
       add_definitions(-DHAVE_CONFIG_H -DNEED_BE64TOH -DNEED_STRDUP -DNEED_READV -DNEED_WRITEV -DNEED_POLL -DNEED_GETPID -DNEED_RANDOM -DNEED_SRANDOM -DNEED_GETLOGIN_R)
       set(CMAKE_C_FLAGS "-Wall") 
+      include_directories(${CMAKE_CURRENT_BINARY_DIR} include/ps2)
       add_compile_options("${CMAKE_C_FLAGS}")
     elseif(CMAKE_SYSTEM_NAME MATCHES Dreamcast)
       add_definitions(-DNEED_WRITEV -DNEED_READV -DHAVE_CONFIG_H -DNEED_GETLOGIN_R)             
