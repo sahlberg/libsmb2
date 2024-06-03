@@ -37,7 +37,7 @@
 #define htole64(x) (x)
 #define le64toh(x) (x)
 
-#elif defined(_arch_dreamcast)
+#elif defined(__DREAMCAST__)
 
 #include <machine/endian.h>
 

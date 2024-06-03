@@ -33,7 +33,7 @@
 #define smb2_srandom srand
 #endif
 
-#ifdef _arch_dreamcast
+#ifdef __DREAMCAST__
 #include <stdlib.h>
 #include <string.h>
 #include <sys/errno.h>

@@ -301,7 +301,7 @@ int getlogin_r(char *buf, size_t size);
 
 #endif /* PICO_PLATFORM */
 
-#ifdef _arch_dreamcast
+#ifdef __DREAMCAST__
 
 #include <netdb.h>
 #include <unistd.h>
@@ -315,7 +315,7 @@ ssize_t readv(t_socket fd, const struct iovec *iov, int iovcnt);
 
 int getlogin_r(char *buf, size_t size);
 
-#endif /* _arch_dreamcast */
+#endif /* __DREAMCAST__ */
 
 #if defined(__amigaos4__) || defined(__AMIGA__) || defined(__AROS__)
 #include <errno.h>
