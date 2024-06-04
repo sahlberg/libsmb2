@@ -79,9 +79,6 @@
 #include <stdint.h>
 #endif
 
-#include "portable-endian.h"
-#include <errno.h>
-
 #ifdef HAVE_FCNTL_H
 #include <fcntl.h>
 #endif
@@ -101,6 +98,8 @@
 #include "libsmb2.h"
 #include "smb3-seal.h"
 #include "libsmb2-private.h"
+#include "portable-endian.h"
+#include <errno.h>
 
 #define MAX_URL_SIZE 1024
 
@@ -857,7 +856,7 @@ set_nonblocking(t_socket fd)
 #if defined(WIN32) || defined(_XBOX)
         unsigned long opt = 1;
         ioctlsocket(fd, FIONBIO, &opt);
-#elif (defined(__AMIGA__) || defined(__AROS__)) && !defined(__amigaos4__)
+#elif (defined(__AMIGA__) || defined(__AROS__)) && !defined(__amigaos4__) && !defined(__amigaos3__)
         unsigned long opt = 0;
         IoctlSocket(fd, FIONBIO, (char *)&opt);		
 #else

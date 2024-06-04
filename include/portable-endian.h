@@ -250,7 +250,7 @@
 #define be64toh(x) (x)
 #define le64toh(x) __bswap64(x)
 
-#elif defined(__GNUC__)
+#elif defined(__GNUC__) || defined(__AMIGA__)
 
 #define htobe16(x) (x)
 #define htole16(x) __builtin_bswap16(x)
@@ -314,7 +314,7 @@
 
 #define htobe64(x) __bswap64(x)
 #define htole64(x) (x)
-#define bfe64toh(x) __bswap64(x)
+#define be64toh(x) __bswap64(x)
 #define le64toh(x) (x)
 
 #else

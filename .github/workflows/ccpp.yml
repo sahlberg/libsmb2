@@ -62,6 +62,53 @@ jobs:
       run: |
         make -f Makefile.platform ps2_iop_all clean
 
+  build-ps3-ppu:
+    name: PS3 PPU build
+
+    runs-on: ubuntu-20.04
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Set env vars
+      id: slug
+      run: |
+        echo "sha_name=$(echo ${GITHUB_SHA} | cut -c1-8)" >> $GITHUB_ENV
+      # using pre-compiled sdk
+    - name: Download PSL1GHT Toolchain
+      run: |
+        curl -sL https://github.com/bucanero/ps3toolchain/releases/download/ubuntu-latest-fad3b5fb/ps3dev-ubuntu-latest-2020-08-31.tar.gz | tar xvz -C ./
+        echo "PS3DEV=${GITHUB_WORKSPACE}/ps3dev" >> $GITHUB_ENV
+        echo "PSL1GHT=${GITHUB_WORKSPACE}/ps3dev" >> $GITHUB_ENV
+    - name: build libsmb2
+      run: |
+        cd lib
+        make -f Makefile.PS3_PPU clean
+        make -f Makefile.PS3_PPU
+    
+  build-ps4:
+    name: PS4
+      
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Create Build Environment
+      run: >
+        sudo apt-get update &&
+        sudo apt-get install -y wget cmake git gettext smpq &&
+        wget https://github.com/PacBrew/pacbrew-pacman/releases/download/v1.1/pacbrew-pacman-1.1.deb &&
+        sudo dpkg -i pacbrew-pacman-1.1.deb && sudo pacbrew-pacman -Sy &&
+        sudo pacbrew-pacman --noconfirm -S ps4-openorbis ps4-openorbis-portlibs 
+        
+    - name: build libsmb2
+      run: |
+        make -f Makefile.platform ps4_all clean
+
   build-switch:
     name: SWITCH build
 
@@ -164,49 +211,22 @@ jobs:
       run: |
         make -f Makefile.platform nds_all clean
 
-  build-ps3-ppu:
-    name: PS3 PPU build
+  build-Amiga-OS3:
+    name: Amiga OS3 build
 
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
+    container: amigadev/crosstools:m68k-amigaos
     steps:
+    - name: Install dependencies
+      run: |
+        apt-get update -y && apt-get install -y ffmpeg gettext smpq
 
-    - name: Checkout
+    - name: git checkout
       uses: actions/checkout@v3
 
-    - name: Set env vars
-      id: slug
-      run: |
-        echo "sha_name=$(echo ${GITHUB_SHA} | cut -c1-8)" >> $GITHUB_ENV
-      # using pre-compiled sdk
-    - name: Download PSL1GHT Toolchain
-      run: |
-        curl -sL https://github.com/bucanero/ps3toolchain/releases/download/ubuntu-latest-fad3b5fb/ps3dev-ubuntu-latest-2020-08-31.tar.gz | tar xvz -C ./
-        echo "PS3DEV=${GITHUB_WORKSPACE}/ps3dev" >> $GITHUB_ENV
-        echo "PSL1GHT=${GITHUB_WORKSPACE}/ps3dev" >> $GITHUB_ENV
-    - name: build libsmb2
+    - name: Compile AMIGA OS3
       run: |
         cd lib
-        make -f Makefile.PS3_PPU clean
-        make -f Makefile.PS3_PPU
-    
-  build-ps4:
-    name: PS4
-      
-    runs-on: ubuntu-22.04
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+        make -f Makefile.AMIGA_OS3 clean
+        make -f Makefile.AMIGA_OS3
 
-    - name: Create Build Environment
-      run: >
-        sudo apt-get update &&
-        sudo apt-get install -y wget cmake git gettext smpq &&
-        wget https://github.com/PacBrew/pacbrew-pacman/releases/download/v1.1/pacbrew-pacman-1.1.deb &&
-        sudo dpkg -i pacbrew-pacman-1.1.deb && sudo pacbrew-pacman -Sy &&
-        sudo pacbrew-pacman --noconfirm -S ps4-openorbis ps4-openorbis-portlibs 
-        
-    - name: build libsmb2
-      run: |
-        make -f Makefile.platform ps4_all clean
