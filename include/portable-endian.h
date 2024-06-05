@@ -235,6 +235,18 @@
 #if defined(__NEWLIB__)
 #include <machine/endian.h>
 
+#ifndef __bswap16
+#define __bswap16(x) __builtin_bswap16(x)
+#endif
+
+#ifndef __bswap32
+#define __bswap32(x) __builtin_bswap32(x)
+#endif
+
+#ifndef __bswap64
+#define __bswap64(x) __builtin_bswap64(x)
+#endif
+
 #define htobe16(x) (x)
 #define htole16(x) __bswap16(x)
 #define be16toh(x) (x)
@@ -250,7 +262,7 @@
 #define be64toh(x) (x)
 #define le64toh(x) __bswap64(x)
 
-#elif defined(__GNUC__) || defined(__AMIGA__)
+#elif defined(__GNUC__)
 
 #define htobe16(x) (x)
 #define htole16(x) __builtin_bswap16(x)

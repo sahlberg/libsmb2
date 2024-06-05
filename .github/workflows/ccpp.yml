@@ -230,3 +230,22 @@ jobs:
         make -f Makefile.AMIGA_OS3 clean
         make -f Makefile.AMIGA_OS3
 
+  build-Amiga-Os:
+    name: Amiga OS Build
+
+    runs-on: ubuntu-latest
+    container: amigadev/crosstools:ppc-amigaos
+    steps:
+    - name: Install dependencies
+      run: |
+        apt-get update -y && apt-get install -y ffmpeg gettext smpq
+
+    - name: git checkout
+      uses: actions/checkout@v3
+
+    - name: Compile AMIGA OS
+      run: |
+        cd lib
+        make -f Makefile.AMIGA clean
+        make -f Makefile.AMIGA
+      

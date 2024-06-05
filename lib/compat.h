@@ -349,7 +349,7 @@ struct pollfd {
         short revents;
 };
 
-#if !defined(__amigaos4__) && !defined(__amigaos3__) && !defined(__AROS__) && (defined(__AMIGA__))
+#ifndef HAVE_ADDRINFO
 
 struct addrinfo {
 	int	ai_flags;	/* AI_PASSIVE, AI_CANONNAME */
@@ -374,8 +374,8 @@ void smb2_freeaddrinfo(struct addrinfo *res);
 #define freeaddrinfo smb2_freeaddrinfo
 
 #ifndef __amigaos4__
-ssize_t writev(int fd, const struct iovec *iov, int iovcnt);
-ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
+ssize_t writev(t_socket fd, const struct iovec *iov, int iovcnt);
+ssize_t readv(t_socket fd, const struct iovec *iov, int iovcnt);
 #endif
 
 #if !defined(HAVE_SOCKADDR_STORAGE)
