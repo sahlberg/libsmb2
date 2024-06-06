@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v4
     - name: Install dependencies
       run: |
         sudo apt update
@@ -48,7 +48,7 @@ jobs:
         apk add cmake build-base git zip gawk python3 py3-pip bash
 
     - name: git checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Compile PS2 EE Side
       run: |
@@ -69,7 +69,7 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Set env vars
       id: slug
@@ -92,7 +92,7 @@ jobs:
       
     runs-on: ubuntu-22.04
     steps:
-    - name: Checkout
+    - name: git checkout
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
@@ -120,7 +120,7 @@ jobs:
         apt-get update -y && apt-get install -y gettext smpq
 
     - name: git checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Compile Nintendo Switch
       run: |
@@ -137,7 +137,7 @@ jobs:
         apt-get update -y && apt-get install -y ffmpeg gettext smpq
 
     - name: git checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Compile Nintendo 3DS
       run: |
@@ -154,7 +154,7 @@ jobs:
         apt-get update -y && apt-get install -y ffmpeg gettext smpq
 
     - name: git checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Compile Nintendo WII
       run: |
@@ -171,7 +171,7 @@ jobs:
         apt-get update -y && apt-get install -y ffmpeg gettext smpq
 
     - name: git checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Compile Nintendo Gamecube
       run: |
@@ -188,7 +188,7 @@ jobs:
         apt-get update -y && apt-get install -y ffmpeg gettext smpq
 
     - name: git checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Compile WII-U
       run: |
@@ -205,7 +205,7 @@ jobs:
         apt-get update -y && apt-get install -y ffmpeg gettext smpq
 
     - name: git checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Compile NDS ARM9
       run: |
@@ -222,7 +222,7 @@ jobs:
         apt-get update -y && apt-get install -y ffmpeg gettext smpq
 
     - name: git checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Compile AMIGA OS3
       run: |
@@ -241,7 +241,7 @@ jobs:
         apt-get update -y && apt-get install -y ffmpeg gettext smpq
 
     - name: git checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Compile AMIGA OS
       run: |
