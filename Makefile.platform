@@ -67,21 +67,21 @@ ps4_install: ps4_all
 	cmake --build build --target install
 
 ps2_ee_all:
-	cmake -S . -B build  "-DCMAKE_TOOLCHAIN_FILE=${PS2DEV}/share/ps2dev.cmake" "-DCMAKE_INSTALL_PREFIX=/usr/local/ps2dev/ps2sdk/ee" "-DCMAKE_PREFIX_PATH=/usr/local/ps2dev/ps2sdk/ee"
+	cmake -S . -B build  "-DCMAKE_TOOLCHAIN_FILE=${PS2DEV}/share/ps2dev.cmake" "-DCMAKE_INSTALL_PREFIX=/usr/local/ps2dev/ps2sdk/ports" "-DCMAKE_PREFIX_PATH=/usr/local/ps2dev/ps2sdk/ports"
 	cmake --build build
 
 ps2_ee_install: ps2_ee_all
 	cmake --build build --target install
 
 ps2_ips_all:
-	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=cmake/PS2/ps2dev_ee_ips.cmake" "-DCMAKE_INSTALL_PREFIX=/usr/local/ps2dev/ps2sdk/ee" "-DCMAKE_PREFIX_PATH=/usr/local/ps2dev/ps2sdk/ee"
+	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=cmake/PS2/ps2dev_ee_ips.cmake" "-DCMAKE_INSTALL_PREFIX=/usr/local/ps2dev/ps2sdk/ports" "-DCMAKE_INSTALL_PREFIX=/usr/local/ps2dev/ps2sdk/ports"
 	cmake --build build
 
 ps2_ips_install: ps2_ips_all
 	cmake --build build --target install
 
 ps2_iop_all:
-	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=cmake/PS2/ps2dev_iop.cmake" "-DCMAKE_INSTALL_PREFIX=/usr/local/ps2dev/ps2sdk/iop" "-DCMAKE_PREFIX_PATH=/usr/local/ps2dev/ps2sdk/iop"
+	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=cmake/PS2/ps2dev_iop.cmake" "-DCMAKE_INSTALL_PREFIX=/usr/local/ps2dev/ps2sdk/ports" "-DCMAKE_INSTALL_PREFIX=/usr/local/ps2dev/ps2sdk/ports"
 	cmake --build build
 
 ps2_iop_install: ps2_iop_all
