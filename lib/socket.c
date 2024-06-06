@@ -1079,7 +1079,7 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
         if (port != NULL) {
                 *port++ = 0;
         } else {
-                port = "445";
+                port = (char*)"445";
         }
 
         /* is it a hostname ? */

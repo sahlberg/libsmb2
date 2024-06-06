@@ -428,7 +428,7 @@ struct sockaddr_storage {
 #ifdef _EE
 #include <unistd.h>
 #else
-#ifndef __PS2SDK_IOP__
+#ifndef __ps2sdk_iop__
 #include <alloc.h>
 #endif
 #include <stdint.h>
@@ -452,14 +452,6 @@ long long int be64toh(long long int x);
 #ifdef _IOP
 char *strdup(const char *s);
 
-#ifdef __PS2SDK_IOP__
-void *malloc(int size);
-
-void free(void *ptr);
-
-void *calloc(size_t nmemb, size_t size);
-#endif
-
 int random(void);
 void srandom(unsigned int seed);
 time_t time(time_t *tloc);
@@ -469,9 +461,6 @@ int getlogin_r(char *buf, size_t size);
 
 #ifdef _IOP
 int getpid();
-#endif
-
-#ifdef _IOP
 #define close(x) lwip_close(x)
 #define snprintf(format, n, ...) sprintf(format, __VA_ARGS__)
 #define fcntl(a,b,c) lwip_fcntl(a,b,c)
@@ -517,6 +506,14 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen);
 
 #define write(a,b,c) lwip_send(a,b,c,MSG_DONTWAIT)
 #define read(a,b,c) lwip_recv(a,b,c,MSG_DONTWAIT)
+#endif
+
+#ifdef __ps2sdk_iop__
+void *malloc(int size);
+
+void free(void *ptr);
+
+void *calloc(size_t nmemb, size_t size);
 #endif
 
 ssize_t writev(t_socket fd, const struct iovec *iov, int iovcnt);

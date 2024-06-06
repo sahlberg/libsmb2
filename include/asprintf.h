@@ -2,7 +2,7 @@
 #ifndef _ASPRINTF_H_
 #define _ASPRINTF_H_
 
-#if !defined(__AROS__) && !defined(__PS2SDK_IOP__)
+#if !defined(__AROS__) && !defined(__ps2sdk_iop__)
 #include <malloc.h>
 #endif
 #include <stdio.h>
