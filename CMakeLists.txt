@@ -236,7 +236,7 @@ else()
       #-fuse-init-array -emit-llvm broken...
       set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS}")    
       add_compile_options("${CMAKE_C_FLAGS}")
-    elseif(PS2 OR PS2IPS)
+    elseif(PS2)
       add_definitions(-DNEED_BE64TOH -DNEED_POLL -DNEED_WRITEV -DNEED_READV -DNEED_GETLOGIN_R)
     elseif(PS2_IOP)
       add_definitions(-DHAVE_CONFIG_H -DNEED_BE64TOH -DNEED_STRDUP -DNEED_READV -DNEED_WRITEV -DNEED_POLL -DNEED_GETPID -DNEED_RANDOM -DNEED_SRANDOM -DNEED_GETLOGIN_R)
