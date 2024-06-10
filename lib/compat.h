@@ -750,6 +750,15 @@ int getlogin_r(char *buf, size_t size);
 #endif
 #endif /* __ANDROID__ */
 
+#ifdef __OpenBSD__
+
+#undef ENODATA
+#ifndef ENODATA
+#define ENODATA ENOATTR
+#endif
+
+#endif
+
 #ifdef __cplusplus
 }
 #endif

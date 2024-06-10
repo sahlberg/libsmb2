@@ -162,13 +162,13 @@ else()
     
     list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
 
-    if(IOS)
+  if(IOS)
         find_package(GSSAPI)
 
-        if(GSSAPI_FOUND)
-            add_definitions(-DHAVE_LIBKRB5)
-        endif()
-    endif()
+      if(GSSAPI_FOUND)
+        add_definitions(-DHAVE_LIBKRB5)
+      endif()
+  endif()
   if(NOT PS2_IOP)
     include(cmake/ConfigureChecks.cmake)
   endif()

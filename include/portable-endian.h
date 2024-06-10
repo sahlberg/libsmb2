@@ -189,8 +189,6 @@
 #define be64toh(x) _byteswap_uint64(x)
 #define le64toh(x) (x)
 
-#ifdef _XBOX
-
 #ifndef __BYTE_ORDER
 #define __BYTE_ORDER BYTE_ORDER
 #endif
@@ -205,8 +203,6 @@
 
 #ifndef __PDP_ENDIAN
 #define __PDP_ENDIAN PDP_ENDIAN
-#endif
-
 #endif
 
 #elif defined(__GNUC__) || defined(__clang__)
