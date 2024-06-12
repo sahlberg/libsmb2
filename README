@@ -257,8 +257,7 @@ To compile libsmb2 for the PSVITA, first install the VitaSDK using
 vdpm 
 
 Then to build libsmb2, run
-  $ cd lib
-  $ sh ./build_vita.sh
+  $ make vita_install -f Makefile.platform
 
 The process will copy the resulting libsmb2.a and the include/smb2 headers to your
 VitaSDK libs folder.
