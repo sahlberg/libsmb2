@@ -595,10 +595,18 @@ struct sockaddr_storage {
 
 #endif
 
-#ifdef PS4_PLATFORM
+#if defined(__NetBSD__) || defined(__FreeBSD__) || defined(__DragonFly__) || defined(__OpenBSD__)
 
+#ifdef PS4_PLATFORM
 #ifndef ENODATA
 #define ENODATA 98
+#endif
+#else
+#undef ENODATA
+#ifndef ENODATA
+#define ENODATA ENOATTR
+#endif
+
 #endif
 
 #endif /* PS4_PLATFORM */
@@ -749,15 +757,6 @@ int getlogin_r(char *buf, size_t size);
 int getlogin_r(char *buf, size_t size);
 #endif
 #endif /* __ANDROID__ */
-
-#ifdef __OpenBSD__
-
-#undef ENODATA
-#ifndef ENODATA
-#define ENODATA ENOATTR
-#endif
-
-#endif
 
 #ifdef __cplusplus
 }
