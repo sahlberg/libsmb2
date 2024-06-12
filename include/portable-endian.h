@@ -37,7 +37,7 @@
 #define htole64(x) (x)
 #define le64toh(x) (x)
 
-#elif defined(_arch_dreamcast)
+#elif defined(__DREAMCAST__)
 
 #include <machine/endian.h>
 
@@ -56,9 +56,13 @@
 #define htole64(x) (x)
 #define le64toh(x) (x)
 
-#elif defined(__linux__) || defined(__CYGWIN__) || defined(PS4_PLATFORM) || defined(ESP_PLATFORM)
+#elif defined(__linux__) || defined(__CYGWIN__) || defined(ESP_PLATFORM) || defined(__NetBSD__) || defined(__FreeBSD__) || defined(__DragonFly__) || defined(__OpenBSD__)
 
+#if defined(__linux__) || defined(__CYGWIN__) || defined(PS4_PLATFORM) || defined(ESP_PLATFORM)
 #include <endian.h>
+#else
+#include <sys/endian.h>
+#endif
 
 /* These 4 #defines may be needed with older esp-idf environments */
 #ifndef _LITTLE_ENDIAN
@@ -75,6 +79,30 @@
 
 #ifndef __bswap64
 #define __bswap64 __bswap_64
+#endif
+
+#ifndef be16toh
+#define be16toh(x) betoh16(x)
+#endif
+
+#ifndef le16toh
+#define le16toh(x) letoh16(x)
+#endif
+
+#ifndef be32toh
+#define be32toh(x) betoh32(x)
+#endif
+
+#ifndef le32toh
+#define le32toh(x) letoh32(x)
+#endif
+
+#ifndef be64toh
+#define be64toh(x) betoh64(x)
+#endif
+
+#ifndef le64toh 
+#define le64toh(x) letoh64(x)
 #endif
 
 #elif defined(__APPLE__)
@@ -100,29 +128,6 @@
 #define __BIG_ENDIAN BIG_ENDIAN
 #define __LITTLE_ENDIAN LITTLE_ENDIAN
 #define __PDP_ENDIAN PDP_ENDIAN
-
-#elif defined(__NetBSD__) || defined(__FreeBSD__) || defined(__DragonFly__) || defined(__OpenBSD__)
-
-#include <sys/endian.h>
-#ifndef be16toh
-#define be16toh(x) betoh16(x)
-#endif
-
-#ifndef le16toh
-#define le16toh(x) letoh16(x)
-#endif
-
-#ifndef be32toh
-#define be32toh(x) betoh32(x)
-#endif
-
-#ifndef be64toh
-#define be64toh(x) betoh64(x)
-#endif
-
-#ifndef le64toh 
-#define le64toh(x) letoh64(x)
-#endif
 
 #elif defined(PS3_PPU_PLATFORM)
 
@@ -185,8 +190,6 @@
 #define be64toh(x) _byteswap_uint64(x)
 #define le64toh(x) (x)
 
-#ifdef _XBOX
-
 #ifndef __BYTE_ORDER
 #define __BYTE_ORDER BYTE_ORDER
 #endif
@@ -201,8 +204,6 @@
 
 #ifndef __PDP_ENDIAN
 #define __PDP_ENDIAN PDP_ENDIAN
-#endif
-
 #endif
 
 #elif defined(__GNUC__) || defined(__clang__)
@@ -230,6 +231,18 @@
 
 #if defined(__NEWLIB__)
 #include <machine/endian.h>
+
+#ifndef __bswap16
+#define __bswap16(x) __builtin_bswap16(x)
+#endif
+
+#ifndef __bswap32
+#define __bswap32(x) __builtin_bswap32(x)
+#endif
+
+#ifndef __bswap64
+#define __bswap64(x) __builtin_bswap64(x)
+#endif
 
 #define htobe16(x) (x)
 #define htole16(x) __bswap16(x)
@@ -310,7 +323,7 @@
 
 #define htobe64(x) __bswap64(x)
 #define htole64(x) (x)
-#define bfe64toh(x) __bswap64(x)
+#define be64toh(x) __bswap64(x)
 #define le64toh(x) (x)
 
 #else

@@ -301,7 +301,7 @@ int getlogin_r(char *buf, size_t size);
 
 #endif /* PICO_PLATFORM */
 
-#ifdef _arch_dreamcast
+#ifdef __DREAMCAST__
 
 #include <netdb.h>
 #include <unistd.h>
@@ -315,9 +315,10 @@ ssize_t readv(t_socket fd, const struct iovec *iov, int iovcnt);
 
 int getlogin_r(char *buf, size_t size);
 
-#endif /* _arch_dreamcast */
+#endif /* __DREAMCAST__ */
 
 #if defined(__amigaos4__) || defined(__AMIGA__) || defined(__AROS__)
+
 #include <errno.h>
 #include <sys/time.h>
 #include <netinet/in.h>
@@ -327,10 +328,6 @@ int getlogin_r(char *buf, size_t size);
 #include <sys/uio.h>
 #endif
 int getlogin_r(char *buf, size_t size);
-#ifndef __AROS__
-int random(void);
-void srandom(unsigned int seed);
-#endif
 #if !defined(__amigaos4__) && (defined(__AMIGA__) || defined(__AROS__))
 #include <proto/bsdsocket.h>
 #undef HAVE_UNISTD_H
@@ -339,27 +336,48 @@ void srandom(unsigned int seed);
 #undef freeaddrinfo
 #endif
 #define strncpy(a,b,c) strcpy(a,b)
-#define getaddrinfo smb2_getaddrinfo
-#define freeaddrinfo smb2_freeaddrinfo
+
 #define POLLIN      0x0001    /* There is data to read */
 #define POLLPRI     0x0002    /* There is urgent data to read */
 #define POLLOUT     0x0004    /* Writing now will not block */
 #define POLLERR     0x0008    /* Error condition */
 #define POLLHUP     0x0010    /* Hung up */
+
 struct pollfd {
         int fd;
         short events;
         short revents;
 };
+
+#ifndef HAVE_ADDRINFO
+
+struct addrinfo {
+	int	ai_flags;	/* AI_PASSIVE, AI_CANONNAME */
+	int	ai_family;	/* PF_xxx */
+	int	ai_socktype;	/* SOCK_xxx */
+	int	ai_protocol;	/* 0 or IPPROTO_xxx for IPv4 and IPv6 */
+	size_t	ai_addrlen;	/* length of ai_addr */
+	char	*ai_canonname;	/* canonical name for hostname */
+	struct sockaddr *ai_addr;	/* binary address */
+	struct addrinfo *ai_next;	/* next structure in linked list */
+};
+#endif
+
 int poll(struct pollfd *fds, unsigned int nfds, int timo);
+
 int smb2_getaddrinfo(const char *node, const char*service,
                 const struct addrinfo *hints,
                 struct addrinfo **res);
 void smb2_freeaddrinfo(struct addrinfo *res);
+
+#define getaddrinfo smb2_getaddrinfo
+#define freeaddrinfo smb2_freeaddrinfo
+
 #ifndef __amigaos4__
 ssize_t writev(t_socket fd, const struct iovec *iov, int iovcnt);
 ssize_t readv(t_socket fd, const struct iovec *iov, int iovcnt);
 #endif
+
 #if !defined(HAVE_SOCKADDR_STORAGE)
 /*
  * RFC 2553: protocol-independent placeholder for socket addresses
@@ -369,6 +387,7 @@ ssize_t readv(t_socket fd, const struct iovec *iov, int iovcnt);
 #define _SS_PAD1SIZE	(_SS_ALIGNSIZE - sizeof(unsigned char) * 2)
 #define _SS_PAD2SIZE	(_SS_MAXSIZE - sizeof(unsigned char) * 2 - \
 				_SS_PAD1SIZE - _SS_ALIGNSIZE)
+
 struct sockaddr_storage {
 #ifdef HAVE_SOCKADDR_LEN
 	unsigned char ss_len;		/* address length */
@@ -381,6 +400,27 @@ struct sockaddr_storage {
 	char	__ss_pad2[_SS_PAD2SIZE];
 };
 #endif
+
+#ifndef EAI_AGAIN
+#define EAI_AGAIN EAGAIN
+#endif
+
+#ifndef EAI_FAIL
+#define EAI_FAIL        4
+#endif
+
+#ifndef EAI_MEMORY
+#define EAI_MEMORY      6
+#endif
+
+#ifndef EAI_NONAME
+#define EAI_NONAME      8
+#endif
+
+#ifndef EAI_SERVICE
+#define EAI_SERVICE     9
+#endif
+
 #endif
 
 #ifdef __PS2__
@@ -388,7 +428,9 @@ struct sockaddr_storage {
 #ifdef _EE
 #include <unistd.h>
 #else
+#ifndef __ps2sdk_iop__
 #include <alloc.h>
+#endif
 #include <stdint.h>
 #include <ps2ip.h>
 #include <loadcore.h>
@@ -419,9 +461,6 @@ int getlogin_r(char *buf, size_t size);
 
 #ifdef _IOP
 int getpid();
-#endif
-
-#ifdef _IOP
 #define close(x) lwip_close(x)
 #define snprintf(format, n, ...) sprintf(format, __VA_ARGS__)
 #define fcntl(a,b,c) lwip_fcntl(a,b,c)
@@ -467,6 +506,14 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen);
 
 #define write(a,b,c) lwip_send(a,b,c,MSG_DONTWAIT)
 #define read(a,b,c) lwip_recv(a,b,c,MSG_DONTWAIT)
+#endif
+
+#ifdef __ps2sdk_iop__
+void *malloc(int size);
+
+void free(void *ptr);
+
+void *calloc(size_t nmemb, size_t size);
 #endif
 
 ssize_t writev(t_socket fd, const struct iovec *iov, int iovcnt);
@@ -548,10 +595,10 @@ struct sockaddr_storage {
 
 #endif
 
-#ifdef PS4_PLATFORM
+#if defined(__NetBSD__) || defined(__FreeBSD__) || defined(__DragonFly__) || defined(__OpenBSD__)
 
 #ifndef ENODATA
-#define ENODATA 98
+#define ENODATA ENOATTR
 #endif
 
 #endif /* PS4_PLATFORM */

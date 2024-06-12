@@ -1,4 +1,21 @@
-.PHONY: switch_all switch_install 3ds_all 3ds_install ps4_all ps4_install ps2_ee_all ps2_ee_install ps2_ips_all ps2_ips_install ps2_iop_all ps2_iop_install vita_all vita_install
+# -*-  mode:c; tab-width:8; c-basic-offset:8; indent-tabs-mode:nil;  -*- 
+#
+#  Copyright (C) 2024 by André Guilherme <andregui17@outlook.com>
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU Lesser General Public License as published by
+#  the Free Software Foundation; either version 2.1 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU Lesser General Public License for more details.
+#
+#  You should have received a copy of the GNU Lesser General Public License
+#  along with this program; if not, see <http://www.gnu.org/licenses/>.
+
+.PHONY: switch_all switch_install 3ds_all 3ds_install gc_all gc_install nds_all nds_install wii_all wii_install wiiu_all wiiu_install ps4_all ps4_install ps2_ee_all ps2_ee_install ps2_ips_all ps2_ips_install ps2_iop_all ps2_iop_install dc_all dc_install vita_all vita_install
 
 switch_all:
 	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=${DEVKITPRO}/cmake/Switch.cmake" 
@@ -50,21 +67,21 @@ ps4_install: ps4_all
 	cmake --build build --target install
 
 ps2_ee_all:
-	cmake -S . -B build  "-DCMAKE_TOOLCHAIN_FILE=${PS2DEV}/share/ps2dev.cmake" "-DCMAKE_INSTALL_PREFIX=/usr/local/ps2dev/ps2sdk/ee" "-DCMAKE_PREFIX_PATH=/usr/local/ps2dev/ps2sdk/ee"
+	cmake -S . -B build  "-DCMAKE_TOOLCHAIN_FILE=${PS2DEV}/share/ps2dev.cmake" "-DCMAKE_INSTALL_PREFIX=/usr/local/ps2dev/ps2sdk/ports" "-DCMAKE_PREFIX_PATH=/usr/local/ps2dev/ps2sdk/ports"
 	cmake --build build
 
 ps2_ee_install: ps2_ee_all
 	cmake --build build --target install
 
 ps2_ips_all:
-	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=cmake/PS2/ps2dev_ee_ips.cmake" "-DCMAKE_INSTALL_PREFIX=/usr/local/ps2dev/ps2sdk/ee" "-DCMAKE_PREFIX_PATH=/usr/local/ps2dev/ps2sdk/ee"
+	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=cmake/PS2/ps2dev_ee_ips.cmake" "-DCMAKE_INSTALL_PREFIX=/usr/local/ps2dev/ps2sdk/ports" "-DCMAKE_INSTALL_PREFIX=/usr/local/ps2dev/ps2sdk/ports"
 	cmake --build build
 
 ps2_ips_install: ps2_ips_all
 	cmake --build build --target install
 
 ps2_iop_all:
-	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=cmake/PS2/ps2dev_iop.cmake" "-DCMAKE_INSTALL_PREFIX=/usr/local/ps2dev/ps2sdk/iop" "-DCMAKE_PREFIX_PATH=/usr/local/ps2dev/ps2sdk/iop"
+	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=cmake/PS2/ps2dev_iop.cmake" "-DCMAKE_INSTALL_PREFIX=/usr/local/ps2dev/ps2sdk/ports" "-DCMAKE_INSTALL_PREFIX=/usr/local/ps2dev/ps2sdk/ports"
 	cmake --build build
 
 ps2_iop_install: ps2_iop_all

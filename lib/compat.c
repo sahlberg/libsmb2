@@ -33,7 +33,7 @@
 #define smb2_srandom srand
 #endif
 
-#ifdef _arch_dreamcast
+#ifdef __DREAMCAST__
 #include <stdlib.h>
 #include <string.h>
 #include <sys/errno.h>
@@ -56,7 +56,6 @@
 #endif
 
 #if defined(__amigaos4__) || defined(__AMIGA__) || defined(__AROS__)
-#define login_num ENXIO
 #ifndef __amigaos4__
 #define NEED_READV
 #define NEED_WRITEV
@@ -65,8 +64,6 @@
 #define write(fd, buf, count) send(fd, buf, count, 0)
 #ifndef __AROS__
 #define select(nfds, readfds, writefds, exceptfds, timeout) WaitSelect(nfds, readfds, writefds, exceptfds, timeout, NULL)
-#define smb2_random rand
-#define smb2_srandom srand
 #endif
 #ifdef libnix
 StdFileDes *_lx_fhfromfd(int d) { return NULL; }
@@ -74,10 +71,11 @@ struct MinList __filelist = { (struct MinNode *) &__filelist.mlh_Tail, NULL, (st
 #endif
 #endif
 
+#define login_num ENXIO
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <proto/exec.h>
 
 #endif
 
@@ -156,6 +154,7 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
 
         return rc;
 }
+
 #endif
 
 #endif /* __PS2__ */
