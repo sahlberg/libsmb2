@@ -597,16 +597,8 @@ struct sockaddr_storage {
 
 #if defined(__NetBSD__) || defined(__FreeBSD__) || defined(__DragonFly__) || defined(__OpenBSD__)
 
-#ifdef PS4_PLATFORM
-#ifndef ENODATA
-#define ENODATA 98
-#endif
-#else
-#undef ENODATA
 #ifndef ENODATA
 #define ENODATA ENOATTR
-#endif
-
 #endif
 
 #endif /* PS4_PLATFORM */

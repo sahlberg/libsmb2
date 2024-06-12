@@ -56,9 +56,13 @@
 #define htole64(x) (x)
 #define le64toh(x) (x)
 
-#elif defined(__linux__) || defined(__CYGWIN__) || defined(PS4_PLATFORM) || defined(ESP_PLATFORM)
+#elif defined(__linux__) || defined(__CYGWIN__) || defined(ESP_PLATFORM) || defined(__NetBSD__) || defined(__FreeBSD__) || defined(__DragonFly__) || defined(__OpenBSD__)
 
+#if defined(__linux__) || defined(__CYGWIN__) || defined(PS4_PLATFORM) || defined(ESP_PLATFORM)
 #include <endian.h>
+#else
+#include <sys/endian.h>
+#endif
 
 /* These 4 #defines may be needed with older esp-idf environments */
 #ifndef _LITTLE_ENDIAN
@@ -75,6 +79,30 @@
 
 #ifndef __bswap64
 #define __bswap64 __bswap_64
+#endif
+
+#ifndef be16toh
+#define be16toh(x) betoh16(x)
+#endif
+
+#ifndef le16toh
+#define le16toh(x) letoh16(x)
+#endif
+
+#ifndef be32toh
+#define be32toh(x) betoh32(x)
+#endif
+
+#ifndef le32toh
+#define le32toh(x) letoh32(x)
+#endif
+
+#ifndef be64toh
+#define be64toh(x) betoh64(x)
+#endif
+
+#ifndef le64toh 
+#define le64toh(x) letoh64(x)
 #endif
 
 #elif defined(__APPLE__)
@@ -100,33 +128,6 @@
 #define __BIG_ENDIAN BIG_ENDIAN
 #define __LITTLE_ENDIAN LITTLE_ENDIAN
 #define __PDP_ENDIAN PDP_ENDIAN
-
-#elif defined(__NetBSD__) || defined(__FreeBSD__) || defined(__DragonFly__) || defined(__OpenBSD__)
-
-#include <sys/endian.h>
-#ifndef be16toh
-#define be16toh(x) betoh16(x)
-#endif
-
-#ifndef le16toh
-#define le16toh(x) letoh16(x)
-#endif
-
-#ifndef be32toh
-#define be32toh(x) betoh32(x)
-#endif
-
-#ifndef le32toh
-#define le32toh(x) letoh32(x)
-#endif
-
-#ifndef be64toh
-#define be64toh(x) betoh64(x)
-#endif
-
-#ifndef le64toh 
-#define le64toh(x) letoh64(x)
-#endif
 
 #elif defined(PS3_PPU_PLATFORM)
 
