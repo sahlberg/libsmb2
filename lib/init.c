@@ -608,7 +608,7 @@ void smb2_set_sign(struct smb2_context *smb2, int val)
 
 void smb2_set_authentication(struct smb2_context *smb2, int val)
 {
-        smb2->sec = val;
+        smb2->sec = (enum smb2_sec)val;
 }
 
 void smb2_set_timeout(struct smb2_context *smb2, int seconds)
