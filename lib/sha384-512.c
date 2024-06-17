@@ -451,7 +451,7 @@ SHA512Input (SHA512Context * context,
 #ifdef USE_32BIT_ONLY
   /* nothing */
 #else
-  static uint64_t addTemp;
+  uint64_t addTemp;
 #endif
 
   if (!length)
@@ -511,7 +511,7 @@ SHA512FinalBits (SHA512Context * context,
 #ifdef USE_32BIT_ONLY
   /* nothing */
 #else
-  static uint64_t addTemp;
+  uint64_t addTemp;
 #endif
   uint8_t masks[8] = {
     /* 0 0b00000000 */ 0x00, /* 1 0b10000000 */ 0x80,
