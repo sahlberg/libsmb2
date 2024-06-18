@@ -228,7 +228,7 @@ int
 SHA256Input (SHA256Context * context, const uint8_t * message_array,
 	     size_t length)
 {
-  static uint32_t addTemp;
+  uint32_t addTemp;
 
   if (!length)
     return shaSuccess;
@@ -284,7 +284,7 @@ int
 SHA256FinalBits (SHA256Context * context,
 		 const uint8_t message_bits, size_t length)
 {
-  static uint32_t addTemp;
+  uint32_t addTemp;
   uint8_t masks[8] = {
     /* 0 0b00000000 */ 0x00, /* 1 0b10000000 */ 0x80,
     /* 2 0b11000000 */ 0xC0, /* 3 0b11100000 */ 0xE0,
