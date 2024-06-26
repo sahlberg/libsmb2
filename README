@@ -216,27 +216,25 @@ To compile libsmb2 for the PS2 EE, first install the PS2 toolchain and
 PS2 SDK and set it up.
 
 To build libsmb2_ip.a, a version of libsmb2 for the EE tcpip stack:
-  $ cd lib
-  $ make -f Makefile.PS2_EE clean
-  $ make -f Makefile.PS2_EE install
+  $ make -f Makefile.platform clean
+  $ make -f Makefile.platform ps2_ee_install
 
 EE Using IOP Stack, It´s a different of EE
 version for when the LWIP stack is running on the IOP (libsmb2_ips and linking
 with -lps2ips)
 
 To build libsmb2_ips.a, a version of libsmb2 for the IOP tcpip stack:
-  $ cd lib
-  $ make -f Makefile.PS2_EE_IPS clean
-  $ make -f Makefile.PS2_EE_IPS install
+  $ make -f Makefile.platform clean
+  $ make -f Makefile.platform ps2_ips_install
 
 IOP, IO-Processor is the secondary CPU for the PS2.
-To compile libsmb2 for the PS2 IOP, first install the PS2 toolchain and
-PS2 SDK and set it up.
+The library is been used to build smb2man.irx module but it doesn´t comes with the library installed, To install libsmb2 for the PS2 IOP, first install the PS2 toolchain and
+PS2SDK and set it up.
 
 Then to build libsmb2, run
   $ cd lib
-  $ make -f Makefile.PS2_IOP clean
-  $ make -f Makefile.PS2_IOP install
+  $ make -f Makefile.platform clean
+  $ make -f Makefile.platform ps2_iop_install
 
 
 PlayStation 3
@@ -259,8 +257,7 @@ To compile libsmb2 for the PS4 PPU, first install the PS4 toolchain and
 OpenOrbis SDK and set it up.
 
 Then to build libsmb2, run
-  $ cd lib
-  $ make -f Makefile.PS4 install
+  $ make -f Makefile.platform ps4_install
 
 The process will copy the resulting libsmb2.a and the include/smb2 headers to your
 OpenOrbis SDK include folder.
@@ -271,8 +268,7 @@ Nintendo 3DS CPU is a ARM11 MPCore variant.
 To compile libsmb2 for the Nintendo 3DS, first install the devkitPro with libctru to set it up.
 
 Then to build libsmb2, run
-  $ cd lib
-  $ make -f Makefile.3DS install
+  $ make -f Makefile.platform 3ds_install
 
 The process will copy the resulting libsmb2.a and the include/smb2 headers to your
 devkitPro 3ds portlibs folder.
@@ -284,7 +280,7 @@ To compile libsmb2 for the Nintendo Switch, first install the devkitPro with lib
 
 Then to build libsmb2, run
   $ cd lib
-  $ make -f Makefile.SWITCH install
+  $ make -f Makefile.platform switch_install
 
 The process will copy the resulting libsmb2.a and the include/smb2 headers to your
 devkitPro switch portlibs folder.
@@ -295,8 +291,7 @@ Nintendo Wii CPU is a Broadway PowerPC processor.
 To compile libsmb2 for the Nintendo Wii, first install the devkitPro with libogc using pacman to set it up.
 
 Then to build libsmb2, run
-  $ cd lib
-  $ make -f Makefile.WII install
+  $ make -f Makefile.platform wii_install
 
 The process will copy the resulting libsmb2.a and the include/smb2 headers to your
 devkitPro wii portlibs folder.
@@ -307,8 +302,7 @@ Nintendo GameCube CPU is a IBM "Gekko" PowerPC CPU.
 To compile libsmb2 for the Gamecube, first install the devkitPro with libogc using pacman to set it up.
 
 Then to build libsmb2, run
-  $ cd lib
-  $ make -f Makefile.GC install
+  $ make -f Makefile.platform gc_install
 
 The process will copy the resulting libsmb2.a and the include/smb2 headers to your
 devkitPro gamecube portlibs folder.
@@ -320,7 +314,7 @@ To compile libsmb2 for the Nintendo DS, first install the devkitPro with libnds 
 
 Then to build libsmb2, run
   $ cd lib
-  $ make -f Makefile.DS_ARM9 install
+  $ make -f Makefile.platform ds_install
 
 The process will copy the resulting libsmb29.a and the include/smb2 headers to your
 devkitPro ds portlibs folder on: lib/arm9.
@@ -332,7 +326,7 @@ To compile libsmb2 for the Nintendo WII-U, first install the devkitPro with libw
 
 Then to build libsmb2, run
   $ cd lib
-  $ make -f Makefile.WIIU install
+  $ make -f Makefile.platform wiiu_install
 
 The process will copy the resulting libsmb2.a and the include/smb2 headers to your
 devkitPro wiiu portlibs folder.
@@ -362,7 +356,7 @@ and set it up.
 
 Then to build libsmb2, run
   $ cd lib
-  $ make -f Makefile.DC_KOS clean install
+  $ make -f Makefile.platform clean dc_install
 
 The process will copy the resulting libsmb2.a and the include/smb2 headers to your
 KallistiOS toolchain install location addons folder.

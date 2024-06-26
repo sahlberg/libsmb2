@@ -494,7 +494,7 @@ lsa_LookupSids2_req_coder(struct dcerpc_context *dce,
                           struct smb2_iovec *iov, int offset,
                           void *ptr)
 {
-        struct lsa_lookupsids2_req *req = ptr;
+        struct lsa_lookupsids2_req *req = (struct lsa_lookupsids2_req*) ptr;
         uint32_t val;
 
         offset = dcerpc_ptr_coder(dce, pdu, iov, offset, &req->PolicyHandle,
@@ -505,7 +505,7 @@ lsa_LookupSids2_req_coder(struct dcerpc_context *dce,
                                    PTR_REF, lsa_TRANSLATED_NAMES_EX_coder);
         val = req->LookupLevel;
         offset = dcerpc_uint32_coder(dce, pdu, iov, offset, &val);
-        req->LookupLevel = val;
+        req->LookupLevel = (LSAP_LOOKUP_LEVEL)val;
 
         val = 0;
         offset = dcerpc_uint32_coder(dce, pdu, iov, offset, &val);

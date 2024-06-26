@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v4
     - name: Install dependencies
       run: |
         sudo apt update
@@ -45,142 +45,22 @@ jobs:
     steps:
     - name: Install dependencies
       run: |
-        apk add build-base git zip gawk python3 py3-pip bash
+        apk add cmake build-base git zip gawk python3 py3-pip bash
 
     - name: git checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Compile PS2 EE Side
       run: |
-        cd lib
-        make -f Makefile.PS2_EE clean
-        make -f Makefile.PS2_EE
-
+        make -f Makefile.platform ps2_ee_all clean
+     
     - name: Compile PS2 EE IPS Side
       run: |
-        cd lib
-        make -f Makefile.PS2_EE_IPS clean
-        make -f Makefile.PS2_EE_IPS
-
+        make -f Makefile.platform ps2_ips_all clean
+     
     - name: Compile PS2 IOP Side
       run: |
-        cd lib
-        make -f Makefile.PS2_IOP clean
-        make -f Makefile.PS2_IOP
-
-  build-switch:
-    name: SWITCH build
-
-    runs-on: ubuntu-latest
-    container: devkitpro/devkita64:latest
-    steps:
-    - name: Install dependencies
-      run: |
-        apt-get update -y && apt-get install -y gettext smpq
-
-    - name: git checkout
-      uses: actions/checkout@v3
-
-    - name: Compile Nintendo Switch
-      run: |
-        cd lib
-        make -f Makefile.SWITCH clean
-        make -f Makefile.SWITCH
-
-  build-3ds:
-    name: 3DS build
-
-    runs-on: ubuntu-latest
-    container: devkitpro/devkitarm:latest
-    steps:
-    - name: Install dependencies
-      run: |
-        apt-get update -y && apt-get install -y ffmpeg gettext smpq
-
-    - name: git checkout
-      uses: actions/checkout@v3
-
-    - name: Compile Nintendo 3DS
-      run: |
-        cd lib
-        make -f Makefile.3DS clean
-        make -f Makefile.3DS
-
-  build-wii:
-    name: WII build
-
-    runs-on: ubuntu-latest
-    container: devkitpro/devkitppc:latest
-    steps:
-    - name: Install dependencies
-      run: |
-        apt-get update -y && apt-get install -y ffmpeg gettext smpq
-
-    - name: git checkout
-      uses: actions/checkout@v3
-
-    - name: Compile Nintendo WII
-      run: |
-        cd lib
-        make -f Makefile.WII clean
-        make -f Makefile.WII
-
-  build-gc:
-    name: GameCube build
-
-    runs-on: ubuntu-latest
-    container: devkitpro/devkitppc:latest
-    steps:
-    - name: Install dependencies
-      run: |
-        apt-get update -y && apt-get install -y ffmpeg gettext smpq
-
-    - name: git checkout
-      uses: actions/checkout@v3
-
-    - name: Compile Nintendo Gamecube
-      run: |
-        cd lib
-        make -f Makefile.GC clean
-        make -f Makefile.GC
-
-  build-wiiu:
-    name: WII-U Build
-
-    runs-on: ubuntu-latest
-    container: devkitpro/devkitppc:latest
-    steps:
-    - name: Install dependencies
-      run: |
-        apt-get update -y && apt-get install -y ffmpeg gettext smpq
-
-    - name: git checkout
-      uses: actions/checkout@v3
-
-    - name: Compile WII-U
-      run: |
-        cd lib
-        make -f Makefile.WIIU clean
-        make -f Makefile.WIIU
-
-  build-ds:
-    name: DS build
-
-    runs-on: ubuntu-latest
-    container: devkitpro/devkitarm:latest
-    steps:
-    - name: Install dependencies
-      run: |
-        apt-get update -y && apt-get install -y ffmpeg gettext smpq
-
-    - name: git checkout
-      uses: actions/checkout@v3
-
-    - name: Compile NDS ARM9
-      run: |
-        cd lib
-        make -f Makefile.DS_ARM9 clean
-        make -f Makefile.DS_ARM9
+        make -f Makefile.platform ps2_iop_all clean
 
   build-ps3-ppu:
     name: PS3 PPU build
@@ -189,7 +69,7 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Set env vars
       id: slug
@@ -206,3 +86,166 @@ jobs:
         cd lib
         make -f Makefile.PS3_PPU clean
         make -f Makefile.PS3_PPU
+    
+  build-ps4:
+    name: PS4
+      
+    runs-on: ubuntu-22.04
+    steps:
+    - name: git checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Create Build Environment
+      run: >
+        sudo apt-get update &&
+        sudo apt-get install -y wget cmake git gettext smpq &&
+        wget https://github.com/PacBrew/pacbrew-pacman/releases/download/v1.1/pacbrew-pacman-1.1.deb &&
+        sudo dpkg -i pacbrew-pacman-1.1.deb && sudo pacbrew-pacman -Sy &&
+        sudo pacbrew-pacman --noconfirm -S ps4-openorbis ps4-openorbis-portlibs 
+        
+    - name: build libsmb2
+      run: |
+        make -f Makefile.platform ps4_all clean
+
+  build-switch:
+    name: SWITCH build
+
+    runs-on: ubuntu-latest
+    container: devkitpro/devkita64:latest
+    steps:
+    - name: Install dependencies
+      run: |
+        apt-get update -y && apt-get install -y gettext smpq
+
+    - name: git checkout
+      uses: actions/checkout@v4
+
+    - name: Compile Nintendo Switch
+      run: |
+        make -f Makefile.platform switch_all clean
+
+  build-3ds:
+    name: 3DS build
+
+    runs-on: ubuntu-latest
+    container: devkitpro/devkitarm:latest
+    steps:
+    - name: Install dependencies
+      run: |
+        apt-get update -y && apt-get install -y ffmpeg gettext smpq
+
+    - name: git checkout
+      uses: actions/checkout@v4
+
+    - name: Compile Nintendo 3DS
+      run: |
+        make -f Makefile.platform 3ds_all clean
+
+  build-wii:
+    name: WII build
+
+    runs-on: ubuntu-latest
+    container: devkitpro/devkitppc:latest
+    steps:
+    - name: Install dependencies
+      run: |
+        apt-get update -y && apt-get install -y ffmpeg gettext smpq
+
+    - name: git checkout
+      uses: actions/checkout@v4
+
+    - name: Compile Nintendo WII
+      run: |
+        make -f Makefile.platform wii_all clean
+
+  build-gc:
+    name: GameCube build
+
+    runs-on: ubuntu-latest
+    container: devkitpro/devkitppc:latest
+    steps:
+    - name: Install dependencies
+      run: |
+        apt-get update -y && apt-get install -y ffmpeg gettext smpq
+
+    - name: git checkout
+      uses: actions/checkout@v4
+
+    - name: Compile Nintendo Gamecube
+      run: |
+        make -f Makefile.platform gc_all clean
+
+  build-wiiu:
+    name: WII-U Build
+
+    runs-on: ubuntu-latest
+    container: devkitpro/devkitppc:latest
+    steps:
+    - name: Install dependencies
+      run: |
+        apt-get update -y && apt-get install -y ffmpeg gettext smpq
+
+    - name: git checkout
+      uses: actions/checkout@v4
+
+    - name: Compile WII-U
+      run: |
+        make -f Makefile.platform wiiu_all clean
+
+  build-ds:
+    name: DS build
+
+    runs-on: ubuntu-latest
+    container: devkitpro/devkitarm:latest
+    steps:
+    - name: Install dependencies
+      run: |
+        apt-get update -y && apt-get install -y ffmpeg gettext smpq
+
+    - name: git checkout
+      uses: actions/checkout@v4
+
+    - name: Compile NDS ARM9
+      run: |
+        make -f Makefile.platform nds_all clean
+
+  build-Amiga-OS3:
+    name: Amiga OS3 build
+
+    runs-on: ubuntu-latest
+    container: amigadev/crosstools:m68k-amigaos
+    steps:
+    - name: Install dependencies
+      run: |
+        apt-get update -y && apt-get install -y ffmpeg gettext smpq
+
+    - name: git checkout
+      uses: actions/checkout@v4
+
+    - name: Compile AMIGA OS3
+      run: |
+        cd lib
+        make -f Makefile.AMIGA_OS3 clean
+        make -f Makefile.AMIGA_OS3
+
+  build-Amiga-Os:
+    name: Amiga OS Build
+
+    runs-on: ubuntu-latest
+    container: amigadev/crosstools:ppc-amigaos
+    steps:
+    - name: Install dependencies
+      run: |
+        apt-get update -y && apt-get install -y ffmpeg gettext smpq
+
+    - name: git checkout
+      uses: actions/checkout@v4
+
+    - name: Compile AMIGA OS
+      run: |
+        cd lib
+        make -f Makefile.AMIGA clean
+        make -f Makefile.AMIGA
+      

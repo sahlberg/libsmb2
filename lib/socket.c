@@ -79,9 +79,6 @@
 #include <stdint.h>
 #endif
 
-#include "portable-endian.h"
-#include <errno.h>
-
 #ifdef HAVE_FCNTL_H
 #include <fcntl.h>
 #endif
@@ -101,6 +98,8 @@
 #include "libsmb2.h"
 #include "smb3-seal.h"
 #include "libsmb2-private.h"
+#include "portable-endian.h"
+#include <errno.h>
 
 #define MAX_URL_SIZE 1024
 
@@ -751,11 +750,7 @@ smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
                         if (err == 0) {
                                 return 0;
                         }
-#ifdef __GC__
-                } else if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (char *)&err, err_size) != 0 || err != 0) {  
-#else
                 } else if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (char *)&err, &err_size) != 0 || err != 0) {  
-#endif
                         if (err == 0) {
                                 err = errno;
                         }
@@ -784,11 +779,8 @@ smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
         if (!SMB2_VALID_SOCKET(smb2->fd) && revents & POLLOUT) {
                 int err = 0;		
                 socklen_t err_size = sizeof(err);
-#ifdef __GC__
-                if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (char *)&err, err_size) != 0 || err != 0) {
-#else
+                
                 if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (char *)&err, &err_size) != 0 || err != 0) {
-#endif
                         if (err == 0) {
                                 err = errno;
                         }
@@ -864,7 +856,7 @@ set_nonblocking(t_socket fd)
 #if defined(WIN32) || defined(_XBOX)
         unsigned long opt = 1;
         ioctlsocket(fd, FIONBIO, &opt);
-#elif (defined(__AMIGA__) || defined(__AROS__)) && !defined(__amigaos4__)
+#elif (defined(__AMIGA__) || defined(__AROS__)) && !defined(__amigaos4__) && !defined(__amigaos3__)
         unsigned long opt = 0;
         IoctlSocket(fd, FIONBIO, (char *)&opt);		
 #else
@@ -1087,7 +1079,7 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
         if (port != NULL) {
                 *port++ = 0;
         } else {
-                port = "445";
+                port = (char*)"445";
         }
 
         /* is it a hostname ? */
