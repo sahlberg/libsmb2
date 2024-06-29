@@ -15,21 +15,7 @@
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with this program; if not, see <http://www.gnu.org/licenses/>.
 
-.PHONY: switch_all switch_install 3ds_all 3ds_install gc_all gc_install nds_all nds_install wii_all wii_install wiiu_all wiiu_install ps4_all ps4_install ps2_ee_all ps2_ee_install ps2_ips_all ps2_ips_install ps2_iop_all ps2_iop_install dc_all dc_install vita_all vita_install
-
-switch_all:
-	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=${DEVKITPRO}/cmake/Switch.cmake" 
-	cmake --build build
-
-switch_install: switch_all
-	cmake --build build --target install
-
-3ds_all:
-	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=${DEVKITPRO}/cmake/3DS.cmake" 
-	cmake --build build
-
-3ds_install: 3ds_all
-	cmake --build build --target install
+.PHONY: gc_all gc_install nds_all nds_install wii_all wii_install 3ds_all 3ds_install wiiu_all wiiu_install switch_all switch_install dc_all dc_install ps2_ee_all ps2_ee_install ps2_ips_all ps2_ips_install ps2_iop_all ps2_iop_install ps4_all ps4_install
 
 gc_all:
 	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=${DEVKITPRO}/cmake/GameCube.cmake" 
@@ -52,6 +38,13 @@ wii_all:
 wii_install: wii_all
 	cmake --build build --target install
 
+3ds_all:
+	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=${DEVKITPRO}/cmake/3DS.cmake" 
+	cmake --build build
+
+3ds_install: 3ds_all
+	cmake --build build --target install
+
 wiiu_all:
 	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=${DEVKITPRO}/cmake/WiiU.cmake" 
 	cmake --build build
@@ -59,11 +52,18 @@ wiiu_all:
 wiiu_install: wiiu_all
 	cmake --build build --target install
 
-ps4_all:
-	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=/opt/pacbrew/ps4/openorbis/cmake/ps4.cmake" "-DCMAKE_INSTALL_PREFIX=/opt/pacbrew/ps4/openorbis/" "-DCMAKE_PREFIX_PATH=/opt/pacbrew/ps4/openorbis/"
+switch_all:
+	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=${DEVKITPRO}/cmake/Switch.cmake" 
 	cmake --build build
 
-ps4_install: ps4_all
+switch_install: switch_all
+	cmake --build build --target install
+
+dc_all:
+	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=${KOS_CMAKE_TOOLCHAIN}" "-DCMAKE_INSTALL_PREFIX=${KOS_BASE}/addons/" "-DCMAKE_PREFIX_PATH=${KOS_BASE}/addons/"
+	cmake --build build
+
+dc_install: dc_all
 	cmake --build build --target install
 
 ps2_ee_all:
@@ -87,6 +87,10 @@ ps2_iop_all:
 ps2_iop_install: ps2_iop_all
 	cmake --build build --target install
 
+ps4_all:
+	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=/opt/pacbrew/ps4/openorbis/cmake/ps4.cmake" "-DCMAKE_INSTALL_PREFIX=/opt/pacbrew/ps4/openorbis/" "-DCMAKE_PREFIX_PATH=/opt/pacbrew/ps4/openorbis/"
+	cmake --build build
+
 vita_all:
 	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=${VITASDK}/share/vita.toolchain.cmake" 
 	cmake --build build
@@ -94,11 +98,7 @@ vita_all:
 vita_install: vita_all
 	cmake --build build --target install
 
-dc_all:
-	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=${KOS_CMAKE_TOOLCHAIN}" "-DCMAKE_INSTALL_PREFIX=${KOS_BASE}/addons/" "-DCMAKE_PREFIX_PATH=${KOS_BASE}/addons/"
-	cmake --build build
-
-dc_install: dc_all
+ps4_install: ps4_all
 	cmake --build build --target install
 
 clean:

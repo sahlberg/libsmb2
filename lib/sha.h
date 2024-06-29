@@ -208,7 +208,7 @@ typedef struct SHA512Context SHA384Context;
  */
 typedef struct USHAContext
 {
-  int whichSha;			/* which SHA is being used */
+  SHAversion whichSha;			/* which SHA is being used */
   union
   {
 #if defined(USE_SHA1) && USE_SHA1
@@ -231,7 +231,7 @@ typedef struct USHAContext
  */
 typedef struct HMACContext
 {
-  int whichSha;			/* which SHA is being used */
+  SHAversion whichSha;			/* which SHA is being used */
   int hashSize;			/* hash size of SHA being used */
   int blockSize;		/* block size of SHA being used */
   USHAContext shaContext;	/* SHA context */
