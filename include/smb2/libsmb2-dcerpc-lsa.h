@@ -19,6 +19,12 @@
 #ifndef _LIBSMB2_DCERPC_LSA_H_
 #define _LIBSMB2_DCERPC_LSA_H_
 
+#ifdef __APPLE__
+#include <smb2-dllapi.h>
+#else
+#include <smb2/smb2-dllapi.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -136,31 +142,31 @@ struct lsa_lookupsids2_rep {
         uint32_t MappedCount;
 };
 
-int lsa_Close_rep_coder(struct dcerpc_context *dce,
+SMB2_API int SMB2APIENTRY lsa_Close_rep_coder(struct dcerpc_context *dce,
                         struct dcerpc_pdu *pdu,
                         struct smb2_iovec *iov, int offset,
                         void *ptr);
-int lsa_Close_req_coder(struct dcerpc_context *dce,
+SMB2_API int SMB2APIENTRY lsa_Close_req_coder(struct dcerpc_context *dce,
                         struct dcerpc_pdu *pdu,
                         struct smb2_iovec *iov, int offset,
                         void *ptr);
-int lsa_LookupSids2_rep_coder(struct dcerpc_context *dce,
+SMB2_API int SMB2APIENTRY lsa_LookupSids2_rep_coder(struct dcerpc_context *dce,
                               struct dcerpc_pdu *pdu,
                               struct smb2_iovec *iov, int offset,
                               void *ptr);
-int lsa_LookupSids2_req_coder(struct dcerpc_context *dce,
+SMB2_API int SMB2APIENTRY lsa_LookupSids2_req_coder(struct dcerpc_context *dce,
                               struct dcerpc_pdu *pdu,
                               struct smb2_iovec *iov, int offset,
                               void *ptr);
-int lsa_OpenPolicy2_rep_coder(struct dcerpc_context *dce,
+SMB2_API int SMB2APIENTRY lsa_OpenPolicy2_rep_coder(struct dcerpc_context *dce,
                               struct dcerpc_pdu *pdu,
                               struct smb2_iovec *iov, int offset,
                               void *ptr);
-int lsa_OpenPolicy2_req_coder(struct dcerpc_context *dce,
+SMB2_API int SMB2APIENTRY lsa_OpenPolicy2_req_coder(struct dcerpc_context *dce,
                               struct dcerpc_pdu *pdu,
                               struct smb2_iovec *iov, int offset,
                               void *ptr);
-int lsa_RPC_SID_coder(struct dcerpc_context *dce,
+SMB2_API int SMB2APIENTRY lsa_RPC_SID_coder(struct dcerpc_context *dce,
                       struct dcerpc_pdu *pdu,
                       struct smb2_iovec *iov, int offset,
                       void *ptr);

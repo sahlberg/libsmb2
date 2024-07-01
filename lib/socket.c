@@ -158,7 +158,7 @@ smb2_get_credit_charge(struct smb2_context *smb2, struct smb2_pdu *pdu)
         return credits;
 }
 
-int
+int SMB2APIENTRY
 smb2_which_events(struct smb2_context *smb2)
 {
         int events = SMB2_VALID_SOCKET(smb2->fd) ? POLLIN : POLLOUT;
@@ -171,7 +171,7 @@ smb2_which_events(struct smb2_context *smb2)
         return events;
 }
 
-t_socket smb2_get_fd(struct smb2_context *smb2)
+t_socket SMB2APIENTRY smb2_get_fd(struct smb2_context *smb2)
 {
         if (SMB2_VALID_SOCKET(smb2->fd)) {
                 return smb2->fd;
@@ -182,7 +182,7 @@ t_socket smb2_get_fd(struct smb2_context *smb2)
         }
 }
 
-const t_socket *
+const t_socket * SMB2APIENTRY
 smb2_get_fds(struct smb2_context *smb2, size_t *fd_count, int *timeout)
 {
         if (SMB2_VALID_SOCKET(smb2->fd)) {
@@ -269,7 +269,14 @@ smb2_write_to_socket(struct smb2_context *smb2)
 #else
                 tmpiov->iov_len -= (size_t)num_done;
 #endif
-                count = writev(smb2->fd, tmpiov, niov);
+
+                for (;;)
+                {
+                    count = writev(smb2->fd, tmpiov, niov);
+                    if (count < 0 && errno == EINTR)
+                        continue;
+                    break;
+                }
 
                 if (count == -1) {
                         if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -640,6 +647,15 @@ read_more_data:
 static ssize_t smb2_readv_from_socket(struct smb2_context *smb2,
                                       const struct iovec *iov, int iovcnt)
 {
+        for (;;)
+        {
+            int ret = readv(smb2->fd, iov, iovcnt);
+            if (ret < 0 && errno == EINTR)
+            {
+                continue;
+            }
+            return ret;
+        }
         return readv(smb2->fd, (struct iovec*) iov, iovcnt);
 }
 
@@ -705,7 +721,7 @@ smb2_close_connecting_fd(struct smb2_context *smb2, t_socket fd)
         }
 }
 
-int
+int SMB2APIENTRY
 smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
 {
         int ret = 0;
@@ -840,7 +856,7 @@ smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
         return ret;
 }
 
-int
+int SMB2APIENTRY
 smb2_service(struct smb2_context *smb2, int revents)
 {
         if (smb2->connecting_fds_count > 0) {
@@ -898,6 +914,7 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_o
 #ifdef _XBOX
         BOOL bBroadcast = TRUE;
 #endif
+        int conn_ret = 0;
         memset(&ss, 0, sizeof(ss));
         switch (ai->ai_family) {
         case AF_INET:
@@ -956,7 +973,14 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_o
         setsockopt(fd, SOL_SOCKET, SO_LINGER, (const void*)&lin, sizeof lin);
 #endif
 
-        if (connect(fd, (struct sockaddr *)&ss, socksize) != 0
+        for (;;)
+        {
+            conn_ret = connect(fd, (struct sockaddr*)&ss, socksize);
+            if (conn_ret < 0 && errno == EINTR)
+                continue;
+            break;
+        }
+        if (conn_ret != 0
 #ifndef _MSC_VER
                   && errno != EINPROGRESS) {
 #else
@@ -1035,7 +1059,7 @@ static void interleave_addrinfo(struct addrinfo *base)
         }
 }
 
-int
+int SMB2APIENTRY
 smb2_connect_async(struct smb2_context *smb2, const char *server,
                    smb2_command_cb cb, void *private_data)
 {
