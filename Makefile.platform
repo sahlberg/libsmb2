@@ -78,8 +78,7 @@ ps2_ips_all:
 	cmake --build build
 
 ps2_ips_install: ps2_ips_all
-	mv build/lib/libsmb2_ip.a build/lib/libsmb2_ips.a
-	cp -fr build/lib/libsmb2_ips.a /usr/local/ps2dev/ps2sdk/ports
+	mv build/lib/libsmb2_ip.a $(PS2SDK)/ports/lib/libsmb2_ips.a
 
 ps2_iop_all:
 	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=${PS2DEV}/share/ps2dev_iop.cmake" "-DCMAKE_INSTALL_PREFIX=${PS2SDK}/ports_iop" "-DCMAKE_INSTALL_PREFIX=${PS2SDK}/ports_iop"
