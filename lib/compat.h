@@ -603,6 +603,21 @@ struct sockaddr_storage {
 
 #endif /* PS4_PLATFORM */
 
+#ifdef __vita__
+
+#include <netinet/in.h>
+
+int getlogin_r(char *buf, size_t size);
+
+ssize_t writev(t_socket fd, const struct iovec *iov, int iovcnt);
+ssize_t readv(t_socket fd, const struct iovec *iov, int iovcnt);
+
+#ifndef SOL_TCP
+#define SOL_TCP IPPROTO_TCP
+#endif
+
+#endif
+
 #if defined(__SWITCH__) || defined(__3DS__) || defined(__WII__) || defined(__GC__) || defined(__WIIU__) || defined(__NDS__)
 
 #include <sys/types.h>

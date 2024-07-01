@@ -180,6 +180,16 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
 
 #endif /* PS3_PPU_PLATFORM */
 
+#ifdef __vita__
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <errno.h>
+
+#define login_num ENXIO
+
+#endif
+
 #if defined(__SWITCH__) || defined(__3DS__) || defined(__WII__) || defined(__GC__) || defined(__WIIU__) || defined(__NDS__)
 
 #include <errno.h>

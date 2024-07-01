@@ -347,6 +347,10 @@
 
 #elif defined(__GNUC__) || defined(__clang__)
 
+#ifdef __vita__
+#include <machine/endian.h>
+#endif
+
 #define htobe16(x) __builtin_bswap16(x)
 #define htole16(x) (x)
 #define be16toh(x) __builtin_bswap16(x)
