@@ -58,7 +58,7 @@ set(HEADERS
     ${SMB2_INCLUDE}/smb2-errors.h
     ${SMB2_INCLUDE}/smb2.h)
 
-if(PS2)
+if(EE)
 add_library(smb2_ip ${SOURCES} ${HEADERS})
 target_link_libraries(smb2_ip PUBLIC ${core_DEPENDS} ${CORE_LIBRARIES})
 target_include_directories(smb2_ip PUBLIC ${INCLUDE_PATH})
@@ -72,7 +72,7 @@ target_include_directories(smb2_ips PUBLIC ${INCLUDE_PATH})
 set_target_properties(smb2_ips PROPERTIES
                            VERSION ${PROJECT_VERSION}
                            SOVERSION ${SOVERSION})
-elseif(PS2_IOP)
+elseif(IOP)
 add_library(smb2_iop ${SOURCES} ${HEADERS})
 target_link_libraries(smb2_iop PUBLIC ${core_DEPENDS} ${CORE_LIBRARIES})
 target_include_directories(smb2_iop PUBLIC ${INCLUDE_PATH})
@@ -97,7 +97,7 @@ else()
   endif()
 endif()
 
-if(PS2)
+if(EE)
 install(TARGETS smb2_ip EXPORT smb2_ip
                      RUNTIME DESTINATION bin
                      ARCHIVE DESTINATION lib${LIB_SUFFIX}
@@ -107,7 +107,7 @@ install(TARGETS smb2_ips EXPORT smb2_ips
                      RUNTIME DESTINATION bin
                      ARCHIVE DESTINATION lib${LIB_SUFFIX}
                      LIBRARY DESTINATION lib${LIB_SUFFIX})
-elseif(PS2_IOP)
+elseif(IOP)
 install(TARGETS smb2_iop EXPORT smb2_iop
                      RUNTIME DESTINATION bin
                      ARCHIVE DESTINATION lib${LIB_SUFFIX}

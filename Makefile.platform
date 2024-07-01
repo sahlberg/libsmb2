@@ -74,14 +74,14 @@ ps2_ee_install: ps2_ee_all
 	cmake --build build --target install
 
 ps2_ips_all:
-	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=cmake/PS2/ps2dev_ee_ips.cmake" "-DCMAKE_INSTALL_PREFIX=/usr/local/ps2dev/ps2sdk/ports" "-DCMAKE_INSTALL_PREFIX=/usr/local/ps2dev/ps2sdk/ports"
+	CFLAGS="-DPS2IPS" cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=cmake/PS2/ps2dev_ee_ips.cmake" "-DCMAKE_INSTALL_PREFIX=/usr/local/ps2dev/ps2sdk/ports" "-DCMAKE_INSTALL_PREFIX=/usr/local/ps2dev/ps2sdk/ports"
 	cmake --build build
 
 ps2_ips_install: ps2_ips_all
 	cmake --build build --target install
 
 ps2_iop_all:
-	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=cmake/PS2/ps2dev_iop.cmake" "-DCMAKE_INSTALL_PREFIX=/usr/local/ps2dev/ps2sdk/ports" "-DCMAKE_INSTALL_PREFIX=/usr/local/ps2dev/ps2sdk/ports"
+	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=${PS2DEV}/share/ps2dev_iop.cmake" "-DCMAKE_INSTALL_PREFIX=/usr/local/ps2dev/ps2sdk/ports_iop" "-DCMAKE_INSTALL_PREFIX=/usr/local/ps2dev/ps2sdk/ports_iop"
 	cmake --build build
 
 ps2_iop_install: ps2_iop_all
