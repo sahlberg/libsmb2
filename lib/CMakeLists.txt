@@ -65,13 +65,6 @@ target_include_directories(smb2_ip PUBLIC ${INCLUDE_PATH})
 set_target_properties(smb2_ip PROPERTIES
                            VERSION ${PROJECT_VERSION}
                            SOVERSION ${SOVERSION})
-elseif(PS2IPS)
-add_library(smb2_ips ${SOURCES} ${HEADERS})
-target_link_libraries(smb2_ips PUBLIC ${core_DEPENDS} ${CORE_LIBRARIES})
-target_include_directories(smb2_ips PUBLIC ${INCLUDE_PATH})
-set_target_properties(smb2_ips PROPERTIES
-                           VERSION ${PROJECT_VERSION}
-                           SOVERSION ${SOVERSION})
 elseif(IOP)
 add_library(smb2_iop ${SOURCES} ${HEADERS})
 target_link_libraries(smb2_iop PUBLIC ${core_DEPENDS} ${CORE_LIBRARIES})
@@ -99,11 +92,6 @@ endif()
 
 if(EE)
 install(TARGETS smb2_ip EXPORT smb2_ip
-                     RUNTIME DESTINATION bin
-                     ARCHIVE DESTINATION lib${LIB_SUFFIX}
-                     LIBRARY DESTINATION lib${LIB_SUFFIX})
-elseif(PS2IPS)
-install(TARGETS smb2_ips EXPORT smb2_ips
                      RUNTIME DESTINATION bin
                      ARCHIVE DESTINATION lib${LIB_SUFFIX}
                      LIBRARY DESTINATION lib${LIB_SUFFIX})
