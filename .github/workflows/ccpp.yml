@@ -41,7 +41,7 @@ jobs:
     name: PS2 build
 
     runs-on: ubuntu-latest
-    container: ps2dev/ps2sdk:latest
+    container: ps2dev/ps2dev:latest
     steps:
     - name: Install dependencies
       run: |
