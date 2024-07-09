@@ -62,6 +62,10 @@ jobs:
       run: |
         make -f Makefile.platform ps2_iop_all clean
 
+    - name: Compile PS2 IRX Side
+      run: |
+        make -f Makefile.platform ps2_irx_all clean
+
   build-vita:
     name: VITA build
 
@@ -72,7 +76,7 @@ jobs:
       run: |
         sudo apt-get install -qq -y pkg-config
     - name: git checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Compile VITA
       run: |
