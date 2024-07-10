@@ -76,5 +76,5 @@ RUNTIME DESTINATION bin
 ARCHIVE DESTINATION smb2man.irx
 LIBRARY DESTINATION smb2man.irx)
 
-install(FILES lib/ps2/ps2smb2.h
+install(FILES ps2smb2.h
 DESTINATION ${PS2SDK}/common/include)

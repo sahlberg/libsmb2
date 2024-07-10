@@ -58,7 +58,7 @@ set(HEADERS
     ${SMB2_INCLUDE}/smb2-errors.h
     ${SMB2_INCLUDE}/smb2.h)
 
-if(EE OR NOT PLATFORM_PS2 AND NOT EE AND NOT PS2IPS)
+if(EE AND NOT PLATFORM_PS2 AND NOT PS2IPS)
 add_library(smb2_ip ${SOURCES} ${HEADERS})
 target_link_libraries(smb2_ip PUBLIC ${core_DEPENDS} ${CORE_LIBRARIES})
 target_include_directories(smb2_ip PUBLIC ${INCLUDE_PATH})
@@ -97,7 +97,7 @@ else()
   endif()
 endif()
 
-if(EE OR NOT PLATFORM_PS2 AND NOT EE AND NOT PS2IPS)
+if(EE AND NOT PLATFORM_PS2 AND NOT PS2IPS)
 install(TARGETS smb2_ip EXPORT smb2_ip
                      RUNTIME DESTINATION bin
                      ARCHIVE DESTINATION lib${LIB_SUFFIX}
