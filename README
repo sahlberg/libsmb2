@@ -228,14 +228,13 @@ To build libsmb2_ips.a, a version of libsmb2 for the IOP tcpip stack:
   $ make -f Makefile.platform ps2_ips_install
 
 IOP, IO-Processor is the secondary CPU for the PS2.
-The library is been used to build smb2man.irx module but it doesn´t comes with the library installed, To install libsmb2 for the PS2 IOP, first install the PS2 toolchain and
-PS2SDK and set it up.
+The library is been used to build smb2man.irx module but it doesn´t comes with the library installed, To install libsmb2 for the PS2 IOP and smb2man.irx, first install the PS2 toolchain and PS2SDK and set it up.
 
 Then to build libsmb2, run
-  $ cd lib
   $ make -f Makefile.platform clean
   $ make -f Makefile.platform ps2_iop_install
-
+  $ make -f Makefile.platform clean  
+  $ make -f Makefile.platform ps2_irx_install
 
 PlayStation 3
 -------------

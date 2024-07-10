@@ -58,20 +58,27 @@ set(HEADERS
     ${SMB2_INCLUDE}/smb2-errors.h
     ${SMB2_INCLUDE}/smb2.h)
 
-if(EE)
+if(EE OR NOT PLATFORM_PS2 AND NOT EE AND NOT PS2IPS)
 add_library(smb2_ip ${SOURCES} ${HEADERS})
 target_link_libraries(smb2_ip PUBLIC ${core_DEPENDS} ${CORE_LIBRARIES})
 target_include_directories(smb2_ip PUBLIC ${INCLUDE_PATH})
 set_target_properties(smb2_ip PROPERTIES
                            VERSION ${PROJECT_VERSION}
                            SOVERSION ${SOVERSION})
+elseif(PLATFORM_PS2 AND EE AND PS2IPS)
+add_library(smb2_ips ${SOURCES} ${HEADERS})
+target_link_libraries(smb2_ips PUBLIC ${core_DEPENDS} ${CORE_LIBRARIES})
+target_include_directories(smb2_ips PUBLIC ${INCLUDE_PATH})
+set_target_properties(smb2_ips PROPERTIES
+                           VERSION ${PROJECT_VERSION}
+                           SOVERSION ${SOVERSION})                           
 elseif(IOP)
 add_library(smb2_iop ${SOURCES} ${HEADERS})
 target_link_libraries(smb2_iop PUBLIC ${core_DEPENDS} ${CORE_LIBRARIES})
 target_include_directories(smb2_iop PUBLIC ${INCLUDE_PATH})
 set_target_properties(smb2_iop PROPERTIES
                            VERSION ${PROJECT_VERSION}
-                           SOVERSION ${SOVERSION})
+                           SOVERSION ${SOVERSION})                       
 else()
 add_library(smb2 ${SOURCES} ${HEADERS})
 target_link_libraries(smb2 PUBLIC ${core_DEPENDS} ${CORE_LIBRARIES})
@@ -90,11 +97,16 @@ else()
   endif()
 endif()
 
-if(EE)
+if(EE OR NOT PLATFORM_PS2 AND NOT EE AND NOT PS2IPS)
 install(TARGETS smb2_ip EXPORT smb2_ip
                      RUNTIME DESTINATION bin
                      ARCHIVE DESTINATION lib${LIB_SUFFIX}
                      LIBRARY DESTINATION lib${LIB_SUFFIX})
+elseif(PLATFORM_PS2 AND EE AND PS2IPS)
+install(TARGETS smb2_ips EXPORT smb2_ips
+                     RUNTIME DESTINATION bin
+                     ARCHIVE DESTINATION lib${LIB_SUFFIX}
+                     LIBRARY DESTINATION lib${LIB_SUFFIX})                     
 elseif(IOP)
 install(TARGETS smb2_iop EXPORT smb2_iop
                      RUNTIME DESTINATION bin

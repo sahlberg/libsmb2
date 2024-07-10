@@ -145,16 +145,24 @@ else()
     cmake_minimum_required(VERSION 3.5)
   endif()
 
+  if(PLATFORM_PS2 AND IOP AND BUILD_IRX)
+    project(smb2man
+            LANGUAGES C
+            VERSION 4.0.0
+    )
+  else()
     project(libsmb2
             LANGUAGES C
             VERSION 4.0.0
     )  
+  endif()
     set(SOVERSION 1 CACHE STRING "" FORCE)
-
+  if(NOT PLATFORM_PS2 AND NOT IOP AND NOT BUILD_IRX)
     set(INSTALL_LIB_DIR "${CMAKE_INSTALL_PREFIX}/lib${LIB_SUFFIX}" CACHE PATH "Installation directory for libraries")
     set(INSTALL_INC_DIR "${CMAKE_INSTALL_PREFIX}/include" CACHE PATH "Installation directory for headers")
     set(INSTALL_PKGCONFIG_DIR "${CMAKE_INSTALL_PREFIX}/lib${LIB_SUFFIX}/pkgconfig" CACHE PATH "Installation directory for pkgconfig (.pc) files")
     set(INSTALL_CMAKE_DIR "${CMAKE_INSTALL_PREFIX}/lib${LIB_SUFFIX}/cmake/libsmb2" CACHE PATH "Installation directory for cmake (.cmake) files")
+  endif()
   if(CMAKE_SYSTEM_NAME MATCHES NintendoSwitch OR CMAKE_SYSTEM_NAME MATCHES Nintendo3DS OR PS4 OR PLATFORM_PS2 OR VITA OR CMAKE_SYSTEM_NAME MATCHES Dreamcast OR CMAKE_SYSTEM_NAME MATCHES NintendoGameCube OR CMAKE_SYSTEM_NAME MATCHES NintendoDS OR CMAKE_SYSTEM_NAME MATCHES NintendoWii OR CMAKE_SYSTEM_NAME MATCHES CafeOS)
     option(BUILD_SHARED_LIBS "Build shared libraries" OFF)  
   else()
@@ -240,8 +248,14 @@ else()
       add_compile_options("${CMAKE_C_FLAGS}")
     elseif(EE)
       add_definitions(-DNEED_BE64TOH -DNEED_POLL -DNEED_WRITEV -DNEED_READV -DNEED_GETLOGIN_R)
+      if(PLATFORM_PS2 AND EE AND PS2IPS)
+        add_definitions(-DPS2IPS)
+      endif()      
     elseif(IOP)
       add_definitions(-DHAVE_CONFIG_H -DNEED_BE64TOH -DNEED_STRDUP -DNEED_READV -DNEED_WRITEV -DNEED_POLL -DNEED_GETPID -DNEED_RANDOM -DNEED_SRANDOM -DNEED_GETLOGIN_R -DHAVE_STRING_H -DHAVE_SYS_FCNTL_H)
+      if(PLATFORM_PS2 AND IOP AND BUILD_IRX)
+        add_definitions(-D__ps2sdk_iop__)
+      endif()
       set(CMAKE_C_FLAGS "-Wall") 
       include_directories(${CMAKE_CURRENT_BINARY_DIR} include/ps2)
       add_compile_options("${CMAKE_C_FLAGS}")
@@ -258,14 +272,16 @@ else()
     if(ENABLE_EXAMPLES)
       add_subdirectory(examples)
     endif()
-
-    add_subdirectory(lib)
-
+    if(PLATFORM_PS2 AND IOP AND BUILD_IRX)
+      add_subdirectory(lib/ps2)
+    else()  
+      add_subdirectory(lib)
+    endif()
     include(CMakePackageConfigHelpers)
     write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/libsmb2-config-version.cmake
                                     VERSION ${PROJECT_VERSION}
                                     COMPATIBILITY AnyNewerVersion)
-
+  if(NOT PLATFORM_PS2 AND NOT IOP AND NOT BUILD_IRX)
     configure_file(cmake/libsmb2.pc.cmake
                   ${CMAKE_CURRENT_BINARY_DIR}/libsmb2.pc @ONLY)
 
@@ -278,5 +294,6 @@ else()
 
     install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libsmb2.pc
             DESTINATION ${INSTALL_PKGCONFIG_DIR})
+  endif()
 endif() 
 

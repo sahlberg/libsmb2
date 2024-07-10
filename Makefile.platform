@@ -74,11 +74,11 @@ ps2_ee_install: ps2_ee_all
 	cmake --build build --target install
 
 ps2_ips_all:
-	CFLAGS="-DPS2IPS" cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=${PS2DEV}/share/ps2dev.cmake" "-DCMAKE_INSTALL_PREFIX=${PS2SDK}/ports" "-DCMAKE_INSTALL_PREFIX=${PS2SDK}/ports"
+	cmake -S . -B build -DPS2IPS=1 "-DCMAKE_TOOLCHAIN_FILE=${PS2DEV}/share/ps2dev.cmake" "-DCMAKE_INSTALL_PREFIX=${PS2SDK}/ports" "-DCMAKE_INSTALL_PREFIX=${PS2SDK}/ports"
 	cmake --build build
 
 ps2_ips_install: ps2_ips_all
-	mv build/lib/libsmb2_ip.a $(PS2SDK)/ports/lib/libsmb2_ips.a
+	cmake --build build --target install
 
 ps2_iop_all:
 	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=${PS2DEV}/share/ps2dev_iop.cmake" "-DCMAKE_INSTALL_PREFIX=${PS2SDK}/ports_iop" "-DCMAKE_INSTALL_PREFIX=${PS2SDK}/ports_iop"
@@ -86,6 +86,13 @@ ps2_iop_all:
 	
 ps2_iop_install: ps2_iop_all
 	cmake --build build --target install
+
+ps2_irx_all:
+	cmake -S . -B lib/ps2/build -DBUILD_IRX=1 "-DCMAKE_TOOLCHAIN_FILE=${PS2DEV}/share/ps2dev_iop.cmake" "-DCMAKE_INSTALL_PREFIX=${PS2SDK}/ports_iop/irx" "-DCMAKE_INSTALL_PREFIX=${PS2SDK}/ports_irx"
+	cmake --build lib/ps2/build
+	
+ps2_irx_install: ps2_irx_all
+	cmake --build lib/ps2/build --target install
 
 ps4_all:
 	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=/opt/pacbrew/ps4/openorbis/cmake/ps4.cmake" "-DCMAKE_INSTALL_PREFIX=/opt/pacbrew/ps4/openorbis/" "-DCMAKE_PREFIX_PATH=/opt/pacbrew/ps4/openorbis/"
