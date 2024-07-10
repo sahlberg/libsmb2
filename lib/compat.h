@@ -792,6 +792,34 @@ int getlogin_r(char *buf, size_t size);
 #endif
 #endif /* __ANDROID__ */
 
+#ifndef O_RDONLY
+#define O_RDONLY	00000000
+#endif
+
+#ifndef O_WRONLY
+#define O_WRONLY	00000001
+#endif
+
+#ifndef O_RDWR
+#define O_RDWR		00000002
+#endif
+
+#ifndef O_DSYNC
+#define O_DSYNC		040000
+#endif /* !O_DSYNC */
+
+#ifndef __O_SYNC 
+#define __O_SYNC	020000000
+#endif
+
+#ifndef O_SYNC
+#define O_SYNC		(__O_SYNC|O_DSYNC)
+#endif /* !O_SYNC */
+
+#ifndef O_ACCMODE
+#define O_ACCMODE (O_RDWR|O_WRONLY|O_RDONLY)
+#endif /* !O_ACCMODE */
+
 #ifdef __cplusplus
 }
 #endif

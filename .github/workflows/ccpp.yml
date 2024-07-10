@@ -74,7 +74,8 @@ jobs:
     steps:
     - name: Install dependencies
       run: |
-        sudo apt-get install -qq -y pkg-config
+        sudo apt update -y && sudo apt upgrade -y && sudo apt install -qq -y pkg-config ffmpeg gettext smpq
+        
     - name: git checkout
       uses: actions/checkout@v4
 
@@ -119,8 +120,8 @@ jobs:
 
     - name: Create Build Environment
       run: >
-        sudo apt-get update &&
-        sudo apt-get install -y wget cmake git gettext smpq &&
+        sudo apt update &&
+        sudo apt install -y wget cmake git gettext smpq &&
         wget https://github.com/PacBrew/pacbrew-pacman/releases/download/v1.1/pacbrew-pacman-1.1.deb &&
         sudo dpkg -i pacbrew-pacman-1.1.deb && sudo pacbrew-pacman -Sy &&
         sudo pacbrew-pacman --noconfirm -S ps4-openorbis ps4-openorbis-portlibs 
@@ -137,7 +138,7 @@ jobs:
     steps:
     - name: Install dependencies
       run: |
-        apt-get update -y && apt-get install -y gettext smpq
+        sudo apt update -y && sudo apt upgrade -y && sudo apt install -y gettext smpq
 
     - name: git checkout
       uses: actions/checkout@v4
@@ -154,7 +155,7 @@ jobs:
     steps:
     - name: Install dependencies
       run: |
-        apt-get update -y && apt-get install -y ffmpeg gettext smpq
+        sudo apt update -y && sudo apt upgrade -y && sudo apt install -y ffmpeg gettext smpq
 
     - name: git checkout
       uses: actions/checkout@v4
@@ -171,7 +172,7 @@ jobs:
     steps:
     - name: Install dependencies
       run: |
-        apt-get update -y && apt-get install -y ffmpeg gettext smpq
+        sudo apt update -y && sudo apt upgrade -y && sudo apt install -y ffmpeg gettext smpq
 
     - name: git checkout
       uses: actions/checkout@v4
@@ -188,7 +189,7 @@ jobs:
     steps:
     - name: Install dependencies
       run: |
-        apt-get update -y && apt-get install -y ffmpeg gettext smpq
+        sudo apt update -y && sudo apt upgrade -y && sudo apt install -y ffmpeg gettext smpq
 
     - name: git checkout
       uses: actions/checkout@v4
@@ -205,7 +206,7 @@ jobs:
     steps:
     - name: Install dependencies
       run: |
-        apt-get update -y && apt-get install -y ffmpeg gettext smpq
+        sudo apt update -y && sudo apt upgrade -y && sudo apt install -y ffmpeg gettext smpq
 
     - name: git checkout
       uses: actions/checkout@v4
@@ -222,7 +223,7 @@ jobs:
     steps:
     - name: Install dependencies
       run: |
-        apt-get update -y && apt-get install -y ffmpeg gettext smpq
+        sudo apt update -y && sudo apt upgrade -y && sudo apt install -y ffmpeg gettext smpq
 
     - name: git checkout
       uses: actions/checkout@v4
@@ -239,7 +240,7 @@ jobs:
     steps:
     - name: Install dependencies
       run: |
-        apt-get update -y && apt-get install -y ffmpeg gettext smpq
+        sudo apt update -y && sudo apt upgrade -y && sudo apt install -y ffmpeg gettext smpq
 
     - name: git checkout
       uses: actions/checkout@v4
@@ -258,7 +259,7 @@ jobs:
     steps:
     - name: Install dependencies
       run: |
-        apt-get update -y && apt-get install -y ffmpeg gettext smpq
+        sudo apt update -y && sudo apt upgrade -y && sudo apt install -y ffmpeg gettext smpq
 
     - name: git checkout
       uses: actions/checkout@v4
