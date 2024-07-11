@@ -73,11 +73,11 @@ ps2_ee_all:
 ps2_ee_install: ps2_ee_all
 	cmake --build build --target install
 
-ps2_ips_all:
-	cmake -S . -B build -DPS2IPS=1 "-DCMAKE_TOOLCHAIN_FILE=${PS2DEV}/share/ps2dev.cmake" "-DCMAKE_INSTALL_PREFIX=${PS2SDK}/ports" "-DCMAKE_INSTALL_PREFIX=${PS2SDK}/ports"
+ps2_rpc_all:
+	cmake -S . -B build -DPS2RPC=1 "-DCMAKE_TOOLCHAIN_FILE=${PS2DEV}/share/ps2dev.cmake" "-DCMAKE_INSTALL_PREFIX=${PS2SDK}/ports" "-DCMAKE_INSTALL_PREFIX=${PS2SDK}/ports"
 	cmake --build build
 
-ps2_ips_install: ps2_ips_all
+ps2_rpc_install: ps2_rpc_all
 	cmake --build build --target install
 
 ps2_iop_all:
