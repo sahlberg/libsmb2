@@ -1,146 +1,11 @@
-if(PICO_BOARD)
-    cmake_minimum_required(VERSION 3.12)
-
-    message(STATUS "Configuring libsmb2 for ${PICO_BOARD}")
-
-    project(libsmb2 C CXX ASM)
-
-    add_library(libsmb2 STATIC
-            lib/aes.c
-            lib/aes128ccm.c
-            lib/alloc.c
-			lib/compat.c
-            lib/dcerpc.c
-            lib/dcerpc-lsa.c
-            lib/dcerpc-srvsvc.c
-            lib/errors.c
-			lib/hmac.c
-            lib/hmac-md5.c
-            lib/init.c
-            lib/krb5-wrapper.c
-            lib/libsmb2.c
-            lib/md4c.c
-            lib/md5.c
-            lib/ntlmssp.c
-            lib/pdu.c
-            lib/sha1.c
-            lib/sha224-256.c
-            lib/sha384-512.c
-            lib/smb2-cmd-close.c
-            lib/smb2-cmd-create.c
-            lib/smb2-cmd-echo.c
-            lib/smb2-cmd-error.c
-            lib/smb2-cmd-flush.c
-            lib/smb2-cmd-ioctl.c
-            lib/smb2-cmd-logoff.c
-            lib/smb2-cmd-negotiate.c
-            lib/smb2-cmd-query-directory.c
-            lib/smb2-cmd-query-info.c
-            lib/smb2-cmd-read.c
-            lib/smb2-cmd-session-setup.c
-            lib/smb2-cmd-set-info.c
-            lib/smb2-cmd-tree-connect.c
-            lib/smb2-cmd-tree-disconnect.c
-            lib/smb2-cmd-write.c
-            lib/smb2-data-file-info.c
-            lib/smb2-data-filesystem-info.c
-            lib/smb2-data-security-descriptor.c
-            lib/smb2-data-reparse-point.c
-            lib/smb2-share-enum.c
-            lib/smb3-seal.c
-            lib/smb2-signing.c
-            lib/socket.c
-            lib/sync.c
-            lib/timestamps.c
-            lib/unicode.c
-            lib/usha.c
-    )
-
-    include_directories(libsmb2 STATIC
-            ${PICO_SDK_PATH}/lib/lwip/src/include
-            ${PICO_SDK_PATH}/src/rp2_common/pico_lwip/include
-            lib
-            include
-            include/smb2
-            include/picow
-    )
-
-	add_definitions(-DNEED_BE64TOH -DNEED_POLL -DNEED_GETLOGIN_R -D_U_=__attribute__((unused)))
-
- ##### END PICO_BOARD
-elseif(ESP_PLATFORM)
-  if(NOT CMAKE_BUILD_EARLY_EXPANSION)
-    add_definitions(-DHAVE_CONFIG_H)
-  endif()
-  
-  add_definitions(-DNEED_READV -DNEED_WRITEV -DNEED_GETLOGIN_R -DNEED_RANDOM -DNEED_SRANDOM -D_U_=__attribute__((unused)))
-
-  set(COMPONENT_ADD_INCLUDEDIRS
-    "lib"
-    include
-    include/smb2
-    include/esp
-  )
-
-  set(COMPONENT_SRCS
-    lib/aes.c
-    lib/aes128ccm.c
-    lib/alloc.c
-	lib/compat.c
-    lib/dcerpc.c
-    lib/dcerpc-lsa.c
-    lib/dcerpc-srvsvc.c
-    lib/errors.c
-    lib/init.c
-    lib/hmac.c
-    lib/hmac-md5.c
-    lib/krb5-wrapper.c
-    lib/libsmb2.c
-    lib/md4c.c
-    lib/md5.c
-    lib/ntlmssp.c
-    lib/pdu.c
-    lib/sha1.c
-    lib/sha224-256.c
-    lib/sha384-512.c
-    lib/smb2-cmd-close.c
-    lib/smb2-cmd-create.c
-    lib/smb2-cmd-echo.c
-    lib/smb2-cmd-error.c
-    lib/smb2-cmd-flush.c
-    lib/smb2-cmd-ioctl.c
-    lib/smb2-cmd-logoff.c
-    lib/smb2-cmd-negotiate.c
-    lib/smb2-cmd-query-directory.c
-    lib/smb2-cmd-query-info.c
-    lib/smb2-cmd-read.c
-    lib/smb2-cmd-session-setup.c
-    lib/smb2-cmd-set-info.c
-    lib/smb2-cmd-tree-connect.c
-    lib/smb2-cmd-tree-disconnect.c
-    lib/smb2-cmd-write.c
-    lib/smb2-data-file-info.c
-    lib/smb2-data-filesystem-info.c
-    lib/smb2-data-security-descriptor.c
-    lib/smb2-data-reparse-point.c
-    lib/smb2-share-enum.c
-    lib/smb3-seal.c
-    lib/smb2-signing.c
-    lib/socket.c
-    lib/sync.c
-    lib/timestamps.c
-    lib/unicode.c
-    lib/usha.c
-  )
-
-  set(COMPONENT_NAME ".")
-
-  register_component()  
-else() 
+if(NOT ESP_PLATFORM)
   if(CMAKE_SYSTEM_NAME MATCHES NintendoSwitch OR CMAKE_SYSTEM_NAME MATCHES Nintendo3DS OR CMAKE_SYSTEM_NAME MATCHES Dreamcast OR CMAKE_SYSTEM_NAME MATCHES NintendoGameCube OR CMAKE_SYSTEM_NAME MATCHES NintendoDS OR CMAKE_SYSTEM_NAME MATCHES NintendoWii OR CMAKE_SYSTEM_NAME MATCHES CafeOS)
     cmake_minimum_required(VERSION 3.13)
   elseif(VITA)
-      cmake_minimum_required(VERSION 3.2)  
+    cmake_minimum_required(VERSION 3.2)  
+  elseif(PICO_BOARD)
+    cmake_minimum_required(VERSION 3.12)
+    message(STATUS "Configuring libsmb2 for ${PICO_BOARD}")
   else()
     cmake_minimum_required(VERSION 3.5)
   endif()
@@ -150,45 +15,71 @@ else()
             LANGUAGES C
             VERSION 4.0.0
     )
+  elseif(PICO_BOARD)
+    project(libsmb2 C CXX ASM)
   else()
     project(libsmb2
             LANGUAGES C
             VERSION 4.0.0
     )  
   endif()
-    set(SOVERSION 1 CACHE STRING "" FORCE)
-  if(NOT PLATFORM_PS2 AND NOT IOP AND NOT BUILD_IRX)
-    set(INSTALL_LIB_DIR "${CMAKE_INSTALL_PREFIX}/lib${LIB_SUFFIX}" CACHE PATH "Installation directory for libraries")
-    set(INSTALL_INC_DIR "${CMAKE_INSTALL_PREFIX}/include" CACHE PATH "Installation directory for headers")
-    set(INSTALL_PKGCONFIG_DIR "${CMAKE_INSTALL_PREFIX}/lib${LIB_SUFFIX}/pkgconfig" CACHE PATH "Installation directory for pkgconfig (.pc) files")
-    set(INSTALL_CMAKE_DIR "${CMAKE_INSTALL_PREFIX}/lib${LIB_SUFFIX}/cmake/libsmb2" CACHE PATH "Installation directory for cmake (.cmake) files")
-  endif()
-  if(CMAKE_SYSTEM_NAME MATCHES NintendoSwitch OR CMAKE_SYSTEM_NAME MATCHES Nintendo3DS OR PS4 OR PLATFORM_PS2 OR VITA OR CMAKE_SYSTEM_NAME MATCHES Dreamcast OR CMAKE_SYSTEM_NAME MATCHES NintendoGameCube OR CMAKE_SYSTEM_NAME MATCHES NintendoDS OR CMAKE_SYSTEM_NAME MATCHES NintendoWii OR CMAKE_SYSTEM_NAME MATCHES CafeOS)
-    option(BUILD_SHARED_LIBS "Build shared libraries" OFF)  
-  else()
-    option(BUILD_SHARED_LIBS "Build shared libraries" ON)
-  endif()
-    option(ENABLE_EXAMPLES "Build example programs" OFF)
+endif()
+
+  if(NOT PICO_BOARD OR NOT ESP_PLATFORM)
+      set(SOVERSION 1 CACHE STRING "" FORCE)
+      if(NOT PLATFORM_PS2 AND NOT IOP AND NOT BUILD_IRX)
+        set(INSTALL_LIB_DIR "${CMAKE_INSTALL_PREFIX}/lib${LIB_SUFFIX}" CACHE PATH "Installation directory for libraries")
+        set(INSTALL_INC_DIR "${CMAKE_INSTALL_PREFIX}/include" CACHE PATH "Installation directory for headers")
+        set(INSTALL_PKGCONFIG_DIR "${CMAKE_INSTALL_PREFIX}/lib${LIB_SUFFIX}/pkgconfig" CACHE PATH "Installation directory for pkgconfig (.pc) files")
+        set(INSTALL_CMAKE_DIR "${CMAKE_INSTALL_PREFIX}/lib${LIB_SUFFIX}/cmake/libsmb2" CACHE PATH "Installation directory for cmake (.cmake) files")
+      endif()
+      if(CMAKE_SYSTEM_NAME MATCHES NintendoSwitch OR CMAKE_SYSTEM_NAME MATCHES Nintendo3DS OR PS4 OR PLATFORM_PS2 OR VITA OR CMAKE_SYSTEM_NAME MATCHES Dreamcast OR CMAKE_SYSTEM_NAME MATCHES NintendoGameCube OR CMAKE_SYSTEM_NAME MATCHES NintendoDS OR CMAKE_SYSTEM_NAME MATCHES NintendoWii OR CMAKE_SYSTEM_NAME MATCHES CafeOS)
+        option(BUILD_SHARED_LIBS "Build shared libraries" OFF)  
+      else()
+        option(BUILD_SHARED_LIBS "Build shared libraries" ON)
+      endif()
+        option(ENABLE_EXAMPLES "Build example programs" OFF)
     
-    list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
+        list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
+  endif()
 
   if(IOS)
-        find_package(GSSAPI)
+      find_package(GSSAPI)
 
       if(GSSAPI_FOUND)
         add_definitions(-DHAVE_LIBKRB5)
       endif()
   endif()
-  if(NOT IOP)
-    include(cmake/ConfigureChecks.cmake)
+
+  if(NOT IOP OR NOT PICO_BOARD OR NOT ESP_PLATFORM)
+      include(cmake/ConfigureChecks.cmake)
   endif()
-    include_directories(${CMAKE_CURRENT_BINARY_DIR}
+
+  if(PICO_BOARD)
+      include_directories(libsmb2 STATIC
+            ${PICO_SDK_PATH}/lib/lwip/src/include
+            ${PICO_SDK_PATH}/src/rp2_common/pico_lwip/include
+            lib
+            include
+            include/smb2
+            include/picow
+    )
+    elseif(ESP_PLATFORM)
+      set(COMPONENT_ADD_INCLUDEDIRS
+      "lib"
+      include
+      include/smb2
+      include/esp
+     )
+    else()
+      include_directories(${CMAKE_CURRENT_BINARY_DIR}
                         include
                         include/smb2
-    )
-
+      )
+    endif()
+    
     if(IOS)
-        set(core_DEPENDS ${GSSAPI_LIBRARIES} CACHE STRING "" FORCE)
+      set(core_DEPENDS ${GSSAPI_LIBRARIES} CACHE STRING "" FORCE)
     endif()
 
     if(MSVC AND BUILD_SHARED_LIBS)
@@ -261,6 +152,13 @@ else()
       add_compile_options("${CMAKE_C_FLAGS}")
     elseif(VITA)
       add_definitions(-DNEED_READV -DNEED_WRITEV -DNEED_GETLOGIN_R)  
+    elseif(PICO_BOARD)
+      add_definitions(-DNEED_BE64TOH -DNEED_POLL -DNEED_GETLOGIN_R)
+    elseif(ESP_PLATFORM)    
+      if(NOT CMAKE_BUILD_EARLY_EXPANSION)
+        add_definitions(-DHAVE_CONFIG_H)
+      endif()
+      add_definitions(-DNEED_READV -DNEED_WRITEV -DNEED_GETLOGIN_R -DNEED_RANDOM -DNEED_SRANDOM)    
     elseif(CMAKE_SYSTEM_NAME MATCHES Dreamcast)
       add_definitions(-DNEED_WRITEV -DNEED_READV -DHAVE_CONFIG_H -DNEED_GETLOGIN_R)             
     elseif(CMAKE_SYSTEM_NAME STREQUAL Solaris)
@@ -277,23 +175,25 @@ else()
     else()  
       add_subdirectory(lib)
     endif()
-    include(CMakePackageConfigHelpers)
-    write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/libsmb2-config-version.cmake
+
+  if(NOT PICO_BOARD OR ESP_PLATFORM)
+      include(CMakePackageConfigHelpers)
+      write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/libsmb2-config-version.cmake
                                     VERSION ${PROJECT_VERSION}
                                     COMPATIBILITY AnyNewerVersion)
-  if(NOT PLATFORM_PS2 AND NOT IOP AND NOT BUILD_IRX)
-    configure_file(cmake/libsmb2.pc.cmake
+    if(NOT PLATFORM_PS2 AND NOT IOP AND NOT BUILD_IRX)
+      configure_file(cmake/libsmb2.pc.cmake
                   ${CMAKE_CURRENT_BINARY_DIR}/libsmb2.pc @ONLY)
 
-    install(DIRECTORY include/smb2
+      install(DIRECTORY include/smb2
             DESTINATION ${INSTALL_INC_DIR})
 
-    install(FILES cmake/FindSMB2.cmake
+      install(FILES cmake/FindSMB2.cmake
                   ${CMAKE_CURRENT_BINARY_DIR}/libsmb2-config-version.cmake
             DESTINATION ${INSTALL_CMAKE_DIR})
 
-    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libsmb2.pc
+      install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libsmb2.pc
             DESTINATION ${INSTALL_PKGCONFIG_DIR})
-  endif()
-endif() 
+    endif()
+  endif() 
 

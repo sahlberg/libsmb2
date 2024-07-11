@@ -1,4 +1,111 @@
-set(SOURCES aes.c
+if(PICO_BOARD)
+   add_library(libsmb2 STATIC
+            lib/aes.c
+            lib/aes128ccm.c
+            lib/alloc.c
+			lib/compat.c
+            lib/dcerpc.c
+            lib/dcerpc-lsa.c
+            lib/dcerpc-srvsvc.c
+            lib/errors.c
+			lib/hmac.c
+            lib/hmac-md5.c
+            lib/init.c
+            lib/krb5-wrapper.c
+            lib/libsmb2.c
+            lib/md4c.c
+            lib/md5.c
+            lib/ntlmssp.c
+            lib/pdu.c
+            lib/sha1.c
+            lib/sha224-256.c
+            lib/sha384-512.c
+            lib/smb2-cmd-close.c
+            lib/smb2-cmd-create.c
+            lib/smb2-cmd-echo.c
+            lib/smb2-cmd-error.c
+            lib/smb2-cmd-flush.c
+            lib/smb2-cmd-ioctl.c
+            lib/smb2-cmd-logoff.c
+            lib/smb2-cmd-negotiate.c
+            lib/smb2-cmd-query-directory.c
+            lib/smb2-cmd-query-info.c
+            lib/smb2-cmd-read.c
+            lib/smb2-cmd-session-setup.c
+            lib/smb2-cmd-set-info.c
+            lib/smb2-cmd-tree-connect.c
+            lib/smb2-cmd-tree-disconnect.c
+            lib/smb2-cmd-write.c
+            lib/smb2-data-file-info.c
+            lib/smb2-data-filesystem-info.c
+            lib/smb2-data-security-descriptor.c
+            lib/smb2-data-reparse-point.c
+            lib/smb2-share-enum.c
+            lib/smb3-seal.c
+            lib/smb2-signing.c
+            lib/socket.c
+            lib/sync.c
+            lib/timestamps.c
+            lib/unicode.c
+            lib/usha.c
+    )
+elseif(ESP_PLATFORM)
+  set(COMPONENT_SRCS
+    lib/aes.c
+    lib/aes128ccm.c
+    lib/alloc.c
+	lib/compat.c
+    lib/dcerpc.c
+    lib/dcerpc-lsa.c
+    lib/dcerpc-srvsvc.c
+    lib/errors.c
+    lib/init.c
+    lib/hmac.c
+    lib/hmac-md5.c
+    lib/krb5-wrapper.c
+    lib/libsmb2.c
+    lib/md4c.c
+    lib/md5.c
+    lib/ntlmssp.c
+    lib/pdu.c
+    lib/sha1.c
+    lib/sha224-256.c
+    lib/sha384-512.c
+    lib/smb2-cmd-close.c
+    lib/smb2-cmd-create.c
+    lib/smb2-cmd-echo.c
+    lib/smb2-cmd-error.c
+    lib/smb2-cmd-flush.c
+    lib/smb2-cmd-ioctl.c
+    lib/smb2-cmd-logoff.c
+    lib/smb2-cmd-negotiate.c
+    lib/smb2-cmd-query-directory.c
+    lib/smb2-cmd-query-info.c
+    lib/smb2-cmd-read.c
+    lib/smb2-cmd-session-setup.c
+    lib/smb2-cmd-set-info.c
+    lib/smb2-cmd-tree-connect.c
+    lib/smb2-cmd-tree-disconnect.c
+    lib/smb2-cmd-write.c
+    lib/smb2-data-file-info.c
+    lib/smb2-data-filesystem-info.c
+    lib/smb2-data-security-descriptor.c
+    lib/smb2-data-reparse-point.c
+    lib/smb2-share-enum.c
+    lib/smb3-seal.c
+    lib/smb2-signing.c
+    lib/socket.c
+    lib/sync.c
+    lib/timestamps.c
+    lib/unicode.c
+    lib/usha.c
+  )
+
+  set(COMPONENT_NAME ".")
+
+  register_component()  
+else()
+  set(SOURCES aes.c
             aes128ccm.c
             alloc.c
 			compat.c
@@ -46,7 +153,9 @@ set(SOURCES aes.c
             timestamps.c
             unicode.c
 	    usha.c)
+endif()
 
+if(NOT PICO_BOARD OR NOT ESP_PLATFORM)
 set(INCLUDE_PATH ../include)
 set(SMB2_INCLUDE "${INCLUDE_PATH}/smb2")
 set(HEADERS
@@ -87,6 +196,7 @@ set_target_properties(smb2 PROPERTIES
                            VERSION ${PROJECT_VERSION}
                            SOVERSION ${SOVERSION})
 endif()
+endif()
 
 if(NOT MSVC)
   add_definitions("-D_U_=__attribute__((unused))")
@@ -97,7 +207,8 @@ else()
   endif()
 endif()
 
-if(EE OR NOT PLATFORM_PS2 AND NOT EE AND NOT PS2IPS)
+if(NOT PICO_BOARD OR NOT ESP_PLATFORM)
+if(EE AND NOT PLATFORM_PS2 AND NOT PS2IPS)
 install(TARGETS smb2_ip EXPORT smb2_ip
                      RUNTIME DESTINATION bin
                      ARCHIVE DESTINATION lib${LIB_SUFFIX}
@@ -117,4 +228,5 @@ install(TARGETS smb2 EXPORT smb2
                      RUNTIME DESTINATION bin
                      ARCHIVE DESTINATION lib${LIB_SUFFIX}
                      LIBRARY DESTINATION lib${LIB_SUFFIX})
+endif()
 endif()
