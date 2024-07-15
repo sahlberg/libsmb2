@@ -60,6 +60,10 @@
 
 #if defined(__linux__) || defined(__CYGWIN__) || defined(PS4_PLATFORM) || defined(ESP_PLATFORM)
 #include <endian.h>
+/* Include byteswap.h on linux since it might not be automatically included in some cases (e.g. alpine / musl) */
+#if defined(__linux__)
+#include <byteswap.h>
+#endif
 #else
 #include <sys/endian.h>
 #endif
