@@ -436,7 +436,7 @@ struct sockaddr_storage {
 #include <loadcore.h>
 #endif
 
-#ifdef PS2IPS
+#ifdef PS2RPC
 #include <ps2ips.h>
 #else
 #include <ps2ip.h>
