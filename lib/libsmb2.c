@@ -223,7 +223,7 @@ void smb2_free_all_dirs(struct smb2_context *smb2)
         }
 }
 
-void
+void SMB2APIENTRY
 smb2_seekdir(struct smb2_context *smb2, struct smb2dir *dir,
                   long loc)
 {
@@ -239,7 +239,7 @@ smb2_seekdir(struct smb2_context *smb2, struct smb2dir *dir,
         }
 }
 
-long
+long SMB2APIENTRY
 smb2_telldir(struct smb2_context *smb2, struct smb2dir *dir)
 {
         if (dir == NULL) {
@@ -248,7 +248,7 @@ smb2_telldir(struct smb2_context *smb2, struct smb2dir *dir)
         return dir->index;
 }
 
-void
+void SMB2APIENTRY
 smb2_rewinddir(struct smb2_context *smb2,
                     struct smb2dir *dir)
 {
@@ -259,7 +259,7 @@ smb2_rewinddir(struct smb2_context *smb2,
         dir->index = 0;
 }
 
-struct smb2dirent *
+struct smb2dirent * SMB2APIENTRY
 smb2_readdir(struct smb2_context *smb2,
              struct smb2dir *dir)
 {
@@ -275,7 +275,7 @@ smb2_readdir(struct smb2_context *smb2,
         return ent;
 }
 
-void
+void SMB2APIENTRY
 smb2_closedir(struct smb2_context *smb2, struct smb2dir *dir)
 {
         if ((smb2 == NULL) || (dir == NULL)) {
@@ -464,7 +464,7 @@ opendir_cb(struct smb2_context *smb2, int status,
         smb2_queue_pdu(smb2, pdu);
 }
 
-int
+int SMB2APIENTRY
 smb2_opendir_async(struct smb2_context *smb2, const char *path,
                    smb2_command_cb cb, void *cb_data)
 {
@@ -557,7 +557,7 @@ tree_connect_cb(struct smb2_context *smb2, int status,
         free_c_data(smb2, c_data);
 }
 
-void smb2_derive_key(
+void SMB2APIENTRY smb2_derive_key(
     uint8_t     *derivation_key,
     uint32_t    derivation_key_len,
     const char  *label,
@@ -979,6 +979,13 @@ connect_cb(struct smb2_context *smb2, int status,
                 req.dialects[1] = SMB2_VERSION_0302;
                 req.dialects[2] = SMB2_VERSION_0311;
                 break;
+        case SMB2_VERSION_ANYEXCEPT0311:
+                req.dialect_count = 4;
+                req.dialects[0] = SMB2_VERSION_0202;
+                req.dialects[1] = SMB2_VERSION_0210;
+                req.dialects[2] = SMB2_VERSION_0300;
+                req.dialects[3] = SMB2_VERSION_0302;
+                break;				
         case SMB2_VERSION_0202:
         case SMB2_VERSION_0210:
         case SMB2_VERSION_0300:
@@ -1009,7 +1016,7 @@ connect_cb(struct smb2_context *smb2, int status,
         smb3_update_preauth_hash(smb2, pdu->out.niov, &pdu->out.iov[0]);
 }
 
-int
+int SMB2APIENTRY
 smb2_connect_share_async(struct smb2_context *smb2,
                          const char *server,
                          const char *share, const char *user,                        
@@ -1124,7 +1131,7 @@ open_cb(struct smb2_context *smb2, int status,
         fh->cb(smb2, 0, fh, fh->cb_data);
 }
 
-int
+int SMB2APIENTRY
 smb2_open_async(struct smb2_context *smb2, const char *path, int flags,
                 smb2_command_cb cb, void *cb_data)
 {
@@ -1231,7 +1238,7 @@ close_cb(struct smb2_context *smb2, int status,
         free_smb2fh(smb2, fh);
 }
 
-int
+int SMB2APIENTRY
 smb2_close_async(struct smb2_context *smb2, struct smb2fh *fh,
                  smb2_command_cb cb, void *cb_data)
 {
@@ -1279,7 +1286,7 @@ fsync_cb(struct smb2_context *smb2, int status,
         fh->cb(smb2, 0, NULL, fh->cb_data);
 }
 
-int
+int SMB2APIENTRY
 smb2_fsync_async(struct smb2_context *smb2, struct smb2fh *fh,
                  smb2_command_cb cb, void *cb_data)
 {
@@ -1340,7 +1347,7 @@ read_cb(struct smb2_context *smb2, int status,
         free(rd);
 }
 
-int
+int SMB2APIENTRY
 smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
                  uint8_t *buf, uint32_t count, uint64_t offset,
                  smb2_command_cb cb, void *cb_data)
@@ -1412,7 +1419,7 @@ smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
         return 0;
 }
 
-int
+int SMB2APIENTRY
 smb2_read_async(struct smb2_context *smb2, struct smb2fh *fh,
                 uint8_t *buf, uint32_t count,
                 smb2_command_cb cb, void *cb_data)
@@ -1459,7 +1466,7 @@ write_cb(struct smb2_context *smb2, int status,
         free(wd);
 }
 
-int
+int SMB2APIENTRY
 smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
                   const uint8_t *buf, uint32_t count, uint64_t offset,
                   smb2_command_cb cb, void *cb_data)
@@ -1529,7 +1536,7 @@ smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
         return 0;
 }
 
-int
+int SMB2APIENTRY
 smb2_write_async(struct smb2_context *smb2, struct smb2fh *fh,
                  const uint8_t *buf, uint32_t count,
                  smb2_command_cb cb, void *cb_data)
@@ -1545,7 +1552,7 @@ smb2_write_async(struct smb2_context *smb2, struct smb2fh *fh,
                                  cb, cb_data);
 }
 
-int64_t
+int64_t SMB2APIENTRY
 smb2_lseek(struct smb2_context *smb2, struct smb2fh *fh,
            int64_t offset, int whence, uint64_t *current_offset)
 {
@@ -1698,21 +1705,21 @@ smb2_unlink_internal(struct smb2_context *smb2, const char *path,
         return 0;
 }
 
-int
+int SMB2APIENTRY
 smb2_unlink_async(struct smb2_context *smb2, const char *path,
                   smb2_command_cb cb, void *cb_data)
 {
         return smb2_unlink_internal(smb2, path, 0, cb, cb_data);
 }
 
-int
+int SMB2APIENTRY
 smb2_rmdir_async(struct smb2_context *smb2, const char *path,
                  smb2_command_cb cb, void *cb_data)
 {
         return smb2_unlink_internal(smb2, path, 1, cb, cb_data);
 }
 
-int
+int SMB2APIENTRY
 smb2_mkdir_async(struct smb2_context *smb2, const char *path,
                  smb2_command_cb cb, void *cb_data)
 {
@@ -1808,7 +1815,7 @@ fstat_cb_1(struct smb2_context *smb2, int status,
         free(stat_data);
 }
 
-int
+int SMB2APIENTRY
 smb2_fstat_async(struct smb2_context *smb2, struct smb2fh *fh,
                  struct smb2_stat_64 *st,
                  smb2_command_cb cb, void *cb_data)
@@ -2021,7 +2028,7 @@ smb2_getinfo_async(struct smb2_context *smb2, const char *path,
         return 0;
 }
 
-int
+int SMB2APIENTRY
 smb2_stat_async(struct smb2_context *smb2, const char *path,
                 struct smb2_stat_64 *st,
                 smb2_command_cb cb, void *cb_data)
@@ -2032,7 +2039,7 @@ smb2_stat_async(struct smb2_context *smb2, const char *path,
                                   st, cb, cb_data);
 }
 
-int
+int SMB2APIENTRY
 smb2_statvfs_async(struct smb2_context *smb2, const char *path,
                    struct smb2_statvfs *statvfs,
                    smb2_command_cb cb, void *cb_data)
@@ -2088,7 +2095,7 @@ trunc_cb_1(struct smb2_context *smb2, int status,
         }
 }
 
-int
+int SMB2APIENTRY
 smb2_truncate_async(struct smb2_context *smb2, const char *path,
                     uint64_t length, smb2_command_cb cb, void *cb_data)
 {
@@ -2221,7 +2228,7 @@ rename_cb_1(struct smb2_context *smb2, int status,
         }
 }
 
-int
+int SMB2APIENTRY
 smb2_rename_async(struct smb2_context *smb2, const char *oldpath,
                   const char *newpath, smb2_command_cb cb, void *cb_data)
 {
@@ -2327,7 +2334,7 @@ ftrunc_cb_1(struct smb2_context *smb2, int status,
         free(cb_data);
 }
 
-int
+int SMB2APIENTRY
 smb2_ftruncate_async(struct smb2_context *smb2, struct smb2fh *fh,
                      uint64_t length, smb2_command_cb cb, void *cb_data)
 {
@@ -2430,7 +2437,7 @@ readlink_cb_1(struct smb2_context *smb2, int status,
         cb_data->status = status;
 }
 
-int
+int SMB2APIENTRY
 smb2_readlink_async(struct smb2_context *smb2, const char *path,
                     smb2_command_cb cb, void *cb_data)
 {
@@ -2544,7 +2551,7 @@ disconnect_cb_1(struct smb2_context *smb2, int status,
         smb2_queue_pdu(smb2, pdu);
 }
 
-int
+int SMB2APIENTRY
 smb2_disconnect_share_async(struct smb2_context *smb2,
                             smb2_command_cb cb, void *cb_data)
 {
@@ -2595,7 +2602,7 @@ echo_cb(struct smb2_context *smb2, int status,
         free(cb_data);
 }
 
-int
+int SMB2APIENTRY
 smb2_echo_async(struct smb2_context *smb2,
                 smb2_command_cb cb, void *cb_data)
 {
@@ -2625,25 +2632,37 @@ smb2_echo_async(struct smb2_context *smb2,
         return 0;
 }
 
-uint32_t
+uint32_t SMB2APIENTRY
 smb2_get_max_read_size(struct smb2_context *smb2)
 {
         return smb2->max_read_size;
 }
 
-uint32_t
+uint32_t SMB2APIENTRY
 smb2_get_max_write_size(struct smb2_context *smb2)
 {
         return smb2->max_write_size;
 }
 
-smb2_file_id *
+smb2_file_id * SMB2APIENTRY
 smb2_get_file_id(struct smb2fh *fh)
 {
         return &fh->file_id;
 }
 
-struct smb2fh *
+int64_t SMB2APIENTRY
+smb2_get_offset(struct smb2fh* fh)
+{
+    return fh->offset;
+}
+
+int64_t SMB2APIENTRY
+smb2_get_file_size(struct smb2fh* fh)
+{
+    return fh->end_of_file;
+}
+
+struct smb2fh * SMB2APIENTRY
 smb2_fh_from_file_id(struct smb2_context *smb2, smb2_file_id *fileid)
 {
         struct smb2fh *fh;
@@ -2658,7 +2677,7 @@ smb2_fh_from_file_id(struct smb2_context *smb2, smb2_file_id *fileid)
         return fh;
 }
 
-void
+void SMB2APIENTRY 
 smb2_fd_event_callbacks(struct smb2_context *smb2,
                         smb2_change_fd_cb change_fd,
                         smb2_change_events_cb change_events)

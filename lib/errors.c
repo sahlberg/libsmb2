@@ -42,7 +42,7 @@
 
 #include "smb2.h"
 
-const char *nterror_to_str(uint32_t status) {
+const char * SMB2APIENTRY nterror_to_str(uint32_t status) {
         switch (status) {
         case SMB2_STATUS_SUCCESS:
                 return "STATUS_SUCCESS";
@@ -1065,7 +1065,7 @@ const char *nterror_to_str(uint32_t status) {
         }
 }
 
-int nterror_to_errno(uint32_t status) {
+int SMB2APIENTRY nterror_to_errno(uint32_t status) {
         switch (status) {
         case SMB2_STATUS_SUCCESS:
         case SMB2_STATUS_END_OF_FILE:
