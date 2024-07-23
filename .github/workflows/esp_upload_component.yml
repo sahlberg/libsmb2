@@ -9,9 +9,9 @@ jobs:
   upload_components:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@main
       - name: Upload component to component service
-        uses: espressif/github-actions/upload_components@master
+        uses: espressif/upload-components-ci-action@v1
         with:
           name: "libsmb2"
           namespace: "sahlberg"
