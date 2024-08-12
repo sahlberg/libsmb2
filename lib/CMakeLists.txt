@@ -177,18 +177,11 @@ set(HEADERS
     ${SMB2_INCLUDE}/smb2-errors.h
     ${SMB2_INCLUDE}/smb2.h)
 
-if(EE AND NOT PS2RPC)
-add_library(smb2_ip ${SOURCES} ${HEADERS})
-target_link_libraries(smb2_ip PUBLIC ${core_DEPENDS} ${CORE_LIBRARIES})
-target_include_directories(smb2_ip PUBLIC ${INCLUDE_PATH})
-set_target_properties(smb2_ip PROPERTIES
-                           VERSION ${PROJECT_VERSION}
-                           SOVERSION ${SOVERSION})
-elseif(EE AND PS1RPC)
+if(EE AND PS1RPC)
 add_library(smb2_ips ${SOURCES} ${HEADERS})
-target_link_libraries(smb2_ips PUBLIC ${core_DEPENDS} ${CORE_LIBRARIES})
-target_include_directories(smb2_ips PUBLIC ${INCLUDE_PATH})
-set_target_properties(smb2_ips PROPERTIES
+target_link_libraries(smb2_rpc PUBLIC ${core_DEPENDS} ${CORE_LIBRARIES})
+target_include_directories(smb2_rpc PUBLIC ${INCLUDE_PATH})
+set_target_properties(smb2_rpc PROPERTIES
                            VERSION ${PROJECT_VERSION}
                            SOVERSION ${SOVERSION})                           
 elseif(IOP AND NOT BUILD_IRX)
@@ -228,13 +221,8 @@ else()
 endif()
 
 if(NOT PICO_BOARD OR NOT ESP_PLATFORM)
-if(EE AND NOT PS2IPS)
-install(TARGETS smb2_ip EXPORT smb2_ip
-                     RUNTIME DESTINATION bin
-                     ARCHIVE DESTINATION lib${LIB_SUFFIX}
-                     LIBRARY DESTINATION lib${LIB_SUFFIX})
-elseif(EE AND PS2RPC)
-install(TARGETS smb2_ips EXPORT smb2_ips
+if(EE AND PS2RPC)
+install(TARGETS smb2_ips EXPORT smb2_rpc
                      RUNTIME DESTINATION bin
                      ARCHIVE DESTINATION lib${LIB_SUFFIX}
                      LIBRARY DESTINATION lib${LIB_SUFFIX})                     
