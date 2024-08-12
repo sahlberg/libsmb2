@@ -14,7 +14,7 @@ CFLAGS  = $(OPTIMIZE) $(DEBUG) $(WARNINGS) $(INCLUDES) $(DEFINES)
 STRIPFLAGS = -R.comment --strip-unneeded-rel-relocs
 
 SRCS = aes.c aes128ccm.c alloc.c dcerpc.c dcerpc-lsa.c dcerpc-srvsvc.c \
-       errors.c init.c hmac.c hmac-md5.c krb5-wrapper.c libsmb2.c md4c.c \
+       errors.c init.c hmac.c hmac-md5.c libsmb2.c md4c.c \
        md5.c ntlmssp.c pdu.c sha1.c sha224-256.c sha384-512.c \
        smb2-cmd-close.c smb2-cmd-create.c smb2-cmd-echo.c smb2-cmd-error.c \
        smb2-cmd-flush.c smb2-cmd-ioctl.c smb2-cmd-logoff.c \
