@@ -76,8 +76,6 @@
 
 #define MAX_URL_SIZE 1024
 
-#include "compat.h"
-
 static int
 smb2_parse_args(struct smb2_context *smb2, const char *args)
 {

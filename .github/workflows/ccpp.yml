@@ -14,14 +14,13 @@ jobs:
       run: |
         sudo apt update
         sudo apt install -y libkrb5-dev
-    - name: configure
+
+    - name: CMake configure
       run: |
-        ./bootstrap
-        ./configure
-    - name: make
-      run: make
-    - name: make distcheck
-      run: make distcheck
+        cmake -S . -B build
+  
+    - name: Build (Linux)
+      run: cmake --build build
 
   build-windows:
     name: Windows build
@@ -30,7 +29,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
-    - name: Cmake configure
+    - name: CMake configure
       run: |
         cmake -G "Visual Studio 17 2022" .
     - name: Build (MSVC)
