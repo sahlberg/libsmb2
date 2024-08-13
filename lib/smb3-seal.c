@@ -72,9 +72,9 @@ smb3_encrypt_pdu(struct smb2_context *smb2,
                  struct smb2_pdu *pdu)
 {
         struct smb2_pdu *tmp_pdu;
-        uint32_t spl, u32;
+        uint32_t spl, u32_val;
         int i;
-        uint16_t u16;
+        uint16_t u16_val;
 
         if (!smb2->seal) {
                 return 0;
@@ -99,10 +99,10 @@ smb3_encrypt_pdu(struct smb2_context *smb2,
         for (i = 20; i < 31; i++) {
                 pdu->crypt[i] = random()&0xff;
         }
-        u32 = htole32(spl - 52);
-        memcpy(&pdu->crypt[36], &u32, 4);
-        u16 = htole16(SMB_ENCRYPTION_AES128_CCM);
-        memcpy(&pdu->crypt[42], &u16, 2);
+        u32_val = htole32(spl - 52);
+        memcpy(&pdu->crypt[36], &u32_val, 4);
+        u16_val = htole16(SMB_ENCRYPTION_AES128_CCM);
+        memcpy(&pdu->crypt[42], &u16_val, 2);
         memcpy(&pdu->crypt[44], &smb2->session_id, 8);
 
         spl = 52;  /* transform header */

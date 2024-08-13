@@ -243,8 +243,7 @@ To compile libsmb2 for the PS3 PPU, first install the PS3 toolchain and
 PSL1GHT SDK and set it up.
 
 Then to build libsmb2, run
-  $ cd lib
-  $ make -f Makefile.PS3_PPU install
+  $ make ps3_ppu_install -f Makefile.platform
 
 The process will copy the resulting libsmb2.a and the include/smb2 headers to your
 PSL1GHT SDK portlibs folder.

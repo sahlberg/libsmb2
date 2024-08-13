@@ -94,6 +94,14 @@ ps2_irx_all:
 ps2_irx_install: ps2_irx_all
 	cmake --build build --target install
 
+ps3_ppu_all:
+	sh ./bootstrap AR="powerpc64-ps3-elf-ar" CC="powerpc64-ps3-elf-gcc" LD="powerpc64-ps3-elf-ld" NM="powerpc64-ps3-elf-nm" RANLIB="powerpc64-ps3-elf-ranlib" STRIP="powerpc64-ps3-elf-strip"
+	sh ./configure --prefix="${PS3DEV}/host/ppu" --host=powerpc64-ps3-elf --includedir="${PS3DEV}/portlibs/include" --libdir="${PS3DEV}/portlibs/ppu/lib" CFLAGS="-DPS3_PPU_PLATFORM -DNEED_READV -DNEED_WRITEV -DNEED_GETLOGIN_R -DNEED_RANDOM -DNEED_SRANDOM -DNEED_GETADDRINFO -DNEED_FREEADDRINFO -O2 -Wall -fno-strict-aliasing -I${PSL1GHT}/ppu/include -I${PS3DEV}/portlibs/ppu/include" LDFLAGS="-L${PSL1GHT}/ppu/lib -L${PS3DEV}/portlibs/ppu/lib -lrt -llv2" PKG_CONFIG_PATH="${PS3DEV}/portlibs/ppu/lib/pkgconfig" --enable-examples=no --without-libkrb5
+	make all 
+
+ps3_ppu_install: ps3_ppu_all
+	make install clean
+
 ps4_all:
 	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=/opt/pacbrew/ps4/openorbis/cmake/ps4.cmake" "-DCMAKE_INSTALL_PREFIX=/opt/pacbrew/ps4/openorbis/" "-DCMAKE_PREFIX_PATH=/opt/pacbrew/ps4/openorbis/"
 	cmake --build build

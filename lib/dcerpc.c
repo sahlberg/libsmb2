@@ -647,7 +647,7 @@ static int
 dcerpc_decode_3264(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                    struct smb2_iovec *iov, int offset, void *ptr)
 {
-        uint32_t u32 = 0;
+        uint32_t u32_val = 0;
 
         if (offset < 0) {
                 return offset;
@@ -659,8 +659,8 @@ dcerpc_decode_3264(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 dcerpc_get_uint64(ctx, iov, offset, ptr);
                 offset += 8;
         } else {
-                dcerpc_get_uint32(ctx, iov, offset, &u32);
-                *(uint64_t *)ptr = u32;
+                dcerpc_get_uint32(ctx, iov, offset, &u32_val);
+                *(uint64_t *)ptr = u32_val;
                 offset += 4;
         }
         return offset;

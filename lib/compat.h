@@ -545,6 +545,7 @@ ssize_t readv(t_socket fd, const struct iovec *iov, int iovcnt);
 int getlogin_r(char *buf, size_t size);
 void srandom(unsigned int seed);
 int random(void);
+
 #define getaddrinfo smb2_getaddrinfo
 #define freeaddrinfo smb2_freeaddrinfo
 
