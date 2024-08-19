@@ -66,11 +66,8 @@ jobs:
     name: VITA build
 
     runs-on: ubuntu-latest
-    container: gnuton/vitasdk-docker:latest
+    container: vitasdk/vitasdk:latest
     steps:
-    - name: Install dependencies
-      run: |
-        sudo apt-get install -qq -y pkg-config
     - name: git checkout
       uses: actions/checkout@v3
 
