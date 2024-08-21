@@ -88,7 +88,7 @@ ps2_iop_install: ps2_iop_all
 	cmake --build build --target install
 
 ps2_irx_all:
-	cmake -S . -B build -DBUILD_IRX=1 "-DCMAKE_TOOLCHAIN_FILE=${PS2DEV}/share/ps2dev_iop.cmake" "-DCMAKE_INSTALL_PREFIX=${PS2SDK}/ports_iop/irx" "-DCMAKE_INSTALL_PREFIX=${PS2SDK}/ports_irx"
+	cmake -S . -B build -DBUILD_IRX=1 "-DCMAKE_TOOLCHAIN_FILE=${PS2DEV}/share/ps2dev_iop.cmake" 
 	cmake --build build
 	
 ps2_irx_install: ps2_irx_all

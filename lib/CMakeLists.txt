@@ -223,7 +223,7 @@ elseif(IOP AND BUILD_IRX)
 install(FILES ps2/ps2smb2.h
 DESTINATION ${PS2SDK}/common/include)
 install(TARGETS smb2man.irx EXPORT smb2man.irx
-                            RUNTIME DESTINATION bin
+                            RUNTIME DESTINATION ${PS2SDK}/ports_iop/irx
                             ARCHIVE DESTINATION smb2man.irx
                             LIBRARY DESTINATION smb2man.irx)                    
 else()

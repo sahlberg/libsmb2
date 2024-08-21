@@ -53,9 +53,9 @@ jobs:
       run: |
         make -f Makefile.platform ps2_ee_all clean
      
-    - name: Compile PS2 EE IPS Side
+    - name: Compile PS2 EE RPC Side
       run: |
-        make -f Makefile.platform ps2_ips_all clean
+        make -f Makefile.platform ps2_rpc_all clean
      
     - name: Compile PS2 IOP Side
       run: |
