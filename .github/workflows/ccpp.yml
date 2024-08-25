@@ -53,9 +53,9 @@ jobs:
       run: |
         make -f Makefile.platform ps2_ee_all clean
      
-    - name: Compile PS2 EE IPS Side
+    - name: Compile PS2 EE RPC Side
       run: |
-        make -f Makefile.platform ps2_ips_all clean
+        make -f Makefile.platform ps2_rpc_all clean
      
     - name: Compile PS2 IOP Side
       run: |
@@ -69,12 +69,8 @@ jobs:
     name: VITA build
 
     runs-on: ubuntu-latest
-    container: gnuton/vitasdk-docker:latest
+    container: vitasdk/vitasdk:latest
     steps:
-    - name: Install dependencies
-      run: |
-        sudo apt update -y && sudo apt upgrade -y && sudo apt install -qq -y pkg-config ffmpeg gettext smpq
-        
     - name: git checkout
       uses: actions/checkout@v4
 
