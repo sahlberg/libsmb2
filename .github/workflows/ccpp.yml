@@ -28,7 +28,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v4
     - name: CMake configure
       run: |
         cmake -G "Visual Studio 17 2022" .
