@@ -57,6 +57,10 @@ struct smb2_pdu *smb2_cmd_negotiate_async(struct smb2_context *smb2,
                                           smb2_command_cb cb, void *cb_data);
 
 
+struct smb2_pdu *smb2_cmd_negotiate_reply_async(struct smb2_context *smb2,
+                                          struct smb2_negotiate_reply *rep,
+                                          smb2_command_cb cb, void *cb_data);
+
 /*
  * Asynchronous SMB2 Session Setup
  *

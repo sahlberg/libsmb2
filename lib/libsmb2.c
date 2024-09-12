@@ -60,6 +60,14 @@
 #include <errno.h>
 #include <stdio.h>
 
+#ifdef HAVE_SYS_POLL_H
+#include <sys/poll.h>
+#endif
+
+#ifdef HAVE_POLL_H
+#include <poll.h>
+#endif
+
 #ifdef HAVE_TIME_H
 #include <time.h>
 #endif
@@ -1012,7 +1020,7 @@ connect_cb(struct smb2_context *smb2, int status,
 int
 smb2_connect_share_async(struct smb2_context *smb2,
                          const char *server,
-                         const char *share, const char *user,                        
+                         const char *share, const char *user,
                          smb2_command_cb cb, void *cb_data)
 {
         struct connect_data *c_data;
@@ -1088,6 +1096,284 @@ smb2_connect_share_async(struct smb2_context *smb2,
         }
 
         return 0;
+}
+
+static void
+smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
+{
+        struct smb2_negotiate_request *req = command_data;
+        struct smb2_negotiate_reply rep;
+        struct smb2_pdu *pdu;
+        uint16_t dialects[SMB2_NEGOTIATE_MAX_DIALECTS];
+        int dialect_count;
+        int dialect_index;
+
+        smb2->security_mode = req->security_mode;
+
+        /* negotiate highest version in request dialects */
+        switch (smb2->version) {
+        case SMB2_VERSION_ANY:
+                dialect_count = 5;
+                dialects[0] = SMB2_VERSION_0202;
+                dialects[1] = SMB2_VERSION_0210;
+                dialects[2] = SMB2_VERSION_0300;
+                dialects[3] = SMB2_VERSION_0302;
+                dialects[4] = SMB2_VERSION_0311;
+                break;
+        case SMB2_VERSION_ANY2:
+                dialect_count = 2;
+                dialects[0] = SMB2_VERSION_0202;
+                dialects[1] = SMB2_VERSION_0210;
+                break;
+        case SMB2_VERSION_ANY3:
+                dialect_count = 3;
+                dialects[0] = SMB2_VERSION_0300;
+                dialects[1] = SMB2_VERSION_0302;
+                dialects[2] = SMB2_VERSION_0311;
+                break;
+        case SMB2_VERSION_0202:
+        case SMB2_VERSION_0210:
+        case SMB2_VERSION_0300:
+        case SMB2_VERSION_0302:
+        case SMB2_VERSION_0311:
+        default:
+                dialect_count = 1;
+                dialects[0] = smb2->version;
+                break;
+        }
+
+        smb2->dialect = 0;
+        for (dialect_index = req->dialect_count - 1;
+                       dialect_index >= 0 && !smb2->dialect; dialect_index--) {
+                for (int d = dialect_count - 1; d >= 0 && !smb2->dialect; d--) {
+                        /*
+                        printf("req dial[%d] = %04x   our dial[%d] = %04x\n",
+                                dialect_index, req->dialects[dialect_index],
+                                d, dialects[d]);
+                        */
+                        if (dialects[d] == req->dialects[dialect_index]) {
+                                printf("Selected dialect %04x\n", dialects[d]);
+                                smb2->dialect = dialects[d];
+                        }
+                }
+        }
+
+        if (dialect_index < 0) {
+                smb2_set_error(smb2, "No common dialects for protocol");
+                smb2_close_context(smb2);
+                return;
+        }
+
+        smb2_set_client_guid(smb2, req->client_guid);
+
+        smb3_init_preauth_hash(smb2);
+        smb3_update_preauth_hash(smb2, smb2->in.niov - 1, &smb2->in.iov[1]);
+
+        /* update the context with the client capabilities */
+        if (smb2->dialect > SMB2_VERSION_0202) {
+                if (req->capabilities & SMB2_GLOBAL_CAP_LARGE_MTU) {
+                        smb2->supports_multi_credit = 1;
+                }
+        }
+
+        if (smb2->seal && (smb2->dialect == SMB2_VERSION_0300 ||
+                           smb2->dialect == SMB2_VERSION_0302)) {
+                if(!(req->capabilities & SMB2_GLOBAL_CAP_ENCRYPTION)) {
+                        smb2_set_error(smb2, "Encryption requested but client "
+                                       "does not support encryption.");
+                        smb2_close_context(smb2);
+                        return;
+                }
+        }
+
+        if (smb2->sign &&
+            !(req->security_mode & SMB2_NEGOTIATE_SIGNING_ENABLED)) {
+                smb2_set_error(smb2, "Signing required but client "
+                               "does not support signing.");
+                smb2_close_context(smb2);
+                return;
+        }
+
+        if (req->security_mode & SMB2_NEGOTIATE_SIGNING_REQUIRED) {
+                smb2->sign = 1;
+        }
+
+        if (smb2->seal) {
+                smb2->sign = 0;
+        }
+
+        memset(&rep, 0, sizeof(rep));
+
+        rep.security_mode      = SMB2_NEGOTIATE_SIGNING_ENABLED |
+               (smb2->sign ? SMB2_NEGOTIATE_SIGNING_REQUIRED : 0);
+        memcpy(rep.server_guid, "libsmb2-srvrguid", 16); /// TODO
+        rep.max_transact_size  = smb2->max_transact_size;;
+        rep.capabilities       = req->capabilities; /// TODO
+        rep.max_read_size      = smb2->max_read_size;
+        rep.max_write_size     = smb2->max_write_size;
+        rep.dialect_revision   = smb2->dialect;
+        rep.cypher             = smb2->cypher;
+
+        smb3_init_preauth_hash(smb2);
+        pdu = smb2_cmd_negotiate_reply_async(smb2, &rep, NULL, cb_data);
+        if (pdu == NULL) {
+                return;
+        }
+        smb2_queue_pdu(smb2, pdu);
+        smb3_update_preauth_hash(smb2, pdu->out.niov, &pdu->out.iov[0]);
+}
+
+static int
+accept_cb(const int fd, void *cb_data)
+{
+        int err = -1;
+        struct smb2_context **psmb2 = (struct smb2_context**)cb_data;
+        struct smb2_context *smb2;
+
+        if (!psmb2) {
+                return -EINVAL;
+        }
+
+        *psmb2 = NULL;
+
+        smb2 = smb2_init_context();
+        if (smb2 == NULL) {
+                err = -ENOMEM;
+        }
+        else {
+                *psmb2 = smb2;
+                /* put client fd into connecting fd array (todo? for now just set fd) */
+                smb2->fd = fd;
+                err = 0;
+        }
+
+        return err;
+}
+
+int smb2_serve_port_async(const int fd, const int to_msecs, struct smb2_context **smb2)
+{
+        int err = -1;
+
+        err = smb2_accept_connection_async(fd, to_msecs, accept_cb, (void*)smb2);
+        return err;
+}
+
+int smb2_serve_port(const uint16_t port, const int max_connections, smb2_client_connection cb, void *cb_data)
+{
+        int err = -1;
+        int server_fd;
+        struct smb2_context *smb2;
+        fd_set rfds, wfds;
+        int maxfd;
+        int ready;
+        short events;
+        struct timeval timeout;
+
+        err = smb2_bind_and_listen(port, max_connections, &server_fd);
+        if (err != 0) {
+                return err;
+        }
+
+        do {
+                /* select on the file descriptors of all active client connections and our server socket
+                   for the first readable event
+                */
+                FD_ZERO(&rfds);
+                FD_ZERO(&wfds);
+                FD_SET(server_fd, &rfds);
+                maxfd = server_fd;
+
+                for (smb2 = smb2_active_contexts(); smb2; smb2 = smb2->next) {
+                        if (SMB2_VALID_SOCKET(smb2_get_fd(smb2))) {
+                                events = smb2_which_events(smb2);
+                                if (events) {
+                                        if (events & POLLIN) {
+                                                FD_SET(smb2_get_fd(smb2), &rfds);
+                                        }
+                                        if (events & POLLOUT) {
+                                                FD_SET(smb2_get_fd(smb2), &wfds);
+                                        }
+                                        if (smb2_get_fd(smb2) > maxfd) {
+                                                maxfd = smb2_get_fd(smb2);
+                                        }
+                                }
+                        }
+                }
+
+                /* 100ms select timeout to allow period pdu timeouts */
+                timeout.tv_sec = 0;
+                timeout.tv_usec = 100000;
+
+                ready = select(
+                            maxfd + 1,
+                            &rfds,
+                            &wfds,
+                            NULL,
+                            (timeout.tv_sec > 0 || timeout.tv_usec >= 0) ? &timeout : NULL
+                           );
+
+                if (ready > 0) {
+                        time_t t = time(NULL);
+
+                        /* for each client context ready to read, process that context */
+                        for (smb2 = smb2_active_contexts(); smb2; smb2 = smb2->next) {
+                                if (SMB2_VALID_SOCKET(smb2_get_fd(smb2)) && FD_ISSET(smb2_get_fd(smb2), &rfds)) {
+                                        if (smb2_service(smb2, POLLIN) < 0) {
+                                                smb2_set_error(smb2, "smb2_service (in) failed with : "
+                                                                "%s\n", smb2_get_error(smb2));
+                                                smb2_close_context(smb2);
+                                        }
+                                }
+                                if (SMB2_VALID_SOCKET(smb2_get_fd(smb2)) && FD_ISSET(smb2_get_fd(smb2), &wfds)) {
+                                        if (smb2_service(smb2, POLLOUT) < 0) {
+                                                smb2_set_error(smb2, "smb2_service (out) failed with : "
+                                                                "%s\n", smb2_get_error(smb2));
+                                                smb2_close_context(smb2);
+                                        }
+                                }
+                                if (!SMB2_VALID_SOCKET(smb2->fd) && ((time(NULL) - t) > (smb2->timeout)))
+                                {
+                                        smb2_set_error(smb2, "Timeout expired and no connection exists\n");
+                                        smb2_close_context(smb2);
+                                }
+                                if (smb2->timeout) {
+                                        smb2_timeout_pdus(smb2);
+                                }
+                        }
+
+                        if (FD_ISSET(server_fd, &rfds)) {
+                                smb2 = NULL;
+                                err = smb2_serve_port_async(server_fd, 10, &smb2);
+                                if (!err && smb2) {
+                                        /* alloc a pdu for first server request */
+                                        smb2->pdu = smb2_allocate_pdu(smb2, SMB2_NEGOTIATE, smb2_negotiate_request_cb, NULL);
+                                        if (!smb2->pdu) {
+                                                smb2_set_error(smb2, "can not alloc pdu for request");
+                                                smb2_close_context(smb2);
+                                                smb2_destroy_context(smb2);
+                                        }
+                                        /* got a new smb2 context with a connection, enlist it and tell user */
+                                        smb2->is_server = 1;
+                                        if (cb) {
+                                                cb(smb2, cb_data);
+                                        }
+                                }
+                                else if (err) {
+                                        printf("serve port async faild!\n");
+                                        break;
+                                }
+                        }
+                }
+        }
+        while (err == 0);
+
+        close(server_fd);
+
+        while (smb2_active_contexts()) {
+                smb2 = smb2_active_contexts();
+                smb2_destroy_context(smb2);
+        }
+        return err;
 }
 
 static void

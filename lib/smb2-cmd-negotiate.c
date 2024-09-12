@@ -138,7 +138,7 @@ smb2_encode_negotiate_request(struct smb2_context *smb2,
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
-        
+
         if (smb2->version == SMB2_VERSION_ANY ||
             smb2->version == SMB2_VERSION_ANY3 ||
             smb2->version == SMB2_VERSION_0311) {
@@ -176,7 +176,7 @@ smb2_cmd_negotiate_async(struct smb2_context *smb2,
                          smb2_command_cb cb, void *cb_data)
 {
         struct smb2_pdu *pdu;
-        
+
         pdu = smb2_allocate_pdu(smb2, SMB2_NEGOTIATE, cb, cb_data);
         if (pdu == NULL) {
                 return NULL;
@@ -186,7 +186,94 @@ smb2_cmd_negotiate_async(struct smb2_context *smb2,
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
         }
-        
+
+        if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
+                smb2_free_pdu(smb2, pdu);
+                return NULL;
+        }
+
+        return pdu;
+}
+
+static int
+smb2_encode_negotiate_reply(struct smb2_context *smb2,
+                              struct smb2_pdu *pdu,
+                              struct smb2_negotiate_reply *rep)
+{
+        uint8_t *buf;
+        int len;
+        struct smb2_iovec *iov;
+
+        len = SMB2_NEGOTIATE_REPLY_SIZE;
+        len = PAD_TO_32BIT(len);
+        if (smb2->dialect == SMB2_VERSION_ANY ||
+            smb2->dialect == SMB2_VERSION_ANY3 ||
+            smb2->dialect == SMB2_VERSION_0311) {
+                /* Negotiate contexts are aligned at 64bit boundaries */
+                if (len & 0x04) {
+                        len += 4;
+                }
+        }
+        buf = calloc(len, sizeof(uint8_t));
+        if (buf == NULL) {
+                smb2_set_error(smb2, "Failed to allocate negotiate buffer");
+                return -1;
+        }
+
+        iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+
+        if (smb2->dialect == SMB2_VERSION_ANY ||
+            smb2->dialect == SMB2_VERSION_ANY3 ||
+            smb2->dialect == SMB2_VERSION_0311) {
+                rep->negotiate_context_offset = len + SMB2_HEADER_SIZE;
+
+                if (smb2_encode_preauth_context(smb2, pdu)) {
+                        return -1;
+                }
+                rep->negotiate_context_count++;
+
+                if (smb2_encode_encryption_context(smb2, pdu)) {
+                        return -1;
+                }
+                rep->negotiate_context_count++;
+        }
+
+        smb2_set_uint16(iov, 0, SMB2_NEGOTIATE_REPLY_SIZE);
+        smb2_set_uint16(iov, 2, rep->security_mode);
+        smb2_set_uint16(iov, 4, rep->dialect_revision);
+        smb2_set_uint16(iov, 6, rep->negotiate_context_count);
+        memcpy(iov->buf + 8, rep->server_guid, SMB2_GUID_SIZE);
+        smb2_set_uint32(iov, 24, rep->capabilities);
+        smb2_set_uint32(iov, 28, rep->max_transact_size);
+        smb2_set_uint32(iov, 32, rep->max_read_size);
+        smb2_set_uint32(iov, 36, rep->max_write_size);
+        smb2_set_uint64(iov, 40, rep->system_time);
+        smb2_set_uint64(iov, 48, rep->server_start_time);
+        smb2_set_uint16(iov, 56, rep->security_buffer_offset);
+        smb2_set_uint16(iov, 58, rep->security_buffer_length);
+        smb2_set_uint32(iov, 60, rep->negotiate_context_offset);
+
+        pdu->header.flags |= SMB2_FLAGS_SERVER_TO_REDIR;
+        return 0;
+}
+
+struct smb2_pdu *
+smb2_cmd_negotiate_reply_async(struct smb2_context *smb2,
+                         struct smb2_negotiate_reply *rep,
+                         smb2_command_cb cb, void *cb_data)
+{
+        struct smb2_pdu *pdu;
+
+        pdu = smb2_allocate_pdu(smb2, SMB2_NEGOTIATE, cb, cb_data);
+        if (pdu == NULL) {
+                return NULL;
+        }
+
+        if (smb2_encode_negotiate_reply(smb2, pdu, rep)) {
+                smb2_free_pdu(smb2, pdu);
+                return NULL;
+        }
+
         if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
@@ -261,7 +348,7 @@ smb2_process_negotiate_fixed(struct smb2_context *smb2,
                 return -1;
         }
         pdu->payload = rep;
-               
+
         smb2_get_uint16(iov, 0, &struct_size);
         if (struct_size != SMB2_NEGOTIATE_REPLY_SIZE ||
             (struct_size & 0xfffe) != iov->len) {
@@ -271,7 +358,7 @@ smb2_process_negotiate_fixed(struct smb2_context *smb2,
                                (int)iov->len);
                 return -1;
         }
-        
+
         smb2_get_uint16(iov, 2, &rep->security_mode);
         smb2_get_uint16(iov, 4, &rep->dialect_revision);
         memcpy(rep->server_guid, iov->buf + 8, SMB2_GUID_SIZE);
@@ -347,3 +434,54 @@ smb2_process_negotiate_variable(struct smb2_context *smb2,
 
         return 0;
 }
+
+int
+smb2_process_negotiate_request_fixed(struct smb2_context *smb2,
+                               struct smb2_pdu *pdu)
+{
+        struct smb2_negotiate_request *req;
+        struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
+        uint16_t struct_size;
+
+        req = malloc(sizeof(*req));
+        if (req == NULL) {
+                smb2_set_error(smb2, "Failed to allocate negotiate request");
+                return -1;
+        }
+        pdu->payload = req;
+
+        smb2_get_uint16(iov, 0, &struct_size);
+        if (struct_size != SMB2_NEGOTIATE_REQUEST_SIZE ||
+            (struct_size & 0xfffe) != iov->len) {
+                smb2_set_error(smb2, "Unexpected size of Negotiate "
+                               "request. Expected %d, got %d",
+                               SMB2_NEGOTIATE_REQUEST_SIZE,
+                               (int)iov->len);
+                return -1;
+        }
+
+        smb2_get_uint16(iov, 2, &req->dialect_count);
+        smb2_get_uint16(iov, 4, &req->security_mode);
+        /* 2 bytes reserved */
+        smb2_get_uint32(iov, 8, &req->capabilities);
+        memcpy(req->client_guid, iov->buf + 12, SMB2_GUID_SIZE);
+        smb2_get_uint32(iov, 28, &req->negotiate_context_offset);
+        smb2_get_uint16(iov, 32, &req->negotiate_context_count);
+
+        return req->dialect_count * sizeof(uint16_t);
+}
+
+int
+smb2_process_negotiate_request_variable(struct smb2_context *smb2,
+                               struct smb2_pdu *pdu)
+{
+        struct smb2_negotiate_request *req = (struct smb2_negotiate_request*)pdu->payload;
+        struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
+
+        for (uint32_t d = 0; d < req->dialect_count && d < SMB2_NEGOTIATE_MAX_DIALECTS; d++) {
+                smb2_get_uint16(iov, d * 2, &req->dialects[d]);
+        }
+
+        return 0;
+}
+

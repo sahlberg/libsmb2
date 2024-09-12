@@ -57,7 +57,7 @@ struct smb2_sync {
         uint32_t process_id;
         uint32_t tree_id;
 };
-        
+
 struct smb2_header {
         uint8_t protocol_id[4];
         uint16_t struct_size;
@@ -80,7 +80,7 @@ struct smb2_header {
  * normal SMB2/3 :
  * 1: SMB2_RECV_SPL        SPL
  * 2: SMB2_RECV_HEADER     SMB2 Header
- * 3: SMB2_RECV_FIXED      The fixed part of the payload. 
+ * 3: SMB2_RECV_FIXED      The fixed part of the payload.
  * 4: SMB2_RECV_VARIABLE   Optional variable part of the payload.
  * 5: SMB2_RECV_PAD        Optional padding
  *
@@ -114,6 +114,8 @@ enum smb2_sec {
 struct smb2_context {
 
         t_socket fd;
+
+        uint8_t is_server:1;
 
         t_socket *connecting_fds;
         size_t connecting_fds_count;
@@ -219,6 +221,8 @@ struct smb2_context {
         /* dcerpc settings */
         int ndr;
         int endianness;
+
+        struct smb2_context *next;
 };
 
 #define SMB2_MAX_PDU_SIZE 16*1024*1024
@@ -260,6 +264,8 @@ struct smb2_pdu {
         time_t timeout;
 };
 
+#define smb2_is_server(ctx) ((ctx)->is_server)
+
 /* SMB's UTF-16 is always in Little Endian */
 struct smb2_utf16 {
         int len;
@@ -270,7 +276,7 @@ struct smb2_utf16 {
  * the utf16 string.
  */
 struct smb2_utf16 *smb2_utf8_to_utf16(const char *utf8);
-        
+
 /* Returns a string converted to UTF8 format. Use free() to release
  * the utf8 string.
  */
@@ -307,7 +313,7 @@ int smb2_process_payload_fixed(struct smb2_context *smb2,
 int smb2_process_payload_variable(struct smb2_context *smb2,
                                   struct smb2_pdu *pdu);
 int smb2_get_fixed_size(struct smb2_context *smb2, struct smb2_pdu *pdu);
-        
+
 struct smb2_pdu *smb2_find_pdu(struct smb2_context *smb2, uint64_t message_id);
 void smb2_free_iovector(struct smb2_context *smb2, struct smb2_io_vectors *v);
 
@@ -315,7 +321,7 @@ int smb2_decode_header(struct smb2_context *smb2, struct smb2_iovec *iov,
                        struct smb2_header *hdr);
 int smb2_calc_signature(struct smb2_context *smb2, uint8_t *signature,
                         struct smb2_iovec *iov, size_t niov);
-        
+
 int smb2_set_uint8(struct smb2_iovec *iov, int offset, uint8_t value);
 int smb2_set_uint16(struct smb2_iovec *iov, int offset, uint16_t value);
 int smb2_set_uint32(struct smb2_iovec *iov, int offset, uint32_t value);
@@ -334,6 +340,10 @@ int smb2_process_negotiate_fixed(struct smb2_context *smb2,
                                  struct smb2_pdu *pdu);
 int smb2_process_negotiate_variable(struct smb2_context *smb2,
                                     struct smb2_pdu *pdu);
+int smb2_process_negotiate_request_fixed(struct smb2_context *smb2,
+                                     struct smb2_pdu *pdu);
+int smb2_process_negotiate_request_variable(struct smb2_context *smb2,
+                                     struct smb2_pdu *pdu);
 int smb2_process_session_setup_fixed(struct smb2_context *smb2,
                                      struct smb2_pdu *pdu);
 int smb2_process_session_setup_variable(struct smb2_context *smb2,

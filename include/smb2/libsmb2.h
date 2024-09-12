@@ -42,6 +42,16 @@ struct smb2_context;
 typedef void (*smb2_command_cb)(struct smb2_context *smb2, int status,
                                 void *command_data, void *cb_data);
 
+/*
+ * callback for server accepting a new connection
+ */
+typedef int (*smb2_accepted_cb)(const int fd, void *cb_data);
+
+/*
+ * callback when a new connection is made to setup context
+ */
+typedef void (*smb2_client_connection)(struct smb2_context *smb2, void *cb_data);
+
 /* Stat structure */
 #define SMB2_TYPE_FILE      0x00000000
 #define SMB2_TYPE_DIRECTORY 0x00000001
@@ -88,7 +98,7 @@ struct smb2dirent {
 #include <winsock2.h>
 #endif
 #elif defined(_XBOX)
-#include <xtl.h> 
+#include <xtl.h>
 #include <winsockx.h>
 #endif
 
@@ -116,6 +126,11 @@ struct smb2_context *smb2_init_context(void);
  * Any pending async commands will be aborted with -ECONNRESET.
  */
 void smb2_destroy_context(struct smb2_context *smb2);
+
+/*
+ * Get the list of currently allocated contexts
+ */
+struct smb2_context *smb2_active_contexts(void);
 
 /*
  * EVENT SYSTEM INTEGRATION
@@ -238,7 +253,7 @@ enum smb2_negotiate_version {
 void smb2_set_version(struct smb2_context *smb2,
                       enum smb2_negotiate_version version);
 
-/* 
+/*
  * Sets which version libsmb2 uses.
 */
 #define LIBSMB2_MAJOR_VERSION 4
@@ -254,7 +269,7 @@ struct smb2_libversion
 
 /*
  * Gets the libsmb2 version being linked while used.
- * This function will be available on 5.x 
+ * This function will be available on 5.x
  * @param struct smb2_libversion
 */
 void smb2_get_libsmb2Version(struct smb2_libversion *smb2_ver);
@@ -321,6 +336,11 @@ void smb2_set_opaque(struct smb2_context *smb2, void *opaque);
  */
 void *smb2_get_opaque(struct smb2_context *smb2);
 
+
+/*
+ * Sets the client_guid for this context.
+ */
+void smb2_set_client_guid(struct smb2_context *smb2, const uint8_t guid[SMB2_GUID_SIZE]);
 
 /*
  * Returns the client_guid for this context.
@@ -403,6 +423,11 @@ int smb2_disconnect_share_async(struct smb2_context *smb2,
  * -errno : Failure.
  */
 int smb2_disconnect_share(struct smb2_context *smb2);
+
+int smb2_bind_and_listen(const uint16_t port, const int max_connections, int *out_fd);
+int smb2_accept_connection_async(const int fd, const int to_msecs, smb2_accepted_cb cb, void *cb_data);
+int smb2_serve_port_async(const int fd, const int to_msecs, struct smb2_context **out_smb2);
+int smb2_serve_port(const uint16_t port, const int max_connections, smb2_client_connection cb, void *cb_data);
 
 /*
  * This function returns a description of the last encountered error.
@@ -1047,7 +1072,7 @@ int smb2_echo(struct smb2_context *smb2);
 #ifdef __APPLE__
 #include <libsmb2-dcerpc-srvsvc.h>
 #else
-#include <smb2/libsmb2-dcerpc-srvsvc.h>	
+#include <smb2/libsmb2-dcerpc-srvsvc.h>
 #endif
 
 #ifdef __cplusplus
