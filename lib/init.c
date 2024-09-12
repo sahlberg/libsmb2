@@ -187,7 +187,7 @@ struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url)
                 smb2_set_error(smb2, "URL is too long");
                 return NULL;
         }
-        
+
         strncpy(str, url + 6, MAX_URL_SIZE);
         args = strchr(str, '?');
         if (args) {
@@ -220,7 +220,7 @@ struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url)
         }
         /* user */
         if ((tmp = strchr(ptr, '@')) != NULL && strlen(tmp) > len_shared_folder) {
-                *(tmp++) = '\0';              
+                *(tmp++) = '\0';
                 u->user = strdup(ptr);
                 ptr = tmp;
         }
@@ -233,7 +233,7 @@ struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url)
 
         /* Do we just have a share or do we have both a share and an object */
         tmp = strchr(ptr, '/');
-        
+
         /* We only have a share */
         if (tmp == NULL) {
                 u->share = strdup(ptr);
@@ -298,8 +298,8 @@ struct smb2_context *smb2_init_context(void)
 
         smb2->session_key = NULL;
 
-		SMB2_LIST_ADD(&active_contexts, smb2);
-		
+        SMB2_LIST_ADD(&active_contexts, smb2);
+
         return smb2;
 }
 
@@ -367,14 +367,14 @@ void smb2_destroy_context(struct smb2_context *smb2)
             free_c_data(smb2, smb2->connect_data);  /* sets smb2->connect_data to NULL */
         }
 
-		SMB2_LIST_REMOVE(&active_contexts, smb2);
+        SMB2_LIST_REMOVE(&active_contexts, smb2);
 
         free(smb2);
 }
 
 struct smb2_context *smb2_active_contexts(void)
 {
-	return active_contexts;
+        return active_contexts;
 }
 
 void smb2_free_iovector(struct smb2_context *smb2, struct smb2_io_vectors *v)
@@ -436,7 +436,7 @@ void smb2_set_error(struct smb2_context *smb2, const char *error_string, ...)
         va_start(ap, error_string);
         smb2_set_error_string(smb2, error_string, ap);
         va_end(ap);
-	
+
         fprintf(stderr, "Setting err %s\n", smb2_get_error(smb2));
 #endif
 }
@@ -469,7 +469,7 @@ int smb2_get_nterror(struct smb2_context *smb2)
 
 void smb2_set_client_guid(struct smb2_context *smb2, const uint8_t guid[SMB2_GUID_SIZE])
 {
-        memcpy(smb2->client_guid, guid, SMB2_GUID_SIZE);	
+        memcpy(smb2->client_guid, guid, SMB2_GUID_SIZE);
 }
 
 const char *smb2_get_client_guid(struct smb2_context *smb2)
