@@ -1350,7 +1350,6 @@ int smb2_serve_port(const uint16_t port, const int max_connections, smb2_client_
                                         if (!smb2->pdu) {
                                                 smb2_set_error(smb2, "can not alloc pdu for request");
                                                 smb2_close_context(smb2);
-                                                smb2_destroy_context(smb2);
                                         }
                                         /* got a new smb2 context with a connection, enlist it and tell user */
                                         smb2->is_server = 1;
@@ -1360,6 +1359,14 @@ int smb2_serve_port(const uint16_t port, const int max_connections, smb2_client_
                                 }
                                 else if (err) {
                                         printf("serve port async faild!\n");
+                                        break;
+                                }
+                        }
+                        
+                        /* cull connection-less clients here, one per iteration (since active list changes on destroy)*/
+                        for (smb2 = smb2_active_contexts(); smb2; smb2 = smb2->next) {
+                                if (!SMB2_VALID_SOCKET(smb2_get_fd(smb2))) {
+                                        smb2_destroy_context(smb2);
                                         break;
                                 }
                         }
