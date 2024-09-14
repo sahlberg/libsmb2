@@ -204,6 +204,8 @@ smb2_encode_negotiate_reply(struct smb2_context *smb2,
         int len;
         struct smb2_iovec *iov;
 
+        pdu->header.flags |= SMB2_FLAGS_SERVER_TO_REDIR;
+
         len = SMB2_NEGOTIATE_REPLY_SIZE;
         len = PAD_TO_32BIT(len);
         if (smb2->dialect == SMB2_VERSION_ANY ||
@@ -238,6 +240,10 @@ smb2_encode_negotiate_reply(struct smb2_context *smb2,
                 rep->negotiate_context_count++;
         }
 
+        time_t t = time(NULL);
+        rep->system_time = t;
+        rep->server_start_time = t;
+
         smb2_set_uint16(iov, 0, SMB2_NEGOTIATE_REPLY_SIZE);
         smb2_set_uint16(iov, 2, rep->security_mode);
         smb2_set_uint16(iov, 4, rep->dialect_revision);
@@ -249,11 +255,30 @@ smb2_encode_negotiate_reply(struct smb2_context *smb2,
         smb2_set_uint32(iov, 36, rep->max_write_size);
         smb2_set_uint64(iov, 40, rep->system_time);
         smb2_set_uint64(iov, 48, rep->server_start_time);
+
+        rep->security_buffer_offset = len + SMB2_HEADER_SIZE;
         smb2_set_uint16(iov, 56, rep->security_buffer_offset);
         smb2_set_uint16(iov, 58, rep->security_buffer_length);
         smb2_set_uint32(iov, 60, rep->negotiate_context_offset);
-
-        pdu->header.flags |= SMB2_FLAGS_SERVER_TO_REDIR;
+                
+        if (rep->security_buffer_length) {
+                len = rep->security_buffer_length;
+                len = PAD_TO_32BIT(len);
+                /* Security buffer */
+                buf = malloc(len);
+                if (buf == NULL) {
+                        smb2_set_error(smb2, "Failed to allocate secbuf");
+                        return -1;
+                }
+                memcpy(buf, rep->security_buffer, rep->security_buffer_length);
+                memset(buf + rep->security_buffer_length, 0, len - rep->security_buffer_length);
+                iov = smb2_add_iovector(smb2, &pdu->out,
+                                        buf,
+                                        len,
+                                        free);
+        }
+        
+        /// TODO append neg contexts?
         return 0;
 }
 

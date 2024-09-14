@@ -1099,6 +1099,114 @@ smb2_connect_share_async(struct smb2_context *smb2,
 }
 
 static void
+smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
+{
+        struct smb2_session_setup_request *req = command_data;
+        struct smb2_session_setup_reply rep;
+        struct smb2_pdu *pdu;
+        
+        /* process security blob */
+        if (req->security_buffer_length) {
+                /// TODO
+        }
+        
+        rep.session_flags = req->flags;
+        rep.security_buffer_length = 0;
+        rep.security_buffer_offset = 0;
+        
+        pdu = smb2_cmd_session_setup_reply_async(smb2, &rep, NULL, cb_data);
+        if (pdu == NULL) {
+                return;
+        }
+        smb2_queue_pdu(smb2, pdu);
+}
+
+#include "asn1-ber.h"
+
+static int
+create_negotiate_request_blob(struct smb2_context *smb2, void **neg_init_token)
+{
+        struct asn1ber_context asn_encoder;
+        uint8_t *neg_init;
+        int alloc_len;
+        int pos[6];
+        
+        alloc_len = 5 * sizeof spnego_mech_ntlmssp;
+        neg_init = calloc(1, alloc_len);
+        if (neg_init == NULL) {
+                smb2_set_error(smb2, "Failed to allocate negotiate token init");
+                return 0;
+        }
+
+        memset(&asn_encoder, 0, sizeof(asn_encoder));
+        asn_encoder.dst = neg_init;
+        asn_encoder.dst_size = alloc_len;
+        asn_encoder.dst_head = 0;
+        
+        asn1ber_ber_from_typecode(&asn_encoder, asnCONSTRUCTOR | asnAPPLICATION);
+        /* save location of total length */
+        asn1ber_save_out_state(&asn_encoder, &pos[0]);
+        asn1ber_ber_reserve_length(&asn_encoder, 5);
+        
+        /* insert top level oid */
+        #if 0 /* precompiled oids are already BER encoded */
+        asn1ber_ber_from_oid(&asn_encoder, &gss_mech_spnego);
+        #else
+        asn1ber_ber_from_bytes(&asn_encoder, asnOBJECT_ID,
+                               (uint8_t*)gss_mech_spnego.elements, gss_mech_spnego.length);
+        #endif        
+
+        
+        asn1ber_ber_from_typecode(&asn_encoder, asnCONSTRUCTOR | asnCONTEXT_SPECIFIC);
+        /* save location of length of sub mechanisms */
+        asn1ber_save_out_state(&asn_encoder, &pos[1]);
+        asn1ber_ber_reserve_length(&asn_encoder, 5);
+                
+        asn1ber_ber_from_typecode(&asn_encoder, asnSTRUCT);
+        /* save location of length of mechanism struct */
+        asn1ber_save_out_state(&asn_encoder, &pos[2]);
+        asn1ber_ber_reserve_length(&asn_encoder, 5);
+        
+        /* constructed */
+        asn1ber_ber_from_typecode(&asn_encoder, asnCONSTRUCTOR | asnCONTEXT_SPECIFIC);        
+        /* save location of length of mechanism sequence */
+        asn1ber_save_out_state(&asn_encoder, &pos[3]);
+        asn1ber_ber_reserve_length(&asn_encoder, 5);
+        
+        asn1ber_ber_from_typecode(&asn_encoder, asnSTRUCT);
+        /* save location of length of mechanism struct */
+        asn1ber_save_out_state(&asn_encoder, &pos[4]);
+        asn1ber_ber_reserve_length(&asn_encoder, 5);
+
+        /* for each negotiable mechanism */
+        
+        /* insert mechanism oids */
+        #if 0 /* precompiled oids are already BER encoded */
+        asn1ber_ber_from_oid(&asn_encoder, &spnego_mech_ntlmssp);
+        #else
+        asn1ber_ber_from_bytes(&asn_encoder, asnOBJECT_ID,
+                       (uint8_t*)spnego_mech_ntlmssp.elements, spnego_mech_ntlmssp.length);
+        #endif
+#ifdef HAVE_LIBKRB5
+        /* insert mechanism oids */
+        #if 0 /* pre-compiled oids are already ber encoded */
+        asn1ber_ber_from_oid(&asn_encoder, &spnego_mech_krb5);
+        #else
+        asn1ber_ber_from_bytes(&asn_encoder, asnOBJECT_ID,
+                       (uint8_t*)spnego_mech_krb5.elements, spnego_mech_krb5.length);
+        #endif
+#endif
+        asn1ber_annotate_length(&asn_encoder, pos[4], 5);
+        asn1ber_annotate_length(&asn_encoder, pos[3], 5);
+        asn1ber_annotate_length(&asn_encoder, pos[2], 5);
+        asn1ber_annotate_length(&asn_encoder, pos[1], 5);
+        asn1ber_annotate_length(&asn_encoder, pos[0], 5);
+
+        *neg_init_token = neg_init;
+        return asn_encoder.dst_head;
+}
+
+static void
 smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
 {
         struct smb2_negotiate_request *req = command_data;
@@ -1107,6 +1215,7 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
         uint16_t dialects[SMB2_NEGOTIATE_MAX_DIALECTS];
         int dialect_count;
         int dialect_index;
+        //void *auth_data;
 
         smb2->security_mode = req->security_mode;
 
@@ -1144,8 +1253,8 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
 
         smb2->dialect = 0;
         for (dialect_index = req->dialect_count - 1;
-                       dialect_index >= 0 && !smb2->dialect; dialect_index--) {
-                for (int d = dialect_count - 1; d >= 0 && !smb2->dialect; d--) {
+                       dialect_index >= 0; dialect_index--) {
+                for (int d = dialect_count - 1; d >= 0; d--) {
                         /*
                         printf("req dial[%d] = %04x   our dial[%d] = %04x\n",
                                 dialect_index, req->dialects[dialect_index],
@@ -1154,7 +1263,11 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
                         if (dialects[d] == req->dialects[dialect_index]) {
                                 printf("Selected dialect %04x\n", dialects[d]);
                                 smb2->dialect = dialects[d];
+                                break;
                         }
+                }
+                if (smb2->dialect != 0) {
+                        break;
                 }
         }
 
@@ -1165,6 +1278,9 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
         }
 
         smb2_set_client_guid(smb2, req->client_guid);
+        smb2->max_transact_size = 0x100000;
+        smb2->max_read_size = 0x100000;
+        smb2->max_write_size = 0x100000;
 
         smb3_init_preauth_hash(smb2);
         smb3_update_preauth_hash(smb2, smb2->in.niov - 1, &smb2->in.iov[1]);
@@ -1215,12 +1331,33 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
         rep.cypher             = smb2->cypher;
 
         smb3_init_preauth_hash(smb2);
+
+        if (smb2->sec == SMB2_SEC_UNDEFINED) {
+#ifdef HAVE_LIBKRB5
+                smb2->sec = SMB2_SEC_KRB5;
+#else
+                smb2->sec = SMB2_SEC_NTLMSSP;
+#endif
+        }
+
+        rep.security_buffer_length = create_negotiate_request_blob(
+                                        smb2, (void*)&rep.security_buffer);
+        
         pdu = smb2_cmd_negotiate_reply_async(smb2, &rep, NULL, cb_data);
         if (pdu == NULL) {
                 return;
         }
+
         smb2_queue_pdu(smb2, pdu);
-        smb3_update_preauth_hash(smb2, pdu->out.niov, &pdu->out.iov[0]);
+        smb3_update_preauth_hash(smb2, pdu->out.niov, &pdu->out.iov[0]);        
+
+        /* alloc a pdu for session request */
+        smb2->next_pdu = smb2_allocate_pdu(smb2, SMB2_SESSION_SETUP, smb2_session_setup_request_cb, NULL);
+        if (!smb2->next_pdu) {
+                smb2_set_error(smb2, "can not alloc pdu for session setup request");
+                smb2_close_context(smb2);
+        }
+                
 }
 
 static int
@@ -1267,6 +1404,7 @@ int smb2_serve_port(const uint16_t port, const int max_connections, smb2_client_
         int maxfd;
         int ready;
         short events;
+        struct pollfd pfd;
         struct timeval timeout;
 
         err = smb2_bind_and_listen(port, max_connections, &server_fd);
@@ -1318,11 +1456,25 @@ int smb2_serve_port(const uint16_t port, const int max_connections, smb2_client_
                         /* for each client context ready to read, process that context */
                         for (smb2 = smb2_active_contexts(); smb2; smb2 = smb2->next) {
                                 if (SMB2_VALID_SOCKET(smb2_get_fd(smb2)) && FD_ISSET(smb2_get_fd(smb2), &rfds)) {
+                                        printf("selec for read %d\n", smb2_get_fd(smb2));
+                                        
+                                memset(&pfd, 0, sizeof(struct pollfd));
+                                pfd.fd = smb2_get_fd(smb2);
+                                pfd.events = POLLIN;
+                        
+                                err = poll(&pfd, 1, 10);
+                                if (err > 0) {
                                         if (smb2_service(smb2, POLLIN) < 0) {
                                                 smb2_set_error(smb2, "smb2_service (in) failed with : "
                                                                 "%s\n", smb2_get_error(smb2));
                                                 smb2_close_context(smb2);
                                         }
+                                        err = 0;
+                                }
+                                else
+                                {
+                                        printf("?? select said yes poll said no?\n");
+                                }
                                 }
                                 if (SMB2_VALID_SOCKET(smb2_get_fd(smb2)) && FD_ISSET(smb2_get_fd(smb2), &wfds)) {
                                         if (smb2_service(smb2, POLLOUT) < 0) {

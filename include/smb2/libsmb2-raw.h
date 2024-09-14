@@ -81,6 +81,9 @@ struct smb2_pdu *smb2_cmd_session_setup_async(struct smb2_context *smb2,
                                  struct smb2_session_setup_request *req,
                                  smb2_command_cb cb, void *cb_data);
 
+struct smb2_pdu *smb2_cmd_session_setup_reply_async(struct smb2_context *smb2,
+                                struct smb2_session_setup_reply *rep,
+                                smb2_command_cb cb, void *cb_data);
 /*
  * Asynchronous SMB2 Tree Connect
  *

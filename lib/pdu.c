@@ -609,9 +609,9 @@ smb2_process_request_payload_fixed(struct smb2_context *smb2, struct smb2_pdu *p
         switch (pdu->header.command) {
         case SMB2_NEGOTIATE:
                 return smb2_process_negotiate_request_fixed(smb2, pdu);
-        /*
         case SMB2_SESSION_SETUP:
-                return smb2_process_session_setup_fixed(smb2, pdu);
+                return smb2_process_session_setup_request_fixed(smb2, pdu);
+        /*
         case SMB2_LOGOFF:
                 return smb2_process_logoff_fixed(smb2, pdu);
         case SMB2_TREE_CONNECT:
@@ -651,9 +651,9 @@ smb2_process_request_payload_variable(struct smb2_context *smb2, struct smb2_pdu
         switch (pdu->header.command) {
         case SMB2_NEGOTIATE:
                 return smb2_process_negotiate_request_variable(smb2, pdu);
-        /*
         case SMB2_SESSION_SETUP:
-                return smb2_process_session_setup_variable(smb2, pdu);
+                return smb2_process_session_setup_request_variable(smb2, pdu);
+        /*
         case SMB2_LOGOFF:
                 return 0;
         case SMB2_TREE_CONNECT:

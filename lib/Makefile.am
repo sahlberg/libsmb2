@@ -24,6 +24,7 @@ libsmb2_la_SOURCES = \
 	hmac-md5.c \
 	krb5-wrapper.h \
 	krb5-wrapper.c \
+	asn1-ber.c \
 	libsmb2.c \
 	md4.h \
 	md4c.c \

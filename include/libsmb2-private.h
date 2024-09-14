@@ -196,6 +196,11 @@ struct smb2_context {
          * Only valid once the full smb2 header has been received.
          */
         struct smb2_pdu *pdu;
+        
+        /* pointer to the pdu to read AFTER the current one is completed
+         * (if this context is a server)
+         */
+        struct smb2_pdu *next_pdu;
 
         /* Server capabilities */
         uint8_t supports_multi_credit;
@@ -347,6 +352,10 @@ int smb2_process_negotiate_request_variable(struct smb2_context *smb2,
 int smb2_process_session_setup_fixed(struct smb2_context *smb2,
                                      struct smb2_pdu *pdu);
 int smb2_process_session_setup_variable(struct smb2_context *smb2,
+                                        struct smb2_pdu *pdu);
+int smb2_process_session_setup_request_fixed(struct smb2_context *smb2,
+                                        struct smb2_pdu *pdu);
+int smb2_process_session_setup_request_variable(struct smb2_context *smb2,
                                         struct smb2_pdu *pdu);
 int smb2_process_tree_connect_fixed(struct smb2_context *smb2,
                                     struct smb2_pdu *pdu);

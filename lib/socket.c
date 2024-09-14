@@ -637,6 +637,11 @@ read_more_data:
         smb2_free_pdu(smb2, pdu);
         smb2->pdu = NULL;
 
+        if (smb2_is_server(smb2)) {
+                smb2->pdu = smb2->next_pdu;
+                smb2->next_pdu = NULL;
+        }
+        
         if (is_chained) {
                 /* Record at which iov we ended in this loop so we know where to start in the next */
                 iov_offset = smb2->in.niov - 1;
@@ -654,10 +659,14 @@ read_more_data:
         return 0;
 }
 
+#include <stdio.h>
 static ssize_t smb2_readv_from_socket(struct smb2_context *smb2,
                                       const struct iovec *iov, int iovcnt)
 {
-        return readv(smb2->fd, (struct iovec*) iov, iovcnt);
+        ssize_t rc = readv(smb2->fd, (struct iovec*) iov, iovcnt);
+        
+        printf("rc=%lu expecting %d of %lu\n", rc, iovcnt, iov->iov_len);
+        return rc;
 }
 
 static int
