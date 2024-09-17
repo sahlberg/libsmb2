@@ -171,6 +171,10 @@ struct smb2_pdu *smb2_cmd_create_reply_async(struct smb2_context *smb2,
 struct smb2_pdu *smb2_cmd_close_async(struct smb2_context *smb2,
                                       struct smb2_close_request *req,
                                       smb2_command_cb cb, void *cb_data);
+                                      
+struct smb2_pdu *smb2_cmd_close_reply_async(struct smb2_context *smb2,
+                                      struct smb2_close_reply *rep,
+                                      smb2_command_cb cb, void *cb_data);
 
 /*
  * Asynchronous SMB2 Read
@@ -229,6 +233,10 @@ struct smb2_pdu *smb2_cmd_write_async(struct smb2_context *smb2,
  */
 struct smb2_pdu *smb2_cmd_query_directory_async(struct smb2_context *smb2,
                              struct smb2_query_directory_request *req,
+                             smb2_command_cb cb, void *cb_data);
+
+struct smb2_pdu *smb2_cmd_query_directory_reply_async(struct smb2_context *smb2,
+                             struct smb2_query_directory_reply *rep,
                              smb2_command_cb cb, void *cb_data);
 
 /*
@@ -332,6 +340,9 @@ struct smb2_pdu *smb2_cmd_echo_async(struct smb2_context *smb2,
 struct smb2_pdu *smb2_cmd_logoff_async(struct smb2_context *smb2,
                                        smb2_command_cb cb, void *cb_data);
 
+struct smb2_pdu *smb2_cmd_logoff_reply_async(struct smb2_context *smb2,
+                                       smb2_command_cb cb, void *cb_data);
+
 /*
  * Asynchronous SMB2 Flush
  *
@@ -352,6 +363,11 @@ struct smb2_pdu *smb2_cmd_flush_async(struct smb2_context *smb2,
                                       struct smb2_flush_request *req,
                                       smb2_command_cb cb, void *cb_data);
 
+struct smb2_pdu *smb2_cmd_error_reply_async(struct smb2_context *smb2,
+                                      struct smb2_error_reply *rep,
+                                      uint8_t causing_command,
+                                      int status, 
+                                      smb2_command_cb cb, void *cb_data);
 #ifdef __cplusplus
 }
 #endif

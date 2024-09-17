@@ -1100,14 +1100,68 @@ smb2_connect_share_async(struct smb2_context *smb2,
 
 /*************************** server handler *************************************************************/
 static void
+smb2_logoff_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
+{
+        struct smb2_pdu *pdu;
+        
+        pdu = smb2_cmd_logoff_reply_async(smb2, NULL, cb_data);
+        if (pdu != NULL) {
+                smb2_queue_pdu(smb2, pdu);                
+        }
+}
+
+static void
+smb2_close_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
+{
+//        struct connect_data *c_data = cb_data;
+//        struct smb2_create_request *req = command_data;
+        struct smb2_close_reply rep;
+        struct smb2_pdu *pdu;
+        
+        memset(&rep, 0, sizeof(rep));
+        
+        pdu = smb2_cmd_close_reply_async(smb2, &rep, NULL, cb_data);
+        if (pdu != NULL) {
+                smb2_queue_pdu(smb2, pdu);                
+        }
+}
+
+static void
+smb2_query_directory_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
+{
+//        struct connect_data *c_data = cb_data;
+//        struct smb2_query_directory_request *req = command_data;
+        static int rets = 0;
+        struct smb2_query_directory_reply rep;
+        struct smb2_error_reply err;
+        struct smb2_pdu *pdu;
+        struct smb2_fileidfulldirectoryinformation dirinfo;
+        
+        memset(&dirinfo, 0, sizeof dirinfo);
+        
+        if (rets++ == 0) {
+                dirinfo.name = "junk.txt";
+                rep.output_buffer = (uint8_t*)&dirinfo;
+                pdu = smb2_cmd_query_directory_reply_async(smb2, &rep, NULL, cb_data);
+        }
+        else {
+                memset(&err, 0, sizeof err);
+                pdu = smb2_cmd_error_reply_async(smb2,
+                                &err, SMB2_QUERY_DIRECTORY, SMB2_STATUS_NO_MORE_FILES, NULL, cb_data);
+                rets = 0;
+        }        
+        if (pdu != NULL) {
+                smb2_queue_pdu(smb2, pdu);                
+        }
+}
+
+static void
 smb2_create_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
 {
 //        struct connect_data *c_data = cb_data;
-        struct smb2_create_request *req = command_data;
+//        struct smb2_create_request *req = command_data;
         struct smb2_create_reply rep;
         struct smb2_pdu *pdu;
-        
-        printf("Create file %s\n", req->name);
         
         pdu = smb2_cmd_create_reply_async(smb2, &rep, NULL, cb_data);
         if (pdu != NULL) {
@@ -1159,6 +1213,9 @@ smb2_general_client_request_cb(struct smb2_context *smb2, int status, void *comm
         printf("req cb cmd %d\n", smb2->pdu->header.command);
         
         switch (smb2->pdu->header.command) {
+        case SMB2_LOGOFF:
+                smb2_logoff_request_cb(smb2, status, command_data, cb_data);
+                break;
         case SMB2_TREE_CONNECT:
                 smb2_tree_connect_request_cb(smb2, status, command_data, cb_data);
                 break;
@@ -1167,6 +1224,12 @@ smb2_general_client_request_cb(struct smb2_context *smb2, int status, void *comm
                 break;
         case SMB2_TREE_DISCONNECT:
                 smb2_tree_disconnect_request_cb(smb2, status, command_data, cb_data);
+                break;
+        case SMB2_QUERY_DIRECTORY:
+                smb2_query_directory_request_cb(smb2, status, command_data, cb_data);
+                break;
+        case SMB2_CLOSE:
+                smb2_close_request_cb(smb2, status, command_data, cb_data);
                 break;
         default:
                 smb2_set_error(smb2, "Client request not implemented", smb2_get_error(smb2));

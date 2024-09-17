@@ -31,6 +31,10 @@
 #include <stdlib.h>
 #endif
 
+#ifdef HAVE_STDIO_H
+#include <stdio.h>
+#endif
+
 #ifdef HAVE_STRING_H
 #include <string.h>
 #endif
@@ -188,6 +192,157 @@ smb2_cmd_query_directory_async(struct smb2_context *smb2,
         return pdu;
 }
 
+static int
+smb2_encode_query_directory_reply(struct smb2_context *smb2,
+                                    struct smb2_pdu *pdu,
+                                    struct smb2_query_directory_reply *rep)
+{
+        int len;
+        uint8_t *buf;
+        struct smb2_utf16 *name = NULL;
+        struct smb2_fileidfulldirectoryinformation *fs, *next_fs;
+        struct smb2_iovec *iov;
+        uint32_t fs_size;
+        uint32_t fname_len;
+        int offset;
+        int entries;
+
+        pdu->header.flags |= SMB2_FLAGS_SERVER_TO_REDIR;
+        pdu->header.credit_request_response = 1;
+
+        len = SMB2_QUERY_DIRECTORY_REPLY_SIZE;
+        len = PAD_TO_32BIT(len);
+        
+        buf = calloc(len, sizeof(uint8_t));
+        if (buf == NULL) {
+                smb2_set_error(smb2, "Failed to allocate query reply buffer");
+                return -1;
+        }
+
+        iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        
+        rep->output_buffer_offset = len + SMB2_HEADER_SIZE;
+        rep->output_buffer_length = 0;
+        
+        if (rep->output_buffer) {
+                fs = (struct smb2_fileidfulldirectoryinformation*)rep->output_buffer;
+                fname_len = 0;
+                if (fs->name && fs->name[0]) {
+                        name = smb2_utf8_to_utf16(fs->name);
+                        if (name == NULL) {
+                                smb2_set_error(smb2, "Could not convert name into UTF-16");
+                                return -1;
+                        }
+                        fname_len = 2 * name->len;
+                        free(name);
+                }
+                do {
+                        rep->output_buffer_length +=
+                               PAD_TO_32BIT(SMB2_FILEID_FULL_DIRECTORY_INFORMATION_SIZE + fname_len);
+                        if (fs->next_entry_offset) {
+                                fs++;
+                        }
+                        else {
+                                fs = NULL;
+                        }
+                }
+                while (fs);
+        }
+        
+        smb2_set_uint16(iov, 0, SMB2_QUERY_DIRECTORY_REPLY_SIZE);
+        smb2_set_uint16(iov, 2, rep->output_buffer_offset);
+        smb2_set_uint32(iov, 4, rep->output_buffer_length);
+
+        if (rep->output_buffer_length > 0) {
+                printf("processed doirinfo and got %d bytes\n", rep->output_buffer_length);
+                len = rep->output_buffer_length;
+                len = PAD_TO_32BIT(len);
+                buf = malloc(len);
+                if (buf == NULL) {
+                        smb2_set_error(smb2, "Failed to allocate output buf");
+                        return -1;
+                }
+
+                iov = smb2_add_iovector(smb2, &pdu->out,
+                                        buf,
+                                        len,
+                                        free);
+                
+                fs = (struct smb2_fileidfulldirectoryinformation*)rep->output_buffer;
+                offset = 0;
+                entries = 0;                
+                do {
+                        fs_size = PAD_TO_32BIT(SMB2_FILEID_FULL_DIRECTORY_INFORMATION_SIZE + strlen(fs->name));
+                        if (fs->next_entry_offset) {
+                                next_fs = ++fs;
+                                smb2_set_uint32(iov, offset + 0, offset + fs_size);
+                        }
+                        else {
+                                next_fs = NULL;
+                                smb2_set_uint32(iov, offset + 0, 0);
+                        }
+
+                        fname_len = 0;
+                        name = NULL;
+                        if (fs->name && fs->name[0]) {
+                                name = smb2_utf8_to_utf16(fs->name);
+                                if (name == NULL) {
+                                        smb2_set_error(smb2, "Could not convert name into UTF-16");
+                                        return -1;
+                                }
+                                fname_len = 2 * name->len;
+                        }
+
+                        smb2_set_uint32(iov, offset + 4, fs->file_index);
+                        smb2_set_uint64(iov, offset + 8, smb2_timeval_to_win(&fs->creation_time));
+                        smb2_set_uint64(iov, offset + 16, smb2_timeval_to_win(&fs->last_access_time));
+                        smb2_set_uint64(iov, offset + 24, smb2_timeval_to_win(&fs->last_write_time));
+                        smb2_set_uint64(iov, offset + 32, smb2_timeval_to_win(&fs->change_time));
+                        smb2_set_uint64(iov, offset + 40, fs->end_of_file);
+                        smb2_set_uint64(iov, offset + 48, fs->allocation_size);
+                        smb2_set_uint32(iov, offset + 56, fs->file_attributes);
+                        smb2_set_uint32(iov, offset + 60, fname_len);
+                        smb2_set_uint32(iov, offset + 64, fs->ea_size);
+                        smb2_set_uint32(iov, offset + 68, 0); /* reserved */
+                        smb2_set_uint64(iov, offset + 72, fs->file_id);
+                        
+                        if (name && fname_len > 0) {
+                                memcpy(buf + offset + 80, &name->val[0], fname_len);
+                                free(name);
+                        }
+                        fs = next_fs;
+                        entries++;
+                        offset = fs_size * entries;
+                }
+                while (fs);
+        }
+        return 0;
+}
+
+struct smb2_pdu *
+smb2_cmd_query_directory_reply_async(struct smb2_context *smb2,
+                               struct smb2_query_directory_reply *rep,
+                               smb2_command_cb cb, void *cb_data)
+{
+        struct smb2_pdu *pdu;
+        pdu = smb2_allocate_pdu(smb2, SMB2_QUERY_DIRECTORY, cb, cb_data);
+        if (pdu == NULL) {
+                return NULL;
+        }
+
+        if (smb2_encode_query_directory_reply(smb2, pdu, rep)) {
+                smb2_free_pdu(smb2, pdu);
+                return NULL;
+        }
+
+        if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
+                smb2_free_pdu(smb2, pdu);
+                return NULL;
+        }
+
+        return pdu;
+}
+
 #define IOV_OFFSET (rep->output_buffer_offset - SMB2_HEADER_SIZE - \
                     (SMB2_QUERY_DIRECTORY_REPLY_SIZE & 0xfffe))
 
@@ -250,6 +405,78 @@ smb2_process_query_directory_variable(struct smb2_context *smb2,
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
 
         rep->output_buffer = &iov->buf[IOV_OFFSET];
+
+        return 0;
+}
+
+#define IOVREQ_OFFSET (req->file_name_offset - SMB2_HEADER_SIZE - \
+                    (SMB2_QUERY_DIRECTORY_REQUEST_SIZE & 0xfffe))
+
+int
+smb2_process_query_directory_request_fixed(struct smb2_context *smb2,
+                                   struct smb2_pdu *pdu)
+{
+        struct smb2_query_directory_request *req;
+        struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
+        uint16_t struct_size;
+
+        req = malloc(sizeof(*req));
+        if (req == NULL) {
+                smb2_set_error(smb2, "Failed to allocate query dir request");
+                return -1;
+        }
+        pdu->payload = req;
+
+        smb2_get_uint16(iov, 0, &struct_size);
+        if (struct_size != SMB2_QUERY_DIRECTORY_REQUEST_SIZE ||
+            (struct_size & 0xfffe) != iov->len) {
+                smb2_set_error(smb2, "Unexpected size of Query Dir "
+                               "request. Expected %d, got %d",
+                               SMB2_QUERY_DIRECTORY_REQUEST_SIZE,
+                               (int)iov->len);
+                return -1;
+        }
+        
+        smb2_get_uint8(iov, 2, &req->file_information_class);
+        smb2_get_uint8(iov, 2, &req->flags);
+        smb2_get_uint32(iov, 4, &req->file_index);
+        memcpy(req->file_id, iov + 8, SMB2_FD_SIZE);
+        smb2_get_uint16(iov, 16, &req->file_name_offset);
+        smb2_get_uint16(iov, 18, &req->file_name_length);
+        smb2_get_uint32(iov, 19, &req->output_buffer_length);
+        
+        if (req->file_name_length &&
+            (req->file_name_offset + req->file_name_length > smb2->spl)) {
+                smb2_set_error(smb2, "Output buffer extends beyond end of "
+                               "PDU");
+                return -1;
+        }
+
+        if (req->file_name_length == 0) {
+                return 0;
+        }
+
+        if (req->file_name_offset < SMB2_HEADER_SIZE +
+            (SMB2_QUERY_DIRECTORY_REQUEST_SIZE & 0xfffe)) {
+                smb2_set_error(smb2, "Name buffer overlaps with "
+                               "Query Dir request header");
+                return -1;
+        }
+
+        /* Return the amount of data that the name will take up.
+         * Including any padding before the name itself.
+         */
+        return IOVREQ_OFFSET + req->file_name_length;
+}
+
+int
+smb2_process_query_directory_request_variable(struct smb2_context *smb2,
+                                      struct smb2_pdu *pdu)
+{
+        struct smb2_query_directory_request *req = pdu->payload;
+        struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
+
+        req->name = (const char*)&iov->buf[IOVREQ_OFFSET];
 
         return 0;
 }

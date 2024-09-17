@@ -454,7 +454,6 @@ read_more_data:
                          * not the pdus command for the rest of input
                          */
                         if (pdu->header.command > SMB2_SESSION_SETUP) {
-                                printf("setting pdu cmd %d\n", smb2->hdr.command);
                                 pdu->header.command = smb2->hdr.command;
                         }
                 }
@@ -677,7 +676,7 @@ static ssize_t smb2_readv_from_socket(struct smb2_context *smb2,
 {
         ssize_t rc = readv(smb2->fd, (struct iovec*) iov, iovcnt);
         
-        printf("rc=%lu expecting %d of %lu\n", rc, iovcnt, iov->iov_len);
+        //printf("rc=%lu expecting %d of %lu\n", rc, iovcnt, iov->iov_len);
         return rc;
 }
 

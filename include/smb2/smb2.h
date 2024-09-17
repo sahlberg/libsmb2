@@ -70,6 +70,7 @@ enum smb2_command {
         SMB2_QUERY_INFO      = 16,
         SMB2_SET_INFO        = 17,
         /* SMB2_OPLOCK_BREAK, */
+        SMB2_ERROR           = 127, /* not a real command */
 };
 
 /*
@@ -404,6 +405,8 @@ struct smb2_flush_request {
 #define SMB2_INDEX_SPECIFIED     0x04
 #define SMB2_REOPEN              0x10
 
+#define SMB2_FILEID_FULL_DIRECTORY_INFORMATION_SIZE  80
+
 /* Structure for SMB2_FILE_ID_FULL_DIRECTORY_INFORMATION.
  * This is also used as the dirent content.
  */
@@ -417,9 +420,10 @@ struct smb2_fileidfulldirectoryinformation {
         uint64_t end_of_file;
         uint64_t allocation_size;
         uint32_t file_attributes;
+        uint32_t file_name_length;
         uint32_t ea_size;
         uint64_t file_id;
-        const char *name;
+        const char *name; /* or "reserved" for replys */
 };
 
 struct smb2_iovec;
@@ -433,8 +437,10 @@ struct smb2_query_directory_request {
         uint8_t flags;
         uint32_t file_index;
         smb2_file_id file_id;
-        const char *name;       /* name in UTF8 */
         uint32_t output_buffer_length;
+        uint16_t file_name_offset;
+        uint16_t file_name_length;
+        const char *name;       /* name in UTF8 */
 };
 
 #define SMB2_QUERY_DIRECTORY_REPLY_SIZE 9
