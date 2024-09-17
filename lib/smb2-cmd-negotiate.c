@@ -205,6 +205,7 @@ smb2_encode_negotiate_reply(struct smb2_context *smb2,
         struct smb2_iovec *iov;
 
         pdu->header.flags |= SMB2_FLAGS_SERVER_TO_REDIR;
+        pdu->header.credit_request_response = 1;
 
         len = SMB2_NEGOTIATE_REPLY_SIZE;
         len = PAD_TO_32BIT(len);

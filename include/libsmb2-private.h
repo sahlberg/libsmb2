@@ -358,10 +358,18 @@ int smb2_process_session_setup_request_fixed(struct smb2_context *smb2,
 int smb2_process_session_setup_request_variable(struct smb2_context *smb2,
                                         struct smb2_pdu *pdu);
 int smb2_process_tree_connect_fixed(struct smb2_context *smb2,
-                                    struct smb2_pdu *pdu);
+                                        struct smb2_pdu *pdu);
+int smb2_process_tree_connect_request_fixed(struct smb2_context *smb2,
+                                        struct smb2_pdu *pdu);
+int smb2_process_tree_connect_request_variable(struct smb2_context *smb2,
+                                        struct smb2_pdu *pdu);
 int smb2_process_create_fixed(struct smb2_context *smb2,
                               struct smb2_pdu *pdu);
 int smb2_process_create_variable(struct smb2_context *smb2,
+                                 struct smb2_pdu *pdu);
+int smb2_process_create_request_fixed(struct smb2_context *smb2,
+                              struct smb2_pdu *pdu);
+int smb2_process_create_request_variable(struct smb2_context *smb2,
                                  struct smb2_pdu *pdu);
 int smb2_process_query_directory_fixed(struct smb2_context *smb2,
                                        struct smb2_pdu *pdu);
@@ -376,6 +384,8 @@ int smb2_process_close_fixed(struct smb2_context *smb2,
 int smb2_process_set_info_fixed(struct smb2_context *smb2,
                                 struct smb2_pdu *pdu);
 int smb2_process_tree_disconnect_fixed(struct smb2_context *smb2,
+                                       struct smb2_pdu *pdu);
+int smb2_process_tree_disconnect_request_fixed(struct smb2_context *smb2,
                                        struct smb2_pdu *pdu);
 int smb2_process_logoff_fixed(struct smb2_context *smb2,
                               struct smb2_pdu *pdu);

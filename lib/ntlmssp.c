@@ -98,10 +98,6 @@ struct auth_data {
         uint8_t exported_session_key[SMB2_KEY_SIZE];
 };
 
-#define NEGOTIATE_MESSAGE      0x00000001
-#define CHALLENGE_MESSAGE      0x00000002
-#define AUTHENTICATION_MESSAGE 0x00000003
-
 #define NTLMSSP_NEGOTIATE_56                               0x80000000
 #define NTLMSSP_NEGOTIATE_128                              0x20000000
 #define NTLMSSP_NEGOTIATE_EXTENDED_SESSIONSECURITY         0x00080000
@@ -600,12 +596,97 @@ finished:
         return ret;
 }
 
+static int
+encode_ntlm_challenge(struct smb2_context *smb2, struct auth_data *auth_data)
+{
+        int ret = -1;
+        struct smb2_utf16 *utf16_workstation = NULL;
+        uint32_t u32;
+        unsigned char challenge[8];
+        uint8_t anonymous = 0;
+        /*
+         * Generate CHALLENGE_MESSAGE
+         */
+        encoder("NTLMSSP", 8, auth_data);
+
+        /* message type */
+        u32 = htole32(CHALLENGE_MESSAGE);
+        encoder(&u32, 4, auth_data);
+
+        /* target name response fields */
+        if (auth_data->workstation) {
+                utf16_workstation = smb2_utf8_to_utf16(auth_data->workstation);
+                if (utf16_workstation == NULL) {
+                        goto finished;
+                }
+                u32 = utf16_workstation->len * 2;
+                u32 = htole32((u32 << 16) | u32);
+                encoder(&u32, 4, auth_data);
+                u32 = 0;
+                encoder(&u32, 4, auth_data);
+        }
+
+        /* negotiate flags */
+        u32 = NTLMSSP_NEGOTIATE_128|
+                NTLMSSP_NEGOTIATE_EXTENDED_SESSIONSECURITY|
+                /* NTLMSSP_NEGOTIATE_ALWAYS_SIGN| 
+                   NTLMSSP_NEGOTIATE_SIGN| 
+                */
+                NTLMSSP_REQUEST_TARGET|NTLMSSP_NEGOTIATE_OEM|
+                NTLMSSP_NEGOTIATE_UNICODE;
+        if (anonymous)
+                u32 |= NTLMSSP_NEGOTIATE_ANONYMOUS;
+        else
+                u32 |= NTLMSSP_NEGOTIATE_SEAL;
+
+        u32 = htole32(u32);
+        encoder(&u32, 4, auth_data);
+
+        /* server challenge */
+        for (int cc = 0; cc < 8; cc++) {
+                challenge[cc] = cc + 1;
+        }
+        encoder(challenge, 8, auth_data);
+
+        /* reserved */
+        u32 = 0;
+        encoder(&u32, 4, auth_data);
+        u32 = 0;
+        encoder(&u32, 4, auth_data);
+
+        /* target info fields */
+        u32 = 0;
+        encoder(&u32, 4, auth_data);
+        u32 = 0;
+        encoder(&u32, 4, auth_data);
+
+        /* version */
+        u32 = 0;
+        encoder(&u32, 4, auth_data);
+        u32 = 0;
+        encoder(&u32, 4, auth_data);
+        
+        /* append workstation */
+        u32 = htole32((uint32_t)auth_data->len);
+        memcpy(&auth_data->buf[16], &u32, 4);
+        if (utf16_workstation) {
+                encoder(utf16_workstation->val,
+                        utf16_workstation->len * 2, auth_data);
+        }
+
+        ret = 0;
+finished:
+        return ret;
+}
+
 int
 ntlmssp_generate_blob(struct smb2_context *smb2, time_t t,
                       struct auth_data *auth_data,
                       unsigned char *input_buf, int input_len,
                       unsigned char **output_buf, uint16_t *output_len)
 {
+        uint32_t cmd;
+        
         free(auth_data->buf);
         auth_data->buf = NULL;
         auth_data->len = 0;
@@ -614,13 +695,29 @@ ntlmssp_generate_blob(struct smb2_context *smb2, time_t t,
         if (input_buf == NULL) {
                 ntlm_negotiate_message(smb2, auth_data);
         } else {
-                if (ntlm_challenge_message(auth_data, input_buf,
-                                           input_len) < 0) {
-                        return -1;
+                if (smb2_is_server(smb2)) {
+                        if (ntlmssp_get_message_type(input_buf, input_len, &cmd)) {
+                                return -1;
+                        }
+                        if (cmd == NEGOTIATE_MESSAGE) {
+                                printf("Got neg msg\n");
+                                if (encode_ntlm_challenge(smb2, auth_data)) {
+                                        return -1;
+                                }
+                        }
+                        else if (cmd == AUTHENTICATION_MESSAGE) {
+                                printf("Got auth msg\n");
+                        }
                 }
-                if (encode_ntlm_auth(smb2, t, auth_data,
-                                     (char *)&auth_data->ntlm_buf[24]) < 0) {
-                        return -1;
+                else {
+                        if (ntlm_challenge_message(auth_data, input_buf,
+                                                   input_len) < 0) {
+                                return -1;
+                        }
+                        if (encode_ntlm_auth(smb2, t, auth_data,
+                                             (char *)&auth_data->ntlm_buf[24]) < 0) {
+                                return -1;
+                        }
                 }
         }
 
@@ -630,6 +727,19 @@ ntlmssp_generate_blob(struct smb2_context *smb2, time_t t,
         return 0;
 }
 
+int
+ntlmssp_authenticate_blob(struct smb2_context *smb2,
+                      struct auth_data *auth_data,
+                      unsigned char *input_buf, int input_len)
+{
+        int ret = -1;
+
+        /// TODO - 
+        ret = 0;
+        return ret;
+}
+
+                      
 int
 ntlmssp_get_session_key(struct auth_data *auth,
                         uint8_t **key,
@@ -652,3 +762,18 @@ ntlmssp_get_session_key(struct auth_data *auth,
 
         return 0;
 }
+
+int
+ntlmssp_get_message_type(unsigned char *ntlmssp_buffer, int len, uint32_t *message_type)
+{
+        int ret = -1;
+        
+        if (ntlmssp_buffer && message_type && len > 12) {
+                if (!memcmp(ntlmssp_buffer, "NTLMSSP", 8)) {
+                        memcpy(message_type, ntlmssp_buffer + 8, 4);
+                        ret = 0;
+                }
+        }
+        return ret;
+}
+

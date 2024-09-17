@@ -614,12 +614,14 @@ smb2_process_request_payload_fixed(struct smb2_context *smb2, struct smb2_pdu *p
         /*
         case SMB2_LOGOFF:
                 return smb2_process_logoff_fixed(smb2, pdu);
+        */
         case SMB2_TREE_CONNECT:
-                return smb2_process_tree_connect_fixed(smb2, pdu);
+                return smb2_process_tree_connect_request_fixed(smb2, pdu);
         case SMB2_TREE_DISCONNECT:
-                return smb2_process_tree_disconnect_fixed(smb2, pdu);
+                return 0;
         case SMB2_CREATE:
-                return smb2_process_create_fixed(smb2, pdu);
+                return smb2_process_create_request_fixed(smb2, pdu);
+        /*
         case SMB2_CLOSE:
                 return smb2_process_close_fixed(smb2, pdu);
         case SMB2_FLUSH:
@@ -640,6 +642,7 @@ smb2_process_request_payload_fixed(struct smb2_context *smb2, struct smb2_pdu *p
                 return smb2_process_ioctl_fixed(smb2, pdu);
         */
         default:
+                smb2_set_error(smb2, "No handler for fixed request", smb2_get_error(smb2));
                 return -1;
         }
         return 0;
@@ -656,12 +659,14 @@ smb2_process_request_payload_variable(struct smb2_context *smb2, struct smb2_pdu
         /*
         case SMB2_LOGOFF:
                 return 0;
+        */
         case SMB2_TREE_CONNECT:
-                return 0;
+                return smb2_process_tree_connect_request_variable(smb2, pdu);
         case SMB2_TREE_DISCONNECT:
                 return 0;
         case SMB2_CREATE:
-                return smb2_process_create_variable(smb2, pdu);
+                return smb2_process_create_request_variable(smb2, pdu);
+        /*
         case SMB2_CLOSE:
                 return 0;
         case SMB2_FLUSH:
@@ -681,6 +686,8 @@ smb2_process_request_payload_variable(struct smb2_context *smb2, struct smb2_pdu
         case SMB2_IOCTL:
                 return smb2_process_ioctl_variable(smb2, pdu);
         */
+        default:
+                smb2_set_error(smb2, "No handler for var request", smb2_get_error(smb2));
         }
         return -1;
 }

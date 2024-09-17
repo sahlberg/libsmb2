@@ -104,6 +104,9 @@ struct smb2_pdu *smb2_cmd_tree_connect_async(struct smb2_context *smb2,
                                 struct smb2_tree_connect_request *req,
                                 smb2_command_cb cb, void *cb_data);
 
+struct smb2_pdu *smb2_cmd_tree_connect_reply_async(struct smb2_context *smb2,
+                            struct smb2_tree_connect_reply *rep,
+                            smb2_command_cb cb, void *cb_data);
 /*
  * Asynchronous SMB2 Tree Disconnect
  *
@@ -123,6 +126,9 @@ struct smb2_pdu *smb2_cmd_tree_connect_async(struct smb2_context *smb2,
  */
 struct smb2_pdu *smb2_cmd_tree_disconnect_async(struct smb2_context *smb2,
                                   smb2_command_cb cb, void *cb_data);
+ 
+struct smb2_pdu *smb2_cmd_tree_disconnect_reply_async(struct smb2_context *smb2,
+                                  smb2_command_cb cb, void *cb_data);
 
 /*
  * Asynchronous SMB2 Create
@@ -141,6 +147,10 @@ struct smb2_pdu *smb2_cmd_tree_disconnect_async(struct smb2_context *smb2,
  */
 struct smb2_pdu *smb2_cmd_create_async(struct smb2_context *smb2,
                                        struct smb2_create_request *req,
+                                       smb2_command_cb cb, void *cb_data);
+
+struct smb2_pdu *smb2_cmd_create_reply_async(struct smb2_context *smb2,
+                                       struct smb2_create_reply *rep,
                                        smb2_command_cb cb, void *cb_data);
 
 /*

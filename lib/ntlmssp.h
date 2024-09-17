@@ -30,6 +30,10 @@
 extern "C" {
 #endif
 
+#define NEGOTIATE_MESSAGE      0x00000001
+#define CHALLENGE_MESSAGE      0x00000002
+#define AUTHENTICATION_MESSAGE 0x00000003
+
 struct auth_data;
 
 struct auth_data *
@@ -45,10 +49,18 @@ ntlmssp_generate_blob(struct smb2_context *smb2, time_t t,
                       unsigned char *input_buf, int input_len,
                       unsigned char **output_buf, uint16_t *output_len);
 
+int
+ntlmssp_authenticate_blob(struct smb2_context *smb2,
+                      struct auth_data *auth_data,
+                      unsigned char *input_buf, int input_len);
+                      
 void
 ntlmssp_destroy_context(struct auth_data *auth);
 
 int ntlmssp_get_session_key(struct auth_data *auth, uint8_t **key, uint8_t *key_size);
+
+int
+ntlmssp_get_message_type(unsigned char *ntlmssp_buffer, int len, uint32_t *message_type);
 
 #ifdef __cplusplus
 }

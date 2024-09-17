@@ -47,6 +47,10 @@
 #include <stdlib.h>
 #endif
 
+#ifdef HAVE_STDIO_H
+#include <stdio.h>
+#endif
+
 #ifdef HAVE_STRING_H
 #include <string.h>
 #endif
@@ -319,7 +323,7 @@ static int smb2_read_data(struct smb2_context *smb2, read_func func,
         static char smb3tfrm[4] = {0xFD, 'S', 'M', 'B'};
         struct smb2_pdu *pdu = smb2->pdu;
         ssize_t count;
-        size_t len;
+        int len;
 
 read_more_data:
         num_done = smb2->in.num_done;
@@ -444,6 +448,14 @@ read_more_data:
                         if (!pdu) {
                                 smb2_set_error(smb2, "no pdu for request");
                                 return -ENOMEM;
+                        }
+                        /* if the session is properly opened then we could get
+                         * any request from the client, so use the headers command
+                         * not the pdus command for the rest of input
+                         */
+                        if (pdu->header.command > SMB2_SESSION_SETUP) {
+                                printf("setting pdu cmd %d\n", smb2->hdr.command);
+                                pdu->header.command = smb2->hdr.command;
                         }
                 }
                 else {

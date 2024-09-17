@@ -172,6 +172,7 @@ struct smb2_session_setup_reply {
 
 struct smb2_tree_connect_request {
         uint16_t flags;
+        uint16_t path_offset;
         uint16_t path_length;
         uint16_t *path;
 };
@@ -316,7 +317,10 @@ struct smb2_create_request {
         uint32_t share_access;
         uint32_t create_disposition;
         uint32_t create_options;
+        uint16_t name_offset;
+        uint16_t name_length;
         const char *name;       /* name in UTF8 */
+        uint32_t create_context_offset;
         uint32_t create_context_length;
         uint8_t *create_context;
 };

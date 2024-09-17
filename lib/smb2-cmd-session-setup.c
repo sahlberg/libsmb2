@@ -133,7 +133,8 @@ smb2_encode_session_setup_reply(struct smb2_context *smb2,
         struct smb2_iovec *iov;
 
         pdu->header.flags |= SMB2_FLAGS_SERVER_TO_REDIR;
-
+        pdu->header.credit_request_response = 1;
+        
         len = SMB2_SESSION_SETUP_REPLY_SIZE;
         len = PAD_TO_32BIT(len);
 
@@ -148,8 +149,8 @@ smb2_encode_session_setup_reply(struct smb2_context *smb2,
         smb2_set_uint16(iov, 0, SMB2_SESSION_SETUP_REPLY_SIZE);
         smb2_set_uint16(iov, 2, rep->session_flags);
         rep->security_buffer_offset = len + SMB2_HEADER_SIZE;
-        smb2_set_uint16(iov, 4, rep->security_buffer_length);
-        smb2_set_uint16(iov, 6, rep->security_buffer_offset);
+        smb2_set_uint16(iov, 4, rep->security_buffer_offset);
+        smb2_set_uint16(iov, 6, rep->security_buffer_length);
                 
         if (rep->security_buffer_length) {
                 len = rep->security_buffer_length;
