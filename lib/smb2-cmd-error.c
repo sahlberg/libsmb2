@@ -93,13 +93,12 @@ smb2_cmd_error_reply_async(struct smb2_context *smb2,
 {
         struct smb2_pdu *pdu;
 
-        pdu = smb2_allocate_pdu(smb2, SMB2_ERROR, cb, cb_data);
+        pdu = smb2_allocate_pdu(smb2, causing_command, cb, cb_data);
         if (pdu == NULL) {
                 return NULL;
         }
         
         pdu->header.status = status;
-        pdu->header.command = causing_command;
         
         if (smb2_encode_error_reply(smb2, pdu, rep)) {
                 smb2_free_pdu(smb2, pdu);
