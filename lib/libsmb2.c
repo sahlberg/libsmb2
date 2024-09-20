@@ -1268,6 +1268,8 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                         smb2_close_context(smb2);
                         return;
                 }
+                printf("ntlmssp msg type=%08x\n", message_type);
+                
                 if (ntlmssp_generate_blob(smb2, time(NULL), c_data->auth_data,
                                           req->security_buffer, req->security_buffer_length,
                                           &rep.security_buffer,
@@ -1276,17 +1278,9 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                         return;
                 }
         }
-#ifdef xxHAVE_LIBKRB5
+#ifdef HAVE_LIBKRB5
         else {
-                if (krb5_session_request(smb2, c_data->auth_data,
-                                         buf, len) < 0) {
-                        smb2_close_context(smb2);
-                        return -1;
-                }
-                rep.security_buffer_length =
-                        krb5_get_output_token_length(c_data->auth_data);
-                rep.security_buffer =
-                        krb5_get_output_token_buffer(c_data->auth_data);
+                /// TODO 
         }
 #endif
 
@@ -1429,7 +1423,7 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
         int dialect_index;
         //void *auth_data;
 
-        smb2->security_mode = req->security_mode;
+        memset(&rep, 0, sizeof(rep));
 
         /* negotiate highest version in request dialects */
         switch (smb2->version) {
@@ -1463,33 +1457,41 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
                 break;
         }
 
-        smb2->dialect = 0;
-        for (dialect_index = req->dialect_count - 1;
-                       dialect_index >= 0; dialect_index--) {
-                for (int d = dialect_count - 1; d >= 0; d--) {
-                        /*
-                        printf("req dial[%d] = %04x   our dial[%d] = %04x\n",
-                                dialect_index, req->dialects[dialect_index],
-                                d, dialects[d]);
-                        */
-                        if (dialects[d] == req->dialects[dialect_index]) {
-                                printf("Selected dialect %04x\n", dialects[d]);
-                                smb2->dialect = dialects[d];
+        if (req && smb2->pdu->header.command != SMB1_NEGOTIATE) {
+                smb2->security_mode = req->security_mode;
+                smb2->dialect = 0;
+                for (dialect_index = req->dialect_count - 1;
+                               dialect_index >= 0; dialect_index--) {
+                        for (int d = dialect_count - 1; d >= 0; d--) {
+                                /*
+                                printf("req dial[%d] = %04x   our dial[%d] = %04x\n",
+                                        dialect_index, req->dialects[dialect_index],
+                                        d, dialects[d]);
+                                */
+                                if (dialects[d] == req->dialects[dialect_index]) {
+                                        printf("Selected dialect %04x\n", dialects[d]);
+                                        smb2->dialect = dialects[d];
+                                        break;
+                                }
+                        }
+                        if (smb2->dialect != 0) {
                                 break;
                         }
                 }
-                if (smb2->dialect != 0) {
-                        break;
+        
+                if (dialect_index < 0) {
+                        smb2_set_error(smb2, "No common dialects for protocol");
+                        smb2_close_context(smb2);
+                        return;
                 }
+        
+                smb2_set_client_guid(smb2, req->client_guid);
         }
-
-        if (dialect_index < 0) {
-                smb2_set_error(smb2, "No common dialects for protocol");
-                smb2_close_context(smb2);
-                return;
+        else {
+                /* sn smb1-negotiate, list all dialects */
+                smb2->dialect = SMB2_VERSION_WILDCARD;
         }
-
-        smb2_set_client_guid(smb2, req->client_guid);
+        
         smb2->max_transact_size = 0x100000;
         smb2->max_read_size = 0x100000;
         smb2->max_write_size = 0x100000;
@@ -1497,51 +1499,61 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
         smb3_init_preauth_hash(smb2);
         smb3_update_preauth_hash(smb2, smb2->in.niov - 1, &smb2->in.iov[1]);
 
-        /* update the context with the client capabilities */
-        if (smb2->dialect > SMB2_VERSION_0202) {
-                if (req->capabilities & SMB2_GLOBAL_CAP_LARGE_MTU) {
-                        smb2->supports_multi_credit = 1;
-                }
-        }
+        if (req) {
+                rep.capabilities = req->capabilities; /// TODO
 
-        if (smb2->seal && (smb2->dialect == SMB2_VERSION_0300 ||
-                           smb2->dialect == SMB2_VERSION_0302)) {
-                if(!(req->capabilities & SMB2_GLOBAL_CAP_ENCRYPTION)) {
-                        smb2_set_error(smb2, "Encryption requested but client "
-                                       "does not support encryption.");
+                /* update the context with the client capabilities */
+                if (smb2->dialect > SMB2_VERSION_0202) {
+                        if (req->capabilities & SMB2_GLOBAL_CAP_LARGE_MTU) {
+                                smb2->supports_multi_credit = 1;
+                        }
+                }
+        
+                if (smb2->seal && (smb2->dialect == SMB2_VERSION_0300 ||
+                                   smb2->dialect == SMB2_VERSION_0302)) {
+                        if(!(req->capabilities & SMB2_GLOBAL_CAP_ENCRYPTION)) {
+                                smb2_set_error(smb2, "Encryption requested but client "
+                                               "does not support encryption.");
+                                smb2_close_context(smb2);
+                                return;
+                        }
+                }
+        
+                if (smb2->sign &&
+                    !(req->security_mode & SMB2_NEGOTIATE_SIGNING_ENABLED)) {
+                        smb2_set_error(smb2, "Signing required but client "
+                                       "does not support signing.");
                         smb2_close_context(smb2);
                         return;
                 }
+        
+                if (req->security_mode & SMB2_NEGOTIATE_SIGNING_REQUIRED) {
+                        smb2->sign = 1;
+                }
+        
+                if (smb2->seal) {
+                        smb2->sign = 0;
+                }
         }
-
-        if (smb2->sign &&
-            !(req->security_mode & SMB2_NEGOTIATE_SIGNING_ENABLED)) {
-                smb2_set_error(smb2, "Signing required but client "
-                               "does not support signing.");
-                smb2_close_context(smb2);
-                return;
-        }
-
-        if (req->security_mode & SMB2_NEGOTIATE_SIGNING_REQUIRED) {
-                smb2->sign = 1;
-        }
-
-        if (smb2->seal) {
-                smb2->sign = 0;
-        }
-
-        memset(&rep, 0, sizeof(rep));
 
         rep.security_mode      = SMB2_NEGOTIATE_SIGNING_ENABLED |
                (smb2->sign ? SMB2_NEGOTIATE_SIGNING_REQUIRED : 0);
         memcpy(rep.server_guid, "libsmb2-srvrguid", 16); /// TODO
         rep.max_transact_size  = smb2->max_transact_size;;
-        rep.capabilities       = req->capabilities; /// TODO
         rep.max_read_size      = smb2->max_read_size;
         rep.max_write_size     = smb2->max_write_size;
         rep.dialect_revision   = smb2->dialect;
         rep.cypher             = smb2->cypher;
 
+        struct smb2_timeval now;
+        
+        now.tv_sec = time(NULL);
+        now.tv_usec = 0;
+        
+        rep.system_time = smb2_timeval_to_win(&now);
+        now.tv_sec = 0;
+        rep.server_start_time = smb2_timeval_to_win(&now);
+                
         smb3_init_preauth_hash(smb2);
 
         smb2->sec = SMB2_SEC_NTLMSSP;
@@ -1565,13 +1577,22 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
         smb2_queue_pdu(smb2, pdu);
         smb3_update_preauth_hash(smb2, pdu->out.niov, &pdu->out.iov[0]);        
 
-        /* alloc a pdu for session request */
-        smb2->next_pdu = smb2_allocate_pdu(smb2, SMB2_SESSION_SETUP, smb2_session_setup_request_cb, c_data);
-        if (!smb2->next_pdu) {
-                smb2_set_error(smb2, "can not alloc pdu for session setup request");
-                smb2_close_context(smb2);
+        if (req) {
+                /* alloc a pdu for session request */
+                smb2->next_pdu = smb2_allocate_pdu(smb2, SMB2_SESSION_SETUP, smb2_session_setup_request_cb, c_data);
+                if (!smb2->next_pdu) {
+                        smb2_set_error(smb2, "can not alloc pdu for session setup request");
+                        smb2_close_context(smb2);
+                }
         }
-                
+        else {
+                /* alloc a pdu for another negotiate  request */
+                smb2->next_pdu = smb2_allocate_pdu(smb2, SMB2_NEGOTIATE, smb2_negotiate_request_cb, c_data);
+                if (!smb2->next_pdu) {
+                        smb2_set_error(smb2, "can not alloc pdu for second negotiate request");
+                        smb2_close_context(smb2);
+                }
+        }
 }
 
 static int

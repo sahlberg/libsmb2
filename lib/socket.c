@@ -372,6 +372,8 @@ read_more_data:
         }
         if (count == 0) {
                 /* remote side has closed the socket. */
+                smb2_set_error(smb2, "Read from socket failed, "
+                               "remote closed connection.");
                 return -1;
         }
         smb2->in.num_done += (size_t)count;
@@ -406,6 +408,37 @@ read_more_data:
                         smb2_set_error(smb2, "Failed to decode smb2 "
                                        "header: %s", smb2_get_error(smb2));
                         return -1;
+                }
+                /* if serving, and this is an smb1 negotiate, just short-circuit and flush 
+                 * any remaining data on input and call the callback */
+                if (smb2_is_server(smb2) && smb2->hdr.command == SMB1_NEGOTIATE) {
+                        uint8_t flusher[32];
+                        struct iovec fiov; 
+                        fiov.iov_base = (char *)flusher;
+                        fiov.iov_len = sizeof(flusher);
+                        do {
+                                count = func(smb2, &fiov, 1);
+                                if (count < 0) {
+#if defined(_WIN32) || defined(_XBOX)
+                                        int err = WSAGetLastError();
+                                        if (err == WSAEINTR || err == WSAEWOULDBLOCK) {
+#else
+                                        int err = errno;
+                                        if (err == EINTR || err == EAGAIN || err == EWOULDBLOCK) {
+#endif
+                                                count = 0;
+                                        }
+                                }
+                        }
+                        while (count > 0);
+                        
+                        smb2->in.num_done = 0;
+                        pdu->cb(smb2, smb2->hdr.status, pdu->payload, pdu->cb_data);
+                        smb2_free_pdu(smb2, pdu);
+                        smb2->pdu = NULL;
+                        smb2->pdu = smb2->next_pdu;
+                        smb2->next_pdu = NULL;
+                        return 0;
                 }
                 /* Record the offset for the start of payload data. */
                 smb2->payload_offset = smb2->in.num_done;
@@ -841,6 +874,7 @@ smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
                                                  NULL, smb2->connect_data);
                                 smb2->connect_cb = NULL;
                         }
+                        printf("gso failed\n");
                         ret = -1;
                         goto out;
                 }
