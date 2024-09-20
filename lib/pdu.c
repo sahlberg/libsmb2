@@ -31,6 +31,10 @@
 #include <stdlib.h>
 #endif
 
+#ifdef HAVE_STDIO_H
+#include <stdio.h>
+#endif
+
 #ifdef HAVE_STRING_H
 #include <string.h>
 #endif
@@ -324,10 +328,23 @@ int
 smb2_decode_header(struct smb2_context *smb2, struct smb2_iovec *iov,
                    struct smb2_header *hdr)
 {
+        static char smb1sign[4] = {0xFF, 'S', 'M', 'B'};
         static char smb2sign[4] = {0xFE, 'S', 'M', 'B'};
 
         if (iov->len < SMB2_HEADER_SIZE) {
                 smb2_set_error(smb2, "io vector for header is too small");
+                return -1;
+        }
+        if (!memcmp(iov->buf, smb1sign, 4)) {
+                /* and SMBv1 request. if it is a negotiate request
+                 * fake an smb2 negotiate request */
+                if (iov->buf[4] == SMB1_NEGOTIATE) {
+                        printf("Handling SMBv1 Negotiate\n");
+                        memset(hdr, 0, sizeof *hdr);
+                        hdr->command = SMB1_NEGOTIATE;
+                        return 0;
+                }
+                smb2_set_error(smb2, "not handling SMBv1 request");
                 return -1;
         }
         if (memcmp(iov->buf, smb2sign, 4)) {
@@ -426,11 +443,6 @@ smb2_is_error_response(struct smb2_context *smb2,
 int
 smb2_get_fixed_reply_size(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
-        if (smb2_is_server(smb2)) {
-                return smb2_get_fixed_reply_size(smb2, pdu);
-        }
-        else {
-        }
         if (smb2_is_error_response(smb2, pdu)) {
                 return SMB2_ERROR_REPLY_SIZE & 0xfffe;
         }
