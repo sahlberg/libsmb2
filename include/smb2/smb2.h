@@ -70,7 +70,8 @@ enum smb2_command {
         SMB2_QUERY_INFO      = 16,
         SMB2_SET_INFO        = 17,
         /* SMB2_OPLOCK_BREAK, */
-        SMB2_ERROR           = 127, /* not a real command */
+        
+        SMB1_NEGOTIATE       = 114,
 };
 
 /*
@@ -89,6 +90,12 @@ enum smb2_command {
 
 #define SMB2_PREAUTH_INTEGRITY_CAP         0x0001
 #define SMB2_ENCRYPTION_CAP                0x0002
+#define SMB2_COMPRESSION_CAP               0x0003
+#define SMB2_NETNAME_NEGOTIATE_CONTEXT_ID  0x0005
+#define SMB2_TRANSPORT_CAP                 0x0006
+#define SMB2_RDMA_TRANSFORM_CAP            0x0007
+#define SMB2_SIGNING_CAP                   0x0008
+#define SMB2_CONTEXTTYPE_RESERVED          0x0100
 
 #define SMB2_HASH_SHA_512                  0x0001
 #define SMB2_PREAUTH_HASH_SIZE             64

@@ -247,8 +247,10 @@ enum smb2_negotiate_version {
         SMB2_VERSION_0210 = 0x0210,
         SMB2_VERSION_0300 = 0x0300,
         SMB2_VERSION_0302 = 0x0302,
-        SMB2_VERSION_0311 = 0x0311
+        SMB2_VERSION_0311 = 0x0311,
 };
+
+#define SMB2_VERSION_WILDCARD 0x02FF
 
 void smb2_set_version(struct smb2_context *smb2,
                       enum smb2_negotiate_version version);
