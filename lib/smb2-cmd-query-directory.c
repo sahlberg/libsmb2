@@ -254,7 +254,7 @@ smb2_encode_query_directory_reply(struct smb2_context *smb2,
         smb2_set_uint32(iov, 4, rep->output_buffer_length);
 
         if (rep->output_buffer_length > 0) {
-                printf("processed doirinfo and got %d bytes\n", rep->output_buffer_length);
+                printf("processed dirinfo and got %d bytes\n", rep->output_buffer_length);
                 len = rep->output_buffer_length;
                 len = PAD_TO_32BIT(len);
                 buf = malloc(len);
