@@ -2685,7 +2685,7 @@ smb2_logoff_request_cb(struct smb2_context *smb2, int status, void *command_data
         pdu = smb2_cmd_logoff_reply_async(smb2, NULL, cb_data);
         if (pdu != NULL) {
                 smb2_queue_pdu(smb2, pdu);                
-        }
+        }        
 }
 
 static void
@@ -2704,6 +2704,102 @@ smb2_close_request_cb(struct smb2_context *smb2, int status, void *command_data,
         }
 }
 
+static int
+fill_file_info(struct smb2_context *smb2, uint8_t info_type, uint8_t file_info_class, void **out_info)
+{
+        uint8_t *info = NULL;
+        int len = 0;
+        
+        switch (info_type) {
+        case SMB2_0_INFO_FILE:
+                switch (file_info_class) {
+                case SMB2_FILE_BASIC_INFORMATION:
+                        break;
+                case SMB2_FILE_STANDARD_INFORMATION:
+                        break;
+                case SMB2_FILE_RENAME_INFORMATION:
+                        break;
+                case SMB2_FILE_ALL_INFORMATION:
+                        break;
+                case SMB2_FILE_END_OF_FILE_INFORMATION:
+                        break;
+                default:
+                        break;
+                }
+                break;
+        case SMB2_0_INFO_FILESYSTEM:
+                switch (file_info_class) {
+                case SMB2_FILE_FS_VOLUME_INFORMATION:
+                        break;
+                case SMB2_FILE_FS_SIZE_INFORMATION:
+                {
+                        struct smb2_file_fs_size_info *fs;
+                        
+                        len = sizeof(struct smb2_file_fs_size_info);
+                        fs = malloc(len);
+                        if (!fs) {
+                                return -1;
+                        }
+                        fs->total_allocation_units = 0x100000;
+                        fs->available_allocation_units = 0x10000;
+                        fs->sectors_per_allocation_unit = 1;
+                        fs->bytes_per_sector = 512;
+                        info = (uint8_t*)fs;
+                        break;
+                }
+                case SMB2_FILE_FS_DEVICE_INFORMATION:
+                        break;
+                case SMB2_FILE_FS_CONTROL_INFORMATION:
+                        break;
+                case SMB2_FILE_FS_FULL_SIZE_INFORMATION:
+                        break;
+                case SMB2_FILE_FS_SECTOR_SIZE_INFORMATION:
+                        break;
+                default:
+                        len = -1;
+                        break;
+                }
+                break;
+        case SMB2_0_INFO_SECURITY:
+                break;
+        case SMB2_0_INFO_QUOTA:
+                break;
+        default:
+                return 0;
+        }        
+        
+        *out_info = info;
+        return len;
+}
+
+static void
+smb2_query_info_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
+{
+//        struct connect_data *c_data = cb_data;
+        struct smb2_query_info_request *req = command_data;
+        struct smb2_query_info_reply rep;
+        struct smb2_error_reply err;
+        struct smb2_pdu *pdu;
+        
+        memset(&err, 0, sizeof err);
+        
+        rep.output_buffer_length = fill_file_info(smb2, req->info_type, req->file_info_class, &rep.output_buffer);
+        if (rep.output_buffer_length == 0) {
+                pdu = smb2_cmd_error_reply_async(smb2,
+                                &err, SMB2_QUERY_INFO, SMB2_STATUS_NOT_SUPPORTED, NULL, cb_data);
+        }
+        else if (rep.output_buffer_length < 0) {
+                pdu = smb2_cmd_error_reply_async(smb2,
+                                &err, SMB2_QUERY_INFO, SMB2_STATUS_INVALID_INFO_CLASS, NULL, cb_data);
+        }
+        else {
+                pdu = smb2_cmd_query_info_reply_async(smb2, req->info_type, req->file_info_class,
+                          req->output_buffer_length, &rep, NULL, cb_data);
+        }
+        if (pdu != NULL) {
+                smb2_queue_pdu(smb2, pdu);                
+        }
+}
 
 /* for testing only */
 static int fill_dir_info(struct smb2_context *smb2, uint8_t **out_info)
@@ -2862,6 +2958,9 @@ smb2_general_client_request_cb(struct smb2_context *smb2, int status, void *comm
                 break;
         case SMB2_QUERY_DIRECTORY:
                 smb2_query_directory_request_cb(smb2, status, command_data, cb_data);
+                break;
+        case SMB2_QUERY_INFO:
+                smb2_query_info_request_cb(smb2, status, command_data, cb_data);
                 break;
         case SMB2_CLOSE:
                 smb2_close_request_cb(smb2, status, command_data, cb_data);

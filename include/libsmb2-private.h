@@ -383,6 +383,10 @@ int smb2_process_query_info_fixed(struct smb2_context *smb2,
                                   struct smb2_pdu *pdu);
 int smb2_process_query_info_variable(struct smb2_context *smb2,
                                      struct smb2_pdu *pdu);
+int smb2_process_query_info_request_fixed(struct smb2_context *smb2,
+                                  struct smb2_pdu *pdu);
+int smb2_process_query_info_request_variable(struct smb2_context *smb2,
+                                     struct smb2_pdu *pdu);
 int smb2_process_close_fixed(struct smb2_context *smb2,
                              struct smb2_pdu *pdu);
 int smb2_process_close_request_fixed(struct smb2_context *smb2,

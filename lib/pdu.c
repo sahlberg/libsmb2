@@ -645,9 +645,9 @@ smb2_process_request_payload_fixed(struct smb2_context *smb2, struct smb2_pdu *p
         */
         case SMB2_QUERY_DIRECTORY:
                 return smb2_process_query_directory_request_fixed(smb2, pdu);
-        /*
         case SMB2_QUERY_INFO:
-                return smb2_process_query_info_fixed(smb2, pdu);
+                return smb2_process_query_info_request_fixed(smb2, pdu);
+        /*
         case SMB2_SET_INFO:
                 return smb2_process_set_info_fixed(smb2, pdu);
         case SMB2_IOCTL:
@@ -690,9 +690,9 @@ smb2_process_request_payload_variable(struct smb2_context *smb2, struct smb2_pdu
         */
         case SMB2_QUERY_DIRECTORY:
                 return smb2_process_query_directory_request_variable(smb2, pdu);
-        /*
         case SMB2_QUERY_INFO:
-                return smb2_process_query_info_variable(smb2, pdu);
+                return smb2_process_query_info_request_variable(smb2, pdu);
+        /*
         case SMB2_SET_INFO:
                 return 0;
         case SMB2_IOCTL:

@@ -542,7 +542,6 @@ struct smb2_read_reply {
 #define SMB2_SCOPE_SECURITY_INFORMATION     0x00000040
 #define SMB2_BACKUP_SECURITY_INFORMATION    0x00010000
 
-
 /* flags */
 #define SL_RESTART_SCAN        0x00000001
 #define SL_RETURN_SINGLE_ENTRY 0x00000002
@@ -589,11 +588,13 @@ struct smb2_query_info_request {
         uint8_t info_type;
         uint8_t file_info_class;
         uint32_t output_buffer_length;
+        uint16_t input_buffer_offset;
         uint32_t input_buffer_length;
         uint8_t *input_buffer;
         uint32_t additional_information;
         uint32_t flags;
         smb2_file_id file_id;
+        const uint8_t *input;
 };
 
 /*
