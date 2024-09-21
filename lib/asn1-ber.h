@@ -53,6 +53,7 @@ typedef uint16_t  beroid_type_t;
 #define asnOCTET_STRING     (0x4)
 #define asnNULL             (0x5)
 #define asnOBJECT_ID        (0x6)
+#define asnENUMERATED       (0xA)
 #define asnSEQUENCE         (0x10)
 #define asnSET              (0x11)
 #define asnPRINTABLE_STR    (0x13)
@@ -77,6 +78,7 @@ typedef enum
         BER_OCTET_STRING   = (asnOCTET_STRING),
         BER_NULL           = (asnNULL),
         BER_OBJECT_ID      = (asnOBJECT_ID),
+        BER_ENUMERATED     = (asnENUMERATED),
         BER_SEQUENCE       = (asnSEQUENCE),
         BER_SETOF          = (asnSET),
         BER_PRINTABLE_STR  = (asnPRINTABLE_STR),
@@ -106,9 +108,10 @@ typedef enum
 }
 ber_type_t;
 
-#define ASN1_CONTEXT_SPEC   (asnCONTEXT_SPECIFIC)
-#define ASN1_NOINSTANCE     (asnCONTEXT_SPECIFIC | 0x1)
-#define ASN1_PRIVATE        (asnPRIVATE)
+#define ASN1_SEQUENCE(n)        (asnSTRUCT | (n))
+#define ASN1_CONTEXT(n)         (asnCONTEXT_SPECIFIC | asnCONSTRUCTOR | (n))
+#define ASN1_CONTEXT_SIMPLE(n)  (asnCONTEXT_SPECIFIC | (n))
+#define ASN1_PRIVATE            (asnPRIVATE)
 
 #ifdef __cplusplus
 }
