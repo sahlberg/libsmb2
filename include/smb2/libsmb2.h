@@ -426,11 +426,6 @@ int smb2_disconnect_share_async(struct smb2_context *smb2,
  */
 int smb2_disconnect_share(struct smb2_context *smb2);
 
-int smb2_bind_and_listen(const uint16_t port, const int max_connections, int *out_fd);
-int smb2_accept_connection_async(const int fd, const int to_msecs, smb2_accepted_cb cb, void *cb_data);
-int smb2_serve_port_async(const int fd, const int to_msecs, struct smb2_context **out_smb2);
-int smb2_serve_port(const uint16_t port, const int max_connections, smb2_client_connection cb, void *cb_data);
-
 /*
  * This function returns a description of the last encountered error.
  */
@@ -1065,6 +1060,35 @@ int smb2_echo_async(struct smb2_context *smb2,
  * -errno : Failure.
  */
 int smb2_echo(struct smb2_context *smb2);
+
+/************* Server-side API **********************************************/
+
+struct smb2_server_request_handler {
+        int (*session)(void);
+        int (*logoff)(void);
+};
+
+struct smb2_server {
+        int fd;
+        uint16_t port;
+        struct smb2_server_request_handler *handler;
+        uint32_t max_transact_size;
+        uint32_t max_read_size;
+        uint32_t max_write_size;
+};
+
+int smb2_bind_and_listen(const uint16_t port, const int max_connections, int *out_fd);
+int smb2_accept_connection_async(const int fd, const int to_msecs, smb2_accepted_cb cb, void *cb_data);
+int smb2_serve_port_async(const int fd, const int to_msecs, struct smb2_context **out_smb2);
+
+/*
+ * Sync serve port()
+ *
+ * Returns
+ *  0     : The server is complete by exiting its loop normally (shouldnt happen)
+ * -errno : There was an error causing server loop to exit
+ */
+int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_client_connection cb, void *cb_data);
 
 /*
  * Some symbols have moved over to a different header file to allow better

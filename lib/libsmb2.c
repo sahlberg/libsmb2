@@ -3428,12 +3428,6 @@ accept_cb(const int fd, void *cb_data)
                 *psmb2 = smb2;
                 /* put client fd into connecting fd array (todo? for now just set fd) */
                 smb2->fd = fd;
-
-                /* init basic defaults that owner callback can modify */
-                smb2->max_transact_size = 0x100000;
-                smb2->max_read_size = 0x100000;
-                smb2->max_write_size = 0x100000;
-
                 err = 0;
         }
 
@@ -3448,10 +3442,9 @@ int smb2_serve_port_async(const int fd, const int to_msecs, struct smb2_context 
         return err;
 }
 
-int smb2_serve_port(const uint16_t port, const int max_connections, smb2_client_connection cb, void *cb_data)
+int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_client_connection cb, void *cb_data)
 {
         int err = -1;
-        int server_fd;
         struct smb2_context *smb2;
         fd_set rfds, wfds;
         int maxfd;
@@ -3459,7 +3452,13 @@ int smb2_serve_port(const uint16_t port, const int max_connections, smb2_client_
         short events;
         struct timeval timeout;
 
-        err = smb2_bind_and_listen(port, max_connections, &server_fd);
+        if (!server->max_transact_size) {
+                server->max_transact_size = 0x100000;
+                server->max_read_size = 0x100000;
+                server->max_write_size = 0x100000;
+        }
+        
+        err = smb2_bind_and_listen(server->port, max_connections, &server->fd);
         if (err != 0) {
                 return err;
         }
@@ -3470,8 +3469,8 @@ int smb2_serve_port(const uint16_t port, const int max_connections, smb2_client_
                 */
                 FD_ZERO(&rfds);
                 FD_ZERO(&wfds);
-                FD_SET(server_fd, &rfds);
-                maxfd = server_fd;
+                FD_SET(server->fd, &rfds);
+                maxfd = server->fd;
 
                 for (smb2 = smb2_active_contexts(); smb2; smb2 = smb2->next) {
                         if (SMB2_VALID_SOCKET(smb2_get_fd(smb2))) {
@@ -3532,9 +3531,9 @@ int smb2_serve_port(const uint16_t port, const int max_connections, smb2_client_
                                 }
                         }
 
-                        if (FD_ISSET(server_fd, &rfds)) {
+                        if (FD_ISSET(server->fd, &rfds)) {
                                 smb2 = NULL;
-                                err = smb2_serve_port_async(server_fd, 10, &smb2);
+                                err = smb2_serve_port_async(server->fd, 10, &smb2);
                                 if (!err && smb2) {
                                         struct connect_data *c_data;
                                         c_data = calloc(1, sizeof(struct connect_data));
@@ -3551,6 +3550,9 @@ int smb2_serve_port(const uint16_t port, const int max_connections, smb2_client_
                                         }
                                         /* got a new smb2 context with a connection, enlist it and tell user */
                                         smb2->is_server = 1;
+                                        smb2->max_transact_size = server->max_transact_size;
+                                        smb2->max_read_size     = server->max_read_size;
+                                        smb2->max_write_size    = server->max_write_size;
                                         if (cb) {
                                                 cb(smb2, cb_data);
                                         }
@@ -3572,7 +3574,8 @@ int smb2_serve_port(const uint16_t port, const int max_connections, smb2_client_
         }
         while (err == 0);
 
-        close(server_fd);
+        close(server->fd);
+        server->fd = -1;
 
         while (smb2_active_contexts()) {
                 smb2 = smb2_active_contexts();
