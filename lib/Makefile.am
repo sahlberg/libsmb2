@@ -12,6 +12,7 @@ libsmb2_la_SOURCES = \
 	aes128ccm.h \
 	aes128ccm.c \
 	alloc.c \
+	asn1-ber.c \
 	compat.c \
 	compat.h \
 	dcerpc.c \
@@ -24,7 +25,6 @@ libsmb2_la_SOURCES = \
 	hmac-md5.c \
 	krb5-wrapper.h \
 	krb5-wrapper.c \
-	asn1-ber.c \
 	libsmb2.c \
 	md4.h \
 	md4c.c \
@@ -64,6 +64,7 @@ libsmb2_la_SOURCES = \
 	smb2-signing.h \
 	smb2-signing.c \
 	socket.c \
+	spnego-wrapper.c \
 	sync.c \
 	timestamps.c \
 	unicode.c \

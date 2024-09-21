@@ -1,0 +1,45 @@
+/* -*-  mode:c; tab-width:8; c-basic-offset:8; indent-tabs-mode:nil;  -*- */
+#ifndef SPEGNO_WRAPPER_H
+#define SPEGNO_WRAPPER_H 1
+
+/*
+   Copyright (C) 2024 by Brian Dodge <bdodge09@gmail.com>
+
+   This program is free software; you can redistribute it and/or modify
+   it under the terms of the GNU Lesser General Public License as published by
+   the Free Software Foundation; either version 2.1 of the License, or
+   (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU Lesser General Public License for more details.
+
+   You should have received a copy of the GNU Lesser General Public License
+   along with this program; if not, see <http://www.gnu.org/licenses/>.
+*/
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+int smb2_create_negotiate_reply_blob(struct smb2_context *smb2, void **neg_init_token);
+
+int smb2_wrap_ntlmssp_challenge(struct smb2_context *smb2, const uint8_t *ntlmssp_token,
+                const int token_len, void **neg_init_token);
+
+int smb2_wrap_ntlmssp_result(struct smb2_context *smb2, const int authorized_ok, void **neg_init_token);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* SPEGNO_WRAPPER_H */
+
