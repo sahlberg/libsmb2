@@ -2704,23 +2704,74 @@ smb2_close_request_cb(struct smb2_context *smb2, int status, void *command_data,
         }
 }
 
+
+/* for testing only */
+static int fill_dir_info(struct smb2_context *smb2, uint8_t **out_info)
+{
+        static const char *files[] = {
+                "junk.txt",
+                "crap.bin"
+        };
+        struct smb2_fileidbothdirectoryinformation *fsb;
+        struct smb2_utf16 *fname = NULL;
+        uint8_t *info;
+        uint32_t fname_len;
+        int len;
+        int nfiles = sizeof(files)/sizeof(files[0]);
+        int n;
+        
+        len = 0;
+        for (n = 0; n < nfiles; n++) {
+                len += PAD_TO_64BIT(sizeof(struct smb2_fileidbothdirectoryinformation) + 2 * strlen(files[n]));
+        }
+        
+        info = malloc(len);
+        if (!info) {
+                smb2_set_error(smb2, "can not alloc dir info", smb2_get_error(smb2));
+                return -1;
+        }
+        memset(info, 0, len);
+        
+        len = 0;
+        for (n = 0; n < nfiles; n++) {
+                fname_len = 0;
+                fname = smb2_utf8_to_utf16(files[n]);
+                if (fname == NULL) {
+                        smb2_set_error(smb2, "Could not convert name into UTF-16");
+                        return -1;
+                }
+                fname_len = 2 * fname->len;
+                
+                fsb = (struct smb2_fileidbothdirectoryinformation *)(info + len);
+                fsb->file_index = n;
+                fsb->file_name_length = fname_len;
+                fsb->short_name_length = sizeof(fsb->short_name);
+                if (fsb->short_name_length > fname_len) {
+                        fsb->short_name_length = fname_len;
+                }
+                memcpy(fsb->short_name, fname->val, fsb->short_name_length);
+                fsb->name = files[n];
+                len += PAD_TO_64BIT(sizeof(struct smb2_fileidbothdirectoryinformation));
+                free(fname);
+        }
+        *out_info = info;
+        return len;
+}
+
 static void
 smb2_query_directory_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
 {
 //        struct connect_data *c_data = cb_data;
-//        struct smb2_query_directory_request *req = command_data;
+        struct smb2_query_directory_request *req = command_data;
         static int rets = 0;
         struct smb2_query_directory_reply rep;
         struct smb2_error_reply err;
         struct smb2_pdu *pdu;
-        struct smb2_fileidfulldirectoryinformation dirinfo;
-        
-        memset(&dirinfo, 0, sizeof dirinfo);
         
         if (rets++ == 0) {
-                dirinfo.name = "junk.txt";
-                rep.output_buffer = (uint8_t*)&dirinfo;
-                pdu = smb2_cmd_query_directory_reply_async(smb2, &rep, NULL, cb_data);
+                rep.output_buffer_length = fill_dir_info(smb2, &rep.output_buffer);
+                pdu = smb2_cmd_query_directory_reply_async(smb2, req->file_information_class,
+                               req->flags, req->output_buffer_length, &rep, NULL, cb_data);
         }
         else {
                 memset(&err, 0, sizeof err);

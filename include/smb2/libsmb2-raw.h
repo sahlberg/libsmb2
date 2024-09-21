@@ -236,6 +236,9 @@ struct smb2_pdu *smb2_cmd_query_directory_async(struct smb2_context *smb2,
                              smb2_command_cb cb, void *cb_data);
 
 struct smb2_pdu *smb2_cmd_query_directory_reply_async(struct smb2_context *smb2,
+                             uint8_t info_class,
+                             uint8_t flags,
+                             uint32_t room,
                              struct smb2_query_directory_reply *rep,
                              smb2_command_cb cb, void *cb_data);
 

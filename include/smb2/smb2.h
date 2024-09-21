@@ -433,6 +433,28 @@ struct smb2_fileidfulldirectoryinformation {
         const char *name; /* or "reserved" for replys */
 };
 
+#define SMB2_FILEID_BOTH_DIRECTORY_INFORMATION_SIZE  104
+
+/* Structure for SMB2_FILE_ID_BOTH_DIRECTORY_INFORMATION.
+ */
+struct smb2_fileidbothdirectoryinformation {
+        uint32_t next_entry_offset;
+        uint32_t file_index;
+        struct smb2_timeval creation_time;
+        struct smb2_timeval last_access_time;
+        struct smb2_timeval last_write_time;
+        struct smb2_timeval change_time;
+        uint64_t end_of_file;
+        uint64_t allocation_size;
+        uint32_t file_attributes;
+        uint32_t file_name_length;
+        uint32_t ea_size;
+        uint8_t short_name_length;
+        uint8_t short_name[24];
+        uint64_t file_id;
+        const char *name; /* or "reserved" for replys */
+};
+
 struct smb2_iovec;
 int smb2_decode_fileidfulldirectoryinformation(
         struct smb2_context *smb2,
