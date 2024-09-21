@@ -2860,9 +2860,37 @@ fill_file_info(struct smb2_context *smb2, uint8_t info_type, uint8_t file_info_c
         case SMB2_0_INFO_FILE:
                 switch (file_info_class) {
                 case SMB2_FILE_BASIC_INFORMATION:
+                {
+                        struct smb2_file_basic_info *fs;
+                        
+                        len = sizeof(struct smb2_file_basic_info);
+                        fs = malloc(len);
+                        if (!fs) {
+                                return -1;
+                        }
+                        memset(fs, 0, len);
+                        fs->file_attributes = 0;
+                        info = (uint8_t*)fs;
                         break;
+                }
                 case SMB2_FILE_STANDARD_INFORMATION:
+                {
+                        struct smb2_file_standard_info *fs;
+                        
+                        len = sizeof(struct smb2_file_standard_info);
+                        fs = malloc(len);
+                        if (!fs) {
+                                return -1;
+                        }
+                        memset(fs, 0, len);
+                        fs->allocation_size = 32;
+                        fs->end_of_file = 32;
+                        fs->number_of_links = 0;
+                        fs->delete_pending = 0;
+                        fs->directory = 0;
+                        info = (uint8_t*)fs;
                         break;
+                }
                 case SMB2_FILE_RENAME_INFORMATION:
                         break;
                 case SMB2_FILE_ALL_INFORMATION:
@@ -2945,7 +2973,6 @@ fill_file_info(struct smb2_context *smb2, uint8_t info_type, uint8_t file_info_c
 static void
 smb2_query_info_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
 {
-//        struct connect_data *c_data = cb_data;
         struct smb2_query_info_request *req = command_data;
         struct smb2_query_info_reply rep;
         struct smb2_error_reply err;
