@@ -52,18 +52,18 @@ struct smb2_error_reply {
 
 enum smb2_command {
         SMB2_NEGOTIATE       = 0,
-        SMB2_SESSION_SETUP = 1,
-        SMB2_LOGOFF = 2,
-        SMB2_TREE_CONNECT = 3,
+        SMB2_SESSION_SETUP   = 1,
+        SMB2_LOGOFF          = 2,
+        SMB2_TREE_CONNECT    = 3,
         SMB2_TREE_DISCONNECT = 4,
-        SMB2_CREATE = 5,
-        SMB2_CLOSE = 6,
-        SMB2_FLUSH = 7,
-        SMB2_READ = 8,
-        SMB2_WRITE = 9,
-        /* SMB2_LOCK, */
+        SMB2_CREATE          = 5,
+        SMB2_CLOSE           = 6,
+        SMB2_FLUSH           = 7,
+        SMB2_READ            = 8,
+        SMB2_WRITE           = 9,
+        SMB2_LOCK            = 10,
         SMB2_IOCTL           = 11,
-        /* SMB2_CANCEL, */
+        SMB2_CANCEL          = 12,
         SMB2_ECHO            = 13,
         SMB2_QUERY_DIRECTORY = 14,
         /* SMB2_CHANGE_NOTIFY, */
@@ -886,9 +886,14 @@ struct smb2_reparse_data_buffer {
 struct smb2_ioctl_request {
         uint32_t ctl_code;
         smb2_file_id file_id;
+        uint32_t input_offset;
         uint32_t input_count;
-        void *input;
+        uint32_t max_input_response;
+        uint32_t output_offset;
+        uint32_t output_count;
+        uint32_t max_output_response;
         uint32_t flags;
+        void *input;
 };
 
 #define SMB2_IOCTL_REPLY_SIZE 49
@@ -928,8 +933,30 @@ struct smb2_write_reply {
         uint32_t remaining;
 };
 
+#define SMB2_LOCK_ELEMENT_SIZE 24
+
+struct smb2_lock_element {
+        uint64_t offset;
+        uint64_t length;
+        uint32_t flags;
+};
+
+#define SMB2_LOCK_REQUEST_SIZE 48
+
+struct smb2_lock_request {
+        uint16_t lock_count;
+        uint8_t  lock_sequence_number;
+        uint32_t lock_sequence_index;
+        smb2_file_id file_id;
+        uint8_t *locks;
+};
+
+#define SMB2_LOCK_REPLY_SIZE 4
+
+
 #define SMB2_ECHO_REQUEST_SIZE 4
 #define SMB2_ECHO_REPLY_SIZE 4
+#define SMB2_CANCEL_REQUEST_SIZE 4
 
 #define SMB2_LOGOFF_REQUEST_SIZE 4
 #define SMB2_LOGOFF_REPLY_SIZE 4

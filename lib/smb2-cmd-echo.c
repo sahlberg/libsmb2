@@ -154,6 +154,19 @@ int
 smb2_process_echo_fixed(struct smb2_context *smb2,
                         struct smb2_pdu *pdu)
 {
+        struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
+        uint16_t struct_size;
+
+        smb2_get_uint16(iov, 0, &struct_size);
+        if (struct_size != SMB2_ECHO_REPLY_SIZE ||
+            (struct_size & 0xfffe) != iov->len) {
+                smb2_set_error(smb2, "Unexpected size of echo "
+                               "reply. Expected %d, got %d",
+                               SMB2_ECHO_REPLY_SIZE,
+                               (int)iov->len);
+                return -1;
+        }
+
         return 0;
 }
 
@@ -161,6 +174,18 @@ int
 smb2_process_echo_request_fixed(struct smb2_context *smb2,
                         struct smb2_pdu *pdu)
 {
+        struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
+        uint16_t struct_size;
+
+        smb2_get_uint16(iov, 0, &struct_size);
+        if (struct_size != SMB2_ECHO_REQUEST_SIZE ||
+            (struct_size & 0xfffe) != iov->len) {
+                smb2_set_error(smb2, "Unexpected size of echo "
+                               "request. Expected %d, got %d",
+                               SMB2_ECHO_REQUEST_SIZE,
+                               (int)iov->len);
+                return -1;
+        }
         return 0;
 }
 

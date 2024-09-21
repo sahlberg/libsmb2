@@ -44,6 +44,7 @@ libsmb2_la_SOURCES = \
 	smb2-cmd-error.c \
 	smb2-cmd-flush.c \
 	smb2-cmd-ioctl.c \
+	smb2-cmd-lock.c \
 	smb2-cmd-logoff.c \
 	smb2-cmd-negotiate.c \
 	smb2-cmd-query-directory.c \

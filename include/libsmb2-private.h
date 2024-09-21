@@ -393,6 +393,10 @@ int smb2_process_close_request_fixed(struct smb2_context *smb2,
                              struct smb2_pdu *pdu);
 int smb2_process_set_info_fixed(struct smb2_context *smb2,
                                 struct smb2_pdu *pdu);
+int smb2_process_set_info_request_fixed(struct smb2_context *smb2,
+                                struct smb2_pdu *pdu);
+int smb2_process_set_info_request_variable(struct smb2_context *smb2,
+                                struct smb2_pdu *pdu);
 int smb2_process_tree_disconnect_fixed(struct smb2_context *smb2,
                                        struct smb2_pdu *pdu);
 int smb2_process_tree_disconnect_request_fixed(struct smb2_context *smb2,
@@ -401,6 +405,12 @@ int smb2_process_logoff_fixed(struct smb2_context *smb2,
                               struct smb2_pdu *pdu);
 int smb2_process_logoff_request_fixed(struct smb2_context *smb2,
                               struct smb2_pdu *pdu);
+int smb2_process_lock_fixed(struct smb2_context *smb2,
+                            struct smb2_pdu *pdu);
+int smb2_process_lock_request_fixed(struct smb2_context *smb2,
+                            struct smb2_pdu *pdu);
+int smb2_process_lock_request_variable(struct smb2_context *smb2,
+                            struct smb2_pdu *pdu);
 int smb2_process_echo_fixed(struct smb2_context *smb2,
                             struct smb2_pdu *pdu);
 int smb2_process_echo_request_fixed(struct smb2_context *smb2,
@@ -424,6 +434,10 @@ int smb2_process_write_request_variable(struct smb2_context *smb2,
 int smb2_process_ioctl_fixed(struct smb2_context *smb2,
                              struct smb2_pdu *pdu);
 int smb2_process_ioctl_variable(struct smb2_context *smb2,
+                                struct smb2_pdu *pdu);
+int smb2_process_ioctl_request_fixed(struct smb2_context *smb2,
+                             struct smb2_pdu *pdu);
+int smb2_process_ioctl_request_variable(struct smb2_context *smb2,
                                 struct smb2_pdu *pdu);
 
 int smb2_decode_file_basic_info(struct smb2_context *smb2,

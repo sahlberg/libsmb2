@@ -298,6 +298,9 @@ struct smb2_pdu *smb2_cmd_set_info_async(struct smb2_context *smb2,
                                          struct smb2_set_info_request *req,
                                          smb2_command_cb cb, void *cb_data);
 
+struct smb2_pdu *smb2_cmd_set_info_reply_async(struct smb2_context *smb2,
+                                         smb2_command_cb cb, void *cb_data);
+
 /*
  * Asynchronous SMB2 Ioctl
  *
@@ -317,6 +320,10 @@ struct smb2_pdu *smb2_cmd_set_info_async(struct smb2_context *smb2,
  *   !0     : Status is NT status code. Command_data is NULL.
  */
 struct smb2_pdu *smb2_cmd_ioctl_async(struct smb2_context *smb2,
+                                      struct smb2_ioctl_request *req,
+                                      smb2_command_cb cb, void *cb_data);
+
+struct smb2_pdu *smb2_cmd_ioctl_reply_async(struct smb2_context *smb2,
                                       struct smb2_ioctl_request *req,
                                       smb2_command_cb cb, void *cb_data);
 
@@ -387,6 +394,9 @@ struct smb2_pdu *smb2_cmd_flush_async(struct smb2_context *smb2,
 struct smb2_pdu *smb2_cmd_flush_reply_async(struct smb2_context *smb2,
                                       smb2_command_cb cb, void *cb_data);
 
+/*
+ *
+ */
 struct smb2_pdu *smb2_cmd_error_reply_async(struct smb2_context *smb2,
                                       struct smb2_error_reply *rep,
                                       uint8_t causing_command,
