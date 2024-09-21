@@ -2704,6 +2704,73 @@ smb2_close_request_cb(struct smb2_context *smb2, int status, void *command_data,
         }
 }
 
+static void
+smb2_echo_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
+{
+        struct smb2_pdu *pdu;
+        
+        pdu = smb2_cmd_echo_reply_async(smb2, NULL, cb_data);
+        if (pdu != NULL) {
+                smb2_queue_pdu(smb2, pdu);                
+        }        
+}
+
+static void
+smb2_flush_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
+{
+        struct smb2_pdu *pdu;
+        
+        pdu = smb2_cmd_flush_reply_async(smb2, NULL, cb_data);
+        if (pdu != NULL) {
+                smb2_queue_pdu(smb2, pdu);                
+        }        
+}
+
+static void
+smb2_read_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
+{
+//        struct connect_data *c_data = cb_data;
+        struct smb2_read_request *req = command_data;
+        struct smb2_read_reply rep;
+//        struct smb2_error_reply err;
+        struct smb2_pdu *pdu;
+        
+        rep.data_offset = req->offset;
+        rep.data_length = 32;
+        rep.data_remaining = 0;
+        rep.data = malloc(rep.data_length);
+        if (!rep.data) {
+                smb2_set_error(smb2, "can non alloc data for read", smb2_get_error(smb2));
+                smb2_close_context(smb2);
+                return;
+        }
+        for (uint32_t i = 0; i < rep.data_length; i++) {
+                rep.data[i] = ('a' + i) & 0xff;
+        }
+        pdu = smb2_cmd_read_reply_async(smb2, &rep, NULL, cb_data);
+        if (pdu != NULL) {
+                smb2_queue_pdu(smb2, pdu);                
+        }        
+}
+
+static void
+smb2_write_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
+{
+//        struct connect_data *c_data = cb_data;
+        struct smb2_write_request *req = command_data;
+        struct smb2_write_reply rep;
+//        struct smb2_error_reply err;
+        struct smb2_pdu *pdu;
+        
+        rep.count = req->length;
+        rep.remaining = 0;
+        
+        pdu = smb2_cmd_write_reply_async(smb2, &rep, NULL, cb_data);
+        if (pdu != NULL) {
+                smb2_queue_pdu(smb2, pdu);                
+        }        
+}
+
 static int
 fill_file_info(struct smb2_context *smb2, uint8_t info_type, uint8_t file_info_class, void **out_info)
 {
@@ -2720,7 +2787,31 @@ fill_file_info(struct smb2_context *smb2, uint8_t info_type, uint8_t file_info_c
                 case SMB2_FILE_RENAME_INFORMATION:
                         break;
                 case SMB2_FILE_ALL_INFORMATION:
+                {
+                        struct smb2_file_all_info *fs;
+                        
+                        len = sizeof(struct smb2_file_all_info);
+                        fs = malloc(len);
+                        if (!fs) {
+                                return -1;
+                        }
+                        memset(fs, 0, len);
+                        fs->basic.file_attributes = 0;
+                        fs->standard.allocation_size = 32;
+                        fs->standard.end_of_file = 32;
+                        fs->standard.number_of_links = 0;
+                        fs->standard.delete_pending = 0;
+                        fs->standard.directory = 0;
+                        fs->index_number = 1;
+                        fs->ea_size = 0;
+                        fs->access_flags = 0xFFFFFFFF;
+                        fs->current_byte_offset = 0;
+                        fs->mode = 0;
+                        fs->alignment_requirement = 0;
+                        fs->name = (uint8_t*)"junk.txt";
+                        info = (uint8_t*)fs;
                         break;
+                }
                 case SMB2_FILE_END_OF_FILE_INFORMATION:
                         break;
                 default:
@@ -2888,6 +2979,8 @@ smb2_create_request_cb(struct smb2_context *smb2, int status, void *command_data
         struct smb2_create_reply rep;
         struct smb2_pdu *pdu;
         
+        rep.file_attributes = SMB2_FILE_ATTRIBUTE_NORMAL;
+                
         pdu = smb2_cmd_create_reply_async(smb2, &rep, NULL, cb_data);
         if (pdu != NULL) {
                 smb2_queue_pdu(smb2, pdu);                
@@ -2950,20 +3043,32 @@ smb2_general_client_request_cb(struct smb2_context *smb2, int status, void *comm
         case SMB2_TREE_CONNECT:
                 smb2_tree_connect_request_cb(smb2, status, command_data, cb_data);
                 break;
+        case SMB2_TREE_DISCONNECT:
+                smb2_tree_disconnect_request_cb(smb2, status, command_data, cb_data);
+                break;
         case SMB2_CREATE:
                 smb2_create_request_cb(smb2, status, command_data, cb_data);
                 break;
-        case SMB2_TREE_DISCONNECT:
-                smb2_tree_disconnect_request_cb(smb2, status, command_data, cb_data);
+        case SMB2_CLOSE:
+                smb2_close_request_cb(smb2, status, command_data, cb_data);
+                break;
+        case SMB2_FLUSH:
+                smb2_flush_request_cb(smb2, status, command_data, cb_data);
+                break;
+        case SMB2_READ:
+                smb2_read_request_cb(smb2, status, command_data, cb_data);
+                break;
+        case SMB2_WRITE:
+                smb2_write_request_cb(smb2, status, command_data, cb_data);
+                break;
+        case SMB2_ECHO:
+                smb2_echo_request_cb(smb2, status, command_data, cb_data);
                 break;
         case SMB2_QUERY_DIRECTORY:
                 smb2_query_directory_request_cb(smb2, status, command_data, cb_data);
                 break;
         case SMB2_QUERY_INFO:
                 smb2_query_info_request_cb(smb2, status, command_data, cb_data);
-                break;
-        case SMB2_CLOSE:
-                smb2_close_request_cb(smb2, status, command_data, cb_data);
                 break;
         default:
                 smb2_set_error(smb2, "Client request not implemented", smb2_get_error(smb2));

@@ -403,11 +403,23 @@ int smb2_process_logoff_request_fixed(struct smb2_context *smb2,
                               struct smb2_pdu *pdu);
 int smb2_process_echo_fixed(struct smb2_context *smb2,
                             struct smb2_pdu *pdu);
+int smb2_process_echo_request_fixed(struct smb2_context *smb2,
+                            struct smb2_pdu *pdu);
 int smb2_process_flush_fixed(struct smb2_context *smb2,
+                             struct smb2_pdu *pdu);
+int smb2_process_flush_request_fixed(struct smb2_context *smb2,
                              struct smb2_pdu *pdu);
 int smb2_process_read_fixed(struct smb2_context *smb2,
                             struct smb2_pdu *pdu);
+int smb2_process_read_request_fixed(struct smb2_context *smb2,
+                            struct smb2_pdu *pdu);
+int smb2_process_read_request_variable(struct smb2_context *smb2,
+                            struct smb2_pdu *pdu);
 int smb2_process_write_fixed(struct smb2_context *smb2,
+                             struct smb2_pdu *pdu);
+int smb2_process_write_request_fixed(struct smb2_context *smb2,
+                             struct smb2_pdu *pdu);
+int smb2_process_write_request_variable(struct smb2_context *smb2,
                              struct smb2_pdu *pdu);
 int smb2_process_ioctl_fixed(struct smb2_context *smb2,
                              struct smb2_pdu *pdu);
@@ -427,8 +439,16 @@ int smb2_decode_file_standard_info(struct smb2_context *smb2,
                                    struct smb2_file_standard_info *fs,
                                    struct smb2_iovec *vec);
 
+int smb2_encode_file_standard_info(struct smb2_context *smb2,
+                                   struct smb2_file_standard_info *fs,
+                                   struct smb2_iovec *vec);
+
 int smb2_decode_file_all_info(struct smb2_context *smb2,
                               void *memctx,
+                              struct smb2_file_all_info *fs,
+                              struct smb2_iovec *vec);
+
+int smb2_encode_file_all_info(struct smb2_context *smb2,
                               struct smb2_file_all_info *fs,
                               struct smb2_iovec *vec);
 
@@ -443,6 +463,9 @@ int smb2_decode_file_fs_volume_info(struct smb2_context *smb2,
                                     struct smb2_iovec *vec);
 int smb2_decode_file_fs_size_info(struct smb2_context *smb2,
                                   void *memctx,
+                                  struct smb2_file_fs_size_info *fs,
+                                  struct smb2_iovec *vec);
+int smb2_encode_file_fs_size_info(struct smb2_context *smb2,
                                   struct smb2_file_fs_size_info *fs,
                                   struct smb2_iovec *vec);
 int smb2_decode_file_fs_device_info(struct smb2_context *smb2,

@@ -100,6 +100,23 @@ smb2_decode_file_fs_size_info(struct smb2_context *smb2,
 }
 
 int
+smb2_encode_file_fs_size_info(struct smb2_context *smb2,
+                              struct smb2_file_fs_size_info *fs,
+                              struct smb2_iovec *vec)
+{
+        if (vec->len < 24) {
+                return -1;
+        }
+
+        smb2_set_uint64(vec,  0, fs->total_allocation_units);
+        smb2_set_uint64(vec,  8, fs->available_allocation_units);
+        smb2_set_uint32(vec, 16, fs->sectors_per_allocation_unit);
+        smb2_set_uint32(vec, 20, fs->bytes_per_sector);
+
+        return 0;
+}
+
+int
 smb2_decode_file_fs_device_info(struct smb2_context *smb2,
                                 void *memctx,
                                 struct smb2_file_fs_device_info *fs,

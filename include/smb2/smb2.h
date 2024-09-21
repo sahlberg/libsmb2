@@ -497,6 +497,7 @@ struct smb2_read_request {
         uint32_t minimum_count;
         uint32_t channel;
         uint32_t remaining_bytes;
+        uint16_t read_channel_info_offset;
         uint16_t read_channel_info_length;
         uint8_t *read_channel_info;
 };
@@ -507,6 +508,7 @@ struct smb2_read_reply {
         uint8_t data_offset;
         uint32_t data_length;
         uint32_t data_remaining;
+        uint8_t *data;
 };
 
 #define SMB2_QUERY_INFO_REQUEST_SIZE 41
@@ -906,12 +908,14 @@ struct smb2_ioctl_reply {
 #define SMB2_WRITEFLAG_WRITE_UNBUFFERED 0x00000002
 
 struct smb2_write_request {
+        uint16_t data_offset;
         uint32_t length;
         uint64_t offset;
         const uint8_t* buf;
         smb2_file_id file_id;
         uint32_t channel;
         uint32_t remaining_bytes;
+        uint16_t write_channel_info_offset;
         uint16_t write_channel_info_length;
         uint8_t *write_channel_info;
         uint32_t flags;

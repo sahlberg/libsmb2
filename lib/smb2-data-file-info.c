@@ -130,6 +130,20 @@ smb2_decode_file_standard_info(struct smb2_context *smb2,
 }
 
 int
+smb2_encode_file_standard_info(struct smb2_context *smb2,
+                               struct smb2_file_standard_info *fs,
+                               struct smb2_iovec *vec)
+{
+        smb2_set_uint64(vec, 0, fs->allocation_size);
+        smb2_set_uint64(vec, 8, fs->end_of_file);
+        smb2_set_uint32(vec, 16, fs->number_of_links);
+        smb2_set_uint8(vec, 20, fs->delete_pending);
+        smb2_set_uint8(vec, 21, fs->directory);
+
+        return 0;
+}
+
+int
 smb2_decode_file_all_info(struct smb2_context *smb2,
                           void *memctx,
                           struct smb2_file_all_info *fs,
@@ -173,3 +187,41 @@ smb2_decode_file_all_info(struct smb2_context *smb2,
         free(discard_const(name));
         return 0;
 }
+
+int
+smb2_encode_file_all_info(struct smb2_context *smb2,
+                          struct smb2_file_all_info *fs,
+                          struct smb2_iovec *vec)
+{
+        struct smb2_iovec v _U_;
+        struct smb2_utf16 *name = NULL;
+
+        if (vec->len < 40) {
+                return -1;
+        }
+
+        v.buf = &vec->buf[0];
+        v.len = 40;
+        smb2_encode_file_basic_info(smb2, &fs->basic, &v);
+
+        if (vec->len < 64) {
+                return -1;
+        }
+
+        v.buf = &vec->buf[40];
+        v.len = 24;
+        smb2_encode_file_standard_info(smb2, &fs->standard, &v);
+
+        smb2_set_uint64(vec, 64, fs->index_number);
+        smb2_set_uint32(vec, 72, fs->ea_size);
+        smb2_set_uint32(vec, 76, fs->access_flags);
+        smb2_set_uint64(vec, 80, fs->current_byte_offset);
+        smb2_set_uint32(vec, 88, fs->mode);
+        smb2_set_uint32(vec, 92, fs->alignment_requirement);
+        name = smb2_utf8_to_utf16((const char*)fs->name);
+        smb2_set_uint16(vec, 96, 2 * name->len);
+        memcpy((uint16_t *)&vec->buf[100], name->val, name->len * 2);
+        free(name);
+        return 0;
+}
+

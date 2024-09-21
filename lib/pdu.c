@@ -633,25 +633,23 @@ smb2_process_request_payload_fixed(struct smb2_context *smb2, struct smb2_pdu *p
                 return smb2_process_create_request_fixed(smb2, pdu);
         case SMB2_CLOSE:
                 return smb2_process_close_request_fixed(smb2, pdu);
-        /*
         case SMB2_FLUSH:
-                return smb2_process_flush_fixed(smb2, pdu);
+                return smb2_process_flush_request_fixed(smb2, pdu);
         case SMB2_READ:
-                return smb2_process_read_fixed(smb2, pdu);
+                return smb2_process_read_request_fixed(smb2, pdu);
         case SMB2_WRITE:
-                return smb2_process_write_fixed(smb2, pdu);
+                return smb2_process_write_request_fixed(smb2, pdu);
         case SMB2_ECHO:
-                return smb2_process_echo_fixed(smb2, pdu);
-        */
+                return smb2_process_echo_request_fixed(smb2, pdu);
         case SMB2_QUERY_DIRECTORY:
                 return smb2_process_query_directory_request_fixed(smb2, pdu);
         case SMB2_QUERY_INFO:
                 return smb2_process_query_info_request_fixed(smb2, pdu);
         /*
         case SMB2_SET_INFO:
-                return smb2_process_set_info_fixed(smb2, pdu);
+                return smb2_process_set_info_request_fixed(smb2, pdu);
         case SMB2_IOCTL:
-                return smb2_process_ioctl_fixed(smb2, pdu);
+                return smb2_process_ioctl_request_fixed(smb2, pdu);
         */
         default:
                 smb2_set_error(smb2, "No handler for fixed request", smb2_get_error(smb2));
@@ -678,16 +676,14 @@ smb2_process_request_payload_variable(struct smb2_context *smb2, struct smb2_pdu
                 return smb2_process_create_request_variable(smb2, pdu);
         case SMB2_CLOSE:
                 return 0;
-        /*
         case SMB2_FLUSH:
                 return 0;
         case SMB2_READ:
-                return 0;
+                return smb2_process_read_request_variable(smb2, pdu);
         case SMB2_WRITE:
-                return 0;
+                return smb2_process_write_request_variable(smb2, pdu);
         case SMB2_ECHO:
                 return 0;
-        */
         case SMB2_QUERY_DIRECTORY:
                 return smb2_process_query_directory_request_variable(smb2, pdu);
         case SMB2_QUERY_INFO:

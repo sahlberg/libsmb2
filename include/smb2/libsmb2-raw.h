@@ -196,6 +196,10 @@ struct smb2_pdu *smb2_cmd_read_async(struct smb2_context *smb2,
                                      struct smb2_read_request *req,
                                      smb2_command_cb cb, void *cb_data);
 
+struct smb2_pdu *smb2_cmd_read_reply_async(struct smb2_context *smb2,
+                                     struct smb2_read_reply *rep,
+                                     smb2_command_cb cb, void *cb_data);
+
 /*
  * Asynchronous SMB2 Write
  *
@@ -214,6 +218,10 @@ struct smb2_pdu *smb2_cmd_read_async(struct smb2_context *smb2,
  */
 struct smb2_pdu *smb2_cmd_write_async(struct smb2_context *smb2,
                                       struct smb2_write_request *req,
+                                      smb2_command_cb cb, void *cb_data);
+
+struct smb2_pdu *smb2_cmd_write_reply_async(struct smb2_context *smb2,
+                                      struct smb2_write_reply *rep,
                                       smb2_command_cb cb, void *cb_data);
 
 /*
@@ -331,6 +339,9 @@ struct smb2_pdu *smb2_cmd_ioctl_async(struct smb2_context *smb2,
 struct smb2_pdu *smb2_cmd_echo_async(struct smb2_context *smb2,
                                      smb2_command_cb cb, void *cb_data);
 
+struct smb2_pdu *smb2_cmd_echo_reply_async(struct smb2_context *smb2,
+                                     smb2_command_cb cb, void *cb_data);
+
 /*
  * Asynchronous SMB2 Logoff
  *
@@ -371,6 +382,9 @@ struct smb2_pdu *smb2_cmd_logoff_reply_async(struct smb2_context *smb2,
  */
 struct smb2_pdu *smb2_cmd_flush_async(struct smb2_context *smb2,
                                       struct smb2_flush_request *req,
+                                      smb2_command_cb cb, void *cb_data);
+
+struct smb2_pdu *smb2_cmd_flush_reply_async(struct smb2_context *smb2,
                                       smb2_command_cb cb, void *cb_data);
 
 struct smb2_pdu *smb2_cmd_error_reply_async(struct smb2_context *smb2,
