@@ -148,7 +148,7 @@ smb2_encode_tree_connect_reply(struct smb2_context *smb2,
         smb2_set_uint8(iov, 3, 0);
         smb2_set_uint32(iov, 4, rep->share_flags);
         smb2_set_uint32(iov, 8, rep->capabilities);
-        smb2_set_uint32(iov, 16, rep->maximal_access);
+        smb2_set_uint32(iov, 12, rep->maximal_access);
 
         return 0;
 }
