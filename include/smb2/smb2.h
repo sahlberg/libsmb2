@@ -901,10 +901,13 @@ struct smb2_ioctl_request {
 struct smb2_ioctl_reply {
         uint32_t ctl_code;
         smb2_file_id file_id;
+        uint32_t input_offset;
+        uint32_t input_count;
         uint32_t output_offset;
         uint32_t output_count;
-        void *output;
         uint32_t flags;
+        void *input;
+        void *output;
 };
 
 #define SMB2_WRITE_REQUEST_SIZE 49

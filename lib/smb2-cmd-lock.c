@@ -82,8 +82,14 @@ smb2_encode_lock_request(struct smb2_context *smb2,
         memcpy(iov->buf + 8, req->file_id, SMB2_FD_SIZE);
 
         if (req->lock_count && req->locks) {
-                iov = smb2_add_iovector(smb2, &pdu->out, req->locks,
-                                        SMB2_LOCK_ELEMENT_SIZE * req->lock_count, NULL);
+                len = PAD_TO_32BIT(SMB2_LOCK_ELEMENT_SIZE * req->lock_count);
+                buf = calloc(len, sizeof(uint8_t));
+                if (buf == NULL) {
+                        smb2_set_error(smb2, "Failed to allocate locks buffer");
+                        return -1;
+                }
+                memcpy(buf, req->locks, SMB2_LOCK_ELEMENT_SIZE * req->lock_count);
+                iov = smb2_add_iovector(smb2, &pdu->out, req->locks, len, free);
         }
 
         return 0;
@@ -102,6 +108,54 @@ smb2_cmd_lock_async(struct smb2_context *smb2,
         }
 
         if (smb2_encode_lock_request(smb2, pdu, req)) {
+                smb2_free_pdu(smb2, pdu);
+                return NULL;
+        }
+
+        if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
+                smb2_free_pdu(smb2, pdu);
+                return NULL;
+        }
+
+        return pdu;
+}
+
+static int
+smb2_encode_lock_reply(struct smb2_context *smb2,
+                          struct smb2_pdu *pdu)
+{
+        int len;
+        uint8_t *buf;
+        struct smb2_iovec *iov;
+        
+        pdu->header.flags |= SMB2_FLAGS_SERVER_TO_REDIR;
+        pdu->header.credit_request_response = 1;
+        
+        len = SMB2_LOCK_REPLY_SIZE & 0xfffffffe;
+        buf = calloc(len, sizeof(uint8_t));
+        if (buf == NULL) {
+                smb2_set_error(smb2, "Failed to allocate lock buffer");
+                return -1;
+        }
+
+        iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+
+        smb2_set_uint16(iov, 0, SMB2_LOCK_REPLY_SIZE);
+        return 0;
+}
+
+struct smb2_pdu *
+smb2_cmd_lock_reply_async(struct smb2_context *smb2,
+                     smb2_command_cb cb, void *cb_data)
+{
+        struct smb2_pdu *pdu;
+
+        pdu = smb2_allocate_pdu(smb2, SMB2_LOCK, cb, cb_data);
+        if (pdu == NULL) {
+                return NULL;
+        }
+
+        if (smb2_encode_lock_reply(smb2, pdu)) {
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
         }

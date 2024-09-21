@@ -2689,10 +2689,57 @@ smb2_logoff_request_cb(struct smb2_context *smb2, int status, void *command_data
 }
 
 static void
+smb2_tree_connect_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
+{
+        struct smb2_tree_connect_request *req = command_data;
+        struct smb2_tree_connect_reply rep;
+        struct smb2_pdu *pdu;
+        
+        rep.share_type = SMB2_SHARE_TYPE_DISK;
+        rep.maximal_access = 0x101f01ff;
+        smb2->tree_id = 0x50625678;
+        
+        if (req->path && req->path_length == 32) {
+                rep.share_type = SMB2_SHARE_TYPE_PIPE;
+                rep.maximal_access = 0x1f00a9;
+        }
+        rep.share_flags = 0;
+        rep.capabilities = 0;
+        
+        pdu = smb2_cmd_tree_connect_reply_async(smb2, &rep, NULL, cb_data);
+        if (pdu != NULL) {
+                smb2_queue_pdu(smb2, pdu);                
+        }
+}
+
+static void
+smb2_tree_disconnect_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
+{
+        struct smb2_pdu *pdu;
+        
+        pdu = smb2_cmd_tree_disconnect_reply_async(smb2, NULL, cb_data);
+        if (pdu != NULL) {
+                smb2_queue_pdu(smb2, pdu);                
+        }
+}
+
+static void
+smb2_create_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
+{
+        struct smb2_create_reply rep;
+        struct smb2_pdu *pdu;
+        
+        rep.file_attributes = SMB2_FILE_ATTRIBUTE_NORMAL;
+                
+        pdu = smb2_cmd_create_reply_async(smb2, &rep, NULL, cb_data);
+        if (pdu != NULL) {
+                smb2_queue_pdu(smb2, pdu);                
+        }
+}
+
+static void
 smb2_close_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
 {
-//        struct connect_data *c_data = cb_data;
-//        struct smb2_create_request *req = command_data;
         struct smb2_close_reply rep;
         struct smb2_pdu *pdu;
         
@@ -2702,17 +2749,6 @@ smb2_close_request_cb(struct smb2_context *smb2, int status, void *command_data,
         if (pdu != NULL) {
                 smb2_queue_pdu(smb2, pdu);                
         }
-}
-
-static void
-smb2_echo_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
-{
-        struct smb2_pdu *pdu;
-        
-        pdu = smb2_cmd_echo_reply_async(smb2, NULL, cb_data);
-        if (pdu != NULL) {
-                smb2_queue_pdu(smb2, pdu);                
-        }        
 }
 
 static void
@@ -2729,7 +2765,6 @@ smb2_flush_request_cb(struct smb2_context *smb2, int status, void *command_data,
 static void
 smb2_read_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
 {
-//        struct connect_data *c_data = cb_data;
         struct smb2_read_request *req = command_data;
         struct smb2_read_reply rep;
 //        struct smb2_error_reply err;
@@ -2756,7 +2791,6 @@ smb2_read_request_cb(struct smb2_context *smb2, int status, void *command_data, 
 static void
 smb2_write_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
 {
-//        struct connect_data *c_data = cb_data;
         struct smb2_write_request *req = command_data;
         struct smb2_write_reply rep;
 //        struct smb2_error_reply err;
@@ -2766,6 +2800,51 @@ smb2_write_request_cb(struct smb2_context *smb2, int status, void *command_data,
         rep.remaining = 0;
         
         pdu = smb2_cmd_write_reply_async(smb2, &rep, NULL, cb_data);
+        if (pdu != NULL) {
+                smb2_queue_pdu(smb2, pdu);                
+        }        
+}
+
+static void
+smb2_lock_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
+{
+        struct smb2_pdu *pdu;
+        
+        pdu = smb2_cmd_lock_reply_async(smb2, NULL, cb_data);
+        if (pdu != NULL) {
+                smb2_queue_pdu(smb2, pdu);                
+        }        
+}
+
+static void
+smb2_ioctl_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
+{
+        struct smb2_ioctl_request *req = command_data;
+        struct smb2_ioctl_reply rep;
+        struct smb2_pdu *pdu;
+        
+        memset(&rep, 0, sizeof(rep));
+        rep.ctl_code = req->ctl_code;
+        memcpy(rep.file_id, req->file_id, SMB2_FD_SIZE);
+        
+        pdu = smb2_cmd_ioctl_reply_async(smb2, &rep, NULL, cb_data);
+        if (pdu != NULL) {
+                smb2_queue_pdu(smb2, pdu);                
+        }        
+}
+
+static void
+smb2_cancel_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
+{
+        return;
+}
+
+static void
+smb2_echo_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
+{
+        struct smb2_pdu *pdu;
+        
+        pdu = smb2_cmd_echo_reply_async(smb2, NULL, cb_data);
         if (pdu != NULL) {
                 smb2_queue_pdu(smb2, pdu);                
         }        
@@ -2972,58 +3051,6 @@ smb2_query_directory_request_cb(struct smb2_context *smb2, int status, void *com
 }
 
 static void
-smb2_create_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
-{
-//        struct connect_data *c_data = cb_data;
-//        struct smb2_create_request *req = command_data;
-        struct smb2_create_reply rep;
-        struct smb2_pdu *pdu;
-        
-        rep.file_attributes = SMB2_FILE_ATTRIBUTE_NORMAL;
-                
-        pdu = smb2_cmd_create_reply_async(smb2, &rep, NULL, cb_data);
-        if (pdu != NULL) {
-                smb2_queue_pdu(smb2, pdu);                
-        }
-}
-
-static void
-smb2_tree_connect_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
-{
-//        struct connect_data *c_data = cb_data;
-        struct smb2_tree_connect_request *req = command_data;
-        struct smb2_tree_connect_reply rep;
-        struct smb2_pdu *pdu;
-        
-        rep.share_type = SMB2_SHARE_TYPE_DISK;
-        rep.maximal_access = 0x101f01ff;
-        smb2->tree_id = 0x50625678;
-        
-        if (req->path && req->path_length == 32) {
-                rep.share_type = SMB2_SHARE_TYPE_PIPE;
-                rep.maximal_access = 0x1f00a9;
-        }
-        rep.share_flags = 0;
-        rep.capabilities = 0;
-        
-        pdu = smb2_cmd_tree_connect_reply_async(smb2, &rep, NULL, cb_data);
-        if (pdu != NULL) {
-                smb2_queue_pdu(smb2, pdu);                
-        }
-}
-
-static void
-smb2_tree_disconnect_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
-{
-        struct smb2_pdu *pdu;
-        
-        pdu = smb2_cmd_tree_disconnect_reply_async(smb2, NULL, cb_data);
-        if (pdu != NULL) {
-                smb2_queue_pdu(smb2, pdu);                
-        }
-}
-
-static void
 smb2_general_client_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
 {
 //        struct connect_data *c_data = cb_data;
@@ -3060,6 +3087,15 @@ smb2_general_client_request_cb(struct smb2_context *smb2, int status, void *comm
                 break;
         case SMB2_WRITE:
                 smb2_write_request_cb(smb2, status, command_data, cb_data);
+                break;
+        case SMB2_LOCK:
+                smb2_lock_request_cb(smb2, status, command_data, cb_data);
+                break;
+        case SMB2_IOCTL:
+                smb2_ioctl_request_cb(smb2, status, command_data, cb_data);
+                break;
+        case SMB2_CANCEL:
+                smb2_cancel_request_cb(smb2, status, command_data, cb_data);
                 break;
         case SMB2_ECHO:
                 smb2_echo_request_cb(smb2, status, command_data, cb_data);

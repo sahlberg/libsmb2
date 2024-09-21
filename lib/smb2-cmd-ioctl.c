@@ -55,7 +55,6 @@
 #include "libsmb2.h"
 #include "libsmb2-private.h"
 
-
 static int
 smb2_encode_ioctl_request(struct smb2_context *smb2,
                           struct smb2_pdu *pdu,
@@ -68,7 +67,7 @@ smb2_encode_ioctl_request(struct smb2_context *smb2,
         len = SMB2_IOCTL_REQUEST_SIZE & 0xfffffffe;
         buf = calloc(len, sizeof(uint8_t));
         if (buf == NULL) {
-                smb2_set_error(smb2, "Failed to allocate query buffer");
+                smb2_set_error(smb2, "Failed to allocate ioctl buffer");
                 return -1;
         }
 
@@ -105,6 +104,88 @@ smb2_cmd_ioctl_async(struct smb2_context *smb2,
         }
 
         if (smb2_encode_ioctl_request(smb2, pdu, req)) {
+                smb2_free_pdu(smb2, pdu);
+                return NULL;
+        }
+
+        if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
+                smb2_free_pdu(smb2, pdu);
+                return NULL;
+        }
+
+        return pdu;
+}
+
+static int
+smb2_encode_ioctl_reply(struct smb2_context *smb2,
+                          struct smb2_pdu *pdu,
+                          struct smb2_ioctl_reply *rep)
+{
+        int len;
+        uint8_t *buf;
+        struct smb2_iovec *iov;
+
+        len = SMB2_IOCTL_REPLY_SIZE & 0xfffffffe;
+        buf = calloc(len, sizeof(uint8_t));
+        if (buf == NULL) {
+                smb2_set_error(smb2, "Failed to allocate ioctl reply buffer");
+                return -1;
+        }
+
+        iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+
+        smb2_set_uint16(iov, 0, SMB2_IOCTL_REPLY_SIZE);
+        smb2_set_uint32(iov, 4, rep->ctl_code);
+        memcpy(iov->buf + 8, rep->file_id, SMB2_FD_SIZE);
+        smb2_set_uint32(iov, 24, SMB2_HEADER_SIZE +
+                        (SMB2_IOCTL_REQUEST_SIZE & 0xfffffffe));
+        smb2_set_uint32(iov, 28, rep->input_count);
+        smb2_set_uint32(iov, 32, SMB2_HEADER_SIZE +
+                        (SMB2_IOCTL_REQUEST_SIZE & 0xfffffffe) +
+                        PAD_TO_64BIT(rep->input_count));
+        smb2_set_uint32(iov, 36, rep->output_count);
+        smb2_set_uint32(iov, 40, rep->flags);
+
+        if (rep->input_count) {
+                len = PAD_TO_64BIT(rep->input_count);
+                buf = malloc(len);
+                if (buf == NULL) {
+                        smb2_set_error(smb2, "Failed to allocate ioctl input");
+                        return -1;
+                }
+                memcpy(buf, rep->input, rep->input_count);
+                memset(buf + rep->input_count, 0, len - rep->input_count);
+                iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        }
+
+        if (rep->output_count) {
+                len = PAD_TO_64BIT(rep->output_count);
+                buf = malloc(len);
+                if (buf == NULL) {
+                        smb2_set_error(smb2, "Failed to allocate ioctl output");
+                        return -1;
+                }
+                memcpy(buf, rep->output, rep->output_count);
+                memset(buf + rep->output_count, 0, len - rep->output_count);
+                iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        }
+
+        return 0;
+}
+
+struct smb2_pdu *
+smb2_cmd_ioctl_reply_async(struct smb2_context *smb2,
+                     struct smb2_ioctl_reply *rep,
+                     smb2_command_cb cb, void *cb_data)
+{
+        struct smb2_pdu *pdu;
+
+        pdu = smb2_allocate_pdu(smb2, SMB2_IOCTL, cb, cb_data);
+        if (pdu == NULL) {
+                return NULL;
+        }
+
+        if (smb2_encode_ioctl_reply(smb2, pdu, rep)) {
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
         }
