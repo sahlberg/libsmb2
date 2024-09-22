@@ -77,6 +77,10 @@
 
 #define MAX_URL_SIZE 1024
 
+/* This is a list of all allocated contexts so servers can iterate over each
+ * it should probably be moved to the server context and a callback registered
+ * here to tell the server when a context is destroyed, but this works
+ */
 static struct smb2_context *active_contexts;
 
 static int

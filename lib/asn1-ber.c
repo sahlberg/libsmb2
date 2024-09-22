@@ -67,7 +67,8 @@ int asn1ber_next_byte(struct asn1ber_context *actx, uint8_t *outb)
     }
     
     actx->src_tail++;
-    return actx->src[actx->src_tail - 1];
+    *outb = actx->src[actx->src_tail - 1];
+    return 0;
 }
 
 int asn1ber_out_byte(struct asn1ber_context *actx, uint8_t inb)
@@ -356,6 +357,7 @@ int asn1ber_uint32_from_ber(struct asn1ber_context *actx, uint32_t *val)
     case BER_TIMETICKS:
     case BER_NSAPADDRESS:
     case BER_UNSIGNED32:
+    case BER_ENUMERATED:
         break;
     default:
         actx->last_error = -EINVAL;
@@ -532,7 +534,7 @@ int asn1ber_uint64_from_ber(struct asn1ber_context *actx, uint64_t *val)
     return 0;
 }
 
-int asn1ber_oid_from_ber(struct asn1ber_context *actx, gss_OID_desc *oid)
+int asn1ber_oid_from_ber(struct asn1ber_context *actx, struct asn1ber_oid_value *oid)
 {
     int result;
     int i;
@@ -559,7 +561,7 @@ int asn1ber_oid_from_ber(struct asn1ber_context *actx, gss_OID_desc *oid)
     {
         return result;
     }
-    if (vallen > BER_MAX_OID)
+    if (vallen > BER_MAX_OID_ELEMENTS)
     {
         actx->last_error = -E2BIG;
         return -1;
@@ -585,7 +587,7 @@ int asn1ber_oid_from_ber(struct asn1ber_context *actx, gss_OID_desc *oid)
     // next bytes are oid types ber encoded
     //
     i = 2;
-    while (vallen > 0 && i < BER_MAX_OID)
+    while (vallen > 0 && i < BER_MAX_OID_ELEMENTS)
     {
         result = asn1ber_next_byte(actx, &b);
         if (result)
@@ -970,7 +972,7 @@ static int asn1ber_ber_from_single_oid(struct asn1ber_context *actx, beroid_type
     return result;
 }
 
-int asn1ber_ber_from_oid(struct asn1ber_context *actx, const gss_OID_desc *oid)
+int asn1ber_ber_from_oid(struct asn1ber_context *actx, const struct asn1ber_oid_value *oid)
 {
     int lenpos;
     int reserve;
@@ -982,7 +984,7 @@ int asn1ber_ber_from_oid(struct asn1ber_context *actx, const gss_OID_desc *oid)
         actx->last_error = -EINVAL;
         return 1;
     }
-    if (oid->length >= BER_MAX_OID)
+    if (oid->length >= BER_MAX_OID_ELEMENTS)
     {
         actx->last_error = -E2BIG;
         return 1;
@@ -992,7 +994,7 @@ int asn1ber_ber_from_oid(struct asn1ber_context *actx, const gss_OID_desc *oid)
     {
         return result;
     }
-    if (BER_MAX_OID > 127)
+    if (BER_MAX_OID_ELEMENTS > 127)
     {
         reserve = 5;
     }

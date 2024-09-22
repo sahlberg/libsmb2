@@ -27,18 +27,12 @@
 #include <stdint.h>
 #endif
 
-#if __APPLE__
-#import <GSS/GSS.h>
-#else
-#include <gssapi/gssapi.h>
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define BER_MAX_OID     (32)
-typedef uint16_t  beroid_type_t;
+#define BER_MAX_OID_ELEMENTS     (32)
+typedef uint32_t  beroid_type_t;
         
 /* Notes: BER = ASN.1 Basic Encoding Rules defined in  ITU-TX.690
  *              https://www.itu.int/ITU-T/studygroups/com17/languages/X.690-0207.pdf
@@ -130,6 +124,11 @@ struct asn1ber_context
         int last_error;
 };
 
+struct asn1ber_oid_value {
+        int length;
+        beroid_type_t elements[BER_MAX_OID_ELEMENTS];
+};
+
 int asn1ber_save_out_state(struct asn1ber_context *actx, int *out_pos);
 int asn1ber_annotate_length(struct asn1ber_context *actx, int out_pos, int reserved);
 int asn1ber_length_from_ber(struct asn1ber_context *actx, uint32_t *len);
@@ -142,7 +141,7 @@ int asn1ber_int32_from_ber(struct asn1ber_context *actx, int32_t *val);
 int asn1ber_uint32_from_ber(struct asn1ber_context *actx, uint32_t *val);
 int asn1ber_int64_from_ber(struct asn1ber_context *actx, int64_t *val);
 int asn1ber_uint64_from_ber(struct asn1ber_context *actx, uint64_t *val);
-int asn1ber_oid_from_ber(struct asn1ber_context *actx, gss_OID_desc *oid);
+int asn1ber_oid_from_ber(struct asn1ber_context *actx, struct asn1ber_oid_value *oid);
 int asn1ber_bytes_from_ber(struct asn1ber_context *actx, uint8_t *val, uint32_t maxlen, uint32_t *lenout);
 int asn1ber_string_from_ber(struct asn1ber_context *actx, char *val, uint32_t maxlen, uint32_t *lenout);
 int asn1ber_ber_from_length(struct asn1ber_context *actx, uint32_t lenin, uint32_t *lenout);
@@ -153,7 +152,7 @@ int asn1ber_ber_from_int32(struct asn1ber_context *actx, const ber_type_t type, 
 int asn1ber_ber_from_uint32(struct asn1ber_context *actx, const ber_type_t type, const uint32_t val);
 int asn1ber_ber_from_int64(struct asn1ber_context *actx, const ber_type_t type, const int64_t val);
 int asn1ber_ber_from_uint64(struct asn1ber_context *actx, const ber_type_t type, const uint64_t val);
-int asn1ber_ber_from_oid(struct asn1ber_context *actx, const gss_OID_desc *oid);
+int asn1ber_ber_from_oid(struct asn1ber_context *actx, const struct asn1ber_oid_value *oid);
 int asn1ber_ber_from_bytes(struct asn1ber_context *actx, const ber_type_t type, const uint8_t *val, uint32_t len);
 int asn1ber_ber_from_string(struct asn1ber_context *actx, const char *val, uint32_t len);
 

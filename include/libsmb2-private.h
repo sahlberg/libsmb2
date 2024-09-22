@@ -226,6 +226,7 @@ struct smb2_context {
         int ndr;
         int endianness;
 
+        /* to maintain lists of contexts for server used */
         struct smb2_context *next;
 };
 

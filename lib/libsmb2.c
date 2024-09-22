@@ -2985,11 +2985,11 @@ smb2_query_directory_request_cb(struct smb2_server *server, struct smb2_context 
         else {
                 if (rep.output_buffer_length == 0) {
                         pdu = smb2_cmd_error_reply_async(smb2,
-                                        &err, SMB2_QUERY_DIRECTORY, SMB2_STATUS_NOT_SUPPORTED, NULL, cb_data);
+                                        &err, SMB2_QUERY_DIRECTORY, SMB2_STATUS_NO_MORE_FILES, NULL, cb_data);
                 }
                 else if (rep.output_buffer_length < 0) {
                         pdu = smb2_cmd_error_reply_async(smb2,
-                                        &err, SMB2_QUERY_DIRECTORY, SMB2_STATUS_INVALID_INFO_CLASS, NULL, cb_data);
+                                        &err, SMB2_QUERY_DIRECTORY, SMB2_STATUS_NOT_SUPPORTED, NULL, cb_data);
                 }
                 else {
                         pdu = smb2_cmd_query_directory_reply_async(smb2, req->file_information_class,
@@ -3048,8 +3048,6 @@ smb2_general_client_request_cb(struct smb2_context *smb2, int status, void *comm
                 smb2_close_context(smb2);
                 return;
         }
-        
-        printf("req cb cmd %d\n", smb2->pdu->header.command);
         
         switch (smb2->pdu->header.command) {
         case SMB2_LOGOFF:
@@ -3115,8 +3113,11 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
         struct smb2_session_setup_request *req = command_data;
         struct smb2_session_setup_reply rep;
         struct smb2_pdu *pdu;
+        uint32_t mechanisms;
         uint32_t message_type;
         int more_processing_needed = 0;
+        uint8_t *response_token;
+        int response_length;
         
         rep.security_buffer_length = 0;
         rep.security_buffer_offset = 0;
@@ -3139,7 +3140,14 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                         }
                         smb2->session_key_size = SMB2_KEY_SIZE;
                 }
-                if (ntlmssp_get_message_type(req->security_buffer, req->security_buffer_length, &message_type)) {
+                response_length = smb2_spnego_unwrap_blob(smb2, req->security_buffer,
+                                req->security_buffer_length, &response_token, &mechanisms);
+                if (response_length < 0 || !response_token) {
+                        smb2_set_error(smb2, "No NTLMSSP token in blob", smb2_get_error(smb2));
+                        smb2_close_context(smb2);
+                        return;
+                }
+                if (ntlmssp_get_message_type(response_token, response_length, &message_type)) {
                         smb2_set_error(smb2, "No message type in NTLMSSP", smb2_get_error(smb2));
                         smb2_close_context(smb2);
                         return;
@@ -3151,12 +3159,17 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                         more_processing_needed = 1;
                         smb2->session_id = 0xdeadbeef;
                 }
-                else {
-                        /* alloc a pdu for next request */
+                else if (message_type == AUTHENTICATION_MESSAGE) {
+                        /* alloc a pdu for next request (not really required to get tree connect) */
                         smb2->next_pdu = smb2_allocate_pdu(smb2, SMB2_TREE_CONNECT, smb2_general_client_request_cb, cb_data);
                 }
+                else {
+                        smb2_set_error(smb2, "Unexpected ntlmssp msg code %08X", message_type);
+                        smb2_close_context(smb2);
+                        return;
+                }
                 if (ntlmssp_generate_blob(smb2, time(NULL), server->auth_data,
-                                          req->security_buffer, req->security_buffer_length,
+                                          response_token, response_length,
                                           &rep.security_buffer,
                                           &rep.security_buffer_length) < 0) {
                         smb2_close_context(smb2);
@@ -3339,7 +3352,7 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
 #endif
         }
 
-        rep.security_buffer_length = smb2_create_negotiate_reply_blob(
+        rep.security_buffer_length = smb2_spnego_create_negotiate_reply_blob(
                                         smb2, (void*)&rep.security_buffer);
         
         pdu = smb2_cmd_negotiate_reply_async(smb2, &rep, NULL, cb_data);
@@ -3512,7 +3525,7 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
                                         }
                                 }
                                 else if (err) {
-                                        printf("serve port async faild!\n");
+                                        printf("serve port async failed!\n");
                                         break;
                                 }
                         }

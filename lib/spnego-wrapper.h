@@ -30,12 +30,23 @@
 extern "C" {
 #endif
 
-int smb2_create_negotiate_reply_blob(struct smb2_context *smb2, void **neg_init_token);
+#define SPNEGO_MECHANISM_KRB5       (0x0001)
+#define SPNEGO_MECHANISM_NTLMSSP    (0x0002)
+    
+int smb2_spnego_create_negotiate_reply_blob(struct smb2_context *smb2, void **neg_init_token);
 
-int smb2_wrap_ntlmssp_challenge(struct smb2_context *smb2, const uint8_t *ntlmssp_token,
-                const int token_len, void **neg_init_token);
+int smb2_spnego_wrap_ntlmssp_challenge(struct smb2_context *smb2,
+                const uint8_t *ntlmssp_token,
+                const int token_len, void **neg_targ_token);
 
-int smb2_wrap_ntlmssp_result(struct smb2_context *smb2, const int authorized_ok, void **neg_init_token);
+int smb2_spnego_wrap_authenticate_result(struct smb2_context *smb2,
+                const int authorized_ok, void **blob);
+
+int smb2_spnego_unwrap_blob(struct smb2_context *smb2,
+                const uint8_t *spnego,
+                const int spnego_len,
+                uint8_t **response_token,
+                uint32_t *mechanisms);
 
 #ifdef __cplusplus
 }

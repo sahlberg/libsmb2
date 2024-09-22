@@ -201,32 +201,23 @@ ntlm_negotiate_message(struct smb2_context *smb2, struct auth_data *auth_data)
 }
 
 static int
-ntlm_challenge_message(struct auth_data *auth_data, unsigned char *buf,
-                       size_t len)
+ntlm_challenge_message(struct smb2_context *smb2, struct auth_data *auth_data,
+                        unsigned char *buf, size_t len)
 {
         uint8_t *ntlmssp = NULL;
-        int i;
+        uint32_t mechanisms;
+        int ntlm_len;
         
-        for (i = 0; i < len; i++) {
-                if (buf[i] == 'N') {
-                        if ((len - i) > 6) {
-                                if (!memcmp(buf + i, "NTLMSSP", 7)) {
-                                        ntlmssp = buf + i;
-                                        len -= i;
-                                        break;
-                                }
-                        }
-                }
-        }
+        ntlm_len = smb2_spnego_unwrap_blob(smb2, buf, len, &ntlmssp, &mechanisms);
         
-        if (ntlmssp) {
+        if (ntlmssp && ntlm_len > 0) {
                 free(auth_data->ntlm_buf);
-                auth_data->ntlm_len = len;
+                auth_data->ntlm_len = ntlm_len;
                 auth_data->ntlm_buf = malloc(auth_data->ntlm_len);
                 if (auth_data->ntlm_buf == NULL) {
                         return -1;
                 }
-                memcpy(auth_data->ntlm_buf, buf, auth_data->ntlm_len);
+                memcpy(auth_data->ntlm_buf, ntlmssp, auth_data->ntlm_len);
                 return 0;
         }
         
@@ -747,7 +738,7 @@ ntlmssp_generate_blob(struct smb2_context *smb2, time_t t,
                                 if (encode_ntlm_challenge(smb2, auth_data)) {
                                         return -1;
                                 }
-                                spnego_len = smb2_wrap_ntlmssp_challenge(smb2,
+                                spnego_len = smb2_spnego_wrap_ntlmssp_challenge(smb2,
                                                 auth_data->buf, auth_data->len, (void*)&spnego_buf);
                                 if (spnego_len < 0) {
                                         return -1;
@@ -760,7 +751,7 @@ ntlmssp_generate_blob(struct smb2_context *smb2, time_t t,
                                 printf("Got auth msg\n");
                                 authenticated = !ntlmssp_authenticate_blob(smb2, auth_data,
                                                 input_buf, input_len);
-                                spnego_len = smb2_wrap_ntlmssp_result(smb2, authenticated, (void*)&spnego_buf);
+                                spnego_len = smb2_spnego_wrap_authenticate_result(smb2, authenticated, (void*)&spnego_buf);
                                 if (spnego_len < 0) {
                                         return -1;
                                 }
@@ -773,7 +764,7 @@ ntlmssp_generate_blob(struct smb2_context *smb2, time_t t,
                         }
                 }
                 else {
-                        if (ntlm_challenge_message(auth_data, input_buf,
+                        if (ntlm_challenge_message(smb2, auth_data, input_buf,
                                                    input_len) < 0) {
                                 return -1;
                         }
