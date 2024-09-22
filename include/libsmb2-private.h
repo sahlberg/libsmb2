@@ -175,9 +175,8 @@ struct smb2_context {
         /*
          * For sending PDUs
          */
-	struct smb2_pdu *outqueue;
-	struct smb2_pdu *waitqueue;
-
+        struct smb2_pdu *outqueue;
+        struct smb2_pdu *waitqueue;
 
         /*
          * For receiving PDUs
@@ -270,22 +269,6 @@ struct smb2_pdu {
 };
 
 #define smb2_is_server(ctx) ((ctx)->is_server)
-
-/* SMB's UTF-16 is always in Little Endian */
-struct smb2_utf16 {
-        int len;
-        uint16_t val[1];
-};
-
-/* Returns a string converted to UTF-16 format. Use free() to release
- * the utf16 string.
- */
-struct smb2_utf16 *smb2_utf8_to_utf16(const char *utf8);
-
-/* Returns a string converted to UTF8 format. Use free() to release
- * the utf8 string.
- */
-const char *smb2_utf16_to_utf8(const uint16_t *str, size_t len);
 
 /* Convert a win timestamp to a unix timeval */
 void smb2_win_to_timeval(uint64_t smb2_time, struct smb2_timeval *tv);
