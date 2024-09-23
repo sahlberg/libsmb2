@@ -23,6 +23,10 @@
 extern "C" {
 #endif
 
+#ifndef TIME_H
+#include <time.h>
+#endif
+
 #define MIN(a,b) (((a)<(b))?(a):(b))
 
 #ifndef discard_const
