@@ -2899,13 +2899,6 @@ smb2_lock_request_cb(struct smb2_server *server, struct smb2_context *smb2, void
         }
 }
 
-struct  validate_neg_info {
-        uint32_t caps;
-        uint8_t  guid[16];
-        uint16_t security_mode;
-        uint16_t dialect;
-} __attribute__((__packed__));
-
 static void
 smb2_ioctl_request_cb(struct smb2_server *server, struct smb2_context *smb2, void *command_data, void *cb_data)
 {
@@ -2916,21 +2909,28 @@ smb2_ioctl_request_cb(struct smb2_server *server, struct smb2_context *smb2, voi
         int ret = -1;
 
         if (req->ctl_code == SMB2_FSCTL_VALIDATE_NEGOTIATE_INFO) {
-                //struct validate_neg_info *in_info;
-                struct validate_neg_info out_info;
+                uint8_t out_info[24];
+                struct smb2_iovec iov = {out_info, 24};
+                        ;
+                /* struct  validate_neg_info {
+                 *   uint32_t caps;
+                 *   uint8_t  guid[16];
+                 *   uint16_t security_mode;
+                 *   uint16_t dialect;
+                 * }
+                 */
+                smb2_set_uint32(&iov, 0, SMB2_GLOBAL_CAP_LARGE_MTU|
+                                SMB2_GLOBAL_CAP_ENCRYPTION);
+                memcpy(&out_info[4], server->guid, 16);
+                smb2_set_uint16(&iov, 20, SMB2_NEGOTIATE_SIGNING_ENABLED |
+                                (smb2->sign ? SMB2_NEGOTIATE_SIGNING_REQUIRED : 0));
+                smb2_set_uint16(&iov, 22, smb2->dialect);
 
                 memset(&rep, 0, sizeof(rep));
                 rep.ctl_code = req->ctl_code;
                 memcpy(rep.file_id, req->file_id, SMB2_FD_SIZE);
-                //in_info = (struct validate_neg_info *)req->input;
-                out_info.caps = SMB2_GLOBAL_CAP_LARGE_MTU|
-                                SMB2_GLOBAL_CAP_ENCRYPTION;
-                out_info.security_mode      = SMB2_NEGOTIATE_SIGNING_ENABLED |
-                     (smb2->sign ? SMB2_NEGOTIATE_SIGNING_REQUIRED : 0);
-                memcpy(out_info.guid, server->guid, 16);
-                out_info.dialect = smb2->dialect;
                 rep.output_count = sizeof(out_info);
-                rep.output = &out_info;
+                rep.output = &out_info[0];
 
                 pdu = smb2_cmd_ioctl_reply_async(smb2, &rep, NULL, cb_data);
         }
