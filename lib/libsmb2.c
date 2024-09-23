@@ -3142,11 +3142,11 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
         struct smb2_session_setup_reply rep;
         struct smb2_pdu *pdu;
         struct smb2_error_reply err;
-        uint32_t mechanisms;
         uint32_t message_type;
         int more_processing_needed = 0;
         uint8_t *response_token;
         int response_length;
+        int is_spnego_wrapped;
         int have_valid_session_key = 1;
         int ret;
         
@@ -3158,24 +3158,22 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
         memset(&err, 0, sizeof(err));
         
         if (smb2->sec == SMB2_SEC_NTLMSSP) {
-                if (!server->auth_data) {
-                        server->auth_data = ntlmssp_init_context("sotero", "", "WORKGROUP", "BDODGE-UBUNTU-2",
-                                                         smb2->client_challenge);
-                }
-                response_length = smb2_spnego_unwrap_blob(smb2, req->security_buffer,
-                                req->security_buffer_length, &response_token, &mechanisms);
-                if (response_length < 0 || !response_token) {
-                        smb2_set_error(smb2, "No NTLMSSP token in blob", smb2_get_error(smb2));
-                        smb2_close_context(smb2);
-                        return;
-                }
-                if (ntlmssp_get_message_type(response_token, response_length, &message_type)) {
+                if (ntlmssp_get_message_type(smb2,
+                                req->security_buffer, req->security_buffer_length,
+                                &message_type,
+                                &response_token, &response_length,
+                                &is_spnego_wrapped) < 0) {
                         smb2_set_error(smb2, "No message type in NTLMSSP", smb2_get_error(smb2));
                         smb2_close_context(smb2);
                         return;
                 }
                 /* set error code in header - more processing required if negotiate req not auth req */
                 if (message_type == NEGOTIATE_MESSAGE) {
+                        if (server->auth_data) {
+                                ntlmssp_destroy_context(server->auth_data);
+                        }
+                        server->auth_data = ntlmssp_init_context("sotero", "smbproxy", "WORKGROUP", "BDODGE-UBUNTU-2",
+                                                         smb2->client_challenge);
                         /* alloc a pdu for next request */
                         smb2->next_pdu = smb2_allocate_pdu(smb2, SMB2_SESSION_SETUP, smb2_session_setup_request_cb, cb_data);
                         more_processing_needed = 1;
@@ -3191,7 +3189,7 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                         return;
                 }
                 if (ntlmssp_generate_blob(smb2, 0, server->auth_data,
-                                          response_token, response_length,
+                                          req->security_buffer, req->security_buffer_length,
                                           &rep.security_buffer,
                                           &rep.security_buffer_length) < 0) {
                         smb2_close_context(smb2);
@@ -3213,6 +3211,7 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
 #ifdef HAVE_LIBKRB5
         else {
                 /// TODO 
+                have_valid_session_key = 0;
         }
 #endif
         if (smb2->sign && have_valid_session_key == 0) {

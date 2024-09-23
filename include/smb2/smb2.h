@@ -541,6 +541,7 @@ struct smb2_read_reply {
 #define SMB2_FILE_FS_VOLUME_INFORMATION            1
 #define SMB2_FILE_FS_SIZE_INFORMATION              3
 #define SMB2_FILE_FS_DEVICE_INFORMATION            4
+#define SMB2_FILE_FS_ATTRIBUTE_INFORMATION         5
 #define SMB2_FILE_FS_CONTROL_INFORMATION           6
 #define SMB2_FILE_FS_FULL_SIZE_INFORMATION         7
 #define SMB2_FILE_FS_SECTOR_SIZE_INFORMATION      11
@@ -775,6 +776,13 @@ struct smb2_file_fs_size_info {
         uint64_t available_allocation_units;
         uint32_t sectors_per_allocation_unit;
         uint32_t bytes_per_sector;
+};
+
+struct smb2_file_fs_attribute_info {
+        uint32_t filesystem_attributes;
+        uint32_t maximum_component_name_length;
+        uint32_t filesystem_name_length;
+        const uint8_t *filesystem_name;
 };
 
 /* Device type */

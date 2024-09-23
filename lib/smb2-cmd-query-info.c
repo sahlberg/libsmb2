@@ -154,8 +154,9 @@ smb2_encode_query_info_reply(struct smb2_context *smb2,
         if (rep->output_buffer_length > 0 && rep->output_buffer) {
                 len = rep->output_buffer_length;
                 len = PAD_TO_32BIT(len);
-                /* not sure exactly how long the encoding will be, overshoot a bunch */
-                buf = malloc(2 * len);
+                /* not sure exactly how long the encoding will be, some of the,
+                 * include variable data so add a whole lot of space */
+                buf = malloc(1024);
                 if (buf == NULL) {
                         smb2_set_error(smb2, "Failed to allocate output buffer");
                         return -1;
@@ -195,6 +196,14 @@ smb2_encode_query_info_reply(struct smb2_context *smb2,
                                 rep->output_buffer_length = iov->len;
                                 break;
                         case SMB2_FILE_FS_DEVICE_INFORMATION:
+                                smb2_encode_file_fs_device_info(smb2,
+                                                (struct smb2_file_fs_device_info *)rep->output_buffer, iov);
+                                rep->output_buffer_length = iov->len;
+                                break;
+                        case SMB2_FILE_FS_ATTRIBUTE_INFORMATION:
+                                smb2_encode_file_fs_attribute_info(smb2,
+                                                (struct smb2_file_fs_attribute_info *)rep->output_buffer, iov);
+                                rep->output_buffer_length = iov->len;
                                 break;
                         case SMB2_FILE_FS_CONTROL_INFORMATION:
                                 break;

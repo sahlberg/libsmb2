@@ -43,6 +43,16 @@ ntlmssp_init_context(const char *user,
                      const char *workstation,
                      const char *client_challenge);
 
+void
+ntlmssp_destroy_context(struct auth_data *auth);
+
+int
+ntlmssp_get_message_type(struct smb2_context *smb2,
+                      uint8_t *ntlmssp_buffer, int len,
+                      uint32_t *message_type,
+                      uint8_t **ntlmssp_ptr, int *ntlmssp_len,
+                      int *is_wrapped);
+
 int
 ntlmssp_generate_blob(struct smb2_context *smb2, time_t t,
                       struct auth_data *auth_data,
@@ -57,13 +67,8 @@ ntlmssp_authenticate_blob(struct smb2_context *smb2,
 int
 ntlmssp_get_authenticated(struct auth_data *auth);
 
-void
-ntlmssp_destroy_context(struct auth_data *auth);
-
-int ntlmssp_get_session_key(struct auth_data *auth, uint8_t **key, uint8_t *key_size);
-
 int
-ntlmssp_get_message_type(unsigned char *ntlmssp_buffer, int len, uint32_t *message_type);
+ntlmssp_get_session_key(struct auth_data *auth, uint8_t **key, uint8_t *key_size);
 
 #ifdef __cplusplus
 }
