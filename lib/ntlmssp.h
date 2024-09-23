@@ -54,6 +54,9 @@ ntlmssp_authenticate_blob(struct smb2_context *smb2,
                       struct auth_data *auth_data,
                       unsigned char *input_buf, int input_len);
                       
+int
+ntlmssp_get_authenticated(struct auth_data *auth);
+
 void
 ntlmssp_destroy_context(struct auth_data *auth);
 

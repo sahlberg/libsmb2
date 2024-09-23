@@ -438,7 +438,7 @@ smb2_spnego_unwrap_blob(struct smb2_context *smb2, const uint8_t *spnego,
                 return -EINVAL;
         }
         /* if not wrapped, just return raw token */
-        if (spnego_len >= 7 && !memcmp(spnego, "NTLMSSP", 7)) {
+        if (spnego_len > 7 && !memcmp(spnego, "NTLMSSP", 8)) {
                 *token = discard_const(spnego);
                 return spnego_len;
         }

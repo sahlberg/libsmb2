@@ -2678,7 +2678,7 @@ smb2_fd_event_callbacks(struct smb2_context *smb2,
 
 /*************************** server handler *************************************************************/
 static void
-smb2_logoff_request_cb(struct smb2_server *server, struct smb2_context *smb2, int status, void *command_data, void *cb_data)
+smb2_logoff_request_cb(struct smb2_server *server, struct smb2_context *smb2, void *command_data, void *cb_data)
 {
         struct smb2_pdu *pdu;
         struct smb2_error_reply err;
@@ -2701,7 +2701,7 @@ smb2_logoff_request_cb(struct smb2_server *server, struct smb2_context *smb2, in
 }
 
 static void
-smb2_tree_connect_request_cb(struct smb2_server *server, struct smb2_context *smb2, int status, void *command_data, void *cb_data)
+smb2_tree_connect_request_cb(struct smb2_server *server, struct smb2_context *smb2, void *command_data, void *cb_data)
 {
         struct smb2_tree_connect_request *req = command_data;
         struct smb2_tree_connect_reply rep;
@@ -2726,7 +2726,7 @@ smb2_tree_connect_request_cb(struct smb2_server *server, struct smb2_context *sm
 }
 
 static void
-smb2_tree_disconnect_request_cb(struct smb2_server *server, struct smb2_context *smb2, int status, void *command_data, void *cb_data)
+smb2_tree_disconnect_request_cb(struct smb2_server *server, struct smb2_context *smb2, void *command_data, void *cb_data)
 {
         struct smb2_pdu *pdu;
         struct smb2_error_reply err;
@@ -2749,7 +2749,7 @@ smb2_tree_disconnect_request_cb(struct smb2_server *server, struct smb2_context 
 }
 
 static void
-smb2_create_request_cb(struct smb2_server *server, struct smb2_context *smb2, int status, void *command_data, void *cb_data)
+smb2_create_request_cb(struct smb2_server *server, struct smb2_context *smb2, void *command_data, void *cb_data)
 {
         struct smb2_create_request *req = command_data;
         struct smb2_create_reply rep;        
@@ -2774,7 +2774,7 @@ smb2_create_request_cb(struct smb2_server *server, struct smb2_context *smb2, in
 }
 
 static void
-smb2_close_request_cb(struct smb2_server *server, struct smb2_context *smb2, int status, void *command_data, void *cb_data)
+smb2_close_request_cb(struct smb2_server *server, struct smb2_context *smb2, void *command_data, void *cb_data)
 {
         struct smb2_close_request *req = command_data;
         struct smb2_close_reply rep;
@@ -2799,7 +2799,7 @@ smb2_close_request_cb(struct smb2_server *server, struct smb2_context *smb2, int
 }
 
 static void
-smb2_flush_request_cb(struct smb2_server *server, struct smb2_context *smb2, int status, void *command_data, void *cb_data)
+smb2_flush_request_cb(struct smb2_server *server, struct smb2_context *smb2, void *command_data, void *cb_data)
 {
         struct smb2_flush_request *req = command_data;
         struct smb2_error_reply err;
@@ -2823,7 +2823,7 @@ smb2_flush_request_cb(struct smb2_server *server, struct smb2_context *smb2, int
 }
 
 static void
-smb2_read_request_cb(struct smb2_server *server, struct smb2_context *smb2, int status, void *command_data, void *cb_data)
+smb2_read_request_cb(struct smb2_server *server, struct smb2_context *smb2, void *command_data, void *cb_data)
 {
         struct smb2_read_request *req = command_data;
         struct smb2_read_reply rep;
@@ -2848,7 +2848,7 @@ smb2_read_request_cb(struct smb2_server *server, struct smb2_context *smb2, int 
 }
 
 static void
-smb2_write_request_cb(struct smb2_server *server, struct smb2_context *smb2, int status, void *command_data, void *cb_data)
+smb2_write_request_cb(struct smb2_server *server, struct smb2_context *smb2, void *command_data, void *cb_data)
 {
         struct smb2_write_request *req = command_data;
         struct smb2_write_reply rep;
@@ -2873,7 +2873,7 @@ smb2_write_request_cb(struct smb2_server *server, struct smb2_context *smb2, int
 }
 
 static void
-smb2_lock_request_cb(struct smb2_server *server, struct smb2_context *smb2, int status, void *command_data, void *cb_data)
+smb2_lock_request_cb(struct smb2_server *server, struct smb2_context *smb2, void *command_data, void *cb_data)
 {
         struct smb2_lock_request *req = command_data;
         struct smb2_error_reply err;
@@ -2897,7 +2897,7 @@ smb2_lock_request_cb(struct smb2_server *server, struct smb2_context *smb2, int 
 }
 
 static void
-smb2_ioctl_request_cb(struct smb2_server *server, struct smb2_context *smb2, int status, void *command_data, void *cb_data)
+smb2_ioctl_request_cb(struct smb2_server *server, struct smb2_context *smb2, void *command_data, void *cb_data)
 {
         struct smb2_ioctl_request *req = command_data;
         struct smb2_ioctl_reply rep;
@@ -2922,7 +2922,7 @@ smb2_ioctl_request_cb(struct smb2_server *server, struct smb2_context *smb2, int
 }
 
 static void
-smb2_cancel_request_cb(struct smb2_server *server, struct smb2_context *smb2, int status, void *command_data, void *cb_data)
+smb2_cancel_request_cb(struct smb2_server *server, struct smb2_context *smb2, void *command_data, void *cb_data)
 {
         struct smb2_error_reply err;
         struct smb2_pdu *pdu = NULL;
@@ -2942,7 +2942,7 @@ smb2_cancel_request_cb(struct smb2_server *server, struct smb2_context *smb2, in
 }
 
 static void
-smb2_echo_request_cb(struct smb2_server *server, struct smb2_context *smb2, int status, void *command_data, void *cb_data)
+smb2_echo_request_cb(struct smb2_server *server, struct smb2_context *smb2, void *command_data, void *cb_data)
 {
         struct smb2_error_reply err;
         struct smb2_pdu *pdu;
@@ -2965,7 +2965,7 @@ smb2_echo_request_cb(struct smb2_server *server, struct smb2_context *smb2, int 
 }
 
 static void
-smb2_query_directory_request_cb(struct smb2_server *server, struct smb2_context *smb2, int status, void *command_data, void *cb_data)
+smb2_query_directory_request_cb(struct smb2_server *server, struct smb2_context *smb2, void *command_data, void *cb_data)
 {
         struct smb2_query_directory_request *req = command_data;
         struct smb2_query_directory_reply rep;
@@ -3002,7 +3002,7 @@ smb2_query_directory_request_cb(struct smb2_server *server, struct smb2_context 
 }
 
 static void
-smb2_query_info_request_cb(struct smb2_server *server, struct smb2_context *smb2, int status, void *command_data, void *cb_data)
+smb2_query_info_request_cb(struct smb2_server *server, struct smb2_context *smb2, void *command_data, void *cb_data)
 {
         struct smb2_query_info_request *req = command_data;
         struct smb2_query_info_reply rep;
@@ -3051,46 +3051,46 @@ smb2_general_client_request_cb(struct smb2_context *smb2, int status, void *comm
         
         switch (smb2->pdu->header.command) {
         case SMB2_LOGOFF:
-                smb2_logoff_request_cb(server, smb2, status, command_data, cb_data);
+                smb2_logoff_request_cb(server, smb2, command_data, cb_data);
                 break;
         case SMB2_TREE_CONNECT:
-                smb2_tree_connect_request_cb(server, smb2, status, command_data, cb_data);
+                smb2_tree_connect_request_cb(server, smb2, command_data, cb_data);
                 break;
         case SMB2_TREE_DISCONNECT:
-                smb2_tree_disconnect_request_cb(server, smb2, status, command_data, cb_data);
+                smb2_tree_disconnect_request_cb(server, smb2, command_data, cb_data);
                 break;
         case SMB2_CREATE:
-                smb2_create_request_cb(server, smb2, status, command_data, cb_data);
+                smb2_create_request_cb(server, smb2, command_data, cb_data);
                 break;
         case SMB2_CLOSE:
-                smb2_close_request_cb(server, smb2, status, command_data, cb_data);
+                smb2_close_request_cb(server, smb2, command_data, cb_data);
                 break;
         case SMB2_FLUSH:
-                smb2_flush_request_cb(server, smb2, status, command_data, cb_data);
+                smb2_flush_request_cb(server, smb2, command_data, cb_data);
                 break;
         case SMB2_READ:
-                smb2_read_request_cb(server, smb2, status, command_data, cb_data);
+                smb2_read_request_cb(server, smb2, command_data, cb_data);
                 break;
         case SMB2_WRITE:
-                smb2_write_request_cb(server, smb2, status, command_data, cb_data);
+                smb2_write_request_cb(server, smb2, command_data, cb_data);
                 break;
         case SMB2_LOCK:
-                smb2_lock_request_cb(server, smb2, status, command_data, cb_data);
+                smb2_lock_request_cb(server, smb2, command_data, cb_data);
                 break;
         case SMB2_IOCTL:
-                smb2_ioctl_request_cb(server, smb2, status, command_data, cb_data);
+                smb2_ioctl_request_cb(server, smb2, command_data, cb_data);
                 break;
         case SMB2_CANCEL:
-                smb2_cancel_request_cb(server, smb2, status, command_data, cb_data);
+                smb2_cancel_request_cb(server, smb2, command_data, cb_data);
                 break;
         case SMB2_ECHO:
-                smb2_echo_request_cb(server, smb2, status, command_data, cb_data);
+                smb2_echo_request_cb(server, smb2, command_data, cb_data);
                 break;
         case SMB2_QUERY_DIRECTORY:
-                smb2_query_directory_request_cb(server, smb2, status, command_data, cb_data);
+                smb2_query_directory_request_cb(server, smb2, command_data, cb_data);
                 break;
         case SMB2_QUERY_INFO:
-                smb2_query_info_request_cb(server, smb2, status, command_data, cb_data);
+                smb2_query_info_request_cb(server, smb2, command_data, cb_data);
                 break;
         default:
                 smb2_set_error(smb2, "Client request not implemented", smb2_get_error(smb2));
@@ -3113,32 +3113,26 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
         struct smb2_session_setup_request *req = command_data;
         struct smb2_session_setup_reply rep;
         struct smb2_pdu *pdu;
+        struct smb2_error_reply err;
         uint32_t mechanisms;
         uint32_t message_type;
         int more_processing_needed = 0;
         uint8_t *response_token;
         int response_length;
+        int have_valid_session_key = 1;
+        int ret;
         
         rep.security_buffer_length = 0;
         rep.security_buffer_offset = 0;
         
-        rep.session_flags = 1; //req->flags;
+        rep.session_flags = 0; //req->flags;
+        
+        memset(&err, 0, sizeof(err));
         
         if (smb2->sec == SMB2_SEC_NTLMSSP) {
                 if (!server->auth_data) {
-                        server->auth_data = ntlmssp_init_context("sotero", "smbproxy", "workgroup", "localhost",
+                        server->auth_data = ntlmssp_init_context("sotero", "", "WORKGROUP", "BDODGE-UBUNTU-2",
                                                          smb2->client_challenge);
-                        /* generate a base session key */
-                        smb2->session_key = malloc(SMB2_KEY_SIZE);
-                        if (!smb2->session_key) {
-                                smb2_set_error(smb2, "can not alloc session key", smb2_get_error(smb2));
-                                smb2_close_context(smb2);
-                                return;
-                        }
-                        for (int i = 0; i < SMB2_KEY_SIZE; i++) {
-                                smb2->session_key[i] = i;
-                        }
-                        smb2->session_key_size = SMB2_KEY_SIZE;
                 }
                 response_length = smb2_spnego_unwrap_blob(smb2, req->security_buffer,
                                 req->security_buffer_length, &response_token, &mechanisms);
@@ -3168,12 +3162,24 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                         smb2_close_context(smb2);
                         return;
                 }
-                if (ntlmssp_generate_blob(smb2, time(NULL), server->auth_data,
+                if (ntlmssp_generate_blob(smb2, 0, server->auth_data,
                                           response_token, response_length,
                                           &rep.security_buffer,
                                           &rep.security_buffer_length) < 0) {
                         smb2_close_context(smb2);
                         return;
+                }
+                if (message_type == AUTHENTICATION_MESSAGE) {
+                        if (!ntlmssp_get_authenticated(server->auth_data)) {
+                                smb2_set_error(smb2, "Authentication failed", smb2_get_error(smb2));
+                                smb2_close_context(smb2);
+                                return;
+                        }
+                        if (ntlmssp_get_session_key(server->auth_data,
+                                                    &smb2->session_key,
+                                                    &smb2->session_key_size) < 0) {
+                                have_valid_session_key = 0;
+                        }
                 }
         }
 #ifdef HAVE_LIBKRB5
@@ -3181,6 +3187,27 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                 /// TODO 
         }
 #endif
+        if (smb2->sign && have_valid_session_key == 0) {
+                smb2_close_context(smb2);
+                smb2_set_error(smb2, "Signing required by server. Session "
+                               "Key is not available %s",
+                               smb2_get_error(smb2));
+                return;
+        }
+        
+        if (smb2->sign)  {
+                /* Derive the signing key from session key
+                * This is based on negotiated protocol
+                */
+                if (smb2->dialect == SMB2_VERSION_0202 ||
+                            smb2->dialect == SMB2_VERSION_0210) {
+                        /* For SMB2 session key is the signing key */
+                        memcpy(smb2->signing_key,
+                                       smb2->session_key,
+                                       MIN(smb2->session_key_size, SMB2_KEY_SIZE));
+                } else if (smb2->dialect <= SMB2_VERSION_0302) {
+                }
+        }        
         pdu = smb2_cmd_session_setup_reply_async(smb2, &rep, NULL, cb_data);
         if (pdu == NULL) {
                 return;
@@ -3189,7 +3216,20 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
         if (more_processing_needed) {
                 pdu->header.status = SMB2_STATUS_MORE_PROCESSING_REQUIRED;
         }
-        
+        else {
+                if (server->handlers && server->handlers->session) {
+                        ret = server->handlers->session(server, smb2);
+                        if (ret) {
+                                smb2_set_error(smb2, "server session start handler failed");
+                                smb2_close_context(smb2);
+                                return;
+                        }
+                }
+                else {
+                        pdu = smb2_cmd_error_reply_async(smb2,
+                                        &err, SMB2_IOCTL, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
+                }                        
+        }
         if (!smb2->next_pdu) {
                 smb2_set_error(smb2, "can not alloc pdu for authorization session setup request");
                 smb2_close_context(smb2);
@@ -3316,13 +3356,20 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
                         smb2->sign = 1;
                 }
         
+                if (req->security_mode & SMB2_NEGOTIATE_SIGNING_ENABLED &&
+                                smb2->dialect == SMB2_VERSION_0210) {
+                        /* smb2.1 requires signing if enabled on both sides
+                         * regardless of what the flags say */
+                        smb2->sign = 1;
+                }
+        
                 if (smb2->seal) {
                         smb2->sign = 0;
                 }
         }
 
         rep.security_mode      = SMB2_NEGOTIATE_SIGNING_ENABLED |
-               (smb2->sign ? SMB2_NEGOTIATE_SIGNING_REQUIRED : 0);
+                     (smb2->sign ? SMB2_NEGOTIATE_SIGNING_REQUIRED : 0);
         rep.security_mode = 0; /// TODO
         memcpy(rep.server_guid, "libsmb2-srvrguid", 16); /// TODO
         rep.max_transact_size  = smb2->max_transact_size;;
