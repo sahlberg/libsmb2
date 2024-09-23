@@ -133,7 +133,7 @@ smb2_encode_query_directory_request(struct smb2_context *smb2,
                 }
                 smb2_set_uint16(iov, 26, 2 * name->len);
         }
-        
+
         smb2_set_uint16(iov, 0, SMB2_QUERY_DIRECTORY_REQUEST_SIZE);
         smb2_set_uint8(iov, 2, req->file_information_class);
         smb2_set_uint8(iov, 3, req->flags);
@@ -157,7 +157,7 @@ smb2_encode_query_directory_request(struct smb2_context *smb2,
                                         free);
         }
         free(name);
-        
+
         return 0;
 }
 
@@ -211,13 +211,13 @@ smb2_encode_query_directory_reply(struct smb2_context *smb2,
         int offset;
         int in_offset;
         int in_remain;
-        
+
         pdu->header.flags |= SMB2_FLAGS_SERVER_TO_REDIR;
         pdu->header.credit_request_response = 1;
 
         len = SMB2_QUERY_DIRECTORY_REPLY_SIZE & 0xfffe;
         len = PAD_TO_32BIT(len);
-        
+
         buf = calloc(len, sizeof(uint8_t));
         if (buf == NULL) {
                 smb2_set_error(smb2, "Failed to allocate query reply buffer");
@@ -225,11 +225,11 @@ smb2_encode_query_directory_reply(struct smb2_context *smb2,
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
-        
+
         fslen = rep->output_buffer_length;
         rep->output_buffer_offset = len + SMB2_HEADER_SIZE;
         rep->output_buffer_length = 0;
-        
+
         if (rep->output_buffer) {
                 in_offset = 0;
                 in_remain = fslen;
@@ -263,7 +263,7 @@ smb2_encode_query_directory_reply(struct smb2_context *smb2,
                 }
                 while (in_remain >= sizeof(struct smb2_fileidbothdirectoryinformation));
         }
-        
+
         smb2_set_uint16(iov, 0, SMB2_QUERY_DIRECTORY_REPLY_SIZE);
         smb2_set_uint16(iov, 2, rep->output_buffer_offset);
         smb2_set_uint32(iov, 4, rep->output_buffer_length);
@@ -281,10 +281,10 @@ smb2_encode_query_directory_reply(struct smb2_context *smb2,
                                         buf,
                                         len,
                                         free);
-                
+
                 in_offset = 0;
                 in_remain = fslen;
-                offset = 0;              
+                offset = 0;
                 do {
                         fs = (struct smb2_fileidbothdirectoryinformation*)(rep->output_buffer + in_offset);
                         fname_len = 0;
@@ -361,11 +361,11 @@ smb2_encode_query_directory_reply(struct smb2_context *smb2,
                         default:
                                 break;
                         }
-                        
+
                         if (name) {
                                 free(name);
                         }
-                        
+
                         offset += fs_size;
                 }
                 while (in_remain >= sizeof(struct smb2_fileidbothdirectoryinformation));
@@ -493,18 +493,18 @@ smb2_process_query_directory_request_fixed(struct smb2_context *smb2,
                                (int)iov->len);
                 return -1;
         }
-        
+
         smb2_get_uint8(iov, 2, &req->file_information_class);
-        smb2_get_uint8(iov, 2, &req->flags);
+        smb2_get_uint8(iov, 3, &req->flags);
         smb2_get_uint32(iov, 4, &req->file_index);
         memcpy(req->file_id, iov + 8, SMB2_FD_SIZE);
-        smb2_get_uint16(iov, 16, &req->file_name_offset);
-        smb2_get_uint16(iov, 18, &req->file_name_length);
-        smb2_get_uint32(iov, 19, &req->output_buffer_length);
-        
+        smb2_get_uint16(iov, 24, &req->file_name_offset);
+        smb2_get_uint16(iov, 26, &req->file_name_length);
+        smb2_get_uint32(iov, 28, &req->output_buffer_length);
+
         if (req->file_name_length &&
             (req->file_name_offset + req->file_name_length > smb2->spl)) {
-                smb2_set_error(smb2, "Output buffer extends beyond end of "
+                smb2_set_error(smb2, "Filename extends beyond end of "
                                "PDU");
                 return -1;
         }

@@ -69,7 +69,6 @@
 #include "libsmb2.h"
 #include "libsmb2-raw.h"
 #include "libsmb2-private.h"
-#include "krb5-wrapper.h"
 #include "asn1-ber.h"
 
 #include "spnego-wrapper.h"
@@ -90,7 +89,7 @@ static int
 oid_compare(const struct asn1ber_oid_value *a, const struct asn1ber_oid_value *b)
 {
         int i;
-        
+
         if (!a || !b || !a->length || !b->length || a->length != b->length) {
                 return -1;
         }
@@ -112,8 +111,8 @@ smb2_spnego_create_negotiate_reply_blob(struct smb2_context *smb2, void **neg_in
         uint8_t *neg_init;
         int alloc_len;
         int pos[6];
-        
-        alloc_len = 5 * sizeof spnego_mech_ntlmssp;
+
+        alloc_len = 5 * sizeof oid_gss_mech_spnego;
         neg_init = calloc(1, alloc_len);
         if (neg_init == NULL) {
                 smb2_set_error(smb2, "Failed to allocate negotiate token init");
@@ -124,38 +123,38 @@ smb2_spnego_create_negotiate_reply_blob(struct smb2_context *smb2, void **neg_in
         asn_encoder.dst = neg_init;
         asn_encoder.dst_size = alloc_len;
         asn_encoder.dst_head = 0;
-        
+
         asn1ber_ber_from_typecode(&asn_encoder, asnCONSTRUCTOR | asnAPPLICATION);
         /* save location of total length */
         asn1ber_save_out_state(&asn_encoder, &pos[0]);
         asn1ber_ber_reserve_length(&asn_encoder, 5);
-        
+
         /* insert top level oid */
         asn1ber_ber_from_oid(&asn_encoder, &oid_gss_mech_spnego);
-        
+
         asn1ber_ber_from_typecode(&asn_encoder, ASN1_CONTEXT(0));
         /* save location of length of sub mechanisms */
         asn1ber_save_out_state(&asn_encoder, &pos[1]);
         asn1ber_ber_reserve_length(&asn_encoder, 5);
-                
+
         asn1ber_ber_from_typecode(&asn_encoder, asnSTRUCT);
         /* save location of length of mechanism struct */
         asn1ber_save_out_state(&asn_encoder, &pos[2]);
         asn1ber_ber_reserve_length(&asn_encoder, 5);
-        
+
         /* constructed */
-        asn1ber_ber_from_typecode(&asn_encoder, ASN1_CONTEXT(0));        
+        asn1ber_ber_from_typecode(&asn_encoder, ASN1_CONTEXT(0));
         /* save location of length of mechanism sequence */
         asn1ber_save_out_state(&asn_encoder, &pos[3]);
         asn1ber_ber_reserve_length(&asn_encoder, 5);
-        
+
         asn1ber_ber_from_typecode(&asn_encoder, ASN1_SEQUENCE(0));
         /* save location of length of mechanism struct */
         asn1ber_save_out_state(&asn_encoder, &pos[4]);
         asn1ber_ber_reserve_length(&asn_encoder, 5);
 
         /* for each negotiable mechanism */
-        
+
         /* insert mechanism oids */
         asn1ber_ber_from_oid(&asn_encoder, &oid_spnego_mech_ntlmssp);
 #ifdef HAVE_LIBKRB5
@@ -181,7 +180,7 @@ smb2_spnego_wrap_ntlmssp_challenge(struct smb2_context *smb2, const uint8_t *ntl
         int alloc_len;
         int pos[6];
         uint8_t neg_result = 1;
-        
+
         alloc_len = 64 + 2 * token_len;
         neg_init = calloc(1, alloc_len);
         if (neg_init == NULL) {
@@ -193,7 +192,7 @@ smb2_spnego_wrap_ntlmssp_challenge(struct smb2_context *smb2, const uint8_t *ntl
         asn_encoder.dst = neg_init;
         asn_encoder.dst_size = alloc_len;
         asn_encoder.dst_head = 0;
-        
+
         asn1ber_ber_from_typecode(&asn_encoder, ASN1_CONTEXT(1));               /* A1 XX */
         /* save location of total length */
         asn1ber_save_out_state(&asn_encoder, &pos[0]);
@@ -203,14 +202,14 @@ smb2_spnego_wrap_ntlmssp_challenge(struct smb2_context *smb2, const uint8_t *ntl
         /* save location of sub length */
         asn1ber_save_out_state(&asn_encoder, &pos[1]);
         asn1ber_ber_reserve_length(&asn_encoder, 5);
-        
+
         /* negTokenTarg */
         /*   negResult: accept-incomplete */
         asn1ber_ber_from_typecode(&asn_encoder, ASN1_CONTEXT(0));               /* A0 ZZ */
         /* save location of length */
         asn1ber_save_out_state(&asn_encoder, &pos[2]);
         asn1ber_ber_reserve_length(&asn_encoder, 1);
-        
+
         asn1ber_ber_from_bytes(&asn_encoder, asnENUMERATED, &neg_result, sizeof(neg_result));      /* 0A 01 01 */
         asn1ber_annotate_length(&asn_encoder, pos[2], 1);
 
@@ -219,10 +218,10 @@ smb2_spnego_wrap_ntlmssp_challenge(struct smb2_context *smb2, const uint8_t *ntl
         /* save location of total length */
         asn1ber_save_out_state(&asn_encoder, &pos[2]);
         asn1ber_ber_reserve_length(&asn_encoder, 1);
-        
+
         asn1ber_ber_from_oid(&asn_encoder, &oid_spnego_mech_ntlmssp);
         asn1ber_annotate_length(&asn_encoder, pos[2], 1);
-        
+
         /*   ntlm service provider */
         asn1ber_ber_from_typecode(&asn_encoder, ASN1_CONTEXT(2));               /* A2 ZZ */
         /* save location of total length */
@@ -238,7 +237,7 @@ smb2_spnego_wrap_ntlmssp_challenge(struct smb2_context *smb2, const uint8_t *ntl
         asn_encoder.dst_head += token_len;
 
         asn1ber_annotate_length(&asn_encoder, pos[3], 5);
-        asn1ber_annotate_length(&asn_encoder, pos[2], 5);        
+        asn1ber_annotate_length(&asn_encoder, pos[2], 5);
         asn1ber_annotate_length(&asn_encoder, pos[1], 5);
         asn1ber_annotate_length(&asn_encoder, pos[0], 5);
 
@@ -254,14 +253,14 @@ smb2_spnego_wrap_authenticate_result(struct smb2_context *smb2, const int author
         int alloc_len;
         int pos[6];
         uint8_t result_code = 3; /* accept-fail */
-        
+
         alloc_len = 128;
         neg_targ = calloc(1, alloc_len);
         if (neg_targ == NULL) {
                 smb2_set_error(smb2, "Failed to allocate spnego wrapper");
                 return -ENOMEM;
         }
-        
+
         if (authorized_ok) {
                 result_code = 0 /* accept-completed */;
         }
@@ -270,7 +269,7 @@ smb2_spnego_wrap_authenticate_result(struct smb2_context *smb2, const int author
         asn_encoder.dst = neg_targ;
         asn_encoder.dst_size = alloc_len;
         asn_encoder.dst_head = 0;
-        
+
         asn1ber_ber_from_typecode(&asn_encoder, ASN1_CONTEXT(1));               /* A1 81 XX */
         asn1ber_ber_from_typecode(&asn_encoder, ASN1_CONTEXT_SIMPLE(1));
         /* save location of total length */
@@ -282,14 +281,14 @@ smb2_spnego_wrap_authenticate_result(struct smb2_context *smb2, const int author
         /* save location of sub length */
         asn1ber_save_out_state(&asn_encoder, &pos[1]);
         asn1ber_ber_reserve_length(&asn_encoder, 5);
-        
+
         /* negTokenTarg */
         /*   negResult: accept-incomplete */
         asn1ber_ber_from_typecode(&asn_encoder, ASN1_CONTEXT(0));               /* A0 ZZ */
         /* save location of length */
         asn1ber_save_out_state(&asn_encoder, &pos[2]);
         asn1ber_ber_reserve_length(&asn_encoder, 1);
-        
+
         asn1ber_ber_from_bytes(&asn_encoder, asnENUMERATED, &result_code, 1);   /* 0A 01 Value */
         asn1ber_annotate_length(&asn_encoder, pos[2], 1);
 
@@ -314,13 +313,13 @@ smb2_spnego_wrap_authenticate_result(struct smb2_context *smb2, const int author
                 fail_line = __LINE__;                                           \
                 goto label;                                                     \
         }
-        
+
 #define require_noerr(errcode, label)                                   \
         if (errcode) {                                                  \
                 fail_line = __LINE__;                                   \
                 goto label;                                             \
         }
-        
+
 int
 smb2_spnego_unwrap_targ(struct smb2_context *smb2, const uint8_t *spnego,
                const int spnego_len, uint8_t **token, uint32_t *mechanisms)
@@ -331,12 +330,12 @@ smb2_spnego_unwrap_targ(struct smb2_context *smb2, const uint8_t *spnego,
         uint32_t typelen;
         int fail_line = 0;
         int ret;
-        
+
         memset(&asn_decoder, 0, sizeof(asn_decoder));
         asn_decoder.src = discard_const(spnego);
         asn_decoder.src_count = spnego_len;
         asn_decoder.src_tail = 0;
-        
+
         require_typeandlen(&asn_decoder, ASN1_CONTEXT(1), 14, fail);
         require_typeandlen(&asn_decoder, ASN1_SEQUENCE(0), 12, fail);
         /* peek at type, if context0 - its a negResult, if context2, its an auth */
@@ -362,7 +361,7 @@ smb2_spnego_unwrap_targ(struct smb2_context *smb2, const uint8_t *spnego,
                 return typelen;
         }
         return typelen;
-        
+
 fail:
         smb2_set_error(smb2, "bad spnego at line %d, spengo offset %d", fail_line, asn_decoder.src_tail);
         return -EINVAL;
@@ -381,12 +380,12 @@ smb2_spnego_unwrap_gssapi(struct smb2_context *smb2, const uint8_t *spnego,
         uint32_t mechs = 0;
         int fail_line;
         int ret;
-        
+
         memset(&asn_decoder, 0, sizeof(asn_decoder));
         asn_decoder.src = discard_const(spnego);
         asn_decoder.src_count = spnego_len;
         asn_decoder.src_tail = 0;
-        
+
         require_typeandlen(&asn_decoder, asnCONSTRUCTOR | asnAPPLICATION, 32, fail);
         /* gss-spnego mech oid */
         ret = asn1ber_oid_from_ber(&asn_decoder, &oid);
@@ -419,7 +418,7 @@ smb2_spnego_unwrap_gssapi(struct smb2_context *smb2, const uint8_t *spnego,
                 *mechanisms = mechs;
         }
         return typelen;
-        
+
 fail:
         smb2_set_error(smb2, "bad spnego at line %d, spengo offset %d", fail_line, asn_decoder.src_tail);
         return -EINVAL;
@@ -430,7 +429,7 @@ smb2_spnego_unwrap_blob(struct smb2_context *smb2, const uint8_t *spnego,
                const int spnego_len, uint8_t **token,  uint32_t *mechanisms)
 {
         uint8_t typecode;
-        
+
         if (token) {
                 *token = NULL;
         }
@@ -442,7 +441,7 @@ smb2_spnego_unwrap_blob(struct smb2_context *smb2, const uint8_t *spnego,
                 *token = discard_const(spnego);
                 return spnego_len;
         }
-        
+
         /* peek at first byte of spnego and dispatch */
         typecode = spnego[0];
         if (typecode == (asnCONSTRUCTOR | asnAPPLICATION)) {
