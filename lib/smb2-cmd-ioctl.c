@@ -125,6 +125,9 @@ smb2_encode_ioctl_reply(struct smb2_context *smb2,
         uint8_t *buf;
         struct smb2_iovec *iov;
 
+        pdu->header.flags |= SMB2_FLAGS_SERVER_TO_REDIR;
+        pdu->header.credit_request_response = 1;
+
         len = SMB2_IOCTL_REPLY_SIZE & 0xfffffffe;
         buf = calloc(len, sizeof(uint8_t));
         if (buf == NULL) {
@@ -138,14 +141,15 @@ smb2_encode_ioctl_reply(struct smb2_context *smb2,
         smb2_set_uint32(iov, 4, rep->ctl_code);
         memcpy(iov->buf + 8, rep->file_id, SMB2_FD_SIZE);
         smb2_set_uint32(iov, 24, SMB2_HEADER_SIZE +
-                        (SMB2_IOCTL_REQUEST_SIZE & 0xfffffffe));
+                        (SMB2_IOCTL_REPLY_SIZE & 0xfffffffe));
         smb2_set_uint32(iov, 28, rep->input_count);
         smb2_set_uint32(iov, 32, SMB2_HEADER_SIZE +
-                        (SMB2_IOCTL_REQUEST_SIZE & 0xfffffffe) +
+                        (SMB2_IOCTL_REPLY_SIZE & 0xfffffffe) +
                         PAD_TO_64BIT(rep->input_count));
         smb2_set_uint32(iov, 36, rep->output_count);
         smb2_set_uint32(iov, 40, rep->flags);
 
+        /*
         if (rep->input_count) {
                 len = PAD_TO_64BIT(rep->input_count);
                 buf = malloc(len);
@@ -157,7 +161,7 @@ smb2_encode_ioctl_reply(struct smb2_context *smb2,
                 memset(buf + rep->input_count, 0, len - rep->input_count);
                 iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
         }
-
+        */
         if (rep->output_count) {
                 len = PAD_TO_64BIT(rep->output_count);
                 buf = malloc(len);
@@ -289,7 +293,7 @@ smb2_process_ioctl_variable(struct smb2_context *smb2,
         return 0;
 }
 
-#define IOVREQ_OFFSET (req->output_offset - SMB2_HEADER_SIZE - \
+#define IOVREQ_OFFSET (req->input_offset - SMB2_HEADER_SIZE - \
                     (SMB2_IOCTL_REQUEST_SIZE & 0xfffe))
 
 int
@@ -319,13 +323,13 @@ smb2_process_ioctl_request_fixed(struct smb2_context *smb2,
 
         smb2_get_uint32(iov, 4, &req->ctl_code);
         memcpy(req->file_id, iov->buf + 8, SMB2_FD_SIZE);
-        smb2_get_uint32(iov, 32, &req->input_offset);
-        smb2_get_uint32(iov, 36, &req->input_count);
-        smb2_get_uint32(iov, 40, &req->max_input_response);
-        smb2_get_uint32(iov, 44, &req->output_offset);
-        smb2_get_uint32(iov, 48, &req->output_count);
-        smb2_get_uint32(iov, 52, &req->max_output_response);
-        smb2_get_uint32(iov, 56, &req->flags);
+        smb2_get_uint32(iov, 24, &req->input_offset);
+        smb2_get_uint32(iov, 28, &req->input_count);
+        smb2_get_uint32(iov, 32, &req->max_input_response);
+        smb2_get_uint32(iov, 40, &req->output_offset);
+        smb2_get_uint32(iov, 44, &req->output_count);
+        smb2_get_uint32(iov, 48, &req->max_output_response);
+        smb2_get_uint32(iov, 52, &req->flags);
 
         if (req->input_count == 0) {
                 return 0;

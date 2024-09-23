@@ -2896,6 +2896,13 @@ smb2_lock_request_cb(struct smb2_server *server, struct smb2_context *smb2, void
         }        
 }
 
+struct  validate_neg_info {
+        uint32_t caps;
+        uint8_t  guid[16];
+        uint16_t security_mode;
+        uint16_t dialect;
+} __attribute__((__packed__));
+
 static void
 smb2_ioctl_request_cb(struct smb2_server *server, struct smb2_context *smb2, void *command_data, void *cb_data)
 {
@@ -2905,17 +2912,38 @@ smb2_ioctl_request_cb(struct smb2_server *server, struct smb2_context *smb2, voi
         struct smb2_pdu *pdu;
         int ret = -1;
         
-        if (server->handlers && server->handlers->ioctl) {
-                ret = server->handlers->ioctl(server, smb2, req, &rep);
-        }
-        if (!ret) {
+        if (req->ctl_code == SMB2_FSCTL_VALIDATE_NEGOTIATE_INFO) {
+                //struct validate_neg_info *in_info;
+                struct validate_neg_info out_info;
+
+                memset(&rep, 0, sizeof(rep));
+                rep.ctl_code = req->ctl_code;
+                memcpy(rep.file_id, req->file_id, SMB2_FD_SIZE);
+                //in_info = (struct validate_neg_info *)req->input;
+                out_info.caps = SMB2_GLOBAL_CAP_LARGE_MTU|
+                                SMB2_GLOBAL_CAP_ENCRYPTION;
+                out_info.security_mode      = SMB2_NEGOTIATE_SIGNING_ENABLED |
+                     (smb2->sign ? SMB2_NEGOTIATE_SIGNING_REQUIRED : 0);
+                memcpy(out_info.guid, server->guid, 16);
+                out_info.dialect = smb2->dialect;
+                rep.output_count = sizeof(out_info);
+                rep.output = &out_info;
+                        
                 pdu = smb2_cmd_ioctl_reply_async(smb2, &rep, NULL, cb_data);
         }
         else {
-                memset(&err, 0, sizeof(err));
-                pdu = smb2_cmd_error_reply_async(smb2,
-                                &err, SMB2_IOCTL, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
-        }                        
+                if (server->handlers && server->handlers->ioctl) {
+                        ret = server->handlers->ioctl(server, smb2, req, &rep);
+                }
+                if (!ret) {
+                        pdu = smb2_cmd_ioctl_reply_async(smb2, &rep, NULL, cb_data);
+                }
+                else {
+                        memset(&err, 0, sizeof(err));
+                        pdu = smb2_cmd_error_reply_async(smb2,
+                                        &err, SMB2_IOCTL, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
+                }
+        }
         if (pdu != NULL) {
                 smb2_queue_pdu(smb2, pdu);                
         }        
@@ -3241,7 +3269,7 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
 static void
 smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
 {
-//        struct smb2_server *server = cb_data;
+        struct smb2_server *server = cb_data;
         struct smb2_negotiate_request *req = command_data;
         struct smb2_negotiate_reply rep;
         struct smb2_pdu *pdu;
@@ -3370,8 +3398,7 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
 
         rep.security_mode      = SMB2_NEGOTIATE_SIGNING_ENABLED |
                      (smb2->sign ? SMB2_NEGOTIATE_SIGNING_REQUIRED : 0);
-        rep.security_mode = 0; /// TODO
-        memcpy(rep.server_guid, "libsmb2-srvrguid", 16); /// TODO
+        memcpy(rep.server_guid, server->guid, 16); /// TODO
         rep.max_transact_size  = smb2->max_transact_size;;
         rep.max_read_size      = smb2->max_read_size;
         rep.max_write_size     = smb2->max_write_size;
@@ -3477,6 +3504,9 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
                 server->max_transact_size = 0x100000;
                 server->max_read_size = 0x100000;
                 server->max_write_size = 0x100000;
+        }
+        if (!server->guid[0]) {
+                memcpy(server->guid, "libsmb2-srvrguid", 16);
         }
         
         err = smb2_bind_and_listen(server->port, max_connections, &server->fd);

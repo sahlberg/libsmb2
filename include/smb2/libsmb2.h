@@ -1123,6 +1123,7 @@ struct smb2_server_request_handlers {
 };
 
 struct smb2_server {
+        uint8_t guid[16];
         int fd;
         uint16_t port;
         struct smb2_server_request_handlers *handlers;

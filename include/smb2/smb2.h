@@ -917,7 +917,6 @@ struct smb2_ioctl_reply {
         uint32_t output_offset;
         uint32_t output_count;
         uint32_t flags;
-        void *input;
         void *output;
 };
 
