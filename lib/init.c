@@ -491,7 +491,7 @@ void smb2_set_security_mode(struct smb2_context *smb2, uint16_t security_mode)
 }
 
 #if !defined(_XBOX) && !defined(_IOP) && !defined(__amigaos4__) && !defined(__AMIGA__) && !defined(__AROS__)
-static void smb2_set_password_from_file(struct smb2_context *smb2)
+void smb2_set_password_from_file(struct smb2_context *smb2)
 {
         char *name = NULL;
         FILE *fh;

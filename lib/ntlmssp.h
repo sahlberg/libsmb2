@@ -54,13 +54,13 @@ ntlmssp_get_message_type(struct smb2_context *smb2,
                       int *is_wrapped);
 
 int
-ntlmssp_generate_blob(struct smb2_context *smb2, time_t t,
+ntlmssp_generate_blob(struct smb2_server *server, struct smb2_context *smb2, time_t t,
                       struct auth_data *auth_data,
                       unsigned char *input_buf, int input_len,
                       unsigned char **output_buf, uint16_t *output_len);
 
 int
-ntlmssp_authenticate_blob(struct smb2_context *smb2,
+ntlmssp_authenticate_blob(struct smb2_server *server, struct smb2_context *smb2,
                       struct auth_data *auth_data,
                       unsigned char *input_buf, int input_len);
                       

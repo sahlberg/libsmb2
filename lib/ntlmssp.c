@@ -772,7 +772,7 @@ finished:
 }
 
 int
-ntlmssp_generate_blob(struct smb2_context *smb2, time_t t,
+ntlmssp_generate_blob(struct smb2_server *server, struct smb2_context *smb2, time_t t,
                       struct auth_data *auth_data,
                       unsigned char *input_buf, int input_len,
                       unsigned char **output_buf, uint16_t *output_len)
@@ -828,7 +828,8 @@ ntlmssp_generate_blob(struct smb2_context *smb2, time_t t,
                                 }
                         }
                         else if (cmd == AUTHENTICATION_MESSAGE) {
-                                auth_data->is_authenticated = !ntlmssp_authenticate_blob(smb2, auth_data,
+                                auth_data->is_authenticated = !ntlmssp_authenticate_blob(server, 
+                                                        smb2, auth_data,
                                                         ntlmssp, ntlmssp_len);
                                 if (auth_data->spnego_wrap) {
                                         spnego_len = smb2_spnego_wrap_authenticate_result(smb2,
@@ -897,7 +898,7 @@ ntlmssp_get_utf16_field(uint8_t *input_buf, int input_len, int offset, char **re
 }
 
 int
-ntlmssp_authenticate_blob(struct smb2_context *smb2,
+ntlmssp_authenticate_blob(struct smb2_server *server, struct smb2_context *smb2,
                       struct auth_data *auth_data,
                       unsigned char *input_buf, int input_len)
 {
@@ -927,6 +928,22 @@ ntlmssp_authenticate_blob(struct smb2_context *smb2,
         ntlmssp_get_utf16_field(input_buf, input_len, 4*11, &auth_data->workstation);
         memcpy(&u32, &input_buf[4*15], 4);
         
+        /* call server handler to get pw for this user */
+        if (server && server->handlers) {
+                if(server->handlers->authorize(server, smb2,
+                                auth_data->user,
+                                auth_data->domain,
+                                auth_data->workstation)) {
+                        printf("server handler said no auth for %s, fail\n",
+                                auth_data->user);
+                        return -1;
+                }
+                if (!smb2->password) {
+                        printf("no pw for user %s, fail\n", 
+                                auth_data->user);
+                        return -1;
+                }
+        }
         /* if no user/pw, an anonymous allowed, do anonymous */
         if (!auth_data->user || (auth_data->user[0] == '\0')) {
                 return 0;
@@ -959,10 +976,12 @@ ntlmssp_authenticate_blob(struct smb2_context *smb2,
                 printf("bad challenge len %u\n", challenge_len);
                 return -1;
         }
-        if (NTOWFv2(auth_data->user, auth_data->password,
+        if (NTOWFv2(auth_data->user, smb2->password,
                     auth_data->domain, ResponseKeyNT) < 0) {
                 return -1;
         }
+        /* wipe pw out now that its been used */
+        smb2_set_password(smb2, "");
         auth_data->len = 0;
         if (encoder(auth_data->server_challenge, 8, auth_data)) {
                 return -1;
@@ -978,6 +997,7 @@ ntlmssp_authenticate_blob(struct smb2_context *smb2,
 
         /* verify ntproof */
         if (memcmp(NTProofStr, response, 16)) {
+                printf("proof mismatch, fail auth\n");
                 goto fail;
         }
         smb2_hmac_md5(NTProofStr, 16, ResponseKeyNT, 16, key_exch);

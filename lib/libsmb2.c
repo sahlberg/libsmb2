@@ -152,6 +152,9 @@ struct connect_data {
         struct smb2_utf16 *utf16_unc;
 
         void *auth_data;
+        
+        /* if context is being served by our server */
+        struct smb2_server *server_context;
 };
 
 struct smb2_dirent_internal {
@@ -813,7 +816,7 @@ send_session_setup_request(struct smb2_context *smb2,
         req.security_mode = (uint8_t)smb2->security_mode;
 
         if (smb2->sec == SMB2_SEC_NTLMSSP) {
-                if (ntlmssp_generate_blob(smb2, time(NULL), c_data->auth_data,
+                if (ntlmssp_generate_blob(NULL, smb2, time(NULL), c_data->auth_data,
                                           buf, len,
                                           &req.security_buffer,
                                           &req.security_buffer_length) < 0) {
@@ -3069,7 +3072,8 @@ smb2_query_info_request_cb(struct smb2_server *server, struct smb2_context *smb2
 static void
 smb2_general_client_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
 {
-        struct smb2_server *server = cb_data;
+        struct connect_data *c_data = cb_data;
+        struct smb2_server *server = c_data->server_context;
         
         if (!smb2->pdu) {
                 smb2_set_error(smb2, "No pdu for general client request");
@@ -3137,7 +3141,8 @@ smb2_general_client_request_cb(struct smb2_context *smb2, int status, void *comm
 static void
 smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
 {
-        struct smb2_server *server = cb_data;
+        struct connect_data *c_data = cb_data;
+        struct smb2_server *server = c_data->server_context;
         struct smb2_session_setup_request *req = command_data;
         struct smb2_session_setup_reply rep;
         struct smb2_pdu *pdu;
@@ -3169,26 +3174,33 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                 }
                 /* set error code in header - more processing required if negotiate req not auth req */
                 if (message_type == NEGOTIATE_MESSAGE) {
-                        if (server->auth_data) {
-                                ntlmssp_destroy_context(server->auth_data);
+                        if (c_data->auth_data) {
+                                ntlmssp_destroy_context(c_data->auth_data);
                         }
-                        server->auth_data = ntlmssp_init_context("sotero", "smbproxy", "WORKGROUP", "BDODGE-UBUNTU-2",
-                                                         smb2->client_challenge);
+                        c_data->auth_data = ntlmssp_init_context(
+                                        "",
+                                        "",
+                                        "",
+                                        "",
+                                        smb2->client_challenge
+                                        );
                         /* alloc a pdu for next request */
-                        smb2->next_pdu = smb2_allocate_pdu(smb2, SMB2_SESSION_SETUP, smb2_session_setup_request_cb, cb_data);
+                        smb2->next_pdu = smb2_allocate_pdu(smb2, SMB2_SESSION_SETUP,
+                                       smb2_session_setup_request_cb, cb_data);
                         more_processing_needed = 1;
                         smb2->session_id = 0xdeadbeef;
                 }
                 else if (message_type == AUTHENTICATION_MESSAGE) {
                         /* alloc a pdu for next request (not really required to get tree connect) */
-                        smb2->next_pdu = smb2_allocate_pdu(smb2, SMB2_TREE_CONNECT, smb2_general_client_request_cb, cb_data);
+                        smb2->next_pdu = smb2_allocate_pdu(smb2, SMB2_TREE_CONNECT,
+                                       smb2_general_client_request_cb, cb_data);
                 }
                 else {
                         smb2_set_error(smb2, "Unexpected ntlmssp msg code %08X", message_type);
                         smb2_close_context(smb2);
                         return;
                 }
-                if (ntlmssp_generate_blob(smb2, 0, server->auth_data,
+                if (ntlmssp_generate_blob(server, smb2, 0, c_data->auth_data,
                                           req->security_buffer, req->security_buffer_length,
                                           &rep.security_buffer,
                                           &rep.security_buffer_length) < 0) {
@@ -3196,12 +3208,12 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                         return;
                 }
                 if (message_type == AUTHENTICATION_MESSAGE) {
-                        if (!ntlmssp_get_authenticated(server->auth_data)) {
+                        if (!ntlmssp_get_authenticated(c_data->auth_data)) {
                                 smb2_set_error(smb2, "Authentication failed", smb2_get_error(smb2));
                                 smb2_close_context(smb2);
                                 return;
                         }
-                        if (ntlmssp_get_session_key(server->auth_data,
+                        if (ntlmssp_get_session_key(c_data->auth_data,
                                                     &smb2->session_key,
                                                     &smb2->session_key_size) < 0) {
                                 have_valid_session_key = 0;
@@ -3268,7 +3280,8 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
 static void
 smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
 {
-        struct smb2_server *server = cb_data;
+        struct connect_data *c_data = cb_data;
+        struct smb2_server *server = c_data->server_context;
         struct smb2_negotiate_request *req = command_data;
         struct smb2_negotiate_reply rep;
         struct smb2_pdu *pdu;
@@ -3474,7 +3487,7 @@ accept_cb(const int fd, void *cb_data)
         else {
                 *psmb2 = smb2;
                 /* put client fd into connecting fd array (todo? for now just set fd) */
-                smb2->fd = fd;
+                smb2->fd = fd;        
                 err = 0;
         }
 
@@ -3491,13 +3504,15 @@ int smb2_serve_port_async(const int fd, const int to_msecs, struct smb2_context 
 
 int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_client_connection cb, void *cb_data)
 {
-        int err = -1;
         struct smb2_context *smb2;
+        struct connect_data *c_data = cb_data;
         fd_set rfds, wfds;
         int maxfd;
         int ready;
         short events;
         struct timeval timeout;
+        int err = -1;
+        static const char *default_domain = "WORKGROUP";
 
         if (!server->max_transact_size) {
                 server->max_transact_size = 0x100000;
@@ -3506,6 +3521,13 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
         }
         if (!server->guid[0]) {
                 memcpy(server->guid, "libsmb2-srvrguid", 16);
+        }
+        if (!server->hostname[0]) {
+                gethostname(server->hostname, sizeof(server->hostname));
+        }
+        if (!server->domain[0]) {
+                strncpy(server->domain, default_domain,
+                               MIN(sizeof(server->domain),strlen(default_domain) + 1));
         }
         
         err = smb2_bind_and_listen(server->port, max_connections, &server->fd);
@@ -3585,8 +3607,16 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
                                 smb2 = NULL;
                                 err = smb2_serve_port_async(server->fd, 10, &smb2);
                                 if (!err && smb2) {
+                                        c_data = calloc(1, sizeof(struct connect_data));
+                                        if (c_data == NULL) {
+                                                smb2_set_error(smb2, "Failed to allocate connect_data");
+                                                smb2_close_context(smb2);
+                                        }
+                                        c_data->server_context = server;
+                                        smb2->connect_data = c_data;
+                                        
                                         /* alloc a pdu for first server request */
-                                        smb2->pdu = smb2_allocate_pdu(smb2, SMB2_NEGOTIATE, smb2_negotiate_request_cb, server);
+                                        smb2->pdu = smb2_allocate_pdu(smb2, SMB2_NEGOTIATE, smb2_negotiate_request_cb, c_data);
                                         if (!smb2->pdu) {
                                                 smb2_set_error(smb2, "can not alloc pdu for request");
                                                 smb2_close_context(smb2);

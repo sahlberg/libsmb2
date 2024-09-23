@@ -316,6 +316,11 @@ void smb2_set_user(struct smb2_context *smb2, const char *user);
  * This function is only needed when libsmb2 is built --without-libkrb5
  */
 void smb2_set_password(struct smb2_context *smb2, const char *password);
+
+#if !defined(_XBOX) && !defined(_IOP) && !defined(__amigaos4__) && !defined(__AMIGA__) && !defined(__AROS__)
+void smb2_set_password_from_file(struct smb2_context *smb2);
+#endif
+
 /*
  * Set the domain when authenticating.
  * This function is only needed when libsmb2 is built --without-libkrb5
@@ -1085,6 +1090,10 @@ const char *smb2_utf16_to_utf8(const uint16_t *str, size_t len);
 struct smb2_server;
 
 struct smb2_server_request_handlers {
+        int (*authorize)(struct smb2_server *srvr, struct smb2_context *smb2,
+                            const char *user,
+                            const char *domain,
+                            const char *workstation);
         int (*session)(struct smb2_server *srvr, struct smb2_context *smb2);
         int (*logoff)(struct smb2_server *srvr, struct smb2_context *smb2);
         int (*tree_connect)(struct smb2_server *srvr, struct smb2_context *smb2,
@@ -1124,13 +1133,14 @@ struct smb2_server_request_handlers {
 
 struct smb2_server {
         uint8_t guid[16];
+        char hostname[128];
+        char domain[128];
         int fd;
         uint16_t port;
         struct smb2_server_request_handlers *handlers;
         uint32_t max_transact_size;
         uint32_t max_read_size;
         uint32_t max_write_size;
-        void *auth_data;
 };
 
 int smb2_bind_and_listen(const uint16_t port, const int max_connections, int *out_fd);
