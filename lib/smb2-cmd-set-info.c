@@ -66,6 +66,7 @@ smb2_encode_set_info_request(struct smb2_context *smb2,
         uint8_t *buf;
         struct smb2_iovec *iov;
         struct smb2_file_end_of_file_info *eofi;
+        struct smb2_file_disposition_info *fdi;
         struct smb2_file_rename_info *rni;
         struct smb2_utf16 *name;
 
@@ -154,6 +155,22 @@ smb2_encode_set_info_request(struct smb2_context *smb2,
                         free(name);
 
                         break;
+                case SMB2_FILE_DISPOSITION_INFORMATION:
+                        len = 1;                       
+                        smb2_set_uint32(iov, 4, len); /* buffer length */
+                        
+                        buf = calloc(len, sizeof(uint8_t));
+                        if (buf == NULL) {
+                                smb2_set_error(smb2, "Failed to allocate set "
+                                               "info data buffer");
+                                return -1;
+                        }
+                        iov = smb2_add_iovector(smb2, &pdu->out, buf, len,
+                                                free);
+                        
+                        fdi = req->input_data;
+                        smb2_set_uint8(iov, 0, fdi->delete_pending);
+                        break;
                 default:
                         smb2_set_error(smb2, "Can not enccode info_type/"
                                        "info_class %d/%d yet",
@@ -162,6 +179,7 @@ smb2_encode_set_info_request(struct smb2_context *smb2,
                         return -1;
                 }
                 break;
+
         default:
                 smb2_set_error(smb2, "Can not encode file info_type %d yet",
                                req->info_type);
