@@ -3075,8 +3075,6 @@ smb2_general_client_request_cb(struct smb2_context *smb2, int status, void *comm
                 smb2_close_context(smb2);
                 return;
         }
-        /*printf("cmd %d\n", smb2->pdu->header.command);*/
-
         switch (smb2->pdu->header.command) {
         case SMB2_LOGOFF:
                 smb2_logoff_request_cb(server, smb2, command_data, cb_data);
@@ -3323,11 +3321,6 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
                 for (dialect_index = req->dialect_count - 1;
                                dialect_index >= 0; dialect_index--) {
                         for (int d = dialect_count - 1; d >= 0; d--) {
-                                /*
-                                printf("req dial[%d] = %04x   our dial[%d] = %04x\n",
-                                        dialect_index, req->dialects[dialect_index],
-                                        d, dialects[d]);
-                                */
                                 if (dialects[d] == req->dialects[dialect_index]) {
                                         smb2->dialect = dialects[d];
                                         break;
