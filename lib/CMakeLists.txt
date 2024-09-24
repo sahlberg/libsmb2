@@ -7,6 +7,7 @@ if(ESP_PLATFORM)
     aes.c
     aes128ccm.c
     alloc.c
+    asn1-ber.c
     compat.c
     dcerpc.c
     dcerpc-lsa.c
@@ -68,6 +69,7 @@ elseif(IOP AND BUILD_IRX)
             aes.c
             aes128ccm.c
             alloc.c
+            asn1-ber.c
             compat.c
             dcerpc.c
             dcerpc-lsa.c
@@ -122,6 +124,7 @@ else()
   set(SOURCES aes.c
             aes128ccm.c
             alloc.c
+            asn1-ber.c
             compat.c
             dcerpc.c
             dcerpc-lsa.c
