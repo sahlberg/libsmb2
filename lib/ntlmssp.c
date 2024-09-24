@@ -166,10 +166,18 @@ ntlmssp_init_context(const char *user,
                 return NULL;
         }
 
-        auth_data->user        = strdup(user);
-        auth_data->password    = strdup(password);
-        auth_data->domain      = strdup(domain);
-        auth_data->workstation = strdup(workstation);
+        if (user) {
+                auth_data->user        = strdup(user);
+        }
+        if (password) {
+                auth_data->password    = strdup(password);
+        }
+        if (domain) {
+                auth_data->domain      = strdup(domain);
+        }
+        if (workstation) {
+                auth_data->workstation = strdup(workstation);
+        }
         auth_data->client_challenge = malloc(8);
         memcpy(auth_data->client_challenge, client_challenge, 8);
         auth_data->is_authenticated = 0;

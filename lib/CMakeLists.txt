@@ -7,6 +7,7 @@ if(ESP_PLATFORM)
     aes.c
     aes128ccm.c
     alloc.c
+    asn1-ber.c
     compat.c
     dcerpc.c
     dcerpc-lsa.c
@@ -30,6 +31,7 @@ if(ESP_PLATFORM)
     smb2-cmd-error.c
     smb2-cmd-flush.c
     smb2-cmd-ioctl.c
+    smb2-cmd-lock.c
     smb2-cmd-logoff.c
     smb2-cmd-negotiate.c
     smb2-cmd-query-directory.c
@@ -48,6 +50,7 @@ if(ESP_PLATFORM)
     smb3-seal.c
     smb2-signing.c
     socket.c
+    spnego-wrapper.c
     sync.c
     timestamps.c
     unicode.c
@@ -66,6 +69,7 @@ elseif(IOP AND BUILD_IRX)
             aes.c
             aes128ccm.c
             alloc.c
+            asn1-ber.c
             compat.c
             dcerpc.c
             dcerpc-lsa.c
@@ -89,6 +93,7 @@ elseif(IOP AND BUILD_IRX)
             smb2-cmd-error.c
             smb2-cmd-flush.c
             smb2-cmd-ioctl.c
+            smb2-cmd-lock.c
             smb2-cmd-logoff.c
             smb2-cmd-negotiate.c
             smb2-cmd-query-directory.c
@@ -107,6 +112,7 @@ elseif(IOP AND BUILD_IRX)
 	    smb3-seal.c
 	    smb2-signing.c
             socket.c
+	    spnego-wrapper.c
             sync.c
             timestamps.c
             unicode.c
@@ -118,6 +124,7 @@ else()
   set(SOURCES aes.c
             aes128ccm.c
             alloc.c
+            asn1-ber.c
             compat.c
             dcerpc.c
             dcerpc-lsa.c
@@ -141,6 +148,7 @@ else()
             smb2-cmd-error.c
             smb2-cmd-flush.c
             smb2-cmd-ioctl.c
+            smb2-cmd-lock.c
             smb2-cmd-logoff.c
             smb2-cmd-negotiate.c
             smb2-cmd-query-directory.c
@@ -159,6 +167,7 @@ else()
 	    smb3-seal.c
 	    smb2-signing.c
             socket.c
+	    spnego-wrapper.c
             sync.c
             timestamps.c
             unicode.c
