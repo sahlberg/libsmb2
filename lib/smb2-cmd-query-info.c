@@ -154,9 +154,10 @@ smb2_encode_query_info_reply(struct smb2_context *smb2,
         if (rep->output_buffer_length > 0 && rep->output_buffer) {
                 len = rep->output_buffer_length;
                 len = PAD_TO_32BIT(len);
+                
                 /* not sure exactly how long the encoding will be, some of the,
                  * include variable data so add a whole lot of space */
-                buf = malloc(1024);
+                buf = malloc(len + 1024);
                 if (buf == NULL) {
                         smb2_set_error(smb2, "Failed to allocate output buffer");
                         return -1;
@@ -165,77 +166,84 @@ smb2_encode_query_info_reply(struct smb2_context *smb2,
                                         buf,
                                         len,
                                         free);
-                rep->output_buffer_length = 0;
-                switch (info_type) {
-                case SMB2_0_INFO_FILE:
-                        switch (file_info_class) {
-                        case SMB2_FILE_BASIC_INFORMATION:
-                                smb2_encode_file_basic_info(smb2,
-                                                (struct smb2_file_basic_info *)rep->output_buffer, iov);
-                                rep->output_buffer_length = iov->len;
-                                break;
-                        case SMB2_FILE_STANDARD_INFORMATION:
-                                smb2_encode_file_standard_info(smb2,
-                                                (struct smb2_file_standard_info *)rep->output_buffer, iov);
-                                rep->output_buffer_length = iov->len;
-                                break;
-                        case SMB2_FILE_RENAME_INFORMATION:
-                                break;
-                        case SMB2_FILE_ALL_INFORMATION:
-                                smb2_encode_file_all_info(smb2,
-                                                (struct smb2_file_all_info *)rep->output_buffer, iov);
-                                rep->output_buffer_length = iov->len;
-                                break;
-                        case SMB2_FILE_NETWORK_OPEN_INFORMATION:
-                                smb2_encode_file_network_open_info(smb2,
-                                                (struct smb2_file_network_open_info *)rep->output_buffer, iov);
-                                rep->output_buffer_length = iov->len;
-                                break;
-                        case SMB2_FILE_END_OF_FILE_INFORMATION:
-                                break;
-                        default:
-                                break;
-                        }
-                        break;
-                case SMB2_0_INFO_FILESYSTEM:
-                        switch (file_info_class) {
-                        case SMB2_FILE_FS_VOLUME_INFORMATION:
-                                break;
-                        case SMB2_FILE_FS_SIZE_INFORMATION:
-                                smb2_encode_file_fs_size_info(smb2,
-                                                (struct smb2_file_fs_size_info *)rep->output_buffer, iov);
-                                rep->output_buffer_length = iov->len;
-                                break;
-                        case SMB2_FILE_FS_DEVICE_INFORMATION:
-                                smb2_encode_file_fs_device_info(smb2,
-                                                (struct smb2_file_fs_device_info *)rep->output_buffer, iov);
-                                rep->output_buffer_length = iov->len;
-                                break;
-                        case SMB2_FILE_FS_ATTRIBUTE_INFORMATION:
-                                smb2_encode_file_fs_attribute_info(smb2,
-                                                (struct smb2_file_fs_attribute_info *)rep->output_buffer, iov);
-                                rep->output_buffer_length = iov->len;
-                                break;
-                        case SMB2_FILE_FS_CONTROL_INFORMATION:
-                                break;
-                        case SMB2_FILE_FS_FULL_SIZE_INFORMATION:
-                                break;
-                        case SMB2_FILE_FS_SECTOR_SIZE_INFORMATION:
-                                break;
-                        default:
-                                len = -1;
-                                break;
-                        }
-                        break;
-                case SMB2_0_INFO_SECURITY:
-                        break;
-                case SMB2_0_INFO_QUOTA:
-                        break;
-                default:
-                        return 0;
+                                        
+                if (rep->raw_output) {
+                        memcpy(buf, rep->output_buffer, rep->output_buffer_length);
+                        memset(buf + rep->output_buffer_length, 0, len - rep->output_buffer_length);
                 }
-                free(rep->output_buffer);
-                rep->output_buffer = NULL;
+                else {
+                        rep->output_buffer_length = 0;
+                        switch (info_type) {
+                        case SMB2_0_INFO_FILE:
+                                switch (file_info_class) {
+                                case SMB2_FILE_BASIC_INFORMATION:
+                                        smb2_encode_file_basic_info(smb2,
+                                                        (struct smb2_file_basic_info *)rep->output_buffer, iov);
+                                        rep->output_buffer_length = iov->len;
+                                        break;
+                                case SMB2_FILE_STANDARD_INFORMATION:
+                                        smb2_encode_file_standard_info(smb2,
+                                                        (struct smb2_file_standard_info *)rep->output_buffer, iov);
+                                        rep->output_buffer_length = iov->len;
+                                        break;
+                                case SMB2_FILE_RENAME_INFORMATION:
+                                        break;
+                                case SMB2_FILE_ALL_INFORMATION:
+                                        smb2_encode_file_all_info(smb2,
+                                                        (struct smb2_file_all_info *)rep->output_buffer, iov);
+                                        rep->output_buffer_length = iov->len;
+                                        break;
+                                case SMB2_FILE_NETWORK_OPEN_INFORMATION:
+                                        smb2_encode_file_network_open_info(smb2,
+                                                        (struct smb2_file_network_open_info *)rep->output_buffer, iov);
+                                        rep->output_buffer_length = iov->len;
+                                        break;
+                                case SMB2_FILE_END_OF_FILE_INFORMATION:
+                                        break;
+                                default:
+                                        break;
+                                }
+                                break;
+                        case SMB2_0_INFO_FILESYSTEM:
+                                switch (file_info_class) {
+                                case SMB2_FILE_FS_VOLUME_INFORMATION:
+                                        break;
+                                case SMB2_FILE_FS_SIZE_INFORMATION:
+                                        smb2_encode_file_fs_size_info(smb2,
+                                                        (struct smb2_file_fs_size_info *)rep->output_buffer, iov);
+                                        rep->output_buffer_length = iov->len;
+                                        break;
+                                case SMB2_FILE_FS_DEVICE_INFORMATION:
+                                        smb2_encode_file_fs_device_info(smb2,
+                                                        (struct smb2_file_fs_device_info *)rep->output_buffer, iov);
+                                        rep->output_buffer_length = iov->len;
+                                        break;
+                                case SMB2_FILE_FS_ATTRIBUTE_INFORMATION:
+                                        smb2_encode_file_fs_attribute_info(smb2,
+                                                        (struct smb2_file_fs_attribute_info *)rep->output_buffer, iov);
+                                        rep->output_buffer_length = iov->len;
+                                        break;
+                                case SMB2_FILE_FS_CONTROL_INFORMATION:
+                                        break;
+                                case SMB2_FILE_FS_FULL_SIZE_INFORMATION:
+                                        break;
+                                case SMB2_FILE_FS_SECTOR_SIZE_INFORMATION:
+                                        break;
+                                default:
+                                        len = -1;
+                                        break;
+                                }
+                                break;
+                        case SMB2_0_INFO_SECURITY:
+                                break;
+                        case SMB2_0_INFO_QUOTA:
+                                break;
+                        default:
+                                return 0;
+                        }
+                        free(rep->output_buffer);
+                        rep->output_buffer = NULL;
+                }
         }
 
         smb2_set_uint32(cmdiov, 4, rep->output_buffer_length);
@@ -336,8 +344,7 @@ smb2_process_query_info_fixed(struct smb2_context *smb2,
         return IOV_OFFSET + rep->output_buffer_length;
 }
 
-int
-smb2_process_query_info_variable(struct smb2_context *smb2,
+int smb2_process_query_info_variable(struct smb2_context *smb2,
                                  struct smb2_pdu *pdu)
 {
         struct smb2_query_info_reply *rep = pdu->payload;
@@ -345,7 +352,7 @@ smb2_process_query_info_variable(struct smb2_context *smb2,
         struct smb2_iovec vec = {&iov->buf[IOV_OFFSET],
                                  iov->len - IOV_OFFSET,
                                  NULL};
-        void *ptr;
+        void *ptr = NULL;
 
         switch (pdu->info_type) {
         case SMB2_0_INFO_FILE:

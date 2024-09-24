@@ -264,6 +264,13 @@ struct smb2_pdu {
         uint8_t info_type;
         uint8_t file_info_class;
 
+        /* for smb proxy use, pdu in-iovs (except first) are copied to out-iovs
+         * on send if this bit is set (even if the input is decoded).
+         * the presence of more than one out-iov suppresses this since it indicates
+         * a handler has re-encoded the contents
+         */
+        uint8_t passthrough:1;
+        
         /* For encrypted PDUs */
         uint8_t seal:1;
         uint32_t crypt_len;
