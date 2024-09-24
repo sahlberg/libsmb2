@@ -1141,6 +1141,9 @@ struct smb2_server {
         uint32_t max_transact_size;
         uint32_t max_read_size;
         uint32_t max_write_size;
+        /* saved from negotiate to be used in validate negotiate info */
+        uint32_t capabilities;
+        uint32_t security_mode;
 };
 
 int smb2_bind_and_listen(const uint16_t port, const int max_connections, int *out_fd);

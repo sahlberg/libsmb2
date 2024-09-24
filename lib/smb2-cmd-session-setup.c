@@ -168,7 +168,6 @@ smb2_encode_session_setup_reply(struct smb2_context *smb2,
                                         len,
                                         free);
         }
-        
         /// TODO append neg contexts?
         return 0;
 }

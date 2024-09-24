@@ -63,8 +63,8 @@ smb2_encode_preauth_context(struct smb2_context *smb2, struct smb2_pdu *pdu)
         struct smb2_iovec *iov;
 
         /* Preauth integrity capability */
-        data_len = PAD_TO_64BIT(38);
-        len = 8 + data_len;
+        data_len = 38;
+        len = 8 + PAD_TO_64BIT(38);
         buf = malloc(len);
         if (buf == NULL) {
                 smb2_set_error(smb2, "Failed to allocate preauth context");
@@ -201,7 +201,7 @@ smb2_encode_negotiate_reply(struct smb2_context *smb2,
                               struct smb2_negotiate_reply *rep)
 {
         uint8_t *buf;
-        int len;
+        int len, seclen;
         struct smb2_iovec *iov;
 
         pdu->header.flags |= SMB2_FLAGS_SERVER_TO_REDIR;
@@ -219,17 +219,32 @@ smb2_encode_negotiate_reply(struct smb2_context *smb2,
         }
         buf = calloc(len, sizeof(uint8_t));
         if (buf == NULL) {
-                smb2_set_error(smb2, "Failed to allocate negotiate buffer");
+                smb2_set_error(smb2, "Failed to allocate negotiate reply buffer");
                 return -1;
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
 
+        if (rep->security_buffer_length) {
+                seclen = rep->security_buffer_length;
+                seclen = PAD_TO_64BIT(len);
+                /* Security buffer */
+                buf = malloc(seclen);
+                if (buf == NULL) {
+                        smb2_set_error(smb2, "Failed to allocate secbuf");
+                        return -1;
+                }
+                memcpy(buf, rep->security_buffer, rep->security_buffer_length);
+                memset(buf + rep->security_buffer_length, 0, seclen - rep->security_buffer_length);
+                smb2_add_iovector(smb2, &pdu->out,
+                                        buf,
+                                        len,
+                                        free);
+        }
+        
         if (smb2->dialect == SMB2_VERSION_ANY ||
             smb2->dialect == SMB2_VERSION_ANY3 ||
             smb2->dialect == SMB2_VERSION_0311) {
-                rep->negotiate_context_offset = len + SMB2_HEADER_SIZE;
-
                 if (smb2_encode_preauth_context(smb2, pdu)) {
                         return -1;
                 }
@@ -240,7 +255,7 @@ smb2_encode_negotiate_reply(struct smb2_context *smb2,
                 }
                 rep->negotiate_context_count++;
         }
-
+        
         smb2_set_uint16(iov, 0, SMB2_NEGOTIATE_REPLY_SIZE);
         smb2_set_uint16(iov, 2, rep->security_mode);
         smb2_set_uint16(iov, 4, rep->dialect_revision);
@@ -256,26 +271,9 @@ smb2_encode_negotiate_reply(struct smb2_context *smb2,
         rep->security_buffer_offset = len + SMB2_HEADER_SIZE;
         smb2_set_uint16(iov, 56, rep->security_buffer_offset);
         smb2_set_uint16(iov, 58, rep->security_buffer_length);
+        rep->negotiate_context_offset = len + seclen + SMB2_HEADER_SIZE;
         smb2_set_uint32(iov, 60, rep->negotiate_context_offset);
                 
-        if (rep->security_buffer_length) {
-                len = rep->security_buffer_length;
-                len = PAD_TO_32BIT(len);
-                /* Security buffer */
-                buf = malloc(len);
-                if (buf == NULL) {
-                        smb2_set_error(smb2, "Failed to allocate secbuf");
-                        return -1;
-                }
-                memcpy(buf, rep->security_buffer, rep->security_buffer_length);
-                memset(buf + rep->security_buffer_length, 0, len - rep->security_buffer_length);
-                iov = smb2_add_iovector(smb2, &pdu->out,
-                                        buf,
-                                        len,
-                                        free);
-        }
-        
-        /// TODO append neg contexts?
         return 0;
 }
 
@@ -520,7 +518,6 @@ smb2_parse_encryption_request_context(struct smb2_context *smb2,
         return 0;
 }
 
-#include <stdio.h>
 static int
 smb2_parse_netname_request_context(struct smb2_context *smb2,
                               struct smb2_negotiate_request *req,

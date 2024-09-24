@@ -928,6 +928,16 @@ struct smb2_ioctl_reply {
         void *output;
 };
 
+#define SMB2_IOCTL_VALIDIATE_NEGOTIATE_INFO_SIZE 24
+
+struct  smb2_ioctl_validate_negotiate_info {
+        uint32_t capabilities;
+        uint8_t  guid[16];
+        uint16_t security_mode;
+        uint16_t dialect;
+};
+
+
 #define SMB2_WRITE_REQUEST_SIZE 49
 
 #define SMB2_WRITEFLAG_WRITE_THROUGH    0x00000001

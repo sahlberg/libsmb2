@@ -222,7 +222,13 @@ smb2_pdu_add_signature(struct smb2_context *smb2,
         int niov;
 
         if (pdu->header.command == SMB2_SESSION_SETUP) {
-                return 0;
+                /* the first sessopm setup response with ok status
+                 * is the first signed message
+                 */
+                if (pdu->header.status != 0 ||
+                                !(pdu->header.flags & SMB2_FLAGS_SERVER_TO_REDIR)) {
+                        return 0;
+                }
         }
         if (pdu->out.niov < 2) {
                 smb2_set_error(smb2, "Too few vectors to sign");

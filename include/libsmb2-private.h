@@ -127,6 +127,7 @@ struct smb2_context {
         enum smb2_sec sec;
 
         uint16_t security_mode;
+        uint32_t capabilities;
         int use_cached_creds;
 
         enum smb2_negotiate_version version;
