@@ -17,6 +17,9 @@ I_lwip_connect
 I_lwip_select
 I_inet_addr
 I_lwip_setsockopt
+I_lwip_bind
+I_lwip_accept
+I_lwip_listen
 ps2ip_IMPORTS_end
 
 intrman_IMPORTS_start

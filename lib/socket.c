@@ -713,7 +713,6 @@ static ssize_t smb2_readv_from_socket(struct smb2_context *smb2,
 {
         ssize_t rc = readv(smb2->fd, (struct iovec*) iov, iovcnt);
         
-        //printf("rc=%lu expecting %d of %lu\n", rc, iovcnt, iov->iov_len);
         return rc;
 }
 
@@ -878,7 +877,6 @@ smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
                                                  NULL, smb2->connect_data);
                                 smb2->connect_cb = NULL;
                         }
-                        printf("gso failed\n");
                         ret = -1;
                         goto out;
                 }

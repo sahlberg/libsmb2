@@ -16,7 +16,8 @@ noinst_PROGRAMS = smb2-cat-async smb2-cat-sync \
 	smb2-statvfs-sync \
 	smb2-truncate-sync \
 	smb2-rename-sync \
-	smb2-CMD-FIND
+	smb2-CMD-FIND	\
+	smb2-server-sync
 
 AM_CPPFLAGS = \
 	-I$(abs_top_srcdir)/include \
@@ -46,3 +47,5 @@ smb2_statvfs_sync_LDADD = $(COMMON_LIBS)
 smb2_truncate_sync_LDADD = $(COMMON_LIBS)
 smb2_rename_sync_LDADD = $(COMMON_LIBS)
 smb2_CMD_FIND_LDADD = $(COMMON_LIBS)
+smb2_server_sync_LDADD = $(COMMON_LIBS)
+

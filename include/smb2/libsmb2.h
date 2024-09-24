@@ -43,6 +43,13 @@ typedef void (*smb2_command_cb)(struct smb2_context *smb2, int status,
                                 void *command_data, void *cb_data);
 
 /*
+ * callback for getting error information when errors are set
+ * command_data depends on status.
+ */
+typedef void (*smb2_error_cb)(struct smb2_context *smb2,
+                                const char *error_string);
+
+/*
  * callback for server accepting a new connection
  */
 typedef int (*smb2_accepted_cb)(const int fd, void *cb_data);
@@ -277,6 +284,11 @@ struct smb2_libversion
 void smb2_get_libsmb2Version(struct smb2_libversion *smb2_ver);
 
 /*
+ * gets the (currently) negotiated dialect 
+ */
+uint16_t smb2_get_dialect(struct smb2_context *smb2);
+
+/*
  * Set the security mode for the connection.
  * This is a combination of the flags SMB2_NEGOTIATE_SIGNING_ENABLED
  * and  SMB2_NEGOTIATE_SIGNING_REQUIRED
@@ -317,6 +329,33 @@ void smb2_set_user(struct smb2_context *smb2, const char *user);
  */
 void smb2_set_password(struct smb2_context *smb2, const char *password);
 
+/*
+ * Convert a win timestamp to a unix timeval
+ */
+void smb2_win_to_timeval(uint64_t smb2_time, struct smb2_timeval *tv);
+
+/*
+ * Convert unit timeval to a win timestamp
+ */
+time_t smb2_timeval_to_win(struct smb2_timeval *tv);
+
+/*
+ * set the context error string
+ */
+void smb2_set_error(struct smb2_context *smb2,
+                    const char *error_string, ...);
+
+/*
+ * Register an error callback, so any calls to smb2_set_error will call this 
+ * function with the error string generated
+ */
+void smb2_register_error_callback(struct smb2_context *smb,
+                    smb2_error_cb error_cb);
+
+/*
+ * Set the smb2 context passworkd from a file (see NTLM_USER_FILE)
+ * depends on user/domain being already set in smb2 context
+ */
 #if !defined(_XBOX) && !defined(_IOP) && !defined(__amigaos4__) && !defined(__AMIGA__) && !defined(__AROS__)
 void smb2_set_password_from_file(struct smb2_context *smb2);
 #endif
@@ -1085,48 +1124,47 @@ struct smb2_utf16 *smb2_utf8_to_utf16(const char *utf8);
  */
 const char *smb2_utf16_to_utf8(const uint16_t *str, size_t len);
 
-
 /************* Server-side API **********************************************/
 struct smb2_server;
 
 struct smb2_server_request_handlers {
-        int (*authorize)(struct smb2_server *srvr, struct smb2_context *smb2,
+        int (*authorize_user)(struct smb2_server *srvr, struct smb2_context *smb2,
                             const char *user,
                             const char *domain,
                             const char *workstation);
-        int (*session)(struct smb2_server *srvr, struct smb2_context *smb2);
-        int (*logoff)(struct smb2_server *srvr, struct smb2_context *smb2);
-        int (*tree_connect)(struct smb2_server *srvr, struct smb2_context *smb2,
+        int (*session_established)(struct smb2_server *srvr, struct smb2_context *smb2);
+        int (*logoff_cmd)(struct smb2_server *srvr, struct smb2_context *smb2);
+        int (*tree_connect_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
                             struct smb2_tree_connect_request *req,
                             struct smb2_tree_connect_reply *rep,
                             uint32_t *tree_id);
-        int (*tree_disconnect)(struct smb2_server *srvr, struct smb2_context *smb2,
+        int (*tree_disconnect_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
                             const uint32_t tree_id);
-        int (*create)(struct smb2_server *srvr, struct smb2_context *smb2,
+        int (*create_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
                             struct smb2_create_request *req,
                             struct smb2_create_reply *rep);
-        int (*close)(struct smb2_server *srvr, struct smb2_context *smb2,
+        int (*close_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
                             struct smb2_close_request *req,
                             struct smb2_close_reply *rep);
-        int (*flush)(struct smb2_server *srvr, struct smb2_context *smb2,
+        int (*flush_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
                             struct smb2_flush_request *req);
-        int (*read)(struct smb2_server *srvr, struct smb2_context *smb2,
+        int (*read_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
                             struct smb2_read_request *req,
                             struct smb2_read_reply *rep);
-        int (*write)(struct smb2_server *srvr, struct smb2_context *smb2,
+        int (*write_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
                             struct smb2_write_request *req,
                             struct smb2_write_reply *rep);
-        int (*lock)(struct smb2_server *srvr, struct smb2_context *smb2,
+        int (*lock_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
                             struct smb2_lock_request *req);
-        int (*ioctl)(struct smb2_server *srvr, struct smb2_context *smb2,
+        int (*ioctl_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
                             struct smb2_ioctl_request *req,
                             struct smb2_ioctl_reply *rep);
-        int (*cancel)(struct smb2_server *srvr, struct smb2_context *smb2);
-        int (*echo)(struct smb2_server *srvr, struct smb2_context *smb2);
-        int (*query_directory)(struct smb2_server *srvr, struct smb2_context *smb2,
+        int (*cancel_cmd)(struct smb2_server *srvr, struct smb2_context *smb2);
+        int (*echo_cmd)(struct smb2_server *srvr, struct smb2_context *smb2);
+        int (*query_directory_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
                             struct smb2_query_directory_request *req,
                             struct smb2_query_directory_reply *rep);
-        int (*query_info)(struct smb2_server *srvr, struct smb2_context *smb2,
+        int (*query_info_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
                             struct smb2_query_info_request *req,
                             struct smb2_query_info_reply *rep);
 };
@@ -1141,6 +1179,9 @@ struct smb2_server {
         uint32_t max_transact_size;
         uint32_t max_read_size;
         uint32_t max_write_size;
+        /* saved from negotiate to be used in validate negotiate info */
+        uint32_t capabilities;
+        uint32_t security_mode;
 };
 
 int smb2_bind_and_listen(const uint16_t port, const int max_connections, int *out_fd);

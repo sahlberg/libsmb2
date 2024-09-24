@@ -123,7 +123,7 @@ smb2_encode_ioctl_reply(struct smb2_context *smb2,
 {
         int len;
         uint8_t *buf;
-        struct smb2_iovec *iov;
+        struct smb2_iovec *iov, *ioctlv;
 
         pdu->header.flags |= SMB2_FLAGS_SERVER_TO_REDIR;
         pdu->header.credit_request_response = 1;
@@ -137,6 +137,32 @@ smb2_encode_ioctl_reply(struct smb2_context *smb2,
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
 
+        ioctlv = NULL;
+        if (rep->output_count) {
+                switch (rep->ctl_code) {
+                case SMB2_FSCTL_VALIDATE_NEGOTIATE_INFO:
+                {
+                        len = SMB2_IOCTL_VALIDIATE_NEGOTIATE_INFO_SIZE;
+                        break;
+                }
+                default:
+                        smb2_set_error(smb2, "No handling of code %d", rep->ctl_code);
+                        len = 0;
+                        return -1;
+                        break;
+                }
+                len = PAD_TO_64BIT(len);
+                buf = malloc(len);
+                if (buf == NULL) {
+                        smb2_set_error(smb2, "Failed to allocate ioctl output");
+                        return -1;
+                }
+                memset(buf, 0, rep->output_count);
+                ioctlv = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+
+                rep->output_count = len;
+        }
+
         smb2_set_uint16(iov, 0, SMB2_IOCTL_REPLY_SIZE);
         smb2_set_uint32(iov, 4, rep->ctl_code);
         memcpy(iov->buf + 8, rep->file_id, SMB2_FD_SIZE);
@@ -146,34 +172,31 @@ smb2_encode_ioctl_reply(struct smb2_context *smb2,
         smb2_set_uint32(iov, 32, SMB2_HEADER_SIZE +
                         (SMB2_IOCTL_REPLY_SIZE & 0xfffffffe) +
                         PAD_TO_64BIT(rep->input_count));
-        smb2_set_uint32(iov, 36, rep->output_count);
+        smb2_set_uint32(iov, 36, len);
         smb2_set_uint32(iov, 40, rep->flags);
 
-        /*
-        if (rep->input_count) {
-                len = PAD_TO_64BIT(rep->input_count);
-                buf = malloc(len);
-                if (buf == NULL) {
-                        smb2_set_error(smb2, "Failed to allocate ioctl input");
-                        return -1;
+        if (rep->output_count && ioctlv) {
+                switch (rep->ctl_code) {
+                case SMB2_FSCTL_VALIDATE_NEGOTIATE_INFO:
+                {
+                        struct smb2_ioctl_validate_negotiate_info *info = 
+                                 (struct smb2_ioctl_validate_negotiate_info *)
+                                         rep->output;
+                        
+                        smb2_set_uint32(ioctlv, 0, info->capabilities);
+                        memcpy(&ioctlv->buf[4], info->guid, 16);
+                        ioctlv->len += 16;
+                        smb2_set_uint16(ioctlv, 20, info->security_mode);
+                        smb2_set_uint16(ioctlv, 22, info->dialect);
+                        break;
                 }
-                memcpy(buf, rep->input, rep->input_count);
-                memset(buf + rep->input_count, 0, len - rep->input_count);
-                iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
-        }
-        */
-        if (rep->output_count) {
-                len = PAD_TO_64BIT(rep->output_count);
-                buf = malloc(len);
-                if (buf == NULL) {
-                        smb2_set_error(smb2, "Failed to allocate ioctl output");
+                default:
+                        smb2_set_error(smb2, "No handling of code %d", rep->ctl_code);
+                        len = 0;
                         return -1;
+                        break;
                 }
-                memcpy(buf, rep->output, rep->output_count);
-                memset(buf + rep->output_count, 0, len - rep->output_count);
-                iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
         }
-
         return 0;
 }
 
@@ -354,12 +377,35 @@ smb2_process_ioctl_request_variable(struct smb2_context *smb2,
 {
         struct smb2_ioctl_request *req = pdu->payload;
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
+        struct smb2_iovec vec;
+        void *ptr;
 
         if (req->input_count > iov->len - IOVREQ_OFFSET) {
                 return -EINVAL;
         }
 
-        req->input = &iov->buf[IOVREQ_OFFSET];
+        vec.buf = &iov->buf[IOVREQ_OFFSET];
+        vec.len = iov->len - IOVREQ_OFFSET;
+        
+        switch (req->ctl_code) {
+        case SMB2_FSCTL_VALIDATE_NEGOTIATE_INFO:
+        {
+                ptr = smb2_alloc_init(smb2,
+                                      sizeof(struct smb2_ioctl_validate_negotiate_info));
+                struct smb2_ioctl_validate_negotiate_info *info = ptr;
+                
+                smb2_get_uint32(&vec, 0, &info->capabilities);
+                memcpy(info->guid, &vec.buf[4], 16);
+                smb2_get_uint16(&vec, 20, &info->security_mode);
+                smb2_get_uint16(&vec, 22, &info->dialect);
+                break;
+        }
+        default:
+                smb2_set_error(smb2, "No handling of code %d", req->ctl_code);
+                req->input = NULL;
+                return -1;
+        }
+        req->input = ptr;
         return 0;
 }
 

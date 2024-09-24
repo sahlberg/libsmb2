@@ -170,14 +170,25 @@ smb2_encode_query_info_reply(struct smb2_context *smb2,
                 case SMB2_0_INFO_FILE:
                         switch (file_info_class) {
                         case SMB2_FILE_BASIC_INFORMATION:
+                                smb2_encode_file_basic_info(smb2,
+                                                (struct smb2_file_basic_info *)rep->output_buffer, iov);
+                                rep->output_buffer_length = iov->len;
                                 break;
                         case SMB2_FILE_STANDARD_INFORMATION:
+                                smb2_encode_file_standard_info(smb2,
+                                                (struct smb2_file_standard_info *)rep->output_buffer, iov);
+                                rep->output_buffer_length = iov->len;
                                 break;
                         case SMB2_FILE_RENAME_INFORMATION:
                                 break;
                         case SMB2_FILE_ALL_INFORMATION:
                                 smb2_encode_file_all_info(smb2,
                                                 (struct smb2_file_all_info *)rep->output_buffer, iov);
+                                rep->output_buffer_length = iov->len;
+                                break;
+                        case SMB2_FILE_NETWORK_OPEN_INFORMATION:
+                                smb2_encode_file_network_open_info(smb2,
+                                                (struct smb2_file_network_open_info *)rep->output_buffer, iov);
                                 rep->output_buffer_length = iov->len;
                                 break;
                         case SMB2_FILE_END_OF_FILE_INFORMATION:

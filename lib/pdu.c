@@ -339,7 +339,7 @@ smb2_decode_header(struct smb2_context *smb2, struct smb2_iovec *iov,
                 /* and SMBv1 request. if it is a negotiate request
                  * fake an smb2 negotiate request */
                 if (iov->buf[4] == SMB1_NEGOTIATE) {
-                        printf("Handling SMBv1 Negotiate\n");
+                        /*printf("Handling SMBv1 Negotiate\n");*/
                         memset(hdr, 0, sizeof *hdr);
                         hdr->command = SMB1_NEGOTIATE;
                         return 0;
@@ -664,7 +664,7 @@ smb2_process_request_payload_fixed(struct smb2_context *smb2, struct smb2_pdu *p
         case SMB2_IOCTL:
                 return smb2_process_ioctl_request_fixed(smb2, pdu);
         default:
-                smb2_set_error(smb2, "No handler for fixed request", smb2_get_error(smb2));
+                smb2_set_error(smb2, "No handler for fixed request");
                 return -1;
         }
         return 0;
@@ -709,7 +709,7 @@ smb2_process_request_payload_variable(struct smb2_context *smb2, struct smb2_pdu
         case SMB2_IOCTL:
                 return smb2_process_ioctl_request_variable(smb2, pdu);
         default:
-                smb2_set_error(smb2, "No handler for var request", smb2_get_error(smb2));
+                smb2_set_error(smb2, "No handler for var request");
         }
         return -1;
 }

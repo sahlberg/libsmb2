@@ -188,6 +188,27 @@ smb2_process_lock_fixed(struct smb2_context *smb2,
         return 0;
 }
 
+static int
+smb2_parse_locks(struct smb2_context *smb2,
+                struct smb2_iovec *iov, int count, void *locks)
+{
+        struct smb2_lock_element *elements;
+        uint32_t reserved;
+        
+        if (!iov || !locks) {
+                return -1;
+        }
+        elements = (struct smb2_lock_element *)locks;
+        while (count-- > 0) {
+                smb2_get_uint64(iov, 0, &elements->offset);
+                smb2_get_uint64(iov, 8, &elements->length);
+                smb2_get_uint32(iov, 16, &elements->flags);
+                smb2_get_uint32(iov, 20, &reserved);
+                elements++;
+        }
+        return 0;
+}
+
 int
 smb2_process_lock_request_fixed(struct smb2_context *smb2,
                          struct smb2_pdu *pdu)
@@ -195,6 +216,7 @@ smb2_process_lock_request_fixed(struct smb2_context *smb2,
         struct smb2_lock_request *req;
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
         uint16_t struct_size;
+        void *ptr;
         uint32_t u32;
 
         req = malloc(sizeof(*req));
@@ -225,10 +247,25 @@ smb2_process_lock_request_fixed(struct smb2_context *smb2,
                 return -1;
         }
 
-        /* Return the amount of data that the input buffer will take up.
-         * Including any padding before the input buffer itself.
+        ptr = smb2_alloc_init(smb2,
+                        req->lock_count * sizeof(struct smb2_lock_element));
+        if (!ptr) {
+                smb2_set_error(smb2, "can not alloc lock buffer.");
+                return -1;
+        }
+        req->locks = ptr;
+        
+        /* the fixed size includes 1 lock (the most common use) so
+         * there is no more data in that case
          */
-        return SMB2_LOCK_ELEMENT_SIZE * req->lock_count;
+        if (req->lock_count > 0) {
+                struct smb2_iovec vec;
+                
+                vec.buf = iov->buf + 24;
+                vec.len = iov->len - 24;
+                smb2_parse_locks(smb2, &vec, 1, ptr);
+        }
+        return SMB2_LOCK_ELEMENT_SIZE * (req->lock_count - 1);
 }
 
 int
@@ -238,7 +275,8 @@ smb2_process_lock_request_variable(struct smb2_context *smb2,
         struct smb2_lock_request *req = pdu->payload;
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
 
-        req->locks = &iov->buf[0];
-        return 0;
+        /* parse remaining locks, there is already one parsed */
+        return smb2_parse_locks(smb2, iov, req->lock_count - 1,
+               (uint8_t*)(req->locks) + sizeof(struct smb2_lock_element));
 }
 

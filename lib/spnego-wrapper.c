@@ -61,6 +61,9 @@
 
 #ifdef HAVE_ERRNO_H
 #include <errno.h>
+#else
+#define ENOMEM 12
+#define EINVAL 22
 #endif
 
 #include "compat.h"
@@ -74,15 +77,15 @@
 #include "spnego-wrapper.h"
 
 static const struct asn1ber_oid_value oid_gss_mech_spnego = {
-        7, { 0x01, 0x03, 0x06, 0x01, 0x05, 0x05, 0x02 }
+        7, { 1, 3, 6, 1, 5, 5, 2 }
 };
 
 static const struct asn1ber_oid_value oid_spnego_mech_krb5 = {
-        7, { 0x01, 0x02, 0x840, 0x113554,  0x01, 0x02, 0x02 }
+        7, { 1, 2, 840, 113554,  1, 2, 2 }
 };
 
 static const struct asn1ber_oid_value oid_spnego_mech_ntlmssp = {
-        10, { 0x01, 0x03, 0x06, 0x01, 0x04, 0x01, 0x137, 0x02, 0x02, 0x0a }
+        10, { 1, 3, 6, 1, 4, 1, 311, 2, 2, 10 }
 };
 
 static int
@@ -270,14 +273,12 @@ smb2_spnego_wrap_authenticate_result(struct smb2_context *smb2, const int author
         asn_encoder.dst_size = alloc_len;
         asn_encoder.dst_head = 0;
 
-        asn1ber_ber_from_typecode(&asn_encoder, ASN1_CONTEXT(1));               /* A1 81 XX */
-        asn1ber_ber_from_typecode(&asn_encoder, ASN1_CONTEXT_SIMPLE(1));
+        asn1ber_ber_from_typecode(&asn_encoder, ASN1_CONTEXT(1));               /* A1 XX */
         /* save location of total length */
         asn1ber_save_out_state(&asn_encoder, &pos[0]);
         asn1ber_ber_reserve_length(&asn_encoder, 5);
 
-        asn1ber_ber_from_typecode(&asn_encoder, ASN1_SEQUENCE(0));              /* 30 81 YY */
-        asn1ber_ber_from_typecode(&asn_encoder, ASN1_CONTEXT_SIMPLE(1));
+        asn1ber_ber_from_typecode(&asn_encoder, ASN1_SEQUENCE(0));              /* 30 YY */
         /* save location of sub length */
         asn1ber_save_out_state(&asn_encoder, &pos[1]);
         asn1ber_ber_reserve_length(&asn_encoder, 5);
@@ -302,14 +303,12 @@ smb2_spnego_wrap_authenticate_result(struct smb2_context *smb2, const int author
 #define require_typecode(ctx, expected, label)                          \
         ret = ber_typecode_from_ber(ctx, (ber_type_t*)&typecode);       \
         if (ret || (typecode != (expected))) {                          \
-                printf("got type %x\n", typecode);                      \
                 goto label;                                             \
         }
 
 #define require_typeandlen(ctx, expected, minimum, label)                       \
         ret = ber_typelen_from_ber(ctx, (ber_type_t*)&typecode, &typelen);      \
         if (ret || (typecode != (expected)) || (typelen < (minimum))) {         \
-                printf("got type %x len %x\n", typecode, typelen); \
                 fail_line = __LINE__;                                           \
                 goto label;                                                     \
         }
@@ -328,6 +327,9 @@ smb2_spnego_unwrap_targ(struct smb2_context *smb2, const uint8_t *spnego,
         struct asn1ber_oid_value oid;
         uint32_t typecode;
         uint32_t typelen;
+        int objpos;
+        int token_len = 0;
+        int sequence_len = 0;        
         int fail_line = 0;
         int ret;
 
@@ -338,29 +340,33 @@ smb2_spnego_unwrap_targ(struct smb2_context *smb2, const uint8_t *spnego,
 
         require_typeandlen(&asn_decoder, ASN1_CONTEXT(1), 14, fail);
         require_typeandlen(&asn_decoder, ASN1_SEQUENCE(0), 12, fail);
-        /* peek at type, if context0 - its a negResult, if context2, its an auth */
-        typecode = asn_decoder.src[asn_decoder.src_tail];
-        if (typecode == ASN1_CONTEXT(0)) {
-                require_typeandlen(&asn_decoder, ASN1_CONTEXT(0), 3, fail);
-                ret = asn1ber_uint32_from_ber(&asn_decoder, mechanisms);
+        sequence_len = typelen;
+        while (sequence_len > 2) {
+                objpos = asn_decoder.src_tail;
+                ret = ber_typelen_from_ber(&asn_decoder, (ber_type_t*)&typecode, &typelen); 
                 require_noerr(ret, fail);
-                require_typeandlen(&asn_decoder, ASN1_CONTEXT(1), 8, fail);
-                /* supported mechanism */
-                ret = asn1ber_oid_from_ber(&asn_decoder, &oid);
-                require_noerr(ret, fail);
-                /* response token */
-                require_typeandlen(&asn_decoder, asnOCTET_STRING, 7, fail);
-                *token  = asn_decoder.src + asn_decoder.src_tail;
-                return typelen;
+                switch (typecode) {
+                case ASN1_CONTEXT(0):
+                        ret = asn1ber_uint32_from_ber(&asn_decoder, mechanisms);
+                        require_noerr(ret, fail);
+                        break;
+                case ASN1_CONTEXT(1):
+                        /* supported mechanism */
+                        ret = asn1ber_oid_from_ber(&asn_decoder, &oid);
+                        require_noerr(ret, fail);
+                case ASN1_CONTEXT(2):
+                        /* response token */
+                        require_typeandlen(&asn_decoder, asnOCTET_STRING, 8, fail);
+                        *token  = asn_decoder.src + asn_decoder.src_tail;
+                        token_len = typelen;
+                        break;
+                }
+                sequence_len -= (asn_decoder.src_tail - objpos);
+                if (token_len) {
+                        break;
+                }
         }
-        else if (typecode == ASN1_CONTEXT(2)) {
-                require_typeandlen(&asn_decoder, ASN1_CONTEXT(2), 10, fail);
-                /* response token */
-                require_typeandlen(&asn_decoder, asnOCTET_STRING, 7, fail);
-                *token  = asn_decoder.src + asn_decoder.src_tail;
-                return typelen;
-        }
-        return typelen;
+        return token_len;
 
 fail:
         smb2_set_error(smb2, "bad spnego at line %d, spengo offset %d", fail_line, asn_decoder.src_tail);
