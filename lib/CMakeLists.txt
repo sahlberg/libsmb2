@@ -49,6 +49,7 @@ if(ESP_PLATFORM)
     smb3-seal.c
     smb2-signing.c
     socket.c
+    spnego-wrapper.c
     sync.c
     timestamps.c
     unicode.c
@@ -109,6 +110,7 @@ elseif(IOP AND BUILD_IRX)
 	    smb3-seal.c
 	    smb2-signing.c
             socket.c
+	    spnego-wrapper.c
             sync.c
             timestamps.c
             unicode.c
@@ -162,6 +164,7 @@ else()
 	    smb3-seal.c
 	    smb2-signing.c
             socket.c
+	    spnego-wrapper.c
             sync.c
             timestamps.c
             unicode.c
