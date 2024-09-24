@@ -164,7 +164,6 @@ krb5_negotiate_reply(struct smb2_context *smb2,
         char *nc_password = NULL;
         gss_buffer_desc passwd;
         gss_OID_set_desc mechOidSet;
-        gss_OID_set_desc wantMech;
 
         if (smb2->use_cached_creds) {
                 /* Validate the parameters */
@@ -236,7 +235,7 @@ krb5_negotiate_reply(struct smb2_context *smb2,
         #else
         mechOidSet.elements = discard_const(&gss_mech_spnego);
         #endif
-        
+
         if (smb2->use_cached_creds) {
                 krb5_error_code ret = 0;
                 const char *cname = NULL;
@@ -286,6 +285,8 @@ krb5_negotiate_reply(struct smb2_context *smb2,
 
         #ifndef __APPLE__ /* gss_set_neg_mechs is not defined on macOS/iOS. */
         if (smb2->sec != SMB2_SEC_UNDEFINED) {
+                gss_OID_set_desc wantMech;
+
                 wantMech.count = 1;
                 if (smb2->sec == SMB2_SEC_KRB5) {
                         wantMech.elements = discard_const(&spnego_mech_krb5);

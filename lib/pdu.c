@@ -31,6 +31,10 @@
 #include <stdlib.h>
 #endif
 
+#ifdef HAVE_STDIO_H
+#include <stdio.h>
+#endif
+
 #ifdef HAVE_STRING_H
 #include <string.h>
 #endif
@@ -81,7 +85,7 @@ smb2_allocate_pdu(struct smb2_context *smb2, enum smb2_command command,
 	struct smb2_pdu *pdu;
         struct smb2_header *hdr;
         char magic[4] = {0xFE, 'S', 'M', 'B'};
-        
+
         pdu = calloc(1, sizeof(struct smb2_pdu));
         if (pdu == NULL) {
                 smb2_set_error(smb2, "Failed to allocate pdu");
@@ -89,7 +93,7 @@ smb2_allocate_pdu(struct smb2_context *smb2, enum smb2_command command,
         }
 
         hdr = &pdu->header;
-        
+
         memcpy(hdr->protocol_id, magic, 4);
 
         /* ZERO out the signature
@@ -142,7 +146,7 @@ smb2_allocate_pdu(struct smb2_context *smb2, enum smb2_command command,
         pdu->out.niov = 0;
 
         smb2_add_iovector(smb2, &pdu->out, pdu->hdr, SMB2_HEADER_SIZE, NULL);
-        
+
         switch (command) {
         case SMB2_NEGOTIATE:
         case SMB2_SESSION_SETUP:
@@ -255,7 +259,7 @@ int
 smb2_get_uint16(struct smb2_iovec *iov, int offset, uint16_t *value)
 {
         uint16_t tmp;
-        
+
         if (offset + sizeof(uint16_t) > iov->len) {
                 return -1;
         }
@@ -268,7 +272,7 @@ int
 smb2_get_uint32(struct smb2_iovec *iov, int offset, uint32_t *value)
 {
         uint32_t tmp;
-        
+
         if (offset + sizeof(uint32_t) > iov->len) {
                 return -1;
         }
@@ -281,7 +285,7 @@ int
 smb2_get_uint64(struct smb2_iovec *iov, int offset, uint64_t *value)
 {
         uint64_t tmp;
-        
+
         if (offset + sizeof(uint64_t) > iov->len) {
                 return -1;
         }
@@ -324,10 +328,23 @@ int
 smb2_decode_header(struct smb2_context *smb2, struct smb2_iovec *iov,
                    struct smb2_header *hdr)
 {
+        static char smb1sign[4] = {0xFF, 'S', 'M', 'B'};
         static char smb2sign[4] = {0xFE, 'S', 'M', 'B'};
 
         if (iov->len < SMB2_HEADER_SIZE) {
                 smb2_set_error(smb2, "io vector for header is too small");
+                return -1;
+        }
+        if (!memcmp(iov->buf, smb1sign, 4)) {
+                /* and SMBv1 request. if it is a negotiate request
+                 * fake an smb2 negotiate request */
+                if (iov->buf[4] == SMB1_NEGOTIATE) {
+                        printf("Handling SMBv1 Negotiate\n");
+                        memset(hdr, 0, sizeof *hdr);
+                        hdr->command = SMB1_NEGOTIATE;
+                        return 0;
+                }
+                smb2_set_error(smb2, "not handling SMBv1 request");
                 return -1;
         }
         if (memcmp(iov->buf, smb2sign, 4)) {
@@ -350,7 +367,7 @@ smb2_decode_header(struct smb2_context *smb2, struct smb2_iovec *iov,
                 smb2_get_uint32(iov, 32, &hdr->sync.process_id);
                 smb2_get_uint32(iov, 36, &hdr->sync.tree_id);
         }
-        
+
         smb2_get_uint64(iov, 40, &hdr->session_id);
         memcpy(&hdr->signature, iov->buf + 48, 16);
 
@@ -391,7 +408,7 @@ struct smb2_pdu *
 smb2_find_pdu(struct smb2_context *smb2,
               uint64_t message_id) {
         struct smb2_pdu *pdu;
-        
+
         for (pdu = smb2->waitqueue; pdu; pdu = pdu->next) {
                 if (pdu->header.message_id == message_id) {
                         break;
@@ -424,7 +441,7 @@ smb2_is_error_response(struct smb2_context *smb2,
 }
 
 int
-smb2_get_fixed_size(struct smb2_context *smb2, struct smb2_pdu *pdu)
+smb2_get_fixed_reply_size(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
         if (smb2_is_error_response(smb2, pdu)) {
                 return SMB2_ERROR_REPLY_SIZE & 0xfffe;
@@ -466,7 +483,60 @@ smb2_get_fixed_size(struct smb2_context *smb2, struct smb2_pdu *pdu)
 }
 
 int
-smb2_process_payload_fixed(struct smb2_context *smb2, struct smb2_pdu *pdu)
+smb2_get_fixed_request_size(struct smb2_context *smb2, struct smb2_pdu *pdu)
+{
+        switch (pdu->header.command) {
+        case SMB2_NEGOTIATE:
+                return SMB2_NEGOTIATE_REQUEST_SIZE;
+        case SMB2_SESSION_SETUP:
+                return SMB2_SESSION_SETUP_REQUEST_SIZE;
+        case SMB2_LOGOFF:
+                return SMB2_LOGOFF_REQUEST_SIZE;
+        case SMB2_TREE_CONNECT:
+                return SMB2_TREE_CONNECT_REQUEST_SIZE;
+        case SMB2_TREE_DISCONNECT:
+                return SMB2_TREE_DISCONNECT_REQUEST_SIZE;
+        case SMB2_CREATE:
+                return SMB2_CREATE_REQUEST_SIZE;
+        case SMB2_CLOSE:
+                return SMB2_CLOSE_REQUEST_SIZE;
+        case SMB2_FLUSH:
+                return SMB2_FLUSH_REQUEST_SIZE;
+        case SMB2_READ:
+                return SMB2_READ_REQUEST_SIZE;
+        case SMB2_WRITE:
+                return SMB2_WRITE_REQUEST_SIZE;
+        case SMB2_LOCK:
+                return SMB2_WRITE_REQUEST_SIZE;
+        case SMB2_CANCEL:
+                return SMB2_CANCEL_REQUEST_SIZE;
+        case SMB2_ECHO:
+                return SMB2_ECHO_REQUEST_SIZE;
+        case SMB2_QUERY_DIRECTORY:
+                return SMB2_QUERY_DIRECTORY_REQUEST_SIZE;
+        case SMB2_QUERY_INFO:
+                return SMB2_QUERY_INFO_REQUEST_SIZE;
+        case SMB2_SET_INFO:
+                return SMB2_SET_INFO_REQUEST_SIZE;
+        case SMB2_IOCTL:
+                return SMB2_IOCTL_REQUEST_SIZE;
+        }
+        return -1;
+}
+
+int
+smb2_get_fixed_size(struct smb2_context *smb2, struct smb2_pdu *pdu)
+{
+        if (smb2_is_server(smb2)) {
+                return smb2_get_fixed_request_size(smb2, pdu);
+        }
+        else {
+                return smb2_get_fixed_reply_size(smb2, pdu);
+        }
+}
+
+int
+smb2_process_reply_payload_fixed(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
         if (smb2_is_error_response(smb2, pdu)) {
                 return smb2_process_error_fixed(smb2, pdu);
@@ -495,6 +565,8 @@ smb2_process_payload_fixed(struct smb2_context *smb2, struct smb2_pdu *pdu)
                 return smb2_process_write_fixed(smb2, pdu);
         case SMB2_ECHO:
                 return smb2_process_echo_fixed(smb2, pdu);
+        case SMB2_LOCK:
+                return smb2_process_lock_fixed(smb2, pdu);
         case SMB2_QUERY_DIRECTORY:
                 return smb2_process_query_directory_fixed(smb2, pdu);
         case SMB2_QUERY_INFO:
@@ -508,7 +580,7 @@ smb2_process_payload_fixed(struct smb2_context *smb2, struct smb2_pdu *pdu)
 }
 
 int
-smb2_process_payload_variable(struct smb2_context *smb2, struct smb2_pdu *pdu)
+smb2_process_reply_payload_variable(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
         if (smb2_is_error_response(smb2, pdu)) {
                 return smb2_process_error_variable(smb2, pdu);
@@ -537,16 +609,131 @@ smb2_process_payload_variable(struct smb2_context *smb2, struct smb2_pdu *pdu)
                 return 0;
         case SMB2_ECHO:
                 return 0;
+        case SMB2_LOCK:
+                return 0;
+        case SMB2_CANCEL:
+                return 0;
         case SMB2_QUERY_DIRECTORY:
                 return smb2_process_query_directory_variable(smb2, pdu);
         case SMB2_QUERY_INFO:
-                return smb2_process_query_info_variable(smb2, pdu); 
+                return smb2_process_query_info_variable(smb2, pdu);
         case SMB2_SET_INFO:
                 return 0;
         case SMB2_IOCTL:
-                return smb2_process_ioctl_variable(smb2, pdu); 
+                return smb2_process_ioctl_variable(smb2, pdu);
         }
         return 0;
+}
+
+int
+smb2_process_request_payload_fixed(struct smb2_context *smb2, struct smb2_pdu *pdu)
+{
+        switch (pdu->header.command) {
+        case SMB2_NEGOTIATE:
+                return smb2_process_negotiate_request_fixed(smb2, pdu);
+        case SMB2_SESSION_SETUP:
+                return smb2_process_session_setup_request_fixed(smb2, pdu);
+        case SMB2_LOGOFF:
+                return smb2_process_logoff_request_fixed(smb2, pdu);
+        case SMB2_TREE_CONNECT:
+                return smb2_process_tree_connect_request_fixed(smb2, pdu);
+        case SMB2_TREE_DISCONNECT:
+                return 0;
+        case SMB2_CREATE:
+                return smb2_process_create_request_fixed(smb2, pdu);
+        case SMB2_CLOSE:
+                return smb2_process_close_request_fixed(smb2, pdu);
+        case SMB2_FLUSH:
+                return smb2_process_flush_request_fixed(smb2, pdu);
+        case SMB2_READ:
+                return smb2_process_read_request_fixed(smb2, pdu);
+        case SMB2_WRITE:
+                return smb2_process_write_request_fixed(smb2, pdu);
+        case SMB2_ECHO:
+                return smb2_process_echo_request_fixed(smb2, pdu);
+        case SMB2_LOCK:
+                return smb2_process_lock_request_fixed(smb2, pdu);
+        case SMB2_CANCEL:
+                return 0;
+        case SMB2_QUERY_DIRECTORY:
+                return smb2_process_query_directory_request_fixed(smb2, pdu);
+        case SMB2_QUERY_INFO:
+                return smb2_process_query_info_request_fixed(smb2, pdu);
+        case SMB2_SET_INFO:
+                return smb2_process_set_info_request_fixed(smb2, pdu);
+        case SMB2_IOCTL:
+                return smb2_process_ioctl_request_fixed(smb2, pdu);
+        default:
+                smb2_set_error(smb2, "No handler for fixed request", smb2_get_error(smb2));
+                return -1;
+        }
+        return 0;
+}
+
+int
+smb2_process_request_payload_variable(struct smb2_context *smb2, struct smb2_pdu *pdu)
+{
+        switch (pdu->header.command) {
+        case SMB2_NEGOTIATE:
+                return smb2_process_negotiate_request_variable(smb2, pdu);
+        case SMB2_SESSION_SETUP:
+                return smb2_process_session_setup_request_variable(smb2, pdu);
+        case SMB2_LOGOFF:
+                return 0;
+        case SMB2_TREE_CONNECT:
+                return smb2_process_tree_connect_request_variable(smb2, pdu);
+        case SMB2_TREE_DISCONNECT:
+                return 0;
+        case SMB2_CREATE:
+                return smb2_process_create_request_variable(smb2, pdu);
+        case SMB2_CLOSE:
+                return 0;
+        case SMB2_FLUSH:
+                return 0;
+        case SMB2_READ:
+                return smb2_process_read_request_variable(smb2, pdu);
+        case SMB2_WRITE:
+                return smb2_process_write_request_variable(smb2, pdu);
+        case SMB2_LOCK:
+                return smb2_process_lock_request_variable(smb2, pdu);
+        case SMB2_CANCEL:
+                return 0;
+        case SMB2_ECHO:
+                return 0;
+        case SMB2_QUERY_DIRECTORY:
+                return smb2_process_query_directory_request_variable(smb2, pdu);
+        case SMB2_QUERY_INFO:
+                return smb2_process_query_info_request_variable(smb2, pdu);
+        case SMB2_SET_INFO:
+                return smb2_process_set_info_request_variable(smb2, pdu);
+        case SMB2_IOCTL:
+                return smb2_process_ioctl_request_variable(smb2, pdu);
+        default:
+                smb2_set_error(smb2, "No handler for var request", smb2_get_error(smb2));
+        }
+        return -1;
+}
+
+int
+smb2_process_payload_fixed(struct smb2_context *smb2, struct smb2_pdu *pdu)
+{
+        if (smb2_is_server(smb2)) {
+                return smb2_process_request_payload_fixed(smb2, pdu);
+        }
+        else {
+                return smb2_process_reply_payload_fixed(smb2, pdu);
+        }
+}
+
+int
+smb2_process_payload_variable(struct smb2_context *smb2, struct smb2_pdu *pdu)
+{
+        if (smb2_is_server(smb2)) {
+                return smb2_process_request_payload_variable(smb2, pdu);
+        }
+        else {
+                return smb2_process_reply_payload_variable(smb2, pdu);
+        }
 }
 
 void smb2_timeout_pdus(struct smb2_context *smb2)

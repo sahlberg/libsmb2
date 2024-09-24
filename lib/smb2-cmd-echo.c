@@ -61,7 +61,7 @@ smb2_encode_echo_request(struct smb2_context *smb2,
         int len;
         struct smb2_iovec *iov;
         
-        len = 4;
+        len = SMB2_ECHO_REQUEST_SIZE;
 
         buf = calloc(len, sizeof(uint8_t));
         if (buf == NULL) {
@@ -100,9 +100,91 @@ smb2_cmd_echo_async(struct smb2_context *smb2,
         return pdu;
 }
 
+static int
+smb2_encode_echo_reply(struct smb2_context *smb2,
+                         struct smb2_pdu *pdu)
+{
+        uint8_t *buf;
+        int len;
+        struct smb2_iovec *iov;
+
+        pdu->header.flags |= SMB2_FLAGS_SERVER_TO_REDIR;
+        pdu->header.credit_request_response = 1;
+        
+        len = SMB2_ECHO_REPLY_SIZE;
+
+        buf = calloc(len, sizeof(uint8_t));
+        if (buf == NULL) {
+                smb2_set_error(smb2, "Failed to allocate echo buffer");
+                return -1;
+        }
+        
+        iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+
+        smb2_set_uint16(iov, 0, SMB2_ECHO_REPLY_SIZE);
+        return 0;
+}
+
+struct smb2_pdu *
+smb2_cmd_echo_reply_async(struct smb2_context *smb2,
+                    smb2_command_cb cb, void *cb_data)
+{
+        struct smb2_pdu *pdu;
+        
+        pdu = smb2_allocate_pdu(smb2, SMB2_ECHO, cb, cb_data);
+        if (pdu == NULL) {
+                return NULL;
+        }
+
+        if (smb2_encode_echo_reply(smb2, pdu)) {
+                smb2_free_pdu(smb2, pdu);
+                return NULL;
+        }
+        
+        if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
+                smb2_free_pdu(smb2, pdu);
+                return NULL;
+        }
+
+        return pdu;
+}
+
 int
 smb2_process_echo_fixed(struct smb2_context *smb2,
                         struct smb2_pdu *pdu)
 {
+        struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
+        uint16_t struct_size;
+
+        smb2_get_uint16(iov, 0, &struct_size);
+        if (struct_size != SMB2_ECHO_REPLY_SIZE ||
+            (struct_size & 0xfffe) != iov->len) {
+                smb2_set_error(smb2, "Unexpected size of echo "
+                               "reply. Expected %d, got %d",
+                               SMB2_ECHO_REPLY_SIZE,
+                               (int)iov->len);
+                return -1;
+        }
+
         return 0;
 }
+
+int
+smb2_process_echo_request_fixed(struct smb2_context *smb2,
+                        struct smb2_pdu *pdu)
+{
+        struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
+        uint16_t struct_size;
+
+        smb2_get_uint16(iov, 0, &struct_size);
+        if (struct_size != SMB2_ECHO_REQUEST_SIZE ||
+            (struct_size & 0xfffe) != iov->len) {
+                smb2_set_error(smb2, "Unexpected size of echo "
+                               "request. Expected %d, got %d",
+                               SMB2_ECHO_REQUEST_SIZE,
+                               (int)iov->len);
+                return -1;
+        }
+        return 0;
+}
+

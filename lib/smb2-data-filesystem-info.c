@@ -100,6 +100,23 @@ smb2_decode_file_fs_size_info(struct smb2_context *smb2,
 }
 
 int
+smb2_encode_file_fs_size_info(struct smb2_context *smb2,
+                              struct smb2_file_fs_size_info *fs,
+                              struct smb2_iovec *vec)
+{
+        if (vec->len < 24) {
+                return -1;
+        }
+
+        smb2_set_uint64(vec,  0, fs->total_allocation_units);
+        smb2_set_uint64(vec,  8, fs->available_allocation_units);
+        smb2_set_uint32(vec, 16, fs->sectors_per_allocation_unit);
+        smb2_set_uint32(vec, 20, fs->bytes_per_sector);
+
+        return 0;
+}
+
+int
 smb2_decode_file_fs_device_info(struct smb2_context *smb2,
                                 void *memctx,
                                 struct smb2_file_fs_device_info *fs,
@@ -112,6 +129,42 @@ smb2_decode_file_fs_device_info(struct smb2_context *smb2,
         smb2_get_uint32(vec,  0, &fs->device_type);
         smb2_get_uint32(vec,  4, &fs->characteristics);
 
+        return 0;
+}
+
+int
+smb2_encode_file_fs_device_info(struct smb2_context *smb2,
+                              struct smb2_file_fs_device_info *fs,
+                              struct smb2_iovec *vec)
+{
+        if (vec->len < 8) {
+                return -1;
+        }
+
+        smb2_set_uint32(vec,  0, fs->device_type);
+        smb2_set_uint32(vec,  4, fs->characteristics);
+        return 0;
+}
+
+int
+smb2_encode_file_fs_attribute_info(struct smb2_context *smb2,
+                              struct smb2_file_fs_attribute_info *fs,
+                              struct smb2_iovec *vec)
+{
+        struct smb2_utf16 *name;
+        
+        if (vec->len < 20) {
+                return -1;
+        }
+
+        smb2_set_uint32(vec,  0, fs->filesystem_attributes);
+        smb2_set_uint32(vec,  4, fs->maximum_component_name_length);
+
+        name = smb2_utf8_to_utf16((char*)fs->filesystem_name);
+        smb2_set_uint32(vec, 8, 2 * name->len);
+        memcpy(&vec->buf[12], name->val, 2 * name->len);
+        vec->len += 2 * name->len;
+        free(name);
         return 0;
 }
 

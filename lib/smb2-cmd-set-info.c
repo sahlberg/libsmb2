@@ -220,3 +220,18 @@ smb2_process_set_info_fixed(struct smb2_context *smb2,
 {
         return 0;
 }
+
+int
+smb2_process_set_info_request_fixed(struct smb2_context *smb2,
+                            struct smb2_pdu *pdu)
+{
+        return 0;
+}
+
+int
+smb2_process_set_info_request_variable(struct smb2_context *smb2,
+                            struct smb2_pdu *pdu)
+{
+        return 0;
+}
+
