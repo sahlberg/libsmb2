@@ -225,3 +225,32 @@ smb2_encode_file_all_info(struct smb2_context *smb2,
         return 0;
 }
 
+int
+smb2_encode_file_network_open_info(struct smb2_context *smb2,
+                          struct smb2_file_network_open_info *fs,
+                          struct smb2_iovec *vec)
+{
+        if (vec->len < 56) {
+                return -1;
+        }
+
+        uint64_t t;
+
+        t = smb2_tv_timeval_to_win(&fs->creation_time);
+        smb2_set_uint64(vec, 0, t);
+
+        t = smb2_tv_timeval_to_win(&fs->last_access_time);
+        smb2_set_uint64(vec, 8, t);
+
+        t = smb2_tv_timeval_to_win(&fs->last_write_time);
+        smb2_set_uint64(vec, 16, t);
+
+        t = smb2_tv_timeval_to_win(&fs->change_time);
+        smb2_set_uint64(vec, 24, t);
+
+        smb2_set_uint64(vec, 32, fs->allocation_size);
+        smb2_set_uint64(vec, 40, fs->end_of_file);
+        smb2_set_uint32(vec, 48, fs->file_attributes);
+        return 0;
+}
+

@@ -519,6 +519,9 @@ struct smb2_read_reply {
 #define SMB2_0_INFO_QUOTA      0x04
 
 /* File information class : for SMB2_0_INFO_FILE */
+#define SMB2_FILE_DIRECTORY_INFORMATION         0x01
+#define SMB2_FILE_FULL_DIRECTORY_INFORMATION    0x02
+#define SMB2_FILE_BOTH_DIRECTORY_INFORMATION    0x03
 #define SMB2_FILE_BASIC_INFORMATION             0x04
 #define SMB2_FILE_STANDARD_INFORMATION          0x05
 #define SMB2_FILE_INTERNAL_INFORMATION          0x06
@@ -536,6 +539,18 @@ struct smb2_read_reply {
 #define SMB2_FILE_ALL_INFORMATION               0x12
 #define SMB2_FILE_END_OF_FILE_INFORMATION       0x14
 #define SMB2_FILE_ALTERNATE_NAME_INFORMATION    0x15
+
+#define SMB2_FILE_STREAM_INFORMATION            0x16
+#define SMB2_FILE_PIPE_INFORMATION              0x17
+#define SMB2_FILE_PIPE_LOCAL_INFORMATION        0x18
+#define SMB2_FILE_PIPE_REMOTE_INFORMATION       0x19
+#define SMB2_FILE_MAILSLOT_QUERY_INFORMATION    0x1A
+#define SMB2_FILE_MAILSLOT_SET_INFORMATION      0x1B
+#define SMB2_FILE_COMPRESSION_INFORMATION       0x1C
+#define SMB2_FILE_OBJECT_ID_INFORMATION         0x1D
+#define SMB2_FILE_QUOTA_INFORMATION             0x20
+#define SMB2_FILE_REPARSE_POINT_INFORMATION     0x21
+#define SMB2_FILE_NETWORK_OPEN_INFORMATION      0x22
 
 /* Filesystem information class : for SMB2_0_INFO_FILESYSTEM */
 #define SMB2_FILE_FS_VOLUME_INFORMATION            1
@@ -624,6 +639,19 @@ struct smb2_file_end_of_file_info {
 struct smb2_file_rename_info {
         uint8_t replace_if_exist;
         const uint8_t* file_name;
+};
+
+/*
+ * FILE_NETWORK_OPEN_INFORMATION
+ */
+struct smb2_file_network_open_info {
+        struct smb2_timeval creation_time;
+        struct smb2_timeval last_access_time;
+        struct smb2_timeval last_write_time;
+        struct smb2_timeval change_time;
+        uint64_t allocation_size;
+        uint64_t end_of_file;
+        uint32_t file_attributes;
 };
 
 #define SMB2_SET_INFO_REQUEST_SIZE 33

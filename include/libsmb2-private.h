@@ -451,6 +451,10 @@ int smb2_encode_file_all_info(struct smb2_context *smb2,
                               struct smb2_file_all_info *fs,
                               struct smb2_iovec *vec);
 
+int smb2_encode_file_network_open_info(struct smb2_context *smb2,
+                              struct smb2_file_network_open_info *fs,
+                              struct smb2_iovec *vec);
+
 int smb2_decode_security_descriptor(struct smb2_context *smb2,
                                     void *memctx,
                                     struct smb2_security_descriptor *sd,
