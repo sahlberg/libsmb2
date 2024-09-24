@@ -222,7 +222,7 @@ smb2_pdu_add_signature(struct smb2_context *smb2,
         int niov;
 
         if (pdu->header.command == SMB2_SESSION_SETUP) {
-                /* the first sessopm setup response with ok status
+                /* the first session setup response with ok status
                  * is the first signed message
                  */
                 if (pdu->header.status != 0 ||

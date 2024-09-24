@@ -258,12 +258,12 @@ smb2_process_lock_request_fixed(struct smb2_context *smb2,
         /* the fixed size includes 1 lock (the most common use) so
          * there is no more data in that case
          */
-        if (req->lock_count == 1) {
+        if (req->lock_count > 0) {
                 struct smb2_iovec vec;
                 
                 vec.buf = iov->buf + 24;
                 vec.len = iov->len - 24;
-                return smb2_parse_locks(smb2, &vec, 1, ptr);
+                smb2_parse_locks(smb2, &vec, 1, ptr);
         }
         return SMB2_LOCK_ELEMENT_SIZE * (req->lock_count - 1);
 }
@@ -275,6 +275,8 @@ smb2_process_lock_request_variable(struct smb2_context *smb2,
         struct smb2_lock_request *req = pdu->payload;
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
 
-        return smb2_parse_locks(smb2, iov, req->lock_count, req->locks);
+        /* parse remaining locks, there is already one parsed */
+        return smb2_parse_locks(smb2, iov, req->lock_count - 1,
+               (uint8_t*)(req->locks) + sizeof(struct smb2_lock_element));
 }
 
