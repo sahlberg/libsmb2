@@ -61,6 +61,9 @@
 
 #ifdef HAVE_ERRNO_H
 #include <errno.h>
+#else
+#define ENOMEM 12
+#define EINVAL 22
 #endif
 
 #include "compat.h"
@@ -300,14 +303,12 @@ smb2_spnego_wrap_authenticate_result(struct smb2_context *smb2, const int author
 #define require_typecode(ctx, expected, label)                          \
         ret = ber_typecode_from_ber(ctx, (ber_type_t*)&typecode);       \
         if (ret || (typecode != (expected))) {                          \
-                printf("got type %x\n", typecode);                      \
                 goto label;                                             \
         }
 
 #define require_typeandlen(ctx, expected, minimum, label)                       \
         ret = ber_typelen_from_ber(ctx, (ber_type_t*)&typecode, &typelen);      \
         if (ret || (typecode != (expected)) || (typelen < (minimum))) {         \
-                printf("got type %x len %x\n", typecode, typelen); \
                 fail_line = __LINE__;                                           \
                 goto label;                                                     \
         }
