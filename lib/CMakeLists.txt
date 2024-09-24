@@ -30,6 +30,7 @@ if(ESP_PLATFORM)
     smb2-cmd-error.c
     smb2-cmd-flush.c
     smb2-cmd-ioctl.c
+    smb2-cmd-lock.c
     smb2-cmd-logoff.c
     smb2-cmd-negotiate.c
     smb2-cmd-query-directory.c
@@ -89,6 +90,7 @@ elseif(IOP AND BUILD_IRX)
             smb2-cmd-error.c
             smb2-cmd-flush.c
             smb2-cmd-ioctl.c
+            smb2-cmd-lock.c
             smb2-cmd-logoff.c
             smb2-cmd-negotiate.c
             smb2-cmd-query-directory.c
@@ -141,6 +143,7 @@ else()
             smb2-cmd-error.c
             smb2-cmd-flush.c
             smb2-cmd-ioctl.c
+            smb2-cmd-lock.c
             smb2-cmd-logoff.c
             smb2-cmd-negotiate.c
             smb2-cmd-query-directory.c
