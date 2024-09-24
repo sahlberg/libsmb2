@@ -165,7 +165,9 @@ ntlmssp_init_context(const char *user,
                 return NULL;
         }
 
-        auth_data->user        = strdup(user);
+        if (user) {
+                auth_data->user        = strdup(user);
+        }
         if (password) {
                 auth_data->password    = strdup(password);
         }
