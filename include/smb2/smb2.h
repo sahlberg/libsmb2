@@ -619,6 +619,13 @@ struct smb2_file_end_of_file_info {
 };
 
 /*
+ * FILE_DISPOSITION_INFORMATION.
+ */
+struct smb2_file_disposition_info {
+        uint8_t delete_pending;
+};
+
+/*
  * SMB2_FILE_RENAME_INFORMATION.
  */
 struct smb2_file_rename_info {
