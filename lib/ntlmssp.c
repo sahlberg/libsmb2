@@ -121,6 +121,7 @@ struct auth_data {
 #define NTLMSSP_NEGOTIATE_UNICODE                          0x00000001
 #define NTLMSSP_NEGOTIATE_KEY_EXCH                         0x40000000
 
+#if 0 /* leave this here for debugging */
 void
 hex_print(const char *blurb, uint8_t *data, int len)
 {
@@ -136,6 +137,7 @@ hex_print(const char *blurb, uint8_t *data, int len)
         }
         printf("\n");
 }
+#endif
 
 void
 ntlmssp_destroy_context(struct auth_data *auth)
