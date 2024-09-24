@@ -961,7 +961,7 @@ ntlmssp_authenticate_blob(struct smb2_server *server, struct smb2_context *smb2,
         
         /* call server handler to get pw for this user */
         if (server && server->handlers) {
-                if(server->handlers->authorize(server, smb2,
+                if(server->handlers->authorize_user(server, smb2,
                                 auth_data->user,
                                 auth_data->domain,
                                 auth_data->workstation)) {
