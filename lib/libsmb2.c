@@ -3075,8 +3075,7 @@ smb2_general_client_request_cb(struct smb2_context *smb2, int status, void *comm
                 smb2_close_context(smb2);
                 return;
         }
-
-        printf("cmd %d\n", smb2->pdu->header.command);
+        /*printf("cmd %d\n", smb2->pdu->header.command);*/
 
         switch (smb2->pdu->header.command) {
         case SMB2_LOGOFF:
@@ -3122,7 +3121,7 @@ smb2_general_client_request_cb(struct smb2_context *smb2, int status, void *comm
                 smb2_query_info_request_cb(server, smb2, command_data, cb_data);
                 break;
         default:
-                smb2_set_error(smb2, "Client request not implemented", smb2_get_error(smb2));
+                smb2_set_error(smb2, "Client request not implemented  %s", smb2_get_error(smb2));
                 break;
         }
 
@@ -3167,7 +3166,7 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                                 &message_type,
                                 &response_token, &response_length,
                                 &is_spnego_wrapped) < 0) {
-                        smb2_set_error(smb2, "No message type in NTLMSSP", smb2_get_error(smb2));
+                        smb2_set_error(smb2, "No message type in NTLMSSP %s", smb2_get_error(smb2));
                         smb2_close_context(smb2);
                         return;
                 }
@@ -3208,7 +3207,7 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                 }
                 if (message_type == AUTHENTICATION_MESSAGE) {
                         if (!ntlmssp_get_authenticated(c_data->auth_data)) {
-                                smb2_set_error(smb2, "Authentication failed", smb2_get_error(smb2));
+                                smb2_set_error(smb2, "Authentication failed: %s", smb2_get_error(smb2));
                                 smb2_close_context(smb2);
                                 return;
                         }
@@ -3330,7 +3329,6 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
                                         d, dialects[d]);
                                 */
                                 if (dialects[d] == req->dialects[dialect_index]) {
-                                        printf("Selected dialect %04x\n", dialects[d]);
                                         smb2->dialect = dialects[d];
                                         break;
                                 }
@@ -3638,7 +3636,6 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
                                         }
                                 }
                                 else if (err) {
-                                        printf("serve port async failed!\n");
                                         break;
                                 }
                         }

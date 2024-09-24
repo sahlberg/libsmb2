@@ -144,6 +144,7 @@ struct smb2_context {
 
         void *opaque;
 
+        smb2_error_cb error_cb;
         smb2_command_cb connect_cb;
         void *connect_data;
 
@@ -272,14 +273,6 @@ struct smb2_pdu {
 
 #define smb2_is_server(ctx) ((ctx)->is_server)
 
-/* Convert a win timestamp to a unix timeval */
-void smb2_win_to_timeval(uint64_t smb2_time, struct smb2_timeval *tv);
-
-/* Convert unit timeval to a win timestamp */
-time_t smb2_timeval_to_win(struct smb2_timeval *tv);
-
-void smb2_set_error(struct smb2_context *smb2, const char *error_string,
-                    ...);
 void smb2_set_nterror(struct smb2_context *smb2, int nterror,
                     const char *error_string, ...);
 

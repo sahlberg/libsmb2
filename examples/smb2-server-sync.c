@@ -246,6 +246,7 @@ static int fill_dir_info(struct smb2_context *smb2, uint8_t **out_info)
 
 static int session_handler(struct smb2_server *srvr, struct smb2_context *smb2)
 {
+        printf("Selected dialect %04x\n", smb2_get_dialect(smb2));
         return 0;
 }
 
@@ -440,15 +441,24 @@ int usage(void)
     exit(1);
 }
 
+void on_smb2_error(struct smb2_context *smb2, const char *error_string)
+{
+        if (error_string) {
+                fprintf(stderr, "%p: %s\n", smb2, error_string);
+        }
+}
+
 void on_new_client(struct smb2_context *smb2, void *cb_data)
 {
     struct smb2_context **pctx = (struct smb2_context **)cb_data;
     
-    printf("New connection!\n");
+    printf("New connection: %p\n", smb2);
     
     /* setup client context */
     smb2_set_version(smb2, SMB2_VERSION_ANY);
 //  smb2_set_version(smb2, SMB2_VERSION_0210);
+
+    smb2_register_error_callback(smb2, on_smb2_error);
     *pctx = smb2;
 }
 

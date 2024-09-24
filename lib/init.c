@@ -445,8 +445,16 @@ void smb2_set_error(struct smb2_context *smb2, const char *error_string, ...)
         smb2_set_error_string(smb2, error_string, ap);
         va_end(ap);
 
-        fprintf(stderr, "Setting err %s\n", smb2_get_error(smb2));
+        if(smb2->error_cb) {
+                smb2->error_cb(smb2, smb2_get_error(smb2));
+        }
 #endif
+}
+
+void smb2_register_error_callback(struct smb2_context *smb2,
+                    smb2_error_cb error_cb)
+{
+        smb2->error_cb = error_cb;
 }
 
 void smb2_set_nterror(struct smb2_context *smb2, int nterror, const char *error_string, ...)
@@ -483,6 +491,11 @@ void smb2_set_client_guid(struct smb2_context *smb2, const uint8_t guid[SMB2_GUI
 const char *smb2_get_client_guid(struct smb2_context *smb2)
 {
         return smb2->client_guid;
+}
+
+uint16_t smb2_get_dialect(struct smb2_context *smb2)
+{
+        return smb2->dialect;
 }
 
 void smb2_set_security_mode(struct smb2_context *smb2, uint16_t security_mode)

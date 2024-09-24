@@ -124,11 +124,11 @@ struct auth_data {
 void
 hex_print(const char *blurb, uint8_t *data, int len)
 {
-        printf("%16s: ", blurb);        
+        printf("%s\n", blurb);        
         for (int i = 0; i < len; i++) {
                 printf("%02X ", data[i]);
                 if (!((i + 1) & 0xf)) {
-                        printf("\n                  ");
+                        printf("\n");
                 }
         }
         if ((len & 0xf)) {
@@ -909,7 +909,6 @@ ntlmssp_get_utf16_field(uint8_t *input_buf, int input_len, int offset, char **re
         *result = NULL;
         
         if (offset > (input_len - 8)) {
-                printf("offset past buf\n");
                 return;
         }
         memcpy(&u32, &input_buf[offset], 4);
@@ -918,7 +917,6 @@ ntlmssp_get_utf16_field(uint8_t *input_buf, int input_len, int offset, char **re
         field_off = le32toh(u32);
         if (field_len && field_off) {
                 *result = (char*)smb2_utf16_to_utf8((uint16_t*)(input_buf + field_off), field_len / 2);
-                printf("got str %s\n", *result);
         }
 }
 
@@ -959,12 +957,12 @@ ntlmssp_authenticate_blob(struct smb2_server *server, struct smb2_context *smb2,
                                 auth_data->user,
                                 auth_data->domain,
                                 auth_data->workstation)) {
-                        printf("server handler said no auth for %s, fail\n",
+                        smb2_set_error(smb2, "server can not authorize %s", 
                                 auth_data->user);
                         return -1;
                 }
                 if (!smb2->password) {
-                        printf("no pw for user %s, fail\n", 
+                        smb2_set_error(smb2, "server has no passwd for %s", 
                                 auth_data->user);
                         return -1;
                 }
@@ -975,7 +973,7 @@ ntlmssp_authenticate_blob(struct smb2_server *server, struct smb2_context *smb2,
         }
         //negotiate_flags = le32toh(u32);
         
-        /* Lan Man response (we dont even look at, its obsolete */
+        /* Lan Man response (we dont even look at, its obsolete) */
         
         /* NTLM response */
         memcpy(&u32, &input_buf[4*5], 4);
@@ -998,7 +996,8 @@ ntlmssp_authenticate_blob(struct smb2_server *server, struct smb2_context *smb2,
                 memcpy(auth_data->client_challenge, input_buf + field_off + 32, 8);
         }
         else {
-                printf("bad challenge len %u\n", challenge_len);
+                smb2_set_error(smb2, "bad NTLMSSP challenge len %d",
+                       challenge_len);
                 return -1;
         }
         if (NTOWFv2(auth_data->user, smb2->password,
@@ -1022,7 +1021,7 @@ ntlmssp_authenticate_blob(struct smb2_server *server, struct smb2_context *smb2,
 
         /* verify ntproof */
         if (memcmp(NTProofStr, response, 16)) {
-                printf("proof mismatch, fail auth\n");
+                smb2_set_error(smb2, "NTLMSSP NTProof != response. Auth failed");
                 goto fail;
         }
         smb2_hmac_md5(NTProofStr, 16, ResponseKeyNT, 16, key_exch);
