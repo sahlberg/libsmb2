@@ -112,6 +112,12 @@ struct MinList __filelist = { (struct MinNode *) &__filelist.mlh_Tail, NULL, (st
 
 static unsigned long int next = 1; 
 
+int gethostname(char *name, size_t len)
+{
+        strncpy(name, "PS2", len);
+        return 0;
+}
+
 time_t time(time_t *tloc)
 {
         u32 sec, usec;
