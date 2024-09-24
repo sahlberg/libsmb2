@@ -1,6 +1,6 @@
 /* -*-  mode:c; tab-width:8; c-basic-offset:8; indent-tabs-mode:nil;  -*- */
 /*
-   Copyright (C) 2016 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
+   Copyright (C) 2018 by Brian Dodge <bdodge09@gmail.com>
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU Lesser General Public License as published by
@@ -55,47 +55,63 @@
 #include "libsmb2.h"
 #include "libsmb2-private.h"
 
+
 static int
-smb2_encode_flush_request(struct smb2_context *smb2,
+smb2_encode_lock_request(struct smb2_context *smb2,
                           struct smb2_pdu *pdu,
-                          struct smb2_flush_request *req)
+                          struct smb2_lock_request *req)
 {
         int len;
         uint8_t *buf;
         struct smb2_iovec *iov;
-
-        len = SMB2_FLUSH_REQUEST_SIZE & 0xfffffffe;
+        uint32_t u32;
+        
+        len = SMB2_LOCK_REQUEST_SIZE & 0xfffffffe;
         buf = calloc(len, sizeof(uint8_t));
         if (buf == NULL) {
-                smb2_set_error(smb2, "Failed to allocate flush buffer");
+                smb2_set_error(smb2, "Failed to allocate lock buffer");
                 return -1;
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
 
-        smb2_set_uint16(iov, 0, SMB2_FLUSH_REQUEST_SIZE);
+        smb2_set_uint16(iov, 0, SMB2_LOCK_REQUEST_SIZE);
+        smb2_set_uint16(iov, 2, req->lock_count);
+        u32 = (req->lock_sequence_number << 24) | req->lock_sequence_index;
+        smb2_set_uint32(iov, 4, u32);
         memcpy(iov->buf + 8, req->file_id, SMB2_FD_SIZE);
+
+        if (req->lock_count && req->locks) {
+                len = PAD_TO_32BIT(SMB2_LOCK_ELEMENT_SIZE * req->lock_count);
+                buf = calloc(len, sizeof(uint8_t));
+                if (buf == NULL) {
+                        smb2_set_error(smb2, "Failed to allocate locks buffer");
+                        return -1;
+                }
+                memcpy(buf, req->locks, SMB2_LOCK_ELEMENT_SIZE * req->lock_count);
+                iov = smb2_add_iovector(smb2, &pdu->out, req->locks, len, free);
+        }
 
         return 0;
 }
 
 struct smb2_pdu *
-smb2_cmd_flush_async(struct smb2_context *smb2,
-                     struct smb2_flush_request *req,
+smb2_cmd_lock_async(struct smb2_context *smb2,
+                     struct smb2_lock_request *req,
                      smb2_command_cb cb, void *cb_data)
 {
         struct smb2_pdu *pdu;
 
-        pdu = smb2_allocate_pdu(smb2, SMB2_FLUSH, cb, cb_data);
+        pdu = smb2_allocate_pdu(smb2, SMB2_LOCK, cb, cb_data);
         if (pdu == NULL) {
                 return NULL;
         }
 
-        if (smb2_encode_flush_request(smb2, pdu, req)) {
+        if (smb2_encode_lock_request(smb2, pdu, req)) {
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
         }
-        
+
         if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
@@ -105,46 +121,45 @@ smb2_cmd_flush_async(struct smb2_context *smb2,
 }
 
 static int
-smb2_encode_flush_reply(struct smb2_context *smb2,
+smb2_encode_lock_reply(struct smb2_context *smb2,
                           struct smb2_pdu *pdu)
 {
         int len;
         uint8_t *buf;
         struct smb2_iovec *iov;
-
+        
         pdu->header.flags |= SMB2_FLAGS_SERVER_TO_REDIR;
         pdu->header.credit_request_response = 1;
-
-        len = SMB2_FLUSH_REPLY_SIZE & 0xfffffffe;
+        
+        len = SMB2_LOCK_REPLY_SIZE & 0xfffffffe;
         buf = calloc(len, sizeof(uint8_t));
         if (buf == NULL) {
-                smb2_set_error(smb2, "Failed to allocate flush reply buffer");
+                smb2_set_error(smb2, "Failed to allocate lock buffer");
                 return -1;
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
 
-        smb2_set_uint16(iov, 0, SMB2_FLUSH_REPLY_SIZE);
-
+        smb2_set_uint16(iov, 0, SMB2_LOCK_REPLY_SIZE);
         return 0;
 }
 
 struct smb2_pdu *
-smb2_cmd_flush_reply_async(struct smb2_context *smb2,
+smb2_cmd_lock_reply_async(struct smb2_context *smb2,
                      smb2_command_cb cb, void *cb_data)
 {
         struct smb2_pdu *pdu;
 
-        pdu = smb2_allocate_pdu(smb2, SMB2_FLUSH, cb, cb_data);
+        pdu = smb2_allocate_pdu(smb2, SMB2_LOCK, cb, cb_data);
         if (pdu == NULL) {
                 return NULL;
         }
 
-        if (smb2_encode_flush_reply(smb2, pdu)) {
+        if (smb2_encode_lock_reply(smb2, pdu)) {
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
         }
-        
+
         if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
@@ -154,40 +169,76 @@ smb2_cmd_flush_reply_async(struct smb2_context *smb2,
 }
 
 int
-smb2_process_flush_fixed(struct smb2_context *smb2,
+smb2_process_lock_fixed(struct smb2_context *smb2,
                          struct smb2_pdu *pdu)
 {
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
         uint16_t struct_size;
 
         smb2_get_uint16(iov, 0, &struct_size);
-        if (struct_size != SMB2_FLUSH_REPLY_SIZE ||
+        if (struct_size != SMB2_LOCK_REPLY_SIZE ||
             (struct_size & 0xfffe) != iov->len) {
-                smb2_set_error(smb2, "Unexpected size of flush "
+                smb2_set_error(smb2, "Unexpected size of lock "
                                "reply. Expected %d, got %d",
-                               SMB2_FLUSH_REPLY_SIZE,
+                               SMB2_LOCK_REPLY_SIZE,
                                (int)iov->len);
                 return -1;
         }
+
         return 0;
 }
 
 int
-smb2_process_flush_request_fixed(struct smb2_context *smb2,
+smb2_process_lock_request_fixed(struct smb2_context *smb2,
                          struct smb2_pdu *pdu)
 {
+        struct smb2_lock_request *req;
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
         uint16_t struct_size;
+        uint32_t u32;
+
+        req = malloc(sizeof(*req));
+        if (req == NULL) {
+                smb2_set_error(smb2, "Failed to allocate lock request");
+                return -1;
+        }
+        pdu->payload = req;
 
         smb2_get_uint16(iov, 0, &struct_size);
-        if (struct_size != SMB2_FLUSH_REQUEST_SIZE ||
+        if (struct_size != SMB2_LOCK_REQUEST_SIZE ||
             (struct_size & 0xfffe) != iov->len) {
-                smb2_set_error(smb2, "Unexpected size of flush "
+                smb2_set_error(smb2, "Unexpected size of lock "
                                "request. Expected %d, got %d",
-                               SMB2_FLUSH_REQUEST_SIZE,
+                               SMB2_LOCK_REQUEST_SIZE,
                                (int)iov->len);
                 return -1;
         }
+
+        smb2_get_uint16(iov, 2, &req->lock_count);
+        smb2_get_uint32(iov, 4, &u32);
+        req->lock_sequence_number = u32 >> 24;
+        req->lock_sequence_index = u32 & 0x0FFFFFFF;
+        memcpy(req->file_id, iov->buf + 8, SMB2_FD_SIZE);
+
+        if (req->lock_count < 1) {
+                smb2_set_error(smb2, "Lock request must have at least one lock.");
+                return -1;
+        }
+
+        /* Return the amount of data that the input buffer will take up.
+         * Including any padding before the input buffer itself.
+         */
+        return SMB2_LOCK_ELEMENT_SIZE * req->lock_count;
+}
+
+int
+smb2_process_lock_request_variable(struct smb2_context *smb2,
+                            struct smb2_pdu *pdu)
+{
+        struct smb2_lock_request *req = pdu->payload;
+        struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
+
+        req->locks = &iov->buf[0];
         return 0;
 }
 

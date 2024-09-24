@@ -78,6 +78,9 @@ krb5_negotiate_reply(struct smb2_context *smb2,
                      const char *password);
 
 int
+krb5_negotiate_request(struct smb2_context *smb2, void **neg_init_token);
+                     
+int
 krb5_session_get_session_key(struct smb2_context *smb2,
                              struct private_auth_data *auth_data);
 

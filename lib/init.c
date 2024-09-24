@@ -73,8 +73,15 @@
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-private.h"
+#include "slist.h"
 
 #define MAX_URL_SIZE 1024
+
+/* This is a list of all allocated contexts so servers can iterate over each
+ * it should probably be moved to the server context and a callback registered
+ * here to tell the server when a context is destroyed, but this works
+ */
+static struct smb2_context *active_contexts;
 
 static int
 smb2_parse_args(struct smb2_context *smb2, const char *args)
@@ -184,7 +191,7 @@ struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url)
                 smb2_set_error(smb2, "URL is too long");
                 return NULL;
         }
-        
+
         strncpy(str, url + 6, MAX_URL_SIZE);
         args = strchr(str, '?');
         if (args) {
@@ -217,7 +224,7 @@ struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url)
         }
         /* user */
         if ((tmp = strchr(ptr, '@')) != NULL && strlen(tmp) > len_shared_folder) {
-                *(tmp++) = '\0';              
+                *(tmp++) = '\0';
                 u->user = strdup(ptr);
                 ptr = tmp;
         }
@@ -230,7 +237,7 @@ struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url)
 
         /* Do we just have a share or do we have both a share and an object */
         tmp = strchr(ptr, '/');
-        
+
         /* We only have a share */
         if (tmp == NULL) {
                 u->share = strdup(ptr);
@@ -295,6 +302,8 @@ struct smb2_context *smb2_init_context(void)
 
         smb2->session_key = NULL;
 
+        SMB2_LIST_ADD(&active_contexts, smb2);
+
         return smb2;
 }
 
@@ -319,14 +328,18 @@ void smb2_destroy_context(struct smb2_context *smb2)
                 struct smb2_pdu *pdu = smb2->outqueue;
 
                 smb2->outqueue = pdu->next;
-                pdu->cb(smb2, SMB2_STATUS_CANCELLED, NULL, pdu->cb_data);
+                if (pdu->cb) {
+                        pdu->cb(smb2, SMB2_STATUS_CANCELLED, NULL, pdu->cb_data);
+                }
                 smb2_free_pdu(smb2, pdu);
         }
         while (smb2->waitqueue) {
                 struct smb2_pdu *pdu = smb2->waitqueue;
 
                 smb2->waitqueue = pdu->next;
-                pdu->cb(smb2, SMB2_STATUS_CANCELLED, NULL, pdu->cb_data);
+                if (pdu->cb) {
+                        pdu->cb(smb2, SMB2_STATUS_CANCELLED, NULL, pdu->cb_data);
+                }
                 smb2_free_pdu(smb2, pdu);
         }
         smb2_free_iovector(smb2, &smb2->in);
@@ -362,7 +375,14 @@ void smb2_destroy_context(struct smb2_context *smb2)
             free_c_data(smb2, smb2->connect_data);  /* sets smb2->connect_data to NULL */
         }
 
+        SMB2_LIST_REMOVE(&active_contexts, smb2);
+
         free(smb2);
+}
+
+struct smb2_context *smb2_active_contexts(void)
+{
+        return active_contexts;
 }
 
 void smb2_free_iovector(struct smb2_context *smb2, struct smb2_io_vectors *v)
@@ -402,9 +422,9 @@ static void smb2_set_error_string(struct smb2_context *smb2, const char * error_
 #ifdef _XBOX
         if (_vsnprintf(errstr, MAX_ERROR_SIZE, error_string, args) < 0) {
 #else
-	if (vsnprintf(errstr, MAX_ERROR_SIZE, error_string, args) < 0) {
+        if (vsnprintf(errstr, MAX_ERROR_SIZE, error_string, args) < 0) {
 #endif
-			strncpy(errstr, "could not format error string!",
+                strncpy(errstr, "could not format error string!",
                         MAX_ERROR_SIZE);
         }
         strncpy(smb2->error_string, errstr, MAX_ERROR_SIZE);
@@ -424,6 +444,8 @@ void smb2_set_error(struct smb2_context *smb2, const char *error_string, ...)
         va_start(ap, error_string);
         smb2_set_error_string(smb2, error_string, ap);
         va_end(ap);
+
+        fprintf(stderr, "Setting err %s\n", smb2_get_error(smb2));
 #endif
 }
 
@@ -453,6 +475,11 @@ int smb2_get_nterror(struct smb2_context *smb2)
         return smb2 ? smb2->nterror : 0;
 }
 
+void smb2_set_client_guid(struct smb2_context *smb2, const uint8_t guid[SMB2_GUID_SIZE])
+{
+        memcpy(smb2->client_guid, guid, SMB2_GUID_SIZE);
+}
+
 const char *smb2_get_client_guid(struct smb2_context *smb2)
 {
         return smb2->client_guid;
@@ -464,7 +491,7 @@ void smb2_set_security_mode(struct smb2_context *smb2, uint16_t security_mode)
 }
 
 #if !defined(_XBOX) && !defined(_IOP) && !defined(__amigaos4__) && !defined(__AMIGA__) && !defined(__AROS__)
-static void smb2_set_password_from_file(struct smb2_context *smb2)
+void smb2_set_password_from_file(struct smb2_context *smb2)
 {
         char *name = NULL;
         FILE *fh;
