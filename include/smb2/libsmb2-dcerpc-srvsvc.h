@@ -116,19 +116,19 @@ int smb2_share_enum_async(struct smb2_context *smb2,
 
 int srvsvc_NetrShareEnum_rep_coder(struct dcerpc_context *dce,
                                    struct dcerpc_pdu *pdu,
-                                   struct smb2_iovec *iov, int offset,
+                                   struct smb2_iovec *iov, int *offset,
                                    void *ptr);
 int srvsvc_NetrShareEnum_req_coder(struct dcerpc_context *ctx,
                                    struct dcerpc_pdu *pdu,
-                                   struct smb2_iovec *iov, int offset,
+                                   struct smb2_iovec *iov, int *offset,
                                    void *ptr);
 int srvsvc_NetrShareGetInfo_rep_coder(struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
-                                      struct smb2_iovec *iov, int offset,
+                                      struct smb2_iovec *iov, int *offset,
                                       void *ptr);
 int srvsvc_NetrShareGetInfo_req_coder(struct dcerpc_context *ctx,
                                       struct dcerpc_pdu *pdu,
-                                      struct smb2_iovec *iov, int offset,
+                                      struct smb2_iovec *iov, int *offset,
                                       void *ptr);
 #ifdef __cplusplus
 }

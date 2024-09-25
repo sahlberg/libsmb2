@@ -60,8 +60,11 @@ static void test_dcerpc_codec(struct dcerpc_context *dce, char *method,
         iov.len = 65536;
         iov.buf = buf;
         memset(iov.buf, 0, iov.len);
-        offset = coder(dce, pdu1, &iov, 0, req);
-
+        offset = 0;
+        if (coder(dce, pdu1, &iov, &offset, req)) {
+                printf("Encoding failed\n");
+                exit(20);
+        }
         if (offset != expected_offset) {
                 printf("Encoding failed 0. Offset/Expected mismatch. %d/%d\n",
                        offset, expected_offset);

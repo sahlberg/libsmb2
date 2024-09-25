@@ -36,7 +36,7 @@ struct dcerpc_pdu;
 
 /* Encoder/Decoder for a DCERPC object */
 typedef int (*dcerpc_coder)(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
-                            struct smb2_iovec *iov, int offset,
+                            struct smb2_iovec *iov, int *offset,
                             void *ptr);
 
 enum ptr_type {
@@ -92,23 +92,23 @@ int dcerpc_call_async(struct dcerpc_context *dce, int opnum,
                       dcerpc_cb cb, void *cb_data);
 
 int dcerpc_ptr_coder(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
-                     struct smb2_iovec *iov, int offset, void *ptr,
+                     struct smb2_iovec *iov, int *offset, void *ptr,
                      enum ptr_type type, dcerpc_coder coder);
 int dcerpc_uint8_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                    struct smb2_iovec *iov, int offset, void *ptr);
+                    struct smb2_iovec *iov, int *offset, void *ptr);
 int dcerpc_uint16_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                     struct smb2_iovec *iov, int offset, void *ptr);
+                     struct smb2_iovec *iov, int *offset, void *ptr);
 int dcerpc_uint32_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                     struct smb2_iovec *iov, int offset, void *ptr);
+                     struct smb2_iovec *iov, int *offset, void *ptr);
 int dcerpc_uint3264_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                       struct smb2_iovec *iov, int offset, void *ptr);
+                       struct smb2_iovec *iov, int *offset, void *ptr);
 int dcerpc_utf16_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                      struct smb2_iovec *iov, int offset, void *ptr);
+                      struct smb2_iovec *iov, int *offset, void *ptr);
 int dcerpc_utf16z_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                        struct smb2_iovec *iov, int offset, void *ptr);
+                        struct smb2_iovec *iov, int *offset, void *ptr);
 int dcerpc_context_handle_coder(struct dcerpc_context *dce,
                                 struct dcerpc_pdu *pdu,
-                                struct smb2_iovec *iov, int offset,
+                                struct smb2_iovec *iov, int *offset,
                                 void *ptr);
 #define DCERPC_DECODE 0
 #define DCERPC_ENCODE 1
