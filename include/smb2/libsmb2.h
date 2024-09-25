@@ -140,6 +140,12 @@ void smb2_destroy_context(struct smb2_context *smb2);
 struct smb2_context *smb2_active_contexts(void);
 
 /*
+ * Determine of the context is currently active.  This lets
+ * code know if the context was destroyed in a callback for example
+ */
+int smb2_context_active(struct smb2_context *smb2);
+
+/*
  * EVENT SYSTEM INTEGRATION
  * ========================
  * The following functions are used to integrate libsmb2 in an event
@@ -1128,6 +1134,7 @@ const char *smb2_utf16_to_utf8(const uint16_t *str, size_t len);
 struct smb2_server;
 
 struct smb2_server_request_handlers {
+        int (*destruction_event)(struct smb2_server *srvr, struct smb2_context *smb2);
         int (*authorize_user)(struct smb2_server *srvr, struct smb2_context *smb2,
                             const char *user,
                             const char *domain,
@@ -1175,6 +1182,7 @@ struct smb2_server {
         char domain[128];
         int fd;
         uint16_t port;
+        uint64_t session_counter;
         struct smb2_server_request_handlers *handlers;
         uint32_t max_transact_size;
         uint32_t max_read_size;
