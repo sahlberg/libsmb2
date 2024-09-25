@@ -474,7 +474,6 @@ struct smb2_query_directory_request {
 #define SMB2_QUERY_DIRECTORY_REPLY_SIZE 9
 
 struct smb2_query_directory_reply {
-        uint8_t raw_output;
         uint16_t output_buffer_offset;
         uint32_t output_buffer_length;
         uint8_t *output_buffer;
@@ -891,7 +890,6 @@ struct smb2_file_fs_sector_size_info {
 #define SMB2_QUERY_INFO_REPLY_SIZE 9
 
 struct smb2_query_info_reply {
-        uint8_t raw_output;
         uint16_t output_buffer_offset;
         uint32_t output_buffer_length;
         void *output_buffer;
@@ -940,7 +938,6 @@ struct smb2_reparse_data_buffer {
 };
 
 struct smb2_ioctl_request {
-        uint8_t raw_input;
         uint32_t ctl_code;
         smb2_file_id file_id;
         uint32_t input_offset;
@@ -956,7 +953,6 @@ struct smb2_ioctl_request {
 #define SMB2_IOCTL_REPLY_SIZE 49
 
 struct smb2_ioctl_reply {
-        uint8_t raw_output;
         uint32_t ctl_code;
         smb2_file_id file_id;
         uint32_t input_offset;

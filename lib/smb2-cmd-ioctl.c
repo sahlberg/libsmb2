@@ -141,12 +141,13 @@ smb2_encode_ioctl_reply(struct smb2_context *smb2,
         if (rep->output_count) {
                 switch (rep->ctl_code) {
                 case SMB2_FSCTL_VALIDATE_NEGOTIATE_INFO:
-                {
+                        /* even when passthrough is set we transcode this one 
+                        */
                         len = SMB2_IOCTL_VALIDIATE_NEGOTIATE_INFO_SIZE;
                         break;
-                }
                 default:
-                        if (rep->raw_output) {
+                        if (smb2->passthrough) {
+                                /* assume the replys output is already coded */
                                 len = rep->output_count;
                         }
                         else {
@@ -180,7 +181,7 @@ smb2_encode_ioctl_reply(struct smb2_context *smb2,
                         break;
                 }
                 default:
-                        if (rep->raw_output) {
+                        if (smb2->passthrough) {
                                 memcpy(buf, rep->output, rep->output_count);
                                 ioctlv->len = rep->output_count;
                         }
@@ -407,18 +408,19 @@ smb2_process_ioctl_request_variable(struct smb2_context *smb2,
                 smb2_get_uint16(&vec, 20, &info->security_mode);
                 smb2_get_uint16(&vec, 22, &info->dialect);
                 req->input_count = sizeof(struct smb2_ioctl_validate_negotiate_info);
-                req->raw_input = 0;
                 break;
         default:
-                if (pdu->passthrough) {
+                if (smb2->passthrough) {
+                        /* dont know how to handle this, let user decode it */
                         ptr = vec.buf;
                         req->input_count = vec.len;
-                        req->raw_input = 1;
                 }
                 else {
-                        smb2_set_error(smb2, "Can't handle ioctl code %d", req->ctl_code);
-                        return -1;
+                        smb2_set_error(smb2,
+                                       "No handling for ioctl req %x",
+                                        req->ctl_code);
                 }
+                break;
         }
         req->input = ptr;
         return 0;

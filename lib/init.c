@@ -680,3 +680,17 @@ void smb2_get_libsmb2Version(struct smb2_libversion *smb2_ver)
         smb2_ver->minor_version = LIBSMB2_MINOR_VERSION;
         smb2_ver->patch_version = LIBSMB2_MAJOR_VERSION;
 }
+
+void smb2_set_passthrough(struct smb2_context *smb2,
+                      int passthrough)
+{
+        smb2->passthrough = passthrough;
+}
+
+void smb2_get_passthrough(struct smb2_context *smb2,
+                      int *passthrough)
+{
+        *passthrough = smb2->passthrough;
+}
+
+

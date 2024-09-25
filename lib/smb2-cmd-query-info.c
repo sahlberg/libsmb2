@@ -121,11 +121,9 @@ smb2_cmd_query_info_async(struct smb2_context *smb2,
 
 static int
 smb2_encode_query_info_reply(struct smb2_context *smb2,
-                               uint8_t info_type,
-                               uint8_t file_info_class,
-                               uint32_t room,
-                               struct smb2_pdu *pdu,
-                               struct smb2_query_info_reply *rep)
+                                struct smb2_query_info_request *req,
+                                struct smb2_pdu *pdu,
+                                struct smb2_query_info_reply *rep)
 {
         int len;
         uint8_t *buf;
@@ -167,15 +165,16 @@ smb2_encode_query_info_reply(struct smb2_context *smb2,
                                         len,
                                         free);
                                         
-                if (rep->raw_output) {
+                if (smb2->passthrough) {
                         memcpy(buf, rep->output_buffer, rep->output_buffer_length);
                         memset(buf + rep->output_buffer_length, 0, len - rep->output_buffer_length);
+                        iov->len = rep->output_buffer_length;
                 }
                 else {
                         rep->output_buffer_length = 0;
-                        switch (info_type) {
+                        switch (req->info_type) {
                         case SMB2_0_INFO_FILE:
-                                switch (file_info_class) {
+                                switch (req->file_info_class) {
                                 case SMB2_FILE_BASIC_INFORMATION:
                                         smb2_encode_file_basic_info(smb2,
                                                         (struct smb2_file_basic_info *)rep->output_buffer, iov);
@@ -205,7 +204,7 @@ smb2_encode_query_info_reply(struct smb2_context *smb2,
                                 }
                                 break;
                         case SMB2_0_INFO_FILESYSTEM:
-                                switch (file_info_class) {
+                                switch (req->file_info_class) {
                                 case SMB2_FILE_FS_VOLUME_INFORMATION:
                                         break;
                                 case SMB2_FILE_FS_SIZE_INFORMATION:
@@ -252,11 +251,9 @@ smb2_encode_query_info_reply(struct smb2_context *smb2,
 
 struct smb2_pdu *
 smb2_cmd_query_info_reply_async(struct smb2_context *smb2,
-                          uint8_t info_type,
-                          uint8_t file_info_class,
-                          uint32_t room,
-                          struct smb2_query_info_reply *rep,
-                          smb2_command_cb cb, void *cb_data)
+                                struct smb2_query_info_request *req,
+                                struct smb2_query_info_reply *rep,
+                                smb2_command_cb cb, void *cb_data)
 {
         struct smb2_pdu *pdu;
 
@@ -265,7 +262,7 @@ smb2_cmd_query_info_reply_async(struct smb2_context *smb2,
                 return NULL;
         }
 
-        if (smb2_encode_query_info_reply(smb2, info_type, file_info_class, room, pdu, rep)) {
+        if (smb2_encode_query_info_reply(smb2, req, pdu, rep)) {
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
         }
@@ -354,6 +351,14 @@ int smb2_process_query_info_variable(struct smb2_context *smb2,
                                  NULL};
         void *ptr = NULL;
 
+        if (smb2->passthrough) {
+                ptr = smb2_alloc_init(smb2,
+                          rep->output_buffer_length);
+                memcpy(ptr, vec.buf, vec.len);
+                rep->output_buffer = ptr;
+                return 0;
+        }
+        
         switch (pdu->info_type) {
         case SMB2_0_INFO_FILE:
                 switch (pdu->file_info_class) {
@@ -530,9 +535,9 @@ smb2_process_query_info_request_fixed(struct smb2_context *smb2,
         smb2_get_uint32(iov, 20, &req->flags);
         memcpy(req->file_id, iov->buf + 24, SMB2_FD_SIZE);
 
-                if (req->input_buffer_length == 0) {
-                                return 0;
-                }
+        if (req->input_buffer_length == 0) {
+                return 0;
+        }
         if (req->input_buffer_offset < SMB2_HEADER_SIZE +
                         (SMB2_QUERY_INFO_REQUEST_SIZE & 0xfffe)) {
                 smb2_set_error(smb2, "Input buffer overlaps with "

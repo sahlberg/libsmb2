@@ -124,6 +124,15 @@ typedef int t_socket;
 struct smb2_context *smb2_init_context(void);
 
 /*
+ * Close an SMB2 context
+ * 
+ * closes socket if open, and clears keys but leave
+ * context allocated.  the context will be destroyed
+ * at a time later when it won't be in-use
+ */
+void smb2_close_context(struct smb2_context *smb2);
+
+/*
  * Destroy an smb2 context.
  *
  * Any open "struct smb2fh" will automatically be freed. You can not reference
@@ -247,6 +256,27 @@ int smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents);
  * Default is 0: No timeout.
  */
 void smb2_set_timeout(struct smb2_context *smb2, int seconds);
+
+/*
+ * Set passthrough-enable.  Passthrough allows command packers
+ * and unpackers to keep the extra data on complex commands
+ * in its on-the-wire format without any interpretation. this
+ * is useful for proxy use cases where there might be no need
+ * to fully parse things like query-info replies or ioctl
+ * requests.  If passthrough is not set, any command that
+ * that is processed that can't interpret the data will fail
+ * Most client use case will not need this
+ *
+ * Default is 0: no-passthrough
+ */
+void smb2_set_passthrough(struct smb2_context *smb2,
+                      int passthrough);
+ 
+/* 
+ * Get the current passthrough setting
+ */
+void smb2_get_passthrough(struct smb2_context *smb2,
+                      int *passthrough);
 
 /*
  * Set which version of SMB to negotiate.

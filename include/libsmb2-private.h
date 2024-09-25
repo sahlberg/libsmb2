@@ -202,6 +202,15 @@ struct smb2_context {
          * (if this context is a server)
          */
         struct smb2_pdu *next_pdu;
+        
+        /* flag indicated command packers/unpackers can pass "extra"
+         * content without trying to decode or encode it.  this is
+         * useful for proxies and applies only to the commands with
+         * complex data: query-info, query-directory, ioctl, and
+         * create (contexts).  the command fixed part is always
+         * de/en-coded regardless of this setting
+         */
+        int passthrough;
 
         /* Server capabilities */
         uint8_t supports_multi_credit;
@@ -264,13 +273,6 @@ struct smb2_pdu {
         uint8_t info_type;
         uint8_t file_info_class;
 
-        /* for smb proxy use, pdu in-iovs (except first) are copied to out-iovs
-         * on send if this bit is set (even if the input is decoded).
-         * the presence of more than one out-iov suppresses this since it indicates
-         * a handler has re-encoded the contents
-         */
-        uint8_t passthrough:1;
-        
         /* For encrypted PDUs */
         uint8_t seal:1;
         uint32_t crypt_len;
