@@ -213,7 +213,6 @@ smb2_write_to_socket(struct smb2_context *smb2)
                 smb2_set_error(smb2, "trying to write but not connected");
                 return -1;
         }
-
         while ((pdu = smb2->outqueue) != NULL) {
                 struct iovec iov[SMB2_MAX_VECTORS] _U_;
                 struct iovec *tmpiov;
@@ -637,6 +636,7 @@ read_more_data:
                  */
                 smb2->in.num_done = 0;
                 if (smb3_decrypt_pdu(smb2)) {
+                        smb2_set_error(smb2, "Failed to decrypyt pdu");
                         return -1;
                 }
                 /* We are all done now with this PDU. Reset num_done to 0
@@ -670,6 +670,7 @@ read_more_data:
                 if (smb2_calc_signature(smb2, &smb2->in.iov[1 + iov_offset].buf[48],
                                         &smb2->in.iov[1 + iov_offset],
                                         smb2->in.niov - 1 - iov_offset) < 0) {
+                        smb2_set_error(smb2, "Signature calc failed.");
                         return -1;
                 }
                 if (memcmp(&signature[0], &smb2->in.iov[1 + iov_offset].buf[48], 16)) {
@@ -711,8 +712,7 @@ read_more_data:
 static ssize_t smb2_readv_from_socket(struct smb2_context *smb2,
                                       const struct iovec *iov, int iovcnt)
 {
-        ssize_t rc = readv(smb2->fd, (struct iovec*) iov, iovcnt);
-        
+        ssize_t rc = readv(smb2->fd, (struct iovec*) iov, iovcnt);        
         return rc;
 }
 
