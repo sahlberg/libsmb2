@@ -227,7 +227,7 @@ smb2_process_close_request_fixed(struct smb2_context *smb2,
         }
 
         smb2_get_uint16(iov, 2, &req->flags);
-        memcpy(req->file_id, iov->buf + 4, SMB2_FD_SIZE);
+        memcpy(req->file_id, iov->buf + 8, SMB2_FD_SIZE);
 
         return 0;
 }
