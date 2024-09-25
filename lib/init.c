@@ -309,7 +309,7 @@ struct smb2_context *smb2_init_context(void)
 
 void smb2_destroy_context(struct smb2_context *smb2)
 {
-        if (smb2 == NULL) {
+        if (smb2 == NUL) {
                 return;
         }
 
@@ -384,6 +384,20 @@ struct smb2_context *smb2_active_contexts(void)
 {
         return active_contexts;
 }
+
+int smb2_context_active(struct smb2_context *smb2)
+{
+        struct smb2_context *context = active_contexts;
+        
+        while (context) {
+                if (smb2 == context) {
+                        return 1;
+                }
+                context = context->next;
+        }
+        return 0;
+}
+
 
 void smb2_free_iovector(struct smb2_context *smb2, struct smb2_io_vectors *v)
 {
