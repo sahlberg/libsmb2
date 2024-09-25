@@ -12,6 +12,7 @@ libsmb2_la_SOURCES = \
 	aes128ccm.h \
 	aes128ccm.c \
 	alloc.c \
+	asn1-ber.c \
 	compat.c \
 	compat.h \
 	dcerpc.c \
@@ -43,6 +44,7 @@ libsmb2_la_SOURCES = \
 	smb2-cmd-error.c \
 	smb2-cmd-flush.c \
 	smb2-cmd-ioctl.c \
+	smb2-cmd-lock.c \
 	smb2-cmd-logoff.c \
 	smb2-cmd-negotiate.c \
 	smb2-cmd-query-directory.c \
@@ -63,6 +65,7 @@ libsmb2_la_SOURCES = \
 	smb2-signing.h \
 	smb2-signing.c \
 	socket.c \
+	spnego-wrapper.c \
 	sync.c \
 	timestamps.c \
 	unicode.c \

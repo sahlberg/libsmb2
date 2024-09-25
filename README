@@ -1,5 +1,5 @@
-Libsmb2 is a userspace client library for accessing SMB2/SMB3 shares on a
-network.
+Libsmb2 is a userspace client/server library for accessing or serving
+SMB2/SMB3 shares on a network.
 It is high performance and fully async. It supports both zero-copy
 for SMB READ/WRITE commands as well as compounded commands.
 
@@ -28,6 +28,8 @@ This is a low level API that provides direct access to the SMB2 PDUs
 and data structures.
 This API is described in libsmb-raw.h
 
+Libsmb2 implements a synchronous API for running an SMB server. You could
+run an async server if you implement the main loop yourself however
 
 SMB URL Format
 ==============
@@ -59,6 +61,16 @@ Arguments supported by libsmb2 are :
 
 NOTE:-
 	When using krb5cc mode use smb2_set_domain() and smb2_set_password() in the examples and applications
+
+SMB Server
+==========
+There is an example server implementation in examples/smb2-server-sync.c. The library
+server function is handed an array of function pointers that the library will call
+for each client command. It is up to your implementation to fill out and return
+replies for each according to your use. The example simulates a disk with a few files.
+Your handler will be also be called to pre-authenticate users as part of ntlmssp (krb
+authenticaton not yet implemented). Your application will also be called-back each
+time a client connect to allow your to configure the context prior to negotiation.
 
 Authentication
 ==============
@@ -133,6 +145,7 @@ by calling :
   smb2_set_user(smb2, <username>);
   smb2_set_password(smb2, <password>);
 
+(For server, you don't need to set the user, as that is supplied by the client)
 
 SMB2/3 SIGNING
 ==============

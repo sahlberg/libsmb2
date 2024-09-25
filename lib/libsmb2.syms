@@ -44,6 +44,7 @@ smb2_fsync_async
 smb2_ftruncate
 smb2_ftruncate_async
 smb2_get_client_guid
+smb2_get_dialect
 smb2_get_error
 smb2_get_fd
 smb2_get_fds
@@ -68,6 +69,7 @@ smb2_queue_pdu
 smb2_read
 smb2_read_async
 smb2_readdir
+smb2_register_error_callback
 smb2_rewinddir
 smb2_readlink
 smb2_readlink_async
@@ -75,6 +77,7 @@ smb2_rmdir
 smb2_rmdir_async
 smb2_lseek
 smb2_seekdir
+smb2_serve_port
 smb2_service
 smb2_service_fd
 smb2_set_authentication
@@ -82,7 +85,9 @@ smb2_set_security_mode
 smb2_set_version
 smb2_set_user
 smb2_set_password
+smb2_set_password_from_file
 smb2_set_domain
+smb2_set_error
 smb2_set_workstation
 smb2_set_opaque
 smb2_set_seal
@@ -93,13 +98,17 @@ smb2_stat_async
 smb2_statvfs
 smb2_statvfs_async
 smb2_telldir
+smb2_timeval_to_win
 smb2_truncate
 smb2_truncate_async
 smb2_rename
 smb2_rename_async
 smb2_unlink
 smb2_unlink_async
+smb2_utf8_to_utf16
+smb2_utf16_to_utf8
 smb2_which_events
+smb2_win_to_timeval
 smb2_write
 smb2_write_async
 smb2_echo

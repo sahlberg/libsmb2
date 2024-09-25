@@ -30,6 +30,10 @@
 extern "C" {
 #endif
 
+#define NEGOTIATE_MESSAGE      0x00000001
+#define CHALLENGE_MESSAGE      0x00000002
+#define AUTHENTICATION_MESSAGE 0x00000003
+
 struct auth_data;
 
 struct auth_data *
@@ -39,16 +43,32 @@ ntlmssp_init_context(const char *user,
                      const char *workstation,
                      const char *client_challenge);
 
+void
+ntlmssp_destroy_context(struct auth_data *auth);
+
 int
-ntlmssp_generate_blob(struct smb2_context *smb2, time_t t,
+ntlmssp_get_message_type(struct smb2_context *smb2,
+                      uint8_t *ntlmssp_buffer, int len,
+                      uint32_t *message_type,
+                      uint8_t **ntlmssp_ptr, int *ntlmssp_len,
+                      int *is_wrapped);
+
+int
+ntlmssp_generate_blob(struct smb2_server *server, struct smb2_context *smb2, time_t t,
                       struct auth_data *auth_data,
                       unsigned char *input_buf, int input_len,
                       unsigned char **output_buf, uint16_t *output_len);
 
-void
-ntlmssp_destroy_context(struct auth_data *auth);
+int
+ntlmssp_authenticate_blob(struct smb2_server *server, struct smb2_context *smb2,
+                      struct auth_data *auth_data,
+                      unsigned char *input_buf, int input_len);
+                      
+int
+ntlmssp_get_authenticated(struct auth_data *auth);
 
-int ntlmssp_get_session_key(struct auth_data *auth, uint8_t **key, uint8_t *key_size);
+int
+ntlmssp_get_session_key(struct auth_data *auth, uint8_t **key, uint8_t *key_size);
 
 #ifdef __cplusplus
 }

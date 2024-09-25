@@ -23,6 +23,10 @@
 #define _GNU_SOURCE
 #endif
 
+#ifdef HAVE_ARPA_INET_H
+#include <arpa/inet.h>
+#endif 
+
 #ifdef HAVE_NETDB_H
 #include <netdb.h>
 #endif
@@ -45,6 +49,10 @@
 
 #ifdef HAVE_STDLIB_H
 #include <stdlib.h>
+#endif
+
+#ifdef HAVE_STDIO_H
+#include <stdio.h>
 #endif
 
 #ifdef HAVE_STRING_H
@@ -109,10 +117,10 @@
  * timeout of 100ms. */
 #define HAPPY_EYEBALLS_TIMEOUT 100
 #if !defined(HAVE_LINGER)
-struct linger 
+struct linger
 {
-	int		l_onoff;	/* Linger active		*/
-	int		l_linger;	/* How long to linger for	*/
+        int     l_onoff;    /* Linger active        */
+        int     l_linger;   /* How long to linger for   */
 };
 #endif
 static int
@@ -319,7 +327,7 @@ static int smb2_read_data(struct smb2_context *smb2, read_func func,
         static char smb3tfrm[4] = {0xFD, 'S', 'M', 'B'};
         struct smb2_pdu *pdu = smb2->pdu;
         ssize_t count;
-        size_t len;
+        int len;
 
 read_more_data:
         num_done = smb2->in.num_done;
@@ -368,6 +376,8 @@ read_more_data:
         }
         if (count == 0) {
                 /* remote side has closed the socket. */
+                smb2_set_error(smb2, "Read from socket failed, "
+                               "remote closed connection.");
                 return -1;
         }
         smb2->in.num_done += (size_t)count;
@@ -403,13 +413,48 @@ read_more_data:
                                        "header: %s", smb2_get_error(smb2));
                         return -1;
                 }
+                /* if serving, and this is an smb1 negotiate, just short-circuit and flush 
+                 * any remaining data on input and call the callback */
+                if (smb2_is_server(smb2) && smb2->hdr.command == SMB1_NEGOTIATE) {
+                        uint8_t flusher[32];
+                        struct iovec fiov; 
+                        fiov.iov_base = (char *)flusher;
+                        fiov.iov_len = sizeof(flusher);
+                        do {
+                                count = func(smb2, &fiov, 1);
+                                if (count < 0) {
+#if defined(_WIN32) || defined(_XBOX)
+                                        int err = WSAGetLastError();
+                                        if (err == WSAEINTR || err == WSAEWOULDBLOCK) {
+#else
+                                        int err = errno;
+                                        if (err == EINTR || err == EAGAIN || err == EWOULDBLOCK) {
+#endif
+                                                count = 0;
+                                        }
+                                }
+                        }
+                        while (count > 0);
+                        
+                        smb2->in.num_done = 0;
+                        pdu->cb(smb2, smb2->hdr.status, pdu->payload, pdu->cb_data);
+                        smb2_free_pdu(smb2, pdu);
+                        smb2->pdu = NULL;
+                        smb2->pdu = smb2->next_pdu;
+                        smb2->next_pdu = NULL;
+                        return 0;
+                }
                 /* Record the offset for the start of payload data. */
                 smb2->payload_offset = smb2->in.num_done;
 
                 smb2->credits += smb2->hdr.credit_request_response;
 
-                if (!(smb2->hdr.flags & SMB2_FLAGS_SERVER_TO_REDIR)) {
+                if (!smb2_is_server(smb2) && !(smb2->hdr.flags & SMB2_FLAGS_SERVER_TO_REDIR)) {
                         smb2_set_error(smb2, "received non-reply");
+                        return -1;
+                }
+                else if (smb2_is_server(smb2) && (smb2->hdr.flags & SMB2_FLAGS_SERVER_TO_REDIR)) {
+                        smb2_set_error(smb2, "received non-request");
                         return -1;
                 }
                 if (smb2->hdr.status == SMB2_STATUS_PENDING) {
@@ -435,15 +480,35 @@ read_more_data:
                         goto read_more_data;
                 }
 
-                pdu = smb2->pdu = smb2_find_pdu(smb2, smb2->hdr.message_id);
-                if (pdu == NULL) {
-                        smb2_set_error(smb2, "no matching PDU found");
-                        return -1;
+                if (smb2_is_server(smb2)) {
+                        pdu = smb2->pdu;
+                        if (!pdu) {
+                                smb2_set_error(smb2, "no pdu for request");
+                                return -ENOMEM;
+                        }
+                        /* if the session is properly opened then we could get
+                         * any request from the client, so use the headers command
+                         * not the pdus command for the rest of input
+                         */
+                        if (pdu->header.command > SMB2_SESSION_SETUP) {
+                                pdu->header.command = smb2->hdr.command;
+                        }
                 }
-                SMB2_LIST_REMOVE(&smb2->waitqueue, pdu);
+                else {
+                        if (smb2->pdu) {
+                                smb2_free_pdu(smb2, smb2->pdu);
+                                smb2->pdu = NULL;
+                        }
+                        pdu = smb2->pdu = smb2_find_pdu(smb2, smb2->hdr.message_id);
+                        if (pdu == NULL) {
+                                     smb2_set_error(smb2, "no matching PDU found");
+                                     return -1;
+                        }
+                        SMB2_LIST_REMOVE(&smb2->waitqueue, pdu);
+                }
 
                 len = smb2_get_fixed_size(smb2, pdu);
-                if (len < 0) {
+                if (((int)len) < 0) {
                         smb2_set_error(smb2, "can not determine fixed size");
                         return -1;
                 }
@@ -620,6 +685,11 @@ read_more_data:
         smb2_free_pdu(smb2, pdu);
         smb2->pdu = NULL;
 
+        if (smb2_is_server(smb2)) {
+                smb2->pdu = smb2->next_pdu;
+                smb2->next_pdu = NULL;
+        }
+        
         if (is_chained) {
                 /* Record at which iov we ended in this loop so we know where to start in the next */
                 iov_offset = smb2->in.niov - 1;
@@ -637,10 +707,13 @@ read_more_data:
         return 0;
 }
 
+#include <stdio.h>
 static ssize_t smb2_readv_from_socket(struct smb2_context *smb2,
                                       const struct iovec *iov, int iovcnt)
 {
-        return readv(smb2->fd, (struct iovec*) iov, iovcnt);
+        ssize_t rc = readv(smb2->fd, (struct iovec*) iov, iovcnt);
+        
+        return rc;
 }
 
 static int
@@ -750,7 +823,7 @@ smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
                         if (err == 0) {
                                 return 0;
                         }
-                } else if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (char *)&err, &err_size) != 0 || err != 0) {  
+                } else if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (char *)&err, &err_size) != 0 || err != 0) {
                         if (err == 0) {
                                 err = errno;
                         }
@@ -777,9 +850,9 @@ smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
         }
 
         if (!SMB2_VALID_SOCKET(smb2->fd) && revents & POLLOUT) {
-                int err = 0;		
+                int err = 0;
                 socklen_t err_size = sizeof(err);
-                
+
                 if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (char *)&err, &err_size) != 0 || err != 0) {
                         if (err == 0) {
                                 err = errno;
@@ -798,7 +871,7 @@ smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
                                                 "%s(%d) while connecting.",
                                                 strerror(err), err);
                         }
-						
+
                         if (smb2->connect_cb) {
                                 smb2->connect_cb(smb2, err,
                                                  NULL, smb2->connect_data);
@@ -858,7 +931,7 @@ set_nonblocking(t_socket fd)
         ioctlsocket(fd, FIONBIO, &opt);
 #elif (defined(__AMIGA__) || defined(__AROS__)) && !defined(__amigaos4__) && !defined(__amigaos3__)
         unsigned long opt = 0;
-        IoctlSocket(fd, FIONBIO, (char *)&opt);		
+        IoctlSocket(fd, FIONBIO, (char *)&opt);
 #else
         unsigned v;
         v = fcntl(fd, F_GETFL, 0);
@@ -870,7 +943,7 @@ static int
 set_tcp_sockopt(t_socket sockfd, int optname, int value)
 {
         int level;
-#if !defined(SOL_TCP) 
+#if !defined(SOL_TCP)
         struct protoent *buf;
         if ((buf = getprotobyname("tcp")) != NULL) {
                 level = buf->p_proto;
@@ -907,7 +980,7 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_o
                 ((struct sockaddr_in *)&ss)->sin_len = socksize;
 #endif
                 break;
-#ifdef AF_INET6				
+#ifdef AF_INET6
         case AF_INET6:
 #if !defined(PICO_PLATFORM) || defined(LWIP_INETV6)
                 socksize = sizeof(struct sockaddr_in6);
@@ -934,16 +1007,16 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_o
                 return -EIO;
         }
 
-#ifdef _XBOX		
+#ifdef _XBOX
         if(setsockopt(fd, SOL_SOCKET, 0x5801, (PCSTR)&bBroadcast, sizeof(BOOL) ) != 0 )
         {
-#if 0			
+#if 0
                 return 0;
 #endif
         }
         if(setsockopt(fd, SOL_SOCKET, 0x5802, (PCSTR)&bBroadcast, sizeof(BOOL)) != 0)
         {
-#if 0 			
+#if 0
                 return 0;
 #endif
         }
@@ -1011,7 +1084,7 @@ static void interleave_addrinfo(struct addrinfo *base)
                         continue;
                 }
                 if (cur == base->ai_next) {
-                        /* 
+                        /*
                         ** If the first one following base is of a different family, just
                         ** move base forward one step and continue.
                         */
@@ -1024,7 +1097,7 @@ static void interleave_addrinfo(struct addrinfo *base)
                 /* Hook in cur directly after base. */
                 cur->ai_next = base->ai_next;
                 base->ai_next = cur;
-                /* 
+                /*
                 ** Restart with a new base. We know that before moving the cur element,
                 ** everything between the previous base and cur had the same family,
                 ** different from cur->ai_family. Therefore, we can keep next pointing
@@ -1091,7 +1164,7 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
                 {
                         smb2_set_error(smb2, "Winsock was not initialized. "
                                 "Please call WSAStartup().");
-                        return -WSANOTINITIALISED; 
+                        return -WSANOTINITIALISED;
                 }
                 else
 #endif
@@ -1149,6 +1222,89 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
                 freeaddrinfo(smb2->addrinfos);
                 smb2->addrinfos = NULL;
                 smb2->next_addrinfo = NULL;
+        }
+
+        return err;
+}
+
+int
+smb2_bind_and_listen(const uint16_t port, int max_connections, int *out_fd)
+{
+        t_socket fd;
+        socklen_t socksize;
+        struct sockaddr_in serv_addr;
+
+             *out_fd = -1;
+
+        fd = socket(AF_INET, SOCK_STREAM, 0);
+        if (!SMB2_VALID_SOCKET(fd)) {
+                return -EIO;
+        }
+
+        set_nonblocking(fd);
+        set_tcp_sockopt(fd, TCP_NODELAY, 1);
+
+        serv_addr.sin_port = htons(port);
+        serv_addr.sin_family = AF_INET;
+        serv_addr.sin_addr.s_addr = INADDR_ANY;
+        socksize = sizeof(serv_addr);
+
+        if (bind(fd, (struct sockaddr *)&serv_addr, socksize) != 0
+#ifndef _MSC_VER
+                  && errno != EINPROGRESS) {
+#else
+                  && WSAGetLastError() != WSAEWOULDBLOCK) {
+#endif
+                close(fd);
+                return -EIO;
+        }
+
+        if (listen(fd, max_connections) != 0) {
+                close(fd);
+                return -EIO;
+        }
+
+        *out_fd = (int)fd;
+        return 0;
+}
+
+int smb2_accept_connection_async(const int fd, int to_msec, smb2_accepted_cb cb, void *cb_data)
+{
+        int err = -1;
+        struct sockaddr_in client_addr;
+        socklen_t socklen;
+        t_socket clientfd;
+        struct pollfd pfd;
+#if 0 == CONFIGURE_OPTION_TCP_LINGER
+        int const yes = 1;
+        struct linger const lin = { 1, 0 };   /*  if l_linger is zero, sends RST after FIN */
+#endif
+
+        if (!SMB2_VALID_SOCKET(fd)) {
+                return -EINVAL;
+        }
+
+        memset(&pfd, 0, sizeof(struct pollfd));
+        pfd.fd = fd;
+        pfd.events = POLLIN;
+
+        err = poll(&pfd, 1, to_msec);
+        if (err > 0) {
+                socklen = sizeof(client_addr);
+                clientfd = accept(fd, (struct sockaddr *)&client_addr, &socklen);
+
+                if (clientfd >= 0) {
+                        set_nonblocking(clientfd);
+                        set_tcp_sockopt(clientfd, TCP_NODELAY, 1);
+#if 0 == CONFIGURE_OPTION_TCP_LINGER
+                        setsockopt(clientfd, SOL_SOCKET, SO_REUSEADDR, (const void*)&yes, sizeof yes);
+                        setsockopt(clientfd, SOL_SOCKET, SO_LINGER, (const void*)&lin, sizeof lin);
+#endif
+                        err = cb(clientfd, cb_data);
+                }
+                else {
+                        err = -EIO;
+                }
         }
 
         return err;

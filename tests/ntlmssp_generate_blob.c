@@ -95,7 +95,7 @@ int main(int argc, char *argv[])
                 return -1;
         }
                 
-        if (ntlmssp_generate_blob(smb2, timestamp, auth_data,
+        if (ntlmssp_generate_blob(NULL, smb2, timestamp, auth_data,
                                   security_blob, sizeof(security_blob),
                                   &req.security_buffer,
                                   &req.security_buffer_length) < 0) {
