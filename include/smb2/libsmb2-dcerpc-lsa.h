@@ -160,7 +160,7 @@ int lsa_OpenPolicy2_req_coder(struct dcerpc_context *dce,
                               struct dcerpc_pdu *pdu,
                               struct smb2_iovec *iov, int *offset,
                               void *ptr);
-int lsa_RPC_SID_coderX(struct dcerpc_context *dce,
+int lsa_RPC_SID_coder(struct dcerpc_context *dce,
                       struct dcerpc_pdu *pdu,
                       struct smb2_iovec *iov, int *offset,
                       void *ptr);
