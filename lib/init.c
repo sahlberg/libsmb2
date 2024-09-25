@@ -309,7 +309,7 @@ struct smb2_context *smb2_init_context(void)
 
 void smb2_destroy_context(struct smb2_context *smb2)
 {
-        if (smb2 == NUL) {
+        if (smb2 == NULL) {
                 return;
         }
 
