@@ -214,6 +214,13 @@ lsa_RPC_UNICODE_STRING_coder(struct dcerpc_context *dce,
 {
         uint16_t len, maxlen;
 
+/* TODO conformance split
+ * during the conformance run we need to do the alignment in all the
+  coders, even for the coders that do  not have any conformance data.
+
+  that will eliminate the need to manually set the alignment like
+  we do here
+*/
         *offset = dcerpc_align_3264(dce, *offset);
 
         if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {

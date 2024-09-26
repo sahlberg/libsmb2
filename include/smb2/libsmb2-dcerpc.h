@@ -49,7 +49,7 @@ typedef struct dcerpc_uuid {
         uint32_t v1;
         uint16_t v2;
         uint16_t v3;
-        uint64_t v4;
+        uint64_t v4; /* TODO: is really a char[8] */
 } dcerpc_uuid_t;
 
 typedef struct p_syntax_id {
