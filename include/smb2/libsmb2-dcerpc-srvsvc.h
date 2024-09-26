@@ -23,6 +23,8 @@
 extern "C" {
 #endif
 
+#include <smb2/libsmb2-dcerpc.h>
+
 #define SRVSVC_NETRSHAREENUM      0x0f
 #define SRVSVC_NETRSHAREGETINFO   0x10
 
@@ -39,37 +41,41 @@ struct dcerpc_pdu;
 #define SHARE_TYPE_TEMPORARY 0x40000000
 #define SHARE_TYPE_HIDDEN    0x80000000
 
-struct srvsvc_netshareinfo1 {
-        const char *name;
+struct srvsvc_SHARE_INFO_1 {
+        struct dcerpc_utf16 netname;
         uint32_t type;
-	const char *comment;
+        struct dcerpc_utf16 remark;
 };
 
-struct srvsvc_netsharectr1 {
-        uint32_t count;
-        struct srvsvc_netshareinfo1 *array;
+struct srvsvc_SHARE_INFO_1_carray {
+        uint32_t max_count; /* filled in by caller before decode */
+        struct srvsvc_SHARE_INFO_1 share_info_1[];
+};
+struct srvsvc_SHARE_INFO_1_CONTAINER {
+        uint32_t EntriesRead;
+        struct srvsvc_SHARE_INFO_1_carray *Buffer;
 };
 
-struct srvsvc_netsharectr {
+struct srvsvc_SHARE_ENUM_UNION {
         uint32_t level;
         union {
-                struct srvsvc_netsharectr1 ctr1;
+                struct srvsvc_SHARE_INFO_1_CONTAINER Level1;
         };
 };
 
-struct srvsvc_netshareenumall_req {
-        const char *server;
+struct srvsvc_NetShareEnum_req {
+        struct dcerpc_utf16 ServerName;
         uint32_t level;
-        struct srvsvc_netsharectr *ctr;
-        uint32_t max_buffer;
-        uint32_t resume_handle;
+        struct srvsvc_SHARE_ENUM_UNION *ctr;
+        uint32_t PreferedMaximumLength;
+        uint32_t ResumeHandle;
 };
 
-struct srvsvc_netshareenumall_rep {
+struct srvsvc_NetShareEnum_rep {
         uint32_t status;
 
         uint32_t level;
-        struct srvsvc_netsharectr *ctr;
+        struct srvsvc_SHARE_ENUM_UNION *ctr;
         uint32_t total_entries;
         uint32_t resume_handle;
 };
@@ -77,13 +83,13 @@ struct srvsvc_netshareenumall_rep {
 struct srvsvc_netshareinfo {
         uint32_t level;
         union {
-                struct srvsvc_netshareinfo1 info1;
+                struct srvsvc_SHARE_INFO_1 ShareInfo1;
         };
 };
 
 struct srvsvc_netrsharegetinfo_req {
-        const char *ServerName;
-        const char *NetName;
+        struct dcerpc_utf16 ServerName;
+        struct dcerpc_utf16 NetName;
         uint32_t Level;
 };
 
@@ -107,7 +113,7 @@ struct srvsvc_rep {
  * -errno : There was an error. The callback function will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- *      0 : Success. Command_data is struct srvsvc_netshareenumall_rep *
+ *      0 : Success. Command_data is struct srvsvc_NetShareEnum_rep *
  *          This pointer must be freed using smb2_free_data().
  * -errno : An error occurred.
  */

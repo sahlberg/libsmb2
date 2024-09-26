@@ -352,8 +352,8 @@ static void test_SRVSVC_NetrShareGetInfo_req(struct dcerpc_context *dce)
 0x53, 0x00, 0x68, 0x00, 0x61, 0x00, 0x72, 0x00, 
 0x65, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00 };
 
-        req.ServerName = "\\\\win16-1";
-        req.NetName = "Share";
+        req.ServerName.utf8 = "\\\\win16-1";
+        req.NetName.utf8 = "Share";
         req.Level = 1;
         test_dcerpc_codec(dce, "SRVSVC NetrShareGetInfo Request",
                           srvsvc_NetrShareGetInfo_req_coder, &req, sizeof(req),
@@ -378,9 +378,9 @@ static void test_SRVSVC_NetrShareGetInfo_rep(struct dcerpc_context *dce)
 
         rep.status = 0;
         rep.info.level = 1;
-        rep.info.info1.name = "IPC$";
-        rep.info.info1.type = 0x8000003;
-        rep.info.info1.comment = "Remote IPC";
+        rep.info.ShareInfo1.netname.utf8 = "IPC$";
+        rep.info.ShareInfo1.type = 0x8000003;
+        rep.info.ShareInfo1.netname.utf8 = "Remote IPC";
 
         test_dcerpc_codec(dce, "SRVSVC NetrShareGetInfo Reply",
                           srvsvc_NetrShareGetInfo_rep_coder, &rep, sizeof(rep),
@@ -389,7 +389,7 @@ static void test_SRVSVC_NetrShareGetInfo_rep(struct dcerpc_context *dce)
 
 static void test_SRVSVC_NetrShareEnum_req(struct dcerpc_context *dce)
 {
-        struct srvsvc_netshareenumall_req req;
+        struct srvsvc_NetShareEnum_req req;
         unsigned char buf[] = {
 0x55, 0x70, 0x74, 0x72, 0x0a, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x00, 0x00,
@@ -401,11 +401,11 @@ static void test_SRVSVC_NetrShareEnum_req(struct dcerpc_context *dce)
 0xff, 0xff, 0xff, 0xff, 0x55, 0x70, 0x74, 0x72,
 0x00, 0x00, 0x00, 0x00 };
 
-        req.server = "\\\\win16-1";
+        req.ServerName.utf8 = "\\\\win16-1";
         req.level = 1;
         req.ctr = NULL;;
-        req.max_buffer = 0xffffffff;
-        req.resume_handle = 0;
+        req.PreferedMaximumLength = 0xffffffff;
+        req.ResumeHandle = 0;
         test_dcerpc_codec(dce, "SRVSVC NetrShareEnum Request",
                           srvsvc_NetrShareEnum_req_coder, &req, sizeof(req),
                           sizeof(buf), buf, 0);
@@ -413,9 +413,9 @@ static void test_SRVSVC_NetrShareEnum_req(struct dcerpc_context *dce)
 
 static void test_SRVSVC_NetrShareEnum_rep(struct dcerpc_context *dce)
 {
-        struct srvsvc_netshareenumall_rep rep;
-        struct srvsvc_netsharectr ctr;
-        struct srvsvc_netshareinfo1 ctr1[7];
+        struct srvsvc_NetShareEnum_rep rep;
+        struct srvsvc_SHARE_ENUM_UNION ctr;
+        struct srvsvc_SHARE_INFO_1_carray *carray;
         unsigned char buf[] = {
 0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 
 0x55, 0x70, 0x74, 0x72, 0x07, 0x00, 0x00, 0x00, 
@@ -480,31 +480,33 @@ static void test_SRVSVC_NetrShareEnum_rep(struct dcerpc_context *dce)
 0x07, 0x00, 0x00, 0x00, 0x55, 0x70, 0x74, 0x72,  
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
-        ctr1[0].name = "ADMIN$";
-        ctr1[0].type = 0x80000000;
-        ctr1[0].comment = "Remote Admin";
-        ctr1[1].name = "C$";
-        ctr1[1].type = 0x80000000;
-        ctr1[1].comment = "Default share";
-        ctr1[2].name = "E$";
-        ctr1[2].type = 0x80000000;
-        ctr1[2].comment = "Default share";
-        ctr1[3].name = "IPC$";
-        ctr1[3].type = 0x80000003;
-        ctr1[3].comment = "Remote IPC";
-        ctr1[4].name = "Scratch";
-        ctr1[4].type = 0x00000000;
-        ctr1[4].comment = "";
-        ctr1[5].name = "Share";
-        ctr1[5].type = 0x00000000;
-        ctr1[5].comment = "";
-        ctr1[6].name = "Users";
-        ctr1[6].type = 0x00000000;
-        ctr1[6].comment = "";
+        carray = calloc(1, 10240);
+        carray->max_count = 7;
+        carray->share_info_1[0].netname.utf8 = "ADMIN$";
+        carray->share_info_1[0].type = 0x80000000;
+        carray->share_info_1[0].remark.utf8  = "Remote Admin";
+        carray->share_info_1[1].netname.utf8 = "C$";
+        carray->share_info_1[1].type = 0x80000000;
+        carray->share_info_1[1].remark.utf8  = "Default share";
+        carray->share_info_1[2].netname.utf8 = "E$";
+        carray->share_info_1[2].type = 0x80000000;
+        carray->share_info_1[2].remark.utf8  = "Default share";
+        carray->share_info_1[3].netname.utf8 = "IPC$";
+        carray->share_info_1[3].type = 0x80000003;
+        carray->share_info_1[3].remark.utf8  = "Remote IPC";
+        carray->share_info_1[4].netname.utf8 = "Scratch";
+        carray->share_info_1[4].type = 0x00000000;
+        carray->share_info_1[4].remark.utf8  = "";
+        carray->share_info_1[5].netname.utf8 = "Share";
+        carray->share_info_1[5].type = 0x00000000;
+        carray->share_info_1[5].remark.utf8  = "";
+        carray->share_info_1[6].netname.utf8 = "Users";
+        carray->share_info_1[6].type = 0x00000000;
+        carray->share_info_1[6].remark.utf8  = "";
 
         ctr.level = 1;
-        ctr.ctr1.count = 7;
-        ctr.ctr1.array = &ctr1[0];
+        ctr.Level1.EntriesRead = 7;
+        ctr.Level1.Buffer = carray;
 
         rep.level = 1;
         rep.ctr = &ctr;

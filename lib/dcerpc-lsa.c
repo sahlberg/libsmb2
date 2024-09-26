@@ -67,7 +67,7 @@
 #include "libsmb2-raw.h"
 #include "libsmb2-private.h"
 
-#define LSA_UUID    0x12345778, 0x1234, 0xabcd, 0xef000123456789ab
+#define LSA_UUID    0x12345778, 0x1234, 0xabcd, {0xef, 0x00, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab}
 
 p_syntax_id_t lsa_interface = {
         {LSA_UUID}, 0, 0

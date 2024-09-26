@@ -49,7 +49,7 @@ typedef struct dcerpc_uuid {
         uint32_t v1;
         uint16_t v2;
         uint16_t v3;
-        uint64_t v4; /* TODO: is really a char[8] */
+        uint8_t v4[8];
 } dcerpc_uuid_t;
 
 typedef struct p_syntax_id {
@@ -66,6 +66,16 @@ struct ndr_transfer_syntax {
 struct ndr_context_handle {
         uint32_t context_handle_attributes;
         dcerpc_uuid_t context_handle_uuid;
+};
+
+struct dcerpc_utf16 {
+        uint32_t max_count;       /* internal use only */
+        uint32_t offset;          /* internal use only */
+        uint32_t actual_count;    /* internal use only */
+
+        struct smb2_utf16 *utf16; /* internal use only */
+        
+        const char *utf8;
 };
 
 extern p_syntax_id_t lsa_interface;
@@ -110,6 +120,12 @@ int dcerpc_context_handle_coder(struct dcerpc_context *dce,
                                 struct dcerpc_pdu *pdu,
                                 struct smb2_iovec *iov, int *offset,
                                 void *ptr);
+int dcerpc_uuid_coder(struct dcerpc_context *dce,
+                      struct dcerpc_pdu *pdu,
+                      struct smb2_iovec *iov, int *offset,
+                      dcerpc_uuid_t *uuid);
+int dcerpc_uint8_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                    struct smb2_iovec *iov, int *offset, void *ptr);
 #define DCERPC_DECODE 0
 #define DCERPC_ENCODE 1
 struct dcerpc_pdu *dcerpc_allocate_pdu(struct dcerpc_context *dce,

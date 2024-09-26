@@ -53,24 +53,24 @@ void si_cb(struct dcerpc_context *dce, int status,
                        strerror(-status), dcerpc_get_error(dce));
                 exit(10);
         }
-        printf("%-20s %-20s", rep->info.info1.name,
-               rep->info.info1.comment);
-        if ((rep->info.info1.type & 3) == SHARE_TYPE_DISKTREE) {
+        printf("%-20s %-20s", rep->info.ShareInfo1.netname.utf8,
+               rep->info.ShareInfo1.remark.utf8);
+        if ((rep->info.ShareInfo1.type & 3) == SHARE_TYPE_DISKTREE) {
                         printf(" DISKTREE");
         }
-        if ((rep->info.info1.type & 3) == SHARE_TYPE_PRINTQ) {
+        if ((rep->info.ShareInfo1.type & 3) == SHARE_TYPE_PRINTQ) {
                 printf(" PRINTQ");
         }
-        if ((rep->info.info1.type & 3) == SHARE_TYPE_DEVICE) {
+        if ((rep->info.ShareInfo1.type & 3) == SHARE_TYPE_DEVICE) {
                 printf(" DEVICE");
         }
-        if ((rep->info.info1.type & 3) == SHARE_TYPE_IPC) {
+        if ((rep->info.ShareInfo1.type & 3) == SHARE_TYPE_IPC) {
                 printf(" IPC");
         }
-        if (rep->info.info1.type & SHARE_TYPE_TEMPORARY) {
+        if (rep->info.ShareInfo1.type & SHARE_TYPE_TEMPORARY) {
                 printf(" TEMPORARY");
         }
-        if (rep->info.info1.type & SHARE_TYPE_HIDDEN) {
+        if (rep->info.ShareInfo1.type & SHARE_TYPE_HIDDEN) {
                 printf(" HIDDEN");
         }
 
@@ -105,8 +105,8 @@ void co_cb(struct dcerpc_context *dce, int status,
                 exit(10);
         }
         sprintf(server, "\\\\%s", url->server);
-        si_req->ServerName = server;
-        si_req->NetName = url->share;
+        si_req->ServerName.utf8 = server;
+        si_req->NetName.utf8 = url->share;
         si_req->Level = 1;
 
         if (dcerpc_call_async(dce,
