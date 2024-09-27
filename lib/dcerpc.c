@@ -1057,7 +1057,7 @@ dcerpc_encode_bind(struct dcerpc_context *ctx,
                    struct dcerpc_bind_pdu *bind,
                    struct smb2_iovec *iov, int *offset)
 {
-        int oo; // QQQ
+        int oo; /* QQQ */
         uint16_t v;
 
         /* Max Xmit Frag */
@@ -1321,7 +1321,7 @@ dcerpc_decode_pdu(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 return -1;
         }
 
-        return offset; // QQQ
+        return offset; /* QQQ */
 }
 
 static void
@@ -1332,7 +1332,7 @@ dce_unfragment_ioctl(struct dcerpc_context *dce,  struct dcerpc_pdu *pdu,
         int unfragment_len;
         struct dcerpc_header hdr, next_hdr;
         struct smb2_iovec tmpiov _U_;
-        int o; // QQQ
+        int o; /* QQQ */
 
         o = 0;
         if (dcerpc_decode_header(dce, pdu, iov, &o, &hdr)) {
@@ -1455,7 +1455,7 @@ dcerpc_call_async(struct dcerpc_context *dce,
         struct smb2_pdu *smb2_pdu;
         struct smb2_ioctl_request req;
         struct smb2_iovec iov _U_;
-        int offset = 0, o; // QQQ
+        int offset = 0, o; /* QQQ */
         uint32_t v;
         
         pdu = dcerpc_allocate_pdu(dce, DCERPC_ENCODE, NSE_BUF_SIZE);

@@ -680,7 +680,7 @@ encode_ntlm_challenge(struct smb2_context *smb2, struct auth_data *auth_data)
                 NTLMSSP_NEGOTIATE_EXTENDED_SESSIONSECURITY|
                 NTLMSSP_NEGOTIATE_ALWAYS_SIGN| 
                 NTLMSSP_NEGOTIATE_SIGN| 
-         //       NTLMSSP_NEGOTIATE_KEY_EXCH| 
+         /*       NTLMSSP_NEGOTIATE_KEY_EXCH| */ 
                 NTLMSSP_REQUEST_TARGET|NTLMSSP_NEGOTIATE_OEM|
                 NTLMSSP_NEGOTIATE_VERSION|
                 NTLMSSP_NEGOTIATE_UNICODE;
@@ -945,7 +945,7 @@ ntlmssp_authenticate_blob(struct smb2_server *server, struct smb2_context *smb2,
         uint8_t *temp;
         uint32_t temp_len;
         int ret = -1;
-        //uint32_t negotiate_flags;
+        /* uint32_t negotiate_flags; */
         uint32_t u32;
         
         if (!input_buf || (input_len < 8) || memcmp(input_buf, "NTLMSSP", 8)) {
@@ -981,7 +981,7 @@ ntlmssp_authenticate_blob(struct smb2_server *server, struct smb2_context *smb2,
         if (!auth_data->user || (auth_data->user[0] == '\0')) {
                 return 0;
         }
-        //negotiate_flags = le32toh(u32);
+        /* negotiate_flags = le32toh(u32); */
         
         /* Lan Man response (we dont even look at, its obsolete) */
         

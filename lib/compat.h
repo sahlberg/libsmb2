@@ -794,6 +794,14 @@ int getlogin_r(char *buf, size_t size);
 #define O_ACCMODE (O_RDWR|O_WRONLY|O_RDONLY)
 #endif /* !O_ACCMODE */
 
+#ifndef ENOMEM
+#define ENOMEM 12
+#endif
+
+#ifndef EINVAL
+#define EINVAL 22
+#endif
+
 #ifdef __cplusplus
 }
 #endif
