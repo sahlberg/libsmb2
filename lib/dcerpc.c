@@ -602,12 +602,26 @@ dcerpc_encode_ptr(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
         int top_level = pdu->top_level;
         uint64_t val;
 
+#if 0
+        /* doesn't work yes because NetShareEnum request is implemented
+           incorectly.
+        */
+        /* No alignment for top lelev REF pointers since they have no
+           encoding */
+        if (!(type==PTR_REF && pdu->top_level)) {
+                if (dce->tctx_id) {
+                        *offset = (*offset + 7) & ~7;
+                } else {
+                        *offset = (*offset + 3) & ~3;
+                }
+        }
+#else        
         if (dce->tctx_id) {
                 *offset = (*offset + 7) & ~7;
         } else {
                 *offset = (*offset + 3) & ~3;
         }
-
+#endif
         switch (type) {
         case PTR_REF:
                 if (pdu->top_level) {
@@ -697,12 +711,16 @@ dcerpc_decode_ptr(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
         int top_level = pdu->top_level;
         uint64_t p;
 
-        if (dce->tctx_id) {
-                *offset = (*offset + 7) & ~7;
-        } else {
-                *offset = (*offset + 3) & ~3;
+        /* No alignment for top lelev REF pointers since they have no
+           encoding */
+        if (!(type==PTR_REF && pdu->top_level)) {
+                if (dce->tctx_id) {
+                        *offset = (*offset + 7) & ~7;
+                } else {
+                        *offset = (*offset + 3) & ~3;
+                }
         }
-
+        
         switch (type) {
         case PTR_REF:
                 if (pdu->top_level) {
