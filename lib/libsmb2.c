@@ -3280,6 +3280,7 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
         uint16_t dialects[SMB2_NEGOTIATE_MAX_DIALECTS];
         int dialect_count;
         int dialect_index;
+        struct smb2_timeval now;
         /*void *auth_data;*/
 
         memset(&rep, 0, sizeof(rep));
@@ -3317,10 +3318,11 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
         }
 
         if (req && smb2->pdu->header.command != SMB1_NEGOTIATE) {
-                smb2->dialect = 0;
+                int d;
+				smb2->dialect = 0;
                 for (dialect_index = req->dialect_count - 1;
                                dialect_index >= 0; dialect_index--) {
-                        for (int d = dialect_count - 1; d >= 0; d--) {
+                        for (d = dialect_count - 1; d >= 0; d--) {
                                 if (dialects[d] == req->dialects[dialect_index]) {
                                         smb2->dialect = dialects[d];
                                         break;
@@ -3416,8 +3418,6 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
         /* remember negotiated capabilites and security mode */
         smb2->capabilities = rep.capabilities;
         smb2->security_mode = rep.security_mode;
-        
-        struct smb2_timeval now;
 
         now.tv_sec = time(NULL);
         now.tv_usec = 0;
@@ -3552,7 +3552,7 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
                                         if (events & POLLOUT) {
                                                 FD_SET(smb2_get_fd(smb2), &wfds);
                                         }
-                                        if (smb2_get_fd(smb2) > maxfd) {
+                                        if (smb2_get_fd(smb2) > (t_socket)maxfd) {
                                                 maxfd = smb2_get_fd(smb2);
                                         }
                                 }

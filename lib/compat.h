@@ -115,6 +115,7 @@ typedef unsigned int uintptr_t;
 
 #if defined(_XBOX) || defined(__MINGW32__)
 #define snprintf _snprintf
+int gethostname(char* name, size_t len);
 #endif
 
 #ifndef EAI_AGAIN

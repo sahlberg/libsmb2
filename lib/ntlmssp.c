@@ -660,6 +660,7 @@ encode_ntlm_challenge(struct smb2_context *smb2, struct auth_data *auth_data)
         uint8_t anonymous = 0;
         int target_info_pos;
         int namelen;
+		int cc;
         char *upper = NULL;
         
         /* Generate CHALLENGE_MESSAGE  */
@@ -693,7 +694,7 @@ encode_ntlm_challenge(struct smb2_context *smb2, struct auth_data *auth_data)
         encoder(&u32, 4, auth_data);
 
         /* server challenge */
-        for (int cc = 0; cc < 8; cc++) {
+        for (cc = 0; cc < 8; cc++) {
                 auth_data->server_challenge[cc] = cc + 1;
         }
         encoder(auth_data->server_challenge, 8, auth_data);
@@ -715,12 +716,13 @@ encode_ntlm_challenge(struct smb2_context *smb2, struct auth_data *auth_data)
         
         /* target name  */
         if (auth_data->workstation) {
+				int i;
                 namelen = strlen(auth_data->workstation);
                 upper = malloc(namelen + 1);
                 if (!upper) {
                         return -1;
                 }
-                for (int i = 0; i < namelen; i++) {
+                for (i = 0; i < namelen; i++) {
                         upper[i] = toupper(auth_data->workstation[i]);
                 }
                 utf16_workstation = smb2_utf8_to_utf16(auth_data->workstation);
@@ -993,7 +995,7 @@ ntlmssp_authenticate_blob(struct smb2_server *server, struct smb2_context *smb2,
         if (field_len == 0 || field_off == 0) {
                 return -1;
         }
-        if (field_off > input_len) {
+        if (field_off > (uint32_t)input_len) {
                 return -1;
         }
         /* 16 byte NTLMv2 response */

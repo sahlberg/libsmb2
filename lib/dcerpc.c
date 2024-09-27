@@ -582,7 +582,7 @@ dcerpc_uint3264_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                                 return -1;
                         }
                 } else {
-                        if (dcerpc_set_uint32(ctx, iov, offset, val)) {
+                        if (dcerpc_set_uint32(ctx, iov, offset, (uint32_t)val)) {
                                 return -1;
                         }
                 }
@@ -787,11 +787,11 @@ dcerpc_encode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         } else {
                 val = s->utf16->len;
         }
-        s->actual_count = val;
+        s->actual_count = (uint32_t)val;
         if (!nult) {
                 if (val & 0x01) val++;
         }
-        s->max_count = val;
+        s->max_count = (uint32_t)val;
         s->offset    = 0;
 
         val = s->max_count;
@@ -828,7 +828,7 @@ dcerpc_decode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                    void *ptr, int nult)
 {
         struct dcerpc_utf16 *s = ptr;
-        uint64_t val;
+        uint64_t val; /* Any fundament of this? */
         char *str;
         const char *tmp;
 
@@ -836,15 +836,15 @@ dcerpc_decode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         if (dcerpc_uint3264_coder(ctx, pdu, iov, offset, &val)) {
                 return -1;
         }
-        s->max_count = val;
+        s->max_count = (uint32_t)val;
         if (dcerpc_uint3264_coder(ctx, pdu, iov, offset, &val)) {
                  return -1;
         }
-        s->offset = val;
+        s->offset = (uint32_t)val;
         if (dcerpc_uint3264_coder(ctx, pdu, iov, offset, &val)) {
                 return -1;
         }
-        s->actual_count = val;
+        s->actual_count = (uint32_t)val;
 
         /* Data part */
         if (*offset + s->actual_count * 2 > iov->len) {

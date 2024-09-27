@@ -115,7 +115,7 @@ int asn1ber_annotate_length(struct asn1ber_context *actx, int out_pos, int reser
         return result;
     }
     /* if reserved more than needed, move new contents left over unused reserved */
-    if (reserved > lenbytes)
+    if (reserved > (int)lenbytes)
     {
         memmove(actx->dst + actx->dst_head, actx->dst + out_pos + reserved, bytes_made);
     }
@@ -624,7 +624,7 @@ int asn1ber_oid_from_ber(struct asn1ber_context *actx, struct asn1ber_oid_value 
 int asn1ber_bytes_from_ber(struct asn1ber_context *actx, uint8_t *val, uint32_t maxlen, uint32_t *lenout)
 {
     int result;
-    int i;
+    size_t i;
     uint32_t vallen;
     uint8_t b = 0;
 

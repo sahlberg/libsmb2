@@ -31,6 +31,19 @@
 #endif
 #define smb2_random rand
 #define smb2_srandom srand
+
+#ifdef _XBOX
+int gethostname(char *name, size_t len)
+{
+#ifdef XBOX_PLATFORM
+	    strncpy(name, "XBOX", len);
+#else
+        strncpy(name, "XBOX_360", len);
+#endif
+		return 0;
+}
+#endif
+
 #endif
 
 #ifdef __DREAMCAST__
