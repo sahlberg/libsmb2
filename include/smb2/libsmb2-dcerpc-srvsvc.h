@@ -46,6 +46,10 @@ struct srvsvc_SHARE_INFO_1 {
         uint32_t type;
         struct dcerpc_utf16 remark;
 };
+int srvsvc_SHARE_INFO_1_coder(struct dcerpc_context *ctx,
+                              struct dcerpc_pdu *pdu,
+                              struct smb2_iovec *iov, int *offset,
+                              void *ptr);
 
 struct srvsvc_SHARE_INFO_1_carray {
         uint32_t max_count; /* filled in by caller before decode */

@@ -85,7 +85,7 @@ p_syntax_id_t srvsvc_interface = {
  *       [string] wchar_t *remark;
  * } SHARE_INFO_1, *PSHARE_INFO_1, *LPSHARE_INFO_1;
  */
-static int
+int
 srvsvc_SHARE_INFO_1_coder(struct dcerpc_context *ctx,
                            struct dcerpc_pdu *pdu,
                            struct smb2_iovec *iov, int *offset,

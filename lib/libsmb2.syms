@@ -1,13 +1,15 @@
 compound_file_id
 dcerpc_allocate_pdu
 dcerpc_call_async
-dcerpc_create_context
 dcerpc_connect_context_async
+dcerpc_context_handle_coder
+dcerpc_create_context
 dcerpc_destroy_context
 dcerpc_free_data
 dcerpc_free_pdu
 dcerpc_get_error
-dcerpc_context_handle_coder
+dcerpc_utf16_coder
+dcerpc_utf16z_coder
 nterror_to_str
 nterror_to_errno
 smb2_add_compound_pdu

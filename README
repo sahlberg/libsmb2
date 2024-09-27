@@ -58,7 +58,7 @@ Arguments supported by libsmb2 are :
   sign          : Require SMB2/3 signing.
   timeout       : Timeout in seconds when to cancel a command.
                   Default it 0: No timeout.
-
+  ndr64         : DCERPC: only offser NDR64 transfer syntax.
 NOTE:-
 	When using krb5cc mode use smb2_set_domain() and smb2_set_password() in the examples and applications
 
