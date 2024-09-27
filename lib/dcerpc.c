@@ -1768,3 +1768,9 @@ dcerpc_align_3264(struct dcerpc_context *ctx, int offset)
         }
         return offset;
 }
+
+/* Used for testing. Override/force the transfer syntax. */
+void dcerpc_set_tctx(struct dcerpc_context *ctx, int tctx)
+{
+        ctx->tctx_id = tctx;
+}

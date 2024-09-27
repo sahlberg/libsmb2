@@ -32,6 +32,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #define discard_const(ptr) ((void *)((intptr_t)(ptr)))
 #endif
 
+void dcerpc_set_tctx(struct dcerpc_context *ctx, int tctx);
+
 int is_finished;
 struct ndr_context_handle PolicyHandle;
 
@@ -151,7 +153,28 @@ static void test_utf16_ndr32(struct dcerpc_context *dce)
                 0x2e, 0x00, 0x31, 0x00,  0x31, 0x00, 0x00, 0x00};
 
         s1.utf8 = "\\\\10.10.10.11";
+        dcerpc_set_tctx(dce, 0); /* NDR32 */
         test_dcerpc_codec(dce, "dcerpc_utf16 NDR32",
+                          dcerpc_utf16z_coder, compare_utf16,
+                          &s1, sizeof(s1),
+                          sizeof(buf), buf, 0);
+}
+
+static void test_utf16_ndr64(struct dcerpc_context *dce)
+{
+        struct dcerpc_utf16 s1;
+        unsigned char buf[] = {
+0x0a, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,
+0x0a, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,
+0x5c, 0x00, 0x5c, 0x00,  0x77, 0x00, 0x69, 0x00,
+0x6e, 0x00, 0x31, 0x00,  0x36, 0x00, 0x2d, 0x00,
+0x31, 0x00, 0x00, 0x00
+        };
+
+        s1.utf8 = "\\\\win16-1";
+        dcerpc_set_tctx(dce, 1); /* NDR64 */
+        test_dcerpc_codec(dce, "dcerpc_utf16 NDR64",
                           dcerpc_utf16z_coder, compare_utf16,
                           &s1, sizeof(s1),
                           sizeof(buf), buf, 0);
@@ -184,6 +207,7 @@ int main(int argc, char *argv[])
         memcpy(&PolicyHandle.context_handle_uuid, ph, 16);
 
         test_utf16_ndr32(dce);
+        test_utf16_ndr64(dce);
 
         dcerpc_destroy_context(dce);
         smb2_destroy_context(smb2);
