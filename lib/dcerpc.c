@@ -263,15 +263,15 @@ dcerpc_set_uint8(struct dcerpc_context *ctx, struct smb2_iovec *iov,
 }
 
 static int
-dcerpc_set_uint16(struct dcerpc_context *ctx, struct smb2_iovec *iov,
-                  int *offset, uint16_t value)
+dcerpc_set_uint16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                  struct smb2_iovec *iov, int *offset, uint16_t value)
 {
         *offset = (*offset + 1) & ~1;
         
         if (*offset + sizeof(uint16_t) > iov->len) {
                 return -1;
         }
-        if (!(ctx->packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN)) {
+        if (!(pdu->hdr.packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN)) {
                 *(uint16_t *)(iov->buf + *offset) = htobe16(value);
         } else {
                 *(uint16_t *)(iov->buf + *offset) = htole16(value);
@@ -282,15 +282,15 @@ dcerpc_set_uint16(struct dcerpc_context *ctx, struct smb2_iovec *iov,
 }
 
 static int
-dcerpc_set_uint32(struct dcerpc_context *ctx, struct smb2_iovec *iov,
-                  int *offset, uint32_t value)
+dcerpc_set_uint32(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                  struct smb2_iovec *iov, int *offset, uint32_t value)
 {
         *offset = (*offset + 3) & ~3;
         
         if (*offset + sizeof(uint32_t) > iov->len) {
                 return -1;
         }
-        if (!(ctx->packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN)) {
+        if (!(pdu->hdr.packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN)) {
                 *(uint32_t *)(iov->buf + *offset) = htobe32(value);
         } else {
                 *(uint32_t *)(iov->buf + *offset) = htole32(value);
@@ -300,15 +300,15 @@ dcerpc_set_uint32(struct dcerpc_context *ctx, struct smb2_iovec *iov,
 }
 
 static int
-dcerpc_set_uint64(struct dcerpc_context *ctx, struct smb2_iovec *iov,
-                  int *offset, uint64_t value)
+dcerpc_set_uint64(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                  struct smb2_iovec *iov, int *offset, uint64_t value)
 {
         *offset = (*offset + 7) & ~7;
 
         if (*offset + sizeof(uint64_t) > iov->len) {
                 return -1;
         }
-        if (!(ctx->packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN)) {
+        if (!(pdu->hdr.packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN)) {
                 *(uint64_t *)(iov->buf + *offset) = htobe64(value);
         } else {
                 *(uint64_t *)(iov->buf + *offset) = htole64(value);
@@ -330,8 +330,8 @@ dcerpc_get_uint8(struct dcerpc_context *ctx, struct smb2_iovec *iov,
 }
 
 static int
-dcerpc_get_uint16(struct dcerpc_context *ctx, struct smb2_iovec *iov,
-                  int *offset, uint16_t *value)
+dcerpc_get_uint16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                  struct smb2_iovec *iov, int *offset, uint16_t *value)
 {
         uint16_t val;
 
@@ -340,7 +340,7 @@ dcerpc_get_uint16(struct dcerpc_context *ctx, struct smb2_iovec *iov,
         if (*offset + sizeof(uint16_t) > iov->len) {
                 return -1;
         }
-        if (!(ctx->packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN)) {
+        if (!(pdu->hdr.packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN)) {
                 val = be16toh(*(uint16_t *)(iov->buf + *offset));
         } else {
                 val = le16toh(*(uint16_t *)(iov->buf + *offset));
@@ -351,8 +351,8 @@ dcerpc_get_uint16(struct dcerpc_context *ctx, struct smb2_iovec *iov,
 }
 
 static int
-dcerpc_get_uint32(struct dcerpc_context *ctx, struct smb2_iovec *iov,
-                  int *offset, uint32_t *value)
+dcerpc_get_uint32(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                  struct smb2_iovec *iov, int *offset, uint32_t *value)
 {
         uint32_t val;
         
@@ -361,7 +361,8 @@ dcerpc_get_uint32(struct dcerpc_context *ctx, struct smb2_iovec *iov,
         if (*offset + sizeof(uint32_t) > iov->len) {
                 return -1;
         }
-        if (!(ctx->packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN)) {
+        
+        if (!(pdu->hdr.packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN)) {
                 val = be32toh(*(uint32_t *)(iov->buf + *offset));
         } else {
                 val = le32toh(*(uint32_t *)(iov->buf + *offset));
@@ -372,8 +373,8 @@ dcerpc_get_uint32(struct dcerpc_context *ctx, struct smb2_iovec *iov,
 }
 
 static int
-dcerpc_get_uint64(struct dcerpc_context *ctx, struct smb2_iovec *iov,
-                  int *offset, uint64_t *value)
+dcerpc_get_uint64(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                  struct smb2_iovec *iov, int *offset, uint64_t *value)
 {
         uint64_t val;
 
@@ -382,7 +383,7 @@ dcerpc_get_uint64(struct dcerpc_context *ctx, struct smb2_iovec *iov,
         if (*offset + sizeof(uint64_t) > iov->len) {
                 return -1;
         }
-        if (!(ctx->packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN)) {
+        if (!(pdu->hdr.packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN)) {
                 val = be64toh(*(uint64_t *)(iov->buf + *offset));
         } else {
                 val = le64toh(*(uint64_t *)(iov->buf + *offset));
@@ -527,9 +528,9 @@ dcerpc_uint32_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                     struct smb2_iovec *iov, int *offset, void *ptr)
 {
         if (pdu->direction == DCERPC_DECODE) {
-                return dcerpc_get_uint32(ctx, iov, offset, ptr);
+                return dcerpc_get_uint32(ctx, pdu, iov, offset, ptr);
         } else {
-                return dcerpc_set_uint32(ctx, iov, offset, *(uint32_t *)ptr);
+                return dcerpc_set_uint32(ctx, pdu, iov, offset, *(uint32_t *)ptr);
         }
 }
 
@@ -538,9 +539,9 @@ dcerpc_uint16_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                     struct smb2_iovec *iov, int *offset, void *ptr)
 {
         if (pdu->direction == DCERPC_DECODE) {
-                return dcerpc_get_uint16(ctx, iov, offset, ptr);
+                return dcerpc_get_uint16(ctx, pdu, iov, offset, ptr);
         } else {
-                return dcerpc_set_uint16(ctx, iov, offset, *(uint16_t *)ptr);
+                return dcerpc_set_uint16(ctx, pdu, iov, offset, *(uint16_t *)ptr);
         }
 }
 
@@ -567,7 +568,7 @@ dcerpc_uint3264_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 
         if (pdu->direction == DCERPC_DECODE) {
                 if (ctx->tctx_id) {
-                        if (dcerpc_get_uint64(ctx, iov, offset, ptr)) {
+                        if (dcerpc_get_uint64(ctx, pdu, iov, offset, ptr)) {
                                 return -1;
                         }
                 } else {
@@ -578,11 +579,11 @@ dcerpc_uint3264_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 }
         } else {
                 if (ctx->tctx_id) {
-                        if (dcerpc_set_uint64(ctx, iov, offset, val)) {
+                        if (dcerpc_set_uint64(ctx, pdu, iov, offset, val)) {
                                 return -1;
                         }
                 } else {
-                        if (dcerpc_set_uint32(ctx, iov, offset, val)) {
+                        if (dcerpc_set_uint32(ctx, pdu, iov, offset, val)) {
                                 return -1;
                         }
                 }
@@ -850,12 +851,12 @@ dcerpc_decode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         if (*offset + s->actual_count * 2 > iov->len) {
                 return -1;
         }
-        if (!(ctx->packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN)) {
+        if (!(pdu->hdr.packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN)) {
                 int i, o;
                 uint16_t v;
                 for (i = 0; i < s->actual_count; i++) {
                         o = *offset + i *2;
-                        if (dcerpc_get_uint16(ctx, iov, &o, &v)) {
+                        if (dcerpc_get_uint16(ctx, pdu, iov, &o, &v)) {
                                 return -1;
                         }
                         *(uint16_t *)&iov->buf[*offset + i * 2] = v;
@@ -995,17 +996,17 @@ dcerpc_decode_header(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         }
 
         /* Fragment len */
-        if (dcerpc_get_uint16(ctx, iov, offset, &hdr->frag_length)) {
+        if (dcerpc_get_uint16(ctx, pdu, iov, offset, &hdr->frag_length)) {
                 return -1;
         }
 
         /* Auth len */
-        if (dcerpc_get_uint16(ctx, iov, offset, &hdr->auth_length)) {
+        if (dcerpc_get_uint16(ctx, pdu, iov, offset, &hdr->auth_length)) {
                 return -1;
         }
 
         /* Call id */
-        if (dcerpc_get_uint32(ctx, iov, offset, &hdr->call_id)) {
+        if (dcerpc_get_uint32(ctx, pdu, iov, offset, &hdr->call_id)) {
                 return -1;
         }
 
@@ -1508,7 +1509,7 @@ dcerpc_call_async(struct dcerpc_context *dce,
 
         /* Fixup frag_length and alloc_hint */
         o = 8;
-        if (dcerpc_set_uint16(dce, &iov,  &o, offset)) {
+        if (dcerpc_set_uint16(dce, pdu, &iov,  &o, offset)) {
                 return -1;
         }
         o = 16;
@@ -1787,11 +1788,11 @@ void dcerpc_set_tctx(struct dcerpc_context *ctx, int tctx)
 }
 
 /* Used for testing. Override/force the transfer syntax. */
-void dcerpc_set_endian(struct dcerpc_context *ctx, int little_endian)
+void dcerpc_set_endian(struct dcerpc_pdu *pdu, int little_endian)
 {
         if (little_endian) {
-                ctx->packed_drep[0] |= DCERPC_DR_LITTLE_ENDIAN;
+                pdu->hdr.packed_drep[0] |= DCERPC_DR_LITTLE_ENDIAN;
         } else {
-                ctx->packed_drep[0] &= ~DCERPC_DR_LITTLE_ENDIAN;
+                pdu->hdr.packed_drep[0] &= ~DCERPC_DR_LITTLE_ENDIAN;
         }
 }
