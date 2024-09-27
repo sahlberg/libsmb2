@@ -850,6 +850,17 @@ dcerpc_decode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         if (*offset + s->actual_count * 2 > iov->len) {
                 return -1;
         }
+        if (!(ctx->packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN)) {
+                int i, o;
+                uint16_t v;
+                for (i = 0; i < s->actual_count; i++) {
+                        o = *offset + i *2;
+                        if (dcerpc_get_uint16(ctx, iov, &o, &v)) {
+                                return -1;
+                        }
+                        *(uint16_t *)&iov->buf[*offset + i * 2] = v;
+                }
+        }
         tmp = smb2_utf16_to_utf8((uint16_t *)(&iov->buf[*offset]), (size_t)s->actual_count);
         *offset += (int)s->actual_count * 2;
 
@@ -1773,4 +1784,14 @@ dcerpc_align_3264(struct dcerpc_context *ctx, int offset)
 void dcerpc_set_tctx(struct dcerpc_context *ctx, int tctx)
 {
         ctx->tctx_id = tctx;
+}
+
+/* Used for testing. Override/force the transfer syntax. */
+void dcerpc_set_endian(struct dcerpc_context *ctx, int little_endian)
+{
+        if (little_endian) {
+                ctx->packed_drep[0] |= DCERPC_DR_LITTLE_ENDIAN;
+        } else {
+                ctx->packed_drep[0] &= ~DCERPC_DR_LITTLE_ENDIAN;
+        }
 }
