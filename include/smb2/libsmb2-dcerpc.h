@@ -101,6 +101,10 @@ int dcerpc_call_async(struct dcerpc_context *dce, int opnum,
                       dcerpc_coder rep_coder, int rep_size,
                       dcerpc_cb cb, void *cb_data);
 
+int dcerpc_do_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                    struct smb2_iovec *iov,
+                    int *offset, void *ptr,
+                    dcerpc_coder coder);
 int dcerpc_ptr_coder(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                      struct smb2_iovec *iov, int *offset, void *ptr,
                      enum ptr_type type, dcerpc_coder coder);

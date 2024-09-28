@@ -529,6 +529,25 @@ dcerpc_add_deferred_pointer(struct dcerpc_context *ctx,
         pdu->max_ptr++;
 }
 
+int
+dcerpc_do_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                struct smb2_iovec *iov,
+                int *offset, void *ptr,
+                dcerpc_coder coder)
+{
+        pdu->max_alignment = 1;
+        pdu->is_conformance_run = 1;
+        if (coder(ctx, pdu, iov, offset, ptr)) {
+                return -1;
+        }
+        *offset = (*offset + (pdu->max_alignment - 1)) & ~(pdu->max_alignment - 1);
+        pdu->is_conformance_run = 0;
+        if (coder(ctx, pdu, iov, offset, ptr)) {
+                return -1;
+        }
+        return 0;
+}
+
 static int
 dcerpc_process_deferred_pointers(struct dcerpc_context *ctx,
                                  struct dcerpc_pdu *pdu,
@@ -541,14 +560,7 @@ dcerpc_process_deferred_pointers(struct dcerpc_context *ctx,
         while (pdu->cur_ptr != pdu->max_ptr) {
                 idx = pdu->cur_ptr++;
                 dp = &pdu->ptrs[idx];
-                pdu->max_alignment = 1;
-                pdu->is_conformance_run = 1;
-                if (dp->coder(ctx, pdu, iov, offset, dp->ptr)) {
-                        return -1;
-                }
-                *offset = (*offset + (pdu->max_alignment - 1)) & ~(pdu->max_alignment - 1);
-                pdu->is_conformance_run = 0;
-                if (dp->coder(ctx, pdu, iov, offset, dp->ptr)) {
+                if (dcerpc_do_coder(ctx, pdu, iov, offset, dp->ptr, dp->coder)) {
                         return -1;
                 }
         }
@@ -718,14 +730,7 @@ dcerpc_encode_ptr(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
         case PTR_REF:
                 if (pdu->top_level) {
                         pdu->top_level = 0;
-                        pdu->max_alignment = 1;
-                        pdu->is_conformance_run = 1;
-                        if (coder(dce, pdu, iov, offset, ptr)) {
-                                return -1;
-                        }
-                        *offset = (*offset + (pdu->max_alignment - 1)) & ~(pdu->max_alignment - 1);
-                        pdu->is_conformance_run = 0;
-                        if (coder(dce, pdu, iov, offset, ptr)) {
+                        if (dcerpc_do_coder(dce, pdu, iov, offset, ptr, coder)) {
                                 return -1;
                         }
                         pdu->top_level = top_level;
@@ -754,14 +759,7 @@ dcerpc_encode_ptr(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                 }
                 if (pdu->top_level) {
                         pdu->top_level = 0;
-                        pdu->max_alignment = 1;
-                        pdu->is_conformance_run = 1;
-                        if (coder(dce, pdu, iov, offset, ptr)) {
-                                return -1;
-                        }
-                        *offset = (*offset + (pdu->max_alignment - 1)) & ~(pdu->max_alignment - 1);
-                        pdu->is_conformance_run = 0;
-                        if (coder(dce, pdu, iov, offset, ptr)) {
+                        if (dcerpc_do_coder(dce, pdu, iov, offset, ptr, coder)) {
                                 return -1;
                         }
                         pdu->top_level = top_level;
@@ -784,14 +782,7 @@ dcerpc_encode_ptr(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                 }
                 if (pdu->top_level) {
                         pdu->top_level = 0;
-                        pdu->max_alignment = 1;
-                        pdu->is_conformance_run = 1;
-                        if (coder(dce, pdu, iov, offset, ptr)) {
-                                return -1;
-                        }
-                        *offset = (*offset + (pdu->max_alignment - 1)) & ~(pdu->max_alignment - 1);
-                        pdu->is_conformance_run = 0;
-                        if (coder(dce, pdu, iov, offset, ptr)) {
+                        if (dcerpc_do_coder(dce, pdu, iov, offset, ptr, coder)) {
                                 return -1;
                         }
                         pdu->top_level = top_level;
@@ -843,14 +834,7 @@ dcerpc_decode_ptr(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
         case PTR_REF:
                 if (pdu->top_level) {
                         pdu->top_level = 0;
-                        pdu->max_alignment = 1;
-                        pdu->is_conformance_run = 1;
-                        if (coder(dce, pdu, iov, offset, ptr)) {
-                                return -1;
-                        }
-                        *offset = (*offset + (pdu->max_alignment - 1)) & ~(pdu->max_alignment - 1);
-                        pdu->is_conformance_run = 0;
-                        if (coder(dce, pdu, iov, offset, ptr)) {
+                        if (dcerpc_do_coder(dce, pdu, iov, offset, ptr, coder)) {
                                 return -1;
                         }
                         pdu->top_level = top_level;
@@ -872,14 +856,7 @@ dcerpc_decode_ptr(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                 
                 if (pdu->top_level) {
                         pdu->top_level = 0;
-                        pdu->max_alignment = 1;
-                        pdu->is_conformance_run = 1;
-                        if (coder(dce, pdu, iov, offset, ptr)) {
-                                return -1;
-                        }
-                        *offset = (*offset + (pdu->max_alignment - 1)) & ~(pdu->max_alignment - 1);
-                        pdu->is_conformance_run = 0;
-                        if (coder(dce, pdu, iov, offset, ptr)) {
+                        if (dcerpc_do_coder(dce, pdu, iov, offset, ptr, coder)) {
                                 return -1;
                         }
                         pdu->top_level = top_level;
@@ -929,6 +906,7 @@ dcerpc_encode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 
         /* Conformance part */
         if (pdu->is_conformance_run) {
+                // QQQ check for s->utf8==NULL
                 s->utf16 = smb2_utf8_to_utf16(s->utf8);
                 if (s->utf16 == NULL) {
                         return -1;

@@ -48,7 +48,7 @@ int usage(void)
 
 typedef int (*compare_func)(void *ptr1, void *ptr2);
 
-static void test_dcerpc_codec(struct dcerpc_context *dce, char *method,
+static void test_dcerpc_coder(struct dcerpc_context *dce, char *method,
                               dcerpc_coder coder, compare_func cmp,
                               void *req, int req_size,
                               int expected_offset, uint8_t *expected_data,
@@ -70,7 +70,8 @@ static void test_dcerpc_codec(struct dcerpc_context *dce, char *method,
         memset(iov.buf, 0, iov.len);
         offset = 0;
         dcerpc_set_endian(pdu1, endian);
-        if (coder(dce, pdu1, &iov, &offset, req)) {
+        if (dcerpc_ptr_coder(dce, pdu1, &iov, &offset, req,
+                             PTR_REF, coder)) {
                 printf("Encoding failed\n");
                 exit(20);
         }
@@ -105,8 +106,9 @@ static void test_dcerpc_codec(struct dcerpc_context *dce, char *method,
         pdu2 = dcerpc_allocate_pdu(dce, DCERPC_DECODE, req_size);
         offset = 0;
         dcerpc_set_endian(pdu2, endian);
-        if (coder(dce, pdu2, &iov, &offset, req2)) {
-                printf("Decoding failed\n");
+        if (dcerpc_ptr_coder(dce, pdu2, &iov, &offset, req2,
+                             PTR_REF, coder)) {
+                printf("Encoding failed\n");
                 exit(20);
         }
         if (offset != expected_offset) {
@@ -119,19 +121,6 @@ static void test_dcerpc_codec(struct dcerpc_context *dce, char *method,
         dcerpc_free_pdu(dce, pdu2);
         free(req2);
 }
-
-/*
-  struct srvsvc_SHARE_INFO_1 {
-        struct dcerpc_utf16 netname;
-        uint32_t type;
-        struct dcerpc_utf16 remark;
-  };
-  int
-  srvsvc_SHARE_INFO_1_coder(struct dcerpc_context *ctx,
-                            struct dcerpc_pdu *pdu,
-                            struct smb2_iovec *iov, int *offset,
-                            void *ptr)
-*/
 
 static int compare_utf16(void *ptr1, void *ptr2)
 {
@@ -157,7 +146,7 @@ static void test_utf16_ndr32_le(struct dcerpc_context *dce)
 
         s1.utf8 = "\\\\win16-1";
         dcerpc_set_tctx(dce, 0); /* NDR32 */
-        test_dcerpc_codec(dce, "dcerpc_utf16 NDR32 LE",
+        test_dcerpc_coder(dce, "dcerpc_utf16 NDR32 LE",
                           dcerpc_utf16z_coder, compare_utf16,
                           &s1, sizeof(s1),
                           sizeof(buf), buf, 0, 1);
@@ -175,7 +164,7 @@ static void test_utf16_ndr32_be(struct dcerpc_context *dce)
 
         s1.utf8 = "\\\\win16-1";
         dcerpc_set_tctx(dce, 0); /* NDR32 */
-        test_dcerpc_codec(dce, "dcerpc_utf16 NDR32 BE",
+        test_dcerpc_coder(dce, "dcerpc_utf16 NDR32 BE",
                           dcerpc_utf16z_coder, compare_utf16,
                           &s1, sizeof(s1),
                           sizeof(buf), buf, 0, 0);
@@ -195,8 +184,66 @@ static void test_utf16_ndr64_le(struct dcerpc_context *dce)
 
         s1.utf8 = "\\\\win16-1";
         dcerpc_set_tctx(dce, 1); /* NDR64 */
-        test_dcerpc_codec(dce, "dcerpc_utf16 NDR64 LE",
+        test_dcerpc_coder(dce, "dcerpc_utf16 NDR64 LE",
                           dcerpc_utf16z_coder, compare_utf16,
+                          &s1, sizeof(s1),
+                          sizeof(buf), buf, 0, 1);
+}
+
+/*
+  struct srvsvc_SHARE_INFO_1 {
+        struct dcerpc_utf16 netname;
+        uint32_t type;
+        struct dcerpc_utf16 remark;
+  };
+  int
+  srvsvc_SHARE_INFO_1_coder(struct dcerpc_context *ctx,
+                            struct dcerpc_pdu *pdu,
+                            struct smb2_iovec *iov, int *offset,
+                            void *ptr)
+*/
+
+static int compare_SHARE_INFO_1(void *ptr1, void *ptr2)
+{
+        struct srvsvc_SHARE_INFO_1 *s1 = ptr1;
+        struct srvsvc_SHARE_INFO_1 *s2 = ptr2;
+
+        if (strcmp(s1->netname.utf8, s2->netname.utf8)) {
+                printf("Compare ->netname failed %s != %s\n", s1->netname.utf8, s2->netname.utf8);
+                exit(20);
+        }
+        if (s1->type != s2->type) {
+                printf("Compare ->type failed 0x%08x != 0x%08x\n", s1->type, s2->type);
+                exit(20);
+        }
+        if (strcmp(s1->remark.utf8, s2->remark.utf8)) {
+                printf("Compare ->remark failed %s != %s\n", s1->remark.utf8, s2->remark.utf8);
+                exit(20);
+        }
+        return 0;
+}
+
+static void test_SHARE_INFO_1_ndr32_le(struct dcerpc_context *dce)
+{
+        struct srvsvc_SHARE_INFO_1 s1;
+        unsigned char buf[] = {
+                0x55, 0x70, 0x74, 0x72,  0x03, 0x00, 0x00, 0x80,
+                0x55, 0x70, 0x74, 0x72,  0x05, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00,  0x05, 0x00, 0x00, 0x00,
+                0x49, 0x00, 0x50, 0x00,  0x43, 0x00, 0x24, 0x00,
+                0x00, 0x00, 0x00, 0x00,  0x0b, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00,  0x0b, 0x00, 0x00, 0x00,
+                0x52, 0x00, 0x65, 0x00,  0x6d, 0x00, 0x6f, 0x00,
+                0x74, 0x00, 0x65, 0x00,  0x20, 0x00, 0x49, 0x00,
+                0x50, 0x00, 0x43, 0x00,  0x00, 0x00
+        };
+
+        s1.netname.utf8 = "IPC$";
+        s1.type         = 0x80000003;
+        s1.remark.utf8  = "Remote IPC";
+        dcerpc_set_tctx(dce, 0); /* NDR32 */
+        test_dcerpc_coder(dce, "dcerpc_SHARE_INFO_1 NDR32 LE",
+                          srvsvc_SHARE_INFO_1_coder, compare_SHARE_INFO_1,
                           &s1, sizeof(s1),
                           sizeof(buf), buf, 0, 1);
 }
@@ -230,7 +277,8 @@ int main(int argc, char *argv[])
         test_utf16_ndr32_le(dce);
         test_utf16_ndr32_be(dce);
         test_utf16_ndr64_le(dce);
-
+        test_SHARE_INFO_1_ndr32_le(dce);
+        
         dcerpc_destroy_context(dce);
         smb2_destroy_context(smb2);
         
