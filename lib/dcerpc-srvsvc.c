@@ -314,26 +314,26 @@ srvsvc_NetrShareEnum_rep_coder(struct dcerpc_context *dce,
 }
 
 /*
- *	typedef union {
- *		[case(0)] srvsvc_NetShareInfo0 *info0;
- *		[case(1)] srvsvc_SHARE_INFO_1 *Level1;
- *		[case(2)] srvsvc_NetShareInfo2 *info2;
- *		[case(501)] srvsvc_NetShareInfo501 *info501;
- *		[case(502)] srvsvc_NetShareInfo502 *info502;
- *		[case(1004)] srvsvc_NetShareInfo1004 *info1004;
- *		[case(1005)] srvsvc_NetShareInfo1005 *info1005;
- *		[case(1006)] srvsvc_NetShareInfo1006 *info1006;
- *		[case(1007)] srvsvc_NetShareInfo1007 *info1007;
- *		[case(1501)] sec_desc_buf *info1501;
- *		[default] ;
- *	} srvsvc_NetShareInfo;
+ * typedef [switch_type(unsigned long)] union _SHARE_INFO {
+ *   [case(0)] LPSHARE_INFO_0 ShareInfo0;
+ *   [case(1)] LPSHARE_INFO_1 ShareInfo1;
+ *   [case(2)] LPSHARE_INFO_2 ShareInfo2;
+ *   [case(502)] LPSHARE_INFO_502_I ShareInfo502;
+ *   [case(1004)] LPSHARE_INFO_1004 ShareInfo1004;
+ *   [case(1006)] LPSHARE_INFO_1006 ShareInfo1006;
+ *   [case(1501)] LPSHARE_INFO_1501_I ShareInfo1501;
+ *   [default];
+ *   [case(1005)] LPSHARE_INFO_1005 ShareInfo1005;
+ *   [case(501)] LPSHARE_INFO_501 ShareInfo501;
+ *   [case(503)] LPSHARE_INFO_503_I ShareInfo503;
+ * } SHARE_INFO, *PSHARE_INFO, *LPSHARE_INFO;
  */
 static int
-srvsvc_NetShareInfo_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+srvsvc_SHARE_INFO_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                            struct smb2_iovec *iov, int *offset,
                           void *ptr)
 {
-        struct srvsvc_netshareinfo *info = ptr;
+        struct srvsvc_SHARE_INFO *info = ptr;
         uint64_t p;
 
         p = info->level;
@@ -357,20 +357,19 @@ srvsvc_NetShareInfo_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 
 /******************
  * Function: 0x10
- *	WERROR srvsvc_NetShareGetInfo(
- *		[in]   [string,charset(UTF16)] uint16 *server_unc,
- *		[in]   [string,charset(UTF16)] uint16 share_name[],
- *		[in]   uint32 level,
- *		[out,switch_is(level),ref] srvsvc_NetShareInfo *info
- *		);
- ******************/
+ * NET_API_STATUS NetrShareGetInfo (
+ *    [in,string,unique] SRVSVC_HANDLE ServerName,
+ *    [in,string] WCHAR * NetName,
+ *    [in] DWORD Level,
+ *    [out, switch_is(Level)] LPSHARE_INFO InfoStruct
+*/
 int
 srvsvc_NetrShareGetInfo_req_coder(struct dcerpc_context *dce,
                                   struct dcerpc_pdu *pdu,
                                   struct smb2_iovec *iov, int *offset,
                                   void *ptr)
 {
-        struct srvsvc_netrsharegetinfo_req *req = ptr;
+        struct srvsvc_NetrShareGetInfo_req *req = ptr;
 
         if (dcerpc_ptr_coder(dce, pdu, iov, offset, &req->ServerName,
                               PTR_UNIQUE, dcerpc_utf16z_coder)) {
@@ -394,10 +393,10 @@ srvsvc_NetrShareGetInfo_rep_coder(struct dcerpc_context *dce,
                                   struct smb2_iovec *iov, int *offset,
                                   void *ptr)
 {
-        struct srvsvc_netrsharegetinfo_rep *rep = ptr;
+        struct srvsvc_NetrShareGetInfo_rep *rep = ptr;
 
-        if (dcerpc_ptr_coder(dce, pdu, iov, offset, &rep->info,
-                              PTR_REF, srvsvc_NetShareInfo_coder)) {
+        if (dcerpc_ptr_coder(dce, pdu, iov, offset, &rep->InfoStruct,
+                              PTR_REF, srvsvc_SHARE_INFO_coder)) {
                 return -1;
         }
         if (dcerpc_uint32_coder(dce, pdu, iov, offset, &rep->status)) {

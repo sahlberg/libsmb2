@@ -87,23 +87,23 @@ struct srvsvc_NetrShareEnum_rep {
         uint32_t resume_handle;
 };
 
-struct srvsvc_netshareinfo {
+struct srvsvc_SHARE_INFO {
         uint32_t level;
         union {
                 struct srvsvc_SHARE_INFO_1 ShareInfo1;
         };
 };
 
-struct srvsvc_netrsharegetinfo_req {
+struct srvsvc_NetrShareGetInfo_req {
         struct dcerpc_utf16 ServerName;
         struct dcerpc_utf16 NetName;
         uint32_t Level;
 };
 
-struct srvsvc_netrsharegetinfo_rep {
+struct srvsvc_NetrShareGetInfo_rep {
         uint32_t status;
 
-        struct srvsvc_netshareinfo info;
+        struct srvsvc_SHARE_INFO InfoStruct;
 };
 
 struct srvsvc_rep {
