@@ -60,6 +60,11 @@ struct srvsvc_SHARE_INFO_1_CONTAINER {
         struct srvsvc_SHARE_INFO_1_carray *Buffer;
 };
 
+int srvsvc_SHARE_INFO_1_CONTAINER_coder(struct dcerpc_context *dce,
+                                        struct dcerpc_pdu *pdu,
+                                        struct smb2_iovec *iov, int *offset,
+                                        void *ptr);
+        
 struct srvsvc_SHARE_ENUM_UNION {
         uint32_t level;
         union {

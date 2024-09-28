@@ -125,6 +125,7 @@ srvsvc_NetrShareEnum_req_coder
 srvsvc_NetrShareGetInfo_rep_coder
 srvsvc_NetrShareGetInfo_req_coder
 srvsvc_SHARE_INFO_1_coder
+srvsvc_SHARE_INFO_1_CONTAINER_coder
 NT_SID_AUTHORITY
 lsa_interface
 lsa_Close_rep_coder

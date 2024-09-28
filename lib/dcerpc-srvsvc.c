@@ -146,7 +146,7 @@ srvsvc_SHARE_INFO_1_array_coder(struct dcerpc_context *ctx,
  *       [size_is(EntriesRead)] LPSHARE_INFO_1 Buffer;
  * } SHARE_INFO_1_CONTAINER;
 */
-static int
+int
 srvsvc_SHARE_INFO_1_CONTAINER_coder(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                           struct smb2_iovec *iov, int *offset,
                           void *ptr)

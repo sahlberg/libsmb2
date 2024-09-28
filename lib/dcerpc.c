@@ -907,6 +907,10 @@ dcerpc_encode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         /* Conformance part */
         if (pdu->is_conformance_run) {
                 // QQQ check for s->utf8==NULL
+                if (s->utf8 == NULL) {
+                        printf("s->utf8 if NULL\n");
+                        s->utf8 = "";
+                }
                 s->utf16 = smb2_utf8_to_utf16(s->utf8);
                 if (s->utf16 == NULL) {
                         return -1;
