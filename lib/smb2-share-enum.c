@@ -164,8 +164,9 @@ smb2_share_enum_async(struct smb2_context *smb2,
         sprintf(server, "\\\\%s", smb2->server);
         nse->se_req.ServerName.utf8 = server;
 
-        nse->se_req.level = 1;
-        nse->se_req.ctr = NULL;
+        nse->se_req.ses.Level = 1;
+        nse->se_req.ses.ShareInfo.Level1.EntriesRead = 0;
+        nse->se_req.ses.ShareInfo.Level1.Buffer = NULL;
         nse->se_req.PreferedMaximumLength = 0xffffffff;
         nse->se_req.ResumeHandle = 0;
 

@@ -250,8 +250,8 @@ srvsvc_SHARE_ENUM_STRUCT_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pd
         if (dcerpc_uint32_coder(ctx, pdu, iov, offset, &ses->Level)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder(ctx, pdu, iov, offset, &ses->ShareInfo,
-                              PTR_REF, srvsvc_SHARE_ENUM_UNION_coder)) {
+        ses->ShareInfo.level = ses->Level;
+        if (srvsvc_SHARE_ENUM_UNION_coder(ctx, pdu, iov, offset, &ses->ShareInfo)) {
                 return -1;
         }
 
@@ -275,22 +275,13 @@ srvsvc_NetrShareEnum_req_coder(struct dcerpc_context *ctx,
                                void *ptr)
 {
         struct srvsvc_NetShareEnum_req *req = ptr;
-        struct srvsvc_SHARE_ENUM_UNION ctr;
-        //struct srvsvc_SHARE_ENUM_STRUCT *ses = ptr;
 
         if (dcerpc_ptr_coder(ctx, pdu, iov, offset, &req->ServerName,
                               PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder(ctx, pdu, iov, offset, &req->level,
-                              PTR_REF, dcerpc_uint32_coder)) {
-                return -1;
-        }
-        ctr.level = 1;
-        ctr.Level1.EntriesRead = 0;
-        ctr.Level1.Buffer = NULL;
-        if (dcerpc_ptr_coder(ctx, pdu, iov, offset, &ctr,
-                              PTR_REF, srvsvc_SHARE_ENUM_UNION_coder)) {
+        if (dcerpc_ptr_coder(ctx, pdu, iov, offset, &req->ses,
+                              PTR_REF, srvsvc_SHARE_ENUM_STRUCT_coder)) {
                 return -1;
         }
         if (dcerpc_ptr_coder(ctx, pdu, iov, offset, &req->PreferedMaximumLength,

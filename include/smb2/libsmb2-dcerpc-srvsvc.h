@@ -74,8 +74,7 @@ struct srvsvc_SHARE_ENUM_STRUCT {
 
 struct srvsvc_NetShareEnum_req {
         struct dcerpc_utf16 ServerName;
-        uint32_t level;
-        struct srvsvc_SHARE_ENUM_UNION *ctr;
+        struct srvsvc_SHARE_ENUM_STRUCT ses;
         uint32_t PreferedMaximumLength;
         uint32_t ResumeHandle;
 };
