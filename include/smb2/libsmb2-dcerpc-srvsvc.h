@@ -82,8 +82,7 @@ struct srvsvc_NetShareEnum_req {
 struct srvsvc_NetShareEnum_rep {
         uint32_t status;
 
-        uint32_t level;
-        struct srvsvc_SHARE_ENUM_UNION *ctr;
+        struct srvsvc_SHARE_ENUM_STRUCT ses;
         uint32_t total_entries;
         uint32_t resume_handle;
 };

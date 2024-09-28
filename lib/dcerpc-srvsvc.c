@@ -223,16 +223,6 @@ srvsvc_SHARE_ENUM_UNION_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu
  *       [switch_is(Level)] SHARE_ENUM_UNION ShareInfo;
  * } SHARE_ENUM_STRUCT, *PSHARE_ENUM_STRUCT, *LPSHARE_ENUM_STRUCT;
  */
-/*
-  000000 00 00 00 00 01 00 00 00 00 00 00 00 01 00 00 00
-         ----------- ----------- ----------- -----------
-           pad to 64     Level    pad to 64       UNION-
-  000010 00 00 00 00 55 70 74 72 72 74 70 55 00 00 00 00
-         ----------- -----------------------
-         -CHOICE         *Level1
-  000020 00 00 00 00 00 00 00 00 00 00 00 00
-  00002c
-*/
 int
 srvsvc_SHARE_ENUM_STRUCT_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                          struct smb2_iovec *iov, int *offset,
@@ -303,23 +293,9 @@ srvsvc_NetrShareEnum_rep_coder(struct dcerpc_context *dce,
                                void *ptr)
 {
         struct srvsvc_NetShareEnum_rep *rep = ptr;
-        struct srvsvc_SHARE_ENUM_UNION *ctr;
 
-        if (dcerpc_ptr_coder(dce, pdu, iov, offset, &rep->level,
-                              PTR_REF, dcerpc_uint32_coder)) {
-                return -1;
-        }
-        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {
-                ctr = smb2_alloc_data(dcerpc_get_smb2_context(dce),
-                                      dcerpc_get_pdu_payload(pdu),
-                                      sizeof(struct srvsvc_SHARE_ENUM_UNION));
-                if (ctr == NULL) {
-                        return -1;
-                }
-                rep->ctr = ctr;
-        }
-        if (dcerpc_ptr_coder(dce, pdu, iov, offset, rep->ctr,
-                              PTR_REF, srvsvc_SHARE_ENUM_UNION_coder)) {
+        if (dcerpc_ptr_coder(dce, pdu, iov, offset, &rep->ses,
+                              PTR_REF, srvsvc_SHARE_ENUM_STRUCT_coder)) {
                 return -1;
         }
         if (dcerpc_ptr_coder(dce, pdu, iov, offset, &rep->total_entries,
