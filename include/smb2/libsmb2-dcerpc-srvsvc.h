@@ -67,6 +67,11 @@ struct srvsvc_SHARE_ENUM_UNION {
         };
 };
 
+struct srvsvc_SHARE_ENUM_STRUCT {
+        uint32_t Level;
+        struct srvsvc_SHARE_ENUM_UNION ShareInfo;
+};
+
 struct srvsvc_NetShareEnum_req {
         struct dcerpc_utf16 ServerName;
         uint32_t level;

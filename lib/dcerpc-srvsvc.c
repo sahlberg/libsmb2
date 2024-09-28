@@ -217,6 +217,47 @@ srvsvc_SHARE_ENUM_UNION_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu
         return 0;
 }
 
+/*
+ * typedef struct _SHARE_ENUM_STRUCT {
+ *       DWORD Level;
+ *       [switch_is(Level)] SHARE_ENUM_UNION ShareInfo;
+ * } SHARE_ENUM_STRUCT, *PSHARE_ENUM_STRUCT, *LPSHARE_ENUM_STRUCT;
+ */
+/*
+  000000 00 00 00 00 01 00 00 00 00 00 00 00 01 00 00 00
+         ----------- ----------- ----------- -----------
+           pad to 64     Level    pad to 64       UNION-
+  000010 00 00 00 00 55 70 74 72 72 74 70 55 00 00 00 00
+         ----------- -----------------------
+         -CHOICE         *Level1
+  000020 00 00 00 00 00 00 00 00 00 00 00 00
+  00002c
+*/
+int
+srvsvc_SHARE_ENUM_STRUCT_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                         struct smb2_iovec *iov, int *offset,
+                         void *ptr)
+{
+        struct srvsvc_SHARE_ENUM_STRUCT *ses = ptr;
+
+        /* QQQ temp padding to 64 bits because of alignment of ShareInfo */
+        /* need to split the coder run into two.
+           first a conformance run that also tracks alignment
+           and second a run to code the actual data
+        */
+        *offset = dcerpc_align_3264(ctx, *offset);
+
+        if (dcerpc_uint32_coder(ctx, pdu, iov, offset, &ses->Level)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder(ctx, pdu, iov, offset, &ses->ShareInfo,
+                              PTR_REF, srvsvc_SHARE_ENUM_UNION_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
 /*****************
  * Function: 0x0f
  * NET_API_STATUS NetrShareEnum (
@@ -235,6 +276,7 @@ srvsvc_NetrShareEnum_req_coder(struct dcerpc_context *ctx,
 {
         struct srvsvc_NetShareEnum_req *req = ptr;
         struct srvsvc_SHARE_ENUM_UNION ctr;
+        //struct srvsvc_SHARE_ENUM_STRUCT *ses = ptr;
 
         if (dcerpc_ptr_coder(ctx, pdu, iov, offset, &req->ServerName,
                               PTR_UNIQUE, dcerpc_utf16z_coder)) {
