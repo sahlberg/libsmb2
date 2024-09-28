@@ -94,14 +94,14 @@ srvsvc_SHARE_INFO_1_coder(struct dcerpc_context *ctx,
         struct srvsvc_SHARE_INFO_1 *nsi1 = ptr;
 
         if (dcerpc_ptr_coder(ctx, pdu, iov, offset, &nsi1->netname,
-                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
         if (dcerpc_uint32_coder(ctx, pdu, iov, offset, &nsi1->type)) {
                 return -1;
         }
         if (dcerpc_ptr_coder(ctx, pdu, iov, offset, &nsi1->remark,
-                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
         return 0;
@@ -122,7 +122,7 @@ srvsvc_SHARE_INFO_1_array_coder(struct dcerpc_context *ctx,
 
         /* Conformance */
         p = array->max_count;
-        if (dcerpc_uint3264_coder(ctx, pdu, iov, offset, &p)) {
+        if (dcerpc_conformance_coder(ctx, pdu, iov, offset, &p)) {
                 return -1;
         }
         if (p != array->max_count) {
@@ -207,8 +207,8 @@ srvsvc_SHARE_ENUM_UNION_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu
         switch (ctr->level) {
         case 1:
                 if (dcerpc_ptr_coder(ctx, pdu, iov, offset, &ctr->Level1,
-                                      PTR_UNIQUE,
-                                      srvsvc_SHARE_INFO_1_CONTAINER_coder)) {
+                                     PTR_UNIQUE,
+                                     srvsvc_SHARE_INFO_1_CONTAINER_coder)) {
                         return -1;
                 }
                 break;
@@ -229,13 +229,6 @@ srvsvc_SHARE_ENUM_STRUCT_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pd
                          void *ptr)
 {
         struct srvsvc_SHARE_ENUM_STRUCT *ses = ptr;
-
-        /* QQQ temp padding to 64 bits because of alignment of ShareInfo */
-        /* need to split the coder run into two.
-           first a conformance run that also tracks alignment
-           and second a run to code the actual data
-        */
-        *offset = dcerpc_align_3264(ctx, *offset);
 
         if (dcerpc_uint32_coder(ctx, pdu, iov, offset, &ses->Level)) {
                 return -1;
@@ -267,19 +260,19 @@ srvsvc_NetrShareEnum_req_coder(struct dcerpc_context *ctx,
         struct srvsvc_NetrShareEnum_req *req = ptr;
 
         if (dcerpc_ptr_coder(ctx, pdu, iov, offset, &req->ServerName,
-                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
         if (dcerpc_ptr_coder(ctx, pdu, iov, offset, &req->ses,
-                              PTR_REF, srvsvc_SHARE_ENUM_STRUCT_coder)) {
+                             PTR_REF, srvsvc_SHARE_ENUM_STRUCT_coder)) {
                 return -1;
         }
         if (dcerpc_ptr_coder(ctx, pdu, iov, offset, &req->PreferedMaximumLength,
-                              PTR_REF, dcerpc_uint32_coder)) {
+                             PTR_REF, dcerpc_uint32_coder)) {
                 return -1;
         }
         if (dcerpc_ptr_coder(ctx, pdu, iov, offset, &req->ResumeHandle,
-                              PTR_UNIQUE, dcerpc_uint32_coder)) {
+                             PTR_UNIQUE, dcerpc_uint32_coder)) {
                 return -1;
         }
 
@@ -295,7 +288,7 @@ srvsvc_NetrShareEnum_rep_coder(struct dcerpc_context *dce,
         struct srvsvc_NetrShareEnum_rep *rep = ptr;
 
         if (dcerpc_ptr_coder(dce, pdu, iov, offset, &rep->ses,
-                              PTR_REF, srvsvc_SHARE_ENUM_STRUCT_coder)) {
+                             PTR_REF, srvsvc_SHARE_ENUM_STRUCT_coder)) {
                 return -1;
         }
         if (dcerpc_ptr_coder(dce, pdu, iov, offset, &rep->total_entries,
@@ -303,7 +296,7 @@ srvsvc_NetrShareEnum_rep_coder(struct dcerpc_context *dce,
                 return -1;
         }
         if (dcerpc_ptr_coder(dce, pdu, iov, offset, &rep->resume_handle,
-                              PTR_UNIQUE, dcerpc_uint32_coder)) {
+                             PTR_UNIQUE, dcerpc_uint32_coder)) {
                 return -1;
         }
         if (dcerpc_uint32_coder(dce, pdu, iov, offset, &rep->status)) {
@@ -345,14 +338,14 @@ srvsvc_SHARE_INFO_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         switch (info->level) {
         case 1:
                 if (dcerpc_ptr_coder(ctx, pdu, iov, offset, &info->ShareInfo1,
-                                      PTR_UNIQUE,
-                                      srvsvc_SHARE_INFO_1_coder)) {
+                                     PTR_UNIQUE,
+                                     srvsvc_SHARE_INFO_1_coder)) {
                         return -1;
                 }
                 break;
         };
 
-        return 0     ;
+        return 0;
 }
 
 /******************
@@ -372,12 +365,12 @@ srvsvc_NetrShareGetInfo_req_coder(struct dcerpc_context *dce,
         struct srvsvc_NetrShareGetInfo_req *req = ptr;
 
         if (dcerpc_ptr_coder(dce, pdu, iov, offset, &req->ServerName,
-                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
         if (dcerpc_ptr_coder(dce, pdu, iov, offset,
-                              discard_const(&req->NetName),
-                              PTR_REF, dcerpc_utf16z_coder)) {
+                             discard_const(&req->NetName),
+                             PTR_REF, dcerpc_utf16z_coder)) {
                 return -1;
         }
         if (dcerpc_uint32_coder(dce, pdu, iov, offset, &req->Level)) {
@@ -396,7 +389,7 @@ srvsvc_NetrShareGetInfo_rep_coder(struct dcerpc_context *dce,
         struct srvsvc_NetrShareGetInfo_rep *rep = ptr;
 
         if (dcerpc_ptr_coder(dce, pdu, iov, offset, &rep->InfoStruct,
-                              PTR_REF, srvsvc_SHARE_INFO_coder)) {
+                             PTR_REF, srvsvc_SHARE_INFO_coder)) {
                 return -1;
         }
         if (dcerpc_uint32_coder(dce, pdu, iov, offset, &rep->status)) {
