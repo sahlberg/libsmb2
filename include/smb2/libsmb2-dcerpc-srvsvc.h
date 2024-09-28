@@ -67,40 +67,43 @@ struct srvsvc_SHARE_ENUM_UNION {
         };
 };
 
-struct srvsvc_NetShareEnum_req {
+struct srvsvc_SHARE_ENUM_STRUCT {
+        uint32_t Level;
+        struct srvsvc_SHARE_ENUM_UNION ShareInfo;
+};
+
+struct srvsvc_NetrShareEnum_req {
         struct dcerpc_utf16 ServerName;
-        uint32_t level;
-        struct srvsvc_SHARE_ENUM_UNION *ctr;
+        struct srvsvc_SHARE_ENUM_STRUCT ses;
         uint32_t PreferedMaximumLength;
         uint32_t ResumeHandle;
 };
 
-struct srvsvc_NetShareEnum_rep {
+struct srvsvc_NetrShareEnum_rep {
         uint32_t status;
 
-        uint32_t level;
-        struct srvsvc_SHARE_ENUM_UNION *ctr;
+        struct srvsvc_SHARE_ENUM_STRUCT ses;
         uint32_t total_entries;
         uint32_t resume_handle;
 };
 
-struct srvsvc_netshareinfo {
+struct srvsvc_SHARE_INFO {
         uint32_t level;
         union {
                 struct srvsvc_SHARE_INFO_1 ShareInfo1;
         };
 };
 
-struct srvsvc_netrsharegetinfo_req {
+struct srvsvc_NetrShareGetInfo_req {
         struct dcerpc_utf16 ServerName;
         struct dcerpc_utf16 NetName;
         uint32_t Level;
 };
 
-struct srvsvc_netrsharegetinfo_rep {
+struct srvsvc_NetrShareGetInfo_rep {
         uint32_t status;
 
-        struct srvsvc_netshareinfo info;
+        struct srvsvc_SHARE_INFO InfoStruct;
 };
 
 struct srvsvc_rep {
@@ -117,7 +120,7 @@ struct srvsvc_rep {
  * -errno : There was an error. The callback function will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- *      0 : Success. Command_data is struct srvsvc_NetShareEnum_rep *
+ *      0 : Success. Command_data is struct srvsvc_NetrShareEnum_rep *
  *          This pointer must be freed using smb2_free_data().
  * -errno : An error occurred.
  */

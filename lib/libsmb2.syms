@@ -8,6 +8,7 @@ dcerpc_destroy_context
 dcerpc_free_data
 dcerpc_free_pdu
 dcerpc_get_error
+dcerpc_set_endian
 dcerpc_set_tctx
 dcerpc_utf16_coder
 dcerpc_utf16z_coder

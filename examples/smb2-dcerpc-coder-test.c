@@ -33,7 +33,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #endif
 
 void dcerpc_set_tctx(struct dcerpc_context *ctx, int tctx);
-
+void dcerpc_set_endian(struct dcerpc_pdu *pdu, int little_endian);
+ 
 int is_finished;
 struct ndr_context_handle PolicyHandle;
 
@@ -51,7 +52,7 @@ static void test_dcerpc_codec(struct dcerpc_context *dce, char *method,
                               dcerpc_coder coder, compare_func cmp,
                               void *req, int req_size,
                               int expected_offset, uint8_t *expected_data,
-                              int print_buf)
+                              int print_buf, int endian)
 {
         struct dcerpc_pdu *pdu1, *pdu2;
         struct smb2_iovec iov;
@@ -68,6 +69,7 @@ static void test_dcerpc_codec(struct dcerpc_context *dce, char *method,
         iov.buf = buf;
         memset(iov.buf, 0, iov.len);
         offset = 0;
+        dcerpc_set_endian(pdu1, endian);
         if (coder(dce, pdu1, &iov, &offset, req)) {
                 printf("Encoding failed\n");
                 exit(20);
@@ -102,6 +104,7 @@ static void test_dcerpc_codec(struct dcerpc_context *dce, char *method,
         req2 = calloc(1, req_size);
         pdu2 = dcerpc_allocate_pdu(dce, DCERPC_DECODE, req_size);
         offset = 0;
+        dcerpc_set_endian(pdu2, endian);
         if (coder(dce, pdu2, &iov, &offset, req2)) {
                 printf("Decoding failed\n");
                 exit(20);
@@ -136,31 +139,49 @@ static int compare_utf16(void *ptr1, void *ptr2)
         struct dcerpc_utf16 *s2 = ptr2;
 
         if (strcmp(s1->utf8, s2->utf8)) {
-                printf("Compare ->utf8 failed\n");
+                printf("Compare ->utf8 failed %s != %s\n", s1->utf8, s2->utf8);
                 exit(20);
         }
         return 0;
 }
 
-static void test_utf16_ndr32(struct dcerpc_context *dce)
+static void test_utf16_ndr32_le(struct dcerpc_context *dce)
 {
         struct dcerpc_utf16 s1;
         unsigned char buf[] = {
-                0x0e, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,
-                0x0e, 0x00, 0x00, 0x00,  0x5c, 0x00, 0x5c, 0x00,
-                0x31, 0x00, 0x30, 0x00,  0x2e, 0x00, 0x31, 0x00,
-                0x30, 0x00, 0x2e, 0x00,  0x31, 0x00, 0x30, 0x00,
-                0x2e, 0x00, 0x31, 0x00,  0x31, 0x00, 0x00, 0x00};
+                0x0a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x0a, 0x00, 0x00, 0x00, 0x5c, 0x00, 0x5c, 0x00,
+                0x77, 0x00, 0x69, 0x00, 0x6e, 0x00, 0x31, 0x00,
+                0x36, 0x00, 0x2d, 0x00, 0x31, 0x00, 0x00, 0x00
+        };
 
-        s1.utf8 = "\\\\10.10.10.11";
+        s1.utf8 = "\\\\win16-1";
         dcerpc_set_tctx(dce, 0); /* NDR32 */
-        test_dcerpc_codec(dce, "dcerpc_utf16 NDR32",
+        test_dcerpc_codec(dce, "dcerpc_utf16 NDR32 LE",
                           dcerpc_utf16z_coder, compare_utf16,
                           &s1, sizeof(s1),
-                          sizeof(buf), buf, 0);
+                          sizeof(buf), buf, 0, 1);
 }
 
-static void test_utf16_ndr64(struct dcerpc_context *dce)
+static void test_utf16_ndr32_be(struct dcerpc_context *dce)
+{
+        struct dcerpc_utf16 s1;
+        unsigned char buf[] = {
+                0x00, 0x00, 0x00, 0x0a,  0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x0a,  0x00, 0x5c, 0x00, 0x5c,
+                0x00, 0x77, 0x00, 0x69,  0x00, 0x6e, 0x00, 0x31,
+                0x00, 0x36, 0x00, 0x2d,  0x00, 0x31, 0x00, 0x00
+        };
+
+        s1.utf8 = "\\\\win16-1";
+        dcerpc_set_tctx(dce, 0); /* NDR32 */
+        test_dcerpc_codec(dce, "dcerpc_utf16 NDR32 BE",
+                          dcerpc_utf16z_coder, compare_utf16,
+                          &s1, sizeof(s1),
+                          sizeof(buf), buf, 0, 0);
+}
+
+static void test_utf16_ndr64_le(struct dcerpc_context *dce)
 {
         struct dcerpc_utf16 s1;
         unsigned char buf[] = {
@@ -174,10 +195,10 @@ static void test_utf16_ndr64(struct dcerpc_context *dce)
 
         s1.utf8 = "\\\\win16-1";
         dcerpc_set_tctx(dce, 1); /* NDR64 */
-        test_dcerpc_codec(dce, "dcerpc_utf16 NDR64",
+        test_dcerpc_codec(dce, "dcerpc_utf16 NDR64 LE",
                           dcerpc_utf16z_coder, compare_utf16,
                           &s1, sizeof(s1),
-                          sizeof(buf), buf, 0);
+                          sizeof(buf), buf, 0, 1);
 }
 
 int main(int argc, char *argv[])
@@ -206,8 +227,9 @@ int main(int argc, char *argv[])
         PolicyHandle.context_handle_attributes = 0;
         memcpy(&PolicyHandle.context_handle_uuid, ph, 16);
 
-        test_utf16_ndr32(dce);
-        test_utf16_ndr64(dce);
+        test_utf16_ndr32_le(dce);
+        test_utf16_ndr32_be(dce);
+        test_utf16_ndr64_le(dce);
 
         dcerpc_destroy_context(dce);
         smb2_destroy_context(smb2);

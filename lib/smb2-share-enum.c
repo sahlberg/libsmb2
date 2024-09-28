@@ -71,7 +71,7 @@ struct smb2nse {
         smb2_command_cb cb;
         void *cb_data;
         union {
-                struct srvsvc_NetShareEnum_req se_req;
+                struct srvsvc_NetrShareEnum_req se_req;
         };
 };
 
@@ -120,7 +120,7 @@ share_enum_bind_cb(struct dcerpc_context *dce, int status,
                                    SRVSVC_NETRSHAREENUM,
                                    srvsvc_NetrShareEnum_req_coder, &nse->se_req,
                                    srvsvc_NetrShareEnum_rep_coder,
-                                   sizeof(struct srvsvc_NetShareEnum_rep),
+                                   sizeof(struct srvsvc_NetrShareEnum_rep),
                                    srvsvc_ioctl_cb, nse);
         if (status) {
                 nse->cb(smb2, status, NULL, nse->cb_data);
@@ -164,8 +164,9 @@ smb2_share_enum_async(struct smb2_context *smb2,
         sprintf(server, "\\\\%s", smb2->server);
         nse->se_req.ServerName.utf8 = server;
 
-        nse->se_req.level = 1;
-        nse->se_req.ctr = NULL;
+        nse->se_req.ses.Level = 1;
+        nse->se_req.ses.ShareInfo.Level1.EntriesRead = 0;
+        nse->se_req.ses.ShareInfo.Level1.Buffer = NULL;
         nse->se_req.PreferedMaximumLength = 0xffffffff;
         nse->se_req.ResumeHandle = 0;
 
