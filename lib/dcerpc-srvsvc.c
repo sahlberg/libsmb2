@@ -264,7 +264,7 @@ srvsvc_NetrShareEnum_req_coder(struct dcerpc_context *ctx,
                                struct smb2_iovec *iov, int *offset,
                                void *ptr)
 {
-        struct srvsvc_NetShareEnum_req *req = ptr;
+        struct srvsvc_NetrShareEnum_req *req = ptr;
 
         if (dcerpc_ptr_coder(ctx, pdu, iov, offset, &req->ServerName,
                               PTR_UNIQUE, dcerpc_utf16z_coder)) {
@@ -292,7 +292,7 @@ srvsvc_NetrShareEnum_rep_coder(struct dcerpc_context *dce,
                                struct smb2_iovec *iov, int *offset,
                                void *ptr)
 {
-        struct srvsvc_NetShareEnum_rep *rep = ptr;
+        struct srvsvc_NetrShareEnum_rep *rep = ptr;
 
         if (dcerpc_ptr_coder(dce, pdu, iov, offset, &rep->ses,
                               PTR_REF, srvsvc_SHARE_ENUM_STRUCT_coder)) {

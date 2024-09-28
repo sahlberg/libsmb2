@@ -72,14 +72,14 @@ struct srvsvc_SHARE_ENUM_STRUCT {
         struct srvsvc_SHARE_ENUM_UNION ShareInfo;
 };
 
-struct srvsvc_NetShareEnum_req {
+struct srvsvc_NetrShareEnum_req {
         struct dcerpc_utf16 ServerName;
         struct srvsvc_SHARE_ENUM_STRUCT ses;
         uint32_t PreferedMaximumLength;
         uint32_t ResumeHandle;
 };
 
-struct srvsvc_NetShareEnum_rep {
+struct srvsvc_NetrShareEnum_rep {
         uint32_t status;
 
         struct srvsvc_SHARE_ENUM_STRUCT ses;
@@ -120,7 +120,7 @@ struct srvsvc_rep {
  * -errno : There was an error. The callback function will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- *      0 : Success. Command_data is struct srvsvc_NetShareEnum_rep *
+ *      0 : Success. Command_data is struct srvsvc_NetrShareEnum_rep *
  *          This pointer must be freed using smb2_free_data().
  * -errno : An error occurred.
  */

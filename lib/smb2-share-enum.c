@@ -71,7 +71,7 @@ struct smb2nse {
         smb2_command_cb cb;
         void *cb_data;
         union {
-                struct srvsvc_NetShareEnum_req se_req;
+                struct srvsvc_NetrShareEnum_req se_req;
         };
 };
 
@@ -120,7 +120,7 @@ share_enum_bind_cb(struct dcerpc_context *dce, int status,
                                    SRVSVC_NETRSHAREENUM,
                                    srvsvc_NetrShareEnum_req_coder, &nse->se_req,
                                    srvsvc_NetrShareEnum_rep_coder,
-                                   sizeof(struct srvsvc_NetShareEnum_rep),
+                                   sizeof(struct srvsvc_NetrShareEnum_rep),
                                    srvsvc_ioctl_cb, nse);
         if (status) {
                 nse->cb(smb2, status, NULL, nse->cb_data);

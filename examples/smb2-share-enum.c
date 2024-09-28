@@ -51,7 +51,7 @@ int usage(void)
 void se_cb(struct smb2_context *smb2, int status,
                 void *command_data, void *private_data)
 {
-        struct srvsvc_NetShareEnum_rep *rep = command_data;
+        struct srvsvc_NetrShareEnum_rep *rep = command_data;
         int i;
 
         if (status) {
