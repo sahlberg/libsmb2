@@ -723,6 +723,7 @@ encode_ntlm_challenge(struct smb2_context *smb2, struct auth_data *auth_data)
                 for (int i = 0; i < namelen; i++) {
                         upper[i] = toupper(auth_data->workstation[i]);
                 }
+                upper[namelen] = 0;
                 utf16_workstation = smb2_utf8_to_utf16(auth_data->workstation);
                 if (utf16_workstation == NULL) {
                         goto finished;
