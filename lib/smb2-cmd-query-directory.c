@@ -31,10 +31,6 @@
 #include <stdlib.h>
 #endif
 
-#ifdef HAVE_STDIO_H
-#include <stdio.h>
-#endif
-
 #ifdef HAVE_STRING_H
 #include <string.h>
 #endif
@@ -50,8 +46,6 @@
 #ifdef HAVE_SYS_TIME_H
 #include <sys/time.h>
 #endif
-
-#include <errno.h>
 
 #include "compat.h"
 
@@ -496,6 +490,9 @@ smb2_process_query_directory_request_fixed(struct smb2_context *smb2,
         }
         pdu->payload = req;
 
+        if (pdu->header.flags & SMB2_FLAGS_RELATED_OPERATIONS) {
+                req->is_compound = 1;
+        }
         smb2_get_uint16(iov, 0, &struct_size);
         if (struct_size != SMB2_QUERY_DIRECTORY_REQUEST_SIZE ||
             (struct_size & 0xfffe) != iov->len) {
@@ -544,9 +541,29 @@ smb2_process_query_directory_request_variable(struct smb2_context *smb2,
 {
         struct smb2_query_directory_request *req = pdu->payload;
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
-
-        req->name = (const char*)&iov->buf[IOVREQ_OFFSET];
-
+        void *ptr;
+        int name_byte_len;
+        
+        if (req->file_name_length > 0) {
+                req->name = smb2_utf16_to_utf8((uint16_t*)&iov->buf[IOVREQ_OFFSET], req->file_name_length / 2);
+                if (req->name) {
+                        name_byte_len = strlen(req->name) + 1;
+                        ptr = smb2_alloc_init(smb2, name_byte_len);
+                        if (ptr) {
+                                memcpy(ptr, req->name, name_byte_len);
+                        }
+                        free(discard_const(req->name));
+                        req->name = ptr;
+                        if (!ptr) {
+                                smb2_set_error(smb2, "can not alloc name buffer");
+                                return -1;
+                        }
+                }
+                else {
+                        smb2_set_error(smb2, "can not convert name to utf8");
+                        return -1;
+                }
+        }
         return 0;
 }
 

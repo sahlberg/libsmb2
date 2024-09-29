@@ -79,17 +79,37 @@ smb2_encode_write_request(struct smb2_context *smb2,
         smb2_set_uint16(iov, 0, SMB2_WRITE_REQUEST_SIZE);
         smb2_set_uint16(iov, 2, SMB2_HEADER_SIZE + 48);
         smb2_set_uint32(iov, 4, req->length);
-        smb2_set_uint64(iov, 8, req->offset);
         memcpy(iov->buf + 16, req->file_id, SMB2_FD_SIZE);
         smb2_set_uint32(iov, 32, req->channel);
         smb2_set_uint32(iov, 36, req->remaining_bytes);
         smb2_set_uint16(iov, 42, req->write_channel_info_length);
         smb2_set_uint32(iov, 44, req->flags);
 
-        if (req->write_channel_info_length > 0 ||
+        if (req->write_channel_info_length > 0 &&
             req->write_channel_info != NULL) {
-                smb2_set_error(smb2, "ChannelInfo not yet implemented");
-                return -1;
+                if (smb2->passthrough) {
+                        req->write_channel_info_offset =
+                                (SMB2_READ_REQUEST_SIZE & 0xfffffffe) + SMB2_HEADER_SIZE;
+                        smb2_set_uint16(iov, 44, req->write_channel_info_offset);
+                        
+                        len = PAD_TO_64BIT(req->write_channel_info_length);
+                        buf = malloc(len);
+                        if (buf == NULL) {
+                                smb2_set_error(smb2, "Failed to allocate write channel context");
+                                return -1;
+                        }
+                        memcpy(buf, req->write_channel_info, req->write_channel_info_length);
+                        memset(buf + req->write_channel_info_length, 0,
+                                       len - req->write_channel_info_length);
+                        iov = smb2_add_iovector(smb2, &pdu->out,
+                                                        buf,
+                                                        len,
+                                                        free);
+                }                                
+                else {
+                        smb2_set_error(smb2, "ChannelInfo not yet implemented");
+                        return -1;
+                }
         }
 
         return 0;
@@ -212,8 +232,8 @@ smb2_process_write_fixed(struct smb2_context *smb2,
         return 0;
 }
 
-#define IOVREQ_OFFSET (req->write_channel_info_offset - SMB2_HEADER_SIZE - \
-                    (SMB2_WRITE_REQUEST_SIZE & 0xfffe))
+#define IOVREQ_OFFSET (req->write_channel_info_length ? (req->write_channel_info_offset - SMB2_HEADER_SIZE - \
+                        (SMB2_WRITE_REQUEST_SIZE & 0xfffe)):0)
 
 int
 smb2_process_write_request_fixed(struct smb2_context *smb2,
@@ -248,16 +268,22 @@ smb2_process_write_request_fixed(struct smb2_context *smb2,
         smb2_get_uint16(iov, 32, &req->write_channel_info_offset);
         smb2_get_uint16(iov, 34, &req->write_channel_info_length);
 
-        if (req->write_channel_info_length == 0) {
+        if (req->write_channel_info_length) {
+                if (req->write_channel_info_offset < (SMB2_HEADER_SIZE + (SMB2_WRITE_REQUEST_SIZE & 0xfffe))) {
+                        smb2_set_error(smb2, "channel info overlaps request", "");
+                        return -1;
+                }
+        }
+
+        if (req->length) {
+                return IOVREQ_OFFSET + PAD_TO_64BIT(req->write_channel_info_length) + req->length;
+        }
+        else if (req->write_channel_info_length) {
+                return IOVREQ_OFFSET + req->write_channel_info_length;
+        }
+        else {
                 return 0;
         }
-
-        if (req->write_channel_info_offset < SMB2_HEADER_SIZE + (SMB2_WRITE_REQUEST_SIZE & 0xfffe)) {
-                smb2_set_error(smb2, "channel info overlaps request", "");
-                return -1;
-        }
-
-        return IOVREQ_OFFSET + req->write_channel_info_length;
 }
 
 int
@@ -266,8 +292,17 @@ smb2_process_write_request_variable(struct smb2_context *smb2,
 {
         struct smb2_write_request *req = (struct smb2_write_request*)pdu->payload;
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
-        
-        req->buf = (uint8_t *)iov->buf;
+        struct smb2_iovec vec = { &iov->buf[IOVREQ_OFFSET],
+                                iov->len,
+                                NULL };
+                            
+        req->write_channel_info = (uint8_t *)vec.buf;
+        req->buf = malloc(PAD_TO_64BIT(req->length));
+        if (!req->buf) {
+                smb2_set_error(smb2, "can not alloc buffer for write data");
+                return -1;
+        }
+        memcpy(discard_const(req->buf), &vec.buf[PAD_TO_64BIT(req->write_channel_info_length)], req->length);
         return 0;
 }
 

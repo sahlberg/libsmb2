@@ -55,7 +55,7 @@
 #include "libsmb2.h"
 #include "libsmb2-private.h"
 
-static int
+int
 smb2_encode_query_info_request(struct smb2_context *smb2,
                                struct smb2_pdu *pdu,
                                struct smb2_query_info_request *req)
@@ -82,6 +82,8 @@ smb2_encode_query_info_request(struct smb2_context *smb2,
         smb2_set_uint8(iov, 2, req->info_type);
         smb2_set_uint8(iov, 3, req->file_info_class);
         smb2_set_uint32(iov,4, req->output_buffer_length);
+        req->input_buffer_offset = SMB2_HEADER_SIZE + (SMB2_QUERY_INFO_REQUEST_SIZE & 0xfffe);
+        smb2_set_uint16(iov,8, req->input_buffer_offset);
         smb2_set_uint32(iov,12, req->input_buffer_length);
         smb2_set_uint32(iov,16, req->additional_information);
         smb2_set_uint32(iov,20, req->flags);
@@ -132,7 +134,7 @@ smb2_encode_query_info_reply(struct smb2_context *smb2,
         pdu->header.flags |= SMB2_FLAGS_SERVER_TO_REDIR;
         pdu->header.credit_request_response = 1;
 
-        len = SMB2_QUERY_INFO_REPLY_SIZE & 0xfffffffe;
+        len = SMB2_QUERY_INFO_REPLY_SIZE & 0xfffe;
         buf = calloc(len, sizeof(uint8_t));
         if (buf == NULL) {
                 smb2_set_error(smb2, "Failed to allocate query reply buffer");
@@ -151,7 +153,7 @@ smb2_encode_query_info_reply(struct smb2_context *smb2,
 
         if (rep->output_buffer_length > 0 && rep->output_buffer) {
                 len = rep->output_buffer_length;
-                len = PAD_TO_32BIT(len);
+                len = PAD_TO_64BIT(len);
                 
                 /* not sure exactly how long the encoding will be, some of the,
                  * include variable data so add a whole lot of space */
@@ -168,7 +170,8 @@ smb2_encode_query_info_reply(struct smb2_context *smb2,
                 if (smb2->passthrough) {
                         memcpy(buf, rep->output_buffer, rep->output_buffer_length);
                         memset(buf + rep->output_buffer_length, 0, len - rep->output_buffer_length);
-                        iov->len = rep->output_buffer_length;
+                        /* blob needs 8 byte alignment */
+                        iov->len = len;
                 }
                 else {
                         rep->output_buffer_length = 0;
@@ -516,6 +519,9 @@ smb2_process_query_info_request_fixed(struct smb2_context *smb2,
         }
         pdu->payload = req;
 
+        if (pdu->header.flags & SMB2_FLAGS_RELATED_OPERATIONS) {
+                req->is_compound = 1;
+        }
         smb2_get_uint16(iov, 0, &struct_size);
         if (struct_size != SMB2_QUERY_INFO_REQUEST_SIZE ||
             (struct_size & 0xfffe) != iov->len) {
