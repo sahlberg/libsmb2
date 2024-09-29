@@ -114,7 +114,6 @@ static void test_dcerpc_coder(struct dcerpc_context *dce, char *method,
                 }
                 exit(20);
         }
-        
         /* Decode it again */
         req2 = calloc(1, req_size);
         pdu2 = dcerpc_allocate_pdu(dce, DCERPC_DECODE, req_size);
@@ -273,16 +272,16 @@ static int compare_SHARE_INFO_1_CONTAINER(void *ptr1, void *ptr2)
                 exit(20);
         }
         for (i = 0; i < 10; i++) {
-                if (strcmp(s1->Buffer->share_info_1[i].netname.utf8, s2->Buffer->share_info_1[i].netname.utf8)) {
-                        printf("Compare ->netname failed %s != %s\n", s1->Buffer->share_info_1[i].netname.utf8, s2->Buffer->share_info_1[i].netname.utf8);
+                if (strcmp(s1->carray->share_info_1[i].netname.utf8, s2->carray->share_info_1[i].netname.utf8)) {
+                        printf("Compare ->netname failed %s != %s\n", s1->carray->share_info_1[i].netname.utf8, s2->carray->share_info_1[i].netname.utf8);
                         exit(20);
                 }
-                if (s1->Buffer->share_info_1[i].type != s2->Buffer->share_info_1[i].type) {
-                        printf("Compare ->type failed %d != %d\n", s1->Buffer->share_info_1[i].type, s2->Buffer->share_info_1[i].type);
+                if (s1->carray->share_info_1[i].type != s2->carray->share_info_1[i].type) {
+                        printf("Compare ->type failed %d != %d\n", s1->carray->share_info_1[i].type, s2->carray->share_info_1[i].type);
                         exit(20);
                 }
-                if (strcmp(s1->Buffer->share_info_1[i].remark.utf8, s2->Buffer->share_info_1[i].remark.utf8)) {
-                        printf("Compare ->remark failed %s != %s\n", s1->Buffer->share_info_1[i].remark.utf8, s2->Buffer->share_info_1[i].remark.utf8);
+                if (strcmp(s1->carray->share_info_1[i].remark.utf8, s2->carray->share_info_1[i].remark.utf8)) {
+                        printf("Compare ->remark failed %s != %s\n", s1->carray->share_info_1[i].remark.utf8, s2->carray->share_info_1[i].remark.utf8);
                         exit(20);
                 }
         }
@@ -291,7 +290,9 @@ static int compare_SHARE_INFO_1_CONTAINER(void *ptr1, void *ptr2)
 
 static void test_SHARE_INFO_1_CONTAINER_ndr32_le(struct dcerpc_context *dce)
 {
+        struct srvsvc_SHARE_INFO_1_carray ca;
         struct srvsvc_SHARE_INFO_1_CONTAINER s1;
+        struct srvsvc_SHARE_INFO_1 si[10];
         unsigned char buf[] = {
         /*000*/ 0x0a, 0x00, 0x00, 0x00, 0x55, 0x70, 0x74, 0x72,
                 0x0a, 0x00, 0x00, 0x00, 0x55, 0x70, 0x74, 0x72,
@@ -374,38 +375,39 @@ static void test_SHARE_INFO_1_CONTAINER_ndr32_le(struct dcerpc_context *dce)
        };
 
         s1.EntriesRead = 10;
-        s1.Buffer = calloc(1, sizeof(struct srvsvc_SHARE_INFO_1_carray) + 10 * sizeof(struct srvsvc_SHARE_INFO_1));
-        s1.Buffer->max_count = 10;
-        s1.Buffer->share_info_1[0].netname.utf8 = "ADMIN$";
-        s1.Buffer->share_info_1[0].type         = 0x80000000;
-        s1.Buffer->share_info_1[0].remark.utf8  = "Remote Admin";
-        s1.Buffer->share_info_1[1].netname.utf8 = "C";
-        s1.Buffer->share_info_1[1].type         = 0x00000000;
-        s1.Buffer->share_info_1[1].remark.utf8  = "";
-        s1.Buffer->share_info_1[2].netname.utf8 = "C$";
-        s1.Buffer->share_info_1[2].type         = 0x80000000;
-        s1.Buffer->share_info_1[2].remark.utf8  = "Default share";
-        s1.Buffer->share_info_1[3].netname.utf8 = "DFS-Standalone";
-        s1.Buffer->share_info_1[3].type         = 0x00000000;
-        s1.Buffer->share_info_1[3].remark.utf8  = "";
-        s1.Buffer->share_info_1[4].netname.utf8 = "Encrypted";
-        s1.Buffer->share_info_1[4].type         = 0x00000000;
-        s1.Buffer->share_info_1[4].remark.utf8  = "";
-        s1.Buffer->share_info_1[5].netname.utf8 = "IPC$";
-        s1.Buffer->share_info_1[5].type         = 0x80000003;
-        s1.Buffer->share_info_1[5].remark.utf8  = "Remote IPC";
-        s1.Buffer->share_info_1[6].netname.utf8 = "NFS";
-        s1.Buffer->share_info_1[6].type         = 0x00000000;
-        s1.Buffer->share_info_1[6].remark.utf8  = "";
-        s1.Buffer->share_info_1[7].netname.utf8 = "Scratch";
-        s1.Buffer->share_info_1[7].type         = 0x00000000;
-        s1.Buffer->share_info_1[7].remark.utf8  = "";
-        s1.Buffer->share_info_1[8].netname.utf8 = "Share";
-        s1.Buffer->share_info_1[8].type         = 0x00000000;
-        s1.Buffer->share_info_1[8].remark.utf8  = "";
-        s1.Buffer->share_info_1[9].netname.utf8 = "Users";
-        s1.Buffer->share_info_1[9].type         = 0x00000000;
-        s1.Buffer->share_info_1[9].remark.utf8  = "";
+        s1.carray = &ca;
+        s1.carray->max_count = 10;
+        s1.carray->share_info_1 = &si[0];
+        si[0].netname.utf8 = "ADMIN$";
+        si[0].type         = 0x80000000;
+        si[0].remark.utf8  = "Remote Admin";
+        si[1].netname.utf8 = "C";
+        si[1].type         = 0x00000000;
+        si[1].remark.utf8  = "";
+        si[2].netname.utf8 = "C$";
+        si[2].type         = 0x80000000;
+        si[2].remark.utf8  = "Default share";
+        si[3].netname.utf8 = "DFS-Standalone";
+        si[3].type         = 0x00000000;
+        si[3].remark.utf8  = "";
+        si[4].netname.utf8 = "Encrypted";
+        si[4].type         = 0x00000000;
+        si[4].remark.utf8  = "";
+        si[5].netname.utf8 = "IPC$";
+        si[5].type         = 0x80000003;
+        si[5].remark.utf8  = "Remote IPC";
+        si[6].netname.utf8 = "NFS";
+        si[6].type         = 0x00000000;
+        si[6].remark.utf8  = "";
+        si[7].netname.utf8 = "Scratch";
+        si[7].type         = 0x00000000;
+        si[7].remark.utf8  = "";
+        si[8].netname.utf8 = "Share";
+        si[8].type         = 0x00000000;
+        si[8].remark.utf8  = "";
+        si[9].netname.utf8 = "Users";
+        si[9].type         = 0x00000000;
+        si[9].remark.utf8  = "";
         dcerpc_set_tctx(dce, 0); /* NDR32 */
         test_dcerpc_coder(dce, "dcerpc_SHARE_INFO_1_CONTAINER NDR32 LE",
                           srvsvc_SHARE_INFO_1_CONTAINER_coder, compare_SHARE_INFO_1_CONTAINER,
@@ -415,7 +417,9 @@ static void test_SHARE_INFO_1_CONTAINER_ndr32_le(struct dcerpc_context *dce)
 
 static void test_SHARE_INFO_1_CONTAINER_ndr64_le(struct dcerpc_context *dce)
 {
+        struct srvsvc_SHARE_INFO_1_carray ca;
         struct srvsvc_SHARE_INFO_1_CONTAINER s1;
+        struct srvsvc_SHARE_INFO_1 si[10];
         unsigned char buf[] = {
                 0x0a, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,
                 0x00, 0x00, 0x02, 0x00,  0x00, 0x00, 0x00, 0x00,
@@ -551,38 +555,39 @@ static void test_SHARE_INFO_1_CONTAINER_ndr64_le(struct dcerpc_context *dce)
        };
 
         s1.EntriesRead = 10;
-        s1.Buffer = calloc(1, sizeof(struct srvsvc_SHARE_INFO_1_carray) + 10 * sizeof(struct srvsvc_SHARE_INFO_1));
-        s1.Buffer->max_count = 10;
-        s1.Buffer->share_info_1[0].netname.utf8 = "ADMIN$";
-        s1.Buffer->share_info_1[0].type         = 0x80000000;
-        s1.Buffer->share_info_1[0].remark.utf8  = "Remote Admin";
-        s1.Buffer->share_info_1[1].netname.utf8 = "C";
-        s1.Buffer->share_info_1[1].type         = 0x00000000;
-        s1.Buffer->share_info_1[1].remark.utf8  = "";
-        s1.Buffer->share_info_1[2].netname.utf8 = "C$";
-        s1.Buffer->share_info_1[2].type         = 0x80000000;
-        s1.Buffer->share_info_1[2].remark.utf8  = "Default share";
-        s1.Buffer->share_info_1[3].netname.utf8 = "DFS-Standalone";
-        s1.Buffer->share_info_1[3].type         = 0x00000000;
-        s1.Buffer->share_info_1[3].remark.utf8  = "";
-        s1.Buffer->share_info_1[4].netname.utf8 = "Encrypted";
-        s1.Buffer->share_info_1[4].type         = 0x00000000;
-        s1.Buffer->share_info_1[4].remark.utf8  = "";
-        s1.Buffer->share_info_1[5].netname.utf8 = "IPC$";
-        s1.Buffer->share_info_1[5].type         = 0x80000003;
-        s1.Buffer->share_info_1[5].remark.utf8  = "Remote IPC";
-        s1.Buffer->share_info_1[6].netname.utf8 = "NFS";
-        s1.Buffer->share_info_1[6].type         = 0x00000000;
-        s1.Buffer->share_info_1[6].remark.utf8  = "";
-        s1.Buffer->share_info_1[7].netname.utf8 = "Scratch";
-        s1.Buffer->share_info_1[7].type         = 0x00000000;
-        s1.Buffer->share_info_1[7].remark.utf8  = "";
-        s1.Buffer->share_info_1[8].netname.utf8 = "Share";
-        s1.Buffer->share_info_1[8].type         = 0x00000000;
-        s1.Buffer->share_info_1[8].remark.utf8  = "";
-        s1.Buffer->share_info_1[9].netname.utf8 = "Users";
-        s1.Buffer->share_info_1[9].type         = 0x00000000;
-        s1.Buffer->share_info_1[9].remark.utf8  = "";
+        s1.carray = &ca;
+        s1.carray->max_count = 10;
+        s1.carray->share_info_1 = &si[0];
+        si[0].netname.utf8 = "ADMIN$";
+        si[0].type         = 0x80000000;
+        si[0].remark.utf8  = "Remote Admin";
+        si[1].netname.utf8 = "C";
+        si[1].type         = 0x00000000;
+        si[1].remark.utf8  = "";
+        si[2].netname.utf8 = "C$";
+        si[2].type         = 0x80000000;
+        si[2].remark.utf8  = "Default share";
+        si[3].netname.utf8 = "DFS-Standalone";
+        si[3].type         = 0x00000000;
+        si[3].remark.utf8  = "";
+        si[4].netname.utf8 = "Encrypted";
+        si[4].type         = 0x00000000;
+        si[4].remark.utf8  = "";
+        si[5].netname.utf8 = "IPC$";
+        si[5].type         = 0x80000003;
+        si[5].remark.utf8  = "Remote IPC";
+        si[6].netname.utf8 = "NFS";
+        si[6].type         = 0x00000000;
+        si[6].remark.utf8  = "";
+        si[7].netname.utf8 = "Scratch";
+        si[7].type         = 0x00000000;
+        si[7].remark.utf8  = "";
+        si[8].netname.utf8 = "Share";
+        si[8].type         = 0x00000000;
+        si[8].remark.utf8  = "";
+        si[9].netname.utf8 = "Users";
+        si[9].type         = 0x00000000;
+        si[9].remark.utf8  = "";
         dcerpc_set_tctx(dce, 1); /* NDR64 */
         test_dcerpc_coder(dce, "dcerpc_SHARE_INFO_1_CONTAINER NDR64 LE",
                           srvsvc_SHARE_INFO_1_CONTAINER_coder, compare_SHARE_INFO_1_CONTAINER,

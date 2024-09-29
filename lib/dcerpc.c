@@ -1940,3 +1940,9 @@ void dcerpc_set_endian(struct dcerpc_pdu *pdu, int little_endian)
                 pdu->hdr.packed_drep[0] &= ~DCERPC_DR_LITTLE_ENDIAN;
         }
 }
+int dcerpc_get_cr(struct dcerpc_pdu *pdu)
+{
+        return pdu->is_conformance_run;
+}
+
+                                                 

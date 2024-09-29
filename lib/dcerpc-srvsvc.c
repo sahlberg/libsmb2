@@ -69,6 +69,8 @@
 
 #define SRVSVC_UUID    0x4b324fc8, 0x1670, 0x01d3, {0x12, 0x78, 0x5a, 0x47, 0xbf, 0x6e, 0xe1, 0x88}
 
+int dcerpc_get_cr(struct dcerpc_pdu *pdu);
+
 p_syntax_id_t srvsvc_interface = {
         {SRVSVC_UUID}, 3, 0
 };
@@ -111,28 +113,25 @@ srvsvc_SHARE_INFO_1_coder(struct dcerpc_context *ctx,
  *       [size_is(EntriesRead)] LPSHARE_INFO_1 Buffer;
  */
 static int
-srvsvc_SHARE_INFO_1_array_coder(struct dcerpc_context *ctx,
+srvsvc_SHARE_INFO_1_carray_coder(struct dcerpc_context *ctx,
                                  struct dcerpc_pdu *pdu,
                                  struct smb2_iovec *iov, int *offset,
                                  void *ptr)
 {
-        struct srvsvc_SHARE_INFO_1_carray *array = ptr;
+        struct srvsvc_SHARE_INFO_1_carray *carray = ptr;
         int i;
         uint64_t p;
 
         /* Conformance */
-        p = array->max_count;
+        p = carray->max_count;
         if (dcerpc_conformance_coder(ctx, pdu, iov, offset, &p)) {
-                return -1;
-        }
-        if (p != array->max_count) {
                 return -1;
         }
 
         /* Data */
         for (i = 0; i < p; i++) {
                 if (srvsvc_SHARE_INFO_1_coder(ctx, pdu, iov, offset,
-                                              &array->share_info_1[i])) {
+                                              &carray->share_info_1[i])) {
                         return -1;
                 }
         }
@@ -157,23 +156,28 @@ srvsvc_SHARE_INFO_1_CONTAINER_coder(struct dcerpc_context *dce, struct dcerpc_pd
                 return -1;
         }
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {
-                /* Need to allocate the buffer for the array */
-                ctr1->Buffer = smb2_alloc_data(dcerpc_get_smb2_context(dce),
-                                               dcerpc_get_pdu_payload(pdu),
-                                               sizeof(struct srvsvc_SHARE_INFO_1_carray) + ctr1->EntriesRead * sizeof(struct srvsvc_SHARE_INFO_1));
-                if (ctr1->Buffer == NULL) {
+                 // QQQ double alloc?
+                ctr1->carray = smb2_alloc_data(
+                                  dcerpc_get_smb2_context(dce),
+                                  dcerpc_get_pdu_payload(pdu),
+                                  sizeof(struct srvsvc_SHARE_INFO_1_carray));
+                ctr1->carray->max_count = ctr1->EntriesRead;
+                ctr1->carray->share_info_1 = smb2_alloc_data(
+                              dcerpc_get_smb2_context(dce),
+                              dcerpc_get_pdu_payload(pdu),
+                              ctr1->EntriesRead * sizeof(struct srvsvc_SHARE_INFO_1));
+                if (ctr1->carray->share_info_1 == NULL) {
                         return -1;
                 }
-                /* Need to set the max_count. When decoding we compare this
-                 * with the maximum_count read from the pdu
-                 */
-                ctr1->Buffer->max_count = ctr1->EntriesRead;
+        }
+        if (ctr1->carray) {
+                ctr1->carray->max_count = ctr1->EntriesRead;
         }
 
         if (dcerpc_ptr_coder(dce, pdu, iov, offset,
-                             ctr1->Buffer,
+                             ctr1->carray,
                              PTR_UNIQUE,
-                             srvsvc_SHARE_INFO_1_array_coder)) {
+                             srvsvc_SHARE_INFO_1_carray_coder)) {
                 return -1;
         }
 

@@ -53,11 +53,12 @@ int srvsvc_SHARE_INFO_1_coder(struct dcerpc_context *ctx,
 
 struct srvsvc_SHARE_INFO_1_carray {
         uint32_t max_count; /* filled in by caller before decode */
-        struct srvsvc_SHARE_INFO_1 share_info_1[];
+        struct srvsvc_SHARE_INFO_1 *share_info_1;
 };
+
 struct srvsvc_SHARE_INFO_1_CONTAINER {
         uint32_t EntriesRead;
-        struct srvsvc_SHARE_INFO_1_carray *Buffer;
+        struct srvsvc_SHARE_INFO_1_carray *carray;
 };
 
 int srvsvc_SHARE_INFO_1_CONTAINER_coder(struct dcerpc_context *dce,
