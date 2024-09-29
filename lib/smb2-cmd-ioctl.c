@@ -157,8 +157,7 @@ smb2_encode_ioctl_reply(struct smb2_context *smb2,
                         }
                         break;
                 }
-                len = PAD_TO_64BIT(len);
-                buf = malloc(len);
+                buf = malloc(PAD_TO_64BIT(len));
                 if (buf == NULL) {
                         smb2_set_error(smb2, "Failed to allocate ioctl output");
                         return -1;
@@ -175,7 +174,6 @@ smb2_encode_ioctl_reply(struct smb2_context *smb2,
                         
                         smb2_set_uint32(ioctlv, 0, info->capabilities);
                         memcpy(&ioctlv->buf[4], info->guid, 16);
-                        ioctlv->len += 16;
                         smb2_set_uint16(ioctlv, 20, info->security_mode);
                         smb2_set_uint16(ioctlv, 22, info->dialect);
                         break;

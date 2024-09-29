@@ -507,6 +507,28 @@ int smb2_disconnect_share_async(struct smb2_context *smb2,
 int smb2_disconnect_share(struct smb2_context *smb2);
 
 /*
+ * Select a tree id that was previously connected. Sets the tree_id
+ * in the context to be used for subsequent requests
+ *
+ * Returns:
+ * 0      : OK
+ * -errno : tree wasn't connected
+ */
+int smb2_select_tree_id(struct smb2_context *smb2, uint32_t tree_id);
+
+struct smb2_pdu;
+
+/*
+ * Get/Set the tree id of a pdu
+ *
+ * Returns:
+ * 0      : OK
+ * -errno : tree wasn't connected | no pdu | no context
+ */
+int smb2_get_tree_id_for_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu, uint32_t *tree_id);
+int smb2_set_tree_id_for_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu, uint32_t tree_id);
+
+/*
  * This function returns a description of the last encountered error.
  */
 const char *smb2_get_error(struct smb2_context *smb2);
@@ -543,7 +565,6 @@ int nterror_to_errno(uint32_t status);
 struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url);
 void smb2_destroy_url(struct smb2_url *url);
 
-struct smb2_pdu;
 /*
  * The functions are used when creating compound low level commands.
  * The general pattern for compound chains is
@@ -564,6 +585,7 @@ void smb2_add_compound_pdu(struct smb2_context *smb2,
                            struct smb2_pdu *pdu, struct smb2_pdu *next_pdu);
 void smb2_free_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu);
 void smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu);
+int smb2_pdu_is_compound(struct smb2_context *smb2);
 
 /*
  * OPENDIR
@@ -1173,8 +1195,7 @@ struct smb2_server_request_handlers {
         int (*logoff_cmd)(struct smb2_server *srvr, struct smb2_context *smb2);
         int (*tree_connect_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
                             struct smb2_tree_connect_request *req,
-                            struct smb2_tree_connect_reply *rep,
-                            uint32_t *tree_id);
+                            struct smb2_tree_connect_reply *rep);
         int (*tree_disconnect_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
                             const uint32_t tree_id);
         int (*create_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
@@ -1201,9 +1222,17 @@ struct smb2_server_request_handlers {
         int (*query_directory_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
                             struct smb2_query_directory_request *req,
                             struct smb2_query_directory_reply *rep);
+        int (*change_notify_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
+                            struct smb2_change_notify_request *req);
         int (*query_info_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
                             struct smb2_query_info_request *req,
                             struct smb2_query_info_reply *rep);
+        int (*set_info_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
+                            struct smb2_set_info_request *req);
+        /*
+        int (*oplock_break cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
+                            struct smb2_oplock_break_request *req);
+        */
 };
 
 struct smb2_server {
@@ -1217,6 +1246,8 @@ struct smb2_server {
         uint32_t max_transact_size;
         uint32_t max_read_size;
         uint32_t max_write_size;
+        int signing_enabled;
+        int anonymous_enabled;
         /* saved from negotiate to be used in validate negotiate info */
         uint32_t capabilities;
         uint32_t security_mode;

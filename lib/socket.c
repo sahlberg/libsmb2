@@ -304,7 +304,13 @@ smb2_write_to_socket(struct smb2_context *smb2)
                                 pdu->next_compound = NULL;
                                 smb2->credits -= pdu->header.credit_charge;
 
-                                SMB2_LIST_ADD_END(&smb2->waitqueue, pdu);
+                                if (!smb2->is_server) {
+                                        /* queue requests to correlate replies with */
+                                        SMB2_LIST_ADD_END(&smb2->waitqueue, pdu);
+                                }
+                                else {
+                                        smb2->credits += pdu->header.credit_request_response;
+                                }
                                 pdu = tmp_pdu;
                         }
                 }
@@ -446,7 +452,9 @@ read_more_data:
                 /* Record the offset for the start of payload data. */
                 smb2->payload_offset = smb2->in.num_done;
 
-                smb2->credits += smb2->hdr.credit_request_response;
+                if (!smb2_is_server(smb2)) {
+                        smb2->credits += smb2->hdr.credit_request_response;
+                }
 
                 if (!smb2_is_server(smb2) && !(smb2->hdr.flags & SMB2_FLAGS_SERVER_TO_REDIR)) {
                         smb2_set_error(smb2, "received non-reply");
@@ -484,6 +492,13 @@ read_more_data:
                         if (!pdu) {
                                 smb2_set_error(smb2, "no pdu for request");
                                 return -ENOMEM;
+                        }
+                        /* set the pdu header's message id to the request's id and
+                        *  the tree id to the request's tree id 
+                        */
+                        pdu->header.message_id = smb2->hdr.message_id;
+                        if (!(smb2->hdr.flags & SMB2_FLAGS_ASYNC_COMMAND)) {
+                                pdu->header.sync.tree_id = smb2->hdr.sync.tree_id;
                         }
                         /* if the session is properly opened then we could get
                          * any request from the client, so use the headers command
@@ -682,8 +697,21 @@ read_more_data:
 
         is_chained = smb2->hdr.next_command;
 
-        pdu->cb(smb2, smb2->hdr.status, pdu->payload, pdu->cb_data);
-        smb2_free_pdu(smb2, pdu);
+        if (smb2->is_server) {
+                /* queue requests to correlate with replies we send back later */
+                SMB2_LIST_ADD_END(&smb2->waitqueue, pdu);
+                /*
+                printf("wait queue:\n");
+                for (pdua = smb2->waitqueue; pdua; pdua = pdua->next) {
+                        printf("  WQ  req %d %ld  next=%p\n", pdua->header.command, pdua->header.message_id, pdua->next);
+                }
+                */
+                pdu->cb(smb2, smb2->hdr.status, pdu->payload, pdu->cb_data);
+        }
+        else {
+                pdu->cb(smb2, smb2->hdr.status, pdu->payload, pdu->cb_data);
+                smb2_free_pdu(smb2, pdu);
+        }
         smb2->pdu = NULL;
 
         if (smb2_is_server(smb2)) {
@@ -708,7 +736,6 @@ read_more_data:
         return 0;
 }
 
-#include <stdio.h>
 static ssize_t smb2_readv_from_socket(struct smb2_context *smb2,
                                       const struct iovec *iov, int iovcnt)
 {

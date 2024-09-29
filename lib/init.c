@@ -398,7 +398,6 @@ int smb2_context_active(struct smb2_context *smb2)
         return 0;
 }
 
-
 void smb2_free_iovector(struct smb2_context *smb2, struct smb2_io_vectors *v)
 {
         int i;

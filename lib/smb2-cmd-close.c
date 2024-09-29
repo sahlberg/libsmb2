@@ -215,6 +215,9 @@ smb2_process_close_request_fixed(struct smb2_context *smb2,
                 return -1;
         }
         pdu->payload = req;
+        if (pdu->header.flags & SMB2_FLAGS_RELATED_OPERATIONS) {
+                req->is_compound = 1;
+        }
 
         smb2_get_uint16(iov, 0, &struct_size);
         if (struct_size != SMB2_CLOSE_REQUEST_SIZE ||

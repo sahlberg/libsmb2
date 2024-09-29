@@ -47,8 +47,6 @@
 #include <sys/time.h>
 #endif
 
-#include <errno.h>
-
 #include "compat.h"
 
 #include "smb2.h"
@@ -72,9 +70,6 @@ smb2_encode_create_request(struct smb2_context *smb2,
         struct smb2_iovec *iov;
         
         len = SMB2_CREATE_REQUEST_SIZE & 0xfffe;
-        if (req->create_context_length) {
-                len = PAD_TO_64BIT(len + 1);
-        }
         buf = calloc(len, sizeof(uint8_t));
         if (buf == NULL) {
                 smb2_set_error(smb2, "Failed to allocate create buffer");
@@ -107,18 +102,27 @@ smb2_encode_create_request(struct smb2_context *smb2,
         smb2_set_uint32(iov, 36, req->create_disposition);
         smb2_set_uint32(iov, 40, req->create_options);
         /* name offset */
-        smb2_set_uint16(iov, 44, SMB2_HEADER_SIZE + (SMB2_CREATE_REQUEST_SIZE & 0xfffe));
+        req->name_offset = PAD_TO_32BIT(SMB2_HEADER_SIZE + (SMB2_CREATE_REQUEST_SIZE & 0xfffe));
+        smb2_set_uint16(iov, 44, req->name_offset);
         /* context offset */
         if (req->create_context_length) {
-                smb2_set_uint32(iov, 48,
-                        PAD_TO_64BIT(SMB2_HEADER_SIZE + (SMB2_CREATE_REQUEST_SIZE & 0xfffe)
-                                + (name_byte_len ? name_byte_len : 1)));
+                if (req->name_length == 0) {
+                        req->create_context_offset = PAD_TO_64BIT(4 + req->name_offset);
+                }
+                else {
+                        req->create_context_offset = PAD_TO_64BIT(req->name_length + req->name_offset);
+                }
         }
+        else {
+                req->create_context_offset = 0;
+        }
+        smb2_set_uint32(iov, 48, req->create_context_offset);
         smb2_set_uint32(iov, 52, req->create_context_length);
         
         /* Name */
         if (name) {
-                buf = malloc(PAD_TO_64BIT(name_byte_len));
+                len = PAD_TO_64BIT(name_byte_len);
+                buf = malloc(len);
                 if (buf == NULL) {
                         smb2_set_error(smb2, "Failed to allocate create name");
                         free(name);
@@ -128,7 +132,7 @@ smb2_encode_create_request(struct smb2_context *smb2,
                 memset(buf + name_byte_len, 0, len - name_byte_len);
                 iov = smb2_add_iovector(smb2, &pdu->out,
                                         buf,
-                                        PAD_TO_64BIT(name_byte_len),
+                                        len,
                                         free);
                 /* Convert '/' to '\' */
                 for (i = 0; i < name->len; i++) {
@@ -139,7 +143,14 @@ smb2_encode_create_request(struct smb2_context *smb2,
                 }
                 free(name);
         }
-
+        else {
+                /* have to have at least one byte for name even if len is 0
+                 * this code pads out to a 64 bit boundary to place the
+                 * create contexts on which they require */
+                static uint8_t zero[8];
+                iov = smb2_add_iovector(smb2, &pdu->out,
+                                                zero, 8, NULL);
+        }
         /* Create Context: note there is encoding, we just pass along */
         if (req->create_context_length) {
                 len = PAD_TO_64BIT(req->create_context_length);
@@ -156,15 +167,6 @@ smb2_encode_create_request(struct smb2_context *smb2,
                                         free);
         }
         
-        /* The buffer must contain at least one byte, even if name is "" 
-         * and there is no create context.
-         */
-        if (name == NULL && !req->create_context_length) {
-                static uint8_t zero;
-
-                iov = smb2_add_iovector(smb2, &pdu->out,
-                                                &zero, 1, NULL);
-        }
         return 0;
 }
 
@@ -226,9 +228,9 @@ smb2_encode_create_reply(struct smb2_context *smb2,
         smb2_set_uint64(iov, 48, rep->end_of_file);
         smb2_set_uint32(iov, 56, rep->file_attributes);
         memcpy(&iov->buf[64], rep->file_id, SMB2_FD_SIZE);
-        smb2_set_uint32(iov, 76, rep->create_context_length);
         rep->create_context_offset = PAD_TO_64BIT((SMB2_CREATE_REPLY_SIZE & 0xfffe) + SMB2_HEADER_SIZE);
         smb2_set_uint32(iov, 80, rep->create_context_offset);
+        smb2_set_uint32(iov, 84, rep->create_context_length);
 
         /* Create Context */
         if (rep->create_context_length) {
@@ -422,8 +424,13 @@ smb2_process_create_request_fixed(struct smb2_context *smb2,
         /* Return the amount of data that the name will take up.
          * Including any padding before the name itself, and between name and create contexts
          */
-        remaining = IOVREQ_OFFSET;        
-        remaining += PAD_TO_64BIT(req->create_context_offset - req->name_offset);
+        remaining = IOVREQ_OFFSET;
+        if (req->create_context_offset > req->name_offset) {
+                remaining += PAD_TO_64BIT(req->create_context_offset - req->name_offset);
+        }
+        else {
+                remaining += req->name_length;
+        }
         remaining += req->create_context_length;
         return remaining;
 }
@@ -434,13 +441,12 @@ smb2_process_create_request_variable(struct smb2_context *smb2,
 {
         struct smb2_create_request *req = (struct smb2_create_request*)pdu->payload;;
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];        
-        struct smb2_iovec vec;
         uint32_t offset;
 
-        vec.buf = iov->buf + IOVREQ_OFFSET;
-        vec.len = iov->len - IOVREQ_OFFSET;
-        
-        req->name = smb2_utf16_to_utf8((const uint16_t*)vec.buf, req->name_length);
+        req->name = NULL;
+        if (req->name_length > 0) {
+                req->name = smb2_utf16_to_utf8((const uint16_t*)iov->buf, req->name_length / 2);
+        }
 
         /* we dont parse the create contexts but we tack them on in case the
          * the caller wwants to pass them along

@@ -123,7 +123,7 @@ smb2_encode_tree_disconnect_reply(struct smb2_context *smb2,
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
         
         smb2_set_uint16(iov, 0, SMB2_TREE_DISCONNECT_REPLY_SIZE);
-
+        
         return 0;
 }
 
@@ -142,12 +142,12 @@ smb2_cmd_tree_disconnect_reply_async(struct smb2_context *smb2,
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
         }
-        
+        /*
         if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
         }
-
+        */
         return pdu;
 }
 
@@ -155,6 +155,7 @@ int
 smb2_process_tree_disconnect_fixed(struct smb2_context *smb2,
                                    struct smb2_pdu *pdu)
 {
+        smb2_disconnect_tree_id(smb2, smb2->hdr.sync.tree_id);
         return 0;
 }
 
@@ -164,3 +165,4 @@ smb2_process_tree_disconnect_request_fixed(struct smb2_context *smb2,
 {
         return 0;
 }
+
