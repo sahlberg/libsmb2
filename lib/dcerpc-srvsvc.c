@@ -118,25 +118,9 @@ srvsvc_SHARE_INFO_1_carray_coder(struct dcerpc_context *ctx,
                                  struct smb2_iovec *iov, int *offset,
                                  void *ptr)
 {
-        struct srvsvc_SHARE_INFO_1_carray *carray = ptr;
-        int i;
-        uint64_t p;
-
-        /* Conformance */
-        p = carray->max_count;
-        if (dcerpc_conformance_coder(ctx, pdu, iov, offset, &p)) {
-                return -1;
-        }
-
-        /* Data */
-        for (i = 0; i < p; i++) {
-                if (srvsvc_SHARE_INFO_1_coder(ctx, pdu, iov, offset,
-                                              &carray->share_info_1[i])) {
-                        return -1;
-                }
-        }
-
-        return 0;
+        return dcerpc_carray_coder(ctx, pdu, iov, offset, ptr,
+                                   sizeof(struct srvsvc_SHARE_INFO_1),
+                                   srvsvc_SHARE_INFO_1_coder);
 }
 
 /*
@@ -156,24 +140,13 @@ srvsvc_SHARE_INFO_1_CONTAINER_coder(struct dcerpc_context *dce, struct dcerpc_pd
                 return -1;
         }
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {
-                 // QQQ double alloc?
-                ctr1->carray = smb2_alloc_data(
+                if (ctr1->carray == NULL) {
+                        ctr1->carray = smb2_alloc_data(
                                   dcerpc_get_smb2_context(dce),
                                   dcerpc_get_pdu_payload(pdu),
                                   sizeof(struct srvsvc_SHARE_INFO_1_carray));
-                ctr1->carray->max_count = ctr1->EntriesRead;
-                ctr1->carray->share_info_1 = smb2_alloc_data(
-                              dcerpc_get_smb2_context(dce),
-                              dcerpc_get_pdu_payload(pdu),
-                              ctr1->EntriesRead * sizeof(struct srvsvc_SHARE_INFO_1));
-                if (ctr1->carray->share_info_1 == NULL) {
-                        return -1;
                 }
         }
-        if (ctr1->carray) {
-                ctr1->carray->max_count = ctr1->EntriesRead;
-        }
-
         if (dcerpc_ptr_coder(dce, pdu, iov, offset,
                              ctr1->carray,
                              PTR_UNIQUE,

@@ -881,6 +881,45 @@ dcerpc_decode_ptr(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
 }
 
 int
+dcerpc_carray_coder(struct dcerpc_context *ctx,
+                    struct dcerpc_pdu *pdu,
+                    struct smb2_iovec *iov, int *offset,
+                    void *ptr, int elem_size, dcerpc_coder coder)
+{
+        struct dcerpc_carray *carray = ptr;
+        int i;
+        uint64_t p;
+
+        /* Conformance */
+        p = carray->max_count;
+        if (dcerpc_conformance_coder(ctx, pdu, iov, offset, &p)) {
+                return -1;
+        }
+        carray->max_count = p;
+
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {
+                if (carray->max_count && carray->data == NULL) {
+                        carray->data = smb2_alloc_data(
+                                dcerpc_get_smb2_context(ctx),
+                                dcerpc_get_pdu_payload(pdu),
+                                carray->max_count * elem_size);
+                        if (carray->data == NULL) {
+                                return -1;
+                        }
+                }
+        }
+        
+        /* Data */
+        for (i = 0; i < p; i++) {
+                if (coder(ctx, pdu, iov, offset, &carray->data[i * elem_size])) {
+                        return -1;
+                }
+        }
+
+        return 0;
+}
+
+int
 dcerpc_ptr_coder(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                  struct smb2_iovec *iov, int *offset, void *ptr,
                  enum ptr_type type, dcerpc_coder coder)
