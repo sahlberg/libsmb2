@@ -175,7 +175,7 @@ smb2_allocate_pdu(struct smb2_context *smb2, enum smb2_command command,
 int
 smb2_select_tree_id(struct smb2_context *smb2, uint32_t tree_id)
 {
-        uint i;
+        int i;
         
         for (
                 i = 1;
@@ -607,9 +607,9 @@ smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
                                                         64 + req_pdu->header.credit_charge;
                                         if (pdu->header.sync.tree_id != req_pdu->header.sync.tree_id) {
                                                 if (pdu->header.command != SMB2_TREE_CONNECT) {
-                                                        printf("!!!!! replytid=%08X  req=%08X\n",
-                                                                pdu->header.sync.tree_id,
-                                                                req_pdu->header.sync.tree_id);
+                                                        smb2_set_error(smb2, "reply as tid=%08X  req=%08X\n",
+                                                                (unsigned int)pdu->header.sync.tree_id,
+                                                                (unsigned int)req_pdu->header.sync.tree_id);
                                                 }
                                         }
                                         smb2_free_pdu(smb2, req_pdu);
