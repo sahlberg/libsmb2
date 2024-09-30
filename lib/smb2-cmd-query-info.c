@@ -515,9 +515,6 @@ smb2_process_query_info_request_fixed(struct smb2_context *smb2,
         }
         pdu->payload = req;
 
-        if (pdu->header.flags & SMB2_FLAGS_RELATED_OPERATIONS) {
-                req->is_compound = 1;
-        }
         smb2_get_uint16(iov, 0, &struct_size);
         if (struct_size != SMB2_QUERY_INFO_REQUEST_SIZE ||
             (struct_size & 0xfffe) != iov->len) {

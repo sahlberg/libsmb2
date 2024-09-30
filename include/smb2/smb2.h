@@ -371,7 +371,6 @@ struct smb2_create_reply {
 #define SMB2_CLOSE_FLAG_POSTQUERY_ATTRIB 0x0001
 
 struct smb2_close_request {
-        uint8_t is_compound;
         uint16_t flags;
         smb2_file_id file_id;
 };
@@ -462,7 +461,6 @@ int smb2_decode_fileidfulldirectoryinformation(
         struct smb2_iovec *vec);
         
 struct smb2_query_directory_request {
-        uint8_t is_compound;
         uint8_t file_information_class;
         uint8_t flags;
         uint32_t file_index;
@@ -616,7 +614,6 @@ struct smb2_file_all_info {
 };
 
 struct smb2_query_info_request {
-        uint8_t is_compound;
         uint8_t info_type;
         uint8_t file_info_class;
         uint32_t output_buffer_length;
