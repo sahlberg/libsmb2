@@ -446,7 +446,7 @@ smb2_process_create_request_variable(struct smb2_context *smb2,
         }
 
         /* we dont parse the create contexts but we tack them on in case the
-         * the caller wwants to pass them along
+         * the caller wants to pass them along
          */
         req->create_context = NULL;
         if (req->create_context_length && req->create_context_offset) {

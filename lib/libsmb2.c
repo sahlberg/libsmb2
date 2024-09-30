@@ -2727,6 +2727,7 @@ smb2_tree_connect_request_cb(struct smb2_server *server, struct smb2_context *sm
         struct smb2_pdu *pdu = NULL;
         int ret = -1;
 
+        memset(&rep, 0, sizeof(rep));
         if (server->handlers && server->handlers->tree_connect_cmd) {
                 ret = server->handlers->tree_connect_cmd(server, smb2, req, &rep);
         }
@@ -2775,6 +2776,7 @@ smb2_create_request_cb(struct smb2_server *server, struct smb2_context *smb2, vo
         struct smb2_pdu *pdu = NULL;
         int ret = -1;
 
+        memset(&rep, 0, sizeof(rep));
         if (server->handlers && server->handlers->create_cmd) {
                 ret = server->handlers->create_cmd(server, smb2, req, &rep);
         }
@@ -2800,6 +2802,7 @@ smb2_close_request_cb(struct smb2_server *server, struct smb2_context *smb2, voi
         struct smb2_pdu *pdu = NULL;
         int ret = -1;
 
+        memset(&rep, 0, sizeof(rep));
         if (server->handlers && server->handlers->close_cmd) {
                 ret = server->handlers->close_cmd(server, smb2, req, &rep);
         }
@@ -2849,6 +2852,7 @@ smb2_read_request_cb(struct smb2_server *server, struct smb2_context *smb2, void
         struct smb2_pdu *pdu = NULL;
         int ret = -1;
 
+        memset(&rep, 0, sizeof(rep));
         if (server->handlers && server->handlers->read_cmd) {
                 ret = server->handlers->read_cmd(server, smb2, req, &rep);
         }
@@ -2874,6 +2878,7 @@ smb2_write_request_cb(struct smb2_server *server, struct smb2_context *smb2, voi
         struct smb2_pdu *pdu = NULL;
         int ret = -1;
 
+        memset(&rep, 0, sizeof(rep));
         if (server->handlers && server->handlers->write_cmd) {
                 ret = server->handlers->write_cmd(server, smb2, req, &rep);
         }
@@ -3009,6 +3014,7 @@ smb2_query_directory_request_cb(struct smb2_server *server, struct smb2_context 
         struct smb2_pdu *pdu = NULL;
         int ret = -1;
 
+        memset(&rep, 0, sizeof(rep));
         memset(&err, 0, sizeof(err));
 
         if (server->handlers && server->handlers->query_directory_cmd) {
@@ -3045,6 +3051,7 @@ smb2_change_notify_request_cb(struct smb2_server *server, struct smb2_context *s
         struct smb2_pdu *pdu = NULL;
         int ret = -1;
 
+        memset(&rep, 0, sizeof(rep));
         memset(&err, 0, sizeof(err));
 
         if (server->handlers && server->handlers->change_notify_cmd) {
@@ -3071,6 +3078,7 @@ smb2_query_info_request_cb(struct smb2_server *server, struct smb2_context *smb2
         struct smb2_pdu *pdu = NULL;
         int ret = -1;
 
+        memset(&rep, 0, sizeof(rep));
         memset(&err, 0, sizeof(err));
 
         if (server->handlers && server->handlers->query_info_cmd) {
