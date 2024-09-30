@@ -382,7 +382,7 @@ smb2_process_ioctl_request_variable(struct smb2_context *smb2,
         struct smb2_ioctl_request *req = pdu->payload;
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
         struct smb2_iovec vec;
-        void *ptr;
+        void *ptr = NULL;
 
         if (req->input_count > iov->len - IOVREQ_OFFSET) {
                 return -EINVAL;
