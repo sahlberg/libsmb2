@@ -31,7 +31,7 @@ extern "C" {
 
 struct smb2_timeval {
         time_t tv_sec;
-        long tv_usec; 
+        long tv_usec;
 };
 #define SMB2_ERROR_REPLY_SIZE 9
 
@@ -70,7 +70,7 @@ enum smb2_command {
         SMB2_QUERY_INFO      = 16,
         SMB2_SET_INFO        = 17,
         SMB2_OPLOCK_BREAK    = 18,
-        
+
         SMB1_NEGOTIATE       = 114,
 };
 
@@ -394,6 +394,18 @@ struct smb2_flush_request {
         smb2_file_id file_id;
 };
 
+#define SMB2_LOGFF_REQUEST_SIZE 4
+
+struct smb2_logoff_request {
+        uint16_t reserved;
+};
+
+#define SMB2_ECHO_REQUEST_SIZE 4
+
+struct smb2_echo_request {
+        uint16_t reserved;
+};
+
 #define SMB2_FLUSH_REPLY_SIZE 4
 
 #define SMB2_QUERY_DIRECTORY_REQUEST_SIZE 33
@@ -459,7 +471,7 @@ int smb2_decode_fileidfulldirectoryinformation(
         struct smb2_context *smb2,
         struct smb2_fileidfulldirectoryinformation *fs,
         struct smb2_iovec *vec);
-        
+
 struct smb2_query_directory_request {
         uint8_t file_information_class;
         uint8_t flags;
@@ -560,7 +572,7 @@ struct smb2_read_reply {
 #define SMB2_FILE_FS_CONTROL_INFORMATION           6
 #define SMB2_FILE_FS_FULL_SIZE_INFORMATION         7
 #define SMB2_FILE_FS_SECTOR_SIZE_INFORMATION      11
-        
+
 /* additional info */
 #define SMB2_OWNER_SECURITY_INFORMATION     0x00000001
 #define SMB2_GROUP_SECURITY_INFORMATION     0x00000002
@@ -986,7 +998,7 @@ struct  smb2_ioctl_validate_negotiate_info {
 #define SMB2_CHANGE_NOTIIFY_FILE_NOTIFY_CHANGE_STREAM_NAME  0x00000200
 #define SMB2_CHANGE_NOTIIFY_FILE_NOTIFY_CHANGE_STREAM_SIZE  0x00000400
 #define SMB2_CHANGE_NOTIIFY_FILE_NOTIFY_CHANGE_STREAM_WRITE 0x00000800
- 
+
 #define SMB2_CHANGE_NOTIFY_WATCH_TREE    0x0001
 
 #define SMB2_CHANGE_NOTIFY_REQUEST_SIZE 32

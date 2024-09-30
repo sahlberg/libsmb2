@@ -60,7 +60,7 @@ smb2_encode_logoff_request(struct smb2_context *smb2,
         uint8_t *buf;
         int len;
         struct smb2_iovec *iov;
-        
+
         len = SMB2_LOGOFF_REQUEST_SIZE;
 
         buf = calloc(len, sizeof(uint8_t));
@@ -68,7 +68,7 @@ smb2_encode_logoff_request(struct smb2_context *smb2,
                 smb2_set_error(smb2, "Failed to allocate logoff buffer");
                 return -1;
         }
-        
+
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
 
         smb2_set_uint16(iov, 0, SMB2_LOGOFF_REQUEST_SIZE);
@@ -81,7 +81,7 @@ smb2_cmd_logoff_async(struct smb2_context *smb2,
                       smb2_command_cb cb, void *cb_data)
 {
         struct smb2_pdu *pdu;
-        
+
         pdu = smb2_allocate_pdu(smb2, SMB2_LOGOFF, cb, cb_data);
         if (pdu == NULL) {
                 return NULL;
@@ -91,7 +91,7 @@ smb2_cmd_logoff_async(struct smb2_context *smb2,
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
         }
-        
+
         if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
@@ -107,7 +107,7 @@ smb2_encode_logoff_reply(struct smb2_context *smb2,
         uint8_t *buf;
         int len;
         struct smb2_iovec *iov;
-        
+
         len = SMB2_LOGOFF_REPLY_SIZE;
 
         buf = calloc(len, sizeof(uint8_t));
@@ -115,7 +115,7 @@ smb2_encode_logoff_reply(struct smb2_context *smb2,
                 smb2_set_error(smb2, "Failed to allocate logoff reply buffer");
                 return -1;
         }
-        
+
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
 
         smb2_set_uint16(iov, 0, SMB2_LOGOFF_REPLY_SIZE);
@@ -128,7 +128,7 @@ smb2_cmd_logoff_reply_async(struct smb2_context *smb2,
                       smb2_command_cb cb, void *cb_data)
 {
         struct smb2_pdu *pdu;
-        
+
         pdu = smb2_allocate_pdu(smb2, SMB2_LOGOFF, cb, cb_data);
         if (pdu == NULL) {
                 return NULL;
@@ -138,7 +138,7 @@ smb2_cmd_logoff_reply_async(struct smb2_context *smb2,
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
         }
-        
+
         if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
@@ -158,5 +158,25 @@ int
 smb2_process_logoff_request_fixed(struct smb2_context *smb2,
                           struct smb2_pdu *pdu)
 {
+        struct smb2_logoff_request *req;
+        struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
+        uint16_t struct_size;
+
+        req = malloc(sizeof(*req));
+        if (req == NULL) {
+                smb2_set_error(smb2, "Failed to allocate echo request");
+                return -1;
+        }
+        pdu->payload = req;
+
+        smb2_get_uint16(iov, 0, &struct_size);
+        if (struct_size != SMB2_ECHO_REQUEST_SIZE ||
+            (struct_size & 0xfffe) != iov->len) {
+                smb2_set_error(smb2, "Unexpected size of logoff "
+                               "request. Expected %d, got %d",
+                               SMB2_ECHO_REQUEST_SIZE,
+                               (int)iov->len);
+                return -1;
+        }
         return 0;
 }

@@ -95,7 +95,7 @@ smb2_cmd_flush_async(struct smb2_context *smb2,
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
         }
-        
+
         if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
@@ -141,7 +141,7 @@ smb2_cmd_flush_reply_async(struct smb2_context *smb2,
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
         }
-        
+
         if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
@@ -173,10 +173,19 @@ int
 smb2_process_flush_request_fixed(struct smb2_context *smb2,
                          struct smb2_pdu *pdu)
 {
+        struct smb2_flush_request *req;
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
         uint16_t struct_size;
 
+        req = malloc(sizeof(*req));
+        if (req == NULL) {
+                smb2_set_error(smb2, "Failed to allocate flush request");
+                return -1;
+        }
+        pdu->payload = req;
+
         smb2_get_uint16(iov, 0, &struct_size);
+
         if (struct_size != SMB2_FLUSH_REQUEST_SIZE ||
             (struct_size & 0xfffe) != iov->len) {
                 smb2_set_error(smb2, "Unexpected size of flush "
