@@ -702,13 +702,6 @@ read_more_data:
         if (smb2->is_server) {
                 /* queue requests to correlate our replies we send back later */
                 SMB2_LIST_ADD_END(&smb2->waitqueue, pdu);
-                /*
-                printf("wait queue:\n");
-                for (struct smb2_pdu *pdua = smb2->waitqueue; pdua; pdua = pdua->next) {
-                        printf("  WQ  req %d %ld  next=%p\n",
-                                        pdua->header.command, pdua->header.message_id, pdua->next);
-                }
-                */
                 pdu->cb(smb2, smb2->hdr.status, pdu->payload, pdu->cb_data);
         }
         else {
