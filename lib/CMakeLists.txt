@@ -25,6 +25,7 @@ if(ESP_PLATFORM)
     sha1.c
     sha224-256.c
     sha384-512.c
+    smb2-cmd-change-notify.c
     smb2-cmd-close.c
     smb2-cmd-create.c
     smb2-cmd-echo.c
