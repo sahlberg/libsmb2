@@ -3239,6 +3239,8 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
         smb3_update_preauth_hash(smb2, smb2->in.niov - 1, &smb2->in.iov[1]);
         memset(&err, 0, sizeof(err));
 
+        pdu = NULL;
+        
         if (smb2->sec == SMB2_SEC_NTLMSSP) {
                 if (ntlmssp_get_message_type(smb2,
                                 req->security_buffer, req->security_buffer_length,
@@ -3287,8 +3289,18 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                 if (message_type == AUTHENTICATION_MESSAGE) {
                         if (!ntlmssp_get_authenticated(c_data->auth_data)) {
                                 smb2_set_error(smb2, "Authentication failed: %s", smb2_get_error(smb2));
+                                #if 0
                                 smb2_close_context(smb2);
                                 return;
+                                #else
+                                pdu = smb2_cmd_error_reply_async(smb2,
+                                                &err, SMB2_SESSION_SETUP,
+                                                SMB2_STATUS_LOGON_FAILURE, NULL, cb_data);
+                                smb2_free_pdu(smb2, smb2->next_pdu);
+                                smb2->next_pdu = smb2_allocate_pdu(smb2, SMB2_SESSION_SETUP,
+                                               smb2_session_setup_request_cb, cb_data);
+                                more_processing_needed = 0;
+                                #endif
                         }
                         if (ntlmssp_get_session_key(c_data->auth_data,
                                                     &smb2->session_key,
@@ -3317,29 +3329,36 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                 */
                 smb2_create_signing_key(smb2);
         }
-        rep.session_flags |= SMB2_SESSION_FLAG_IS_GUEST;
-                
-        pdu = smb2_cmd_session_setup_reply_async(smb2, &rep, NULL, cb_data);
-        if (pdu == NULL) {
-                return;
-        }        
-
-        if (more_processing_needed) {
-                pdu->header.status = SMB2_STATUS_MORE_PROCESSING_REQUIRED;
+        
+        if (server->allow_anonymous &&
+                         ((smb2->user == NULL || smb2->user[0] == '\0')||
+                         (smb2->password == NULL || smb2->password[0] == '\0'))) {
+                rep.session_flags |= SMB2_SESSION_FLAG_IS_GUEST;
         }
-        else {
-                if (server->handlers && server->handlers->session_established) {
-                        ret = server->handlers->session_established(server, smb2);
-                        if (ret) {
-                                smb2_set_error(smb2, "server session start handler failed");
-                                smb2_close_context(smb2);
-                                return;
-                        }
+                
+        if (!pdu) {
+                pdu = smb2_cmd_session_setup_reply_async(smb2, &rep, NULL, cb_data);
+                if (pdu == NULL) {
+                        return;
+                }        
+        
+                if (more_processing_needed) {
+                        pdu->header.status = SMB2_STATUS_MORE_PROCESSING_REQUIRED;
                 }
                 else {
-                        pdu = smb2_cmd_error_reply_async(smb2,
-                                        &err, SMB2_SESSION_SETUP,
-                                        SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
+                        if (server->handlers && server->handlers->session_established) {
+                                ret = server->handlers->session_established(server, smb2);
+                                if (ret) {
+                                        smb2_set_error(smb2, "server session start handler failed");
+                                        smb2_close_context(smb2);
+                                        return;
+                                }
+                        }
+                        else {
+                                pdu = smb2_cmd_error_reply_async(smb2,
+                                                &err, SMB2_SESSION_SETUP,
+                                                SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
+                        }
                 }
         }
         if (!smb2->next_pdu) {
@@ -3486,23 +3505,23 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
                         smb2->sign = 1;
                 }
 
-                if (server->signing_enabled) {
-                        if (req->security_mode & SMB2_NEGOTIATE_SIGNING_ENABLED &&
-                                        smb2->dialect == SMB2_VERSION_0210) {
-                                /* smb2.1 requires signing if enabled on both sides
-                                 * regardless of what the flags say */
-                                smb2->sign = 1;
+                if (!server->allow_anonymous ||
+                                (smb2->password && smb2->password[0])) {                        
+                        if (server->signing_enabled) {
+                                if (req->security_mode & SMB2_NEGOTIATE_SIGNING_ENABLED &&
+                                                smb2->dialect == SMB2_VERSION_0210) {
+                                        /* smb2.1 requires signing if enabled on both sides
+                                         * regardless of what the flags say */
+                                        smb2->sign = 1;
+                                }
+                                if (req->security_mode & SMB2_NEGOTIATE_SIGNING_ENABLED &&
+                                                smb2->dialect >= SMB2_VERSION_0311) {
+                                        /* smb3.1.1 requires signing if enabled on both sides
+                                         * regardless of what the flags say */
+                                        smb2->sign = 1;
+                                }
                         }
-#if 0
-                        if (req->security_mode & SMB2_NEGOTIATE_SIGNING_ENABLED &&
-                                        smb2->dialect == SMB2_VERSION_0311) {
-                                /* smb3.1.1 requires signing if enabled on both sides
-                                 * regardless of what the flags say */
-                                smb2->sign = 1;
-                        }
-#endif
                 }
-
                 if (smb2->seal) {
                         smb2->sign = 0;
                 }

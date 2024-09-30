@@ -1247,7 +1247,7 @@ struct smb2_server {
         uint32_t max_read_size;
         uint32_t max_write_size;
         int signing_enabled;
-        int anonymous_enabled;
+        int allow_anonymous;
         /* saved from negotiate to be used in validate negotiate info */
         uint32_t capabilities;
         uint32_t security_mode;

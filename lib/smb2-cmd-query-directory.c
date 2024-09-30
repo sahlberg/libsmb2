@@ -206,9 +206,6 @@ smb2_encode_query_directory_reply(struct smb2_context *smb2,
         int in_offset;
         int in_remain;
 
-        pdu->header.flags |= SMB2_FLAGS_SERVER_TO_REDIR;
-        pdu->header.credit_request_response = 1;
-
         len = SMB2_QUERY_DIRECTORY_REPLY_SIZE & 0xfffe;
         len = PAD_TO_32BIT(len);
 

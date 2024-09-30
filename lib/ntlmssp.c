@@ -864,7 +864,7 @@ ntlmssp_generate_blob(struct smb2_server *server, struct smb2_context *smb2, tim
                                 }
                         }
                         else if (cmd == AUTHENTICATION_MESSAGE) {
-                                auth_data->is_authenticated = !ntlmssp_authenticate_blob(server, 
+                                auth_data->is_authenticated = !ntlmssp_authenticate_blob(server,
                                                         smb2, auth_data,
                                                         ntlmssp, ntlmssp_len);
                                 if (auth_data->spnego_wrap) {
@@ -972,15 +972,19 @@ ntlmssp_authenticate_blob(struct smb2_server *server, struct smb2_context *smb2,
                                 auth_data->user);
                         return -1;
                 }
-                if (!smb2->password) {
+                if (!smb2->password && !server->allow_anonymous) {
                         smb2_set_error(smb2, "server has no passwd for %s", 
                                 auth_data->user);
                         return -1;
                 }
         }
-        /* if no user/pw, an anonymous allowed, do anonymous */
-        if (!auth_data->user || (auth_data->user[0] == '\0')) {
-                return 0;
+        /* if no user/pw, and anonymous allowed, do anonymous */
+        if (!auth_data->user || (auth_data->user[0] == '\0') ||
+                        !auth_data->password || (auth_data->password[0] == '\0')) {
+                if (server->allow_anonymous) {
+                        return 0;
+                }
+                return -1;
         }
         //negotiate_flags = le32toh(u32);
         

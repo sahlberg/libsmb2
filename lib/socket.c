@@ -441,9 +441,11 @@ read_more_data:
                         }
                         while (count > 0);
                         
+                        /* put on wait queue to queue_pdu doesn't complain */
+                        SMB2_LIST_ADD_END(&smb2->waitqueue, pdu);
+
                         smb2->in.num_done = 0;
                         pdu->cb(smb2, smb2->hdr.status, pdu->payload, pdu->cb_data);
-                        smb2_free_pdu(smb2, pdu);
                         smb2->pdu = NULL;
                         smb2->pdu = smb2->next_pdu;
                         smb2->next_pdu = NULL;
@@ -698,12 +700,13 @@ read_more_data:
         is_chained = smb2->hdr.next_command;
 
         if (smb2->is_server) {
-                /* queue requests to correlate with replies we send back later */
+                /* queue requests to correlate our replies we send back later */
                 SMB2_LIST_ADD_END(&smb2->waitqueue, pdu);
                 /*
                 printf("wait queue:\n");
-                for (pdua = smb2->waitqueue; pdua; pdua = pdua->next) {
-                        printf("  WQ  req %d %ld  next=%p\n", pdua->header.command, pdua->header.message_id, pdua->next);
+                for (struct smb2_pdu *pdua = smb2->waitqueue; pdua; pdua = pdua->next) {
+                        printf("  WQ  req %d %ld  next=%p\n",
+                                        pdua->header.command, pdua->header.message_id, pdua->next);
                 }
                 */
                 pdu->cb(smb2, smb2->hdr.status, pdu->payload, pdu->cb_data);

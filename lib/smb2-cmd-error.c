@@ -64,9 +64,6 @@ smb2_encode_error_reply(struct smb2_context *smb2,
         uint8_t *buf;
         struct smb2_iovec *iov;
 
-        pdu->header.flags |= SMB2_FLAGS_SERVER_TO_REDIR;
-        pdu->header.credit_request_response = 1;
-
         len = SMB2_ERROR_REPLY_SIZE;
         buf = calloc(len, sizeof(uint8_t));
         if (buf == NULL) {

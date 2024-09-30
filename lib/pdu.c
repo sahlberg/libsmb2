@@ -590,14 +590,15 @@ smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
         for (p = pdu; p; p = p->next_compound) {
                 if (smb2_is_server(smb2)) {
                         if (!(pdu->header.flags & SMB2_FLAGS_ASYNC_COMMAND)) {
+                                /* set reply flag */
                                 pdu->header.flags |= SMB2_FLAGS_SERVER_TO_REDIR;
-                                
-                                /* this is a reply to a request, so set message id to
-                                 * the same as it was in the request */
+                                /* insure the reply message id matched the request */
                                 req_pdu = smb2_find_pdu_by_command(smb2,
                                                 p->header.command);
                                 if (req_pdu == NULL) {
-                                        smb2_set_error(smb2, "no matching PDU found for reply!");
+                                        smb2_set_error(smb2, "no matching req PDU "
+                                                       "found for reply to cmd %d",
+                                                        pdu->header.command);
                                 }
                                 else {
                                         SMB2_LIST_REMOVE(&smb2->waitqueue, req_pdu);
