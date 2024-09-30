@@ -55,7 +55,7 @@ int srvsvc_SHARE_INFO_0_coder(struct dcerpc_context *ctx,
                               void *ptr);
 
 struct srvsvc_SHARE_INFO_0_carray {
-        uint32_t max_count; /* filled in by caller before decode */
+        uint32_t max_count;
         struct srvsvc_SHARE_INFO_0 *share_info_0;
 };
 
@@ -75,7 +75,7 @@ int srvsvc_SHARE_INFO_1_coder(struct dcerpc_context *ctx,
                               void *ptr);
 
 struct srvsvc_SHARE_INFO_1_carray {
-        uint32_t max_count; /* filled in by caller before decode */
+        uint32_t max_count;
         struct srvsvc_SHARE_INFO_1 *share_info_1;
 };
 
@@ -90,7 +90,7 @@ int srvsvc_SHARE_INFO_1_CONTAINER_coder(struct dcerpc_context *dce,
                                         void *ptr);
 
 struct srvsvc_SHARE_ENUM_UNION {
-        uint32_t level;
+        uint32_t Level;
         union {
                 struct srvsvc_SHARE_INFO_0_CONTAINER Level0;
                 struct srvsvc_SHARE_INFO_1_CONTAINER Level1;

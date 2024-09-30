@@ -80,6 +80,11 @@ p_syntax_id_t srvsvc_interface = {
  * [MS-SRVS].pdf
  */
 
+/*
+ * typedef struct _SHARE_INFO_0 {
+ *     [string] wchar_t * shi0_netname;
+ * } SHARE_INFO_0, *PSHARE_INFO_0, *LPSHARE_INFO_0;
+ */
 int
 srvsvc_SHARE_INFO_0_coder(struct dcerpc_context *ctx,
                            struct dcerpc_pdu *pdu,
@@ -238,13 +243,13 @@ srvsvc_SHARE_ENUM_UNION_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu
         struct srvsvc_SHARE_ENUM_UNION *ctr = ptr;
         uint64_t p;
 
-        p = ctr->level;
+        p = ctr->Level;
         if (dcerpc_uint3264_coder(ctx, pdu, iov, offset, &p)) {
                 return -1;
         }
-        ctr->level = (uint32_t)p;
+        ctr->Level = (uint32_t)p;
 
-        switch (ctr->level) {
+        switch (ctr->Level) {
         case 0:
                 if (dcerpc_ptr_coder(ctx, pdu, iov, offset, &ctr->Level0,
                                      PTR_UNIQUE,
@@ -280,7 +285,6 @@ srvsvc_SHARE_ENUM_STRUCT_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pd
         if (dcerpc_uint32_coder(ctx, pdu, iov, offset, &ses->Level)) {
                 return -1;
         }
-        ses->ShareInfo.level = ses->Level;
         if (srvsvc_SHARE_ENUM_UNION_coder(ctx, pdu, iov, offset, &ses->ShareInfo)) {
                 return -1;
         }

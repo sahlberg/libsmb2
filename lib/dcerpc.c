@@ -945,7 +945,6 @@ dcerpc_encode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 
         /* Conformance part */
         if (pdu->is_conformance_run) {
-                // QQQ check for s->utf8==NULL
                 if (s->utf8 == NULL) {
                         s->utf8 = "";
                 }
