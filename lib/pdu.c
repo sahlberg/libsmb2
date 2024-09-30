@@ -107,7 +107,7 @@ smb2_allocate_pdu(struct smb2_context *smb2, enum smb2_command command,
         hdr->command = command;
         hdr->flags = 0;
         hdr->sync.process_id = 0xFEFF;
-        
+
         if (smb2->dialect == SMB2_VERSION_0202) {
                 hdr->credit_charge = 0;
         } else if (hdr->command == SMB2_NEGOTIATE) {
@@ -176,7 +176,7 @@ int
 smb2_select_tree_id(struct smb2_context *smb2, uint32_t tree_id)
 {
         int i;
-        
+
         for (
                 i = 1;
                 i <= smb2->tree_id_top && i <= SMB2_MAX_TREE_NESTING;
@@ -262,10 +262,10 @@ smb2_connect_tree_id(struct smb2_context *smb2, uint32_t tree_id)
 }
 
 int
-smb2_disconnect_tree_id(struct smb2_context *smb2, uint32_t tree_id) 
+smb2_disconnect_tree_id(struct smb2_context *smb2, uint32_t tree_id)
 {
         int i, j, k;
-        
+
         if (smb2->tree_id_top > 0) {
                 for (
                         i = 1;
@@ -307,8 +307,8 @@ smb2_disconnect_tree_id(struct smb2_context *smb2, uint32_t tree_id)
                                        smb2->tree_id_top--;
                                        return 0;
                                }
-                       } 
-                } 
+                       }
+                }
         }
 
         smb2_set_error(smb2, "No tree-id %08X to remove", tree_id);
@@ -607,9 +607,10 @@ smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
                                                         64 + req_pdu->header.credit_charge;
                                         if (pdu->header.sync.tree_id != req_pdu->header.sync.tree_id) {
                                                 if (pdu->header.command != SMB2_TREE_CONNECT) {
-                                                        smb2_set_error(smb2, "reply as tid=%08X  req=%08X\n",
+                                                        smb2_set_error(smb2, "reply as tid=%08X  req=%08X cmd %d\n",
                                                                 (unsigned int)pdu->header.sync.tree_id,
-                                                                (unsigned int)req_pdu->header.sync.tree_id);
+                                                                (unsigned int)req_pdu->header.sync.tree_id,
+                                                                pdu->header.command);
                                                 }
                                         }
                                         smb2_free_pdu(smb2, req_pdu);
