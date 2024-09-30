@@ -168,7 +168,7 @@ smb2_encode_session_setup_reply(struct smb2_context *smb2,
                                         len,
                                         free);
         }
-        /// TODO append neg contexts?
+        /* TODO append neg contexts? */
         return 0;
 }
 
@@ -294,7 +294,7 @@ smb2_process_session_setup_request_fixed(struct smb2_context *smb2,
         smb2_get_uint8(iov, 3, &req->security_mode);
         smb2_get_uint32(iov, 4, &req->capabilities);
         smb2_get_uint32(iov, 8, &req->channel);
-//        smb2_get_uint16(iov, 12, &req->security_buffer_offset);
+/*        smb2_get_uint16(iov, 12, &req->security_buffer_offset); */
         smb2_get_uint16(iov, 14, &req->security_buffer_length);
         smb2_get_uint64(iov, 18, &req->previous_session_id);
         

@@ -1,6 +1,7 @@
 /* ber_type:c; tab-width:8; c-basic-offset:8; indent-tabs-mode:nil;  -*- */
 /*
    Copyright (C) 2018 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
+   Copyright (C) 2024 by André Guilherme <andregui17@outlook.com>
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU Lesser General Public License as published by
@@ -55,8 +56,8 @@
 #include <sys/unistd.h>
 #endif
 
-#include "compat.h"
 #include <errno.h>
+#include "compat.h"
 
 #include "asn1-ber.h"
 
@@ -114,7 +115,7 @@ int asn1ber_annotate_length(struct asn1ber_context *actx, int out_pos, int reser
         return result;
     }
     /* if reserved more than needed, move new contents left over unused reserved */
-    if (reserved > lenbytes)
+    if (reserved > (int)lenbytes)
     {
         memmove(actx->dst + actx->dst_head, actx->dst + out_pos + reserved, bytes_made);
     }
@@ -140,7 +141,7 @@ int asn1ber_length_from_ber(struct asn1ber_context *actx, uint32_t *len)
         
         val = 0;
         
-        // length is number of bytes of length, not actual length
+        /* length is number of bytes of length, not actual length */
         vallen = b & 0x7F;
         if (vallen > 4)
         {
@@ -161,7 +162,7 @@ int asn1ber_length_from_ber(struct asn1ber_context *actx, uint32_t *len)
     }
     else
     {
-        // simple small len
+        /* simple small len */
         val = (uint32_t)b;
     }
     *len = val;
@@ -178,7 +179,7 @@ int ber_typecode_from_ber(struct asn1ber_context *actx, ber_type_t *typecode)
     {
         return result;
     }
-    if ((b & 0x1F) != 0x1F) // not [IMPLICIT]
+    if ((b & 0x1F) != 0x1F) /* not [IMPLICIT] */
     {
         *typecode = b;
         return 0;
@@ -266,7 +267,7 @@ int asn1ber_int32_from_ber(struct asn1ber_context *actx, int32_t *val)
 
     *val = 0;
 
-    // TYPE
+    /* TYPE */
     result = asn1ber_next_byte(actx, &b);
     if (result)
     {
@@ -281,7 +282,7 @@ int asn1ber_int32_from_ber(struct asn1ber_context *actx, int32_t *val)
         actx->last_error = -EINVAL;
         return -1;
     }
-    // LENGTH
+    /* LENGTH */
     result = asn1ber_next_byte(actx, &b);
     if (result)
     {
@@ -300,7 +301,7 @@ int asn1ber_int32_from_ber(struct asn1ber_context *actx, int32_t *val)
         actx->last_error = -E2BIG;
         return -1;
     }
-    // VALUE
+    /* VALUE */
     result = asn1ber_next_byte(actx, &b);
     if (result)
     {
@@ -342,7 +343,7 @@ int asn1ber_uint32_from_ber(struct asn1ber_context *actx, uint32_t *val)
 
     *val = 0;
 
-    // TYPE
+    /* TYPE */
     result = asn1ber_next_byte(actx, &b);
     if (result)
     {
@@ -363,7 +364,7 @@ int asn1ber_uint32_from_ber(struct asn1ber_context *actx, uint32_t *val)
         actx->last_error = -EINVAL;
         return -1;
     }
-    // LENGTH
+    /* LENGTH */
     result = asn1ber_next_byte(actx, &b);
     if (result)
     {
@@ -382,7 +383,7 @@ int asn1ber_uint32_from_ber(struct asn1ber_context *actx, uint32_t *val)
         actx->last_error = -E2BIG;
         return -1;
     }
-    // VALUE
+    /* VALUE */
     uval = 0;
     while (vallen > 0)
     {
@@ -408,7 +409,7 @@ int asn1ber_int64_from_ber(struct asn1ber_context *actx, int64_t *val)
 
     *val = 0;
 
-    // TYPE
+    /* TYPE */
     result = asn1ber_next_byte(actx, &b);
     if (result)
     {
@@ -422,7 +423,7 @@ int asn1ber_int64_from_ber(struct asn1ber_context *actx, int64_t *val)
         actx->last_error = -EINVAL;
         return -1;
     }
-    // LENGTH
+    /* LENGTH */
     result = asn1ber_next_byte(actx, &b);
     if (result)
     {
@@ -441,7 +442,7 @@ int asn1ber_int64_from_ber(struct asn1ber_context *actx, int64_t *val)
         actx->last_error = -E2BIG;
         return -1;
     }
-    // VALUE
+    /* VALUE */
     result = asn1ber_next_byte(actx, &b);
     if (result)
     {
@@ -483,7 +484,7 @@ int asn1ber_uint64_from_ber(struct asn1ber_context *actx, uint64_t *val)
 
     *val = 0;
 
-    // TYPE
+    /* TYPE */
     result = asn1ber_next_byte(actx, &b);
     if (result)
     {
@@ -498,7 +499,7 @@ int asn1ber_uint64_from_ber(struct asn1ber_context *actx, uint64_t *val)
         actx->last_error = -EINVAL;
         return -1;
     }
-    // LENGTH
+    /* LENGTH */
     result = asn1ber_next_byte(actx, &b);
     if (result)
     {
@@ -517,7 +518,7 @@ int asn1ber_uint64_from_ber(struct asn1ber_context *actx, uint64_t *val)
         actx->last_error = -E2BIG;
         return -1;
     }
-    // VALUE
+    /* VALUE */
     uval = 0;
     while (vallen > 0)
     {
@@ -544,7 +545,7 @@ int asn1ber_oid_from_ber(struct asn1ber_context *actx, struct asn1ber_oid_value 
 
     oid->length = 0;
 
-    // TYPE
+    /* TYPE */
     result = asn1ber_next_byte(actx, &b);
     if (result)
     {
@@ -555,7 +556,7 @@ int asn1ber_oid_from_ber(struct asn1ber_context *actx, struct asn1ber_oid_value 
         actx->last_error = -EINVAL;
         return -1;
     }
-    // LENGTH
+    /* LENGTH */
     result = asn1ber_length_from_ber(actx, &vallen);
     if (result)
     {
@@ -571,21 +572,23 @@ int asn1ber_oid_from_ber(struct asn1ber_context *actx, struct asn1ber_oid_value 
         actx->last_error = -E2BIG;
         return -1;
     }
-    // VALUE
+    /* VALUE */
     result = asn1ber_next_byte(actx, &b);
     if (result)
     {
         return result;
     }
-    // first byte is specially encoded
-    //
+    /*
+    ** first byte is specially encoded
+    */
     oval = (beroid_type_t)b;
     ((beroid_type_t*)(oid->elements))[0] = oval / 40;
     ((beroid_type_t*)(oid->elements))[1] = oval - (((beroid_type_t *)(oid->elements))[0] * 40);
     vallen--;
 
-    // next bytes are oid types ber encoded
-    //
+    /*
+    ** next bytes are oid types ber encoded
+    */
     i = 2;
     while (vallen > 0 && i < BER_MAX_OID_ELEMENTS)
     {
@@ -621,11 +624,11 @@ int asn1ber_oid_from_ber(struct asn1ber_context *actx, struct asn1ber_oid_value 
 int asn1ber_bytes_from_ber(struct asn1ber_context *actx, uint8_t *val, uint32_t maxlen, uint32_t *lenout)
 {
     int result;
-    int i;
+    size_t i;
     uint32_t vallen;
     uint8_t b = 0;
 
-    // TYPE
+    /* TYPE */
     result = asn1ber_next_byte(actx, &b);
     if (result)
     {
@@ -636,7 +639,7 @@ int asn1ber_bytes_from_ber(struct asn1ber_context *actx, uint8_t *val, uint32_t 
         actx->last_error = -EINVAL;
         return -1;
     }
-    // LENGTH
+    /* LENGTH */
     result = asn1ber_length_from_ber(actx, &vallen);
     if (result)
     {
@@ -653,7 +656,7 @@ int asn1ber_bytes_from_ber(struct asn1ber_context *actx, uint8_t *val, uint32_t 
         *lenout = 0;
         return 0;
     }
-    // VALUE
+    /* VALUE */
     for (i = 0; vallen > 0; vallen--)
     {
         result = asn1ber_next_byte(actx, &b);
@@ -663,7 +666,7 @@ int asn1ber_bytes_from_ber(struct asn1ber_context *actx, uint8_t *val, uint32_t 
         }
         val[i++] = b;
     }
-    // convenience 0 terminate
+    /* convenience 0 terminate */
     if (i < maxlen)
     {
         val[i] = 0;
@@ -1002,10 +1005,10 @@ int asn1ber_ber_from_oid(struct asn1ber_context *actx, const struct asn1ber_oid_
     {
         reserve = 1;
     }
-    // save position for back annotating
+    /* save position for back annotating */
     asn1ber_save_out_state(actx, &lenpos);
 
-    // put in expected length bytes
+    /* put in expected length bytes */
     result = asn1ber_ber_reserve_length(actx, reserve);
     if (result)
     {
@@ -1040,7 +1043,7 @@ int asn1ber_ber_from_oid(struct asn1ber_context *actx, const struct asn1ber_oid_
         }
         oiddex++;
     }
-    // back annotate length byte(s)
+    /* back annotate length byte(s) */
     result = asn1ber_annotate_length(actx, lenpos, reserve);
     return result;
 }

@@ -80,7 +80,7 @@ smb2_encode_error_reply(struct smb2_context *smb2,
         smb2_set_uint8(iov, 2, rep->error_context_count);
         smb2_set_uint32(iov, 4, rep->byte_count);
 
-        /// TODO - handle error data?
+        /* TODO - handle error data? */
         return 0;
 }
 

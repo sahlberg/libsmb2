@@ -262,6 +262,12 @@
 				RelativePath="..\lib\alloc.c">
 			</File>
 			<File
+				RelativePath="..\lib\asn1-ber.c">
+			</File>
+			<File
+				RelativePath="..\lib\asn1-ber.h">
+			</File>
+			<File
 				RelativePath="..\lib\compat.c">
 			</File>
 			<File
@@ -290,6 +296,12 @@
 			</File>
 			<File
 				RelativePath="..\lib\init.c">
+			</File>
+			<File
+				RelativePath="..\lib\krb5-wrapper.c">
+			</File>
+			<File
+				RelativePath="..\lib\krb5-wrapper.h">
 			</File>
 			<File
 				RelativePath="..\lib\libsmb2.c">
@@ -322,6 +334,9 @@
 				RelativePath="..\lib\sha.h">
 			</File>
 			<File
+				RelativePath="..\lib\sha1.c">
+			</File>
+			<File
 				RelativePath="..\lib\sha224-256.c">
 			</File>
 			<File
@@ -344,6 +359,9 @@
 			</File>
 			<File
 				RelativePath="..\lib\smb2-cmd-ioctl.c">
+			</File>
+			<File
+				RelativePath="..\lib\smb2-cmd-lock.c">
 			</File>
 			<File
 				RelativePath="..\lib\smb2-cmd-logoff.c">
@@ -406,24 +424,18 @@
 				RelativePath="..\lib\socket.c">
 			</File>
 			<File
+				RelativePath="..\lib\spnego-wrapper.c">
+			</File>
+			<File
+				RelativePath="..\lib\spnego-wrapper.h">
+			</File>
+			<File
 				RelativePath="..\lib\sync.c">
 			</File>
 			<File
 				RelativePath="..\lib\timestamps.c">
 				<FileConfiguration
-					Name="Debug|Xbox">
-					<Tool
-						Name="VCCLCompilerTool"
-						DisableSpecificWarnings="4244"/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="Release|Xbox">
-					<Tool
-						Name="VCCLCompilerTool"
-						DisableSpecificWarnings="4244"/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release_LTCG|Xbox">
 					<Tool
 						Name="VCCLCompilerTool"
 						DisableSpecificWarnings="4244"/>

@@ -230,11 +230,11 @@ smb2_encode_file_network_open_info(struct smb2_context *smb2,
                           struct smb2_file_network_open_info *fs,
                           struct smb2_iovec *vec)
 {
+		uint64_t t;
         if (vec->len < 56) {
                 return -1;
         }
 
-        uint64_t t;
 
         t = smb2_tv_timeval_to_win(&fs->creation_time);
         smb2_set_uint64(vec, 0, t);

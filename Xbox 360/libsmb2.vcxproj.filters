@@ -9,6 +9,24 @@
     </None>
     <None Include="..\COPYING" />
     <None Include="..\README" />
+    <None Include="..\lib\libsmb2.syms">
+      <Filter>lib</Filter>
+    </None>
+    <None Include="..\lib\Makefile.am">
+      <Filter>lib</Filter>
+    </None>
+    <None Include="..\lib\Makefile.AMIGA">
+      <Filter>lib</Filter>
+    </None>
+    <None Include="..\lib\Makefile.AMIGA_AROS">
+      <Filter>lib</Filter>
+    </None>
+    <None Include="..\lib\Makefile.AMIGA_OS3">
+      <Filter>lib</Filter>
+    </None>
+    <None Include="..\lib\Makefile.PS3_PPU">
+      <Filter>lib</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -93,6 +111,9 @@
     </ClInclude>
     <ClInclude Include="..\include\xbox 360\config.h">
       <Filter>include\xbox 360</Filter>
+    </ClInclude>
+    <ClInclude Include="..\lib\asn1-ber.h">
+      <Filter>lib</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -232,6 +253,15 @@
       <Filter>lib</Filter>
     </ClCompile>
     <ClCompile Include="..\lib\usha.c">
+      <Filter>lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\lib\asn1-ber.c">
+      <Filter>lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\lib\sha1.c">
+      <Filter>lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\lib\smb2-cmd-lock.c">
       <Filter>lib</Filter>
     </ClCompile>
   </ItemGroup>
