@@ -272,16 +272,16 @@ static int compare_SHARE_INFO_1_CONTAINER(void *ptr1, void *ptr2)
                 exit(20);
         }
         for (i = 0; i < 10; i++) {
-                if (strcmp(s1->carray->share_info_1[i].netname.utf8, s2->carray->share_info_1[i].netname.utf8)) {
-                        printf("Compare ->netname failed %s != %s\n", s1->carray->share_info_1[i].netname.utf8, s2->carray->share_info_1[i].netname.utf8);
+                if (strcmp(s1->Buffer->share_info_1[i].netname.utf8, s2->Buffer->share_info_1[i].netname.utf8)) {
+                        printf("Compare ->netname failed %s != %s\n", s1->Buffer->share_info_1[i].netname.utf8, s2->Buffer->share_info_1[i].netname.utf8);
                         exit(20);
                 }
-                if (s1->carray->share_info_1[i].type != s2->carray->share_info_1[i].type) {
-                        printf("Compare ->type failed %d != %d\n", s1->carray->share_info_1[i].type, s2->carray->share_info_1[i].type);
+                if (s1->Buffer->share_info_1[i].type != s2->Buffer->share_info_1[i].type) {
+                        printf("Compare ->type failed %d != %d\n", s1->Buffer->share_info_1[i].type, s2->Buffer->share_info_1[i].type);
                         exit(20);
                 }
-                if (strcmp(s1->carray->share_info_1[i].remark.utf8, s2->carray->share_info_1[i].remark.utf8)) {
-                        printf("Compare ->remark failed %s != %s\n", s1->carray->share_info_1[i].remark.utf8, s2->carray->share_info_1[i].remark.utf8);
+                if (strcmp(s1->Buffer->share_info_1[i].remark.utf8, s2->Buffer->share_info_1[i].remark.utf8)) {
+                        printf("Compare ->remark failed %s != %s\n", s1->Buffer->share_info_1[i].remark.utf8, s2->Buffer->share_info_1[i].remark.utf8);
                         exit(20);
                 }
         }
@@ -375,9 +375,9 @@ static void test_SHARE_INFO_1_CONTAINER_ndr32_le(struct dcerpc_context *dce)
        };
 
         s1.EntriesRead = 10;
-        s1.carray = &ca;
-        s1.carray->max_count = 10;
-        s1.carray->share_info_1 = &si[0];
+        s1.Buffer = &ca;
+        s1.Buffer->max_count = 10;
+        s1.Buffer->share_info_1 = &si[0];
         si[0].netname.utf8 = "ADMIN$";
         si[0].type         = 0x80000000;
         si[0].remark.utf8  = "Remote Admin";
@@ -555,9 +555,9 @@ static void test_SHARE_INFO_1_CONTAINER_ndr64_le(struct dcerpc_context *dce)
        };
 
         s1.EntriesRead = 10;
-        s1.carray = &ca;
-        s1.carray->max_count = 10;
-        s1.carray->share_info_1 = &si[0];
+        s1.Buffer = &ca;
+        s1.Buffer->max_count = 10;
+        s1.Buffer->share_info_1 = &si[0];
         si[0].netname.utf8 = "ADMIN$";
         si[0].type         = 0x80000000;
         si[0].remark.utf8  = "Remote Admin";

@@ -80,6 +80,69 @@ p_syntax_id_t srvsvc_interface = {
  * [MS-SRVS].pdf
  */
 
+int
+srvsvc_SHARE_INFO_0_coder(struct dcerpc_context *ctx,
+                           struct dcerpc_pdu *pdu,
+                           struct smb2_iovec *iov, int *offset,
+                           void *ptr)
+{
+        struct srvsvc_SHARE_INFO_0 *nsi1 = ptr;
+
+        if (dcerpc_ptr_coder(ctx, pdu, iov, offset, &nsi1->netname,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        return 0;
+}
+
+/*
+ *       [size_is(EntriesRead)] LPSHARE_INFO_0 Buffer;
+ */
+static int
+srvsvc_SHARE_INFO_0_carray_coder(struct dcerpc_context *ctx,
+                                 struct dcerpc_pdu *pdu,
+                                 struct smb2_iovec *iov, int *offset,
+                                 void *ptr)
+{
+        return dcerpc_carray_coder(ctx, pdu, iov, offset, ptr,
+                                   sizeof(struct srvsvc_SHARE_INFO_0),
+                                   srvsvc_SHARE_INFO_0_coder);
+}
+
+/*
+ * typedef struct _SHARE_INFO_0_CONTAINER {
+ *       DWORD EntriesRead;
+ *       [size_is(EntriesRead)] LPSHARE_INFO_0 Buffer;
+ * } SHARE_INFO_0_CONTAINER;
+*/
+int
+srvsvc_SHARE_INFO_0_CONTAINER_coder(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+                          struct smb2_iovec *iov, int *offset,
+                          void *ptr)
+{
+        struct srvsvc_SHARE_INFO_0_CONTAINER *ctr = ptr;
+
+        if (dcerpc_uint32_coder(dce, pdu, iov, offset, &ctr->EntriesRead)) {
+                return -1;
+        }
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {
+                if (ctr->Buffer == NULL) {
+                        ctr->Buffer = smb2_alloc_data(
+                                  dcerpc_get_smb2_context(dce),
+                                  dcerpc_get_pdu_payload(pdu),
+                                  sizeof(struct srvsvc_SHARE_INFO_0_carray));
+                }
+        }
+        if (dcerpc_ptr_coder(dce, pdu, iov, offset,
+                             ctr->Buffer,
+                             PTR_UNIQUE,
+                             srvsvc_SHARE_INFO_0_carray_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
 /*
  * typedef struct _SHARE_INFO_1 {
  *       [string] wchar_t *netname;
@@ -134,21 +197,21 @@ srvsvc_SHARE_INFO_1_CONTAINER_coder(struct dcerpc_context *dce, struct dcerpc_pd
                           struct smb2_iovec *iov, int *offset,
                           void *ptr)
 {
-        struct srvsvc_SHARE_INFO_1_CONTAINER *ctr1 = ptr;
+        struct srvsvc_SHARE_INFO_1_CONTAINER *ctr = ptr;
 
-        if (dcerpc_uint32_coder(dce, pdu, iov, offset, &ctr1->EntriesRead)) {
+        if (dcerpc_uint32_coder(dce, pdu, iov, offset, &ctr->EntriesRead)) {
                 return -1;
         }
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {
-                if (ctr1->carray == NULL) {
-                        ctr1->carray = smb2_alloc_data(
+                if (ctr->Buffer == NULL) {
+                        ctr->Buffer = smb2_alloc_data(
                                   dcerpc_get_smb2_context(dce),
                                   dcerpc_get_pdu_payload(pdu),
                                   sizeof(struct srvsvc_SHARE_INFO_1_carray));
                 }
         }
         if (dcerpc_ptr_coder(dce, pdu, iov, offset,
-                             ctr1->carray,
+                             ctr->Buffer,
                              PTR_UNIQUE,
                              srvsvc_SHARE_INFO_1_carray_coder)) {
                 return -1;
@@ -182,6 +245,13 @@ srvsvc_SHARE_ENUM_UNION_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu
         ctr->level = (uint32_t)p;
 
         switch (ctr->level) {
+        case 0:
+                if (dcerpc_ptr_coder(ctx, pdu, iov, offset, &ctr->Level0,
+                                     PTR_UNIQUE,
+                                     srvsvc_SHARE_INFO_0_CONTAINER_coder)) {
+                        return -1;
+                }
+                break;
         case 1:
                 if (dcerpc_ptr_coder(ctx, pdu, iov, offset, &ctr->Level1,
                                      PTR_UNIQUE,
