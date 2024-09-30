@@ -267,7 +267,7 @@ smb2_process_write_request_fixed(struct smb2_context *smb2,
 
         if (req->write_channel_info_length) {
                 if (req->write_channel_info_offset < (SMB2_HEADER_SIZE + (SMB2_WRITE_REQUEST_SIZE & 0xfffe))) {
-                        smb2_set_error(smb2, "channel info overlaps request", "");
+                        smb2_set_error(smb2, "channel info overlaps request");
                         return -1;
                 }
         }
