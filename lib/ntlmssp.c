@@ -169,13 +169,13 @@ ntlmssp_init_context(const char *user,
         }
 
         if (user) {
-                auth_data->user        = strdup(user);
+                auth_data->user = strdup(user);
         }
         if (password) {
-                auth_data->password    = strdup(password);
+                auth_data->password = strdup(password);
         }
         if (domain) {
-                auth_data->domain      = strdup(domain);
+                auth_data->domain = strdup(domain);
         }
         if (workstation) {
                 auth_data->workstation = strdup(workstation);
@@ -980,7 +980,7 @@ ntlmssp_authenticate_blob(struct smb2_server *server, struct smb2_context *smb2,
         }
         /* if no user/pw, and anonymous allowed, do anonymous */
         if (!auth_data->user || (auth_data->user[0] == '\0') ||
-                        !auth_data->password || (auth_data->password[0] == '\0')) {
+                        !smb2->password || (smb2->password[0] == '\0')) {
                 if (server->allow_anonymous) {
                         return 0;
                 }

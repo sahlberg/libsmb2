@@ -3386,6 +3386,7 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
 
         memset(&rep, 0, sizeof(rep));
         memset(&err, 0, sizeof(err));
+        smb2_set_error(smb2, "");
 
         /* negotiate highest version in request dialects */
         switch (smb2->version) {
