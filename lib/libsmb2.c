@@ -771,7 +771,7 @@ session_setup_cb(struct smb2_context *smb2, int status,
                 }
 
                 smb2_create_signing_key(smb2);
-                
+
                 if (smb2->hdr.flags & SMB2_FLAGS_SIGNED) {
                         uint8_t signature[16] _U_;
 
@@ -3145,7 +3145,10 @@ smb2_general_client_request_cb(struct smb2_context *smb2, int status, void *comm
                 smb2_close_context(smb2);
                 return;
         }
-        
+        if (status == SMB2_STATUS_CANCELLED) {
+                return;
+        }
+
         switch (smb2->pdu->header.command) {
         case SMB2_LOGOFF:
                 smb2_logoff_request_cb(server, smb2, command_data, cb_data);
@@ -3238,7 +3241,7 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
         if (status) {
                 return;
         }
-        
+
         rep.security_buffer_length = 0;
         rep.security_buffer_offset = 0;
 
@@ -3248,7 +3251,7 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
         memset(&err, 0, sizeof(err));
 
         pdu = NULL;
-        
+
         if (smb2->sec == SMB2_SEC_NTLMSSP) {
                 if (ntlmssp_get_message_type(smb2,
                                 req->security_buffer, req->security_buffer_length,
@@ -3337,19 +3340,19 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                 */
                 smb2_create_signing_key(smb2);
         }
-        
+
         if (server->allow_anonymous &&
                          ((smb2->user == NULL || smb2->user[0] == '\0')||
                          (smb2->password == NULL || smb2->password[0] == '\0'))) {
                 rep.session_flags |= SMB2_SESSION_FLAG_IS_GUEST;
         }
-                
+
         if (!pdu) {
                 pdu = smb2_cmd_session_setup_reply_async(smb2, &rep, NULL, cb_data);
                 if (pdu == NULL) {
                         return;
-                }        
-        
+                }
+
                 if (more_processing_needed) {
                         pdu->header.status = SMB2_STATUS_MORE_PROCESSING_REQUIRED;
                 }
@@ -3441,7 +3444,7 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
                                         &err, SMB2_NEGOTIATE, SMB2_STATUS_INVALID_PARAMETER, NULL, cb_data);
                         if (pdu == NULL) {
                                 return;
-                        }                
+                        }
                         smb2_queue_pdu(smb2, pdu);
                         return;
                 }
@@ -3515,7 +3518,7 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
                 }
 
                 if (!server->allow_anonymous ||
-                                (smb2->password && smb2->password[0])) {                        
+                                (smb2->password && smb2->password[0])) {
                         if (server->signing_enabled) {
                                 if (req->security_mode & SMB2_NEGOTIATE_SIGNING_ENABLED &&
                                                 smb2->dialect == SMB2_VERSION_0210) {
@@ -3548,7 +3551,7 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
         /* remember negotiated capabilites and security mode */
         smb2->capabilities = rep.capabilities;
         smb2->security_mode = rep.security_mode;
-        
+
         struct smb2_timeval now;
 
         now.tv_sec = time(NULL);
@@ -3665,7 +3668,7 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
         }
 
         server->session_counter = 0x1234;
-        
+
         do {
                 /* select on the file descriptors of all active client connections and our server socket
                    for the first readable event
