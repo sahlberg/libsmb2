@@ -106,6 +106,7 @@ struct smb2_pdu *smb2_cmd_tree_connect_async(struct smb2_context *smb2,
 
 struct smb2_pdu *smb2_cmd_tree_connect_reply_async(struct smb2_context *smb2,
                             struct smb2_tree_connect_reply *rep,
+                            uint32_t tree_id,
                             smb2_command_cb cb, void *cb_data);
 /*
  * Asynchronous SMB2 Tree Disconnect
@@ -244,11 +245,32 @@ struct smb2_pdu *smb2_cmd_query_directory_async(struct smb2_context *smb2,
                              smb2_command_cb cb, void *cb_data);
 
 struct smb2_pdu *smb2_cmd_query_directory_reply_async(struct smb2_context *smb2,
-                             uint8_t info_class,
-                             uint8_t flags,
-                             uint32_t room,
+                             struct smb2_query_directory_request *req,
                              struct smb2_query_directory_reply *rep,
                              smb2_command_cb cb, void *cb_data);
+
+/*
+ * Asynchronous SMB2 Change Notify
+ *
+ * Returns:
+ * pdu  : If the call was initiated and a connection will be attempted.
+ *        Result of the close will be reported through the callback function.
+ * NULL : If there was an error. The callback function will not be invoked.
+ *
+ * Callback parameters :
+ * status can be either of :
+ *    0     : Close was successful.
+ *            Command_data is a struct smb2_close_reply.
+ *
+ *   !0     : Status is NT status code. Command_data is NULL.
+ */
+struct smb2_pdu *smb2_cmd_change_notify_async(struct smb2_context *smb2,
+                                      struct smb2_change_notify_request *req,
+                                      smb2_command_cb cb, void *cb_data);
+                                      
+struct smb2_pdu *smb2_cmd_change_notify_reply_async(struct smb2_context *smb2,
+                                      struct smb2_change_notify_reply *rep,
+                                      smb2_command_cb cb, void *cb_data);
 
 /*
  * Asynchronous SMB2 Query Info
@@ -273,9 +295,7 @@ struct smb2_pdu *smb2_cmd_query_info_async(struct smb2_context *smb2,
                                            smb2_command_cb cb, void *cb_data);
 
 struct smb2_pdu *smb2_cmd_query_info_reply_async(struct smb2_context *smb2,
-                                           uint8_t info_type,
-                                           uint8_t file_info_class,
-                                           uint32_t room,
+                                           struct smb2_query_info_request *req,
                                            struct smb2_query_info_reply *rep,
                                            smb2_command_cb cb, void *cb_data);
 
@@ -366,6 +386,7 @@ struct smb2_pdu *smb2_cmd_echo_reply_async(struct smb2_context *smb2,
  * command_data is always NULL.
  */
 struct smb2_pdu *smb2_cmd_lock_async(struct smb2_context *smb2,
+                                       struct smb2_lock_request *req,
                                        smb2_command_cb cb, void *cb_data);
 
 struct smb2_pdu *smb2_cmd_lock_reply_async(struct smb2_context *smb2,

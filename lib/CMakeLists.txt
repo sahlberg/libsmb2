@@ -25,6 +25,7 @@ if(ESP_PLATFORM)
     sha1.c
     sha224-256.c
     sha384-512.c
+    smb2-cmd-notify-change.c
     smb2-cmd-close.c
     smb2-cmd-create.c
     smb2-cmd-echo.c
@@ -34,6 +35,7 @@ if(ESP_PLATFORM)
     smb2-cmd-lock.c
     smb2-cmd-logoff.c
     smb2-cmd-negotiate.c
+    smb2-cmd-notify.c
     smb2-cmd-query-directory.c
     smb2-cmd-query-info.c
     smb2-cmd-read.c
@@ -62,7 +64,7 @@ if(ESP_PLATFORM)
   register_component()
 
 elseif(IOP AND BUILD_IRX)
-  set(SOURCES 
+  set(SOURCES
             ps2/smb2_fio.c
             ps2/smb2man.c
             ps2/imports.c
@@ -76,7 +78,7 @@ elseif(IOP AND BUILD_IRX)
             dcerpc-srvsvc.c
             errors.c
             hmac.c
-            hmac-md5.c			
+            hmac-md5.c
             init.c
             ${KRB5_SOURCE}
             libsmb2.c
@@ -84,9 +86,10 @@ elseif(IOP AND BUILD_IRX)
             md5.c
             ntlmssp.c
             pdu.c
-	    sha1.c
-	    sha224-256.c
-	    sha384-512.c
+            sha1.c
+            sha224-256.c
+            sha384-512.c
+            smb2-cmd-notify-change.c
             smb2-cmd-close.c
             smb2-cmd-create.c
             smb2-cmd-echo.c
@@ -108,15 +111,15 @@ elseif(IOP AND BUILD_IRX)
             smb2-data-filesystem-info.c
             smb2-data-security-descriptor.c
             smb2-data-reparse-point.c
-	    smb2-share-enum.c
-	    smb3-seal.c
-	    smb2-signing.c
+            smb2-share-enum.c
+            smb3-seal.c
+            smb2-signing.c
             socket.c
-	    spnego-wrapper.c
+            spnego-wrapper.c
             sync.c
             timestamps.c
             unicode.c
-	    usha.c)
+            usha.c)
 
 BUILD_IOP_IMPORTS(${CMAKE_CURRENT_SOURCE_DIR}/ps2/imports.c ${CMAKE_CURRENT_SOURCE_DIR}/ps2/imports.lst)
 
@@ -131,7 +134,7 @@ else()
             dcerpc-srvsvc.c
             errors.c
             hmac.c
-            hmac-md5.c			
+            hmac-md5.c
             init.c
             ${KRB5_SOURCE}
             libsmb2.c
@@ -139,9 +142,10 @@ else()
             md5.c
             ntlmssp.c
             pdu.c
-	    sha1.c
-	    sha224-256.c
-	    sha384-512.c
+            sha1.c
+            sha224-256.c
+            sha384-512.c
+            smb2-cmd-notify-change.c
             smb2-cmd-close.c
             smb2-cmd-create.c
             smb2-cmd-echo.c
@@ -163,15 +167,15 @@ else()
             smb2-data-filesystem-info.c
             smb2-data-security-descriptor.c
             smb2-data-reparse-point.c
-	    smb2-share-enum.c
-	    smb3-seal.c
-	    smb2-signing.c
+            smb2-share-enum.c
+            smb3-seal.c
+            smb2-signing.c
             socket.c
-	    spnego-wrapper.c
+            spnego-wrapper.c
             sync.c
             timestamps.c
             unicode.c
-	    usha.c)
+            usha.c)
 endif()
 
 if(NOT ESP_PLATFORM)
@@ -192,13 +196,13 @@ target_link_libraries(smb2_rpc PUBLIC ${core_DEPENDS} ${CORE_LIBRARIES})
 target_include_directories(smb2_rpc PUBLIC ${INCLUDE_PATH})
 set_target_properties(smb2_rpc PROPERTIES
                            VERSION ${PROJECT_VERSION}
-                           SOVERSION ${SOVERSION})                           
+                           SOVERSION ${SOVERSION})
 elseif(IOP AND BUILD_IRX)
 add_executable(smb2man.irx ${SOURCES})
 
 target_link_libraries(smb2man.irx
-	PRIVATE
-	gcc)
+        PRIVATE
+        gcc)
 
 add_custom_command(TARGET smb2man.irx POST_BUILD COMMAND md5sum ARGS smb2man.irx)
 elseif(PICO_BOARD)
@@ -227,14 +231,14 @@ if(EE AND PS2RPC)
 install(TARGETS smb2_rpc EXPORT smb2_rpc
                      RUNTIME DESTINATION bin
                      ARCHIVE DESTINATION lib${LIB_SUFFIX}
-                     LIBRARY DESTINATION lib${LIB_SUFFIX})                     
+                     LIBRARY DESTINATION lib${LIB_SUFFIX})
 elseif(IOP AND BUILD_IRX)
 install(FILES ps2/ps2smb2.h
 DESTINATION ${PS2SDK}/common/include)
 install(TARGETS smb2man.irx EXPORT smb2man.irx
                             RUNTIME DESTINATION ${PS2SDK}/ports_iop/irx
                             ARCHIVE DESTINATION smb2man.irx
-                            LIBRARY DESTINATION smb2man.irx)                    
+                            LIBRARY DESTINATION smb2man.irx)
 else()
 install(TARGETS smb2 EXPORT smb2
                      RUNTIME DESTINATION bin

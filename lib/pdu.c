@@ -78,6 +78,8 @@ smb2_pad_to_64bit(struct smb2_context *smb2, struct smb2_io_vectors *v)
         return 0;
 }
 
+#include <stdio.h>
+
 struct smb2_pdu *
 smb2_allocate_pdu(struct smb2_context *smb2, enum smb2_command command,
                   smb2_command_cb cb, void *cb_data)
@@ -129,9 +131,15 @@ smb2_allocate_pdu(struct smb2_context *smb2, enum smb2_command command,
         case SMB2_LOGOFF:
         case SMB2_ECHO:
         /* case SMB2_CANCEL: */
+                hdr->sync.tree_id = 0;
+                break;
+        case SMB2_TREE_CONNECT:
+                /* [MS-SMB2] 2.2.1.2 */
+                hdr->sync.tree_id = 0;
                 break;
         default:
-                hdr->sync.tree_id = smb2->tree_id;
+                hdr->sync.tree_id = smb2_tree_id(smb2);
+                break;
         }
 
         switch (command) {
@@ -164,11 +172,161 @@ smb2_allocate_pdu(struct smb2_context *smb2, enum smb2_command command,
         return pdu;
 }
 
+int
+smb2_select_tree_id(struct smb2_context *smb2, uint32_t tree_id)
+{
+        int i;
+
+        for (
+                i = 1;
+                i <= smb2->tree_id_top && i <= SMB2_MAX_TREE_NESTING;
+                i++
+        ) {
+                if (smb2->tree_id[i] == tree_id) {
+                        break;
+                }
+        }
+        if (smb2->tree_id_top < (SMB2_MAX_TREE_NESTING - 1)) {
+                smb2->tree_id_cur = i;
+        }
+        else {
+                smb2_set_error(smb2, "No connected tree-id %08X to select", tree_id);
+                return -1;
+        }
+        return 0;
+}
+
+int
+smb2_get_tree_id_for_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu, uint32_t *tree_id)
+{
+        if (pdu) {
+                switch (pdu->header.command) {
+                case SMB2_NEGOTIATE:
+                case SMB2_SESSION_SETUP:
+                case SMB2_LOGOFF:
+                case SMB2_ECHO:
+                /* case SMB2_CANCEL: */
+                case SMB2_TREE_CONNECT:
+                        *tree_id  = 0;
+                        return 0;
+                }
+        }
+        if (smb2->tree_id_top > 0) {
+                *tree_id = smb2->tree_id[smb2->tree_id_cur];
+        }
+        else {
+                smb2_set_error(smb2, "No tree-id connected");
+                *tree_id = 0xdeadbeef;
+                return -1;
+        }
+        return 0;
+}
+
+int
+smb2_set_tree_id_for_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu, uint32_t tree_id)
+{
+        if (pdu) {
+                if (pdu->header.flags & SMB2_FLAGS_ASYNC_COMMAND) {
+                        smb2_set_error(smb2, "no tree id for asyn pdu");
+                        return 0;
+                }
+                switch (pdu->header.command) {
+                case SMB2_NEGOTIATE:
+                case SMB2_SESSION_SETUP:
+                case SMB2_LOGOFF:
+                case SMB2_ECHO:
+                /* case SMB2_CANCEL: */
+                        break;
+                case SMB2_TREE_CONNECT:
+                        break;
+                default:
+                        pdu->header.sync.tree_id = tree_id;
+                }
+                return 0;
+        }
+        return -1;
+}
+
+int
+smb2_connect_tree_id(struct smb2_context *smb2, uint32_t tree_id)
+{
+        if (smb2->tree_id_top < (SMB2_MAX_TREE_NESTING - 1)) {
+                smb2->tree_id[++smb2->tree_id_top] = tree_id;
+                smb2->tree_id_cur = smb2->tree_id_top;
+        }
+        else {
+                smb2_set_error(smb2, "Tree nesting too deep");
+                return -1;
+        }
+        return 0;
+}
+
+int
+smb2_disconnect_tree_id(struct smb2_context *smb2, uint32_t tree_id)
+{
+        int i, j, k;
+
+        if (smb2->tree_id_top > 0) {
+                for (
+                        i = 1;
+                        i <= smb2->tree_id_top && i <= SMB2_MAX_TREE_NESTING;
+                        i++
+                ) {
+                        if (smb2->tree_id[i] == tree_id) {
+                                break;
+                        }
+                }
+                if (i <= smb2->tree_id_top) {
+                       if (i == smb2->tree_id_top) {
+                               smb2->tree_id_top--;
+                               smb2->tree_id_cur = smb2->tree_id_top;
+                               return 0;
+                       }
+                       else {
+                               for (j = smb2->tree_id_top - 1; j > 0; j--) {
+                                       if (smb2->tree_id[j] == tree_id) {
+                                               break;
+                                       }
+                               }
+                               if (j > 0) {
+                                       if (j == smb2->tree_id_cur) {
+                                               /* note updating cur is a convenience for clients
+                                                * but isnt required and maybe get rid of this */
+                                               if (j > 1) {
+                                                       smb2->tree_id_cur =
+                                                              j - 1;
+                                               }
+                                               else {
+                                                       smb2->tree_id_cur =
+                                                               smb2->tree_id_top - 1;;
+                                               }
+                                       }
+                                       for (k = j; k < smb2->tree_id_top; k++) {
+                                               smb2->tree_id[k] = smb2->tree_id[k + 1];
+                                       }
+                                       smb2->tree_id_top--;
+                                       return 0;
+                               }
+                       }
+                }
+        }
+
+        smb2_set_error(smb2, "No tree-id %08X to remove", tree_id);
+        return -1;
+}
+int
+smb2_pdu_is_compound(struct smb2_context *smb2)
+{
+        return (smb2) ?
+                (smb2->hdr.next_command != 0) : 0;
+}
+
 void
 smb2_add_compound_pdu(struct smb2_context *smb2,
                       struct smb2_pdu *pdu, struct smb2_pdu *next_pdu)
 {
         int i, offset;
+
 
         /* find the last pdu in the chain */
         while (pdu->next_compound) {
@@ -298,9 +456,11 @@ static void
 smb2_encode_header(struct smb2_context *smb2, struct smb2_iovec *iov,
                    struct smb2_header *hdr)
 {
-        hdr->message_id = smb2->message_id++;
-        if (hdr->credit_charge > 1) {
-                smb2->message_id += (hdr->credit_charge - 1);
+        if (!smb2_is_server(smb2)) {
+                hdr->message_id = smb2->message_id++;
+                if (hdr->credit_charge > 1) {
+                        smb2->message_id += (hdr->credit_charge - 1);
+                }
         }
 
         memcpy(iov->buf, hdr->protocol_id, 4);
@@ -316,6 +476,11 @@ smb2_encode_header(struct smb2_context *smb2, struct smb2_iovec *iov,
         if (hdr->flags & SMB2_FLAGS_ASYNC_COMMAND) {
                 smb2_set_uint64(iov, 32, hdr->async.async_id);
         } else {
+                /*
+                printf(">>>>>>>>>> %p %s %d treeid=%08x    %08X\n", smb2,
+                                (hdr->flags & SMB2_FLAGS_SERVER_TO_REDIR) ? "rep" : "cmd",
+                                hdr->command, hdr->sync.tree_id, smb2_tree_id(smb2));
+                */
                 smb2_set_uint32(iov, 32, hdr->sync.process_id);
                 smb2_set_uint32(iov, 36, hdr->sync.tree_id);
         }
@@ -336,8 +501,8 @@ smb2_decode_header(struct smb2_context *smb2, struct smb2_iovec *iov,
                 return -1;
         }
         if (!memcmp(iov->buf, smb1sign, 4)) {
-                /* and SMBv1 request. if it is a negotiate request
-                 * fake an smb2 negotiate request */
+                /* an SMBv1 request. if it is a negotiate request
+                 * allow it through, else ingore */
                 if (iov->buf[4] == SMB1_NEGOTIATE) {
                         /*printf("Handling SMBv1 Negotiate\n");*/
                         memset(hdr, 0, sizeof *hdr);
@@ -366,8 +531,30 @@ smb2_decode_header(struct smb2_context *smb2, struct smb2_iovec *iov,
         } else {
                 smb2_get_uint32(iov, 32, &hdr->sync.process_id);
                 smb2_get_uint32(iov, 36, &hdr->sync.tree_id);
+                /*
+                printf("<<<<<<<<<<< %p %s %d treeid=%08x  %08X\n", smb2,
+                                (hdr->flags & SMB2_FLAGS_SERVER_TO_REDIR) ? "rep" : "cmd",
+                                hdr->command, hdr->sync.tree_id, smb2_tree_id(smb2));
+                */
+                /* for requests, set the context tree id to the header value
+                */
+                if (!(hdr->flags & SMB2_FLAGS_SERVER_TO_REDIR)) {
+                        switch (hdr->command) {
+                        case SMB2_NEGOTIATE:
+                        case SMB2_SESSION_SETUP:
+                        case SMB2_LOGOFF:
+                        case SMB2_ECHO:
+                        /* case SMB2_CANCEL: */
+                                break;
+                        case SMB2_TREE_CONNECT:
+                                break;
+                        default:
+                                /// TODO - care about not having this already connected
+                                smb2_select_tree_id(smb2, hdr->sync.tree_id);
+                                break;
+                        }
+                }
         }
-
         smb2_get_uint64(iov, 40, &hdr->session_id);
         memcpy(&hdr->signature, iov->buf + 48, 16);
 
@@ -381,13 +568,55 @@ smb2_add_to_outqueue(struct smb2_context *smb2, struct smb2_pdu *pdu)
         smb2_change_events(smb2, smb2->fd, smb2_which_events(smb2));
 }
 
+struct smb2_pdu *
+smb2_find_pdu_by_command(struct smb2_context *smb2,
+              uint32_t command) {
+        struct smb2_pdu *pdu;
+
+        for (pdu = smb2->waitqueue; pdu; pdu = pdu->next) {
+                if (pdu->header.command == command) {
+                        break;
+                }
+        }
+        return pdu;
+}
+
 void
 smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
-        struct smb2_pdu *p;
+        struct smb2_pdu *p, *req_pdu;
 
         /* Update all the PDU headers in this chain */
         for (p = pdu; p; p = p->next_compound) {
+                if (smb2_is_server(smb2)) {
+                        if (!(pdu->header.flags & SMB2_FLAGS_ASYNC_COMMAND)) {
+                                /* set reply flag */
+                                pdu->header.flags |= SMB2_FLAGS_SERVER_TO_REDIR;
+                                /* insure the reply message id matched the request */
+                                req_pdu = smb2_find_pdu_by_command(smb2,
+                                                p->header.command);
+                                if (req_pdu == NULL) {
+                                        smb2_set_error(smb2, "no matching req PDU "
+                                                       "found for reply to cmd %d",
+                                                        pdu->header.command);
+                                }
+                                else {
+                                        SMB2_LIST_REMOVE(&smb2->waitqueue, req_pdu);
+                                        pdu->header.message_id = req_pdu->header.message_id;
+                                        pdu->header.credit_request_response =
+                                                        64 + req_pdu->header.credit_charge;
+                                        if (pdu->header.sync.tree_id != req_pdu->header.sync.tree_id) {
+                                                if (pdu->header.command != SMB2_TREE_CONNECT) {
+                                                        smb2_set_error(smb2, "reply as tid=%08X  req=%08X cmd %d\n",
+                                                                (unsigned int)pdu->header.sync.tree_id,
+                                                                (unsigned int)req_pdu->header.sync.tree_id,
+                                                                pdu->header.command);
+                                                }
+                                        }
+                                        smb2_free_pdu(smb2, req_pdu);
+                                }
+                        }
+                }
                 smb2_encode_header(smb2, &p->out.iov[0], &p->header);
                 if (smb2->sign ||
                     (p->header.command == SMB2_TREE_CONNECT && smb2->dialect == SMB2_VERSION_0311 && !smb2->seal)) {
@@ -472,12 +701,16 @@ smb2_get_fixed_reply_size(struct smb2_context *smb2, struct smb2_pdu *pdu)
                 return SMB2_ECHO_REPLY_SIZE;
         case SMB2_QUERY_DIRECTORY:
                 return SMB2_QUERY_DIRECTORY_REPLY_SIZE;
+        case SMB2_CHANGE_NOTIFY:
+                return SMB2_CHANGE_NOTIFY_REPLY_SIZE;
         case SMB2_QUERY_INFO:
                 return SMB2_QUERY_INFO_REPLY_SIZE;
         case SMB2_SET_INFO:
                 return SMB2_SET_INFO_REPLY_SIZE;
         case SMB2_IOCTL:
                 return SMB2_IOCTL_REPLY_SIZE;
+        case SMB2_OPLOCK_BREAK:
+                return SMB2_OPLOCK_BREAK_REPLY_SIZE;
         }
         return -1;
 }
@@ -514,12 +747,16 @@ smb2_get_fixed_request_size(struct smb2_context *smb2, struct smb2_pdu *pdu)
                 return SMB2_ECHO_REQUEST_SIZE;
         case SMB2_QUERY_DIRECTORY:
                 return SMB2_QUERY_DIRECTORY_REQUEST_SIZE;
+        case SMB2_CHANGE_NOTIFY:
+                return SMB2_CHANGE_NOTIFY_REQUEST_SIZE;
         case SMB2_QUERY_INFO:
                 return SMB2_QUERY_INFO_REQUEST_SIZE;
         case SMB2_SET_INFO:
                 return SMB2_SET_INFO_REQUEST_SIZE;
         case SMB2_IOCTL:
                 return SMB2_IOCTL_REQUEST_SIZE;
+        case SMB2_OPLOCK_BREAK:
+                return SMB2_OPLOCK_BREAK_REQUEST_SIZE;
         }
         return -1;
 }
@@ -569,12 +806,16 @@ smb2_process_reply_payload_fixed(struct smb2_context *smb2, struct smb2_pdu *pdu
                 return smb2_process_lock_fixed(smb2, pdu);
         case SMB2_QUERY_DIRECTORY:
                 return smb2_process_query_directory_fixed(smb2, pdu);
+        case SMB2_CHANGE_NOTIFY:
+                return smb2_process_change_notify_fixed(smb2, pdu);
         case SMB2_QUERY_INFO:
                 return smb2_process_query_info_fixed(smb2, pdu);
         case SMB2_SET_INFO:
                 return smb2_process_set_info_fixed(smb2, pdu);
         case SMB2_IOCTL:
                 return smb2_process_ioctl_fixed(smb2, pdu);
+        case SMB2_OPLOCK_BREAK:
+                return -1;
         }
         return 0;
 }
@@ -604,7 +845,7 @@ smb2_process_reply_payload_variable(struct smb2_context *smb2, struct smb2_pdu *
         case SMB2_FLUSH:
                 return 0;
         case SMB2_READ:
-                return 0;
+                return smb2_process_read_variable(smb2, pdu);
         case SMB2_WRITE:
                 return 0;
         case SMB2_ECHO:
@@ -615,12 +856,16 @@ smb2_process_reply_payload_variable(struct smb2_context *smb2, struct smb2_pdu *
                 return 0;
         case SMB2_QUERY_DIRECTORY:
                 return smb2_process_query_directory_variable(smb2, pdu);
+        case SMB2_CHANGE_NOTIFY:
+                return smb2_process_change_notify_variable(smb2, pdu);
         case SMB2_QUERY_INFO:
                 return smb2_process_query_info_variable(smb2, pdu);
         case SMB2_SET_INFO:
                 return 0;
         case SMB2_IOCTL:
                 return smb2_process_ioctl_variable(smb2, pdu);
+        case SMB2_OPLOCK_BREAK:
+                return -1;
         }
         return 0;
 }
@@ -657,6 +902,8 @@ smb2_process_request_payload_fixed(struct smb2_context *smb2, struct smb2_pdu *p
                 return 0;
         case SMB2_QUERY_DIRECTORY:
                 return smb2_process_query_directory_request_fixed(smb2, pdu);
+        case SMB2_CHANGE_NOTIFY:
+                return smb2_process_change_notify_request_fixed(smb2, pdu);
         case SMB2_QUERY_INFO:
                 return smb2_process_query_info_request_fixed(smb2, pdu);
         case SMB2_SET_INFO:
@@ -702,6 +949,8 @@ smb2_process_request_payload_variable(struct smb2_context *smb2, struct smb2_pdu
                 return 0;
         case SMB2_QUERY_DIRECTORY:
                 return smb2_process_query_directory_request_variable(smb2, pdu);
+        case SMB2_CHANGE_NOTIFY:
+                return 0;
         case SMB2_QUERY_INFO:
                 return smb2_process_query_info_request_variable(smb2, pdu);
         case SMB2_SET_INFO:

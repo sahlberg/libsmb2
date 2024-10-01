@@ -124,6 +124,15 @@ typedef int t_socket;
 struct smb2_context *smb2_init_context(void);
 
 /*
+ * Close an SMB2 context
+ * 
+ * closes socket if open, and clears keys but leave
+ * context allocated.  the context will be destroyed
+ * at a time later when it won't be in-use
+ */
+void smb2_close_context(struct smb2_context *smb2);
+
+/*
  * Destroy an smb2 context.
  *
  * Any open "struct smb2fh" will automatically be freed. You can not reference
@@ -138,6 +147,12 @@ void smb2_destroy_context(struct smb2_context *smb2);
  * Get the list of currently allocated contexts
  */
 struct smb2_context *smb2_active_contexts(void);
+
+/*
+ * Determine of the context is currently active.  This lets
+ * code know if the context was destroyed in a callback for example
+ */
+int smb2_context_active(struct smb2_context *smb2);
 
 /*
  * EVENT SYSTEM INTEGRATION
@@ -241,6 +256,27 @@ int smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents);
  * Default is 0: No timeout.
  */
 void smb2_set_timeout(struct smb2_context *smb2, int seconds);
+
+/*
+ * Set passthrough-enable.  Passthrough allows command packers
+ * and unpackers to keep the extra data on complex commands
+ * in its on-the-wire format without any interpretation. this
+ * is useful for proxy use cases where there might be no need
+ * to fully parse things like query-info replies or ioctl
+ * requests.  If passthrough is not set, any command that
+ * that is processed that can't interpret the data will fail
+ * Most client use case will not need this
+ *
+ * Default is 0: no-passthrough
+ */
+void smb2_set_passthrough(struct smb2_context *smb2,
+                      int passthrough);
+ 
+/* 
+ * Get the current passthrough setting
+ */
+void smb2_get_passthrough(struct smb2_context *smb2,
+                      int *passthrough);
 
 /*
  * Set which version of SMB to negotiate.
@@ -471,6 +507,28 @@ int smb2_disconnect_share_async(struct smb2_context *smb2,
 int smb2_disconnect_share(struct smb2_context *smb2);
 
 /*
+ * Select a tree id that was previously connected. Sets the tree_id
+ * in the context to be used for subsequent requests
+ *
+ * Returns:
+ * 0      : OK
+ * -errno : tree wasn't connected
+ */
+int smb2_select_tree_id(struct smb2_context *smb2, uint32_t tree_id);
+
+struct smb2_pdu;
+
+/*
+ * Get/Set the tree id of a pdu
+ *
+ * Returns:
+ * 0      : OK
+ * -errno : tree wasn't connected | no pdu | no context
+ */
+int smb2_get_tree_id_for_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu, uint32_t *tree_id);
+int smb2_set_tree_id_for_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu, uint32_t tree_id);
+
+/*
  * This function returns a description of the last encountered error.
  */
 const char *smb2_get_error(struct smb2_context *smb2);
@@ -507,7 +565,6 @@ int nterror_to_errno(uint32_t status);
 struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url);
 void smb2_destroy_url(struct smb2_url *url);
 
-struct smb2_pdu;
 /*
  * The functions are used when creating compound low level commands.
  * The general pattern for compound chains is
@@ -528,6 +585,7 @@ void smb2_add_compound_pdu(struct smb2_context *smb2,
                            struct smb2_pdu *pdu, struct smb2_pdu *next_pdu);
 void smb2_free_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu);
 void smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu);
+int smb2_pdu_is_compound(struct smb2_context *smb2);
 
 /*
  * OPENDIR
@@ -1128,6 +1186,7 @@ const char *smb2_utf16_to_utf8(const uint16_t *str, size_t len);
 struct smb2_server;
 
 struct smb2_server_request_handlers {
+        int (*destruction_event)(struct smb2_server *srvr, struct smb2_context *smb2);
         int (*authorize_user)(struct smb2_server *srvr, struct smb2_context *smb2,
                             const char *user,
                             const char *domain,
@@ -1136,8 +1195,7 @@ struct smb2_server_request_handlers {
         int (*logoff_cmd)(struct smb2_server *srvr, struct smb2_context *smb2);
         int (*tree_connect_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
                             struct smb2_tree_connect_request *req,
-                            struct smb2_tree_connect_reply *rep,
-                            uint32_t *tree_id);
+                            struct smb2_tree_connect_reply *rep);
         int (*tree_disconnect_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
                             const uint32_t tree_id);
         int (*create_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
@@ -1164,9 +1222,17 @@ struct smb2_server_request_handlers {
         int (*query_directory_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
                             struct smb2_query_directory_request *req,
                             struct smb2_query_directory_reply *rep);
+        int (*change_notify_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
+                            struct smb2_change_notify_request *req);
         int (*query_info_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
                             struct smb2_query_info_request *req,
                             struct smb2_query_info_reply *rep);
+        int (*set_info_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
+                            struct smb2_set_info_request *req);
+        /*
+        int (*oplock_break cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
+                            struct smb2_oplock_break_request *req);
+        */
 };
 
 struct smb2_server {
@@ -1175,10 +1241,13 @@ struct smb2_server {
         char domain[128];
         int fd;
         uint16_t port;
+        uint64_t session_counter;
         struct smb2_server_request_handlers *handlers;
         uint32_t max_transact_size;
         uint32_t max_read_size;
         uint32_t max_write_size;
+        int signing_enabled;
+        int allow_anonymous;
         /* saved from negotiate to be used in validate negotiate info */
         uint32_t capabilities;
         uint32_t security_mode;

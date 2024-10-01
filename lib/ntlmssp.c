@@ -169,13 +169,13 @@ ntlmssp_init_context(const char *user,
         }
 
         if (user) {
-                auth_data->user        = strdup(user);
+                auth_data->user = strdup(user);
         }
         if (password) {
-                auth_data->password    = strdup(password);
+                auth_data->password = strdup(password);
         }
         if (domain) {
-                auth_data->domain      = strdup(domain);
+                auth_data->domain = strdup(domain);
         }
         if (workstation) {
                 auth_data->workstation = strdup(workstation);
@@ -723,6 +723,7 @@ encode_ntlm_challenge(struct smb2_context *smb2, struct auth_data *auth_data)
                 for (int i = 0; i < namelen; i++) {
                         upper[i] = toupper(auth_data->workstation[i]);
                 }
+                upper[namelen] = 0;
                 utf16_workstation = smb2_utf8_to_utf16(auth_data->workstation);
                 if (utf16_workstation == NULL) {
                         goto finished;
@@ -863,7 +864,7 @@ ntlmssp_generate_blob(struct smb2_server *server, struct smb2_context *smb2, tim
                                 }
                         }
                         else if (cmd == AUTHENTICATION_MESSAGE) {
-                                auth_data->is_authenticated = !ntlmssp_authenticate_blob(server, 
+                                auth_data->is_authenticated = !ntlmssp_authenticate_blob(server,
                                                         smb2, auth_data,
                                                         ntlmssp, ntlmssp_len);
                                 if (auth_data->spnego_wrap) {
@@ -971,15 +972,19 @@ ntlmssp_authenticate_blob(struct smb2_server *server, struct smb2_context *smb2,
                                 auth_data->user);
                         return -1;
                 }
-                if (!smb2->password) {
+                if (!smb2->password && !server->allow_anonymous) {
                         smb2_set_error(smb2, "server has no passwd for %s", 
                                 auth_data->user);
                         return -1;
                 }
         }
-        /* if no user/pw, an anonymous allowed, do anonymous */
-        if (!auth_data->user || (auth_data->user[0] == '\0')) {
-                return 0;
+        /* if no user/pw, and anonymous allowed, do anonymous */
+        if (!auth_data->user || (auth_data->user[0] == '\0') ||
+                        !smb2->password || (smb2->password[0] == '\0')) {
+                if (server->allow_anonymous) {
+                        return 0;
+                }
+                return -1;
         }
         //negotiate_flags = le32toh(u32);
         

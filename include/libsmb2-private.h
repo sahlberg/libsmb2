@@ -108,6 +108,11 @@ enum smb2_sec {
         SMB2_SEC_KRB5,
 };
 
+/* current tree id stack, note: index 0 in the stack is not used
+*/
+#define SMB2_MAX_TREE_NESTING 32
+#define smb2_tree_id(smb2) (((smb2)->tree_id_cur >= 0)?smb2->tree_id[(smb2)->tree_id_cur]:0xdeadbeef)
+
 #define MAX_CREDITS 1024
 #define SMB2_SALT_SIZE 32
 
@@ -152,7 +157,9 @@ struct smb2_context {
 
         char client_guid[16];
 
-        uint32_t tree_id;
+        uint32_t tree_id[SMB2_MAX_TREE_NESTING];
+        int  tree_id_top;
+        int  tree_id_cur;
         uint64_t message_id;
         uint64_t session_id;
         uint8_t *session_key;
@@ -202,6 +209,18 @@ struct smb2_context {
          * (if this context is a server)
          */
         struct smb2_pdu *next_pdu;
+        
+        /* flag indicated command packers/unpackers can pass "extra"
+         * content without trying to decode or encode it.  this is
+         * useful for proxies and applies only to the commands with
+         * complex data: query-info, query-directory, ioctl, and
+         * create (contexts).  the command fixed part is always
+         * de/en-coded regardless of this setting
+         */
+        int passthrough;
+
+        /* last file_id in a create-reply, for "related requests" */
+        smb2_file_id last_file_id;
 
         /* Server capabilities */
         uint8_t supports_multi_credit;
@@ -288,6 +307,9 @@ struct smb2_iovec *smb2_add_iovector(struct smb2_context *smb2,
 
 int smb2_pad_to_64bit(struct smb2_context *smb2, struct smb2_io_vectors *v);
 
+int smb2_connect_tree_id(struct smb2_context *smb2, uint32_t tree_id);
+int smb2_disconnect_tree_id(struct smb2_context *smb2, uint32_t tree_id);
+
 struct smb2_pdu *smb2_allocate_pdu(struct smb2_context *smb2,
                                    enum smb2_command command,
                                    smb2_command_cb cb, void *cb_data);
@@ -357,6 +379,12 @@ int smb2_process_query_directory_request_fixed(struct smb2_context *smb2,
                                        struct smb2_pdu *pdu);
 int smb2_process_query_directory_request_variable(struct smb2_context *smb2,
                                           struct smb2_pdu *pdu);
+int smb2_process_change_notify_fixed(struct smb2_context *smb2,
+                             struct smb2_pdu *pdu);
+int smb2_process_change_notify_variable(struct smb2_context *smb2,
+                             struct smb2_pdu *pdu);
+int smb2_process_change_notify_request_fixed(struct smb2_context *smb2,
+                             struct smb2_pdu *pdu);
 int smb2_process_query_info_fixed(struct smb2_context *smb2,
                                   struct smb2_pdu *pdu);
 int smb2_process_query_info_variable(struct smb2_context *smb2,
@@ -398,6 +426,8 @@ int smb2_process_flush_fixed(struct smb2_context *smb2,
 int smb2_process_flush_request_fixed(struct smb2_context *smb2,
                              struct smb2_pdu *pdu);
 int smb2_process_read_fixed(struct smb2_context *smb2,
+                            struct smb2_pdu *pdu);
+int smb2_process_read_variable(struct smb2_context *smb2,
                             struct smb2_pdu *pdu);
 int smb2_process_read_request_fixed(struct smb2_context *smb2,
                             struct smb2_pdu *pdu);

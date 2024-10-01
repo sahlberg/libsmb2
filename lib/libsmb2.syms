@@ -21,6 +21,7 @@ smb2_add_compound_pdu
 smb2_close
 smb2_close_async
 smb2_closedir
+smb2_close_context
 smb2_cmd_close_async
 smb2_cmd_create_async
 smb2_cmd_echo_async
@@ -35,11 +36,14 @@ smb2_cmd_tree_disconnect_async
 smb2_connect_async
 smb2_connect_share
 smb2_connect_share_async
+smb2_connect_tree_id
+smb2_context_active
 smb2_decode_fileidfulldirectoryinformation
 smb2_destroy_context
 smb2_destroy_url
 smb2_disconnect_share
 smb2_disconnect_share_async
+smb2_disconnect_tree_id
 smb2_fd_event_callbacks
 smb2_fh_from_file_id
 smb2_free_data
@@ -56,9 +60,11 @@ smb2_get_error
 smb2_get_fd
 smb2_get_fds
 smb2_get_file_id
+smb2_get_tree_id_for_pdu
 smb2_get_max_read_size
 smb2_get_max_write_size
 smb2_get_opaque
+smb2_get_passthrough
 smb2_init_context
 smb2_mkdir
 smb2_mkdir_async
@@ -68,6 +74,7 @@ smb2_open_async
 smb2_opendir
 smb2_opendir_async
 smb2_parse_url
+smb2_pdu_is_compound
 smb2_pread
 smb2_pread_async
 smb2_pwrite
@@ -84,6 +91,7 @@ smb2_rmdir
 smb2_rmdir_async
 smb2_lseek
 smb2_seekdir
+smb2_select_tree_id
 smb2_serve_port
 smb2_service
 smb2_service_fd
@@ -91,10 +99,12 @@ smb2_set_authentication
 smb2_set_security_mode
 smb2_set_version
 smb2_set_user
+smb2_set_passthrough
 smb2_set_password
 smb2_set_password_from_file
 smb2_set_domain
 smb2_set_error
+smb2_set_tree_id_for_pdu
 smb2_set_workstation
 smb2_set_opaque
 smb2_set_seal

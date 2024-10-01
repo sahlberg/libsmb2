@@ -31,7 +31,7 @@ extern "C" {
 
 struct smb2_timeval {
         time_t tv_sec;
-        long tv_usec; 
+        long tv_usec;
 };
 #define SMB2_ERROR_REPLY_SIZE 9
 
@@ -66,11 +66,11 @@ enum smb2_command {
         SMB2_CANCEL          = 12,
         SMB2_ECHO            = 13,
         SMB2_QUERY_DIRECTORY = 14,
-        /* SMB2_CHANGE_NOTIFY, */
+        SMB2_CHANGE_NOTIFY   = 15,
         SMB2_QUERY_INFO      = 16,
         SMB2_SET_INFO        = 17,
-        /* SMB2_OPLOCK_BREAK, */
-        
+        SMB2_OPLOCK_BREAK    = 18,
+
         SMB1_NEGOTIATE       = 114,
 };
 
@@ -394,6 +394,18 @@ struct smb2_flush_request {
         smb2_file_id file_id;
 };
 
+#define SMB2_LOGFF_REQUEST_SIZE 4
+
+struct smb2_logoff_request {
+        uint16_t reserved;
+};
+
+#define SMB2_ECHO_REQUEST_SIZE 4
+
+struct smb2_echo_request {
+        uint16_t reserved;
+};
+
 #define SMB2_FLUSH_REPLY_SIZE 4
 
 #define SMB2_QUERY_DIRECTORY_REQUEST_SIZE 33
@@ -459,7 +471,7 @@ int smb2_decode_fileidfulldirectoryinformation(
         struct smb2_context *smb2,
         struct smb2_fileidfulldirectoryinformation *fs,
         struct smb2_iovec *vec);
-        
+
 struct smb2_query_directory_request {
         uint8_t file_information_class;
         uint8_t flags;
@@ -560,7 +572,7 @@ struct smb2_read_reply {
 #define SMB2_FILE_FS_CONTROL_INFORMATION           6
 #define SMB2_FILE_FS_FULL_SIZE_INFORMATION         7
 #define SMB2_FILE_FS_SECTOR_SIZE_INFORMATION      11
-        
+
 /* additional info */
 #define SMB2_OWNER_SECURITY_INFORMATION     0x00000001
 #define SMB2_GROUP_SECURITY_INFORMATION     0x00000002
@@ -666,9 +678,11 @@ struct smb2_file_network_open_info {
 struct smb2_set_info_request {
         uint8_t info_type;
         uint8_t file_info_class;
-        void *input_data;
+        uint32_t buffer_length;
+        uint16_t buffer_offset;
         uint32_t additional_information;
         smb2_file_id file_id;
+        void *input_data;
 };
 
 #define SMB2_SET_INFO_REPLY_SIZE 2
@@ -972,6 +986,55 @@ struct  smb2_ioctl_validate_negotiate_info {
         uint16_t dialect;
 };
 
+#define SMB2_CHANGE_NOTIIFY_FILE_NOTIFY_CHANGE_FILE_NAME    0x00000001
+#define SMB2_CHANGE_NOTIIFY_FILE_NOTIFY_CHANGE_DIR_NAME     0x00000002
+#define SMB2_CHANGE_NOTIIFY_FILE_NOTIFY_CHANGE_ATTRIBUTES   0x00000004
+#define SMB2_CHANGE_NOTIIFY_FILE_NOTIFY_CHANGE_SIZE         0x00000008
+#define SMB2_CHANGE_NOTIIFY_FILE_NOTIFY_CHANGE_LAST_WRITE   0x00000010
+#define SMB2_CHANGE_NOTIIFY_FILE_NOTIFY_CHANGE_LAST_ACCESS  0x00000020
+#define SMB2_CHANGE_NOTIIFY_FILE_NOTIFY_CHANGE_CREATION     0x00000040
+#define SMB2_CHANGE_NOTIIFY_FILE_NOTIFY_CHANGE_EA           0x00000080
+#define SMB2_CHANGE_NOTIIFY_FILE_NOTIFY_CHANGE_SECURITY     0x00000100
+#define SMB2_CHANGE_NOTIIFY_FILE_NOTIFY_CHANGE_STREAM_NAME  0x00000200
+#define SMB2_CHANGE_NOTIIFY_FILE_NOTIFY_CHANGE_STREAM_SIZE  0x00000400
+#define SMB2_CHANGE_NOTIIFY_FILE_NOTIFY_CHANGE_STREAM_WRITE 0x00000800
+
+#define SMB2_CHANGE_NOTIFY_WATCH_TREE    0x0001
+
+#define SMB2_CHANGE_NOTIFY_REQUEST_SIZE 32
+
+struct smb2_change_notify_request {
+        uint16_t flags;
+        uint32_t output_buffer_length;
+        smb2_file_id file_id;
+        uint32_t completion_filter;
+};
+
+#define SMB2_CHANGE_NOTIFY_REPLY_SIZE 9
+
+struct smb2_change_notify_reply {
+        uint16_t output_buffer_offset;
+        uint32_t output_buffer_length;
+        uint8_t *output;
+};
+
+#define SMB2_OPLOCK_LEVEL_NONE        0x00
+#define SMB2_OPLOCK_LEVEL_II          0x01
+#define SMB2_OPLOCK_LEVEL_EXCLUSIVE   0x08
+
+#define SMB2_OPLOCK_BREAK_REQUEST_SIZE 24
+
+struct smb2_oplock_break_request {
+        uint8_t oplock_level;
+        smb2_file_id file_id;
+};
+
+#define SMB2_OPLOCK_BREAK_REPLY_SIZE 24
+
+struct smb2_oplock_break_reply {
+        uint8_t oplock_level;
+        smb2_file_id file_id;
+};
 
 #define SMB2_WRITE_REQUEST_SIZE 49
 
@@ -1005,6 +1068,7 @@ struct smb2_lock_element {
         uint64_t offset;
         uint64_t length;
         uint32_t flags;
+        uint32_t reserved;
 };
 
 #define SMB2_LOCK_REQUEST_SIZE 48
@@ -1014,7 +1078,7 @@ struct smb2_lock_request {
         uint8_t  lock_sequence_number;
         uint32_t lock_sequence_index;
         smb2_file_id file_id;
-        uint8_t *locks;
+        struct smb2_lock_element *locks;
 };
 
 #define SMB2_LOCK_REPLY_SIZE 4

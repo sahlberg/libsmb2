@@ -385,6 +385,19 @@ struct smb2_context *smb2_active_contexts(void)
         return active_contexts;
 }
 
+int smb2_context_active(struct smb2_context *smb2)
+{
+        struct smb2_context *context = active_contexts;
+        
+        while (context) {
+                if (smb2 == context) {
+                        return 1;
+                }
+                context = context->next;
+        }
+        return 0;
+}
+
 void smb2_free_iovector(struct smb2_context *smb2, struct smb2_io_vectors *v)
 {
         int i;
@@ -666,3 +679,17 @@ void smb2_get_libsmb2Version(struct smb2_libversion *smb2_ver)
         smb2_ver->minor_version = LIBSMB2_MINOR_VERSION;
         smb2_ver->patch_version = LIBSMB2_MAJOR_VERSION;
 }
+
+void smb2_set_passthrough(struct smb2_context *smb2,
+                      int passthrough)
+{
+        smb2->passthrough = passthrough;
+}
+
+void smb2_get_passthrough(struct smb2_context *smb2,
+                      int *passthrough)
+{
+        *passthrough = smb2->passthrough;
+}
+
+
