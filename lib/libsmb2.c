@@ -3124,7 +3124,7 @@ smb2_set_info_request_cb(struct smb2_server *server, struct smb2_context *smb2, 
                                 &err, SMB2_SET_INFO, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
         }
         else if (!ret) {
-                pdu = smb2_cmd_set_info_reply_async(smb2, NULL, cb_data);
+                pdu = smb2_cmd_set_info_reply_async(smb2, req, NULL, cb_data);
         }
         if (pdu != NULL) {
                 smb2_queue_pdu(smb2, pdu);
