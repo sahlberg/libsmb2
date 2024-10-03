@@ -419,7 +419,11 @@ int smb2_process_lock_request_variable(struct smb2_context *smb2,
                             struct smb2_pdu *pdu);
 int smb2_process_oplock_break_fixed(struct smb2_context *smb2,
                              struct smb2_pdu *pdu);
+int smb2_process_oplock_break_variable(struct smb2_context *smb2,
+                             struct smb2_pdu *pdu);
 int smb2_process_oplock_break_request_fixed(struct smb2_context *smb2,
+                             struct smb2_pdu *pdu);
+int smb2_process_oplock_break_request_variable(struct smb2_context *smb2,
                              struct smb2_pdu *pdu);
 int smb2_process_echo_fixed(struct smb2_context *smb2,
                             struct smb2_pdu *pdu);

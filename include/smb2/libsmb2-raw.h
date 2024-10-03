@@ -457,8 +457,15 @@ struct smb2_pdu *smb2_cmd_oplock_break_async(struct smb2_context *smb2,
                                       struct smb2_oplock_break_request *req,
                                       smb2_command_cb cb, void *cb_data);
 
-struct smb2_pdu *smb2_cmd_oplock_reply_async(struct smb2_context *smb2,
+struct smb2_pdu *smb2_cmd_oplock_break_reply_async(struct smb2_context *smb2,
                                       struct smb2_oplock_break_reply *rep,
+                                      smb2_command_cb cb, void *cb_data);
+struct smb2_pdu *smb2_cmd_lease_break_async(struct smb2_context *smb2,
+                                      struct smb2_lease_break_request *req,
+                                      smb2_command_cb cb, void *cb_data);
+
+struct smb2_pdu *smb2_cmd_lease_break_reply_async(struct smb2_context *smb2,
+                                      struct smb2_lease_break_reply *rep,
                                       smb2_command_cb cb, void *cb_data);
 /*
  *

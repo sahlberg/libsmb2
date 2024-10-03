@@ -735,7 +735,9 @@ smb2_get_fixed_reply_size(struct smb2_context *smb2, struct smb2_pdu *pdu)
         case SMB2_IOCTL:
                 return SMB2_IOCTL_REPLY_SIZE;
         case SMB2_OPLOCK_BREAK:
-                return SMB2_OPLOCK_BREAK_REPLY_SIZE;
+                /* need to read the struct size to see what
+                 * type (oplock or lease) the pdu is */
+                return sizeof(uint16_t);
         }
         return -1;
 }
@@ -781,7 +783,9 @@ smb2_get_fixed_request_size(struct smb2_context *smb2, struct smb2_pdu *pdu)
         case SMB2_IOCTL:
                 return SMB2_IOCTL_REQUEST_SIZE;
         case SMB2_OPLOCK_BREAK:
-                return SMB2_OPLOCK_BREAK_REQUEST_SIZE;
+                /* need to read the struct size to see what
+                 * type (oplock or lease) the pdu is */
+                return sizeof(uint16_t);
         }
         return -1;
 }
@@ -890,7 +894,7 @@ smb2_process_reply_payload_variable(struct smb2_context *smb2, struct smb2_pdu *
         case SMB2_IOCTL:
                 return smb2_process_ioctl_variable(smb2, pdu);
         case SMB2_OPLOCK_BREAK:
-                return 0;
+                return smb2_process_oplock_break_variable(smb2, pdu);
         }
         return 0;
 }
@@ -985,7 +989,7 @@ smb2_process_request_payload_variable(struct smb2_context *smb2, struct smb2_pdu
         case SMB2_IOCTL:
                 return smb2_process_ioctl_request_variable(smb2, pdu);
         case SMB2_OPLOCK_BREAK:
-                return 0;
+                return smb2_process_oplock_break_request_variable(smb2, pdu);
         default:
                 smb2_set_error(smb2, "No handler for var request");
         }

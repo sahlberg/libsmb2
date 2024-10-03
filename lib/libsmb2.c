@@ -2896,6 +2896,48 @@ smb2_write_request_cb(struct smb2_server *server, struct smb2_context *smb2, voi
 }
 
 static void
+smb2_oplock_break_request_cb(struct smb2_server *server, struct smb2_context *smb2, void *command_data, void *cb_data)
+{
+        struct smb2_oplock_or_lease_break_request *req = command_data;
+        struct smb2_oplock_break_reply rep_oplock;
+        struct smb2_lease_break_reply rep_lease;
+        struct smb2_error_reply err;
+        struct smb2_pdu *pdu = NULL;
+        int ret = -1;
+
+        if (req->struct_size == SMB2_OPLOCK_BREAK_REQUEST_SIZE) {
+                if (server->handlers && server->handlers->oplock_break_cmd) {
+                        ret = server->handlers->oplock_break_cmd(server, smb2,
+                                       &req->lock.oplock);
+                        if (!ret) {
+                                memset(&rep_oplock, 0, sizeof(rep_oplock));
+                                pdu = smb2_cmd_oplock_break_reply_async(smb2,
+                                        &rep_oplock, NULL, cb_data);
+                        }
+                }
+        }
+        else if (req->struct_size == SMB2_LEASE_BREAK_REQUEST_SIZE) {
+                if (server->handlers && server->handlers->lease_break_cmd) {
+                        ret = server->handlers->lease_break_cmd(server, smb2,
+                                       &req->lock.lease);
+                        if (!ret) {
+                                memset(&rep_lease, 0, sizeof(rep_lease));
+                                pdu = smb2_cmd_lease_break_reply_async(smb2,
+                                        &rep_lease, NULL, cb_data);
+                        }
+                }
+        }
+        if(ret < 0) {
+                memset(&err, 0, sizeof(err));
+                pdu = smb2_cmd_error_reply_async(smb2,
+                                &err, SMB2_LOCK, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
+        }
+        if (pdu != NULL) {
+                smb2_queue_pdu(smb2, pdu);
+        }
+}
+
+static void
 smb2_lock_request_cb(struct smb2_server *server, struct smb2_context *smb2, void *command_data, void *cb_data)
 {
         struct smb2_lock_request *req = command_data;
@@ -3180,6 +3222,9 @@ smb2_general_client_request_cb(struct smb2_context *smb2, int status, void *comm
                 break;
         case SMB2_WRITE:
                 smb2_write_request_cb(server, smb2, command_data, cb_data);
+                break;
+        case SMB2_OPLOCK_BREAK:
+                smb2_oplock_break_request_cb(server, smb2, command_data, cb_data);
                 break;
         case SMB2_LOCK:
                 smb2_lock_request_cb(server, smb2, command_data, cb_data);

@@ -125,7 +125,7 @@ struct smb2_context *smb2_init_context(void);
 
 /*
  * Close an SMB2 context
- * 
+ *
  * closes socket if open, and clears keys but leave
  * context allocated.  the context will be destroyed
  * at a time later when it won't be in-use
@@ -271,8 +271,8 @@ void smb2_set_timeout(struct smb2_context *smb2, int seconds);
  */
 void smb2_set_passthrough(struct smb2_context *smb2,
                       int passthrough);
- 
-/* 
+
+/*
  * Get the current passthrough setting
  */
 void smb2_get_passthrough(struct smb2_context *smb2,
@@ -320,7 +320,7 @@ struct smb2_libversion
 void smb2_get_libsmb2Version(struct smb2_libversion *smb2_ver);
 
 /*
- * gets the (currently) negotiated dialect 
+ * gets the (currently) negotiated dialect
  */
 uint16_t smb2_get_dialect(struct smb2_context *smb2);
 
@@ -382,7 +382,7 @@ void smb2_set_error(struct smb2_context *smb2,
                     const char *error_string, ...);
 
 /*
- * Register an error callback, so any calls to smb2_set_error will call this 
+ * Register an error callback, so any calls to smb2_set_error will call this
  * function with the error string generated
  */
 void smb2_register_error_callback(struct smb2_context *smb,
@@ -1212,6 +1212,10 @@ struct smb2_server_request_handlers {
         int (*write_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
                             struct smb2_write_request *req,
                             struct smb2_write_reply *rep);
+        int (*oplock_break_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
+                            struct smb2_oplock_break_request *req);
+        int (*lease_break_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
+                            struct smb2_lease_break_request *req);
         int (*lock_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
                             struct smb2_lock_request *req);
         int (*ioctl_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
