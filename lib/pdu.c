@@ -209,6 +209,13 @@ smb2_get_tree_id_for_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu, uint32
                 case SMB2_TREE_CONNECT:
                         *tree_id  = 0;
                         return 0;
+                default:
+                        break;
+                        /*
+                        *tree_id = pdu->header.sync.tree_id;
+                        printf("%p PDU tid for %d is %08X\n", smb2, pdu->header.command, *tree_id);
+                        return 0;
+                        */
                 }
         }
         if (smb2->tree_id_top > 0) {
@@ -553,6 +560,11 @@ smb2_decode_header(struct smb2_context *smb2, struct smb2_iovec *iov,
                                 smb2_select_tree_id(smb2, hdr->sync.tree_id);
                                 break;
                         }
+
+                        if (smb2_is_server(smb2)) {
+                                /* remember message id to format reply */
+                                smb2->message_id = hdr->message_id;
+                        }
                 }
         }
         smb2_get_uint64(iov, 40, &hdr->session_id);
@@ -581,40 +593,53 @@ smb2_find_pdu_by_command(struct smb2_context *smb2,
         return pdu;
 }
 
+static int
+smb2_correlate_reply(struct smb2_context *smb2, struct smb2_pdu *pdu)
+{
+        struct smb2_pdu *req_pdu;
+        int ret = 0;
+
+        /* set reply flag */
+        pdu->header.flags |= SMB2_FLAGS_SERVER_TO_REDIR;
+
+        req_pdu = smb2_find_pdu_by_command(smb2, pdu->header.command);
+        if (req_pdu == NULL) {
+                smb2_set_error(smb2, "no matching request PDU "
+                               "found for reply to cmd %d",
+                                pdu->header.command);
+                return -1;
+        }
+
+        SMB2_LIST_REMOVE(&smb2->waitqueue, req_pdu);
+
+        pdu->header.credit_request_response =
+                                64 + req_pdu->header.credit_charge;
+
+        /* replies always have to have the same message-id and tree-id as
+         * the request we sent, so use the request from the wait queue
+         * to make sure that is the case. (exception is tree-connect where
+         * the reply has the new tree-id and request was 0 )
+         */
+
+        pdu->header.message_id = req_pdu->header.message_id;
+        if (pdu->header.command != SMB2_TREE_CONNECT) {
+                pdu->header.sync.tree_id = req_pdu->header.sync.tree_id;
+        }
+        smb2_free_pdu(smb2, req_pdu);
+        return ret;
+}
+
 void
 smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
-        struct smb2_pdu *p, *req_pdu;
+        struct smb2_pdu *p;
 
         /* Update all the PDU headers in this chain */
         for (p = pdu; p; p = p->next_compound) {
                 if (smb2_is_server(smb2)) {
                         if (!(pdu->header.flags & SMB2_FLAGS_ASYNC_COMMAND)) {
-                                /* set reply flag */
-                                pdu->header.flags |= SMB2_FLAGS_SERVER_TO_REDIR;
-                                /* insure the reply message id matched the request */
-                                req_pdu = smb2_find_pdu_by_command(smb2,
-                                                p->header.command);
-                                if (req_pdu == NULL) {
-                                        smb2_set_error(smb2, "no matching req PDU "
-                                                       "found for reply to cmd %d",
-                                                        pdu->header.command);
-                                }
-                                else {
-                                        SMB2_LIST_REMOVE(&smb2->waitqueue, req_pdu);
-                                        pdu->header.message_id = req_pdu->header.message_id;
-                                        pdu->header.credit_request_response =
-                                                        64 + req_pdu->header.credit_charge;
-                                        if (pdu->header.sync.tree_id != req_pdu->header.sync.tree_id) {
-                                                if (pdu->header.command != SMB2_TREE_CONNECT) {
-                                                        smb2_set_error(smb2, "reply as tid=%08X  req=%08X cmd %d\n",
-                                                                (unsigned int)pdu->header.sync.tree_id,
-                                                                (unsigned int)req_pdu->header.sync.tree_id,
-                                                                pdu->header.command);
-                                                }
-                                        }
-                                        smb2_free_pdu(smb2, req_pdu);
-                                }
+                                smb2_correlate_reply(smb2, p);
+                                /* TODO - care about check reply failures? */
                         }
                 }
                 smb2_encode_header(smb2, &p->out.iov[0], &p->header);
