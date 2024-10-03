@@ -204,12 +204,12 @@ struct smb2_context {
          * Only valid once the full smb2 header has been received.
          */
         struct smb2_pdu *pdu;
-        
+
         /* pointer to the pdu to read AFTER the current one is completed
          * (if this context is a server)
          */
         struct smb2_pdu *next_pdu;
-        
+
         /* flag indicated command packers/unpackers can pass "extra"
          * content without trying to decode or encode it.  this is
          * useful for proxies and applies only to the commands with
@@ -417,6 +417,10 @@ int smb2_process_lock_request_fixed(struct smb2_context *smb2,
                             struct smb2_pdu *pdu);
 int smb2_process_lock_request_variable(struct smb2_context *smb2,
                             struct smb2_pdu *pdu);
+int smb2_process_oplock_break_fixed(struct smb2_context *smb2,
+                             struct smb2_pdu *pdu);
+int smb2_process_oplock_break_request_fixed(struct smb2_context *smb2,
+                             struct smb2_pdu *pdu);
 int smb2_process_echo_fixed(struct smb2_context *smb2,
                             struct smb2_pdu *pdu);
 int smb2_process_echo_request_fixed(struct smb2_context *smb2,

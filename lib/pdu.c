@@ -840,7 +840,7 @@ smb2_process_reply_payload_fixed(struct smb2_context *smb2, struct smb2_pdu *pdu
         case SMB2_IOCTL:
                 return smb2_process_ioctl_fixed(smb2, pdu);
         case SMB2_OPLOCK_BREAK:
-                return -1;
+                return smb2_process_oplock_break_fixed(smb2, pdu);
         }
         return 0;
 }
@@ -890,7 +890,7 @@ smb2_process_reply_payload_variable(struct smb2_context *smb2, struct smb2_pdu *
         case SMB2_IOCTL:
                 return smb2_process_ioctl_variable(smb2, pdu);
         case SMB2_OPLOCK_BREAK:
-                return -1;
+                return 0;
         }
         return 0;
 }
@@ -935,6 +935,8 @@ smb2_process_request_payload_fixed(struct smb2_context *smb2, struct smb2_pdu *p
                 return smb2_process_set_info_request_fixed(smb2, pdu);
         case SMB2_IOCTL:
                 return smb2_process_ioctl_request_fixed(smb2, pdu);
+        case SMB2_OPLOCK_BREAK:
+                return smb2_process_oplock_break_request_fixed(smb2, pdu);
         default:
                 smb2_set_error(smb2, "No handler for fixed request");
                 return -1;
@@ -982,6 +984,8 @@ smb2_process_request_payload_variable(struct smb2_context *smb2, struct smb2_pdu
                 return smb2_process_set_info_request_variable(smb2, pdu);
         case SMB2_IOCTL:
                 return smb2_process_ioctl_request_variable(smb2, pdu);
+        case SMB2_OPLOCK_BREAK:
+                return 0;
         default:
                 smb2_set_error(smb2, "No handler for var request");
         }
