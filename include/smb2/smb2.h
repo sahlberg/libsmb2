@@ -1029,12 +1029,18 @@ struct smb2_change_notify_reply {
 
 #define SMB2_OPLOCK_BREAK_NOTIFICATION_SIZE 24
 
-struct smb2_oplock_break_request {
+struct smb2_oplock_break_notification {
         uint8_t oplock_level;
         smb2_file_id file_id;
 };
 
 #define SMB2_OPLOCK_BREAK_ACKNOWLEDGE_SIZE 24
+
+struct smb2_oplock_break_acknowledgement {
+        uint8_t oplock_level;
+        smb2_file_id file_id;
+};
+
 #define SMB2_OPLOCK_BREAK_REPLY_SIZE 24
 
 struct smb2_oplock_break_reply {
@@ -1047,28 +1053,17 @@ struct smb2_oplock_break_reply {
 #define SMB2_LEASE_HANDLE_CACHING       0x02
 #define SMB2_LEASE_WRITE_CACHING        0x04
 
-#define SMB2_LEASE_BREAK_ACKNOWLEDGE_SIZE 36
-#define SMB2_LEASE_BREAK_REPLY_SIZE 36
+#define SMB2_BREAK_TYPE_OPLOCK_NOTIFICATION     0x01
+#define SMB2_BREAK_TYPE_OPLOCK_RESPONSE         0x02
+#define SMB2_BREAK_TYPE_OPLOCK_ACKNOWLEDGE      0x03
 
-struct smb2_lease_break_reply {
-        uint32_t flags;
-        smb2_lease_key lease_key;
-        uint32_t lease_state;
-        uint64_t lease_duration;
-};
-
-struct smb2_oplock_or_lease_break_reply {
-        uint16_t struct_size;
-        union {
-                struct smb2_oplock_break_reply oplock;
-                struct smb2_lease_break_reply lease;
-        }
-        lock;
-};
+#define SMB2_BREAK_TYPE_LEASE_NOTIFICATION      0x04
+#define SMB2_BREAK_TYPE_LEASE_RESPONSE          0x05
+#define SMB2_BREAK_TYPE_LEASE_ACKNOWLEDGE       0x06
 
 #define SMB2_LEASE_BREAK_NOTIFICATION_SIZE 44
 
-struct smb2_lease_break_request {
+struct smb2_lease_break_notification {
         uint16_t new_epoch;
         uint32_t flags;
         smb2_lease_key lease_key;
@@ -1079,16 +1074,45 @@ struct smb2_lease_break_request {
         uint32_t share_mask_hint;
 };
 
-/* note that for oplocks, but notifications (request) and responses (reply)
+#define SMB2_LEASE_BREAK_ACKNOWLEDGE_SIZE 36
+
+struct smb2_lease_break_acknowledgement {
+        uint32_t flags;
+        smb2_lease_key lease_key;
+        uint32_t lease_state;
+        uint64_t lease_duration;
+};
+
+#define SMB2_LEASE_BREAK_REPLY_SIZE 36
+
+struct smb2_lease_break_reply {
+        uint32_t flags;
+        smb2_lease_key lease_key;
+        uint32_t lease_state;
+        uint64_t lease_duration;
+};
+
+/* note that for oplocks, notifications (request) and responses (reply)
  * come from the server, while acknowledgements come from the client
  */
+struct smb2_oplock_or_lease_break_reply {
+        uint16_t struct_size;
+        int break_type;
+        union {
+                struct smb2_oplock_break_notification oplock;
+                struct smb2_oplock_break_reply oplockrep;
+                struct smb2_lease_break_notification lease;
+                struct smb2_lease_break_reply leaserep;
+        }
+        lock;
+};
+
 struct smb2_oplock_or_lease_break_request {
         uint16_t struct_size;
+        int break_type;
         union {
-                struct smb2_oplock_break_request oplock;
-                struct smb2_oplock_break_reply oplockrep;
-                struct smb2_lease_break_request lease;
-                struct smb2_lease_break_reply leaserep;
+                struct smb2_oplock_break_acknowledgement oplock;
+                struct smb2_lease_break_acknowledgement lease;
         }
         lock;
 };

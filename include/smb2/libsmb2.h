@@ -67,7 +67,7 @@ typedef void (*smb2_client_connection)(struct smb2_context *smb2, void *cb_data)
  */
 typedef void (*smb2_oplock_or_lease_break_cb)(struct smb2_context *smb2,
            int status,
-           struct smb2_oplock_or_lease_break_request *req,
+           struct smb2_oplock_or_lease_break_reply *rep,
            uint8_t *new_oplock_level,
            uint32_t *new_lease_state);
 
@@ -1235,9 +1235,9 @@ struct smb2_server_request_handlers {
                             struct smb2_write_request *req,
                             struct smb2_write_reply *rep);
         int (*oplock_break_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
-                            struct smb2_oplock_break_request *req);
+                            struct smb2_oplock_break_acknowledgement *req);
         int (*lease_break_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
-                            struct smb2_lease_break_request *req);
+                            struct smb2_lease_break_acknowledgement *req);
         int (*lock_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
                             struct smb2_lock_request *req);
         int (*ioctl_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,

@@ -2727,48 +2727,47 @@ smb2_fd_event_callbacks(struct smb2_context *smb2,
 void
 smb2_oplock_break_notify(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
 {
-        struct smb2_oplock_or_lease_break_request *req;
+        struct smb2_oplock_or_lease_break_reply *rep;
         struct smb2_oplock_break_reply rep_oplock;
         struct smb2_lease_break_reply rep_lease;
-        struct smb2_pdu *pdu;
+        struct smb2_pdu *pdu = NULL;
         uint8_t new_oplock_level;
         uint32_t new_lease_state;
 
-        req = command_data;
+        rep= command_data;
 
 
         if (smb2->oplock_or_lease_break_cb) {
                 smb2->oplock_or_lease_break_cb(smb2,
-                               status, req, &new_oplock_level, &new_lease_state);
+                               status, rep, &new_oplock_level, &new_lease_state);
         }
         /* for passthrough case assume the app callback will do everything needed
          */
         if (!smb2->passthrough) {
                 if (status) {
                         return;
-                } else if (req->struct_size == SMB2_OPLOCK_BREAK_NOTIFICATION_SIZE) {
-                        if (smb2->hdr.message_id == 0xffffffffffffffffULL) {
-                                /* unsolicited, this is a notification */
+                } else switch (rep->break_type) {
+                        case SMB2_BREAK_TYPE_OPLOCK_NOTIFICATION:
                                 memset(&rep_oplock, 0, sizeof(rep_oplock));
                                 rep_oplock.oplock_level = new_oplock_level;
-                                memcpy(rep_oplock.file_id, req->lock.oplock.file_id, SMB2_FD_SIZE);
+                                memcpy(rep_oplock.file_id, rep->lock.oplock.file_id, SMB2_FD_SIZE);
                                 pdu = smb2_cmd_oplock_break_reply_async(smb2, &rep_oplock, NULL, cb_data);
-                        } else {
-                                /* ignore a response */
-                                pdu = NULL;
-                        }
-                } else if (req->struct_size == SMB2_LEASE_BREAK_NOTIFICATION_SIZE) {
-                        memset(&rep_lease, 0, sizeof(rep_oplock));
-                        rep_lease.flags = req->lock.lease.flags;
-                        rep_lease.lease_state = new_lease_state;
-                        memcpy(rep_lease.lease_key, req->lock.lease.lease_key, SMB2_LEASE_KEY_SIZE);
-                        pdu = smb2_cmd_lease_break_reply_async(smb2, &rep_lease, NULL, cb_data);
-                } else if (req->struct_size == SMB2_LEASE_BREAK_REPLY_SIZE) {
-                        pdu = NULL;
-                } else {
-                        smb2_set_error(smb2, "Bad oplock/lease break request %s",
-                                        smb2_get_error(smb2));
-                        return;
+                                break;
+                        case SMB2_BREAK_TYPE_OPLOCK_RESPONSE:
+                                break;
+                        case SMB2_BREAK_TYPE_LEASE_NOTIFICATION:
+                                memset(&rep_lease, 0, sizeof(rep_oplock));
+                                rep_lease.flags = rep->lock.lease.flags;
+                                rep_lease.lease_state = new_lease_state;
+                                memcpy(rep_lease.lease_key, rep->lock.lease.lease_key, SMB2_LEASE_KEY_SIZE);
+                                pdu = smb2_cmd_lease_break_reply_async(smb2, &rep_lease, NULL, cb_data);
+                                break;
+                        case SMB2_BREAK_TYPE_LEASE_RESPONSE:
+                                break;
+                        default:
+                                smb2_set_error(smb2, "Bad oplock/lease break request %s",
+                                                smb2_get_error(smb2));
+                                return;
                 }
                 if (pdu != NULL) {
                         smb2_queue_pdu(smb2, pdu);

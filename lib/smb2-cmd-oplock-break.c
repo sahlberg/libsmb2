@@ -54,15 +54,15 @@
 #include "libsmb2-private.h"
 
 static int
-smb2_encode_oplock_break_notification(struct smb2_context *smb2,
+smb2_encode_oplock_break_acknowledgement(struct smb2_context *smb2,
                           struct smb2_pdu *pdu,
-                          struct smb2_oplock_break_request *req)
+                          struct smb2_oplock_break_acknowledgement *req)
 {
         int len;
         uint8_t *buf;
         struct smb2_iovec *iov;
 
-        len = SMB2_OPLOCK_BREAK_NOTIFICATION_SIZE & 0xfffffffe;
+        len = SMB2_OPLOCK_BREAK_ACKNOWLEDGE_SIZE & 0xfffffffe;
         buf = calloc(len, sizeof(uint8_t));
         if (buf == NULL) {
                 smb2_set_error(smb2, "Failed to allocate oplock request buffer");
@@ -71,7 +71,7 @@ smb2_encode_oplock_break_notification(struct smb2_context *smb2,
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
 
-        smb2_set_uint16(iov, 0, SMB2_OPLOCK_BREAK_NOTIFICATION_SIZE);
+        smb2_set_uint16(iov, 0, SMB2_OPLOCK_BREAK_ACKNOWLEDGE_SIZE);
         smb2_set_uint8(iov, 2, req->oplock_level);
         memcpy(iov->buf + 8, req->file_id, SMB2_FD_SIZE);
 
@@ -80,7 +80,7 @@ smb2_encode_oplock_break_notification(struct smb2_context *smb2,
 
 struct smb2_pdu *
 smb2_cmd_oplock_break_async(struct smb2_context *smb2,
-                     struct smb2_oplock_break_request *req,
+                     struct smb2_oplock_break_acknowledgement *req,
                      smb2_command_cb cb, void *cb_data)
 {
         struct smb2_pdu *pdu;
@@ -90,7 +90,7 @@ smb2_cmd_oplock_break_async(struct smb2_context *smb2,
                 return NULL;
         }
 
-        if (smb2_encode_oplock_break_notification(smb2, pdu, req)) {
+        if (smb2_encode_oplock_break_acknowledgement(smb2, pdu, req)) {
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
         }
@@ -112,6 +112,7 @@ smb2_encode_oplock_break_reply(struct smb2_context *smb2,
         uint8_t *buf;
         struct smb2_iovec *iov;
 
+        /* this encodes both notifications and responses */
         len = SMB2_OPLOCK_BREAK_REPLY_SIZE & 0xfffffffe;
         buf = calloc(len, sizeof(uint8_t));
         if (buf == NULL) {
@@ -154,39 +155,34 @@ smb2_cmd_oplock_break_reply_async(struct smb2_context *smb2,
 }
 
 static int
-smb2_encode_lease_break_notification(struct smb2_context *smb2,
+smb2_encode_oplock_break_notification(struct smb2_context *smb2,
                           struct smb2_pdu *pdu,
-                          struct smb2_lease_break_request *req)
+                          struct smb2_oplock_break_notification *rep)
 {
         int len;
         uint8_t *buf;
         struct smb2_iovec *iov;
 
-        len = SMB2_LEASE_BREAK_NOTIFICATION_SIZE & 0xfffffffe;
+        /* this encodes both notifications and responses */
+        len = SMB2_OPLOCK_BREAK_REPLY_SIZE & 0xfffffffe;
         buf = calloc(len, sizeof(uint8_t));
         if (buf == NULL) {
-                smb2_set_error(smb2, "Failed to allocate lease notification buffer");
+                smb2_set_error(smb2, "Failed to allocate oplock reply buffer");
                 return -1;
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
 
-        smb2_set_uint16(iov, 0, SMB2_LEASE_BREAK_NOTIFICATION_SIZE);
-        smb2_set_uint16(iov, 2, req->new_epoch);
-        smb2_set_uint32(iov, 4, req->flags);
-        memcpy(iov->buf + 8, req->lease_key, SMB2_LEASE_KEY_SIZE);
-        smb2_set_uint32(iov, 4, req->current_lease_state);
-        smb2_set_uint32(iov, 4, req->new_lease_state);
-        smb2_set_uint32(iov, 4, req->break_reason);
-        smb2_set_uint32(iov, 4, req->access_mask_hint);
-        smb2_set_uint32(iov, 4, req->share_mask_hint);
+        smb2_set_uint16(iov, 0, SMB2_OPLOCK_BREAK_REPLY_SIZE);
+        smb2_set_uint8(iov, 2, rep->oplock_level);
+        memcpy(iov->buf + 8, rep->file_id, SMB2_FD_SIZE);
 
         return 0;
 }
 
 struct smb2_pdu *
-smb2_cmd_lease_break_async(struct smb2_context *smb2,
-                     struct smb2_lease_break_request *req,
+smb2_cmd_oplock_break_notification_async(struct smb2_context *smb2,
+                     struct smb2_oplock_break_notification *rep,
                      smb2_command_cb cb, void *cb_data)
 {
         struct smb2_pdu *pdu;
@@ -196,7 +192,59 @@ smb2_cmd_lease_break_async(struct smb2_context *smb2,
                 return NULL;
         }
 
-        if (smb2_encode_lease_break_notification(smb2, pdu, req)) {
+        if (smb2_encode_oplock_break_notification(smb2, pdu, rep)) {
+                smb2_free_pdu(smb2, pdu);
+                return NULL;
+        }
+
+        if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
+                smb2_free_pdu(smb2, pdu);
+                return NULL;
+        }
+
+        return pdu;
+}
+
+static int
+smb2_encode_lease_break_acknowledgement(struct smb2_context *smb2,
+                          struct smb2_pdu *pdu,
+                          struct smb2_lease_break_acknowledgement *req)
+{
+        int len;
+        uint8_t *buf;
+        struct smb2_iovec *iov;
+
+        len = SMB2_LEASE_BREAK_ACKNOWLEDGE_SIZE & 0xfffffffe;
+        buf = calloc(len, sizeof(uint8_t));
+        if (buf == NULL) {
+                smb2_set_error(smb2, "Failed to allocate lease notification buffer");
+                return -1;
+        }
+
+        iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+
+        smb2_set_uint16(iov, 0, SMB2_LEASE_BREAK_ACKNOWLEDGE_SIZE);
+        smb2_set_uint32(iov, 4, req->flags);
+        memcpy(iov->buf + 8, req->lease_key, SMB2_LEASE_KEY_SIZE);
+        smb2_set_uint32(iov, 4, req->lease_state);
+        smb2_set_uint32(iov, 4, req->lease_duration);
+
+        return 0;
+}
+
+struct smb2_pdu *
+smb2_cmd_lease_break_async(struct smb2_context *smb2,
+                     struct smb2_lease_break_acknowledgement *req,
+                     smb2_command_cb cb, void *cb_data)
+{
+        struct smb2_pdu *pdu;
+
+        pdu = smb2_allocate_pdu(smb2, SMB2_OPLOCK_BREAK, cb, cb_data);
+        if (pdu == NULL) {
+                return NULL;
+        }
+
+        if (smb2_encode_lease_break_acknowledgement(smb2, pdu, req)) {
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
         }
@@ -262,11 +310,67 @@ smb2_cmd_lease_break_reply_async(struct smb2_context *smb2,
         return pdu;
 }
 
+static int
+smb2_encode_lease_break_notification(struct smb2_context *smb2,
+                          struct smb2_pdu *pdu,
+                          struct smb2_lease_break_notification *req)
+{
+        int len;
+        uint8_t *buf;
+        struct smb2_iovec *iov;
+
+        len = SMB2_LEASE_BREAK_NOTIFICATION_SIZE & 0xfffffffe;
+        buf = calloc(len, sizeof(uint8_t));
+        if (buf == NULL) {
+                smb2_set_error(smb2, "Failed to allocate lease notification buffer");
+                return -1;
+        }
+
+        iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+
+        smb2_set_uint16(iov, 0, SMB2_LEASE_BREAK_NOTIFICATION_SIZE);
+        smb2_set_uint16(iov, 2, req->new_epoch);
+        smb2_set_uint32(iov, 4, req->flags);
+        memcpy(iov->buf + 8, req->lease_key, SMB2_LEASE_KEY_SIZE);
+        smb2_set_uint32(iov, 4, req->current_lease_state);
+        smb2_set_uint32(iov, 4, req->new_lease_state);
+        smb2_set_uint32(iov, 4, req->break_reason);
+        smb2_set_uint32(iov, 4, req->access_mask_hint);
+        smb2_set_uint32(iov, 4, req->share_mask_hint);
+
+        return 0;
+}
+
+struct smb2_pdu *
+smb2_cmd_lease_break_notification_async(struct smb2_context *smb2,
+                     struct smb2_lease_break_notification *req,
+                     smb2_command_cb cb, void *cb_data)
+{
+        struct smb2_pdu *pdu;
+
+        pdu = smb2_allocate_pdu(smb2, SMB2_OPLOCK_BREAK, cb, cb_data);
+        if (pdu == NULL) {
+                return NULL;
+        }
+
+        if (smb2_encode_lease_break_notification(smb2, pdu, req)) {
+                smb2_free_pdu(smb2, pdu);
+                return NULL;
+        }
+
+        if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
+                smb2_free_pdu(smb2, pdu);
+                return NULL;
+        }
+
+        return pdu;
+}
+
 int
 smb2_process_oplock_break_fixed(struct smb2_context *smb2,
                          struct smb2_pdu *pdu)
 {
-        struct smb2_oplock_or_lease_break_reply *rep;
+        struct smb2_oplock_or_lease_break_reply *rep = pdu->payload;
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
         uint16_t struct_size;
 
@@ -282,6 +386,10 @@ smb2_process_oplock_break_fixed(struct smb2_context *smb2,
         pdu->payload = rep;
 
         if (struct_size == SMB2_OPLOCK_BREAK_REPLY_SIZE) {
+                /* same size as notification too */
+                return struct_size - sizeof(uint16_t);
+        }
+        else if (struct_size == SMB2_LEASE_BREAK_NOTIFICATION_SIZE) {
                 return struct_size - sizeof(uint16_t);
         }
         else if (struct_size == SMB2_LEASE_BREAK_REPLY_SIZE) {
@@ -289,11 +397,11 @@ smb2_process_oplock_break_fixed(struct smb2_context *smb2,
         }
         else {
                 smb2_set_error(smb2, "Unexpected size of oplock or "
-                               "lease break reply. Expected "
+                               "lease break noiify/reply. Expected "
                                 "%d or %d, got %d",
                                SMB2_OPLOCK_BREAK_REPLY_SIZE,
                                SMB2_LEASE_BREAK_REPLY_SIZE,
-                               (int)iov->len);
+                               struct_size);
                 return -1;
         }
 
@@ -308,15 +416,33 @@ smb2_process_oplock_break_variable(struct smb2_context *smb2,
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
 
         /* note the stuct-size has already been read, so offsets are -2 */
-        if (rep->struct_size == SMB2_OPLOCK_BREAK_REPLY_SIZE) {
+        if (rep->struct_size == SMB2_OPLOCK_BREAK_NOTIFICATION_SIZE) {
+                /* the oplock notify and response are both the same structure */
+                if (smb2->hdr.message_id == 0xffffffffffffffffULL) {
+                        rep->break_type = SMB2_BREAK_TYPE_OPLOCK_NOTIFICATION;
+                } else {
+                        rep->break_type = SMB2_BREAK_TYPE_OPLOCK_RESPONSE;
+                }
                 smb2_get_uint8(iov, 0, &rep->lock.oplock.oplock_level);
                 memcpy(rep->lock.oplock.file_id, iov->buf + 6, SMB2_FD_SIZE);
         }
-        else if (rep->struct_size == SMB2_LEASE_BREAK_REPLY_SIZE) {
+        else if (rep->struct_size == SMB2_LEASE_BREAK_NOTIFICATION_SIZE) {
+                rep->break_type = SMB2_BREAK_TYPE_LEASE_NOTIFICATION;
+                smb2_get_uint16(iov, 0, &rep->lock.lease.new_epoch);
                 smb2_get_uint32(iov, 2, &rep->lock.lease.flags);
                 memcpy(rep->lock.lease.lease_key, iov->buf + 6, SMB2_LEASE_KEY_SIZE);
-                smb2_get_uint32(iov, 22, &rep->lock.lease.lease_state);
-                smb2_get_uint64(iov, 26, &rep->lock.lease.lease_duration);
+                smb2_get_uint32(iov, 22, &rep->lock.lease.current_lease_state);
+                smb2_get_uint32(iov, 26, &rep->lock.lease.new_lease_state);
+                smb2_get_uint32(iov, 30, &rep->lock.lease.break_reason);
+                smb2_get_uint32(iov, 34, &rep->lock.lease.access_mask_hint);
+                smb2_get_uint32(iov, 38, &rep->lock.lease.share_mask_hint);
+        }
+        else if (rep->struct_size == SMB2_LEASE_BREAK_REPLY_SIZE) {
+                rep->break_type = SMB2_BREAK_TYPE_LEASE_RESPONSE;
+                smb2_get_uint32(iov, 2, &rep->lock.leaserep.flags);
+                memcpy(rep->lock.lease.lease_key, iov->buf + 6, SMB2_LEASE_KEY_SIZE);
+                smb2_get_uint32(iov, 22, &rep->lock.leaserep.lease_state);
+                smb2_get_uint64(iov, 26, &rep->lock.leaserep.lease_duration);
         }
         else {
                 return -1;
@@ -343,21 +469,18 @@ smb2_process_oplock_break_request_fixed(struct smb2_context *smb2,
         req->struct_size = struct_size;
         pdu->payload = req;
 
-        if (struct_size == SMB2_OPLOCK_BREAK_NOTIFICATION_SIZE) {
+        if (struct_size == SMB2_OPLOCK_BREAK_ACKNOWLEDGE_SIZE) {
                 return struct_size - sizeof(uint16_t);
         }
-        else if (struct_size == SMB2_LEASE_BREAK_NOTIFICATION_SIZE) {
-                return struct_size - sizeof(uint16_t);
-        }
-        else if (struct_size == SMB2_LEASE_BREAK_REPLY_SIZE) {
+        else if (struct_size == SMB2_LEASE_BREAK_ACKNOWLEDGE_SIZE) {
                 return struct_size - sizeof(uint16_t);
         }
         else {
                 smb2_set_error(smb2, "Unexpected size of oplock or "
-                               "lease break request. Expected "
+                               "lease break acknowledge. Expected "
                                 "%d or %d, got %d",
-                               SMB2_OPLOCK_BREAK_NOTIFICATION_SIZE,
-                               SMB2_LEASE_BREAK_NOTIFICATION_SIZE,
+                               SMB2_OPLOCK_BREAK_ACKNOWLEDGE_SIZE,
+                               SMB2_LEASE_BREAK_ACKNOWLEDGE_SIZE,
                                (int)struct_size);
                 return -1;
         }
@@ -372,26 +495,17 @@ smb2_process_oplock_break_request_variable(struct smb2_context *smb2,
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
 
         /* note the stuct-size has already been read, so offsets are -2 */
-        if (req->struct_size == SMB2_OPLOCK_BREAK_NOTIFICATION_SIZE) {
-                /* the oplock notify and response are both the same structure */
+        if (req->struct_size == SMB2_OPLOCK_BREAK_ACKNOWLEDGE_SIZE) {
+                req->break_type = SMB2_BREAK_TYPE_OPLOCK_ACKNOWLEDGE;
                 smb2_get_uint8(iov, 0, &req->lock.oplock.oplock_level);
                 memcpy(req->lock.oplock.file_id, iov->buf + 6, SMB2_FD_SIZE);
         }
-        else if (req->struct_size == SMB2_LEASE_BREAK_NOTIFICATION_SIZE) {
-                smb2_get_uint16(iov, 0, &req->lock.lease.new_epoch);
+        else if (req->struct_size == SMB2_LEASE_BREAK_ACKNOWLEDGE_SIZE) {
+                req->break_type = SMB2_BREAK_TYPE_LEASE_ACKNOWLEDGE;
                 smb2_get_uint32(iov, 2, &req->lock.lease.flags);
                 memcpy(req->lock.lease.lease_key, iov->buf + 6, SMB2_LEASE_KEY_SIZE);
-                smb2_get_uint32(iov, 22, &req->lock.lease.current_lease_state);
-                smb2_get_uint32(iov, 26, &req->lock.lease.new_lease_state);
-                smb2_get_uint32(iov, 30, &req->lock.lease.break_reason);
-                smb2_get_uint32(iov, 34, &req->lock.lease.access_mask_hint);
-                smb2_get_uint32(iov, 38, &req->lock.lease.share_mask_hint);
-        }
-        else if (req->struct_size == SMB2_LEASE_BREAK_REPLY_SIZE) {
-                smb2_get_uint32(iov, 2, &req->lock.leaserep.flags);
-                memcpy(req->lock.lease.lease_key, iov->buf + 6, SMB2_LEASE_KEY_SIZE);
-                smb2_get_uint32(iov, 22, &req->lock.leaserep.lease_state);
-                smb2_get_uint64(iov, 26, &req->lock.leaserep.lease_duration);
+                smb2_get_uint32(iov, 22, &req->lock.lease.lease_state);
+                smb2_get_uint64(iov, 26, &req->lock.lease.lease_duration);
         }
         else {
                 return -1;

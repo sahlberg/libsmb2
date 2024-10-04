@@ -457,7 +457,6 @@ void smb2_set_error(struct smb2_context *smb2, const char *error_string, ...)
         va_start(ap, error_string);
         smb2_set_error_string(smb2, error_string, ap);
         va_end(ap);
-printf("err %s\n", smb2_get_error(smb2));
         if(smb2->error_cb) {
                 smb2->error_cb(smb2, smb2_get_error(smb2));
         }
