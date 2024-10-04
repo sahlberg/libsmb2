@@ -19,10 +19,6 @@
 #ifndef _LIBSMB2_H_
 #define _LIBSMB2_H_
 
-#ifdef __APPLE__ /* Some platforms doesn´t support stdint.h */
-#include <stdint.h>
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -1271,11 +1267,7 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
  * separation between dcerpc and smb2, so we need to include this header
  * here to retain compatibility for apps that depend on those symbols.
  */
-#ifdef __APPLE__
-#include <libsmb2-dcerpc-srvsvc.h>
-#else
 #include <smb2/libsmb2-dcerpc-srvsvc.h>
-#endif
 
 #ifdef __cplusplus
 }

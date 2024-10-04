@@ -19,10 +19,14 @@
 #ifndef _SMB2_H_
 #define _SMB2_H_
 
-#ifdef __APPLE__
-#include <smb2-errors.h>
-#else
 #include <smb2/smb2-errors.h>
+
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
+#endif
+
+#ifdef HAVE_TIME_H
+#include <time.h>
 #endif
 
 #ifdef __cplusplus
