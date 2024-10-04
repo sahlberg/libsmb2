@@ -388,7 +388,7 @@ struct smb2_context *smb2_active_contexts(void)
 int smb2_context_active(struct smb2_context *smb2)
 {
         struct smb2_context *context = active_contexts;
-        
+
         while (context) {
                 if (smb2 == context) {
                         return 1;
@@ -457,7 +457,7 @@ void smb2_set_error(struct smb2_context *smb2, const char *error_string, ...)
         va_start(ap, error_string);
         smb2_set_error_string(smb2, error_string, ap);
         va_end(ap);
-
+printf("err %s\n", smb2_get_error(smb2));
         if(smb2->error_cb) {
                 smb2->error_cb(smb2, smb2_get_error(smb2));
         }
@@ -692,4 +692,9 @@ void smb2_get_passthrough(struct smb2_context *smb2,
         *passthrough = smb2->passthrough;
 }
 
+void smb2_set_oplock_or_lease_break_callback(struct smb2_context *smb2,
+                    smb2_oplock_or_lease_break_cb cb)
+{
+        smb2->oplock_or_lease_break_cb = cb;
+}
 

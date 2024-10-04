@@ -68,14 +68,14 @@ smb2_encode_create_request(struct smb2_context *smb2,
         struct smb2_utf16 *name = NULL;
         uint32_t name_byte_len = 0;
         struct smb2_iovec *iov;
-        
+
         len = SMB2_CREATE_REQUEST_SIZE & 0xfffe;
         buf = calloc(len, sizeof(uint8_t));
         if (buf == NULL) {
                 smb2_set_error(smb2, "Failed to allocate create buffer");
                 return -1;
         }
-        
+
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
 
         /* Name */
@@ -118,7 +118,7 @@ smb2_encode_create_request(struct smb2_context *smb2,
         }
         smb2_set_uint32(iov, 48, req->create_context_offset);
         smb2_set_uint32(iov, 52, req->create_context_length);
-        
+
         /* Name */
         if (name) {
                 len = PAD_TO_64BIT(name_byte_len);
@@ -151,7 +151,7 @@ smb2_encode_create_request(struct smb2_context *smb2,
                 iov = smb2_add_iovector(smb2, &pdu->out,
                                                 zero, 8, NULL);
         }
-        /* Create Context: note there is encoding, we just pass along */
+        /* Create Context: note there is no encoding, we just pass along */
         if (req->create_context_length) {
                 len = PAD_TO_64BIT(req->create_context_length);
                 buf = malloc(len);
@@ -166,7 +166,7 @@ smb2_encode_create_request(struct smb2_context *smb2,
                                         len,
                                         free);
         }
-        
+
         return 0;
 }
 
@@ -186,7 +186,7 @@ smb2_cmd_create_async(struct smb2_context *smb2,
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
         }
-        
+
         if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
@@ -210,7 +210,7 @@ smb2_encode_create_reply(struct smb2_context *smb2,
                 smb2_set_error(smb2, "Failed to allocate create buffer");
                 return -1;
         }
-        
+
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
 
         smb2_set_uint16(iov, 0, SMB2_CREATE_REPLY_SIZE);
@@ -264,7 +264,7 @@ smb2_cmd_create_reply_async(struct smb2_context *smb2,
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
         }
-        
+
         if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
@@ -337,7 +337,7 @@ smb2_process_create_variable(struct smb2_context *smb2,
                              struct smb2_pdu *pdu)
 {
         struct smb2_create_reply *rep = pdu->payload;
-        struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];        
+        struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
         struct smb2_iovec vec;
 
         vec.buf = iov->buf + IOV_OFFSET;
@@ -362,7 +362,7 @@ smb2_process_create_request_fixed(struct smb2_context *smb2,
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
         uint16_t struct_size;
         int remaining;
-        
+
         req = malloc(sizeof(*req));
         if (req== NULL) {
                 smb2_set_error(smb2, "Failed to allocate create request");
@@ -392,7 +392,7 @@ smb2_process_create_request_fixed(struct smb2_context *smb2,
         smb2_get_uint32(iov, 36, &req->create_disposition);
         smb2_get_uint32(iov, 40, &req->create_options);
         smb2_get_uint16(iov, 44, &req->name_offset);
-        smb2_get_uint16(iov, 46, &req->name_length);        
+        smb2_get_uint16(iov, 46, &req->name_length);
         smb2_get_uint32(iov, 48, &req->create_context_offset);
         smb2_get_uint32(iov, 52, &req->create_context_length);
 
@@ -437,7 +437,7 @@ smb2_process_create_request_variable(struct smb2_context *smb2,
                           struct smb2_pdu *pdu)
 {
         struct smb2_create_request *req = (struct smb2_create_request*)pdu->payload;;
-        struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];        
+        struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
         uint32_t offset;
 
         req->name = NULL;

@@ -59,6 +59,16 @@ typedef int (*smb2_accepted_cb)(const int fd, void *cb_data);
  */
 typedef void (*smb2_client_connection)(struct smb2_context *smb2, void *cb_data);
 
+/*
+ * callback when a server notifies of an oplock or lease break
+ * the type of break is determined from the stuct_size in the request
+ * (notification) passed in.  the app can set the new oplock level
+ * or new lease state for the acknowledgement that will be sent back
+ */
+typedef void (*smb2_oplock_or_lease_break_cb)(struct smb2_context *smb2,
+           struct smb2_oplock_or_lease_break_request *req, uint8_t *new_oplock_level,
+           uint32_t *new_lease_state);
+
 /* Stat structure */
 #define SMB2_TYPE_FILE      0x00000000
 #define SMB2_TYPE_DIRECTORY 0x00000001
@@ -389,6 +399,12 @@ void smb2_register_error_callback(struct smb2_context *smb,
                     smb2_error_cb error_cb);
 
 /*
+ * register for oplock or lease break callbacks
+ */
+void smb2_set_oplock_or_lease_break_callback(struct smb2_context *smb2,
+                    smb2_oplock_or_lease_break_cb cb);
+
+/*
  * Set the smb2 context passworkd from a file (see NTLM_USER_FILE)
  * depends on user/domain being already set in smb2 context
  */
@@ -686,6 +702,10 @@ struct smb2fh;
  * -errno : An error occurred.
  *          Command_data is NULL.
  */
+int smb2_open_async_with_oplock_or_lease(struct smb2_context *smb2, const char *path, int flags,
+                    uint8_t oplock_level, uint32_t lease_state, smb2_lease_key lease_key,
+                    smb2_command_cb cb, void *cb_data);
+
 int smb2_open_async(struct smb2_context *smb2, const char *path, int flags,
                     smb2_command_cb cb, void *cb_data);
 

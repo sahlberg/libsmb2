@@ -1152,12 +1152,14 @@ open_cb(struct smb2_context *smb2, int status,
 }
 
 int
-smb2_open_async(struct smb2_context *smb2, const char *path, int flags,
+smb2_open_async_with_oplock_or_lease(struct smb2_context *smb2, const char *path, int flags,
+                uint8_t oplock_level, uint32_t lease_state, smb2_lease_key lease_key,
                 smb2_command_cb cb, void *cb_data)
 {
         struct smb2fh *fh;
         struct smb2_create_request req;
         struct smb2_pdu *pdu;
+        struct smb2_iovec iov;
         uint32_t desired_access = 0;
         uint32_t create_disposition = 0;
         uint32_t create_options = 0;
@@ -1220,7 +1222,7 @@ smb2_open_async(struct smb2_context *smb2, const char *path, int flags,
         }
 
         memset(&req, 0, sizeof(struct smb2_create_request));
-        req.requested_oplock_level = SMB2_OPLOCK_LEVEL_NONE;
+        req.requested_oplock_level = oplock_level;
         req.impersonation_level = SMB2_IMPERSONATION_IMPERSONATION;
         req.desired_access = desired_access;
         req.file_attributes = file_attributes;
@@ -1229,15 +1231,43 @@ smb2_open_async(struct smb2_context *smb2, const char *path, int flags,
         req.create_options = create_options;
         req.name = path;
 
+        if (lease_state && lease_key) {
+                req.create_context_length = SMB2_CREATE_REQUEST_LEASE_SIZE + 24;
+                req.create_context = calloc(1, SMB2_CREATE_REQUEST_LEASE_SIZE + 24);
+                iov.buf = req.create_context;
+                iov.len = req.create_context_length;
+                smb2_set_uint32(&iov, 0, 0);    /* chain offset */
+                smb2_set_uint16(&iov, 4, 16);   /* tag offset */
+                smb2_set_uint16(&iov, 6, 4);    /* tag length lo */
+                smb2_set_uint16(&iov, 8, 0);    /* tag length up */
+                smb2_set_uint16(&iov, 10, 24);  /* data offset */
+                smb2_set_uint16(&iov, 12, SMB2_CREATE_REQUEST_LEASE_SIZE);
+                smb2_set_uint32(&iov, 16, htobe32(0x52714c73));
+                memcpy(iov.buf + 24, lease_key, SMB2_LEASE_KEY_SIZE);
+                smb2_set_uint32(&iov, 40, lease_state);
+        }
+
         pdu = smb2_cmd_create_async(smb2, &req, open_cb, fh);
         if (pdu == NULL) {
                 smb2_set_error(smb2, "Failed to create create command");
                 free_smb2fh(smb2, fh);
                 return -ENOMEM;
         }
+        if (req.create_context && req.create_context_length) {
+                free(req.create_context);
+        }
+
         smb2_queue_pdu(smb2, pdu);
 
         return 0;
+}
+
+int
+smb2_open_async(struct smb2_context *smb2, const char *path, int flags,
+                smb2_command_cb cb, void *cb_data)
+{
+        return smb2_open_async_with_oplock_or_lease(smb2, path, flags,
+                SMB2_OPLOCK_LEVEL_NONE, 0, NULL, cb, cb_data);
 }
 
 static void
@@ -2694,6 +2724,63 @@ smb2_fd_event_callbacks(struct smb2_context *smb2,
         smb2->change_events = change_events;
 }
 
+void
+smb2_oplock_break_notify(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
+{
+        struct smb2_oplock_or_lease_break_request *req;
+        struct smb2_oplock_break_reply rep_oplock;
+        struct smb2_lease_break_reply rep_lease;
+        struct smb2_pdu *pdu;
+        uint8_t new_oplock_level;
+        uint32_t new_lease_state;
+
+        req = command_data;
+
+        /* this one is a bit tricky since we get here for both clients and servers since
+         * the pdu is handled special
+         */
+        if (!smb2->passthrough) {
+                if (smb2->oplock_or_lease_break_cb) {
+                        smb2->oplock_or_lease_break_cb(smb2,
+                                       req, &new_oplock_level, &new_lease_state);
+                }
+
+                if (status) {
+                        return;
+                } else if (req->struct_size == SMB2_OPLOCK_BREAK_NOTIFICATION_SIZE) {
+                        if (smb2->oplock_break_count == 0) {
+                                /* fresh state, this is a notification */
+                                smb2->oplock_break_count++;
+                                memset(&rep_oplock, 0, sizeof(rep_oplock));
+                                rep_oplock.oplock_level = new_oplock_level;
+                                memcpy(rep_oplock.file_id, req->lock.oplock.file_id, SMB2_FD_SIZE);
+                                pdu = smb2_cmd_oplock_break_reply_async(smb2, &rep_oplock, NULL, cb_data);
+                        } else {
+                                /* ignore a response */
+                                smb2->oplock_break_count--;
+                                pdu = NULL;
+                        }
+                } else if (req->struct_size == SMB2_LEASE_BREAK_NOTIFICATION_SIZE) {
+                        memset(&rep_lease, 0, sizeof(rep_oplock));
+                        rep_lease.flags = req->lock.lease.flags;
+                        rep_lease.lease_state = new_lease_state;
+                        memcpy(rep_lease.lease_key, req->lock.lease.lease_key, SMB2_LEASE_KEY_SIZE);
+                        pdu = smb2_cmd_lease_break_reply_async(smb2, &rep_lease, NULL, cb_data);
+                } else if (req->struct_size == SMB2_LEASE_BREAK_REPLY_SIZE) {
+                        pdu = NULL;
+                } else {
+                        smb2_set_error(smb2, "Bad oplock/lease break request %s",
+                                        smb2_get_error(smb2));
+                        return;
+                }
+                if (pdu != NULL) {
+                        smb2_queue_pdu(smb2, pdu);
+                }
+        } else {
+                smb2_set_error(smb2, "Passthrough of breaks not yet implemented");
+        }
+}
+
 /*************************** server handlers *************************************************************/
 static void
 smb2_logoff_request_cb(struct smb2_server *server, struct smb2_context *smb2, void *command_data, void *cb_data)
@@ -2905,7 +2992,7 @@ smb2_oplock_break_request_cb(struct smb2_server *server, struct smb2_context *sm
         struct smb2_pdu *pdu = NULL;
         int ret = -1;
 
-        if (req->struct_size == SMB2_OPLOCK_BREAK_REQUEST_SIZE) {
+        if (req->struct_size == SMB2_OPLOCK_BREAK_NOTIFICATION_SIZE) {
                 if (server->handlers && server->handlers->oplock_break_cmd) {
                         ret = server->handlers->oplock_break_cmd(server, smb2,
                                        &req->lock.oplock);
@@ -2916,7 +3003,8 @@ smb2_oplock_break_request_cb(struct smb2_server *server, struct smb2_context *sm
                         }
                 }
         }
-        else if (req->struct_size == SMB2_LEASE_BREAK_REQUEST_SIZE) {
+        else if ((req->struct_size == SMB2_LEASE_BREAK_NOTIFICATION_SIZE) |
+                        (req->struct_size == SMB2_LEASE_BREAK_REPLY_SIZE)) {
                 if (server->handlers && server->handlers->lease_break_cmd) {
                         ret = server->handlers->lease_break_cmd(server, smb2,
                                        &req->lock.lease);
@@ -3801,7 +3889,7 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
                                                 smb2_close_context(smb2);
                                         }
                                         /* got a new smb2 context with a connection, enlist it and tell user */
-                                        smb2->is_server = 1;
+                                        smb2->owning_server = server;
                                         smb2->max_transact_size = server->max_transact_size;
                                         smb2->max_read_size     = server->max_read_size;
                                         smb2->max_write_size    = server->max_write_size;
