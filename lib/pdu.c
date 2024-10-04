@@ -604,28 +604,35 @@ smb2_correlate_reply(struct smb2_context *smb2, struct smb2_pdu *pdu)
 
         req_pdu = smb2_find_pdu_by_command(smb2, pdu->header.command);
         if (req_pdu == NULL) {
-                smb2_set_error(smb2, "no matching request PDU "
-                               "found for reply to cmd %d",
-                                pdu->header.command);
-                return -1;
+                if (pdu->header.command != SMB2_OPLOCK_BREAK) {
+                        smb2_set_error(smb2, "no matching request PDU "
+                                       "found for reply to cmd %d",
+                                        pdu->header.command);
+                        return -1;
+                } else {
+                        /* sending an unsolicited break */
+                        pdu->header.message_id = 0xffffffffffffffffULL;
+                        pdu->header.sync.tree_id = 0;
+                        pdu->header.session_id = 0;
+                }
+        }  else {
+                SMB2_LIST_REMOVE(&smb2->waitqueue, req_pdu);
+
+                pdu->header.credit_request_response =
+                                        64 + req_pdu->header.credit_charge;
+
+                /* replies always have to have the same message-id and tree-id as
+                 * the request we sent, so use the request from the wait queue
+                 * to make sure that is the case. (exception is tree-connect where
+                 * the reply has the new tree-id and request was 0 )
+                 */
+
+                pdu->header.message_id = req_pdu->header.message_id;
+                if (pdu->header.command != SMB2_TREE_CONNECT) {
+                        pdu->header.sync.tree_id = req_pdu->header.sync.tree_id;
+                }
+                smb2_free_pdu(smb2, req_pdu);
         }
-
-        SMB2_LIST_REMOVE(&smb2->waitqueue, req_pdu);
-
-        pdu->header.credit_request_response =
-                                64 + req_pdu->header.credit_charge;
-
-        /* replies always have to have the same message-id and tree-id as
-         * the request we sent, so use the request from the wait queue
-         * to make sure that is the case. (exception is tree-connect where
-         * the reply has the new tree-id and request was 0 )
-         */
-
-        pdu->header.message_id = req_pdu->header.message_id;
-        if (pdu->header.command != SMB2_TREE_CONNECT) {
-                pdu->header.sync.tree_id = req_pdu->header.sync.tree_id;
-        }
-        smb2_free_pdu(smb2, req_pdu);
         return ret;
 }
 

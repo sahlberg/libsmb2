@@ -66,7 +66,9 @@ typedef void (*smb2_client_connection)(struct smb2_context *smb2, void *cb_data)
  * or new lease state for the acknowledgement that will be sent back
  */
 typedef void (*smb2_oplock_or_lease_break_cb)(struct smb2_context *smb2,
-           struct smb2_oplock_or_lease_break_request *req, uint8_t *new_oplock_level,
+           int status,
+           struct smb2_oplock_or_lease_break_request *req,
+           uint8_t *new_oplock_level,
            uint32_t *new_lease_state);
 
 /* Stat structure */

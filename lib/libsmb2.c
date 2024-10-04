@@ -2736,28 +2736,25 @@ smb2_oplock_break_notify(struct smb2_context *smb2, int status, void *command_da
 
         req = command_data;
 
-        /* this one is a bit tricky since we get here for both clients and servers since
-         * the pdu is handled special
+
+        if (smb2->oplock_or_lease_break_cb) {
+                smb2->oplock_or_lease_break_cb(smb2,
+                               status, req, &new_oplock_level, &new_lease_state);
+        }
+        /* for passthrough case assume the app callback will do everything needed
          */
         if (!smb2->passthrough) {
-                if (smb2->oplock_or_lease_break_cb) {
-                        smb2->oplock_or_lease_break_cb(smb2,
-                                       req, &new_oplock_level, &new_lease_state);
-                }
-
                 if (status) {
                         return;
                 } else if (req->struct_size == SMB2_OPLOCK_BREAK_NOTIFICATION_SIZE) {
-                        if (smb2->oplock_break_count == 0) {
-                                /* fresh state, this is a notification */
-                                smb2->oplock_break_count++;
+                        if (smb2->hdr.message_id == 0xffffffffffffffffULL) {
+                                /* unsolicited, this is a notification */
                                 memset(&rep_oplock, 0, sizeof(rep_oplock));
                                 rep_oplock.oplock_level = new_oplock_level;
                                 memcpy(rep_oplock.file_id, req->lock.oplock.file_id, SMB2_FD_SIZE);
                                 pdu = smb2_cmd_oplock_break_reply_async(smb2, &rep_oplock, NULL, cb_data);
                         } else {
                                 /* ignore a response */
-                                smb2->oplock_break_count--;
                                 pdu = NULL;
                         }
                 } else if (req->struct_size == SMB2_LEASE_BREAK_NOTIFICATION_SIZE) {
@@ -2776,8 +2773,6 @@ smb2_oplock_break_notify(struct smb2_context *smb2, int status, void *command_da
                 if (pdu != NULL) {
                         smb2_queue_pdu(smb2, pdu);
                 }
-        } else {
-                smb2_set_error(smb2, "Passthrough of breaks not yet implemented");
         }
 }
 
