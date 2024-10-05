@@ -3858,7 +3858,7 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
                                 if (SMB2_VALID_SOCKET(smb2_get_fd(smb2)) && FD_ISSET(smb2_get_fd(smb2), &rfds)) {
                                         if (smb2_service(smb2, POLLIN) < 0) {
                                                 smb2_set_error(smb2, "smb2_service (in) failed with : "
-                                                                "%s\n", smb2_get_error(smb2));
+                                                                "%s", smb2_get_error(smb2));
                                                 smb2_close_context(smb2);
                                         }
                                         err = 0;
@@ -3866,7 +3866,7 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
                                 if (SMB2_VALID_SOCKET(smb2_get_fd(smb2)) && FD_ISSET(smb2_get_fd(smb2), &wfds)) {
                                         if (smb2_service(smb2, POLLOUT) < 0) {
                                                 smb2_set_error(smb2, "smb2_service (out) failed with : "
-                                                                "%s\n", smb2_get_error(smb2));
+                                                                "%s", smb2_get_error(smb2));
                                                 smb2_close_context(smb2);
                                         }
                                 }
