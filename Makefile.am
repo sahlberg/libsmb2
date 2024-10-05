@@ -10,3 +10,6 @@ pkgconfig_DATA = libsmb2.pc
 
 EXTRA_DIST = \
 	libsmb2.pc.in
+
+test: $(SUBDIRS)
+	cd tests; make test

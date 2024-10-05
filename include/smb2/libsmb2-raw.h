@@ -324,6 +324,7 @@ struct smb2_pdu *smb2_cmd_set_info_async(struct smb2_context *smb2,
                                          smb2_command_cb cb, void *cb_data);
 
 struct smb2_pdu *smb2_cmd_set_info_reply_async(struct smb2_context *smb2,
+                                         struct smb2_set_info_request *req,
                                          smb2_command_cb cb, void *cb_data);
 
 /*
