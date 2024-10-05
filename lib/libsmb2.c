@@ -2810,7 +2810,7 @@ smb2_tree_connect_request_cb(struct smb2_server *server, struct smb2_context *sm
 
         memset(&rep, 0, sizeof(rep));
         if (server->handlers && server->handlers->tree_connect_cmd) {
-                ret = server->handlers->tree_connect_cmd(server, smb2, req);
+                ret = server->handlers->tree_connect_cmd(server, smb2, req, &rep);
         }
         if (!ret) {
                 pdu = smb2_cmd_tree_connect_reply_async(smb2, &rep, 0, NULL, cb_data);
@@ -2859,7 +2859,7 @@ smb2_create_request_cb(struct smb2_server *server, struct smb2_context *smb2, vo
 
         memset(&rep, 0, sizeof(rep));
         if (server->handlers && server->handlers->create_cmd) {
-                ret = server->handlers->create_cmd(server, smb2, req);
+                ret = server->handlers->create_cmd(server, smb2, req, &rep);
         }
         if (!ret) {
                 pdu = smb2_cmd_create_reply_async(smb2, &rep, NULL, cb_data);
@@ -2888,7 +2888,7 @@ smb2_close_request_cb(struct smb2_server *server, struct smb2_context *smb2, voi
 
         memset(&rep, 0, sizeof(rep));
         if (server->handlers && server->handlers->close_cmd) {
-                ret = server->handlers->close_cmd(server, smb2, req);
+                ret = server->handlers->close_cmd(server, smb2, req, &rep);
         }
         if (!ret) {
                 pdu = smb2_cmd_close_reply_async(smb2, &rep, NULL, cb_data);
@@ -2938,7 +2938,7 @@ smb2_read_request_cb(struct smb2_server *server, struct smb2_context *smb2, void
 
         memset(&rep, 0, sizeof(rep));
         if (server->handlers && server->handlers->read_cmd) {
-                ret = server->handlers->read_cmd(server, smb2, req);
+                ret = server->handlers->read_cmd(server, smb2, req, &rep);
         }
         if (!ret) {
                 pdu = smb2_cmd_read_reply_async(smb2, &rep, NULL, cb_data);
@@ -2964,7 +2964,7 @@ smb2_write_request_cb(struct smb2_server *server, struct smb2_context *smb2, voi
 
         memset(&rep, 0, sizeof(rep));
         if (server->handlers && server->handlers->write_cmd) {
-                ret = server->handlers->write_cmd(server, smb2, req);
+                ret = server->handlers->write_cmd(server, smb2, req, &rep);
         }
         if (!ret) {
                 pdu = smb2_cmd_write_reply_async(smb2, &rep, NULL, cb_data);
@@ -3073,7 +3073,7 @@ smb2_ioctl_request_cb(struct smb2_server *server, struct smb2_context *smb2, voi
         }
         else {
                 if (server->handlers && server->handlers->ioctl_cmd) {
-                        ret = server->handlers->ioctl_cmd(server, smb2, req);
+                        ret = server->handlers->ioctl_cmd(server, smb2, req, &rep);
                 }
                 if (!ret) {
                         pdu = smb2_cmd_ioctl_reply_async(smb2, &rep, NULL, cb_data);
@@ -3145,7 +3145,7 @@ smb2_query_directory_request_cb(struct smb2_server *server, struct smb2_context 
         memset(&err, 0, sizeof(err));
 
         if (server->handlers && server->handlers->query_directory_cmd) {
-                ret = server->handlers->query_directory_cmd(server, smb2, req);
+                ret = server->handlers->query_directory_cmd(server, smb2, req, &rep);
         }
         if (ret < 0) {
                 pdu = smb2_cmd_error_reply_async(smb2,
@@ -3185,7 +3185,7 @@ smb2_change_notify_request_cb(struct smb2_server *server, struct smb2_context *s
         memset(&err, 0, sizeof(err));
 
         if (server->handlers && server->handlers->change_notify_cmd) {
-                ret = server->handlers->change_notify_cmd(server, smb2, req);
+                ret = server->handlers->change_notify_cmd(server, smb2, req, &rep);
         }
         if (ret < 0) {
                 pdu = smb2_cmd_error_reply_async(smb2,
@@ -3212,7 +3212,7 @@ smb2_query_info_request_cb(struct smb2_server *server, struct smb2_context *smb2
         memset(&err, 0, sizeof(err));
 
         if (server->handlers && server->handlers->query_info_cmd) {
-                ret = server->handlers->query_info_cmd(server, smb2, req);
+                ret = server->handlers->query_info_cmd(server, smb2, req, &rep);
         }
         if (ret < 0) {
                 pdu = smb2_cmd_error_reply_async(smb2,

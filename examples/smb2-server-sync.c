@@ -423,6 +423,8 @@ struct smb2_server_request_handlers test_handlers = {
         flush_handler,
         read_handler,
         write_handler,
+        NULL,
+        NULL,
         lock_handler,
         ioctl_handler,
         cancel_handler,
@@ -452,9 +454,9 @@ void on_smb2_error(struct smb2_context *smb2, const char *error_string)
 void on_new_client(struct smb2_context *smb2, void *cb_data)
 {
     struct smb2_context **pctx = (struct smb2_context **)cb_data;
-    
+
     printf("New connection: %p\n", smb2);
-    
+
     /* setup client context */
     smb2_set_version(smb2, SMB2_VERSION_ANY);
 //  smb2_set_version(smb2, SMB2_VERSION_0210);
@@ -467,19 +469,19 @@ int main(int argc, char **argv)
 {
     struct smb2_context *smb2 = NULL;
     int err;
-    
+
     if (argc < 2) {
         usage();
     }
 
-    memset(&server, 0, sizeof(server)); 
+    memset(&server, 0, sizeof(server));
     server.handlers = &test_handlers;
 
     server.signing_enabled = 1;
     server.allow_anonymous = 1;
-    
+
     server.port = strtoul(argv[1], NULL, 0);
-    
+
     err = smb2_serve_port(&server, 1, on_new_client, (void *)&smb2);
     if (err) {
         fprintf(stderr, "smb2_serv_port failed %d\n", err);
@@ -489,7 +491,7 @@ int main(int argc, char **argv)
     if (smb2) {
         fprintf(stderr, "client error %s\n", smb2_get_error(smb2));
     }
-    
+
     return 0;
 }
 

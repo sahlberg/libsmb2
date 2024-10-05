@@ -1203,6 +1203,11 @@ const char *smb2_utf16_to_utf8(const uint16_t *str, size_t len);
 /************* Server-side API **********************************************/
 struct smb2_server;
 
+/* pdu handlers in general take the request from the client, and return
+ * < 0  on error, and the library should create an error reply
+ * == 0 on OK, and the library should use the reply struct (if needed) to create a reply
+ * > 0  if the handler created and queued a reply itself
+ */
 struct smb2_server_request_handlers {
         int (*destruction_event)(struct smb2_server *srvr, struct smb2_context *smb2);
         int (*authorize_user)(struct smb2_server *srvr, struct smb2_context *smb2,
@@ -1212,19 +1217,24 @@ struct smb2_server_request_handlers {
         int (*session_established)(struct smb2_server *srvr, struct smb2_context *smb2);
         int (*logoff_cmd)(struct smb2_server *srvr, struct smb2_context *smb2);
         int (*tree_connect_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
-                            struct smb2_tree_connect_request *req);
+                            struct smb2_tree_connect_request *req,
+                            struct smb2_tree_connect_reply *rep);
         int (*tree_disconnect_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
                             const uint32_t tree_id);
         int (*create_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
-                            struct smb2_create_request *req);
+                            struct smb2_create_request *req,
+                            struct smb2_create_reply *rep);
         int (*close_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
-                            struct smb2_close_request *req);
+                            struct smb2_close_request *req,
+                            struct smb2_close_reply *rep);
         int (*flush_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
                             struct smb2_flush_request *req);
         int (*read_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
-                            struct smb2_read_request *req);
+                            struct smb2_read_request *req,
+                            struct smb2_read_reply *rep);
         int (*write_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
-                            struct smb2_write_request *req);
+                            struct smb2_write_request *req,
+                            struct smb2_write_reply *rep);
         int (*oplock_break_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
                             struct smb2_oplock_break_acknowledgement *req);
         int (*lease_break_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
@@ -1232,15 +1242,19 @@ struct smb2_server_request_handlers {
         int (*lock_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
                             struct smb2_lock_request *req);
         int (*ioctl_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
-                            struct smb2_ioctl_request *req);
+                            struct smb2_ioctl_request *req,
+                            struct smb2_ioctl_reply *rep);
         int (*cancel_cmd)(struct smb2_server *srvr, struct smb2_context *smb2);
         int (*echo_cmd)(struct smb2_server *srvr, struct smb2_context *smb2);
         int (*query_directory_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
-                            struct smb2_query_directory_request *req);
+                            struct smb2_query_directory_request *req,
+                            struct smb2_query_directory_reply *rep);
         int (*change_notify_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
-                            struct smb2_change_notify_request *req);
+                            struct smb2_change_notify_request *req,
+                            struct smb2_change_notify_reply *rep);
         int (*query_info_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
-                            struct smb2_query_info_request *req);
+                            struct smb2_query_info_request *req,
+                            struct smb2_query_info_reply *rep);
         int (*set_info_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
                             struct smb2_set_info_request *req);
         /*
