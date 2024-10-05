@@ -60,7 +60,7 @@ smb2_encode_tree_disconnect_request(struct smb2_context *smb2,
         uint8_t *buf;
         int len;
         struct smb2_iovec *iov;
-        
+
         len = 4;
 
         buf = calloc(len, sizeof(uint8_t));
@@ -69,9 +69,9 @@ smb2_encode_tree_disconnect_request(struct smb2_context *smb2,
                                "buffer");
                 return -1;
         }
-        
+
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
-        
+
         smb2_set_uint16(iov, 0, SMB2_TREE_DISCONNECT_REQUEST_SIZE);
 
         return 0;
@@ -82,7 +82,7 @@ smb2_cmd_tree_disconnect_async(struct smb2_context *smb2,
                                smb2_command_cb cb, void *cb_data)
 {
         struct smb2_pdu *pdu;
-        
+
         pdu = smb2_allocate_pdu(smb2, SMB2_TREE_DISCONNECT, cb, cb_data);
         if (pdu == NULL) {
                 return NULL;
@@ -92,7 +92,7 @@ smb2_cmd_tree_disconnect_async(struct smb2_context *smb2,
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
         }
-        
+
         if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
@@ -108,7 +108,7 @@ smb2_encode_tree_disconnect_reply(struct smb2_context *smb2,
         uint8_t *buf;
         int len;
         struct smb2_iovec *iov;
-        
+
         len = SMB2_TREE_DISCONNECT_REPLY_SIZE;
         buf = calloc(len, sizeof(uint8_t));
         if (buf == NULL) {
@@ -116,11 +116,11 @@ smb2_encode_tree_disconnect_reply(struct smb2_context *smb2,
                                "reply buffer");
                 return -1;
         }
-        
+
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
-        
+
         smb2_set_uint16(iov, 0, SMB2_TREE_DISCONNECT_REPLY_SIZE);
-        
+
         return 0;
 }
 
@@ -129,7 +129,7 @@ smb2_cmd_tree_disconnect_reply_async(struct smb2_context *smb2,
                                smb2_command_cb cb, void *cb_data)
 {
         struct smb2_pdu *pdu;
-        
+
         pdu = smb2_allocate_pdu(smb2, SMB2_TREE_DISCONNECT, cb, cb_data);
         if (pdu == NULL) {
                 return NULL;

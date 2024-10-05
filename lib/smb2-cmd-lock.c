@@ -68,7 +68,7 @@ smb2_encode_lock_request(struct smb2_context *smb2,
         uint32_t u32;
         int i;
         uint32_t offset;
-        
+
         len = SMB2_LOCK_REQUEST_SIZE & 0xfffffffe;
         buf = calloc(len, sizeof(uint8_t));
         if (buf == NULL) {
@@ -92,7 +92,7 @@ smb2_encode_lock_request(struct smb2_context *smb2,
                         return -1;
                 }
                 iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
-                
+
                 elements = req->locks;
                 for (i = 0, offset = 0; i < req->lock_count; i++) {
                         smb2_set_uint64(iov, offset, elements->offset);
@@ -138,7 +138,7 @@ smb2_encode_lock_reply(struct smb2_context *smb2,
         int len;
         uint8_t *buf;
         struct smb2_iovec *iov;
-                
+
         len = SMB2_LOCK_REPLY_SIZE & 0xfffffffe;
         buf = calloc(len, sizeof(uint8_t));
         if (buf == NULL) {
@@ -202,7 +202,7 @@ smb2_parse_locks(struct smb2_context *smb2,
 {
         struct smb2_lock_element *elements;
         uint32_t reserved;
-        
+
         if (!iov || !locks) {
                 return -1;
         }
@@ -227,13 +227,6 @@ smb2_process_lock_request_fixed(struct smb2_context *smb2,
         void *ptr;
         uint32_t u32;
 
-        req = malloc(sizeof(*req));
-        if (req == NULL) {
-                smb2_set_error(smb2, "Failed to allocate lock request");
-                return -1;
-        }
-        pdu->payload = req;
-
         smb2_get_uint16(iov, 0, &struct_size);
         if (struct_size != SMB2_LOCK_REQUEST_SIZE ||
             (struct_size & 0xfffe) != iov->len) {
@@ -244,6 +237,13 @@ smb2_process_lock_request_fixed(struct smb2_context *smb2,
                 return -1;
         }
 
+        req = malloc(sizeof(*req));
+        if (req == NULL) {
+                smb2_set_error(smb2, "Failed to allocate lock request");
+                return -1;
+        }
+        pdu->payload = req;
+
         smb2_get_uint16(iov, 2, &req->lock_count);
         smb2_get_uint32(iov, 4, &u32);
         req->lock_sequence_number = u32 >> 24;
@@ -252,6 +252,8 @@ smb2_process_lock_request_fixed(struct smb2_context *smb2,
 
         if (req->lock_count < 1) {
                 smb2_set_error(smb2, "Lock request must have at least one lock.");
+                pdu->payload = NULL;
+                free(req);
                 return -1;
         }
 
@@ -259,19 +261,21 @@ smb2_process_lock_request_fixed(struct smb2_context *smb2,
                         req->lock_count * SMB2_LOCK_ELEMENT_SIZE);
         if (!ptr) {
                 smb2_set_error(smb2, "can not alloc lock buffer.");
+                pdu->payload = NULL;
+                free(req);
                 return -1;
         }
         req->locks = ptr;
-        
+
         /* the fixed size includes 1 lock (the most common use) so
          * there is no more data in that case
          */
         if (req->lock_count > 0) {
                 struct smb2_iovec vec;
-                
+
                 vec.buf = iov->buf + 24;
                 vec.len = iov->len - 24;
-                
+
                 smb2_parse_locks(smb2, &vec, 1, ptr);
         }
         return SMB2_LOCK_ELEMENT_SIZE * (req->lock_count - 1);

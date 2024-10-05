@@ -1216,24 +1216,19 @@ struct smb2_server_request_handlers {
         int (*session_established)(struct smb2_server *srvr, struct smb2_context *smb2);
         int (*logoff_cmd)(struct smb2_server *srvr, struct smb2_context *smb2);
         int (*tree_connect_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
-                            struct smb2_tree_connect_request *req,
-                            struct smb2_tree_connect_reply *rep);
+                            struct smb2_tree_connect_request *req);
         int (*tree_disconnect_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
                             const uint32_t tree_id);
         int (*create_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
-                            struct smb2_create_request *req,
-                            struct smb2_create_reply *rep);
+                            struct smb2_create_request *req);
         int (*close_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
-                            struct smb2_close_request *req,
-                            struct smb2_close_reply *rep);
+                            struct smb2_close_request *req);
         int (*flush_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
                             struct smb2_flush_request *req);
         int (*read_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
-                            struct smb2_read_request *req,
-                            struct smb2_read_reply *rep);
+                            struct smb2_read_request *req);
         int (*write_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
-                            struct smb2_write_request *req,
-                            struct smb2_write_reply *rep);
+                            struct smb2_write_request *req);
         int (*oplock_break_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
                             struct smb2_oplock_break_acknowledgement *req);
         int (*lease_break_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
@@ -1241,18 +1236,15 @@ struct smb2_server_request_handlers {
         int (*lock_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
                             struct smb2_lock_request *req);
         int (*ioctl_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
-                            struct smb2_ioctl_request *req,
-                            struct smb2_ioctl_reply *rep);
+                            struct smb2_ioctl_request *req);
         int (*cancel_cmd)(struct smb2_server *srvr, struct smb2_context *smb2);
         int (*echo_cmd)(struct smb2_server *srvr, struct smb2_context *smb2);
         int (*query_directory_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
-                            struct smb2_query_directory_request *req,
-                            struct smb2_query_directory_reply *rep);
+                            struct smb2_query_directory_request *req);
         int (*change_notify_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
                             struct smb2_change_notify_request *req);
         int (*query_info_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
-                            struct smb2_query_info_request *req,
-                            struct smb2_query_info_reply *rep);
+                            struct smb2_query_info_request *req);
         int (*set_info_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
                             struct smb2_set_info_request *req);
         /*

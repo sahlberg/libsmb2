@@ -305,11 +305,13 @@ smb2_write_to_socket(struct smb2_context *smb2)
                                 smb2->credits -= pdu->header.credit_charge;
 
                                 if (!smb2_is_server(smb2)) {
-                                        /* queue requests to correlate replies with */
+                                        /* queue requests we send to correlate replies with */
                                         SMB2_LIST_ADD_END(&smb2->waitqueue, pdu);
                                 }
                                 else {
                                         smb2->credits += pdu->header.credit_request_response;
+                                        /* no longer need this reply we've sent */
+                                        smb2_free_pdu(smb2, pdu);
                                 }
                                 pdu = tmp_pdu;
                         }
@@ -441,7 +443,7 @@ read_more_data:
                         }
                         while (count > 0);
 
-                        /* put on wait queue to queue_pdu doesn't complain */
+                        /* put on wait queue so queue_pdu doesn't complain */
                         SMB2_LIST_ADD_END(&smb2->waitqueue, pdu);
 
                         smb2->in.num_done = 0;
@@ -716,16 +718,13 @@ read_more_data:
                 /* queue requests to correlate our replies we send back later */
                 SMB2_LIST_ADD_END(&smb2->waitqueue, pdu);
                 pdu->cb(smb2, smb2->hdr.status, pdu->payload, pdu->cb_data);
+                smb2->pdu = smb2->next_pdu;
+                smb2->next_pdu = NULL;
         }
         else {
                 pdu->cb(smb2, smb2->hdr.status, pdu->payload, pdu->cb_data);
                 smb2_free_pdu(smb2, pdu);
-        }
-        smb2->pdu = NULL;
-
-        if (smb2_is_server(smb2)) {
-                smb2->pdu = smb2->next_pdu;
-                smb2->next_pdu = NULL;
+                smb2->pdu = NULL;
         }
 
         if (is_chained) {

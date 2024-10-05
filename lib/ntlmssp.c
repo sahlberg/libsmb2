@@ -125,7 +125,7 @@ struct auth_data {
 void
 hex_print(const char *blurb, uint8_t *data, int len)
 {
-        printf("%s\n", blurb);        
+        printf("%s\n", blurb);
         for (int i = 0; i < len; i++) {
                 printf("%02X ", data[i]);
                 if (!((i + 1) & 0xf)) {
@@ -264,7 +264,7 @@ ntlm_decode_challenge_message(struct smb2_context *smb2, struct auth_data *auth_
                 memcpy(auth_data->ntlm_buf, buf, auth_data->ntlm_len);
                 return 0;
         }
-        
+
         return -1;
 }
 
@@ -476,7 +476,7 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
         }
         server_name_buf = (char *)&auth_data->ntlm_buf[u32];
 
-        if (encode_temp(auth_data, t, 
+        if (encode_temp(auth_data, t,
                         auth_data->client_challenge, 8,
                         (uint8_t*)server_challenge,
                         (uint8_t*)server_name_buf, server_name_len) < 0) {
@@ -591,8 +591,8 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
         /* negotiate flags */
         u32 = NTLMSSP_NEGOTIATE_128|
                 NTLMSSP_NEGOTIATE_EXTENDED_SESSIONSECURITY|
-                NTLMSSP_NEGOTIATE_ALWAYS_SIGN| 
-                NTLMSSP_NEGOTIATE_SIGN| 
+                NTLMSSP_NEGOTIATE_ALWAYS_SIGN|
+                NTLMSSP_NEGOTIATE_SIGN|
                 NTLMSSP_REQUEST_TARGET|NTLMSSP_NEGOTIATE_OEM|
                 NTLMSSP_NEGOTIATE_UNICODE;
         if (anonymous)
@@ -661,7 +661,7 @@ encode_ntlm_challenge(struct smb2_context *smb2, struct auth_data *auth_data)
         int target_info_pos;
         int namelen;
         char *upper = NULL;
-        
+
         /* Generate CHALLENGE_MESSAGE  */
         encoder("NTLMSSP", 8, auth_data);
 
@@ -670,17 +670,17 @@ encode_ntlm_challenge(struct smb2_context *smb2, struct auth_data *auth_data)
         encoder(&u32, 4, auth_data);
 
         /* target name fields */
-        u32 = 0;        
+        u32 = 0;
         encoder(&u32, 4, auth_data);
         encoder(&u32, 4, auth_data);
-        
+
         /* negotiate flags */
         u32 = NTLMSSP_NEGOTIATE_128|
                 NTLMSSP_NEGOTIATE_TARGET_INFO|
                 NTLMSSP_NEGOTIATE_EXTENDED_SESSIONSECURITY|
-                NTLMSSP_NEGOTIATE_ALWAYS_SIGN| 
-                NTLMSSP_NEGOTIATE_SIGN| 
-         //       NTLMSSP_NEGOTIATE_KEY_EXCH| 
+                NTLMSSP_NEGOTIATE_ALWAYS_SIGN|
+                NTLMSSP_NEGOTIATE_SIGN|
+         //       NTLMSSP_NEGOTIATE_KEY_EXCH|
                 NTLMSSP_REQUEST_TARGET|NTLMSSP_NEGOTIATE_OEM|
                 NTLMSSP_NEGOTIATE_VERSION|
                 NTLMSSP_NEGOTIATE_UNICODE;
@@ -706,13 +706,13 @@ encode_ntlm_challenge(struct smb2_context *smb2, struct auth_data *auth_data)
         /* target into fields */
         encoder(&u32, 4, auth_data);
         encoder(&u32, 4, auth_data);
-        
+
         /* version (if we set negotiate version flag */
         u32 = htole32(0x00000106);
         encoder(&u32, 4, auth_data);
         u32 = htole32(0x0F000000);
         encoder(&u32, 4, auth_data);
-        
+
         /* target name  */
         if (auth_data->workstation) {
                 namelen = strlen(auth_data->workstation);
@@ -765,7 +765,7 @@ encode_ntlm_challenge(struct smb2_context *smb2, struct auth_data *auth_data)
                 encoder(&u16, 2, auth_data);
                 encoder(utf16_workstation->val,
                                utf16_workstation->len * 2, auth_data);
-        }                
+        }
 
         /*  target info timestamp */
         u16 = 0x0007;
@@ -778,21 +778,21 @@ encode_ntlm_challenge(struct smb2_context *smb2, struct auth_data *auth_data)
         /* end of info */
         u32 = 0;
         encoder(&u32, 4, auth_data);
-        
+
         /* save the target info in auth-data for later */
         auth_data->target_info_len = auth_data->len - target_info_pos;
         auth_data->target_info = malloc(auth_data->target_info_len);
         memcpy(auth_data->target_info,
                         auth_data->buf + target_info_pos,
                         auth_data->target_info_len);
-        
+
         /* back annotate length of target info  */
         u16 = htole16(auth_data->len - target_info_pos);
         memcpy(&auth_data->buf[40], &u16, 2);
         memcpy(&auth_data->buf[42], &u16, 2);
         u16 = htole16(target_info_pos);
         memcpy(&auth_data->buf[44], &u16, 2);
-                
+
         ret = 0;
 finished:
         if (upper) {
@@ -918,7 +918,7 @@ ntlmssp_get_utf16_field(uint8_t *input_buf, int input_len, int offset, char **re
         uint32_t u32;
 
         *result = NULL;
-        
+
         if (offset > (input_len - 8)) {
                 return;
         }
@@ -948,7 +948,7 @@ ntlmssp_authenticate_blob(struct smb2_server *server, struct smb2_context *smb2,
         int ret = -1;
         //uint32_t negotiate_flags;
         uint32_t u32;
-        
+
         if (!input_buf || (input_len < 8) || memcmp(input_buf, "NTLMSSP", 8)) {
                 return -1;
         }
@@ -957,23 +957,32 @@ ntlmssp_authenticate_blob(struct smb2_server *server, struct smb2_context *smb2,
         if (u32 != AUTHENTICATION_MESSAGE) {
                 return -1;
         }
+        if (auth_data->domain) {
+                free(auth_data->domain);
+        }
+        if (auth_data->user) {
+                free(auth_data->user);
+        }
+        if (auth_data->workstation) {
+                free(auth_data->workstation);
+        }
         ntlmssp_get_utf16_field(input_buf, input_len, 4*7, &auth_data->domain);
         ntlmssp_get_utf16_field(input_buf, input_len, 4*9, &auth_data->user);
         ntlmssp_get_utf16_field(input_buf, input_len, 4*11, &auth_data->workstation);
         memcpy(&u32, &input_buf[4*15], 4);
-        
+
         /* call server handler to get pw for this user */
         if (server && server->handlers) {
                 if(server->handlers->authorize_user(server, smb2,
                                 auth_data->user,
                                 auth_data->domain,
                                 auth_data->workstation)) {
-                        smb2_set_error(smb2, "server can not authorize %s", 
+                        smb2_set_error(smb2, "server can not authorize %s",
                                 auth_data->user);
                         return -1;
                 }
                 if (!smb2->password && !server->allow_anonymous) {
-                        smb2_set_error(smb2, "server has no passwd for %s", 
+                        smb2_set_error(smb2, "server has no passwd for %s",
                                 auth_data->user);
                         return -1;
                 }
@@ -987,14 +996,14 @@ ntlmssp_authenticate_blob(struct smb2_server *server, struct smb2_context *smb2,
                 return -1;
         }
         //negotiate_flags = le32toh(u32);
-        
+
         /* Lan Man response (we dont even look at, its obsolete) */
-        
+
         /* NTLM response */
         memcpy(&u32, &input_buf[4*5], 4);
         field_len = le32toh(u32) >> 16;
         memcpy(&u32, &input_buf[4*6], 4);
-        field_off = le32toh(u32);        
+        field_off = le32toh(u32);
         if (field_len == 0 || field_off == 0) {
                 return -1;
         }
@@ -1007,6 +1016,9 @@ ntlmssp_authenticate_blob(struct smb2_server *server, struct smb2_context *smb2,
         if (challenge_len > 9*4) {
                 temp = input_buf + field_off + 16;
                 temp_len = field_len - 16;
+                if (auth_data->client_challenge) {
+                        free(auth_data->client_challenge);
+                }
                 auth_data->client_challenge = malloc(8);
                 memcpy(auth_data->client_challenge, input_buf + field_off + 32, 8);
         }
@@ -1040,7 +1052,7 @@ ntlmssp_authenticate_blob(struct smb2_server *server, struct smb2_context *smb2,
                 goto fail;
         }
         smb2_hmac_md5(NTProofStr, 16, ResponseKeyNT, 16, key_exch);
-        memcpy(auth_data->exported_session_key, key_exch, 16);        
+        memcpy(auth_data->exported_session_key, key_exch, 16);
         ret = 0;
 fail:
         free(auth_data->buf);
@@ -1049,7 +1061,7 @@ fail:
         return ret;
 }
 
-                      
+
 int
 ntlmssp_get_session_key(struct auth_data *auth,
                         uint8_t **key,
@@ -1084,7 +1096,7 @@ ntlmssp_get_message_type(struct smb2_context *smb2,
         uint32_t u32;
         uint32_t mechanisms;
         int ntlm_len;
-        
+
         if (message_type) {
                 *message_type = 0xFFFFFFFF;
         }
@@ -1096,7 +1108,7 @@ ntlmssp_get_message_type(struct smb2_context *smb2,
         }
         if (!buffer || len < 12) {
                 return -1;
-        }        
+        }
 
         ntlm_len = smb2_spnego_unwrap_blob(smb2, buffer, len, &ntlmssp, &mechanisms);
         if (ntlm_len < 12 || !ntlmssp) {

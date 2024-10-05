@@ -402,6 +402,8 @@ smb2_process_oplock_break_fixed(struct smb2_context *smb2,
                                SMB2_OPLOCK_BREAK_REPLY_SIZE,
                                SMB2_LEASE_BREAK_REPLY_SIZE,
                                struct_size);
+                pdu->payload = NULL;
+                free(rep);
                 return -1;
         }
 
@@ -482,6 +484,8 @@ smb2_process_oplock_break_request_fixed(struct smb2_context *smb2,
                                SMB2_OPLOCK_BREAK_ACKNOWLEDGE_SIZE,
                                SMB2_LEASE_BREAK_ACKNOWLEDGE_SIZE,
                                (int)struct_size);
+                pdu->payload = NULL;
+                free(req);
                 return -1;
         }
         return 0;
