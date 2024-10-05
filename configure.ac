@@ -1,6 +1,6 @@
-AC_INIT([libsmb2], [4.0.0], [ronniesahlberg@gmail.com])
+AC_INIT([libsmb2],[4.0.0],[ronniesahlberg@gmail.com])
 
-AC_PREREQ([2.58])
+AC_PREREQ([2.71])
 AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([-Wall foreign subdir-objects 1.11])
 AC_CANONICAL_HOST
@@ -11,7 +11,7 @@ m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 dnl  Do not add default CFLAGS in AC_PROG_CC
 : ${CFLAGS=""}
 AC_PROG_CC
-AC_PROG_LIBTOOL
+LT_INIT
 
 AM_PROG_CC_C_O
 
@@ -174,6 +174,8 @@ AC_CONFIG_FILES([
     examples/Makefile
     include/Makefile
     lib/Makefile
+    tests/Makefile
 ])
 
-AC_OUTPUT([libsmb2.pc])
+AC_CONFIG_FILES([libsmb2.pc])
+AC_OUTPUT
