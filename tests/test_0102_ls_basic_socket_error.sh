@@ -2,7 +2,7 @@
 
 . ./functions.sh
 
-echo "basic ls test with valgrind"
+echo "basic ls test with valgrind and session errors"
 
 echo "Testing prog_ls on root of share with socket failures "
 for IDX in `seq 1 43`; do

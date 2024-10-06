@@ -141,13 +141,11 @@ int smb2_connect_share(struct smb2_context *smb2,
 	rc = wait_for_reply(smb2, cb_data);
         if (rc < 0) {
                 cb_data->status = SMB2_STATUS_CANCELLED;
-                free(cb_data);
                 return rc;
 	}
 
         rc = cb_data->status;
  out:
-        free(cb_data);
 
 	return rc;
 }
