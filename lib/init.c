@@ -363,7 +363,6 @@ void smb2_destroy_context(struct smb2_context *smb2)
         free(smb2->session_key);
         smb2->session_key = NULL;
 
-        free(smb2->connect_cb_data);
         free(discard_const(smb2->user));
         free(discard_const(smb2->server));
         free(discard_const(smb2->share));

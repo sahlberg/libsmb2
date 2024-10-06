@@ -541,9 +541,6 @@ free_c_data(struct smb2_context *smb2, struct connect_data *c_data)
         if (smb2->connect_data == c_data) {
             smb2->connect_data = NULL;  /* to prevent double-free in smb2_destroy_context */
         }
-        if (smb2->connect_cb_data == c_data->cb_data) {
-                smb2->connect_cb_data = NULL;
-        }
         free(c_data->utf8_unc);
         free(c_data->utf16_unc);
         free(discard_const(c_data->server));
@@ -878,10 +875,12 @@ negotiate_cb(struct smb2_context *smb2, int status,
         smb3_update_preauth_hash(smb2, smb2->in.niov - 1, &smb2->in.iov[1]);
 
         if (status != SMB2_STATUS_SUCCESS) {
+                //qqq
                 smb2_close_context(smb2);
                 smb2_set_nterror(smb2, status, "Negotiate failed with (0x%08x) %s. %s",
                                status, nterror_to_str(status),
                                smb2_get_error(smb2));
+                // calls connect_cb
                 c_data->cb(smb2, -nterror_to_errno(status), NULL,
                            c_data->cb_data);
                 free_c_data(smb2, c_data);

@@ -60,12 +60,6 @@
 #include "libsmb2-raw.h"
 #include "libsmb2-private.h"
 
-struct sync_cb_data {
-	int is_finished;
-	int status;
-	void *ptr;
-};
-
 static int wait_for_reply(struct smb2_context *smb2,
                           struct sync_cb_data *cb_data)
 {
@@ -108,7 +102,9 @@ static void connect_cb(struct smb2_context *smb2, int status,
         struct sync_cb_data *cb_data = private_data;
 
         if (cb_data->status == SMB2_STATUS_CANCELLED) {
-                free(cb_data);
+                if (cb_data != &smb2->connect_cb_data) {
+                        free(cb_data);
+                }
                 return;
         }
 
@@ -127,14 +123,7 @@ int smb2_connect_share(struct smb2_context *smb2,
         struct sync_cb_data *cb_data;
         int rc = 0;
 
-        cb_data = calloc(1, sizeof(struct sync_cb_data));
-        if (cb_data == NULL) {
-                smb2_set_error(smb2, "Failed to allocate sync_cb_data");
-                return -ENOMEM;
-        }
-        free(smb2->connect_cb_data);
-        smb2->connect_cb_data = cb_data;
-
+        cb_data = &smb2->connect_cb_data;
 	rc = smb2_connect_share_async(smb2, server, share, user, connect_cb, cb_data);
         if (rc < 0) {
                 goto out;

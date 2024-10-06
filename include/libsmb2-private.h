@@ -116,6 +116,12 @@ enum smb2_sec {
 #define MAX_CREDITS 1024
 #define SMB2_SALT_SIZE 32
 
+struct sync_cb_data {
+	int is_finished;
+	int status;
+	void *ptr;
+};
+        
 struct smb2_context {
 
         t_socket fd;
@@ -152,7 +158,7 @@ struct smb2_context {
         smb2_error_cb error_cb;
         smb2_command_cb connect_cb;
         void *connect_data;
-        void *connect_cb_data;
+        struct sync_cb_data connect_cb_data;
 
         int credits;
 
