@@ -106,8 +106,11 @@ int main(int argc, char *argv[])
                         } else {
                                 asprintf(&link, "%s", ent->name);
                         }
-                        smb2_readlink(smb2, link, buf, 256);
-                        printf("    -> [%s]\n", buf);
+                        if (smb2_readlink(smb2, link, buf, 256) == 0) {
+                                printf("    -> [%s]\n", buf);
+                        } else {
+                                printf("    readlink failed\n");
+                        }
                         free(link);
                 }
         }
