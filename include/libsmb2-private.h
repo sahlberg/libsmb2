@@ -152,6 +152,7 @@ struct smb2_context {
         smb2_error_cb error_cb;
         smb2_command_cb connect_cb;
         void *connect_data;
+        void *connect_cb_data;
 
         int credits;
 

@@ -538,16 +538,18 @@ free_c_data(struct smb2_context *smb2, struct connect_data *c_data)
 #endif
         }
 
+        if (smb2->connect_data == c_data) {
+            smb2->connect_data = NULL;  /* to prevent double-free in smb2_destroy_context */
+        }
+        if (smb2->connect_cb_data == c_data->cb_data) {
+                smb2->connect_cb_data = NULL;
+        }
         free(c_data->utf8_unc);
         free(c_data->utf16_unc);
         free(discard_const(c_data->server));
         free(discard_const(c_data->share));
         free(discard_const(c_data->user));
         free(c_data);
-
-        if (smb2->connect_data == c_data) {
-            smb2->connect_data = NULL;  /* to prevent double-free in smb2_destroy_context */
-        }
 }
 
 static void

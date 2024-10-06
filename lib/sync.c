@@ -132,6 +132,8 @@ int smb2_connect_share(struct smb2_context *smb2,
                 smb2_set_error(smb2, "Failed to allocate sync_cb_data");
                 return -ENOMEM;
         }
+        free(smb2->connect_cb_data);
+        smb2->connect_cb_data = cb_data;
 
 	rc = smb2_connect_share_async(smb2, server, share, user, connect_cb, cb_data);
         if (rc < 0) {
