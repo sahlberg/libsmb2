@@ -227,6 +227,7 @@ free_smb2dir(struct smb2_context *smb2, struct smb2dir *dir)
                 free(dir->entries);
                 dir->entries = e;
         }
+        free(dir->cb_data);
         free(dir);
 }
 
