@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
 	dir = smb2_opendir(smb2, url->path);
 	if (dir == NULL) {
 		printf("smb2_opendir failed. %s\n", smb2_get_error(smb2));
-		exit(10);
+                goto out_disconnect;
 	}
 
         while ((ent = smb2_readdir(smb2, dir))) {
@@ -113,6 +113,7 @@ int main(int argc, char *argv[])
         }
 
         smb2_closedir(smb2, dir);
+ out_disconnect:        
         smb2_disconnect_share(smb2);
  out_context:
         smb2_destroy_url(url);
