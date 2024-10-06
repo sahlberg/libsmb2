@@ -47,6 +47,7 @@ int main(int argc, char *argv[])
         struct smb2dir *dir;
         struct smb2dirent *ent;
         char *link;
+        int rc = 0;
 
         if (argc < 2) {
                 usage();
@@ -68,7 +69,7 @@ int main(int argc, char *argv[])
         smb2_set_security_mode(smb2, SMB2_NEGOTIATE_SIGNING_ENABLED);
 	if (smb2_connect_share(smb2, url->server, url->share, url->user) < 0) {
 		printf("smb2_connect_share failed. %s\n", smb2_get_error(smb2));
-		exit(10);
+                goto out_context;
 	}
 
 	dir = smb2_opendir(smb2, url->path);
@@ -113,8 +114,9 @@ int main(int argc, char *argv[])
 
         smb2_closedir(smb2, dir);
         smb2_disconnect_share(smb2);
+ out_context:
         smb2_destroy_url(url);
         smb2_destroy_context(smb2);
         
-	return 0;
+	return rc;
 }
