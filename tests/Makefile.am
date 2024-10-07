@@ -4,7 +4,7 @@ AM_CPPFLAGS = -I${srcdir}/../include -I${srcdir}/../include/smb2 \
 AM_CFLAGS = $(WARN_CFLAGS)
 LDADD = ../lib/libsmb2.la
 
-noinst_PROGRAMS = prog_ls
+noinst_PROGRAMS = prog_ls prog_mkdir
 
 EXTRA_PROGRAMS = ld_sockerr
 CLEANFILES = ld_sockerr.o ld_sockerr.so
