@@ -34,7 +34,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 int usage(void)
 {
         fprintf(stderr, "Usage:\n"
-                "prog_mkdir <smb2-url>\n\n"
+                "prog_rmdir <smb2-url>\n\n"
                 "URL format: "
                 "smb://[<domain;][<username>@]<host>[:<port>]/<share>/<path>\n");
         exit(1);
@@ -69,9 +69,8 @@ int main(int argc, char *argv[])
                 goto out_context;
 	}
 
-	smb2_rmdir(smb2, url->path);
-	if (smb2_mkdir(smb2, url->path)) {
-		printf("smb2_mkdir failed. %s\n", smb2_get_error(smb2));
+	if (smb2_rmdir(smb2, url->path)) {
+		printf("smb2_rmdir failed. %s\n", smb2_get_error(smb2));
                 goto out_disconnect;
 	}
         
