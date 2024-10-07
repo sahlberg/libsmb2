@@ -149,11 +149,7 @@ int smb2_disconnect_share(struct smb2_context *smb2)
         struct sync_cb_data *cb_data;
         int rc = 0;
 
-        cb_data = calloc(1, sizeof(struct sync_cb_data));
-        if (cb_data == NULL) {
-                smb2_set_error(smb2, "Failed to allocate sync_cb_data");
-                return -ENOMEM;
-        }
+        cb_data = &smb2->connect_cb_data;
 
 	rc = smb2_disconnect_share_async(smb2, connect_cb, cb_data);
         if (rc < 0) {
@@ -168,7 +164,6 @@ int smb2_disconnect_share(struct smb2_context *smb2)
 
         rc = cb_data->status;
  out:
-        free(cb_data);
 
 	return rc;
 }
