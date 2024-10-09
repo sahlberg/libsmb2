@@ -147,12 +147,46 @@ smb2_encode_file_fs_device_info(struct smb2_context *smb2,
 }
 
 int
+smb2_decode_file_fs_attribute_info(struct smb2_context *smb2,
+                                 void *memctx,
+                                 struct smb2_file_fs_attribute_info *fs,
+                                 struct smb2_iovec *vec)
+{
+        const char *name;
+        uint32_t name_len;
+
+        if (vec->len < 20) {
+                return -1;
+        }
+
+        smb2_get_uint32(vec, 0, &fs->filesystem_attributes);
+        smb2_get_uint32(vec, 4, &fs->maximum_component_name_length);
+        smb2_get_uint32(vec, 8, &name_len);
+
+        if (name_len > 0) {
+                name = smb2_utf16_to_utf8((uint16_t*)&vec->buf[12], name_len / 2);
+                if (!name) {
+
+                        return -1;
+                }
+                fs->filesystem_name = smb2_alloc_data(smb2, memctx, strlen(name) + 1);
+                if (fs->filesystem_name == NULL) {
+                        free(discard_const(name));
+                        return -1;
+                }
+                strcpy(discard_const(fs->filesystem_name), name);
+                free(discard_const(name));
+        }
+        return 0;
+}
+
+int
 smb2_encode_file_fs_attribute_info(struct smb2_context *smb2,
                               struct smb2_file_fs_attribute_info *fs,
                               struct smb2_iovec *vec)
 {
         struct smb2_utf16 *name;
-        
+
         if (vec->len < 20) {
                 return -1;
         }
