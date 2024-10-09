@@ -242,6 +242,23 @@ smb2_decode_file_fs_full_size_info(struct smb2_context *smb2,
 }
 
 int
+smb2_decode_file_fs_object_id_info(struct smb2_context *smb2,
+                                   void *memctx,
+                                   struct smb2_file_fs_object_id_info *fs,
+                                   struct smb2_iovec *vec)
+{
+        if (vec->len < 64) {
+                return -1;
+        }
+
+        memcpy(fs->object_id, &vec->buf[0], SMB2_GUID_SIZE);
+        memcpy(fs->extended_info, &vec->buf[SMB2_GUID_SIZE],
+                         sizeof(fs->extended_info));
+
+        return 0;
+}
+
+int
 smb2_decode_file_fs_sector_size_info(struct smb2_context *smb2,
                                      void *memctx,
                                      struct smb2_file_fs_sector_size_info *fs,
