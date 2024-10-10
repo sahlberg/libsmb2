@@ -627,6 +627,13 @@ struct smb2_file_standard_info {
 };
 
 /*
+ * FILE_POSITION_INFORMATION
+ */
+struct smb2_file_position_info {
+        uint64_t current_byte_offset;
+};
+
+/*
  * FILE_ALL_INFORMATION.
  */
 struct smb2_file_all_info {
