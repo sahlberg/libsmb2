@@ -876,12 +876,11 @@ negotiate_cb(struct smb2_context *smb2, int status,
         smb3_update_preauth_hash(smb2, smb2->in.niov - 1, &smb2->in.iov[1]);
 
         if (status != SMB2_STATUS_SUCCESS) {
-                //qqq
                 smb2_close_context(smb2);
                 smb2_set_nterror(smb2, status, "Negotiate failed with (0x%08x) %s. %s",
                                status, nterror_to_str(status),
                                smb2_get_error(smb2));
-                // calls connect_cb
+                /* calls connect_cb */
                 c_data->cb(smb2, -nterror_to_errno(status), NULL,
                            c_data->cb_data);
                 free_c_data(smb2, c_data);
@@ -3403,6 +3402,7 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
         struct smb2_pdu *pdu;
         uint16_t dialects[SMB2_NEGOTIATE_MAX_DIALECTS];
         int dialect_count;
+        int d;
         int dialect_index;
         struct smb2_timeval now;
         /*void *auth_data;*/

@@ -556,7 +556,7 @@ smb2_decode_header(struct smb2_context *smb2, struct smb2_iovec *iov,
                         case SMB2_TREE_CONNECT:
                                 break;
                         default:
-                                /// TODO - care about not having this already connected
+                                /* TODO - care about not having this already connected */
                                 smb2_select_tree_id(smb2, hdr->sync.tree_id);
                                 break;
                         }

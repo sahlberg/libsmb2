@@ -393,11 +393,10 @@ smb2_process_ioctl_request_variable(struct smb2_context *smb2,
         
         switch (req->ctl_code) {
         case SMB2_FSCTL_VALIDATE_NEGOTIATE_INFO:
-        {
-				struct smb2_ioctl_validate_negotiate_info *info;
+                /* this one is handled locally regardless of proxy or not */
                 ptr = smb2_alloc_init(smb2,
                                       sizeof(struct smb2_ioctl_validate_negotiate_info));
-                info = ptr;
+                struct smb2_ioctl_validate_negotiate_info *info = ptr;
                 
                 smb2_get_uint32(&vec, 0, &info->capabilities);
                 memcpy(info->guid, &vec.buf[4], 16);

@@ -362,6 +362,7 @@ struct addrinfo {
 	struct sockaddr *ai_addr;	/* binary address */
 	struct addrinfo *ai_next;	/* next structure in linked list */
 };
+
 #endif
 
 int poll(struct pollfd *fds, unsigned int nfds, int timo);
