@@ -131,9 +131,6 @@ smb2_encode_session_setup_reply(struct smb2_context *smb2,
         uint8_t *buf;
         int len;
         struct smb2_iovec *iov;
-
-        pdu->header.flags |= SMB2_FLAGS_SERVER_TO_REDIR;
-        pdu->header.credit_request_response = 1;
         
         len = SMB2_SESSION_SETUP_REPLY_SIZE & 0xfffe;
         len = PAD_TO_32BIT(len);

@@ -125,9 +125,6 @@ smb2_encode_ioctl_reply(struct smb2_context *smb2,
         uint8_t *buf;
         struct smb2_iovec *iov, *ioctlv;
 
-        pdu->header.flags |= SMB2_FLAGS_SERVER_TO_REDIR;
-        pdu->header.credit_request_response = 1;
-
         len = SMB2_IOCTL_REPLY_SIZE & 0xfffffffe;
         buf = calloc(len, sizeof(uint8_t));
         if (buf == NULL) {
@@ -141,18 +138,23 @@ smb2_encode_ioctl_reply(struct smb2_context *smb2,
         if (rep->output_count) {
                 switch (rep->ctl_code) {
                 case SMB2_FSCTL_VALIDATE_NEGOTIATE_INFO:
-                {
+                        /* even when passthrough is set we transcode this one 
+                        */
                         len = SMB2_IOCTL_VALIDIATE_NEGOTIATE_INFO_SIZE;
                         break;
-                }
                 default:
-                        smb2_set_error(smb2, "No handling of code %d", rep->ctl_code);
-                        len = 0;
-                        return -1;
+                        if (smb2->passthrough) {
+                                /* assume the replys output is already coded */
+                                len = rep->output_count;
+                        }
+                        else {
+                                smb2_set_error(smb2, "No handling of code %d", rep->ctl_code);
+                                len = 0;
+                                return -1;
+                        }
                         break;
                 }
-                len = PAD_TO_64BIT(len);
-                buf = malloc(len);
+                buf = malloc(PAD_TO_64BIT(len));
                 if (buf == NULL) {
                         smb2_set_error(smb2, "Failed to allocate ioctl output");
                         return -1;
@@ -160,7 +162,31 @@ smb2_encode_ioctl_reply(struct smb2_context *smb2,
                 memset(buf, 0, rep->output_count);
                 ioctlv = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
 
-                rep->output_count = len;
+                switch (rep->ctl_code) {
+                case SMB2_FSCTL_VALIDATE_NEGOTIATE_INFO:
+                {
+                        struct smb2_ioctl_validate_negotiate_info *info = 
+                                 (struct smb2_ioctl_validate_negotiate_info *)
+                                         rep->output;
+                        
+                        smb2_set_uint32(ioctlv, 0, info->capabilities);
+                        memcpy(&ioctlv->buf[4], info->guid, 16);
+                        smb2_set_uint16(ioctlv, 20, info->security_mode);
+                        smb2_set_uint16(ioctlv, 22, info->dialect);
+                        break;
+                }
+                default:
+                        if (smb2->passthrough) {
+                                memcpy(buf, rep->output, rep->output_count);
+                                ioctlv->len = rep->output_count;
+                        }
+                        else
+                        {
+                                /* this is already checked above */
+                                return -1;
+                        }
+                        break;
+                }
         }
 
         smb2_set_uint16(iov, 0, SMB2_IOCTL_REPLY_SIZE);
@@ -175,28 +201,6 @@ smb2_encode_ioctl_reply(struct smb2_context *smb2,
         smb2_set_uint32(iov, 36, len);
         smb2_set_uint32(iov, 40, rep->flags);
 
-        if (rep->output_count && ioctlv) {
-                switch (rep->ctl_code) {
-                case SMB2_FSCTL_VALIDATE_NEGOTIATE_INFO:
-                {
-                        struct smb2_ioctl_validate_negotiate_info *info = 
-                                 (struct smb2_ioctl_validate_negotiate_info *)
-                                         rep->output;
-                        
-                        smb2_set_uint32(ioctlv, 0, info->capabilities);
-                        memcpy(&ioctlv->buf[4], info->guid, 16);
-                        ioctlv->len += 16;
-                        smb2_set_uint16(ioctlv, 20, info->security_mode);
-                        smb2_set_uint16(ioctlv, 22, info->dialect);
-                        break;
-                }
-                default:
-                        smb2_set_error(smb2, "No handling of code %d", rep->ctl_code);
-                        len = 0;
-                        return -1;
-                        break;
-                }
-        }
         return 0;
 }
 
@@ -378,7 +382,7 @@ smb2_process_ioctl_request_variable(struct smb2_context *smb2,
         struct smb2_ioctl_request *req = pdu->payload;
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
         struct smb2_iovec vec;
-        void *ptr;
+        void *ptr = NULL;
 
         if (req->input_count > iov->len - IOVREQ_OFFSET) {
                 return -EINVAL;
@@ -399,12 +403,20 @@ smb2_process_ioctl_request_variable(struct smb2_context *smb2,
                 memcpy(info->guid, &vec.buf[4], 16);
                 smb2_get_uint16(&vec, 20, &info->security_mode);
                 smb2_get_uint16(&vec, 22, &info->dialect);
+                req->input_count = sizeof(struct smb2_ioctl_validate_negotiate_info);
                 break;
-        }
         default:
-                smb2_set_error(smb2, "No handling of code %d", req->ctl_code);
-                req->input = NULL;
-                return -1;
+                if (smb2->passthrough) {
+                        /* dont know how to handle this, let user decode it */
+                        ptr = vec.buf;
+                        req->input_count = vec.len;
+                }
+                else {
+                        smb2_set_error(smb2,
+                                       "No handling for ioctl req %x",
+                                        req->ctl_code);
+                }
+                break;
         }
         req->input = ptr;
         return 0;

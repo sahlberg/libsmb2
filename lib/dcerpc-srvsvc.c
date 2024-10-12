@@ -69,6 +69,8 @@
 
 #define SRVSVC_UUID    0x4b324fc8, 0x1670, 0x01d3, {0x12, 0x78, 0x5a, 0x47, 0xbf, 0x6e, 0xe1, 0x88}
 
+int dcerpc_get_cr(struct dcerpc_pdu *pdu);
+
 p_syntax_id_t srvsvc_interface = {
         {SRVSVC_UUID}, 3, 0
 };
@@ -77,6 +79,74 @@ p_syntax_id_t srvsvc_interface = {
  * SRVSVC BEGIN:  DEFINITIONS FROM SRVSVC.IDL
  * [MS-SRVS].pdf
  */
+
+/*
+ * typedef struct _SHARE_INFO_0 {
+ *     [string] wchar_t * shi0_netname;
+ * } SHARE_INFO_0, *PSHARE_INFO_0, *LPSHARE_INFO_0;
+ */
+int
+srvsvc_SHARE_INFO_0_coder(struct dcerpc_context *ctx,
+                           struct dcerpc_pdu *pdu,
+                           struct smb2_iovec *iov, int *offset,
+                           void *ptr)
+{
+        struct srvsvc_SHARE_INFO_0 *nsi1 = ptr;
+
+        if (dcerpc_ptr_coder(ctx, pdu, iov, offset, &nsi1->netname,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        return 0;
+}
+
+/*
+ *       [size_is(EntriesRead)] LPSHARE_INFO_0 Buffer;
+ */
+static int
+srvsvc_SHARE_INFO_0_carray_coder(struct dcerpc_context *ctx,
+                                 struct dcerpc_pdu *pdu,
+                                 struct smb2_iovec *iov, int *offset,
+                                 void *ptr)
+{
+        return dcerpc_carray_coder(ctx, pdu, iov, offset, ptr,
+                                   sizeof(struct srvsvc_SHARE_INFO_0),
+                                   srvsvc_SHARE_INFO_0_coder);
+}
+
+/*
+ * typedef struct _SHARE_INFO_0_CONTAINER {
+ *       DWORD EntriesRead;
+ *       [size_is(EntriesRead)] LPSHARE_INFO_0 Buffer;
+ * } SHARE_INFO_0_CONTAINER;
+*/
+int
+srvsvc_SHARE_INFO_0_CONTAINER_coder(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+                          struct smb2_iovec *iov, int *offset,
+                          void *ptr)
+{
+        struct srvsvc_SHARE_INFO_0_CONTAINER *ctr = ptr;
+
+        if (dcerpc_uint32_coder(dce, pdu, iov, offset, &ctr->EntriesRead)) {
+                return -1;
+        }
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {
+                if (ctr->Buffer == NULL) {
+                        ctr->Buffer = smb2_alloc_data(
+                                  dcerpc_get_smb2_context(dce),
+                                  dcerpc_get_pdu_payload(pdu),
+                                  sizeof(struct srvsvc_SHARE_INFO_0_carray));
+                }
+        }
+        if (dcerpc_ptr_coder(dce, pdu, iov, offset,
+                             ctr->Buffer,
+                             PTR_UNIQUE,
+                             srvsvc_SHARE_INFO_0_carray_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
 
 /*
  * typedef struct _SHARE_INFO_1 {
@@ -111,33 +181,14 @@ srvsvc_SHARE_INFO_1_coder(struct dcerpc_context *ctx,
  *       [size_is(EntriesRead)] LPSHARE_INFO_1 Buffer;
  */
 static int
-srvsvc_SHARE_INFO_1_array_coder(struct dcerpc_context *ctx,
+srvsvc_SHARE_INFO_1_carray_coder(struct dcerpc_context *ctx,
                                  struct dcerpc_pdu *pdu,
                                  struct smb2_iovec *iov, int *offset,
                                  void *ptr)
 {
-        struct srvsvc_SHARE_INFO_1_carray *array = ptr;
-        int i;
-        uint64_t p;
-
-        /* Conformance */
-        p = array->max_count;
-        if (dcerpc_conformance_coder(ctx, pdu, iov, offset, &p)) {
-                return -1;
-        }
-        if (p != array->max_count) {
-                return -1;
-        }
-
-        /* Data */
-        for (i = 0; i < p; i++) {
-                if (srvsvc_SHARE_INFO_1_coder(ctx, pdu, iov, offset,
-                                              &array->share_info_1[i])) {
-                        return -1;
-                }
-        }
-
-        return 0;
+        return dcerpc_carray_coder(ctx, pdu, iov, offset, ptr,
+                                   sizeof(struct srvsvc_SHARE_INFO_1),
+                                   srvsvc_SHARE_INFO_1_coder);
 }
 
 /*
@@ -146,34 +197,28 @@ srvsvc_SHARE_INFO_1_array_coder(struct dcerpc_context *ctx,
  *       [size_is(EntriesRead)] LPSHARE_INFO_1 Buffer;
  * } SHARE_INFO_1_CONTAINER;
 */
-static int
+int
 srvsvc_SHARE_INFO_1_CONTAINER_coder(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                           struct smb2_iovec *iov, int *offset,
                           void *ptr)
 {
-        struct srvsvc_SHARE_INFO_1_CONTAINER *ctr1 = ptr;
+        struct srvsvc_SHARE_INFO_1_CONTAINER *ctr = ptr;
 
-        if (dcerpc_uint32_coder(dce, pdu, iov, offset, &ctr1->EntriesRead)) {
+        if (dcerpc_uint32_coder(dce, pdu, iov, offset, &ctr->EntriesRead)) {
                 return -1;
         }
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {
-                /* Need to allocate the buffer for the array */
-                ctr1->Buffer = smb2_alloc_data(dcerpc_get_smb2_context(dce),
-                                               dcerpc_get_pdu_payload(pdu),
-                                               sizeof(struct srvsvc_SHARE_INFO_1_carray) + ctr1->EntriesRead * sizeof(struct srvsvc_SHARE_INFO_1));
-                if (ctr1->Buffer == NULL) {
-                        return -1;
+                if (ctr->Buffer == NULL) {
+                        ctr->Buffer = smb2_alloc_data(
+                                  dcerpc_get_smb2_context(dce),
+                                  dcerpc_get_pdu_payload(pdu),
+                                  sizeof(struct srvsvc_SHARE_INFO_1_carray));
                 }
-                /* Need to set the max_count. When decoding we compare this
-                 * with the maximum_count read from the pdu
-                 */
-                ctr1->Buffer->max_count = ctr1->EntriesRead;
         }
-
         if (dcerpc_ptr_coder(dce, pdu, iov, offset,
-                             ctr1->Buffer,
+                             ctr->Buffer,
                              PTR_UNIQUE,
-                             srvsvc_SHARE_INFO_1_array_coder)) {
+                             srvsvc_SHARE_INFO_1_carray_coder)) {
                 return -1;
         }
 
@@ -198,13 +243,20 @@ srvsvc_SHARE_ENUM_UNION_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu
         struct srvsvc_SHARE_ENUM_UNION *ctr = ptr;
         uint64_t p;
 
-        p = ctr->level;
+        p = ctr->Level;
         if (dcerpc_uint3264_coder(ctx, pdu, iov, offset, &p)) {
                 return -1;
         }
-        ctr->level = (uint32_t)p;
+        ctr->Level = (uint32_t)p;
 
-        switch (ctr->level) {
+        switch (ctr->Level) {
+        case 0:
+                if (dcerpc_ptr_coder(ctx, pdu, iov, offset, &ctr->Level0,
+                                     PTR_UNIQUE,
+                                     srvsvc_SHARE_INFO_0_CONTAINER_coder)) {
+                        return -1;
+                }
+                break;
         case 1:
                 if (dcerpc_ptr_coder(ctx, pdu, iov, offset, &ctr->Level1,
                                      PTR_UNIQUE,
@@ -233,7 +285,6 @@ srvsvc_SHARE_ENUM_STRUCT_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pd
         if (dcerpc_uint32_coder(ctx, pdu, iov, offset, &ses->Level)) {
                 return -1;
         }
-        ses->ShareInfo.level = ses->Level;
         if (srvsvc_SHARE_ENUM_UNION_coder(ctx, pdu, iov, offset, &ses->ShareInfo)) {
                 return -1;
         }

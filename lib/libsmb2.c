@@ -183,7 +183,7 @@ struct smb2fh {
         int64_t end_of_file;
 };
 
-static void
+void
 smb2_close_context(struct smb2_context *smb2)
 {
         if (smb2 == NULL) {
@@ -200,7 +200,9 @@ smb2_close_context(struct smb2_context *smb2)
 
         smb2->message_id = 0;
         smb2->session_id = 0;
-        smb2->tree_id = 0;
+        smb2->tree_id_top = 0;
+        smb2->tree_id_cur = 0;
+        smb2->tree_id[0] = 0xdeadbeef;
         memset(smb2->signing_key, 0, SMB2_KEY_SIZE);
         if (smb2->session_key) {
                 free(smb2->session_key);
@@ -225,6 +227,7 @@ free_smb2dir(struct smb2_context *smb2, struct smb2dir *dir)
                 free(dir->entries);
                 dir->entries = e;
         }
+        free(dir->cb_data);
         free(dir);
 }
 
@@ -536,18 +539,16 @@ free_c_data(struct smb2_context *smb2, struct connect_data *c_data)
 #endif
         }
 
+        if (smb2->connect_data == c_data) {
+            smb2->connect_data = NULL;  /* to prevent double-free in smb2_destroy_context */
+        }
         free(c_data->utf8_unc);
         free(c_data->utf16_unc);
         free(discard_const(c_data->server));
         free(discard_const(c_data->share));
         free(discard_const(c_data->user));
         free(c_data);
-
-        if (smb2->connect_data == c_data) {
-            smb2->connect_data = NULL;  /* to prevent double-free in smb2_destroy_context */
-        }
 }
-
 
 static void
 tree_connect_cb(struct smb2_context *smb2, int status,
@@ -770,7 +771,7 @@ session_setup_cb(struct smb2_context *smb2, int status,
                 }
 
                 smb2_create_signing_key(smb2);
-                
+
                 if (smb2->hdr.flags & SMB2_FLAGS_SIGNED) {
                         uint8_t signature[16] _U_;
 
@@ -797,14 +798,23 @@ session_setup_cb(struct smb2_context *smb2, int status,
         req.path_length = 2 * c_data->utf16_unc->len;
         req.path        = c_data->utf16_unc->val;
 
-        pdu = smb2_cmd_tree_connect_async(smb2, &req, tree_connect_cb, c_data);
-        if (pdu == NULL) {
-                smb2_close_context(smb2);
-                c_data->cb(smb2, -ENOMEM, NULL, c_data->cb_data);
-                free_c_data(smb2, c_data);
-                return;
+        if (!smb2->passthrough) {
+                pdu = smb2_cmd_tree_connect_async(smb2, &req, tree_connect_cb, c_data);
+                if (pdu == NULL) {
+                        smb2_close_context(smb2);
+                        c_data->cb(smb2, -ENOMEM, NULL, c_data->cb_data);
+                        free_c_data(smb2, c_data);
+                        return;
+                }
+                smb2_queue_pdu(smb2, pdu);
         }
-        smb2_queue_pdu(smb2, pdu);
+        else {
+                /* if user wants raw data she probably doesnt want us to
+                 * do an implicit tree-connect, so just end here
+                 */
+                c_data->cb(smb2, 0, NULL, c_data->cb_data);
+                free_c_data(smb2, c_data);
+        }
 }
 
 /* Returns 0 for success and -errno for failure */
@@ -866,10 +876,12 @@ negotiate_cb(struct smb2_context *smb2, int status,
         smb3_update_preauth_hash(smb2, smb2->in.niov - 1, &smb2->in.iov[1]);
 
         if (status != SMB2_STATUS_SUCCESS) {
+                //qqq
                 smb2_close_context(smb2);
                 smb2_set_nterror(smb2, status, "Negotiate failed with (0x%08x) %s. %s",
                                status, nterror_to_str(status),
                                smb2_get_error(smb2));
+                // calls connect_cb
                 c_data->cb(smb2, -nterror_to_errno(status), NULL,
                            c_data->cb_data);
                 free_c_data(smb2, c_data);
@@ -1626,15 +1638,12 @@ create_cb_2(struct smb2_context *smb2, int status,
             void *command_data, void *private_data)
 {
         struct create_cb_data *create_data = private_data;
-
+        
         if (status != SMB2_STATUS_SUCCESS) {
-                create_data->cb(smb2, -nterror_to_errno(status),
-                       NULL, create_data->cb_data);
-                free(create_data);
-                return;
+                status = -nterror_to_errno(status);
         }
 
-        create_data->cb(smb2, 0, NULL, create_data->cb_data);
+        create_data->cb(smb2, status, NULL, create_data->cb_data);
         free(create_data);
 }
 
@@ -1642,29 +1651,11 @@ static void
 create_cb_1(struct smb2_context *smb2, int status,
             void *command_data, void *private_data)
 {
-        struct create_cb_data *create_data = private_data;
-        struct smb2_create_reply *rep = command_data;
-        struct smb2_close_request req;
-        struct smb2_pdu *pdu;
-
         if (status != SMB2_STATUS_SUCCESS) {
-                create_data->cb(smb2, -nterror_to_errno(status),
-                       NULL, create_data->cb_data);
-                free(create_data);
+                smb2_set_error(smb2, "Create failed with status %d. %s", status,
+                               smb2_get_error(smb2));
                 return;
         }
-
-        memset(&req, 0, sizeof(struct smb2_close_request));
-        req.flags = SMB2_CLOSE_FLAG_POSTQUERY_ATTRIB;
-        memcpy(req.file_id, rep->file_id, SMB2_FD_SIZE);
-
-        pdu = smb2_cmd_close_async(smb2, &req, create_cb_2, create_data);
-        if (pdu == NULL) {
-                create_data->cb(smb2, -ENOMEM, NULL, create_data->cb_data);
-                free(create_data);
-                return;
-        }
-        smb2_queue_pdu(smb2, pdu);
 }
 
 static int
@@ -1673,8 +1664,9 @@ smb2_unlink_internal(struct smb2_context *smb2, const char *path,
                      smb2_command_cb cb, void *cb_data)
 {
         struct create_cb_data *create_data;
-        struct smb2_create_request req;
-        struct smb2_pdu *pdu;
+        struct smb2_create_request cr_req;
+        struct smb2_close_request cl_req;
+        struct smb2_pdu *pdu, *next_pdu;
 
         if (smb2 == NULL) {
                 return -EINVAL;
@@ -1690,26 +1682,40 @@ smb2_unlink_internal(struct smb2_context *smb2, const char *path,
         create_data->cb_data = cb_data;
 
 
-        memset(&req, 0, sizeof(struct smb2_create_request));
-        req.requested_oplock_level = SMB2_OPLOCK_LEVEL_NONE;
-        req.impersonation_level = SMB2_IMPERSONATION_IMPERSONATION;
-        req.desired_access = SMB2_DELETE;
+        memset(&cr_req, 0, sizeof(struct smb2_create_request));
+        cr_req.requested_oplock_level = SMB2_OPLOCK_LEVEL_NONE;
+        cr_req.impersonation_level = SMB2_IMPERSONATION_IMPERSONATION;
+        cr_req.desired_access = SMB2_DELETE;
         if (is_dir) {
-                req.file_attributes = SMB2_FILE_ATTRIBUTE_DIRECTORY;
+                cr_req.file_attributes = SMB2_FILE_ATTRIBUTE_DIRECTORY;
         } else {
-                req.file_attributes = SMB2_FILE_ATTRIBUTE_NORMAL;
+                cr_req.file_attributes = SMB2_FILE_ATTRIBUTE_NORMAL;
         }
-        req.share_access = SMB2_FILE_SHARE_READ | SMB2_FILE_SHARE_WRITE |
+        cr_req.share_access = SMB2_FILE_SHARE_READ | SMB2_FILE_SHARE_WRITE |
                 SMB2_FILE_SHARE_DELETE;
-        req.create_disposition = SMB2_FILE_OPEN;
-        req.create_options = SMB2_FILE_DELETE_ON_CLOSE;
-        req.name = path;
+        cr_req.create_disposition = SMB2_FILE_OPEN;
+        cr_req.create_options = SMB2_FILE_DELETE_ON_CLOSE;
+        cr_req.name = path;
 
-        pdu = smb2_cmd_create_async(smb2, &req, create_cb_1, create_data);
+        pdu = smb2_cmd_create_async(smb2, &cr_req, create_cb_1, create_data);
         if (pdu == NULL) {
                 smb2_set_error(smb2, "Failed to create create command");
                 return -ENOMEM;
         }
+        
+        memset(&cl_req, 0, sizeof(struct smb2_close_request));
+        cl_req.flags = SMB2_CLOSE_FLAG_POSTQUERY_ATTRIB;
+        memcpy(cl_req.file_id, compound_file_id, SMB2_FD_SIZE);
+
+        next_pdu = smb2_cmd_close_async(smb2, &cl_req, create_cb_2, create_data);
+        if (next_pdu == NULL) {
+                smb2_set_error(smb2, "Failed to create close command");
+                smb2_free_pdu(smb2, pdu);
+                free(create_data);
+                return -ENOMEM;
+        }
+        smb2_add_compound_pdu(smb2, pdu, next_pdu);
+        
         smb2_queue_pdu(smb2, pdu);
 
         return 0;
@@ -1734,8 +1740,9 @@ smb2_mkdir_async(struct smb2_context *smb2, const char *path,
                  smb2_command_cb cb, void *cb_data)
 {
         struct create_cb_data *create_data;
-        struct smb2_create_request req;
-        struct smb2_pdu *pdu;
+        struct smb2_create_request cr_req;
+        struct smb2_close_request cl_req;
+        struct smb2_pdu *pdu, *next_pdu;
 
         if (smb2 == NULL) {
                 return -EINVAL;
@@ -1750,21 +1757,35 @@ smb2_mkdir_async(struct smb2_context *smb2, const char *path,
         create_data->cb = cb;
         create_data->cb_data = cb_data;
 
-        memset(&req, 0, sizeof(struct smb2_create_request));
-        req.requested_oplock_level = SMB2_OPLOCK_LEVEL_NONE;
-        req.impersonation_level = SMB2_IMPERSONATION_IMPERSONATION;
-        req.desired_access = SMB2_FILE_READ_ATTRIBUTES;
-        req.file_attributes = SMB2_FILE_ATTRIBUTE_DIRECTORY;
-        req.share_access = SMB2_FILE_SHARE_READ | SMB2_FILE_SHARE_WRITE;
-        req.create_disposition = SMB2_FILE_CREATE;
-        req.create_options = SMB2_FILE_DIRECTORY_FILE;
-        req.name = path;
+        memset(&cr_req, 0, sizeof(struct smb2_create_request));
+        cr_req.requested_oplock_level = SMB2_OPLOCK_LEVEL_NONE;
+        cr_req.impersonation_level = SMB2_IMPERSONATION_IMPERSONATION;
+        cr_req.desired_access = SMB2_FILE_READ_ATTRIBUTES;
+        cr_req.file_attributes = SMB2_FILE_ATTRIBUTE_DIRECTORY;
+        cr_req.share_access = SMB2_FILE_SHARE_READ | SMB2_FILE_SHARE_WRITE;
+        cr_req.create_disposition = SMB2_FILE_CREATE;
+        cr_req.create_options = SMB2_FILE_DIRECTORY_FILE;
+        cr_req.name = path;
 
-        pdu = smb2_cmd_create_async(smb2, &req, create_cb_1, create_data);
+        pdu = smb2_cmd_create_async(smb2, &cr_req, create_cb_1, create_data);
         if (pdu == NULL) {
                 smb2_set_error(smb2, "Failed to create create command");
                 return -ENOMEM;
         }
+
+        memset(&cl_req, 0, sizeof(struct smb2_close_request));
+        cl_req.flags = SMB2_CLOSE_FLAG_POSTQUERY_ATTRIB;
+        memcpy(cl_req.file_id, compound_file_id, SMB2_FD_SIZE);
+
+        next_pdu = smb2_cmd_close_async(smb2, &cl_req, create_cb_2, create_data);
+        if (next_pdu == NULL) {
+                smb2_set_error(smb2, "Failed to create close command");
+                smb2_free_pdu(smb2, pdu);
+                free(create_data);
+                return -ENOMEM;
+        }
+        smb2_add_compound_pdu(smb2, pdu, next_pdu);
+        
         smb2_queue_pdu(smb2, pdu);
 
         return 0;
@@ -2688,7 +2709,7 @@ smb2_fd_event_callbacks(struct smb2_context *smb2,
 static void
 smb2_logoff_request_cb(struct smb2_server *server, struct smb2_context *smb2, void *command_data, void *cb_data)
 {
-        struct smb2_pdu *pdu;
+        struct smb2_pdu *pdu = NULL;
         struct smb2_error_reply err;
         int ret = -EINVAL;
 
@@ -2698,7 +2719,7 @@ smb2_logoff_request_cb(struct smb2_server *server, struct smb2_context *smb2, vo
         if (!ret) {
                 pdu = smb2_cmd_logoff_reply_async(smb2, NULL, cb_data);
         }
-        else {
+        else if (ret < 0) {
                 memset(&err, 0, sizeof(err));
                 pdu = smb2_cmd_error_reply_async(smb2,
                                 &err, SMB2_LOGOFF, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
@@ -2714,16 +2735,17 @@ smb2_tree_connect_request_cb(struct smb2_server *server, struct smb2_context *sm
         struct smb2_tree_connect_request *req = command_data;
         struct smb2_tree_connect_reply rep;
         struct smb2_error_reply err;
-        struct smb2_pdu *pdu;
+        struct smb2_pdu *pdu = NULL;
         int ret = -1;
 
+        memset(&rep, 0, sizeof(rep));
         if (server->handlers && server->handlers->tree_connect_cmd) {
-                ret = server->handlers->tree_connect_cmd(server, smb2, req, &rep, &smb2->tree_id);
+                ret = server->handlers->tree_connect_cmd(server, smb2, req, &rep);
         }
         if (!ret) {
-                pdu = smb2_cmd_tree_connect_reply_async(smb2, &rep, NULL, cb_data);
+                pdu = smb2_cmd_tree_connect_reply_async(smb2, &rep, 0, NULL, cb_data);
         }
-        else {
+        else if (ret < 0) {
                 memset(&err, 0, sizeof(err));
                 pdu = smb2_cmd_error_reply_async(smb2,
                                 &err, SMB2_TREE_CONNECT, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
@@ -2736,17 +2758,17 @@ smb2_tree_connect_request_cb(struct smb2_server *server, struct smb2_context *sm
 static void
 smb2_tree_disconnect_request_cb(struct smb2_server *server, struct smb2_context *smb2, void *command_data, void *cb_data)
 {
-        struct smb2_pdu *pdu;
+        struct smb2_pdu *pdu = NULL;
         struct smb2_error_reply err;
         int ret = -1;
 
         if (server->handlers && server->handlers->tree_disconnect_cmd) {
-                ret = server->handlers->tree_disconnect_cmd(server, smb2, smb2->tree_id);
+                ret = server->handlers->tree_disconnect_cmd(server, smb2, smb2_tree_id(smb2));
         }
         if (!ret) {
                 pdu = smb2_cmd_tree_disconnect_reply_async(smb2, NULL, cb_data);
         }
-        else {
+        else if (ret < 0) {
                 memset(&err, 0, sizeof(err));
                 pdu = smb2_cmd_error_reply_async(smb2,
                                 &err, SMB2_TREE_DISCONNECT, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
@@ -2762,16 +2784,17 @@ smb2_create_request_cb(struct smb2_server *server, struct smb2_context *smb2, vo
         struct smb2_create_request *req = command_data;
         struct smb2_create_reply rep;
         struct smb2_error_reply err;
-        struct smb2_pdu *pdu;
+        struct smb2_pdu *pdu = NULL;
         int ret = -1;
 
+        memset(&rep, 0, sizeof(rep));
         if (server->handlers && server->handlers->create_cmd) {
                 ret = server->handlers->create_cmd(server, smb2, req, &rep);
         }
         if (!ret) {
                 pdu = smb2_cmd_create_reply_async(smb2, &rep, NULL, cb_data);
         }
-        else {
+        else if (ret < 0) {
                 memset(&err, 0, sizeof(err));
                 pdu = smb2_cmd_error_reply_async(smb2,
                                 &err, SMB2_CREATE, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
@@ -2787,16 +2810,17 @@ smb2_close_request_cb(struct smb2_server *server, struct smb2_context *smb2, voi
         struct smb2_close_request *req = command_data;
         struct smb2_close_reply rep;
         struct smb2_error_reply err;
-        struct smb2_pdu *pdu;
+        struct smb2_pdu *pdu = NULL;
         int ret = -1;
 
+        memset(&rep, 0, sizeof(rep));
         if (server->handlers && server->handlers->close_cmd) {
                 ret = server->handlers->close_cmd(server, smb2, req, &rep);
         }
         if (!ret) {
                 pdu = smb2_cmd_close_reply_async(smb2, &rep, NULL, cb_data);
         }
-        else {
+        else if (ret < 0) {
                 memset(&err, 0, sizeof(err));
                 pdu = smb2_cmd_error_reply_async(smb2,
                                 &err, SMB2_CLOSE, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
@@ -2811,7 +2835,7 @@ smb2_flush_request_cb(struct smb2_server *server, struct smb2_context *smb2, voi
 {
         struct smb2_flush_request *req = command_data;
         struct smb2_error_reply err;
-        struct smb2_pdu *pdu;
+        struct smb2_pdu *pdu = NULL;
         int ret = -1;
 
         if (server->handlers && server->handlers->flush_cmd) {
@@ -2820,7 +2844,7 @@ smb2_flush_request_cb(struct smb2_server *server, struct smb2_context *smb2, voi
         if (!ret) {
                 pdu = smb2_cmd_flush_reply_async(smb2, NULL, cb_data);
         }
-        else {
+        else if (ret < 0) {
                 memset(&err, 0, sizeof(err));
                 pdu = smb2_cmd_error_reply_async(smb2,
                                 &err, SMB2_FLUSH, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
@@ -2836,16 +2860,17 @@ smb2_read_request_cb(struct smb2_server *server, struct smb2_context *smb2, void
         struct smb2_read_request *req = command_data;
         struct smb2_read_reply rep;
         struct smb2_error_reply err;
-        struct smb2_pdu *pdu;
+        struct smb2_pdu *pdu = NULL;
         int ret = -1;
 
+        memset(&rep, 0, sizeof(rep));
         if (server->handlers && server->handlers->read_cmd) {
                 ret = server->handlers->read_cmd(server, smb2, req, &rep);
         }
         if (!ret) {
                 pdu = smb2_cmd_read_reply_async(smb2, &rep, NULL, cb_data);
         }
-        else {
+        else if (ret < 0) {
                 memset(&err, 0, sizeof(err));
                 pdu = smb2_cmd_error_reply_async(smb2,
                                 &err, SMB2_READ, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
@@ -2861,16 +2886,17 @@ smb2_write_request_cb(struct smb2_server *server, struct smb2_context *smb2, voi
         struct smb2_write_request *req = command_data;
         struct smb2_write_reply rep;
         struct smb2_error_reply err;
-        struct smb2_pdu *pdu;
+        struct smb2_pdu *pdu = NULL;
         int ret = -1;
 
+        memset(&rep, 0, sizeof(rep));
         if (server->handlers && server->handlers->write_cmd) {
                 ret = server->handlers->write_cmd(server, smb2, req, &rep);
         }
         if (!ret) {
                 pdu = smb2_cmd_write_reply_async(smb2, &rep, NULL, cb_data);
         }
-        else {
+        else if (ret < 0) {
                 memset(&err, 0, sizeof(err));
                 pdu = smb2_cmd_error_reply_async(smb2,
                                 &err, SMB2_WRITE, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
@@ -2885,7 +2911,7 @@ smb2_lock_request_cb(struct smb2_server *server, struct smb2_context *smb2, void
 {
         struct smb2_lock_request *req = command_data;
         struct smb2_error_reply err;
-        struct smb2_pdu *pdu;
+        struct smb2_pdu *pdu = NULL;
         int ret = -1;
 
         if (server->handlers && server->handlers->lock_cmd) {
@@ -2894,7 +2920,7 @@ smb2_lock_request_cb(struct smb2_server *server, struct smb2_context *smb2, void
         if (!ret) {
                 pdu = smb2_cmd_lock_reply_async(smb2, NULL, cb_data);
         }
-        else {
+        else if(ret < 0) {
                 memset(&err, 0, sizeof(err));
                 pdu = smb2_cmd_error_reply_async(smb2,
                                 &err, SMB2_LOCK, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
@@ -2910,7 +2936,7 @@ smb2_ioctl_request_cb(struct smb2_server *server, struct smb2_context *smb2, voi
         struct smb2_ioctl_request *req = command_data;
         struct smb2_ioctl_reply rep;
         struct smb2_error_reply err;
-        struct smb2_pdu *pdu;
+        struct smb2_pdu *pdu = NULL;
         struct smb2_ioctl_validate_negotiate_info out_info;
         int ret = -1;
 
@@ -2936,7 +2962,7 @@ smb2_ioctl_request_cb(struct smb2_server *server, struct smb2_context *smb2, voi
                 if (!ret) {
                         pdu = smb2_cmd_ioctl_reply_async(smb2, &rep, NULL, cb_data);
                 }
-                else {
+                else if (ret < 0) {
                         memset(&err, 0, sizeof(err));
                         pdu = smb2_cmd_error_reply_async(smb2,
                                         &err, SMB2_IOCTL, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
@@ -2957,7 +2983,7 @@ smb2_cancel_request_cb(struct smb2_server *server, struct smb2_context *smb2, vo
         if (server->handlers && server->handlers->cancel_cmd) {
                 ret = server->handlers->cancel_cmd(server, smb2);
         }
-        if (ret) {
+        if (ret < 0) {
                 memset(&err, 0, sizeof(err));
                 pdu = smb2_cmd_error_reply_async(smb2,
                                 &err, SMB2_CANCEL, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
@@ -2971,7 +2997,7 @@ static void
 smb2_echo_request_cb(struct smb2_server *server, struct smb2_context *smb2, void *command_data, void *cb_data)
 {
         struct smb2_error_reply err;
-        struct smb2_pdu *pdu;
+        struct smb2_pdu *pdu = NULL;
         int ret = -1;
 
         if (server->handlers && server->handlers->echo_cmd) {
@@ -2980,7 +3006,7 @@ smb2_echo_request_cb(struct smb2_server *server, struct smb2_context *smb2, void
         if (!ret) {
                 pdu = smb2_cmd_echo_reply_async(smb2, NULL, cb_data);
         }
-        else {
+        else if (ret < 0) {
                 memset(&err, 0, sizeof(err));
                 pdu = smb2_cmd_error_reply_async(smb2,
                                 &err, SMB2_ECHO, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
@@ -2996,19 +3022,20 @@ smb2_query_directory_request_cb(struct smb2_server *server, struct smb2_context 
         struct smb2_query_directory_request *req = command_data;
         struct smb2_query_directory_reply rep;
         struct smb2_error_reply err;
-        struct smb2_pdu *pdu;
+        struct smb2_pdu *pdu = NULL;
         int ret = -1;
 
+        memset(&rep, 0, sizeof(rep));
         memset(&err, 0, sizeof(err));
 
         if (server->handlers && server->handlers->query_directory_cmd) {
                 ret = server->handlers->query_directory_cmd(server, smb2, req, &rep);
         }
-        if (ret) {
+        if (ret < 0) {
                 pdu = smb2_cmd_error_reply_async(smb2,
                                 &err, SMB2_QUERY_DIRECTORY, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
         }
-        else {
+        else if (!ret) {
                 if (rep.output_buffer_length == 0) {
                         pdu = smb2_cmd_error_reply_async(smb2,
                                         &err, SMB2_QUERY_DIRECTORY, SMB2_STATUS_NO_MORE_FILES, NULL, cb_data);
@@ -3018,9 +3045,35 @@ smb2_query_directory_request_cb(struct smb2_server *server, struct smb2_context 
                                         &err, SMB2_QUERY_DIRECTORY, SMB2_STATUS_NOT_SUPPORTED, NULL, cb_data);
                 }
                 else {
-                        pdu = smb2_cmd_query_directory_reply_async(smb2, req->file_information_class,
-                                        req->flags, req->output_buffer_length, &rep, NULL, cb_data);
+                        pdu = smb2_cmd_query_directory_reply_async(smb2, req, &rep, NULL, cb_data);
                 }
+        }
+        if (pdu != NULL) {
+                smb2_queue_pdu(smb2, pdu);
+        }
+}
+
+static void
+smb2_change_notify_request_cb(struct smb2_server *server, struct smb2_context *smb2, void *command_data, void *cb_data)
+{
+        struct smb2_change_notify_request *req = command_data;
+        struct smb2_change_notify_reply rep;
+        struct smb2_error_reply err;
+        struct smb2_pdu *pdu = NULL;
+        int ret = -1;
+
+        memset(&rep, 0, sizeof(rep));
+        memset(&err, 0, sizeof(err));
+
+        if (server->handlers && server->handlers->change_notify_cmd) {
+                ret = server->handlers->change_notify_cmd(server, smb2, req);
+        }
+        if (ret < 0) {
+                pdu = smb2_cmd_error_reply_async(smb2,
+                                &err, SMB2_CHANGE_NOTIFY, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
+        }
+        else if (!ret) {
+                pdu = smb2_cmd_change_notify_reply_async(smb2, &rep, NULL, cb_data);
         }
         if (pdu != NULL) {
                 smb2_queue_pdu(smb2, pdu);
@@ -3033,19 +3086,20 @@ smb2_query_info_request_cb(struct smb2_server *server, struct smb2_context *smb2
         struct smb2_query_info_request *req = command_data;
         struct smb2_query_info_reply rep;
         struct smb2_error_reply err;
-        struct smb2_pdu *pdu;
+        struct smb2_pdu *pdu = NULL;
         int ret = -1;
 
+        memset(&rep, 0, sizeof(rep));
         memset(&err, 0, sizeof(err));
 
         if (server->handlers && server->handlers->query_info_cmd) {
                 ret = server->handlers->query_info_cmd(server, smb2, req, &rep);
         }
-        if (ret) {
+        if (ret < 0) {
                 pdu = smb2_cmd_error_reply_async(smb2,
-                                &err, SMB2_IOCTL, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
+                                &err, SMB2_QUERY_INFO, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
         }
-        else {
+        else if (!ret) {
                 if (rep.output_buffer_length == 0) {
                         pdu = smb2_cmd_error_reply_async(smb2,
                                         &err, SMB2_QUERY_INFO, SMB2_STATUS_NOT_SUPPORTED, NULL, cb_data);
@@ -3055,14 +3109,41 @@ smb2_query_info_request_cb(struct smb2_server *server, struct smb2_context *smb2
                                         &err, SMB2_QUERY_INFO, SMB2_STATUS_INVALID_INFO_CLASS, NULL, cb_data);
                 }
                 else {
-                        pdu = smb2_cmd_query_info_reply_async(smb2, req->info_type, req->file_info_class,
-                                        req->output_buffer_length, &rep, NULL, cb_data);
+                        pdu = smb2_cmd_query_info_reply_async(smb2, req, &rep, NULL, cb_data);
                 }
         }
         if (pdu != NULL) {
                 smb2_queue_pdu(smb2, pdu);
         }
 }
+
+static void
+smb2_set_info_request_cb(struct smb2_server *server, struct smb2_context *smb2, void *command_data, void *cb_data)
+{
+        struct smb2_set_info_request *req = command_data;
+        struct smb2_error_reply err;
+        struct smb2_pdu *pdu = NULL;
+        int ret = -1;
+
+        memset(&err, 0, sizeof(err));
+
+        if (server->handlers && server->handlers->set_info_cmd) {
+                ret = server->handlers->set_info_cmd(server, smb2, req);
+        }
+        if (ret < 0) {
+                pdu = smb2_cmd_error_reply_async(smb2,
+                                &err, SMB2_SET_INFO, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
+        }
+        else if (!ret) {
+                pdu = smb2_cmd_set_info_reply_async(smb2, req, NULL, cb_data);
+        }
+        if (pdu != NULL) {
+                smb2_queue_pdu(smb2, pdu);
+        }
+}
+
+static void
+smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data);
 
 static void
 smb2_general_client_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
@@ -3075,10 +3156,21 @@ smb2_general_client_request_cb(struct smb2_context *smb2, int status, void *comm
                 smb2_close_context(smb2);
                 return;
         }
+        if (status == SMB2_STATUS_CANCELLED) {
+                return;
+        }
+
         switch (smb2->pdu->header.command) {
         case SMB2_LOGOFF:
                 smb2_logoff_request_cb(server, smb2, command_data, cb_data);
-                break;
+                /* alloc a pdu for next session setup request */
+                smb2->next_pdu = smb2_allocate_pdu(smb2, SMB2_TREE_CONNECT, smb2_session_setup_request_cb, cb_data);
+                if (!smb2->next_pdu) {
+                        smb2_set_error(smb2, "can not alloc pdu for authorization session setup request");
+                        smb2_close_context(smb2);
+                }
+                /* note special case */
+                return;
         case SMB2_TREE_CONNECT:
                 smb2_tree_connect_request_cb(server, smb2, command_data, cb_data);
                 break;
@@ -3115,11 +3207,18 @@ smb2_general_client_request_cb(struct smb2_context *smb2, int status, void *comm
         case SMB2_QUERY_DIRECTORY:
                 smb2_query_directory_request_cb(server, smb2, command_data, cb_data);
                 break;
+        case SMB2_CHANGE_NOTIFY:
+                smb2_change_notify_request_cb(server, smb2, command_data, cb_data);
+                break;
         case SMB2_QUERY_INFO:
                 smb2_query_info_request_cb(server, smb2, command_data, cb_data);
                 break;
+        case SMB2_SET_INFO:
+                smb2_set_info_request_cb(server, smb2, command_data, cb_data);
+                break;
         default:
-                smb2_set_error(smb2, "Client request not implemented  %s", smb2_get_error(smb2));
+                smb2_set_error(smb2, "Client request %d not implemented  %s",
+                               smb2->pdu->header.command, smb2_get_error(smb2));
                 break;
         }
 
@@ -3150,6 +3249,10 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
         int have_valid_session_key = 1;
         int ret;
 
+        if (status) {
+                return;
+        }
+
         rep.security_buffer_length = 0;
         rep.security_buffer_offset = 0;
 
@@ -3157,6 +3260,8 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
 
         smb3_update_preauth_hash(smb2, smb2->in.niov - 1, &smb2->in.iov[1]);
         memset(&err, 0, sizeof(err));
+
+        pdu = NULL;
 
         if (smb2->sec == SMB2_SEC_NTLMSSP) {
                 if (ntlmssp_get_message_type(smb2,
@@ -3184,7 +3289,7 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                         smb2->next_pdu = smb2_allocate_pdu(smb2, SMB2_SESSION_SETUP,
                                        smb2_session_setup_request_cb, cb_data);
                         more_processing_needed = 1;
-                        smb2->session_id = 0xdeadbeef;
+                        smb2->session_id = server->session_counter++;
                 }
                 else if (message_type == AUTHENTICATION_MESSAGE) {
                         /* alloc a pdu for next request (not really required to get tree connect) */
@@ -3206,8 +3311,18 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                 if (message_type == AUTHENTICATION_MESSAGE) {
                         if (!ntlmssp_get_authenticated(c_data->auth_data)) {
                                 smb2_set_error(smb2, "Authentication failed: %s", smb2_get_error(smb2));
+                                #if 0
                                 smb2_close_context(smb2);
                                 return;
+                                #else
+                                pdu = smb2_cmd_error_reply_async(smb2,
+                                                &err, SMB2_SESSION_SETUP,
+                                                SMB2_STATUS_LOGON_FAILURE, NULL, cb_data);
+                                smb2_free_pdu(smb2, smb2->next_pdu);
+                                smb2->next_pdu = smb2_allocate_pdu(smb2, SMB2_SESSION_SETUP,
+                                               smb2_session_setup_request_cb, cb_data);
+                                more_processing_needed = 0;
+                                #endif
                         }
                         if (ntlmssp_get_session_key(c_data->auth_data,
                                                     &smb2->session_key,
@@ -3236,28 +3351,36 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                 */
                 smb2_create_signing_key(smb2);
         }
-        pdu = smb2_cmd_session_setup_reply_async(smb2, &rep, NULL, cb_data);
-        if (pdu == NULL) {
-                return;
-        }
-        
 
-        if (more_processing_needed) {
-                pdu->header.status = SMB2_STATUS_MORE_PROCESSING_REQUIRED;
+        if (server->allow_anonymous &&
+                         ((smb2->user == NULL || smb2->user[0] == '\0')||
+                         (smb2->password == NULL || smb2->password[0] == '\0'))) {
+                rep.session_flags |= SMB2_SESSION_FLAG_IS_GUEST;
         }
-        else {
-                if (server->handlers && server->handlers->session_established) {
-                        ret = server->handlers->session_established(server, smb2);
-                        if (ret) {
-                                smb2_set_error(smb2, "server session start handler failed");
-                                smb2_close_context(smb2);
-                                return;
-                        }
+
+        if (!pdu) {
+                pdu = smb2_cmd_session_setup_reply_async(smb2, &rep, NULL, cb_data);
+                if (pdu == NULL) {
+                        return;
+                }
+
+                if (more_processing_needed) {
+                        pdu->header.status = SMB2_STATUS_MORE_PROCESSING_REQUIRED;
                 }
                 else {
-                        pdu = smb2_cmd_error_reply_async(smb2,
-                                        &err, SMB2_SESSION_SETUP,
-                                        SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
+                        if (server->handlers && server->handlers->session_established) {
+                                ret = server->handlers->session_established(server, smb2);
+                                if (ret) {
+                                        smb2_set_error(smb2, "server session start handler failed");
+                                        smb2_close_context(smb2);
+                                        return;
+                                }
+                        }
+                        else {
+                                pdu = smb2_cmd_error_reply_async(smb2,
+                                                &err, SMB2_SESSION_SETUP,
+                                                SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
+                        }
                 }
         }
         if (!smb2->next_pdu) {
@@ -3276,6 +3399,7 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
         struct smb2_server *server = c_data->server_context;
         struct smb2_negotiate_request *req = command_data;
         struct smb2_negotiate_reply rep;
+        struct smb2_error_reply err;
         struct smb2_pdu *pdu;
         uint16_t dialects[SMB2_NEGOTIATE_MAX_DIALECTS];
         int dialect_count;
@@ -3284,6 +3408,8 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
         /*void *auth_data;*/
 
         memset(&rep, 0, sizeof(rep));
+        memset(&err, 0, sizeof(err));
+        smb2_set_error(smb2, "");
 
         /* negotiate highest version in request dialects */
         switch (smb2->version) {
@@ -3318,8 +3444,23 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
         }
 
         if (req && smb2->pdu->header.command != SMB1_NEGOTIATE) {
-                int d;
-				smb2->dialect = 0;
+                if (req->dialect_count == 0) {
+                        /* windows does this crap */
+                        /* alloc a pdu for another negotiate  request */
+                        smb2->next_pdu = smb2_allocate_pdu(smb2, SMB2_NEGOTIATE, smb2_negotiate_request_cb, cb_data);
+                        if (!smb2->next_pdu) {
+                                smb2_set_error(smb2, "can not alloc pdu for second negotiate request");
+                                smb2_close_context(smb2);
+                        }
+                        pdu = smb2_cmd_error_reply_async(smb2,
+                                        &err, SMB2_NEGOTIATE, SMB2_STATUS_INVALID_PARAMETER, NULL, cb_data);
+                        if (pdu == NULL) {
+                                return;
+                        }
+                        smb2_queue_pdu(smb2, pdu);
+                        return;
+                }
+                smb2->dialect = 0;
                 for (dialect_index = req->dialect_count - 1;
                                dialect_index >= 0; dialect_index--) {
                         for (d = dialect_count - 1; d >= 0; d--) {
@@ -3388,26 +3529,30 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
                         smb2->sign = 1;
                 }
 
-                if (req->security_mode & SMB2_NEGOTIATE_SIGNING_ENABLED &&
-                                smb2->dialect == SMB2_VERSION_0210) {
-                        /* smb2.1 requires signing if enabled on both sides
-                         * regardless of what the flags say */
-                        smb2->sign = 1;
+                if (!server->allow_anonymous ||
+                                (smb2->password && smb2->password[0])) {
+                        if (server->signing_enabled) {
+                                if (req->security_mode & SMB2_NEGOTIATE_SIGNING_ENABLED &&
+                                                smb2->dialect == SMB2_VERSION_0210) {
+                                        /* smb2.1 requires signing if enabled on both sides
+                                         * regardless of what the flags say */
+                                        smb2->sign = 1;
+                                }
+                                if (req->security_mode & SMB2_NEGOTIATE_SIGNING_ENABLED &&
+                                                smb2->dialect >= SMB2_VERSION_0311) {
+                                        /* smb3.1.1 requires signing if enabled on both sides
+                                         * regardless of what the flags say */
+                                        smb2->sign = 1;
+                                }
+                        }
                 }
-                if (req->security_mode & SMB2_NEGOTIATE_SIGNING_ENABLED &&
-                                smb2->dialect == SMB2_VERSION_0311) {
-                        /* smb3.1.1 requires signing if enabled on both sides
-                         * regardless of what the flags say */
-                        smb2->sign = 1;
-                }
-
                 if (smb2->seal) {
                         smb2->sign = 0;
                 }
         }
 
-        rep.security_mode      = SMB2_NEGOTIATE_SIGNING_ENABLED |
-                     (smb2->sign ? SMB2_NEGOTIATE_SIGNING_REQUIRED : 0);
+        rep.security_mode = (server->signing_enabled ? SMB2_NEGOTIATE_SIGNING_ENABLED : 0)|
+                             (smb2->sign ? SMB2_NEGOTIATE_SIGNING_REQUIRED : 0);
         memcpy(rep.server_guid, server->guid, 16); /* TODO */
         rep.max_transact_size  = smb2->max_transact_size;;
         rep.max_read_size      = smb2->max_read_size;
@@ -3527,11 +3672,12 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
                 strncpy(server->domain, default_domain,
                                MIN(sizeof(server->domain),strlen(default_domain) + 1));
         }
-
         err = smb2_bind_and_listen(server->port, max_connections, &server->fd);
         if (err != 0) {
                 return err;
         }
+
+        server->session_counter = 0x1234;
 
         do {
                 /* select on the file descriptors of all active client connections and our server socket
@@ -3635,10 +3781,16 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
 
                         /* cull connection-less clients here, one per iteration (since active list changes on destroy)*/
                         for (smb2 = smb2_active_contexts(); smb2; smb2 = smb2->next) {
-                                if (!SMB2_VALID_SOCKET(smb2_get_fd(smb2))) {
-                                        smb2_destroy_context(smb2);
-                                        break;
+                                if (smb2_is_server(smb2)) {
+                                        if (!SMB2_VALID_SOCKET(smb2_get_fd(smb2))) {
+                                                if (server->handlers && server->handlers->destruction_event) {
+                                                        server->handlers->destruction_event(server, smb2);
+                                                }
+                                                smb2_destroy_context(smb2);
+                                                break;
+                                        }
                                 }
+                                /* client connections are destroyed when they timeout or get disconnected */
                         }
                 }
         }

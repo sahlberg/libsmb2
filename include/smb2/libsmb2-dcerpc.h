@@ -78,6 +78,11 @@ struct dcerpc_utf16 {
         const char *utf8;
 };
 
+struct dcerpc_carray {
+        uint32_t max_count;
+        uint8_t *data;
+};
+        
 extern p_syntax_id_t lsa_interface;
 extern p_syntax_id_t srvsvc_interface;
         
@@ -101,9 +106,17 @@ int dcerpc_call_async(struct dcerpc_context *dce, int opnum,
                       dcerpc_coder rep_coder, int rep_size,
                       dcerpc_cb cb, void *cb_data);
 
+int dcerpc_do_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                    struct smb2_iovec *iov,
+                    int *offset, void *ptr,
+                    dcerpc_coder coder);
 int dcerpc_ptr_coder(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                      struct smb2_iovec *iov, int *offset, void *ptr,
                      enum ptr_type type, dcerpc_coder coder);
+int dcerpc_carray_coder(struct dcerpc_context *ctx,
+                        struct dcerpc_pdu *pdu,
+                        struct smb2_iovec *iov, int *offset,
+                        void *ptr, int elem_size, dcerpc_coder coder);
 int dcerpc_uint8_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                     struct smb2_iovec *iov, int *offset, void *ptr);
 int dcerpc_uint16_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,

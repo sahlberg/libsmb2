@@ -41,6 +41,29 @@ struct dcerpc_pdu;
 #define SHARE_TYPE_TEMPORARY 0x40000000
 #define SHARE_TYPE_HIDDEN    0x80000000
 
+enum SHARE_INFO_enum {
+        SHARE_INFO_0 = 0,
+        SHARE_INFO_1 = 1,
+};
+
+struct srvsvc_SHARE_INFO_0 {
+        struct dcerpc_utf16 netname;
+};
+int srvsvc_SHARE_INFO_0_coder(struct dcerpc_context *ctx,
+                              struct dcerpc_pdu *pdu,
+                              struct smb2_iovec *iov, int *offset,
+                              void *ptr);
+
+struct srvsvc_SHARE_INFO_0_carray {
+        uint32_t max_count;
+        struct srvsvc_SHARE_INFO_0 *share_info_0;
+};
+
+struct srvsvc_SHARE_INFO_0_CONTAINER {
+        uint32_t EntriesRead;
+        struct srvsvc_SHARE_INFO_0_carray *Buffer;
+};
+
 struct srvsvc_SHARE_INFO_1 {
         struct dcerpc_utf16 netname;
         uint32_t type;
@@ -52,17 +75,24 @@ int srvsvc_SHARE_INFO_1_coder(struct dcerpc_context *ctx,
                               void *ptr);
 
 struct srvsvc_SHARE_INFO_1_carray {
-        uint32_t max_count; /* filled in by caller before decode */
-        struct srvsvc_SHARE_INFO_1 share_info_1[];
+        uint32_t max_count;
+        struct srvsvc_SHARE_INFO_1 *share_info_1;
 };
+
 struct srvsvc_SHARE_INFO_1_CONTAINER {
         uint32_t EntriesRead;
         struct srvsvc_SHARE_INFO_1_carray *Buffer;
 };
+        
+int srvsvc_SHARE_INFO_1_CONTAINER_coder(struct dcerpc_context *dce,
+                                        struct dcerpc_pdu *pdu,
+                                        struct smb2_iovec *iov, int *offset,
+                                        void *ptr);
 
 struct srvsvc_SHARE_ENUM_UNION {
-        uint32_t level;
+        uint32_t Level;
         union {
+                struct srvsvc_SHARE_INFO_0_CONTAINER Level0;
                 struct srvsvc_SHARE_INFO_1_CONTAINER Level1;
         };
 };
@@ -124,7 +154,7 @@ struct srvsvc_rep {
  *          This pointer must be freed using smb2_free_data().
  * -errno : An error occurred.
  */
-int smb2_share_enum_async(struct smb2_context *smb2,
+int smb2_share_enum_async(struct smb2_context *smb2, enum SHARE_INFO_enum level,
                           smb2_command_cb cb, void *cb_data);
 
 int srvsvc_NetrShareEnum_rep_coder(struct dcerpc_context *dce,

@@ -333,6 +333,14 @@ void smb2_destroy_context(struct smb2_context *smb2)
                 }
                 smb2_free_pdu(smb2, pdu);
         }
+        if (smb2->pdu) {
+                struct smb2_pdu *pdu = smb2->pdu;
+
+                if (pdu->cb) {
+                        pdu->cb(smb2, SMB2_STATUS_CANCELLED, NULL, pdu->cb_data);
+                }
+                smb2_free_pdu(smb2, smb2->pdu);
+        }
         while (smb2->waitqueue) {
                 struct smb2_pdu *pdu = smb2->waitqueue;
 
@@ -340,13 +348,12 @@ void smb2_destroy_context(struct smb2_context *smb2)
                 if (pdu->cb) {
                         pdu->cb(smb2, SMB2_STATUS_CANCELLED, NULL, pdu->cb_data);
                 }
+                if (pdu == smb2->pdu) {
+                        smb2->pdu = NULL;
+                }
                 smb2_free_pdu(smb2, pdu);
         }
         smb2_free_iovector(smb2, &smb2->in);
-        if (smb2->pdu) {
-                smb2_free_pdu(smb2, smb2->pdu);
-                smb2->pdu = NULL;
-        }
 
         if (smb2->fhs) {
                 smb2_free_all_fhs(smb2);
@@ -376,13 +383,25 @@ void smb2_destroy_context(struct smb2_context *smb2)
         }
 
         SMB2_LIST_REMOVE(&active_contexts, smb2);
-
         free(smb2);
 }
 
 struct smb2_context *smb2_active_contexts(void)
 {
         return active_contexts;
+}
+
+int smb2_context_active(struct smb2_context *smb2)
+{
+        struct smb2_context *context = active_contexts;
+        
+        while (context) {
+                if (smb2 == context) {
+                        return 1;
+                }
+                context = context->next;
+        }
+        return 0;
 }
 
 void smb2_free_iovector(struct smb2_context *smb2, struct smb2_io_vectors *v)
@@ -666,3 +685,17 @@ void smb2_get_libsmb2Version(struct smb2_libversion *smb2_ver)
         smb2_ver->minor_version = LIBSMB2_MINOR_VERSION;
         smb2_ver->patch_version = LIBSMB2_MAJOR_VERSION;
 }
+
+void smb2_set_passthrough(struct smb2_context *smb2,
+                      int passthrough)
+{
+        smb2->passthrough = passthrough;
+}
+
+void smb2_get_passthrough(struct smb2_context *smb2,
+                      int *passthrough)
+{
+        *passthrough = smb2->passthrough;
+}
+
+

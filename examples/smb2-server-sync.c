@@ -270,12 +270,10 @@ static int logoff_handler(struct smb2_server *srvr, struct smb2_context *smb2)
 
 static int tree_connect_handler(struct smb2_server *srvr, struct smb2_context *smb2,
                     struct smb2_tree_connect_request *req,
-                    struct smb2_tree_connect_reply *rep,
-                    uint32_t *tree_id)
+                    struct smb2_tree_connect_reply *rep)
 {
         rep->share_type = SMB2_SHARE_TYPE_DISK;
         rep->maximal_access = 0x101f01ff;
-        *tree_id = 0x50625678;
 
         if (req->path && req->path_length) {
                 int ei = (req->path_length / 2) - 4;
@@ -414,6 +412,7 @@ static int query_info_handler(struct smb2_server *srvr, struct smb2_context *smb
 }
 
 struct smb2_server_request_handlers test_handlers = {
+        NULL,
         authorize_handler,
         session_handler,
         logoff_handler,
@@ -429,7 +428,9 @@ struct smb2_server_request_handlers test_handlers = {
         cancel_handler,
         echo_handler,
         query_directory_handler,
+        NULL,
         query_info_handler,
+        NULL
 };
 
 struct smb2_server server;
@@ -474,6 +475,9 @@ int main(int argc, char **argv)
     memset(&server, 0, sizeof(server)); 
     server.handlers = &test_handlers;
 
+    server.signing_enabled = 1;
+    server.allow_anonymous = 1;
+    
     server.port = strtoul(argv[1], NULL, 0);
     
     err = smb2_serve_port(&server, 1, on_new_client, (void *)&smb2);

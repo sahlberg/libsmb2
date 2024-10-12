@@ -87,16 +87,37 @@ smb2_encode_read_request(struct smb2_context *smb2,
         smb2_set_uint32(iov, 40, req->remaining_bytes);
         smb2_set_uint16(iov, 46, req->read_channel_info_length);
 
-        if (req->read_channel_info_length > 0 ||
+        if (req->read_channel_info_length > 0 &&
             req->read_channel_info != NULL) {
-                smb2_set_error(smb2, "ChannelInfo not yet implemented");
-                return -1;
+                if (smb2->passthrough) {
+                        req->read_channel_info_offset =
+                                (SMB2_READ_REQUEST_SIZE & 0xfffffffe) + SMB2_HEADER_SIZE;
+                        smb2_set_uint16(iov, 44, req->read_channel_info_offset);
+                        
+                        len = PAD_TO_64BIT(req->read_channel_info_length);
+                        buf = malloc(len);
+                        if (buf == NULL) {
+                                smb2_set_error(smb2, "Failed to allocate read channel context");
+                                return -1;
+                        }
+                        memcpy(buf, req->read_channel_info, req->read_channel_info_length);
+                        memset(buf + req->read_channel_info_length, 0,
+                                       len - req->read_channel_info_length);
+                        iov = smb2_add_iovector(smb2, &pdu->out,
+                                                        buf,
+                                                        len,
+                                                        free);
+                }                                
+                else {
+                        smb2_set_error(smb2, "ChannelInfo not yet implemented");
+                        return -1;
+                }
         }
 
         /* The buffer must contain at least one byte, even if we do not
          * have any read channel info.
          */
-        if (req->read_channel_info == NULL) {
+        if (req->read_channel_info_length == 0) {
                 static uint8_t zero;
 
                 smb2_add_iovector(smb2, &pdu->out, &zero, 1, NULL);
@@ -148,9 +169,6 @@ smb2_encode_read_reply(struct smb2_context *smb2,
         uint8_t *buf;
         struct smb2_iovec *iov;
 
-        pdu->header.flags |= SMB2_FLAGS_SERVER_TO_REDIR;
-        pdu->header.credit_request_response = 1;
-
         len = SMB2_READ_REPLY_SIZE & 0xfffffffe;
         buf = calloc(len, sizeof(uint8_t));
         if (buf == NULL) {
@@ -162,7 +180,7 @@ smb2_encode_read_reply(struct smb2_context *smb2,
 
         rep->data_offset = 0;
         if (rep->data_length && rep->data) {
-                rep->data_offset = len + SMB2_HEADER_SIZE;
+                rep->data_offset = (SMB2_READ_REPLY_SIZE & 0xfffffffe) + SMB2_HEADER_SIZE;
         }
         smb2_set_uint16(iov, 0, SMB2_READ_REPLY_SIZE);
         smb2_set_uint8(iov, 2, rep->data_offset);
@@ -236,17 +254,30 @@ smb2_process_read_fixed(struct smb2_context *smb2,
         if (rep->data_offset != SMB2_HEADER_SIZE + 16) {
                 smb2_set_error(smb2, "Unexpected data offset in Read reply. "
                                "Expected %d, got %d",
-                               16, rep->data_offset);
+                               SMB2_HEADER_SIZE + 16, rep->data_offset);
                 return -1;
         }
 
         return rep->data_length;
 }
 
+int
+smb2_process_read_variable(struct smb2_context *smb2,
+                        struct smb2_pdu *pdu)
+{
+        struct smb2_read_reply *rep = (struct smb2_read_reply*)pdu->payload;
+        struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
 
-#define IOVREQ_OFFSET (req->read_channel_info_offset - SMB2_HEADER_SIZE - \
-                    (SMB2_READ_REQUEST_SIZE & 0xfffe))
+        rep->data = malloc(rep->data_length);
+        if (rep->data) {
+                memcpy(rep->data, iov->buf, rep->data_length);
+                return 0;
+        }
+        return -1;
+}
 
+#define IOVREQ_OFFSET ((req->read_channel_info_offset)?(req->read_channel_info_offset - SMB2_HEADER_SIZE - \
+        (SMB2_READ_REQUEST_SIZE & 0xfffe)):0)
 int
 smb2_process_read_request_fixed(struct smb2_context *smb2,
                         struct smb2_pdu *pdu)
@@ -275,11 +306,27 @@ smb2_process_read_request_fixed(struct smb2_context *smb2,
         smb2_get_uint32(iov, 4, &req->length);
         smb2_get_uint64(iov, 8, &req->offset);
         memcpy(req->file_id, iov->buf + 16, SMB2_FD_SIZE);
-        smb2_get_uint32(iov, 24, &req->minimum_count);
-        smb2_get_uint32(iov, 28, &req->channel);
-        smb2_get_uint32(iov, 28, &req->remaining_bytes);
-        smb2_get_uint16(iov, 32, &req->read_channel_info_offset);
-        smb2_get_uint16(iov, 34, &req->read_channel_info_length);
+        smb2_get_uint32(iov, 32, &req->minimum_count);
+        smb2_get_uint32(iov, 36, &req->channel);
+        smb2_get_uint32(iov, 40, &req->remaining_bytes);
+        if (req->read_channel_info_length) {
+                req->read_channel_info_offset = (SMB2_READ_REQUEST_SIZE & 0xfffffffe) + SMB2_HEADER_SIZE;
+                smb2_get_uint16(iov, 44, &req->read_channel_info_offset);
+        }
+        smb2_get_uint16(iov, 46, &req->read_channel_info_length);
+
+        if (req->length > smb2->max_read_size) {
+                smb2_set_error(smb2, "can not read more than %d bytes", smb2->max_read_size);
+                return -1;
+        }
+        
+        /* provide an iovec to read the data into */
+        req->buf = malloc(req->length);
+        if (!req->buf) {
+                smb2_set_error(smb2, "can not alloc for read reply data");
+                return -1;
+        }
+        smb2_add_iovector(smb2,  &pdu->in, req->buf, req->length, free);
 
         if (req->read_channel_info_length == 0) {
                 return 0;
