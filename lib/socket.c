@@ -25,7 +25,7 @@
 
 #ifdef HAVE_ARPA_INET_H
 #include <arpa/inet.h>
-#endif 
+#endif
 
 #ifdef HAVE_NETDB_H
 #include <netdb.h>
@@ -304,7 +304,7 @@ smb2_write_to_socket(struct smb2_context *smb2)
                                 pdu->next_compound = NULL;
                                 smb2->credits -= pdu->header.credit_charge;
 
-                                if (!smb2->is_server) {
+                                if (!smb2_is_server(smb2)) {
                                         /* queue requests to correlate replies with */
                                         SMB2_LIST_ADD_END(&smb2->waitqueue, pdu);
                                 }
@@ -418,11 +418,11 @@ read_more_data:
                                        "header: %s", smb2_get_error(smb2));
                         return -1;
                 }
-                /* if serving, and this is an smb1 negotiate, just short-circuit and flush 
+                /* if serving, and this is an smb1 negotiate, just short-circuit and flush
                  * any remaining data on input and call the callback */
                 if (smb2_is_server(smb2) && smb2->hdr.command == SMB1_NEGOTIATE) {
                         uint8_t flusher[32];
-                        struct iovec fiov; 
+                        struct iovec fiov;
                         fiov.iov_base = (char *)flusher;
                         fiov.iov_len = sizeof(flusher);
                         do {
@@ -440,7 +440,7 @@ read_more_data:
                                 }
                         }
                         while (count > 0);
-                        
+
                         /* put on wait queue to queue_pdu doesn't complain */
                         SMB2_LIST_ADD_END(&smb2->waitqueue, pdu);
 
@@ -496,7 +496,7 @@ read_more_data:
                                 return -ENOMEM;
                         }
                         /* set the pdu header's message id to the request's id and
-                        *  the tree id to the request's tree id 
+                        *  the tree id to the request's tree id
                         */
                         pdu->header.message_id = smb2->hdr.message_id;
                         if (!(smb2->hdr.flags & SMB2_FLAGS_ASYNC_COMMAND)) {
@@ -511,16 +511,29 @@ read_more_data:
                         }
                 }
                 else {
-                        if (smb2->pdu) {
-                                smb2_free_pdu(smb2, smb2->pdu);
-                                smb2->pdu = NULL;
+                        if (smb2->hdr.command != SMB2_OPLOCK_BREAK) {
+                                if (smb2->pdu) {
+                                        smb2_free_pdu(smb2, smb2->pdu);
+                                        smb2->pdu = NULL;
+                                }
+                                pdu = smb2->pdu = smb2_find_pdu(smb2, smb2->hdr.message_id);
+                                if (pdu == NULL) {
+                                        smb2_set_error(smb2, "no matching PDU found");
+                                        return -1;
+                                }
+                                SMB2_LIST_REMOVE(&smb2->waitqueue, pdu);
+                        } else {
+                                /* oplock and lease break notifications won't have a pdu */
+                                pdu = smb2->pdu;
+                                if (!pdu) {
+                                        pdu = smb2->pdu = smb2_allocate_pdu(smb2, SMB2_OPLOCK_BREAK,
+                                                smb2_oplock_break_notify,  NULL);
+                                }
+                                if (pdu == NULL) {
+                                       smb2_set_error(smb2, "can not alloc pdu");
+                                       return -1;
+                                }
                         }
-                        pdu = smb2->pdu = smb2_find_pdu(smb2, smb2->hdr.message_id);
-                        if (pdu == NULL) {
-                                     smb2_set_error(smb2, "no matching PDU found");
-                                     return -1;
-                        }
-                        SMB2_LIST_REMOVE(&smb2->waitqueue, pdu);
                 }
 
                 len = smb2_get_fixed_size(smb2, pdu);
@@ -699,7 +712,7 @@ read_more_data:
 
         is_chained = smb2->hdr.next_command;
 
-        if (smb2->is_server) {
+        if (smb2_is_server(smb2)) {
                 /* queue requests to correlate our replies we send back later */
                 SMB2_LIST_ADD_END(&smb2->waitqueue, pdu);
                 pdu->cb(smb2, smb2->hdr.status, pdu->payload, pdu->cb_data);
@@ -714,7 +727,7 @@ read_more_data:
                 smb2->pdu = smb2->next_pdu;
                 smb2->next_pdu = NULL;
         }
-        
+
         if (is_chained) {
                 /* Record at which iov we ended in this loop so we know where to start in the next */
                 iov_offset = smb2->in.niov - 1;
@@ -735,7 +748,7 @@ read_more_data:
 static ssize_t smb2_readv_from_socket(struct smb2_context *smb2,
                                       const struct iovec *iov, int iovcnt)
 {
-        ssize_t rc = readv(smb2->fd, (struct iovec*) iov, iovcnt);        
+        ssize_t rc = readv(smb2->fd, (struct iovec*) iov, iovcnt);
         return rc;
 }
 

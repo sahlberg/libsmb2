@@ -25,7 +25,6 @@ if(ESP_PLATFORM)
     sha1.c
     sha224-256.c
     sha384-512.c
-    smb2-cmd-notify-change.c
     smb2-cmd-close.c
     smb2-cmd-create.c
     smb2-cmd-echo.c
@@ -35,7 +34,8 @@ if(ESP_PLATFORM)
     smb2-cmd-lock.c
     smb2-cmd-logoff.c
     smb2-cmd-negotiate.c
-    smb2-cmd-notify.c
+    smb2-cmd-notify-change.c
+    smb2-cmd-oplock-break.c
     smb2-cmd-query-directory.c
     smb2-cmd-query-info.c
     smb2-cmd-read.c
@@ -89,7 +89,6 @@ elseif(IOP AND BUILD_IRX)
             sha1.c
             sha224-256.c
             sha384-512.c
-            smb2-cmd-notify-change.c
             smb2-cmd-close.c
             smb2-cmd-create.c
             smb2-cmd-echo.c
@@ -99,6 +98,8 @@ elseif(IOP AND BUILD_IRX)
             smb2-cmd-lock.c
             smb2-cmd-logoff.c
             smb2-cmd-negotiate.c
+            smb2-cmd-notify-change.c
+            smb2-cmd-oplock-break.c
             smb2-cmd-query-directory.c
             smb2-cmd-query-info.c
             smb2-cmd-read.c
@@ -145,7 +146,6 @@ else()
             sha1.c
             sha224-256.c
             sha384-512.c
-            smb2-cmd-notify-change.c
             smb2-cmd-close.c
             smb2-cmd-create.c
             smb2-cmd-echo.c
@@ -155,6 +155,8 @@ else()
             smb2-cmd-lock.c
             smb2-cmd-logoff.c
             smb2-cmd-negotiate.c
+            smb2-cmd-notify-change.c
+            smb2-cmd-oplock-break.c
             smb2-cmd-query-directory.c
             smb2-cmd-query-info.c
             smb2-cmd-read.c
