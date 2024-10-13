@@ -588,8 +588,9 @@ smb2_process_negotiate_request_variable(struct smb2_context *smb2,
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
         int offset;
         int has_0311 = 0;
+		uint32_t d;
         
-        for (uint32_t d = 0; d < req->dialect_count && d < SMB2_NEGOTIATE_MAX_DIALECTS; d++) {
+        for (d = 0; d < req->dialect_count && d < SMB2_NEGOTIATE_MAX_DIALECTS; d++) {
                 smb2_get_uint16(iov, d * 2, &req->dialects[d]);
                 if (req->dialects[d] == 0x0311) {
                         has_0311 = 1;

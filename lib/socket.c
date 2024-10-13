@@ -1251,7 +1251,7 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
 }
 
 int
-smb2_bind_and_listen(const uint16_t port, int max_connections, int *out_fd)
+smb2_bind_and_listen(const uint16_t port, const int max_connections, int *out_fd)
 {
         t_socket fd;
         socklen_t socksize;
@@ -1291,7 +1291,7 @@ smb2_bind_and_listen(const uint16_t port, int max_connections, int *out_fd)
         return 0;
 }
 
-int smb2_accept_connection_async(const int fd, int to_msec, smb2_accepted_cb cb, void *cb_data)
+int smb2_accept_connection_async(const int fd, const int to_msec, smb2_accepted_cb cb, void *cb_data)
 {
         int err = -1;
         struct sockaddr_in client_addr;

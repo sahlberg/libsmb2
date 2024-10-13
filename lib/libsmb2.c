@@ -876,12 +876,11 @@ negotiate_cb(struct smb2_context *smb2, int status,
         smb3_update_preauth_hash(smb2, smb2->in.niov - 1, &smb2->in.iov[1]);
 
         if (status != SMB2_STATUS_SUCCESS) {
-                //qqq
                 smb2_close_context(smb2);
                 smb2_set_nterror(smb2, status, "Negotiate failed with (0x%08x) %s. %s",
                                status, nterror_to_str(status),
                                smb2_get_error(smb2));
-                // calls connect_cb
+                /* calls connect_cb */
                 c_data->cb(smb2, -nterror_to_errno(status), NULL,
                            c_data->cb_data);
                 free_c_data(smb2, c_data);
@@ -2946,7 +2945,7 @@ smb2_ioctl_request_cb(struct smb2_server *server, struct smb2_context *smb2, voi
 
         if (req->ctl_code == SMB2_FSCTL_VALIDATE_NEGOTIATE_INFO) {
                 /* this one only needs local handling ever */
-                //in_info = (struct smb2_ioctl_validate_negotiate_info *)req->input;
+                /* in_info = (struct smb2_ioctl_validate_negotiate_info *)req->input; */
                 out_info.capabilities = smb2->capabilities;
                 out_info.security_mode = smb2->security_mode;
                 memcpy(out_info.guid, server->guid, 16);
@@ -3256,7 +3255,7 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
         rep.security_buffer_length = 0;
         rep.security_buffer_offset = 0;
 
-        rep.session_flags = 0; //req->flags;
+        rep.session_flags = 0; /* req->flags; */
 
         smb3_update_preauth_hash(smb2, smb2->in.niov - 1, &smb2->in.iov[1]);
         memset(&err, 0, sizeof(err));
@@ -3333,7 +3332,7 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
         }
 #ifdef HAVE_LIBKRB5
         else {
-                /// TODO
+                /* TODO: */
                 have_valid_session_key = 0;
         }
 #endif
@@ -3403,8 +3402,10 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
         struct smb2_pdu *pdu;
         uint16_t dialects[SMB2_NEGOTIATE_MAX_DIALECTS];
         int dialect_count;
+        int d;
         int dialect_index;
-        //void *auth_data;
+        struct smb2_timeval now;
+        /*void *auth_data;*/
 
         memset(&rep, 0, sizeof(rep));
         memset(&err, 0, sizeof(err));
@@ -3462,7 +3463,7 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
                 smb2->dialect = 0;
                 for (dialect_index = req->dialect_count - 1;
                                dialect_index >= 0; dialect_index--) {
-                        for (int d = dialect_count - 1; d >= 0; d--) {
+                        for (d = dialect_count - 1; d >= 0; d--) {
                                 if (dialects[d] == req->dialects[dialect_index]) {
                                         smb2->dialect = dialects[d];
                                         break;
@@ -3552,7 +3553,7 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
 
         rep.security_mode = (server->signing_enabled ? SMB2_NEGOTIATE_SIGNING_ENABLED : 0)|
                              (smb2->sign ? SMB2_NEGOTIATE_SIGNING_REQUIRED : 0);
-        memcpy(rep.server_guid, server->guid, 16); /// TODO
+        memcpy(rep.server_guid, server->guid, 16); /* TODO */
         rep.max_transact_size  = smb2->max_transact_size;;
         rep.max_read_size      = smb2->max_read_size;
         rep.max_write_size     = smb2->max_write_size;
@@ -3562,8 +3563,6 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
         /* remember negotiated capabilites and security mode */
         smb2->capabilities = rep.capabilities;
         smb2->security_mode = rep.security_mode;
-
-        struct smb2_timeval now;
 
         now.tv_sec = time(NULL);
         now.tv_usec = 0;
@@ -3699,7 +3698,7 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
                                         if (events & POLLOUT) {
                                                 FD_SET(smb2_get_fd(smb2), &wfds);
                                         }
-                                        if (smb2_get_fd(smb2) > maxfd) {
+                                        if (smb2_get_fd(smb2) > (t_socket)maxfd) {
                                                 maxfd = smb2_get_fd(smb2);
                                         }
                                 }

@@ -10,23 +10,23 @@ API
 ===
 Libsmb2 implements three different APIs for accessing remote SMB shares :
 
-1, High level synchronous posix-like API.
+1, High level synchronous posix-like API:
 This is a simple API for accessing a share.
 The functions in this API are modelled to be be similar to the corresponding
 POSIX functions.
-This API is described in libsmb.h
+This API is described in libsmb2.h
 
-2, High level async posix-like API.
+2, High level async posix-like API:
 This is a high performance, fully non-blocking and async API.
 The functions in this API are modelled to be be similar to the corresponding
 POSIX functions.
 This is the recommended API.
-This API is described in libsmb.h
+This API is described in libsmb2.h
 
-3, Low level async RAW API.
+3, Low level async RAW API:
 This is a low level API that provides direct access to the SMB2 PDUs
 and data structures.
-This API is described in libsmb-raw.h
+This API is described in libsmb2-raw.h
 
 Libsmb2 implements a synchronous API for running an SMB server. You could
 run an async server if you implement the main loop yourself however
