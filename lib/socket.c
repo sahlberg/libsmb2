@@ -686,6 +686,19 @@ read_more_data:
                 /* This was a pending command. Just ignore it and proceed
                  * to read the next chain.
                  */
+                if (smb2->passthrough) {
+                        pdu = smb2_find_pdu(smb2, smb2->hdr.message_id);
+                        if (pdu == NULL) {
+                                smb2_set_error(smb2, "no matching PDU found");
+                                return -1;
+                        }
+                        else
+                        {
+                                /* need to pass all pdus through note we do not free
+                                * the pdu or delist the request */
+                                pdu->cb(smb2, smb2->hdr.status, pdu->payload, pdu->cb_data);
+                        }
+                }
                 smb2->in.num_done = 0;
                 return 0;
         }
