@@ -390,12 +390,10 @@ smb2_process_query_info_fixed(struct smb2_context *smb2,
                         return -1;
                 }
         }
-        if (rep->output_buffer_length == 0) {
-                smb2_set_error(smb2, "No output buffer in Query "
-                               "Info response");
-                pdu->payload = NULL;
-                free(rep);
-                return -1;
+        else {
+                /* this can happen "No Info" */
+                rep->output_buffer = NULL;
+                return 0;
         }
         if (rep->output_buffer_offset < SMB2_HEADER_SIZE +
             (SMB2_QUERY_INFO_REPLY_SIZE & 0xfffe)) {
@@ -422,23 +420,72 @@ int smb2_process_query_info_variable(struct smb2_context *smb2,
                                  NULL};
         void *ptr = NULL;
 
-        if (smb2->passthrough) {
-                ptr = smb2_alloc_init(smb2,
-                          rep->output_buffer_length);
-                memcpy(ptr, vec.buf, vec.len);
-                rep->output_buffer = ptr;
-                return 0;
-        }
-
         switch (pdu->info_type) {
         case SMB2_0_INFO_FILE:
                 switch (pdu->file_info_class) {
+                case SMB2_FILE_ACCESS_INFORMATION:
+                        break;
+                case SMB2_FILE_ALIGNMENT_INFORMATION:
+                        break;
+                case SMB2_FILE_ALL_INFORMATION:
+                        ptr = smb2_alloc_init(smb2,
+                                  sizeof(struct smb2_file_all_info));
+                        if (smb2_decode_file_all_info(smb2, ptr, ptr, &vec)) {
+                                smb2_set_error(smb2, "could not decode file "
+                                               "all info. %s",
+                                               smb2_get_error(smb2));
+                                return -1;
+                        }
+                        break;
+                case SMB2_FILE_ALTERNATE_NAME_INFORMATION:
+                        break;
+                case SMB2_FILE_ATTRIBUTE_TAG_INFORMATION:
+                        break;
                 case SMB2_FILE_BASIC_INFORMATION:
                         ptr = smb2_alloc_init(smb2,
                                   sizeof(struct smb2_file_basic_info));
                         if (smb2_decode_file_basic_info(smb2, ptr, ptr, &vec)) {
                                 smb2_set_error(smb2, "could not decode file "
                                                "basic info. %s",
+                                               smb2_get_error(smb2));
+                                return -1;
+                        }
+                        break;
+                case SMB2_FILE_COMPRESSION_INFORMATION:
+                        break;
+                case SMB2_FILE_EA_INFORMATION:
+                        break;
+                case SMB2_FILE_FULL_EA_INFORMATION:
+                        break;
+                case SMB2_FILE_ID_INFORMATION:
+                        break;
+                case SMB2_FILE_MODE_INFORMATION:
+                        break;
+                case SMB2_FILE_NETWORK_OPEN_INFORMATION:
+                        ptr = smb2_alloc_init(smb2,
+                                  sizeof(struct smb2_file_all_info));
+                        if (smb2_decode_file_network_open_info(smb2, ptr, ptr, &vec)) {
+                                smb2_set_error(smb2, "could not decode file "
+                                               "network open info. %s",
+                                               smb2_get_error(smb2));
+                                return -1;
+                        }
+                        break;
+                case SMB2_FILE_NORMALIZED_NAME_INFORMATION:
+                        break;
+                case SMB2_FILE_PIPE_INFORMATION:
+                        break;
+                case SMB2_FILE_PIPE_LOCAL_INFORMATION:
+                        break;
+                case SMB2_FILE_PIPE_REMOTE_INFORMATION:
+                        break;
+                case SMB2_FILE_POSITION_INFORMATION:
+                        ptr = smb2_alloc_init(smb2,
+                                  sizeof(struct smb2_file_position_info));
+                        if (smb2_decode_file_position_info(smb2, ptr, ptr,
+                                                           &vec)) {
+                                smb2_set_error(smb2, "could not decode file "
+                                               "positiion info. %s",
                                                smb2_get_error(smb2));
                                 return -1;
                         }
@@ -454,65 +501,23 @@ int smb2_process_query_info_variable(struct smb2_context *smb2,
                                 return -1;
                         }
                         break;
-                case SMB2_FILE_ALL_INFORMATION:
-                        ptr = smb2_alloc_init(smb2,
-                                  sizeof(struct smb2_file_all_info));
-                        if (smb2_decode_file_all_info(smb2, ptr, ptr, &vec)) {
-                                smb2_set_error(smb2, "could not decode file "
-                                               "all info. %s",
-                                               smb2_get_error(smb2));
-                                return -1;
-                        }
+                case SMB2_FILE_STREAM_INFORMATION:
+                        break;
+                case SMB2_FILE_INFO_CLASS_RESERVED:
                         break;
                 default:
-                        smb2_set_error(smb2, "Can not decode info_type/"
-                                       "info_class %d/%d yet",
-                                       pdu->info_type,
-                                       pdu->file_info_class);
-                        return -1;
-                }
-                break;
-        case SMB2_0_INFO_SECURITY:
-                ptr = smb2_alloc_init(smb2,
-                                      sizeof(struct smb2_security_descriptor));
-                if (smb2_decode_security_descriptor(smb2, ptr, ptr, &vec)) {
-                        smb2_set_error(smb2, "could not decode security "
-                                       "descriptor. %s",
-                                       smb2_get_error(smb2));
-                        return -1;
+                        break;
                 }
                 break;
         case SMB2_0_INFO_FILESYSTEM:
                 switch (pdu->file_info_class) {
-                case SMB2_FILE_FS_VOLUME_INFORMATION:
+                case SMB2_FILE_FS_ATTRIBUTE_INFORMATION:
                         ptr = smb2_alloc_init(smb2,
-                                  sizeof(struct smb2_file_fs_volume_info));
-                        if (smb2_decode_file_fs_volume_info(smb2, ptr, ptr,
-                                                            &vec)) {
-                                smb2_set_error(smb2, "could not decode file "
-                                               "fs volume info. %s",
-                                               smb2_get_error(smb2));
-                                return -1;
-                        }
-                        break;
-                case SMB2_FILE_FS_SIZE_INFORMATION:
-                        ptr = smb2_alloc_init(smb2,
-                                  sizeof(struct smb2_file_fs_size_info));
-                        if (smb2_decode_file_fs_size_info(smb2, ptr, ptr,
+                                  sizeof(struct smb2_file_fs_attribute_info));
+                        if (smb2_decode_file_fs_attribute_info(smb2, ptr, ptr,
                                                           &vec)) {
                                 smb2_set_error(smb2, "could not decode file "
-                                               "fs size info. %s",
-                                               smb2_get_error(smb2));
-                                return -1;
-                        }
-                        break;
-                case SMB2_FILE_FS_DEVICE_INFORMATION:
-                        ptr = smb2_alloc_init(smb2,
-                                  sizeof(struct smb2_file_fs_device_info));
-                        if (smb2_decode_file_fs_device_info(smb2, ptr, ptr,
-                                                          &vec)) {
-                                smb2_set_error(smb2, "could not decode file "
-                                               "fs device info. %s",
+                                               "fs attribute info. %s",
                                                smb2_get_error(smb2));
                                 return -1;
                         }
@@ -528,6 +533,17 @@ int smb2_process_query_info_variable(struct smb2_context *smb2,
                                 return -1;
                         }
                         break;
+                case SMB2_FILE_FS_DEVICE_INFORMATION:
+                        ptr = smb2_alloc_init(smb2,
+                                  sizeof(struct smb2_file_fs_device_info));
+                        if (smb2_decode_file_fs_device_info(smb2, ptr, ptr,
+                                                          &vec)) {
+                                smb2_set_error(smb2, "could not decode file "
+                                               "fs device info. %s",
+                                               smb2_get_error(smb2));
+                                return -1;
+                        }
+                        break;
                 case SMB2_FILE_FS_FULL_SIZE_INFORMATION:
                         ptr = smb2_alloc_init(smb2,
                                   sizeof(struct smb2_file_fs_full_size_info));
@@ -535,6 +551,17 @@ int smb2_process_query_info_variable(struct smb2_context *smb2,
                                                                &vec)) {
                                 smb2_set_error(smb2, "could not decode file "
                                                "fs full size info. %s",
+                                               smb2_get_error(smb2));
+                                return -1;
+                        }
+                        break;
+                case SMB2_FILE_FS_OBJECT_ID_INFORMATION:
+                        ptr = smb2_alloc_init(smb2,
+                                  sizeof(struct smb2_file_fs_object_id_info));
+                        if (smb2_decode_file_fs_object_id_info(smb2, ptr, ptr,
+                                                                 &vec)) {
+                                smb2_set_error(smb2, "could not decode file "
+                                               "object id info. %s",
                                                smb2_get_error(smb2));
                                 return -1;
                         }
@@ -550,22 +577,70 @@ int smb2_process_query_info_variable(struct smb2_context *smb2,
                                 return -1;
                         }
                         break;
+                case SMB2_FILE_FS_SIZE_INFORMATION:
+                        ptr = smb2_alloc_init(smb2,
+                                  sizeof(struct smb2_file_fs_size_info));
+                        if (smb2_decode_file_fs_size_info(smb2, ptr, ptr,
+                                                          &vec)) {
+                                smb2_set_error(smb2, "could not decode file "
+                                               "fs size info. %s",
+                                               smb2_get_error(smb2));
+                                return -1;
+                        }
+                        break;
+                case SMB2_FILE_FS_VOLUME_INFORMATION:
+                        ptr = smb2_alloc_init(smb2,
+                                  sizeof(struct smb2_file_fs_volume_info));
+                        if (smb2_decode_file_fs_volume_info(smb2, ptr, ptr,
+                                                            &vec)) {
+                                smb2_set_error(smb2, "could not decode file "
+                                               "fs volume info. %s",
+                                               smb2_get_error(smb2));
+                                return -1;
+                        }
+                        break;
                 default:
+                        break;
+                }
+                break;
+        case SMB2_0_INFO_SECURITY:
+                if (smb2->passthrough) {
+                        /* TODO - handle encoding of security as needed
+                         * for now, just pass-through if indicated */
+                        break;
+                }
+                ptr = smb2_alloc_init(smb2,
+                                      sizeof(struct smb2_security_descriptor));
+                if (smb2_decode_security_descriptor(smb2, ptr, ptr, &vec)) {
+                        smb2_set_error(smb2, "could not decode security "
+                                       "descriptor. %s",
+                                       smb2_get_error(smb2));
+                        return -1;
+                }
+                break;
+        case SMB2_0_INFO_QUOTA:
+                break;
+        default:
+                smb2_set_error(smb2, "Bad info_type %d",
+                               pdu->info_type);
+                return -1;
+        }
+
+        if (!ptr) {
+                if (smb2->passthrough) {
+                        ptr = smb2_alloc_init(smb2,
+                                        rep->output_buffer_length);
+                        memcpy(ptr, vec.buf, vec.len);
+                } else {
                         smb2_set_error(smb2, "Can not decode info_type/"
                                        "info_class %d/%d yet",
                                        pdu->info_type,
                                        pdu->file_info_class);
                         return -1;
                 }
-                break;
-        default:
-                smb2_set_error(smb2, "Can not decode file info_type %d yet",
-                               pdu->info_type);
-                return -1;
         }
 
         rep->output_buffer = ptr;
-
         return 0;
 }
 

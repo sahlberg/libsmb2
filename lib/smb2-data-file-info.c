@@ -262,9 +262,39 @@ smb2_encode_file_all_info(struct smb2_context *smb2,
 }
 
 int
+smb2_decode_file_network_open_info(struct smb2_context *smb2,
+                                   void *memctx,
+                                   struct smb2_file_network_open_info *fs,
+                                   struct smb2_iovec *vec)
+{
+        if (vec->len < 56) {
+                return -1;
+        }
+
+        uint64_t t;
+
+        smb2_get_uint64(vec, 0, &t);
+        smb2_win_to_timeval(t, &fs->creation_time);
+
+        smb2_get_uint64(vec, 8, &t);
+        smb2_win_to_timeval(t, &fs->last_access_time);
+
+        smb2_get_uint64(vec, 16, &t);
+        smb2_win_to_timeval(t, &fs->last_write_time);
+
+        smb2_get_uint64(vec, 24, &t);
+        smb2_win_to_timeval(t, &fs->change_time);
+
+        smb2_get_uint64(vec, 32, &fs->allocation_size);
+        smb2_get_uint64(vec, 40, &fs->end_of_file);
+        smb2_get_uint32(vec, 48, &fs->file_attributes);
+        return 0;
+}
+
+int
 smb2_encode_file_network_open_info(struct smb2_context *smb2,
-                          struct smb2_file_network_open_info *fs,
-                          struct smb2_iovec *vec)
+                                   struct smb2_file_network_open_info *fs,
+                                   struct smb2_iovec *vec)
 {
         if (vec->len < 56) {
                 return -1;

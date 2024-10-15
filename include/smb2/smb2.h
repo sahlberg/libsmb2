@@ -553,13 +553,17 @@ struct smb2_read_reply {
 #define SMB2_FILE_LINK_INFORMATION              0x0B
 #define SMB2_FILE_NAMES_INFORMATION             0x0C
 #define SMB2_FILE_DISPOSITION_INFORMATION       0x0D
-#define SMB2_FILE_POSITIION_INFORMATION         0x0E
+#define SMB2_FILE_POSITION_INFORMATION          0x0E
 #define SMB2_FILE_FULL_EA_INFORMATION           0x0F
 #define SMB2_FILE_MODE_INFORMATION              0x10
 #define SMB2_FILE_ALIGNMENT_INFORMATION         0x11
 #define SMB2_FILE_ALL_INFORMATION               0x12
 #define SMB2_FILE_END_OF_FILE_INFORMATION       0x14
 #define SMB2_FILE_ALTERNATE_NAME_INFORMATION    0x15
+#define SMB2_FILE_OBJECT_ID_INFORMATION         0x1D
+#define SMB2_FILE_ATTRIBUTE_TAG_INFORMATION     0x23
+#define SMB2_FILE_NORMALIZED_NAME_INFORMATION   0x30
+#define SMB2_FILE_ID_INFORMATION                0x3B
 
 #define SMB2_FILE_STREAM_INFORMATION            0x16
 #define SMB2_FILE_PIPE_INFORMATION              0x17
@@ -580,7 +584,10 @@ struct smb2_read_reply {
 #define SMB2_FILE_FS_ATTRIBUTE_INFORMATION         5
 #define SMB2_FILE_FS_CONTROL_INFORMATION           6
 #define SMB2_FILE_FS_FULL_SIZE_INFORMATION         7
+#define SMB2_FILE_FS_OBJECT_ID_INFORMATION         8
 #define SMB2_FILE_FS_SECTOR_SIZE_INFORMATION      11
+
+#define SMB2_FILE_INFO_CLASS_RESERVED           0x40
 
 /* additional info */
 #define SMB2_OWNER_SECURITY_INFORMATION     0x00000001
@@ -617,6 +624,13 @@ struct smb2_file_standard_info {
         uint32_t number_of_links;
         uint8_t delete_pending;
         uint8_t directory;
+};
+
+/*
+ * FILE_POSITION_INFORMATION
+ */
+struct smb2_file_position_info {
+        uint64_t current_byte_offset;
 };
 
 /*
@@ -892,6 +906,11 @@ struct smb2_file_fs_full_size_info {
         uint64_t actual_available_allocation_units;
         uint32_t sectors_per_allocation_unit;
         uint32_t bytes_per_sector;
+};
+
+struct smb2_file_fs_object_id_info {
+        smb2_guid object_id;
+        uint8_t extended_info[48];
 };
 
 /* Flags */
