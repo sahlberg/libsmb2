@@ -138,7 +138,7 @@ smb2_encode_ioctl_reply(struct smb2_context *smb2,
         if (rep->output_count) {
                 switch (rep->ctl_code) {
                 case SMB2_FSCTL_VALIDATE_NEGOTIATE_INFO:
-                        /* even when passthrough is set we transcode this one 
+                        /* even when passthrough is set we transcode this one
                         */
                         len = SMB2_IOCTL_VALIDIATE_NEGOTIATE_INFO_SIZE;
                         break;
@@ -165,10 +165,10 @@ smb2_encode_ioctl_reply(struct smb2_context *smb2,
                 switch (rep->ctl_code) {
                 case SMB2_FSCTL_VALIDATE_NEGOTIATE_INFO:
                 {
-                        struct smb2_ioctl_validate_negotiate_info *info = 
+                        struct smb2_ioctl_validate_negotiate_info *info =
                                  (struct smb2_ioctl_validate_negotiate_info *)
                                          rep->output;
-                        
+
                         smb2_set_uint32(ioctlv, 0, info->capabilities);
                         memcpy(&ioctlv->buf[4], info->guid, 16);
                         smb2_set_uint16(ioctlv, 20, info->security_mode);
@@ -240,13 +240,6 @@ smb2_process_ioctl_fixed(struct smb2_context *smb2,
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
         uint16_t struct_size;
 
-        rep = malloc(sizeof(*rep));
-        if (rep == NULL) {
-                smb2_set_error(smb2, "Failed to allocate ioctl reply");
-                return -1;
-        }
-        pdu->payload = rep;
-
         smb2_get_uint16(iov, 0, &struct_size);
         if (struct_size != SMB2_IOCTL_REPLY_SIZE ||
             (struct_size & 0xfffe) != iov->len) {
@@ -256,6 +249,13 @@ smb2_process_ioctl_fixed(struct smb2_context *smb2,
                                (int)iov->len);
                 return -1;
         }
+
+        rep = malloc(sizeof(*rep));
+        if (rep == NULL) {
+                smb2_set_error(smb2, "Failed to allocate ioctl reply");
+                return -1;
+        }
+        pdu->payload = rep;
 
         smb2_get_uint32(iov, 4, &rep->ctl_code);
         memcpy(rep->file_id, iov->buf + 8, SMB2_FD_SIZE);
@@ -271,6 +271,8 @@ smb2_process_ioctl_fixed(struct smb2_context *smb2,
             (SMB2_IOCTL_REPLY_SIZE & 0xfffe)) {
                 smb2_set_error(smb2, "Output buffer overlaps with "
                                "Ioctl reply header");
+                pdu->payload = NULL;
+                free(rep);
                 return -1;
         }
 
@@ -331,13 +333,6 @@ smb2_process_ioctl_request_fixed(struct smb2_context *smb2,
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
         uint16_t struct_size;
 
-        req = malloc(sizeof(*req));
-        if (req == NULL) {
-                smb2_set_error(smb2, "Failed to allocate ioctl request");
-                return -1;
-        }
-        pdu->payload = req;
-
         smb2_get_uint16(iov, 0, &struct_size);
         if (struct_size != SMB2_IOCTL_REQUEST_SIZE ||
             (struct_size & 0xfffe) != iov->len) {
@@ -347,6 +342,13 @@ smb2_process_ioctl_request_fixed(struct smb2_context *smb2,
                                (int)iov->len);
                 return -1;
         }
+
+        req = malloc(sizeof(*req));
+        if (req == NULL) {
+                smb2_set_error(smb2, "Failed to allocate ioctl request");
+                return -1;
+        }
+        pdu->payload = req;
 
         smb2_get_uint32(iov, 4, &req->ctl_code);
         memcpy(req->file_id, iov->buf + 8, SMB2_FD_SIZE);
@@ -366,6 +368,8 @@ smb2_process_ioctl_request_fixed(struct smb2_context *smb2,
             (SMB2_IOCTL_REQUEST_SIZE & 0xfffe)) {
                 smb2_set_error(smb2, "Output buffer overlaps with "
                                "Ioctl request header");
+                pdu->payload = NULL;
+                free(req);
                 return -1;
         }
 
@@ -390,14 +394,14 @@ smb2_process_ioctl_request_variable(struct smb2_context *smb2,
 
         vec.buf = &iov->buf[IOVREQ_OFFSET];
         vec.len = iov->len - IOVREQ_OFFSET;
-        
+
         switch (req->ctl_code) {
         case SMB2_FSCTL_VALIDATE_NEGOTIATE_INFO:
                 /* this one is handled locally regardless of proxy or not */
                 ptr = smb2_alloc_init(smb2,
                                       sizeof(struct smb2_ioctl_validate_negotiate_info));
                 struct smb2_ioctl_validate_negotiate_info *info = ptr;
-                
+
                 smb2_get_uint32(&vec, 0, &info->capabilities);
                 memcpy(info->guid, &vec.buf[4], 16);
                 smb2_get_uint16(&vec, 20, &info->security_mode);

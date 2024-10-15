@@ -164,6 +164,7 @@ smb2_encode_query_info_reply(struct smb2_context *smb2,
                                         buf,
                                         len + 1024,
                                         free);
+
                 created_output_buffer_length = 0;
 
                 switch (req->info_type) {
@@ -346,13 +347,6 @@ smb2_process_query_info_fixed(struct smb2_context *smb2,
         uint16_t struct_size;
         uint32_t opl;
 
-        rep = malloc(sizeof(*rep));
-        if (rep == NULL) {
-                smb2_set_error(smb2, "Failed to allocate query info reply");
-                return -1;
-        }
-        pdu->payload = rep;
-
         smb2_get_uint16(iov, 0, &struct_size);
         if (struct_size != SMB2_QUERY_INFO_REPLY_SIZE ||
             (struct_size & 0xfffe) != iov->len) {
@@ -363,34 +357,52 @@ smb2_process_query_info_fixed(struct smb2_context *smb2,
                 return -1;
         }
 
+        rep = malloc(sizeof(*rep));
+        if (rep == NULL) {
+                smb2_set_error(smb2, "Failed to allocate query info reply");
+                return -1;
+        }
+
+        pdu->payload = rep;
+
         smb2_get_uint16(iov, 2, &rep->output_buffer_offset);
         smb2_get_uint32(iov, 4, &rep->output_buffer_length);
         opl = rep->output_buffer_offset + rep->output_buffer_length;
         if (opl < rep->output_buffer_offset) {
                 smb2_set_error(smb2, "Output offset/length wrapped.");
+                pdu->payload = NULL;
+                free(rep);
                 return -1;
         }
         if (rep->output_buffer_length) {
                 if (opl > smb2->spl) {
                         smb2_set_error(smb2, "Output buffer extends beyond end of "
                                        "PDU");
+                        pdu->payload = NULL;
+                        free(rep);
                         return -1;
                 }
                 if (smb2->hdr.next_command && opl > smb2->hdr.next_command) {
                         smb2_set_error(smb2, "Current PDU extends into next "
                                        "chained PDU");
+                        pdu->payload = NULL;
+                        free(rep);
                         return -1;
                 }
         }
         if (rep->output_buffer_length == 0) {
                 smb2_set_error(smb2, "No output buffer in Query "
                                "Info response");
+                pdu->payload = NULL;
+                free(rep);
                 return -1;
         }
         if (rep->output_buffer_offset < SMB2_HEADER_SIZE +
             (SMB2_QUERY_INFO_REPLY_SIZE & 0xfffe)) {
                 smb2_set_error(smb2, "Output buffer overlaps with "
                                "Query Info reply header");
+                pdu->payload = NULL;
+                free(rep);
                 return -1;
         }
 
@@ -568,13 +580,6 @@ smb2_process_query_info_request_fixed(struct smb2_context *smb2,
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
         uint16_t struct_size;
 
-        req = malloc(sizeof(*req));
-        if (req == NULL) {
-                smb2_set_error(smb2, "Failed to allocate query info request");
-                return -1;
-        }
-        pdu->payload = req;
-
         smb2_get_uint16(iov, 0, &struct_size);
         if (struct_size != SMB2_QUERY_INFO_REQUEST_SIZE ||
             (struct_size & 0xfffe) != iov->len) {
@@ -584,6 +589,14 @@ smb2_process_query_info_request_fixed(struct smb2_context *smb2,
                                (int)iov->len);
                 return -1;
         }
+
+        req = malloc(sizeof(*req));
+        if (req == NULL) {
+                smb2_set_error(smb2, "Failed to allocate query info request");
+                return -1;
+        }
+
+        pdu->payload = req;
 
         smb2_get_uint8(iov, 2, &req->info_type);
         smb2_get_uint8(iov, 3, &req->file_info_class);
@@ -601,6 +614,8 @@ smb2_process_query_info_request_fixed(struct smb2_context *smb2,
                         (SMB2_QUERY_INFO_REQUEST_SIZE & 0xfffe)) {
                 smb2_set_error(smb2, "Input buffer overlaps with "
                                "Query Info request header");
+                pdu->payload = NULL;
+                free(req);
                 return -1;
         }
 

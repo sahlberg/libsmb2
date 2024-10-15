@@ -96,7 +96,7 @@ smb2_cmd_close_async(struct smb2_context *smb2,
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
         }
-        
+
         if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
@@ -152,7 +152,7 @@ smb2_cmd_close_reply_async(struct smb2_context *smb2,
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
         }
-        
+
         if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
@@ -169,13 +169,6 @@ smb2_process_close_fixed(struct smb2_context *smb2,
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
         uint16_t struct_size;
 
-        rep = malloc(sizeof(*rep));
-        if (rep == NULL) {
-                smb2_set_error(smb2, "Failed to allocate close reply");
-                return -1;
-        }
-        pdu->payload = rep;
-
         smb2_get_uint16(iov, 0, &struct_size);
         if (struct_size != SMB2_CLOSE_REPLY_SIZE ||
             (struct_size & 0xfffe) != iov->len) {
@@ -185,6 +178,13 @@ smb2_process_close_fixed(struct smb2_context *smb2,
                                (int)iov->len);
                 return -1;
         }
+
+        rep = malloc(sizeof(*rep));
+        if (rep == NULL) {
+                smb2_set_error(smb2, "Failed to allocate close reply");
+                return -1;
+        }
+        pdu->payload = rep;
 
         smb2_get_uint16(iov, 2, &rep->flags);
         smb2_get_uint64(iov, 8, &rep->creation_time);
@@ -206,13 +206,6 @@ smb2_process_close_request_fixed(struct smb2_context *smb2,
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
         uint16_t struct_size;
 
-        req = malloc(sizeof(*req));
-        if (req == NULL) {
-                smb2_set_error(smb2, "Failed to allocate close request");
-                return -1;
-        }
-        pdu->payload = req;
-
         smb2_get_uint16(iov, 0, &struct_size);
         if (struct_size != SMB2_CLOSE_REQUEST_SIZE ||
             (struct_size & 0xfffe) != iov->len) {
@@ -222,6 +215,13 @@ smb2_process_close_request_fixed(struct smb2_context *smb2,
                                (int)iov->len);
                 return -1;
         }
+
+        req = malloc(sizeof(*req));
+        if (req == NULL) {
+                smb2_set_error(smb2, "Failed to allocate close request");
+                return -1;
+        }
+        pdu->payload = req;
 
         smb2_get_uint16(iov, 2, &req->flags);
         memcpy(req->file_id, iov->buf + 8, SMB2_FD_SIZE);

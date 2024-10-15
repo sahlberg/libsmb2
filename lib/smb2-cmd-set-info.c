@@ -75,7 +75,7 @@ smb2_encode_set_info_request(struct smb2_context *smb2,
                 smb2_set_error(smb2, "Failed to allocate set info buffer");
                 return -1;
         }
-        
+
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
 
         smb2_set_uint16(iov, 0, SMB2_SET_INFO_REQUEST_SIZE);
@@ -171,9 +171,9 @@ smb2_encode_set_info_request(struct smb2_context *smb2,
 
                         break;
                 case SMB2_FILE_DISPOSITION_INFORMATION:
-                        len = 1;                       
+                        len = 1;
                         smb2_set_uint32(iov, 4, len); /* buffer length */
-                        
+
                         buf = calloc(len, sizeof(uint8_t));
                         if (buf == NULL) {
                                 smb2_set_error(smb2, "Failed to allocate set "
@@ -182,7 +182,7 @@ smb2_encode_set_info_request(struct smb2_context *smb2,
                         }
                         iov = smb2_add_iovector(smb2, &pdu->out, buf, len,
                                                 free);
-                        
+
                         fdi = req->input_data;
                         smb2_set_uint8(iov, 0, fdi->delete_pending);
                         break;
@@ -220,12 +220,12 @@ smb2_cmd_set_info_async(struct smb2_context *smb2,
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
         }
-        
+
         if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
         }
-        
+
         return pdu;
 }
 
@@ -244,7 +244,7 @@ smb2_encode_set_info_reply(struct smb2_context *smb2,
                 smb2_set_error(smb2, "Failed to allocate set info buffer");
                 return -1;
         }
-        
+
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
         smb2_set_uint16(iov, 0, SMB2_SET_INFO_REPLY_SIZE);
         return 0;
@@ -266,12 +266,12 @@ smb2_cmd_set_info_reply_async(struct smb2_context *smb2,
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
         }
-        
+
         if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
         }
-        
+
         return pdu;
 }
 
@@ -290,13 +290,6 @@ smb2_process_set_info_request_fixed(struct smb2_context *smb2,
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
         uint16_t struct_size;
 
-        req = malloc(sizeof(*req));
-        if (req == NULL) {
-                smb2_set_error(smb2, "Failed to allocate set-info request");
-                return -1;
-        }
-        pdu->payload = req;
-
         smb2_get_uint16(iov, 0, &struct_size);
         if (struct_size != SMB2_SET_INFO_REQUEST_SIZE ||
             (struct_size & 0xfffe) != iov->len) {
@@ -306,6 +299,13 @@ smb2_process_set_info_request_fixed(struct smb2_context *smb2,
                                (int)iov->len);
                 return -1;
         }
+
+        req = malloc(sizeof(*req));
+        if (req == NULL) {
+                smb2_set_error(smb2, "Failed to allocate set-info request");
+                return -1;
+        }
+        pdu->payload = req;
 
         smb2_get_uint8(iov, 2, &req->info_type);
         smb2_get_uint8(iov, 3, &req->file_info_class);
@@ -323,7 +323,7 @@ smb2_process_set_info_request_variable(struct smb2_context *smb2,
 {
         struct smb2_set_info_request *req = (struct smb2_set_info_request*)pdu->payload;
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
-        
+
         if (!smb2->passthrough) {
                 smb2_set_error(smb2, "can not interpret set-info buffers yet");
                 return -1;

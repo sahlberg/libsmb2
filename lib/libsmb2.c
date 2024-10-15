@@ -1576,7 +1576,7 @@ smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
         req.remaining_bytes = 0;
         req.flags = 0;
 
-        pdu = smb2_cmd_write_async(smb2, &req, write_cb, wr);
+        pdu = smb2_cmd_write_async(smb2, &req, 0, write_cb, wr);
         if (pdu == NULL) {
                 smb2_set_error(smb2, "Failed to create write command");
                 return -EINVAL;
@@ -2872,6 +2872,9 @@ smb2_create_request_cb(struct smb2_server *server, struct smb2_context *smb2, vo
                 pdu = smb2_cmd_error_reply_async(smb2,
                                 &err, SMB2_CREATE, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
         }
+        if (req->name) {
+                smb2_free_data(smb2, discard_const(req->name));
+        }
         if (pdu != NULL) {
                 smb2_queue_pdu(smb2, pdu);
         }
@@ -3164,6 +3167,9 @@ smb2_query_directory_request_cb(struct smb2_server *server, struct smb2_context 
                         pdu = smb2_cmd_query_directory_reply_async(smb2, req, &rep, NULL, cb_data);
                 }
         }
+        if (req->name) {
+                smb2_free_data(smb2, discard_const(req->name));
+        }
         if (pdu != NULL) {
                 smb2_queue_pdu(smb2, pdu);
         }
@@ -3182,7 +3188,7 @@ smb2_change_notify_request_cb(struct smb2_server *server, struct smb2_context *s
         memset(&err, 0, sizeof(err));
 
         if (server->handlers && server->handlers->change_notify_cmd) {
-                ret = server->handlers->change_notify_cmd(server, smb2, req);
+                ret = server->handlers->change_notify_cmd(server, smb2, req, &rep);
         }
         if (ret < 0) {
                 pdu = smb2_cmd_error_reply_async(smb2,
@@ -3404,6 +3410,13 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                                         server->hostname,
                                         smb2->client_challenge
                                         );
+                        if (!c_data->auth_data) {
+                                smb2_set_error(smb2, "can not init auth data %s", smb2_get_error(smb2));
+                                smb2_close_context(smb2);
+                                return;
+                        }
+                        smb2->connect_data = c_data;
+
                         /* alloc a pdu for next request */
                         smb2->next_pdu = smb2_allocate_pdu(smb2, SMB2_SESSION_SETUP,
                                        smb2_session_setup_request_cb, cb_data);
@@ -3705,6 +3718,9 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
                                         smb2, (void*)&rep.security_buffer);
 
         pdu = smb2_cmd_negotiate_reply_async(smb2, &rep, NULL, cb_data);
+        if (rep.security_buffer) {
+                free(rep.security_buffer);
+        }
         if (pdu == NULL) {
                 return;
         }
@@ -3845,7 +3861,7 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
                                 if (SMB2_VALID_SOCKET(smb2_get_fd(smb2)) && FD_ISSET(smb2_get_fd(smb2), &rfds)) {
                                         if (smb2_service(smb2, POLLIN) < 0) {
                                                 smb2_set_error(smb2, "smb2_service (in) failed with : "
-                                                                "%s\n", smb2_get_error(smb2));
+                                                                "%s", smb2_get_error(smb2));
                                                 smb2_close_context(smb2);
                                         }
                                         err = 0;
@@ -3853,7 +3869,7 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
                                 if (SMB2_VALID_SOCKET(smb2_get_fd(smb2)) && FD_ISSET(smb2_get_fd(smb2), &wfds)) {
                                         if (smb2_service(smb2, POLLOUT) < 0) {
                                                 smb2_set_error(smb2, "smb2_service (out) failed with : "
-                                                                "%s\n", smb2_get_error(smb2));
+                                                                "%s", smb2_get_error(smb2));
                                                 smb2_close_context(smb2);
                                         }
                                 }

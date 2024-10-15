@@ -204,6 +204,10 @@ struct smb2_pdu *smb2_cmd_read_reply_async(struct smb2_context *smb2,
 /*
  * Asynchronous SMB2 Write
  *
+ * use pass_buf_ownerhip non-0 to allow the request's buf to be
+ * freed along with the pdu when it is freed, use 0 to retain
+ * req->buf
+ *
  * Returns:
  * pdu  : If the call was initiated and a connection will be attempted.
  *        Result of the write will be reported through the callback function.
@@ -219,6 +223,7 @@ struct smb2_pdu *smb2_cmd_read_reply_async(struct smb2_context *smb2,
  */
 struct smb2_pdu *smb2_cmd_write_async(struct smb2_context *smb2,
                                       struct smb2_write_request *req,
+                                      int pass_buf_ownership,
                                       smb2_command_cb cb, void *cb_data);
 
 struct smb2_pdu *smb2_cmd_write_reply_async(struct smb2_context *smb2,

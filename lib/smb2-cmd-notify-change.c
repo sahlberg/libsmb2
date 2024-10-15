@@ -195,14 +195,6 @@ smb2_process_change_notify_fixed(struct smb2_context *smb2,
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
         uint16_t struct_size;
 
-        rep = malloc(sizeof(*rep));
-        if (rep == NULL) {
-                smb2_set_error(smb2, "Failed to allocate "
-                               "change-notify reply");
-                return -1;
-        }
-        pdu->payload = rep;
-
         smb2_get_uint16(iov, 0, &struct_size);
         if (struct_size != SMB2_CHANGE_NOTIFY_REPLY_SIZE ||
             (struct_size & 0xfffe) != iov->len) {
@@ -212,6 +204,14 @@ smb2_process_change_notify_fixed(struct smb2_context *smb2,
                                (int)iov->len);
                 return -1;
         }
+
+        rep = malloc(sizeof(*rep));
+        if (rep == NULL) {
+                smb2_set_error(smb2, "Failed to allocate "
+                               "change-notify reply");
+                return -1;
+        }
+        pdu->payload = rep;
 
         smb2_get_uint16(iov, 2, &rep->output_buffer_offset);
         smb2_get_uint32(iov, 4, &rep->output_buffer_length);
@@ -238,14 +238,6 @@ smb2_process_change_notify_request_fixed(struct smb2_context *smb2,
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
         uint16_t struct_size;
 
-        req = malloc(sizeof(*req));
-        if (req == NULL) {
-                smb2_set_error(smb2, "Failed to allocate "
-                                "change-notify request");
-                return -1;
-        }
-        pdu->payload = req;
-
         smb2_get_uint16(iov, 0, &struct_size);
         if (struct_size != SMB2_CHANGE_NOTIFY_REQUEST_SIZE ||
             (struct_size & 0xfffe) != iov->len) {
@@ -255,6 +247,14 @@ smb2_process_change_notify_request_fixed(struct smb2_context *smb2,
                                (int)iov->len);
                 return -1;
         }
+
+        req = malloc(sizeof(*req));
+        if (req == NULL) {
+                smb2_set_error(smb2, "Failed to allocate "
+                                "change-notify request");
+                return -1;
+        }
+        pdu->payload = req;
 
         smb2_get_uint16(iov, 2, &req->flags);
         memcpy(req->file_id, iov->buf + 8, SMB2_FD_SIZE);
