@@ -2830,6 +2830,7 @@ smb2_tree_disconnect_request_cb(struct smb2_server *server, struct smb2_context 
 {
         struct smb2_pdu *pdu = NULL;
         struct smb2_error_reply err;
+        uint32_t tree_id = smb2->hdr.sync.tree_id;
         int ret = -1;
 
         if (server->handlers && server->handlers->tree_disconnect_cmd) {
@@ -2846,6 +2847,8 @@ smb2_tree_disconnect_request_cb(struct smb2_server *server, struct smb2_context 
         if (pdu != NULL) {
                 smb2_queue_pdu(smb2, pdu);
         }
+
+        smb2_disconnect_tree_id(smb2, tree_id);
 }
 
 static void

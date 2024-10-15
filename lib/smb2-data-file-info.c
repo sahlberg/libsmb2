@@ -110,8 +110,9 @@ smb2_encode_file_basic_info(struct smb2_context *smb2,
         smb2_set_uint64(vec, 24, t);
 
         smb2_set_uint32(vec, 32, fs->file_attributes);
+        smb2_set_uint32(vec, 36, 0);
 
-        return 0;
+        return 40;
 }
 
 int
@@ -139,8 +140,28 @@ smb2_encode_file_standard_info(struct smb2_context *smb2,
         smb2_set_uint32(vec, 16, fs->number_of_links);
         smb2_set_uint8(vec, 20, fs->delete_pending);
         smb2_set_uint8(vec, 21, fs->directory);
+        smb2_set_uint16(vec, 22, 0);
 
+        return 24;
+}
+
+int
+smb2_decode_file_position_info(struct smb2_context *smb2,
+                               void *memctx,
+                               struct smb2_file_position_info *fs,
+                               struct smb2_iovec *vec)
+{
+        smb2_get_uint64(vec, 0, &fs->current_byte_offset);
         return 0;
+}
+
+int
+smb2_encode_file_position_info(struct smb2_context *smb2,
+                               struct smb2_file_position_info *fs,
+                               struct smb2_iovec *vec)
+{
+        smb2_set_uint64(vec, 0, fs->current_byte_offset);
+        return 8;
 }
 
 int
@@ -150,7 +171,7 @@ smb2_decode_file_all_info(struct smb2_context *smb2,
                           struct smb2_iovec *vec)
 {
         struct smb2_iovec v _U_;
-        uint16_t name_len;
+        uint32_t name_len;
         const char *name;
 
         if (vec->len < 40) {
@@ -164,7 +185,7 @@ smb2_decode_file_all_info(struct smb2_context *smb2,
         if (vec->len < 64) {
                 return -1;
         }
-        
+
         v.buf = &vec->buf[40];
         v.len = 24;
         smb2_decode_file_standard_info(smb2, memctx, &fs->standard, &v);
@@ -175,16 +196,20 @@ smb2_decode_file_all_info(struct smb2_context *smb2,
         smb2_get_uint64(vec, 80, &fs->current_byte_offset);
         smb2_get_uint32(vec, 88, &fs->mode);
         smb2_get_uint32(vec, 92, &fs->alignment_requirement);
-        smb2_get_uint16(vec, 96, &name_len);
+        smb2_get_uint32(vec, 96, &name_len);
 
-        name = smb2_utf16_to_utf8((uint16_t *)&vec->buf[100], name_len / 2);
-        fs->name = smb2_alloc_data(smb2, memctx, strlen(name) + 1);
-        if (fs->name == NULL) {
+        if (name_len > 0) {
+                name = smb2_utf16_to_utf8((uint16_t *)&vec->buf[100], name_len / 2);
+                fs->name = smb2_alloc_data(smb2, memctx, strlen(name) + 1);
+                if (fs->name == NULL) {
+                        free(discard_const(name));
+                        return -1;
+                }
+                strcpy(discard_const(fs->name), name);
                 free(discard_const(name));
-                return -1;
+        } else {
+                fs->name = NULL;
         }
-        strcat(discard_const(fs->name), name);
-        free(discard_const(name));
         return 0;
 }
 
@@ -195,6 +220,7 @@ smb2_encode_file_all_info(struct smb2_context *smb2,
 {
         struct smb2_iovec v _U_;
         struct smb2_utf16 *name = NULL;
+        int name_len;
 
         if (vec->len < 40) {
                 return -1;
@@ -218,11 +244,21 @@ smb2_encode_file_all_info(struct smb2_context *smb2,
         smb2_set_uint64(vec, 80, fs->current_byte_offset);
         smb2_set_uint32(vec, 88, fs->mode);
         smb2_set_uint32(vec, 92, fs->alignment_requirement);
-        name = smb2_utf8_to_utf16((const char*)fs->name);
-        smb2_set_uint16(vec, 96, 2 * name->len);
-        memcpy((uint16_t *)&vec->buf[100], name->val, name->len * 2);
-        free(name);
-        return 0;
+        if (fs->name) {
+                name = smb2_utf8_to_utf16((const char*)fs->name);
+                if (name) {
+                        name_len = 2 * name->len;
+                        smb2_set_uint32(vec, 96, name_len);
+                        memcpy((uint16_t *)&vec->buf[100], name->val, name_len);
+                        free(name);
+                        return 100 + name_len;
+                } else {
+                        return -1;
+                }
+        } else {
+                smb2_set_uint32(vec, 96, 0);
+                return 100;
+        }
 }
 
 int
@@ -251,6 +287,6 @@ smb2_encode_file_network_open_info(struct smb2_context *smb2,
         smb2_set_uint64(vec, 32, fs->allocation_size);
         smb2_set_uint64(vec, 40, fs->end_of_file);
         smb2_set_uint32(vec, 48, fs->file_attributes);
-        return 0;
+        return 52;
 }
 

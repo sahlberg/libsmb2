@@ -204,7 +204,7 @@ smb2_process_change_notify_fixed(struct smb2_context *smb2,
         pdu->payload = rep;
 
         smb2_get_uint16(iov, 0, &struct_size);
-        if (struct_size != SMB2_CHANGE_NOTIFY_REQUEST_SIZE ||
+        if (struct_size != SMB2_CHANGE_NOTIFY_REPLY_SIZE ||
             (struct_size & 0xfffe) != iov->len) {
                 smb2_set_error(smb2, "Unexpected size of change "
                                "notify reply. Expected %d, got %d",
@@ -214,7 +214,7 @@ smb2_process_change_notify_fixed(struct smb2_context *smb2,
         }
 
         smb2_get_uint16(iov, 2, &rep->output_buffer_offset);
-        smb2_get_uint32(iov, 8, &rep->output_buffer_length);
+        smb2_get_uint32(iov, 4, &rep->output_buffer_length);
 
         return rep->output_buffer_length;
 }

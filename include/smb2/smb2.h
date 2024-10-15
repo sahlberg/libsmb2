@@ -1156,6 +1156,7 @@ struct smb2_lock_element {
         uint32_t reserved;
 };
 
+/* Note that this size includes 1 lock element */
 #define SMB2_LOCK_REQUEST_SIZE 48
 
 struct smb2_lock_request {

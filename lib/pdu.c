@@ -186,7 +186,7 @@ smb2_select_tree_id(struct smb2_context *smb2, uint32_t tree_id)
                         break;
                 }
         }
-        if (smb2->tree_id_top < (SMB2_MAX_TREE_NESTING - 1)) {
+        if (i <= smb2->tree_id_top) {
                 smb2->tree_id_cur = i;
         }
         else {
@@ -211,11 +211,6 @@ smb2_get_tree_id_for_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu, uint32
                         return 0;
                 default:
                         break;
-                        /*
-                        *tree_id = pdu->header.sync.tree_id;
-                        printf("%p PDU tid for %d is %08X\n", smb2, pdu->header.command, *tree_id);
-                        return 0;
-                        */
                 }
         }
         if (smb2->tree_id_top > 0) {
@@ -234,7 +229,7 @@ smb2_set_tree_id_for_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu, uint32
 {
         if (pdu) {
                 if (pdu->header.flags & SMB2_FLAGS_ASYNC_COMMAND) {
-                        smb2_set_error(smb2, "no tree id for asyn pdu");
+                        smb2_set_error(smb2, "no tree id for async pdu");
                         return 0;
                 }
                 switch (pdu->header.command) {
@@ -271,7 +266,7 @@ smb2_connect_tree_id(struct smb2_context *smb2, uint32_t tree_id)
 int
 smb2_disconnect_tree_id(struct smb2_context *smb2, uint32_t tree_id)
 {
-        int i, j, k;
+        int i, j;
 
         if (smb2->tree_id_top > 0) {
                 for (
@@ -284,37 +279,16 @@ smb2_disconnect_tree_id(struct smb2_context *smb2, uint32_t tree_id)
                         }
                 }
                 if (i <= smb2->tree_id_top) {
-                       if (i == smb2->tree_id_top) {
-                               smb2->tree_id_top--;
-                               smb2->tree_id_cur = smb2->tree_id_top;
-                               return 0;
+                       for (j = i; j < smb2->tree_id_top; j++) {
+                               smb2->tree_id[j] = smb2->tree_id[j + 1];
                        }
-                       else {
-                               for (j = smb2->tree_id_top - 1; j > 0; j--) {
-                                       if (smb2->tree_id[j] == tree_id) {
-                                               break;
-                                       }
-                               }
-                               if (j > 0) {
-                                       if (j == smb2->tree_id_cur) {
-                                               /* note updating cur is a convenience for clients
-                                                * but isnt required and maybe get rid of this */
-                                               if (j > 1) {
-                                                       smb2->tree_id_cur =
-                                                              j - 1;
-                                               }
-                                               else {
-                                                       smb2->tree_id_cur =
-                                                               smb2->tree_id_top - 1;;
-                                               }
-                                       }
-                                       for (k = j; k < smb2->tree_id_top; k++) {
-                                               smb2->tree_id[k] = smb2->tree_id[k + 1];
-                                       }
-                                       smb2->tree_id_top--;
-                                       return 0;
-                               }
-                       }
+                       smb2->tree_id_top--;
+                        /* not sure what tree id should be after a disconnect but
+                         * this makes sure its not invalid */
+                        if (smb2->tree_id_cur > smb2->tree_id_top) {
+                                smb2->tree_id_cur = smb2->tree_id_top;
+                        }
+                        return 0;
                 }
         }
 
@@ -556,7 +530,7 @@ smb2_decode_header(struct smb2_context *smb2, struct smb2_iovec *iov,
                         case SMB2_TREE_CONNECT:
                                 break;
                         default:
-                                /// TODO - care about not having this already connected
+                                /* TODO - care about not having this already connected */
                                 smb2_select_tree_id(smb2, hdr->sync.tree_id);
                                 break;
                         }
@@ -626,7 +600,6 @@ smb2_correlate_reply(struct smb2_context *smb2, struct smb2_pdu *pdu)
                  * to make sure that is the case. (exception is tree-connect where
                  * the reply has the new tree-id and request was 0 )
                  */
-
                 pdu->header.message_id = req_pdu->header.message_id;
                 if (pdu->header.command != SMB2_TREE_CONNECT) {
                         pdu->header.sync.tree_id = req_pdu->header.sync.tree_id;
@@ -729,6 +702,8 @@ smb2_get_fixed_reply_size(struct smb2_context *smb2, struct smb2_pdu *pdu)
                 return SMB2_READ_REPLY_SIZE;
         case SMB2_WRITE:
                 return SMB2_WRITE_REPLY_SIZE;
+        case SMB2_LOCK:
+                return SMB2_LOCK_REPLY_SIZE;
         case SMB2_ECHO:
                 return SMB2_ECHO_REPLY_SIZE;
         case SMB2_QUERY_DIRECTORY:
@@ -774,7 +749,7 @@ smb2_get_fixed_request_size(struct smb2_context *smb2, struct smb2_pdu *pdu)
         case SMB2_WRITE:
                 return SMB2_WRITE_REQUEST_SIZE;
         case SMB2_LOCK:
-                return SMB2_WRITE_REQUEST_SIZE;
+                return SMB2_LOCK_REQUEST_SIZE;
         case SMB2_CANCEL:
                 return SMB2_CANCEL_REQUEST_SIZE;
         case SMB2_ECHO:
