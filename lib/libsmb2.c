@@ -704,18 +704,6 @@ session_setup_cb(struct smb2_context *smb2, int status,
                         return;
                 }
                 return;
-        } else if (status == SMB2_STATUS_SERVER_UNAVAILABLE &&
-                        smb2->sec == SMB2_SEC_NTLMSSP &&
-                        !ntlmssp_get_spnego_wrapping(c_data->auth_data)) {
-                /* Azure netapp replies this if not spnego wrapped */
-                ntlmssp_set_spnego_wrapping(c_data->auth_data, 1);
-                if ((ret = send_session_setup_request(smb2, c_data, NULL, 0)) < 0) {
-                        smb2_close_context(smb2);
-                        c_data->cb(smb2, ret, NULL, c_data->cb_data);
-                        free_c_data(smb2, c_data);
-                        return;
-                }
-
         } else if (status != SMB2_STATUS_SUCCESS) {
                 smb2_close_context(smb2);
                 smb2_set_nterror(smb2, status, "Session setup failed with (0x%08x) %s",

@@ -106,6 +106,7 @@ struct auth_data {
 };
 
 #define NTLMSSP_NEGOTIATE_56                               0x80000000
+#define NTLMSSP_NEGOTIATE_KEY_EXCH                         0x40000000
 #define NTLMSSP_NEGOTIATE_128                              0x20000000
 #define NTLMSSP_NEGOTIATE_VERSION                          0x02000000
 #define NTLMSSP_NEGOTIATE_TARGET_INFO                      0x00800000
@@ -119,7 +120,6 @@ struct auth_data {
 #define NTLMSSP_REQUEST_TARGET                             0x00000004
 #define NTLMSSP_NEGOTIATE_OEM                              0x00000002
 #define NTLMSSP_NEGOTIATE_UNICODE                          0x00000001
-#define NTLMSSP_NEGOTIATE_KEY_EXCH                         0x40000000
 
 void
 hex_print(const char *blurb, uint8_t *data, int len)
@@ -234,26 +234,43 @@ encoder(const void *buffer, size_t size, void *ptr)
 static int
 encode_ntlm_negotiate_message(struct smb2_context *smb2, struct auth_data *auth_data)
 {
-        unsigned char ntlm[32];
+        unsigned char ntlm[40];
+        uint32_t flags;
         uint32_t u32;
+        int ntlm_len = 32;
 
-        memset(ntlm, 0, 32);
+        memset(ntlm, 0, sizeof(ntlm));
         memcpy(ntlm, "NTLMSSP", 8);
 
         u32 = htole32(NEGOTIATE_MESSAGE);
         memcpy(&ntlm[8], &u32, 4);
 
-        u32 = NTLMSSP_NEGOTIATE_128|
+        flags = NTLMSSP_NEGOTIATE_128|
                 NTLMSSP_NEGOTIATE_EXTENDED_SESSIONSECURITY|
-                /* NTLMSSP_NEGOTIATE_ALWAYS_SIGN| */
+                NTLMSSP_NEGOTIATE_KEY_EXCH|
+              /*  NTLMSSP_NEGOTIATE_VERSION| */
+              /*  NTLMSSP_NEGOTIATE_TARGET_INFO| */
+              /*  NTLMSSP_NEGOTIATE_ALWAYS_SIGN| */
+                NTLMSSP_NEGOTIATE_NTLM| /* Azure netapp server needs this */
                 NTLMSSP_NEGOTIATE_SEAL|
-                /* NTLMSSP_NEGOTIATE_SIGN| */
-                NTLMSSP_REQUEST_TARGET|NTLMSSP_NEGOTIATE_OEM|
+              /*  NTLMSSP_NEGOTIATE_SIGN| */
+                NTLMSSP_REQUEST_TARGET|
+                NTLMSSP_NEGOTIATE_OEM|
                 NTLMSSP_NEGOTIATE_UNICODE;
-        u32 = htole32(u32);
+
+        u32 = htole32(flags);
         memcpy(&ntlm[12], &u32, 4);
 
-        if (encoder(&ntlm[0], 32, auth_data) < 0) {
+        if (flags & NTLMSSP_NEGOTIATE_VERSION) {
+                u32 = 0x1db00106;
+                u32 = htole32(u32);
+                memcpy(&ntlm[32], &u32, 4);
+                u32 = 0x0f000000;
+                u32 = htole32(u32);
+                memcpy(&ntlm[36], &u32, 4);
+                ntlm_len = 40;
+        }
+        if (encoder(&ntlm[0], ntlm_len, auth_data) < 0) {
                 return -1;
         }
 
