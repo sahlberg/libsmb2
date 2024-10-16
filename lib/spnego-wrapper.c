@@ -170,6 +170,94 @@ smb2_spnego_create_negotiate_reply_blob(struct smb2_context *smb2, void **neg_in
         return asn_encoder.dst_head;
 }
 
+int smb2_spnego_wrap_gssapi(struct smb2_context *smb2,
+                const uint8_t *ntlmssp_token,
+                const int token_len, void **blob)
+{
+        struct asn1ber_context asn_encoder;
+        uint8_t *neg_init;
+        int alloc_len;
+        int pos[8];
+
+        alloc_len = 256 + 4 * token_len;
+        neg_init = calloc(1, alloc_len);
+        if (neg_init == NULL) {
+                smb2_set_error(smb2, "Failed to allocate spnego wrapper");
+                return 0;
+        }
+
+        memset(&asn_encoder, 0, sizeof(asn_encoder));
+        asn_encoder.dst = neg_init;
+        asn_encoder.dst_size = alloc_len;
+        asn_encoder.dst_head = 0;
+
+        /*  blob */
+        asn1ber_ber_from_typecode(&asn_encoder, asnCONSTRUCTOR | asnAPPLICATION); /* 60 ZZ */
+        /* save location of total length */
+        asn1ber_save_out_state(&asn_encoder, &pos[0]);
+        asn1ber_ber_reserve_length(&asn_encoder, 5);
+
+        /* gss-spnego mech  oid */
+        asn1ber_ber_from_oid(&asn_encoder, &oid_gss_mech_spnego);
+
+        /* context 0 */
+        asn1ber_ber_from_typecode(&asn_encoder, ASN1_CONTEXT(0));               /* A0 XX */
+        /* save location of total length */
+        asn1ber_save_out_state(&asn_encoder, &pos[1]);
+        asn1ber_ber_reserve_length(&asn_encoder, 5);
+
+        /* sequence 0 */
+        asn1ber_ber_from_typecode(&asn_encoder, ASN1_SEQUENCE(0));               /* 30 YY */
+        /* save location of total length */
+        asn1ber_save_out_state(&asn_encoder, &pos[2]);
+        asn1ber_ber_reserve_length(&asn_encoder, 5);
+
+        /* context 0 mech types */
+        asn1ber_ber_from_typecode(&asn_encoder, ASN1_CONTEXT(0));               /* A0 zz */
+        /* save location of total length */
+        asn1ber_save_out_state(&asn_encoder, &pos[3]);
+        asn1ber_ber_reserve_length(&asn_encoder, 5);
+
+        /* sequence 0 of mech types */
+        asn1ber_ber_from_typecode(&asn_encoder, ASN1_SEQUENCE(0));               /* 30 xx */
+        /* save location of total length */
+        asn1ber_save_out_state(&asn_encoder, &pos[4]);
+        asn1ber_ber_reserve_length(&asn_encoder, 5);
+
+        /* ntlmssp mech oid */
+        asn1ber_ber_from_oid(&asn_encoder, &oid_spnego_mech_ntlmssp);
+
+        /* end sequenuce of mech types */
+        asn1ber_annotate_length(&asn_encoder, pos[4], 5);
+
+        /* end mech types */
+        asn1ber_annotate_length(&asn_encoder, pos[3], 5);
+
+        /* context 2 mech token */
+        asn1ber_ber_from_typecode(&asn_encoder, ASN1_CONTEXT(2));               /* A2 yy */
+        /* save location of total length */
+        asn1ber_save_out_state(&asn_encoder, &pos[3]);
+        asn1ber_ber_reserve_length(&asn_encoder, 5);
+
+        /* ntlmssp token */
+        asn1ber_ber_from_typecode(&asn_encoder, asnOCTET_STRING);               /* 04 nn */
+        /* save location of total length */
+        asn1ber_save_out_state(&asn_encoder, &pos[4]);
+        asn1ber_ber_reserve_length(&asn_encoder, 5);
+
+        memcpy(asn_encoder.dst + asn_encoder.dst_head, ntlmssp_token, token_len);
+        asn_encoder.dst_head += token_len;
+
+        asn1ber_annotate_length(&asn_encoder, pos[4], 5);
+        asn1ber_annotate_length(&asn_encoder, pos[3], 5);
+        asn1ber_annotate_length(&asn_encoder, pos[2], 5);
+        asn1ber_annotate_length(&asn_encoder, pos[1], 5);
+        asn1ber_annotate_length(&asn_encoder, pos[0], 5);
+
+        *blob = neg_init;
+        return asn_encoder.dst_head;
+}
+
 int
 smb2_spnego_wrap_ntlmssp_challenge(struct smb2_context *smb2, const uint8_t *ntlmssp_token,
                const int token_len, void **neg_init_token)
@@ -325,7 +413,7 @@ smb2_spnego_unwrap_targ(struct smb2_context *smb2, const uint8_t *spnego,
         uint32_t typelen;
         int objpos;
         int token_len = 0;
-        int sequence_len = 0;        
+        int sequence_len = 0;
         int fail_line = 0;
         int ret;
 
@@ -339,7 +427,7 @@ smb2_spnego_unwrap_targ(struct smb2_context *smb2, const uint8_t *spnego,
         sequence_len = typelen;
         while (sequence_len > 2) {
                 objpos = asn_decoder.src_tail;
-                ret = ber_typelen_from_ber(&asn_decoder, (ber_type_t*)&typecode, &typelen); 
+                ret = ber_typelen_from_ber(&asn_decoder, (ber_type_t*)&typecode, &typelen);
                 require_noerr(ret, fail);
                 switch (typecode) {
                 case ASN1_CONTEXT(0):

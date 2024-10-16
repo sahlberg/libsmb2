@@ -121,7 +121,6 @@ struct auth_data {
 #define NTLMSSP_NEGOTIATE_UNICODE                          0x00000001
 #define NTLMSSP_NEGOTIATE_KEY_EXCH                         0x40000000
 
-#if 0 /* leave this here for debugging */
 void
 hex_print(const char *blurb, uint8_t *data, int len)
 {
@@ -137,7 +136,6 @@ hex_print(const char *blurb, uint8_t *data, int len)
         }
         printf("\n");
 }
-#endif
 
 void
 ntlmssp_destroy_context(struct auth_data *auth)
@@ -189,6 +187,18 @@ ntlmssp_init_context(const char *user,
         auth_data->wintime = smb2_timeval_to_win(&tv);
 
         return auth_data;
+}
+
+void
+ntlmssp_set_spnego_wrapping(struct auth_data *auth, int wrap)
+{
+        auth->spnego_wrap = wrap;
+}
+
+int
+ntlmssp_get_spnego_wrapping(struct auth_data *auth)
+{
+        return auth->spnego_wrap;
 }
 
 int
@@ -830,6 +840,18 @@ ntlmssp_generate_blob(struct smb2_server *server, struct smb2_context *smb2, tim
                         return -1;
                 }
                 encode_ntlm_negotiate_message(smb2, auth_data);
+
+                if (auth_data->spnego_wrap) {
+                        spnego_len = smb2_spnego_wrap_gssapi(smb2, auth_data->buf,
+                                       auth_data->len, (void*)&spnego_buf);
+                        if (spnego_len < 0) {
+                                smb2_set_error(smb2, "can not wrap negotiate");
+                                return -1;
+                        }
+                        free(auth_data->buf);
+                        auth_data->buf = spnego_buf;
+                        auth_data->len = spnego_len;
+                }
         }
         else {
                 if(ntlmssp_get_message_type(smb2, input_buf,
@@ -853,7 +875,8 @@ ntlmssp_generate_blob(struct smb2_server *server, struct smb2_context *smb2, tim
                                 }
                                 if (auth_data->spnego_wrap) {
                                         spnego_len = smb2_spnego_wrap_ntlmssp_challenge(smb2,
-                                                        auth_data->buf, auth_data->len, (void*)&spnego_buf);
+                                                        auth_data->buf,
+                                                         auth_data->len, (void*)&spnego_buf);
                                         if (spnego_len < 0) {
                                                 smb2_set_error(smb2, "can not wrap challenge");
                                                 return -1;
