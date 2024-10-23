@@ -116,6 +116,12 @@ enum smb2_sec {
 #define MAX_CREDITS 1024
 #define SMB2_SALT_SIZE 32
 
+struct sync_cb_data {
+	int is_finished;
+	int status;
+	void *ptr;
+};
+        
 struct smb2_context {
 
         t_socket fd;
@@ -152,6 +158,7 @@ struct smb2_context {
         smb2_error_cb error_cb;
         smb2_command_cb connect_cb;
         void *connect_data;
+        struct sync_cb_data connect_cb_data;
 
         int credits;
 
@@ -257,6 +264,12 @@ struct smb2_context {
         struct smb2_context *next;
 };
 
+/*
+ * Callback for freeing a payload.
+ */
+typedef void (*smb2_free_payload)(struct smb2_context *smb2, void *payload);
+
+
 #define SMB2_MAX_PDU_SIZE 16*1024*1024
 
 struct smb2_pdu {
@@ -273,6 +286,11 @@ struct smb2_pdu {
 
         /* pointer to the unmarshalled payload in a reply */
         void *payload;
+    
+        /* callback that frees the any additional memory allocated in the payload.
+         * Or null if no additional memory needs to be freed.
+         */
+        smb2_free_payload free_payload;
 
         /* For sending/receiving
          * out contains at least two vectors:

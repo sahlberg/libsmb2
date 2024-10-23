@@ -264,6 +264,17 @@ smb2_process_read_fixed(struct smb2_context *smb2,
         return rep->data_length;
 }
 
+static void free_read_reply(struct smb2_context *smb2, void * payload) {
+    if (payload == NULL) {
+        return;
+    }
+    
+    struct smb2_read_reply *rep = (struct smb2_read_reply*)payload;
+    if (rep->data_length != 0 && rep->data != NULL) {
+        free(rep->data);
+    }
+}
+
 int
 smb2_process_read_variable(struct smb2_context *smb2,
                         struct smb2_pdu *pdu)
@@ -272,6 +283,7 @@ smb2_process_read_variable(struct smb2_context *smb2,
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
 
         if (rep->data) {
+                pdu->free_payload = free_read_reply;
                 memcpy(rep->data, iov->buf, rep->data_length);
         }
         else {

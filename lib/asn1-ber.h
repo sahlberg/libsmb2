@@ -5,6 +5,7 @@
 /*
    Copyright (C) 2018 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
    and 2024 by Brian Dodge <bdodge09@gmail.com>
+   Copyright (C) 2024 by André Guilherme <andregui17@outlook.com>
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU Lesser General Public License as published by
@@ -107,10 +108,6 @@ ber_type_t;
 #define ASN1_CONTEXT_SIMPLE(n)  (asnCONTEXT_SPECIFIC | (n))
 #define ASN1_PRIVATE            (asnPRIVATE)
 
-#ifdef __cplusplus
-}
-#endif
-
 struct asn1ber_context
 {
         uint8_t *src;
@@ -155,6 +152,10 @@ int asn1ber_ber_from_uint64(struct asn1ber_context *actx, const ber_type_t type,
 int asn1ber_ber_from_oid(struct asn1ber_context *actx, const struct asn1ber_oid_value *oid);
 int asn1ber_ber_from_bytes(struct asn1ber_context *actx, const ber_type_t type, const uint8_t *val, uint32_t len);
 int asn1ber_ber_from_string(struct asn1ber_context *actx, const char *val, uint32_t len);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* ASN1_BER_H_ */
 

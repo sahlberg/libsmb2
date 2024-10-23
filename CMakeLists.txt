@@ -44,7 +44,7 @@ if(NOT ESP_PLATFORM)
 endif()
 
 
-  if(NOT PICO_BOARD OR NOT ESP_PLATFORM)
+  if(NOT PICO_BOARD AND NOT ESP_PLATFORM)
       set(SOVERSION 1 CACHE STRING "" FORCE)
       if(NOT IOP AND NOT BUILD_IRX)
         set(INSTALL_LIB_DIR "${CMAKE_INSTALL_PREFIX}/lib${LIB_SUFFIX}" CACHE PATH "Installation directory for libraries")
@@ -68,7 +68,7 @@ endif()
     find_package(GSSAPI)  
   endif()
 
-  if(NOT PICO_BOARD OR NOT ESP_PLATFORM)
+  if(NOT PICO_BOARD AND NOT ESP_PLATFORM)
       include(cmake/ConfigureChecks.cmake)
   endif()
 

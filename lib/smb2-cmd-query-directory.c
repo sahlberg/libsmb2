@@ -508,7 +508,7 @@ smb2_process_query_directory_request_fixed(struct smb2_context *smb2,
         smb2_get_uint32(iov, 28, &req->output_buffer_length);
 
         if (req->file_name_length &&
-            (req->file_name_offset + req->file_name_length > smb2->spl)) {
+            (req->file_name_offset + req->file_name_length > (uint16_t)smb2->spl)) {
                 smb2_set_error(smb2, "Filename extends beyond end of "
                                "PDU");
                 free(req);

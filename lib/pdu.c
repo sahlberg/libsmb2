@@ -338,6 +338,10 @@ smb2_free_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
         smb2_free_iovector(smb2, &pdu->out);
         smb2_free_iovector(smb2, &pdu->in);
 
+        if (pdu->free_payload != NULL) {
+            pdu->free_payload(smb2, pdu->payload);
+        }
+    
         free(pdu->payload);
         free(pdu->crypt);
         free(pdu);

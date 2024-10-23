@@ -201,11 +201,12 @@ set_target_properties(smb2_rpc PROPERTIES
                            SOVERSION ${SOVERSION})
 elseif(IOP AND BUILD_IRX)
 add_executable(smb2man.irx ${SOURCES})
-
 target_link_libraries(smb2man.irx
         PRIVATE
         gcc)
-
+set_target_properties(smb2man.irx PROPERTIES
+        VERSION ${PROJECT_VERSION}
+        SOVERSION ${SOVERSION})        
 add_custom_command(TARGET smb2man.irx POST_BUILD COMMAND md5sum ARGS smb2man.irx)
 elseif(PICO_BOARD)
 add_library(libsmb2 STATIC ${SOURCES})

@@ -34,7 +34,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 int usage(void)
 {
         fprintf(stderr, "Usage:\n"
-                "smb2-ls-sync <smb2-url>\n\n"
+                "prog_mkdir <smb2-url>\n\n"
                 "URL format: "
                 "smb://[<domain;][<username>@]<host>[:<port>]/<share>/<path>\n");
         exit(1);
@@ -44,9 +44,6 @@ int main(int argc, char *argv[])
 {
         struct smb2_context *smb2;
         struct smb2_url *url;
-        struct smb2dir *dir;
-        struct smb2dirent *ent;
-        char *link;
         int rc = 0;
 
         if (argc < 2) {
@@ -72,50 +69,12 @@ int main(int argc, char *argv[])
                 goto out_context;
 	}
 
-	dir = smb2_opendir(smb2, url->path);
-	if (dir == NULL) {
-		printf("smb2_opendir failed. %s\n", smb2_get_error(smb2));
+	smb2_rmdir(smb2, url->path);
+	if (smb2_mkdir(smb2, url->path)) {
+		printf("smb2_mkdir failed. %s\n", smb2_get_error(smb2));
                 goto out_disconnect;
 	}
-
-        while ((ent = smb2_readdir(smb2, dir))) {
-                char *type;
-                time_t t;
-
-                t = (time_t)ent->st.smb2_mtime;
-                switch (ent->st.smb2_type) {
-                case SMB2_TYPE_LINK:
-                        type = "LINK";
-                        break;
-                case SMB2_TYPE_FILE:
-                        type = "FILE";
-                        break;
-                case SMB2_TYPE_DIRECTORY:
-                        type = "DIRECTORY";
-                        break;
-                default:
-                        type = "unknown";
-                        break;
-                }
-                printf("%-20s %-9s %15"PRIu64" %s", ent->name, type, ent->st.smb2_size, asctime(localtime(&t)));
-                if (ent->st.smb2_type == SMB2_TYPE_LINK) {
-                        char buf[256];
-
-                        if (url->path && url->path[0]) {
-                                asprintf(&link, "%s/%s", url->path, ent->name);
-                        } else {
-                                asprintf(&link, "%s", ent->name);
-                        }
-                        if (smb2_readlink(smb2, link, buf, 256) == 0) {
-                                printf("    -> [%s]\n", buf);
-                        } else {
-                                printf("    readlink failed\n");
-                        }
-                        free(link);
-                }
-        }
-
-        smb2_closedir(smb2, dir);
+        
  out_disconnect:        
         smb2_disconnect_share(smb2);
  out_context:

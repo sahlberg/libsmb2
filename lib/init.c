@@ -333,6 +333,14 @@ void smb2_destroy_context(struct smb2_context *smb2)
                 }
                 smb2_free_pdu(smb2, pdu);
         }
+        if (smb2->pdu) {
+                struct smb2_pdu *pdu = smb2->pdu;
+
+                if (pdu->cb) {
+                        pdu->cb(smb2, SMB2_STATUS_CANCELLED, NULL, pdu->cb_data);
+                }
+                smb2_free_pdu(smb2, smb2->pdu);
+        }
         while (smb2->waitqueue) {
                 struct smb2_pdu *pdu = smb2->waitqueue;
 
@@ -340,13 +348,12 @@ void smb2_destroy_context(struct smb2_context *smb2)
                 if (pdu->cb) {
                         pdu->cb(smb2, SMB2_STATUS_CANCELLED, NULL, pdu->cb_data);
                 }
+                if (pdu == smb2->pdu) {
+                        smb2->pdu = NULL;
+                }
                 smb2_free_pdu(smb2, pdu);
         }
         smb2_free_iovector(smb2, &smb2->in);
-        if (smb2->pdu) {
-                smb2_free_pdu(smb2, smb2->pdu);
-                smb2->pdu = NULL;
-        }
 
         if (smb2->fhs) {
                 smb2_free_all_fhs(smb2);
@@ -376,7 +383,6 @@ void smb2_destroy_context(struct smb2_context *smb2)
         }
 
         SMB2_LIST_REMOVE(&active_contexts, smb2);
-
         free(smb2);
 }
 

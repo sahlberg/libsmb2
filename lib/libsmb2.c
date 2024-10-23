@@ -227,6 +227,7 @@ free_smb2dir(struct smb2_context *smb2, struct smb2dir *dir)
                 free(dir->entries);
                 dir->entries = e;
         }
+        free(dir->cb_data);
         free(dir);
 }
 
@@ -538,16 +539,15 @@ free_c_data(struct smb2_context *smb2, struct connect_data *c_data)
 #endif
         }
 
+        if (smb2->connect_data == c_data) {
+            smb2->connect_data = NULL;  /* to prevent double-free in smb2_destroy_context */
+        }
         free(c_data->utf8_unc);
         free(c_data->utf16_unc);
         free(discard_const(c_data->server));
         free(discard_const(c_data->share));
         free(discard_const(c_data->user));
         free(c_data);
-
-        if (smb2->connect_data == c_data) {
-            smb2->connect_data = NULL;  /* to prevent double-free in smb2_destroy_context */
-        }
 }
 
 static void
@@ -880,6 +880,7 @@ negotiate_cb(struct smb2_context *smb2, int status,
                 smb2_set_nterror(smb2, status, "Negotiate failed with (0x%08x) %s. %s",
                                status, nterror_to_str(status),
                                smb2_get_error(smb2));
+                /* calls connect_cb */
                 c_data->cb(smb2, -nterror_to_errno(status), NULL,
                            c_data->cb_data);
                 free_c_data(smb2, c_data);
@@ -1666,15 +1667,12 @@ create_cb_2(struct smb2_context *smb2, int status,
             void *command_data, void *private_data)
 {
         struct create_cb_data *create_data = private_data;
-
+        
         if (status != SMB2_STATUS_SUCCESS) {
-                create_data->cb(smb2, -nterror_to_errno(status),
-                       NULL, create_data->cb_data);
-                free(create_data);
-                return;
+                status = -nterror_to_errno(status);
         }
 
-        create_data->cb(smb2, 0, NULL, create_data->cb_data);
+        create_data->cb(smb2, status, NULL, create_data->cb_data);
         free(create_data);
 }
 
@@ -1682,29 +1680,11 @@ static void
 create_cb_1(struct smb2_context *smb2, int status,
             void *command_data, void *private_data)
 {
-        struct create_cb_data *create_data = private_data;
-        struct smb2_create_reply *rep = command_data;
-        struct smb2_close_request req;
-        struct smb2_pdu *pdu;
-
         if (status != SMB2_STATUS_SUCCESS) {
-                create_data->cb(smb2, -nterror_to_errno(status),
-                       NULL, create_data->cb_data);
-                free(create_data);
+                smb2_set_error(smb2, "Create failed with status %d. %s", status,
+                               smb2_get_error(smb2));
                 return;
         }
-
-        memset(&req, 0, sizeof(struct smb2_close_request));
-        req.flags = SMB2_CLOSE_FLAG_POSTQUERY_ATTRIB;
-        memcpy(req.file_id, rep->file_id, SMB2_FD_SIZE);
-
-        pdu = smb2_cmd_close_async(smb2, &req, create_cb_2, create_data);
-        if (pdu == NULL) {
-                create_data->cb(smb2, -ENOMEM, NULL, create_data->cb_data);
-                free(create_data);
-                return;
-        }
-        smb2_queue_pdu(smb2, pdu);
 }
 
 static int
@@ -1713,8 +1693,9 @@ smb2_unlink_internal(struct smb2_context *smb2, const char *path,
                      smb2_command_cb cb, void *cb_data)
 {
         struct create_cb_data *create_data;
-        struct smb2_create_request req;
-        struct smb2_pdu *pdu;
+        struct smb2_create_request cr_req;
+        struct smb2_close_request cl_req;
+        struct smb2_pdu *pdu, *next_pdu;
 
         if (smb2 == NULL) {
                 return -EINVAL;
@@ -1730,26 +1711,40 @@ smb2_unlink_internal(struct smb2_context *smb2, const char *path,
         create_data->cb_data = cb_data;
 
 
-        memset(&req, 0, sizeof(struct smb2_create_request));
-        req.requested_oplock_level = SMB2_OPLOCK_LEVEL_NONE;
-        req.impersonation_level = SMB2_IMPERSONATION_IMPERSONATION;
-        req.desired_access = SMB2_DELETE;
+        memset(&cr_req, 0, sizeof(struct smb2_create_request));
+        cr_req.requested_oplock_level = SMB2_OPLOCK_LEVEL_NONE;
+        cr_req.impersonation_level = SMB2_IMPERSONATION_IMPERSONATION;
+        cr_req.desired_access = SMB2_DELETE;
         if (is_dir) {
-                req.file_attributes = SMB2_FILE_ATTRIBUTE_DIRECTORY;
+                cr_req.file_attributes = SMB2_FILE_ATTRIBUTE_DIRECTORY;
         } else {
-                req.file_attributes = SMB2_FILE_ATTRIBUTE_NORMAL;
+                cr_req.file_attributes = SMB2_FILE_ATTRIBUTE_NORMAL;
         }
-        req.share_access = SMB2_FILE_SHARE_READ | SMB2_FILE_SHARE_WRITE |
+        cr_req.share_access = SMB2_FILE_SHARE_READ | SMB2_FILE_SHARE_WRITE |
                 SMB2_FILE_SHARE_DELETE;
-        req.create_disposition = SMB2_FILE_OPEN;
-        req.create_options = SMB2_FILE_DELETE_ON_CLOSE;
-        req.name = path;
+        cr_req.create_disposition = SMB2_FILE_OPEN;
+        cr_req.create_options = SMB2_FILE_DELETE_ON_CLOSE;
+        cr_req.name = path;
 
-        pdu = smb2_cmd_create_async(smb2, &req, create_cb_1, create_data);
+        pdu = smb2_cmd_create_async(smb2, &cr_req, create_cb_1, create_data);
         if (pdu == NULL) {
                 smb2_set_error(smb2, "Failed to create create command");
                 return -ENOMEM;
         }
+        
+        memset(&cl_req, 0, sizeof(struct smb2_close_request));
+        cl_req.flags = SMB2_CLOSE_FLAG_POSTQUERY_ATTRIB;
+        memcpy(cl_req.file_id, compound_file_id, SMB2_FD_SIZE);
+
+        next_pdu = smb2_cmd_close_async(smb2, &cl_req, create_cb_2, create_data);
+        if (next_pdu == NULL) {
+                smb2_set_error(smb2, "Failed to create close command");
+                smb2_free_pdu(smb2, pdu);
+                free(create_data);
+                return -ENOMEM;
+        }
+        smb2_add_compound_pdu(smb2, pdu, next_pdu);
+        
         smb2_queue_pdu(smb2, pdu);
 
         return 0;
@@ -1774,8 +1769,9 @@ smb2_mkdir_async(struct smb2_context *smb2, const char *path,
                  smb2_command_cb cb, void *cb_data)
 {
         struct create_cb_data *create_data;
-        struct smb2_create_request req;
-        struct smb2_pdu *pdu;
+        struct smb2_create_request cr_req;
+        struct smb2_close_request cl_req;
+        struct smb2_pdu *pdu, *next_pdu;
 
         if (smb2 == NULL) {
                 return -EINVAL;
@@ -1790,21 +1786,35 @@ smb2_mkdir_async(struct smb2_context *smb2, const char *path,
         create_data->cb = cb;
         create_data->cb_data = cb_data;
 
-        memset(&req, 0, sizeof(struct smb2_create_request));
-        req.requested_oplock_level = SMB2_OPLOCK_LEVEL_NONE;
-        req.impersonation_level = SMB2_IMPERSONATION_IMPERSONATION;
-        req.desired_access = SMB2_FILE_READ_ATTRIBUTES;
-        req.file_attributes = SMB2_FILE_ATTRIBUTE_DIRECTORY;
-        req.share_access = SMB2_FILE_SHARE_READ | SMB2_FILE_SHARE_WRITE;
-        req.create_disposition = SMB2_FILE_CREATE;
-        req.create_options = SMB2_FILE_DIRECTORY_FILE;
-        req.name = path;
+        memset(&cr_req, 0, sizeof(struct smb2_create_request));
+        cr_req.requested_oplock_level = SMB2_OPLOCK_LEVEL_NONE;
+        cr_req.impersonation_level = SMB2_IMPERSONATION_IMPERSONATION;
+        cr_req.desired_access = SMB2_FILE_READ_ATTRIBUTES;
+        cr_req.file_attributes = SMB2_FILE_ATTRIBUTE_DIRECTORY;
+        cr_req.share_access = SMB2_FILE_SHARE_READ | SMB2_FILE_SHARE_WRITE;
+        cr_req.create_disposition = SMB2_FILE_CREATE;
+        cr_req.create_options = SMB2_FILE_DIRECTORY_FILE;
+        cr_req.name = path;
 
-        pdu = smb2_cmd_create_async(smb2, &req, create_cb_1, create_data);
+        pdu = smb2_cmd_create_async(smb2, &cr_req, create_cb_1, create_data);
         if (pdu == NULL) {
                 smb2_set_error(smb2, "Failed to create create command");
                 return -ENOMEM;
         }
+
+        memset(&cl_req, 0, sizeof(struct smb2_close_request));
+        cl_req.flags = SMB2_CLOSE_FLAG_POSTQUERY_ATTRIB;
+        memcpy(cl_req.file_id, compound_file_id, SMB2_FD_SIZE);
+
+        next_pdu = smb2_cmd_close_async(smb2, &cl_req, create_cb_2, create_data);
+        if (next_pdu == NULL) {
+                smb2_set_error(smb2, "Failed to create close command");
+                smb2_free_pdu(smb2, pdu);
+                free(create_data);
+                return -ENOMEM;
+        }
+        smb2_add_compound_pdu(smb2, pdu, next_pdu);
+        
         smb2_queue_pdu(smb2, pdu);
 
         return 0;
@@ -3065,7 +3075,7 @@ smb2_ioctl_request_cb(struct smb2_server *server, struct smb2_context *smb2, voi
 
         if (req->ctl_code == SMB2_FSCTL_VALIDATE_NEGOTIATE_INFO) {
                 /* this one only needs local handling ever */
-                //in_info = (struct smb2_ioctl_validate_negotiate_info *)req->input;
+                /* in_info = (struct smb2_ioctl_validate_negotiate_info *)req->input; */
                 out_info.capabilities = smb2->capabilities;
                 out_info.security_mode = smb2->security_mode;
                 memcpy(out_info.guid, server->guid, 16);
@@ -3381,7 +3391,7 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
         rep.security_buffer_length = 0;
         rep.security_buffer_offset = 0;
 
-        rep.session_flags = 0; //req->flags;
+        rep.session_flags = 0; /* req->flags; */
 
         smb3_update_preauth_hash(smb2, smb2->in.niov - 1, &smb2->in.iov[1]);
         memset(&err, 0, sizeof(err));
@@ -3465,7 +3475,7 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
         }
 #ifdef HAVE_LIBKRB5
         else {
-                /// TODO
+                /* TODO: */
                 have_valid_session_key = 0;
         }
 #endif
@@ -3535,8 +3545,10 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
         struct smb2_pdu *pdu;
         uint16_t dialects[SMB2_NEGOTIATE_MAX_DIALECTS];
         int dialect_count;
+        int d;
         int dialect_index;
-        //void *auth_data;
+        struct smb2_timeval now;
+        /*void *auth_data;*/
 
         memset(&rep, 0, sizeof(rep));
         memset(&err, 0, sizeof(err));
@@ -3594,7 +3606,7 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
                 smb2->dialect = 0;
                 for (dialect_index = req->dialect_count - 1;
                                dialect_index >= 0; dialect_index--) {
-                        for (int d = dialect_count - 1; d >= 0; d--) {
+                        for (d = dialect_count - 1; d >= 0; d--) {
                                 if (dialects[d] == req->dialects[dialect_index]) {
                                         smb2->dialect = dialects[d];
                                         break;
@@ -3684,7 +3696,7 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
 
         rep.security_mode = (server->signing_enabled ? SMB2_NEGOTIATE_SIGNING_ENABLED : 0)|
                              (smb2->sign ? SMB2_NEGOTIATE_SIGNING_REQUIRED : 0);
-        memcpy(rep.server_guid, server->guid, 16); /// TODO
+        memcpy(rep.server_guid, server->guid, 16); /* TODO */
         rep.max_transact_size  = smb2->max_transact_size;;
         rep.max_read_size      = smb2->max_read_size;
         rep.max_write_size     = smb2->max_write_size;
@@ -3694,8 +3706,6 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
         /* remember negotiated capabilites and security mode */
         smb2->capabilities = rep.capabilities;
         smb2->security_mode = rep.security_mode;
-
-        struct smb2_timeval now;
 
         now.tv_sec = time(NULL);
         now.tv_usec = 0;
@@ -3834,7 +3844,7 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
                                         if (events & POLLOUT) {
                                                 FD_SET(smb2_get_fd(smb2), &wfds);
                                         }
-                                        if (smb2_get_fd(smb2) > maxfd) {
+                                        if (smb2_get_fd(smb2) > (t_socket)maxfd) {
                                                 maxfd = smb2_get_fd(smb2);
                                         }
                                 }

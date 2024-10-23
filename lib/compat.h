@@ -115,6 +115,7 @@ typedef unsigned int uintptr_t;
 
 #if defined(_XBOX) || defined(__MINGW32__)
 #define snprintf _snprintf
+int gethostname(char* name, size_t len);
 #endif
 
 #ifndef EAI_AGAIN
@@ -361,6 +362,7 @@ struct addrinfo {
 	struct sockaddr *ai_addr;	/* binary address */
 	struct addrinfo *ai_next;	/* next structure in linked list */
 };
+
 #endif
 
 int poll(struct pollfd *fds, unsigned int nfds, int timo);
@@ -793,6 +795,14 @@ int getlogin_r(char *buf, size_t size);
 #ifndef O_ACCMODE
 #define O_ACCMODE (O_RDWR|O_WRONLY|O_RDONLY)
 #endif /* !O_ACCMODE */
+
+#ifndef ENOMEM
+#define ENOMEM 12
+#endif
+
+#ifndef EINVAL
+#define EINVAL 22
+#endif
 
 #ifdef __cplusplus
 }
