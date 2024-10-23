@@ -70,7 +70,7 @@ smb2_encode_read_request(struct smb2_context *smb2,
                 smb2_set_error(smb2, "Failed to allocate read buffer");
                 return -1;
         }
-        
+
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
 
         if (!smb2->supports_multi_credit && req->length > 64 * 1024) {
@@ -93,7 +93,7 @@ smb2_encode_read_request(struct smb2_context *smb2,
                         req->read_channel_info_offset =
                                 (SMB2_READ_REQUEST_SIZE & 0xfffffffe) + SMB2_HEADER_SIZE;
                         smb2_set_uint16(iov, 44, req->read_channel_info_offset);
-                        
+
                         len = PAD_TO_64BIT(req->read_channel_info_length);
                         buf = malloc(len);
                         if (buf == NULL) {
@@ -107,7 +107,7 @@ smb2_encode_read_request(struct smb2_context *smb2,
                                                         buf,
                                                         len,
                                                         free);
-                }                                
+                }
                 else {
                         smb2_set_error(smb2, "ChannelInfo not yet implemented");
                         return -1;
@@ -175,7 +175,7 @@ smb2_encode_read_reply(struct smb2_context *smb2,
                 smb2_set_error(smb2, "Failed to allocate read reply buffer");
                 return -1;
         }
-        
+
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
 
         rep->data_offset = 0;
@@ -227,13 +227,6 @@ smb2_process_read_fixed(struct smb2_context *smb2,
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
         uint16_t struct_size;
 
-        rep = malloc(sizeof(*rep));
-        if (rep == NULL) {
-                smb2_set_error(smb2, "Failed to allocate read reply");
-                return -1;
-        }
-        pdu->payload = rep;
-
         smb2_get_uint16(iov, 0, &struct_size);
         if (struct_size > SMB2_READ_REPLY_SIZE) {
                 smb2_set_error(smb2, "Unexpected size of Read "
@@ -243,10 +236,18 @@ smb2_process_read_fixed(struct smb2_context *smb2,
                 return -1;
         }
 
+        rep = malloc(sizeof(*rep));
+        if (rep == NULL) {
+                smb2_set_error(smb2, "Failed to allocate read reply");
+                return -1;
+        }
+        pdu->payload = rep;
+
         smb2_get_uint8(iov, 2, &rep->data_offset);
         smb2_get_uint32(iov, 4, &rep->data_length);
         smb2_get_uint32(iov, 8, &rep->data_remaining);
 
+        rep->data = NULL;
         if (rep->data_length == 0) {
                 return 0;
         }
@@ -255,6 +256,8 @@ smb2_process_read_fixed(struct smb2_context *smb2,
                 smb2_set_error(smb2, "Unexpected data offset in Read reply. "
                                "Expected %d, got %d",
                                SMB2_HEADER_SIZE + 16, rep->data_offset);
+                pdu->payload = NULL;
+                free(rep);
                 return -1;
         }
 
@@ -279,13 +282,15 @@ smb2_process_read_variable(struct smb2_context *smb2,
         struct smb2_read_reply *rep = (struct smb2_read_reply*)pdu->payload;
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
 
-        rep->data = malloc(rep->data_length);
         if (rep->data) {
                 pdu->free_payload = free_read_reply;
                 memcpy(rep->data, iov->buf, rep->data_length);
-                return 0;
         }
-        return -1;
+        else {
+                /* allow app to get data direct from iov to avoid copy */
+                rep->data = iov->buf;
+        }
+        return 0;
 }
 
 #define IOVREQ_OFFSET ((req->read_channel_info_offset)?(req->read_channel_info_offset - SMB2_HEADER_SIZE - \
@@ -298,13 +303,6 @@ smb2_process_read_request_fixed(struct smb2_context *smb2,
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
         uint16_t struct_size;
 
-        req = malloc(sizeof(*req));
-        if (req == NULL) {
-                smb2_set_error(smb2, "Failed to allocate read request");
-                return -1;
-        }
-        pdu->payload = req;
-
         smb2_get_uint16(iov, 0, &struct_size);
         if (struct_size > SMB2_READ_REQUEST_SIZE) {
                 smb2_set_error(smb2, "Unexpected size of Read "
@@ -313,6 +311,13 @@ smb2_process_read_request_fixed(struct smb2_context *smb2,
                                (int)iov->len);
                 return -1;
         }
+
+        req = malloc(sizeof(*req));
+        if (req == NULL) {
+                smb2_set_error(smb2, "Failed to allocate read request");
+                return -1;
+        }
+        pdu->payload = req;
 
         smb2_get_uint8(iov, 3, &req->flags);
         smb2_get_uint32(iov, 4, &req->length);
@@ -329,13 +334,17 @@ smb2_process_read_request_fixed(struct smb2_context *smb2,
 
         if (req->length > smb2->max_read_size) {
                 smb2_set_error(smb2, "can not read more than %d bytes", smb2->max_read_size);
+                pdu->payload = NULL;
+                free(req);
                 return -1;
         }
-        
+
         /* provide an iovec to read the data into */
         req->buf = malloc(req->length);
         if (!req->buf) {
                 smb2_set_error(smb2, "can not alloc for read reply data");
+                pdu->payload = NULL;
+                free(req);
                 return -1;
         }
         smb2_add_iovector(smb2,  &pdu->in, req->buf, req->length, free);
@@ -346,6 +355,8 @@ smb2_process_read_request_fixed(struct smb2_context *smb2,
 
         if (req->read_channel_info_offset < SMB2_HEADER_SIZE + (SMB2_READ_REQUEST_SIZE & 0xfffe)) {
                 smb2_set_error(smb2, "channel info overlaps request", "");
+                pdu->payload = NULL;
+                free(req);
                 return -1;
         }
 
@@ -358,7 +369,7 @@ smb2_process_read_request_variable(struct smb2_context *smb2,
 {
         struct smb2_read_request *req = (struct smb2_read_request*)pdu->payload;
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
-        
+
         req->read_channel_info = (uint8_t *)iov->buf;
         return 0;
 }

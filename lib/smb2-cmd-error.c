@@ -94,9 +94,9 @@ smb2_cmd_error_reply_async(struct smb2_context *smb2,
         if (pdu == NULL) {
                 return NULL;
         }
-        
+
         pdu->header.status = status;
-        
+
         if (smb2_encode_error_reply(smb2, pdu, rep)) {
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
@@ -116,13 +116,6 @@ smb2_process_error_fixed(struct smb2_context *smb2,
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
         uint16_t struct_size;
 
-        rep = malloc(sizeof(*rep));
-        if (rep == NULL) {
-                smb2_set_error(smb2, "Failed to allocate error reply");
-                return -1;
-        }
-        pdu->payload = rep;
-
         smb2_get_uint16(iov, 0, &struct_size);
         if (struct_size != SMB2_ERROR_REPLY_SIZE ||
             (struct_size & 0xfffe) != iov->len) {
@@ -132,6 +125,13 @@ smb2_process_error_fixed(struct smb2_context *smb2,
                                (int)iov->len);
                 return -1;
         }
+
+        rep = malloc(sizeof(*rep));
+        if (rep == NULL) {
+                smb2_set_error(smb2, "Failed to allocate error reply");
+                return -1;
+        }
+        pdu->payload = rep;
 
         smb2_get_uint8(iov, 2, &rep->error_context_count);
         smb2_get_uint32(iov, 4, &rep->byte_count);
@@ -150,3 +150,4 @@ smb2_process_error_variable(struct smb2_context *smb2,
 
         return 0;
 }
+

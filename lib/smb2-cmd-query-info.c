@@ -75,7 +75,7 @@ smb2_encode_query_info_request(struct smb2_context *smb2,
                 smb2_set_error(smb2, "Failed to allocate query buffer");
                 return -1;
         }
-        
+
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
 
         smb2_set_uint16(iov, 0, SMB2_QUERY_INFO_REQUEST_SIZE);
@@ -112,7 +112,7 @@ smb2_cmd_query_info_async(struct smb2_context *smb2,
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
         }
-        
+
         if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
@@ -130,18 +130,20 @@ smb2_encode_query_info_reply(struct smb2_context *smb2,
         int len;
         uint8_t *buf;
         struct smb2_iovec *iov, *cmdiov;
+        uint32_t created_output_buffer_length;
+
         len = SMB2_QUERY_INFO_REPLY_SIZE & 0xfffe;
         buf = calloc(len, sizeof(uint8_t));
         if (buf == NULL) {
                 smb2_set_error(smb2, "Failed to allocate query reply buffer");
                 return -1;
         }
-        
+
         rep->output_buffer_offset = 0;
         if (rep->output_buffer_length > 0) {
                 rep->output_buffer_offset = len + SMB2_HEADER_SIZE;
         }
-        
+
         cmdiov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
 
         smb2_set_uint16(cmdiov, 0, SMB2_QUERY_INFO_REPLY_SIZE);
@@ -149,10 +151,10 @@ smb2_encode_query_info_reply(struct smb2_context *smb2,
 
         if (rep->output_buffer_length > 0 && rep->output_buffer) {
                 len = rep->output_buffer_length;
-                len = PAD_TO_64BIT(len);
-                
-                /* not sure exactly how long the encoding will be, some of the,
-                 * include variable data so add a whole lot of space */
+
+                /* not sure exactly how long the encoding will be, some of them
+                 * include variable data so add a whole lot of extra space
+                 *  TODO - better estimate = sizeof C struct vs sizeof packed data! */
                 buf = malloc(len + 1024);
                 if (buf == NULL) {
                         smb2_set_error(smb2, "Failed to allocate output buffer");
@@ -160,87 +162,146 @@ smb2_encode_query_info_reply(struct smb2_context *smb2,
                 }
                 iov = smb2_add_iovector(smb2, &pdu->out,
                                         buf,
-                                        len,
+                                        len + 1024,
                                         free);
-                                        
-                if (smb2->passthrough) {
-                        memcpy(buf, rep->output_buffer, rep->output_buffer_length);
-                        memset(buf + rep->output_buffer_length, 0, len - rep->output_buffer_length);
-                        /* blob needs 8 byte alignment */
-                        iov->len = len;
-                }
-                else {
-                        rep->output_buffer_length = 0;
-                        switch (req->info_type) {
-                        case SMB2_0_INFO_FILE:
-                                switch (req->file_info_class) {
-                                case SMB2_FILE_BASIC_INFORMATION:
-                                        smb2_encode_file_basic_info(smb2,
-                                                        (struct smb2_file_basic_info *)rep->output_buffer, iov);
-                                        rep->output_buffer_length = iov->len;
-                                        break;
-                                case SMB2_FILE_STANDARD_INFORMATION:
-                                        smb2_encode_file_standard_info(smb2,
-                                                        (struct smb2_file_standard_info *)rep->output_buffer, iov);
-                                        rep->output_buffer_length = iov->len;
-                                        break;
-                                case SMB2_FILE_RENAME_INFORMATION:
-                                        break;
-                                case SMB2_FILE_ALL_INFORMATION:
+
+                created_output_buffer_length = 0;
+
+                switch (req->info_type) {
+                case SMB2_0_INFO_FILE:
+                        switch (req->file_info_class) {
+                        case SMB2_FILE_ACCESS_INFORMATION:
+                                break;
+                        case SMB2_FILE_ALIGNMENT_INFORMATION:
+                                break;
+                        case SMB2_FILE_ALL_INFORMATION:
+                                created_output_buffer_length =
                                         smb2_encode_file_all_info(smb2,
-                                                        (struct smb2_file_all_info *)rep->output_buffer, iov);
-                                        rep->output_buffer_length = iov->len;
-                                        break;
-                                case SMB2_FILE_NETWORK_OPEN_INFORMATION:
+                                                (struct smb2_file_all_info *)rep->output_buffer, iov);
+                                break;
+                        case SMB2_FILE_ALTERNATE_NAME_INFORMATION:
+                                break;
+                        case SMB2_FILE_ATTRIBUTE_TAG_INFORMATION:
+                                break;
+                        case SMB2_FILE_BASIC_INFORMATION:
+                                created_output_buffer_length =
+                                        smb2_encode_file_basic_info(smb2,
+                                                (struct smb2_file_basic_info *)rep->output_buffer, iov);
+                                break;
+                        case SMB2_FILE_COMPRESSION_INFORMATION:
+                                break;
+                        case SMB2_FILE_EA_INFORMATION:
+                                break;
+                        case SMB2_FILE_FULL_EA_INFORMATION:
+                                break;
+                        case SMB2_FILE_ID_INFORMATION:
+                                break;
+                        case SMB2_FILE_MODE_INFORMATION:
+                                break;
+                        case SMB2_FILE_NETWORK_OPEN_INFORMATION:
+                                created_output_buffer_length =
                                         smb2_encode_file_network_open_info(smb2,
-                                                        (struct smb2_file_network_open_info *)rep->output_buffer, iov);
-                                        rep->output_buffer_length = iov->len;
-                                        break;
-                                case SMB2_FILE_END_OF_FILE_INFORMATION:
-                                        break;
-                                default:
-                                        break;
-                                }
+                                                (struct smb2_file_network_open_info *)rep->output_buffer, iov);
                                 break;
-                        case SMB2_0_INFO_FILESYSTEM:
-                                switch (req->file_info_class) {
-                                case SMB2_FILE_FS_VOLUME_INFORMATION:
-                                        break;
-                                case SMB2_FILE_FS_SIZE_INFORMATION:
-                                        smb2_encode_file_fs_size_info(smb2,
-                                                        (struct smb2_file_fs_size_info *)rep->output_buffer, iov);
-                                        rep->output_buffer_length = iov->len;
-                                        break;
-                                case SMB2_FILE_FS_DEVICE_INFORMATION:
-                                        smb2_encode_file_fs_device_info(smb2,
-                                                        (struct smb2_file_fs_device_info *)rep->output_buffer, iov);
-                                        rep->output_buffer_length = iov->len;
-                                        break;
-                                case SMB2_FILE_FS_ATTRIBUTE_INFORMATION:
-                                        smb2_encode_file_fs_attribute_info(smb2,
-                                                        (struct smb2_file_fs_attribute_info *)rep->output_buffer, iov);
-                                        rep->output_buffer_length = iov->len;
-                                        break;
-                                case SMB2_FILE_FS_CONTROL_INFORMATION:
-                                        break;
-                                case SMB2_FILE_FS_FULL_SIZE_INFORMATION:
-                                        break;
-                                case SMB2_FILE_FS_SECTOR_SIZE_INFORMATION:
-                                        break;
-                                default:
-                                        len = -1;
-                                        break;
-                                }
+                        case SMB2_FILE_NORMALIZED_NAME_INFORMATION:
                                 break;
-                        case SMB2_0_INFO_SECURITY:
+                        case SMB2_FILE_PIPE_INFORMATION:
                                 break;
-                        case SMB2_0_INFO_QUOTA:
+                        case SMB2_FILE_PIPE_LOCAL_INFORMATION:
+                                break;
+                        case SMB2_FILE_PIPE_REMOTE_INFORMATION:
+                                break;
+                        case SMB2_FILE_POSITION_INFORMATION:
+                                created_output_buffer_length =
+                                        smb2_encode_file_position_info(smb2,
+                                                (struct smb2_file_position_info *)rep->output_buffer, iov);
+                                break;
+                        case SMB2_FILE_STANDARD_INFORMATION:
+                                created_output_buffer_length =
+                                        smb2_encode_file_standard_info(smb2,
+                                                (struct smb2_file_standard_info *)rep->output_buffer, iov);
+                                break;
+                        case SMB2_FILE_STREAM_INFORMATION:
+                                break;
+                        case SMB2_FILE_INFO_CLASS_RESERVED:
                                 break;
                         default:
-                                return 0;
+                                break;
                         }
-                        free(rep->output_buffer);
-                        rep->output_buffer = NULL;
+                        break;
+                case SMB2_0_INFO_FILESYSTEM:
+                        switch (req->file_info_class) {
+                        case SMB2_FILE_FS_ATTRIBUTE_INFORMATION:
+                                created_output_buffer_length =
+                                        smb2_encode_file_fs_attribute_info(smb2,
+                                                (struct smb2_file_fs_attribute_info *)rep->output_buffer, iov);
+                                break;
+                        case SMB2_FILE_FS_CONTROL_INFORMATION:
+                                created_output_buffer_length =
+                                        smb2_encode_file_fs_control_info(smb2,
+                                                (struct smb2_file_fs_control_info *)rep->output_buffer, iov);
+                                break;
+                        case SMB2_FILE_FS_DEVICE_INFORMATION:
+                                created_output_buffer_length =
+                                        smb2_encode_file_fs_device_info(smb2,
+                                                (struct smb2_file_fs_device_info *)rep->output_buffer, iov);
+                                break;
+                        case SMB2_FILE_FS_FULL_SIZE_INFORMATION:
+                                created_output_buffer_length =
+                                        smb2_encode_file_fs_full_size_info(smb2,
+                                                (struct smb2_file_fs_full_size_info *)rep->output_buffer, iov);
+                                break;
+                        case SMB2_FILE_FS_OBJECT_ID_INFORMATION:
+                                created_output_buffer_length =
+                                        smb2_encode_file_fs_object_id_info(smb2,
+                                                (struct smb2_file_fs_object_id_info *)rep->output_buffer, iov);
+                                break;
+                        case SMB2_FILE_FS_SECTOR_SIZE_INFORMATION:
+                                created_output_buffer_length =
+                                        smb2_encode_file_fs_sector_size_info(smb2,
+                                                (struct smb2_file_fs_sector_size_info *)rep->output_buffer, iov);
+                                break;
+                        case SMB2_FILE_FS_SIZE_INFORMATION:
+                                created_output_buffer_length =
+                                        smb2_encode_file_fs_size_info(smb2,
+                                                (struct smb2_file_fs_size_info *)rep->output_buffer, iov);
+                                break;
+                        case SMB2_FILE_FS_VOLUME_INFORMATION:
+                                created_output_buffer_length =
+                                        smb2_encode_file_fs_volume_info(smb2,
+                                                (struct smb2_file_fs_volume_info *)rep->output_buffer, iov);
+                                break;
+                        default:
+                                break;
+                        }
+                        break;
+                case SMB2_0_INFO_SECURITY:
+                        break;
+                case SMB2_0_INFO_QUOTA:
+                        break;
+                default:
+                        return 0;
+                }
+
+                if (created_output_buffer_length < 0) {
+                        smb2_set_error(smb2, "Bad reply for query info");
+                        return -1;
+                } else if (created_output_buffer_length == 0) {
+                        if (smb2->passthrough) {
+                                memcpy(buf, rep->output_buffer, rep->output_buffer_length);
+                                memset(buf + rep->output_buffer_length,
+                                                0, PAD_TO_64BIT(rep->output_buffer_length) -
+                                                         rep->output_buffer_length);
+                                /* blob needs 8 byte alignment */
+                                iov->len = PAD_TO_64BIT(rep->output_buffer_length);
+                        } else {
+                                smb2_set_error(smb2, "No encoding for info_type/"
+                                        "info_class %d/%d yet",
+                                        req->info_type, req->file_info_class);
+                        }
+                } else {
+                        iov->len = PAD_TO_64BIT(created_output_buffer_length);
+                        rep->output_buffer_length = created_output_buffer_length;
                 }
         }
 
@@ -265,7 +326,7 @@ smb2_cmd_query_info_reply_async(struct smb2_context *smb2,
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
         }
-        
+
         if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
@@ -286,13 +347,6 @@ smb2_process_query_info_fixed(struct smb2_context *smb2,
         uint16_t struct_size;
         uint32_t opl;
 
-        rep = malloc(sizeof(*rep));
-        if (rep == NULL) {
-                smb2_set_error(smb2, "Failed to allocate query info reply");
-                return -1;
-        }
-        pdu->payload = rep;
-
         smb2_get_uint16(iov, 0, &struct_size);
         if (struct_size != SMB2_QUERY_INFO_REPLY_SIZE ||
             (struct_size & 0xfffe) != iov->len) {
@@ -303,34 +357,50 @@ smb2_process_query_info_fixed(struct smb2_context *smb2,
                 return -1;
         }
 
+        rep = malloc(sizeof(*rep));
+        if (rep == NULL) {
+                smb2_set_error(smb2, "Failed to allocate query info reply");
+                return -1;
+        }
+
+        pdu->payload = rep;
+
         smb2_get_uint16(iov, 2, &rep->output_buffer_offset);
         smb2_get_uint32(iov, 4, &rep->output_buffer_length);
         opl = rep->output_buffer_offset + rep->output_buffer_length;
         if (opl < rep->output_buffer_offset) {
                 smb2_set_error(smb2, "Output offset/length wrapped.");
+                pdu->payload = NULL;
+                free(rep);
                 return -1;
         }
         if (rep->output_buffer_length) {
                 if (opl > smb2->spl) {
                         smb2_set_error(smb2, "Output buffer extends beyond end of "
                                        "PDU");
+                        pdu->payload = NULL;
+                        free(rep);
                         return -1;
                 }
                 if (smb2->hdr.next_command && opl > smb2->hdr.next_command) {
                         smb2_set_error(smb2, "Current PDU extends into next "
                                        "chained PDU");
+                        pdu->payload = NULL;
+                        free(rep);
                         return -1;
                 }
         }
-        if (rep->output_buffer_length == 0) {
-                smb2_set_error(smb2, "No output buffer in Query "
-                               "Info response");
-                return -1;
+        else {
+                /* this can happen "No Info" */
+                rep->output_buffer = NULL;
+                return 0;
         }
         if (rep->output_buffer_offset < SMB2_HEADER_SIZE +
             (SMB2_QUERY_INFO_REPLY_SIZE & 0xfffe)) {
                 smb2_set_error(smb2, "Output buffer overlaps with "
                                "Query Info reply header");
+                pdu->payload = NULL;
+                free(rep);
                 return -1;
         }
 
@@ -350,23 +420,72 @@ int smb2_process_query_info_variable(struct smb2_context *smb2,
                                  NULL};
         void *ptr = NULL;
 
-        if (smb2->passthrough) {
-                ptr = smb2_alloc_init(smb2,
-                          rep->output_buffer_length);
-                memcpy(ptr, vec.buf, vec.len);
-                rep->output_buffer = ptr;
-                return 0;
-        }
-        
         switch (pdu->info_type) {
         case SMB2_0_INFO_FILE:
                 switch (pdu->file_info_class) {
+                case SMB2_FILE_ACCESS_INFORMATION:
+                        break;
+                case SMB2_FILE_ALIGNMENT_INFORMATION:
+                        break;
+                case SMB2_FILE_ALL_INFORMATION:
+                        ptr = smb2_alloc_init(smb2,
+                                  sizeof(struct smb2_file_all_info));
+                        if (smb2_decode_file_all_info(smb2, ptr, ptr, &vec)) {
+                                smb2_set_error(smb2, "could not decode file "
+                                               "all info. %s",
+                                               smb2_get_error(smb2));
+                                return -1;
+                        }
+                        break;
+                case SMB2_FILE_ALTERNATE_NAME_INFORMATION:
+                        break;
+                case SMB2_FILE_ATTRIBUTE_TAG_INFORMATION:
+                        break;
                 case SMB2_FILE_BASIC_INFORMATION:
                         ptr = smb2_alloc_init(smb2,
                                   sizeof(struct smb2_file_basic_info));
                         if (smb2_decode_file_basic_info(smb2, ptr, ptr, &vec)) {
                                 smb2_set_error(smb2, "could not decode file "
                                                "basic info. %s",
+                                               smb2_get_error(smb2));
+                                return -1;
+                        }
+                        break;
+                case SMB2_FILE_COMPRESSION_INFORMATION:
+                        break;
+                case SMB2_FILE_EA_INFORMATION:
+                        break;
+                case SMB2_FILE_FULL_EA_INFORMATION:
+                        break;
+                case SMB2_FILE_ID_INFORMATION:
+                        break;
+                case SMB2_FILE_MODE_INFORMATION:
+                        break;
+                case SMB2_FILE_NETWORK_OPEN_INFORMATION:
+                        ptr = smb2_alloc_init(smb2,
+                                  sizeof(struct smb2_file_all_info));
+                        if (smb2_decode_file_network_open_info(smb2, ptr, ptr, &vec)) {
+                                smb2_set_error(smb2, "could not decode file "
+                                               "network open info. %s",
+                                               smb2_get_error(smb2));
+                                return -1;
+                        }
+                        break;
+                case SMB2_FILE_NORMALIZED_NAME_INFORMATION:
+                        break;
+                case SMB2_FILE_PIPE_INFORMATION:
+                        break;
+                case SMB2_FILE_PIPE_LOCAL_INFORMATION:
+                        break;
+                case SMB2_FILE_PIPE_REMOTE_INFORMATION:
+                        break;
+                case SMB2_FILE_POSITION_INFORMATION:
+                        ptr = smb2_alloc_init(smb2,
+                                  sizeof(struct smb2_file_position_info));
+                        if (smb2_decode_file_position_info(smb2, ptr, ptr,
+                                                           &vec)) {
+                                smb2_set_error(smb2, "could not decode file "
+                                               "positiion info. %s",
                                                smb2_get_error(smb2));
                                 return -1;
                         }
@@ -382,65 +501,23 @@ int smb2_process_query_info_variable(struct smb2_context *smb2,
                                 return -1;
                         }
                         break;
-                case SMB2_FILE_ALL_INFORMATION:
-                        ptr = smb2_alloc_init(smb2,
-                                  sizeof(struct smb2_file_all_info));
-                        if (smb2_decode_file_all_info(smb2, ptr, ptr, &vec)) {
-                                smb2_set_error(smb2, "could not decode file "
-                                               "all info. %s",
-                                               smb2_get_error(smb2));
-                                return -1;
-                        }
+                case SMB2_FILE_STREAM_INFORMATION:
+                        break;
+                case SMB2_FILE_INFO_CLASS_RESERVED:
                         break;
                 default:
-                        smb2_set_error(smb2, "Can not decode info_type/"
-                                       "info_class %d/%d yet",
-                                       pdu->info_type,
-                                       pdu->file_info_class);
-                        return -1;
-                }
-                break;
-        case SMB2_0_INFO_SECURITY:
-                ptr = smb2_alloc_init(smb2,
-                                      sizeof(struct smb2_security_descriptor));
-                if (smb2_decode_security_descriptor(smb2, ptr, ptr, &vec)) {
-                        smb2_set_error(smb2, "could not decode security "
-                                       "descriptor. %s",
-                                       smb2_get_error(smb2));
-                        return -1;
+                        break;
                 }
                 break;
         case SMB2_0_INFO_FILESYSTEM:
                 switch (pdu->file_info_class) {
-                case SMB2_FILE_FS_VOLUME_INFORMATION:
+                case SMB2_FILE_FS_ATTRIBUTE_INFORMATION:
                         ptr = smb2_alloc_init(smb2,
-                                  sizeof(struct smb2_file_fs_volume_info));
-                        if (smb2_decode_file_fs_volume_info(smb2, ptr, ptr,
-                                                            &vec)) {
-                                smb2_set_error(smb2, "could not decode file "
-                                               "fs volume info. %s",
-                                               smb2_get_error(smb2));
-                                return -1;
-                        }
-                        break;
-                case SMB2_FILE_FS_SIZE_INFORMATION:
-                        ptr = smb2_alloc_init(smb2,
-                                  sizeof(struct smb2_file_fs_size_info));
-                        if (smb2_decode_file_fs_size_info(smb2, ptr, ptr,
+                                  sizeof(struct smb2_file_fs_attribute_info));
+                        if (smb2_decode_file_fs_attribute_info(smb2, ptr, ptr,
                                                           &vec)) {
                                 smb2_set_error(smb2, "could not decode file "
-                                               "fs size info. %s",
-                                               smb2_get_error(smb2));
-                                return -1;
-                        }
-                        break;
-                case SMB2_FILE_FS_DEVICE_INFORMATION:
-                        ptr = smb2_alloc_init(smb2,
-                                  sizeof(struct smb2_file_fs_device_info));
-                        if (smb2_decode_file_fs_device_info(smb2, ptr, ptr,
-                                                          &vec)) {
-                                smb2_set_error(smb2, "could not decode file "
-                                               "fs device info. %s",
+                                               "fs attribute info. %s",
                                                smb2_get_error(smb2));
                                 return -1;
                         }
@@ -456,6 +533,17 @@ int smb2_process_query_info_variable(struct smb2_context *smb2,
                                 return -1;
                         }
                         break;
+                case SMB2_FILE_FS_DEVICE_INFORMATION:
+                        ptr = smb2_alloc_init(smb2,
+                                  sizeof(struct smb2_file_fs_device_info));
+                        if (smb2_decode_file_fs_device_info(smb2, ptr, ptr,
+                                                          &vec)) {
+                                smb2_set_error(smb2, "could not decode file "
+                                               "fs device info. %s",
+                                               smb2_get_error(smb2));
+                                return -1;
+                        }
+                        break;
                 case SMB2_FILE_FS_FULL_SIZE_INFORMATION:
                         ptr = smb2_alloc_init(smb2,
                                   sizeof(struct smb2_file_fs_full_size_info));
@@ -463,6 +551,17 @@ int smb2_process_query_info_variable(struct smb2_context *smb2,
                                                                &vec)) {
                                 smb2_set_error(smb2, "could not decode file "
                                                "fs full size info. %s",
+                                               smb2_get_error(smb2));
+                                return -1;
+                        }
+                        break;
+                case SMB2_FILE_FS_OBJECT_ID_INFORMATION:
+                        ptr = smb2_alloc_init(smb2,
+                                  sizeof(struct smb2_file_fs_object_id_info));
+                        if (smb2_decode_file_fs_object_id_info(smb2, ptr, ptr,
+                                                                 &vec)) {
+                                smb2_set_error(smb2, "could not decode file "
+                                               "object id info. %s",
                                                smb2_get_error(smb2));
                                 return -1;
                         }
@@ -478,22 +577,70 @@ int smb2_process_query_info_variable(struct smb2_context *smb2,
                                 return -1;
                         }
                         break;
+                case SMB2_FILE_FS_SIZE_INFORMATION:
+                        ptr = smb2_alloc_init(smb2,
+                                  sizeof(struct smb2_file_fs_size_info));
+                        if (smb2_decode_file_fs_size_info(smb2, ptr, ptr,
+                                                          &vec)) {
+                                smb2_set_error(smb2, "could not decode file "
+                                               "fs size info. %s",
+                                               smb2_get_error(smb2));
+                                return -1;
+                        }
+                        break;
+                case SMB2_FILE_FS_VOLUME_INFORMATION:
+                        ptr = smb2_alloc_init(smb2,
+                                  sizeof(struct smb2_file_fs_volume_info));
+                        if (smb2_decode_file_fs_volume_info(smb2, ptr, ptr,
+                                                            &vec)) {
+                                smb2_set_error(smb2, "could not decode file "
+                                               "fs volume info. %s",
+                                               smb2_get_error(smb2));
+                                return -1;
+                        }
+                        break;
                 default:
+                        break;
+                }
+                break;
+        case SMB2_0_INFO_SECURITY:
+                if (smb2->passthrough) {
+                        /* TODO - handle encoding of security as needed
+                         * for now, just pass-through if indicated */
+                        break;
+                }
+                ptr = smb2_alloc_init(smb2,
+                                      sizeof(struct smb2_security_descriptor));
+                if (smb2_decode_security_descriptor(smb2, ptr, ptr, &vec)) {
+                        smb2_set_error(smb2, "could not decode security "
+                                       "descriptor. %s",
+                                       smb2_get_error(smb2));
+                        return -1;
+                }
+                break;
+        case SMB2_0_INFO_QUOTA:
+                break;
+        default:
+                smb2_set_error(smb2, "Bad info_type %d",
+                               pdu->info_type);
+                return -1;
+        }
+
+        if (!ptr) {
+                if (smb2->passthrough) {
+                        ptr = smb2_alloc_init(smb2,
+                                        rep->output_buffer_length);
+                        memcpy(ptr, vec.buf, vec.len);
+                } else {
                         smb2_set_error(smb2, "Can not decode info_type/"
                                        "info_class %d/%d yet",
                                        pdu->info_type,
                                        pdu->file_info_class);
                         return -1;
                 }
-                break;
-        default:
-                smb2_set_error(smb2, "Can not decode file info_type %d yet",
-                               pdu->info_type);
-                return -1;
         }
 
         rep->output_buffer = ptr;
-
         return 0;
 }
 
@@ -508,13 +655,6 @@ smb2_process_query_info_request_fixed(struct smb2_context *smb2,
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
         uint16_t struct_size;
 
-        req = malloc(sizeof(*req));
-        if (req == NULL) {
-                smb2_set_error(smb2, "Failed to allocate query info request");
-                return -1;
-        }
-        pdu->payload = req;
-
         smb2_get_uint16(iov, 0, &struct_size);
         if (struct_size != SMB2_QUERY_INFO_REQUEST_SIZE ||
             (struct_size & 0xfffe) != iov->len) {
@@ -525,8 +665,16 @@ smb2_process_query_info_request_fixed(struct smb2_context *smb2,
                 return -1;
         }
 
+        req = malloc(sizeof(*req));
+        if (req == NULL) {
+                smb2_set_error(smb2, "Failed to allocate query info request");
+                return -1;
+        }
+
+        pdu->payload = req;
+
         smb2_get_uint8(iov, 2, &req->info_type);
-        smb2_get_uint8(iov, 3, &req->file_info_class);          
+        smb2_get_uint8(iov, 3, &req->file_info_class);
         smb2_get_uint32(iov, 4, &req->output_buffer_length);
         smb2_get_uint16(iov, 8, &req->input_buffer_offset);
         smb2_get_uint32(iov, 12, &req->input_buffer_length);
@@ -541,6 +689,8 @@ smb2_process_query_info_request_fixed(struct smb2_context *smb2,
                         (SMB2_QUERY_INFO_REQUEST_SIZE & 0xfffe)) {
                 smb2_set_error(smb2, "Input buffer overlaps with "
                                "Query Info request header");
+                pdu->payload = NULL;
+                free(req);
                 return -1;
         }
 

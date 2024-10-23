@@ -186,7 +186,7 @@ smb2_select_tree_id(struct smb2_context *smb2, uint32_t tree_id)
                         break;
                 }
         }
-        if (smb2->tree_id_top < (SMB2_MAX_TREE_NESTING - 1)) {
+        if (i <= smb2->tree_id_top) {
                 smb2->tree_id_cur = i;
         }
         else {
@@ -211,11 +211,6 @@ smb2_get_tree_id_for_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu, uint32
                         return 0;
                 default:
                         break;
-                        /*
-                        *tree_id = pdu->header.sync.tree_id;
-                        printf("%p PDU tid for %d is %08X\n", smb2, pdu->header.command, *tree_id);
-                        return 0;
-                        */
                 }
         }
         if (smb2->tree_id_top > 0) {
@@ -234,7 +229,7 @@ smb2_set_tree_id_for_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu, uint32
 {
         if (pdu) {
                 if (pdu->header.flags & SMB2_FLAGS_ASYNC_COMMAND) {
-                        smb2_set_error(smb2, "no tree id for asyn pdu");
+                        smb2_set_error(smb2, "no tree id for async pdu");
                         return 0;
                 }
                 switch (pdu->header.command) {
@@ -271,7 +266,7 @@ smb2_connect_tree_id(struct smb2_context *smb2, uint32_t tree_id)
 int
 smb2_disconnect_tree_id(struct smb2_context *smb2, uint32_t tree_id)
 {
-        int i, j, k;
+        int i, j;
 
         if (smb2->tree_id_top > 0) {
                 for (
@@ -284,37 +279,16 @@ smb2_disconnect_tree_id(struct smb2_context *smb2, uint32_t tree_id)
                         }
                 }
                 if (i <= smb2->tree_id_top) {
-                       if (i == smb2->tree_id_top) {
-                               smb2->tree_id_top--;
-                               smb2->tree_id_cur = smb2->tree_id_top;
-                               return 0;
+                       for (j = i; j < smb2->tree_id_top; j++) {
+                               smb2->tree_id[j] = smb2->tree_id[j + 1];
                        }
-                       else {
-                               for (j = smb2->tree_id_top - 1; j > 0; j--) {
-                                       if (smb2->tree_id[j] == tree_id) {
-                                               break;
-                                       }
-                               }
-                               if (j > 0) {
-                                       if (j == smb2->tree_id_cur) {
-                                               /* note updating cur is a convenience for clients
-                                                * but isnt required and maybe get rid of this */
-                                               if (j > 1) {
-                                                       smb2->tree_id_cur =
-                                                              j - 1;
-                                               }
-                                               else {
-                                                       smb2->tree_id_cur =
-                                                               smb2->tree_id_top - 1;;
-                                               }
-                                       }
-                                       for (k = j; k < smb2->tree_id_top; k++) {
-                                               smb2->tree_id[k] = smb2->tree_id[k + 1];
-                                       }
-                                       smb2->tree_id_top--;
-                                       return 0;
-                               }
-                       }
+                       smb2->tree_id_top--;
+                        /* not sure what tree id should be after a disconnect but
+                         * this makes sure its not invalid */
+                        if (smb2->tree_id_cur > smb2->tree_id_top) {
+                                smb2->tree_id_cur = smb2->tree_id_top;
+                        }
+                        return 0;
                 }
         }
 
@@ -608,28 +582,34 @@ smb2_correlate_reply(struct smb2_context *smb2, struct smb2_pdu *pdu)
 
         req_pdu = smb2_find_pdu_by_command(smb2, pdu->header.command);
         if (req_pdu == NULL) {
-                smb2_set_error(smb2, "no matching request PDU "
-                               "found for reply to cmd %d",
-                                pdu->header.command);
-                return -1;
+                if (pdu->header.command != SMB2_OPLOCK_BREAK) {
+                        smb2_set_error(smb2, "no matching request PDU "
+                                       "found for reply to cmd %d",
+                                        pdu->header.command);
+                        return -1;
+                } else {
+                        /* sending an unsolicited break */
+                        pdu->header.message_id = 0xffffffffffffffffULL;
+                        pdu->header.sync.tree_id = 0;
+                        pdu->header.session_id = 0;
+                }
+        }  else {
+                SMB2_LIST_REMOVE(&smb2->waitqueue, req_pdu);
+
+                pdu->header.credit_request_response =
+                                        64 + req_pdu->header.credit_charge;
+
+                /* replies always have to have the same message-id and tree-id as
+                 * the request we sent, so use the request from the wait queue
+                 * to make sure that is the case. (exception is tree-connect where
+                 * the reply has the new tree-id and request was 0 )
+                 */
+                pdu->header.message_id = req_pdu->header.message_id;
+                if (pdu->header.command != SMB2_TREE_CONNECT) {
+                        pdu->header.sync.tree_id = req_pdu->header.sync.tree_id;
+                }
+                smb2_free_pdu(smb2, req_pdu);
         }
-
-        SMB2_LIST_REMOVE(&smb2->waitqueue, req_pdu);
-
-        pdu->header.credit_request_response =
-                                64 + req_pdu->header.credit_charge;
-
-        /* replies always have to have the same message-id and tree-id as
-         * the request we sent, so use the request from the wait queue
-         * to make sure that is the case. (exception is tree-connect where
-         * the reply has the new tree-id and request was 0 )
-         */
-
-        pdu->header.message_id = req_pdu->header.message_id;
-        if (pdu->header.command != SMB2_TREE_CONNECT) {
-                pdu->header.sync.tree_id = req_pdu->header.sync.tree_id;
-        }
-        smb2_free_pdu(smb2, req_pdu);
         return ret;
 }
 
@@ -726,6 +706,8 @@ smb2_get_fixed_reply_size(struct smb2_context *smb2, struct smb2_pdu *pdu)
                 return SMB2_READ_REPLY_SIZE;
         case SMB2_WRITE:
                 return SMB2_WRITE_REPLY_SIZE;
+        case SMB2_LOCK:
+                return SMB2_LOCK_REPLY_SIZE;
         case SMB2_ECHO:
                 return SMB2_ECHO_REPLY_SIZE;
         case SMB2_QUERY_DIRECTORY:
@@ -739,7 +721,9 @@ smb2_get_fixed_reply_size(struct smb2_context *smb2, struct smb2_pdu *pdu)
         case SMB2_IOCTL:
                 return SMB2_IOCTL_REPLY_SIZE;
         case SMB2_OPLOCK_BREAK:
-                return SMB2_OPLOCK_BREAK_REPLY_SIZE;
+                /* need to read the struct size to see what
+                 * type (oplock or lease) the pdu is */
+                return sizeof(uint16_t);
         }
         return -1;
 }
@@ -769,7 +753,7 @@ smb2_get_fixed_request_size(struct smb2_context *smb2, struct smb2_pdu *pdu)
         case SMB2_WRITE:
                 return SMB2_WRITE_REQUEST_SIZE;
         case SMB2_LOCK:
-                return SMB2_WRITE_REQUEST_SIZE;
+                return SMB2_LOCK_REQUEST_SIZE;
         case SMB2_CANCEL:
                 return SMB2_CANCEL_REQUEST_SIZE;
         case SMB2_ECHO:
@@ -785,7 +769,9 @@ smb2_get_fixed_request_size(struct smb2_context *smb2, struct smb2_pdu *pdu)
         case SMB2_IOCTL:
                 return SMB2_IOCTL_REQUEST_SIZE;
         case SMB2_OPLOCK_BREAK:
-                return SMB2_OPLOCK_BREAK_REQUEST_SIZE;
+                /* need to read the struct size to see what
+                 * type (oplock or lease) the pdu is */
+                return sizeof(uint16_t);
         }
         return -1;
 }
@@ -844,7 +830,8 @@ smb2_process_reply_payload_fixed(struct smb2_context *smb2, struct smb2_pdu *pdu
         case SMB2_IOCTL:
                 return smb2_process_ioctl_fixed(smb2, pdu);
         case SMB2_OPLOCK_BREAK:
-                return -1;
+                /* notice that op/lease lock breaks can be notification or response here */
+                return smb2_process_oplock_break_fixed(smb2, pdu);
         }
         return 0;
 }
@@ -894,7 +881,7 @@ smb2_process_reply_payload_variable(struct smb2_context *smb2, struct smb2_pdu *
         case SMB2_IOCTL:
                 return smb2_process_ioctl_variable(smb2, pdu);
         case SMB2_OPLOCK_BREAK:
-                return -1;
+                return smb2_process_oplock_break_variable(smb2, pdu);
         }
         return 0;
 }
@@ -939,6 +926,9 @@ smb2_process_request_payload_fixed(struct smb2_context *smb2, struct smb2_pdu *p
                 return smb2_process_set_info_request_fixed(smb2, pdu);
         case SMB2_IOCTL:
                 return smb2_process_ioctl_request_fixed(smb2, pdu);
+        case SMB2_OPLOCK_BREAK:
+                /* note oplock/lease break from a client is an acknowlegement here */
+                return smb2_process_oplock_break_request_fixed(smb2, pdu);
         default:
                 smb2_set_error(smb2, "No handler for fixed request");
                 return -1;
@@ -986,6 +976,8 @@ smb2_process_request_payload_variable(struct smb2_context *smb2, struct smb2_pdu
                 return smb2_process_set_info_request_variable(smb2, pdu);
         case SMB2_IOCTL:
                 return smb2_process_ioctl_request_variable(smb2, pdu);
+        case SMB2_OPLOCK_BREAK:
+                return smb2_process_oplock_break_request_variable(smb2, pdu);
         default:
                 smb2_set_error(smb2, "No handler for var request");
         }

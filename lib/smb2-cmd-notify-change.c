@@ -67,7 +67,8 @@ smb2_encode_change_notify_request(struct smb2_context *smb2,
         len = SMB2_CHANGE_NOTIFY_REQUEST_SIZE & 0xfffffffe;
         buf = calloc(len, sizeof(uint8_t));
         if (buf == NULL) {
-                smb2_set_error(smb2, "Failed to allocate NOTIFY buffer");
+                smb2_set_error(smb2, "Failed to allocate "
+                                "change-notify buffer");
                 return -1;
         }
 
@@ -98,7 +99,7 @@ smb2_cmd_change_notify_async(struct smb2_context *smb2,
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
         }
-        
+
         if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
@@ -115,10 +116,11 @@ smb2_encode_change_notify_reply(struct smb2_context *smb2,
         int len;
         uint8_t *buf;
         struct smb2_iovec *iov;
-        len = SMB2_CHANGE_NOTIFY_REQUEST_SIZE & 0xfffffffe;
+        len = SMB2_CHANGE_NOTIFY_REPLY_SIZE & 0xfffffffe;
         buf = calloc(len, sizeof(uint8_t));
         if (buf == NULL) {
-                smb2_set_error(smb2, "Failed to allocate NOTIFY reply buffer");
+                smb2_set_error(smb2, "Failed to allocate "
+                                "change-notify reply buffer");
                 return -1;
         }
 
@@ -128,11 +130,11 @@ smb2_encode_change_notify_reply(struct smb2_context *smb2,
         rep->output_buffer_offset = SMB2_HEADER_SIZE + SMB2_CHANGE_NOTIFY_REQUEST_SIZE;
         smb2_set_uint16(iov, 2, rep->output_buffer_offset);
         smb2_set_uint32(iov, 4, rep->output_buffer_length);
-        
+
         if (rep->output_buffer_length == 0) {
                 return 0;
         }
-        
+
         len = rep->output_buffer_length;
         len = PAD_TO_32BIT(len);
         buf = malloc(len);
@@ -140,19 +142,20 @@ smb2_encode_change_notify_reply(struct smb2_context *smb2,
                 smb2_set_error(smb2, "Failed to allocate output buf");
                 return -1;
         }
-        
+
         iov = smb2_add_iovector(smb2, &pdu->out,
                                         buf,
                                         len,
                                         free);
-                
+
         if (smb2->passthrough) {
                 memcpy(buf, rep->output, rep->output_buffer_length);
                 memset(buf + rep->output_buffer_length, 0, len - rep->output_buffer_length);
                 iov->len = rep->output_buffer_length;
         }
         else {
-                smb2_set_error(smb2, "Change-notify buffer packing not implemented");
+                smb2_set_error(smb2, "Change-notify buffer "
+                                "packing not implemented");
                 return -1;
         }
 
@@ -175,7 +178,7 @@ smb2_cmd_change_notify_reply_async(struct smb2_context *smb2,
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
         }
-        
+
         if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
                 smb2_free_pdu(smb2, pdu);
                 return NULL;
@@ -192,15 +195,8 @@ smb2_process_change_notify_fixed(struct smb2_context *smb2,
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
         uint16_t struct_size;
 
-        rep = malloc(sizeof(*rep));
-        if (rep == NULL) {
-                smb2_set_error(smb2, "Failed to allocate NOTIFY reply");
-                return -1;
-        }
-        pdu->payload = rep;
-
         smb2_get_uint16(iov, 0, &struct_size);
-        if (struct_size != SMB2_CHANGE_NOTIFY_REQUEST_SIZE ||
+        if (struct_size != SMB2_CHANGE_NOTIFY_REPLY_SIZE ||
             (struct_size & 0xfffe) != iov->len) {
                 smb2_set_error(smb2, "Unexpected size of change "
                                "notify reply. Expected %d, got %d",
@@ -209,8 +205,16 @@ smb2_process_change_notify_fixed(struct smb2_context *smb2,
                 return -1;
         }
 
+        rep = malloc(sizeof(*rep));
+        if (rep == NULL) {
+                smb2_set_error(smb2, "Failed to allocate "
+                               "change-notify reply");
+                return -1;
+        }
+        pdu->payload = rep;
+
         smb2_get_uint16(iov, 2, &rep->output_buffer_offset);
-        smb2_get_uint32(iov, 8, &rep->output_buffer_length);
+        smb2_get_uint32(iov, 4, &rep->output_buffer_length);
 
         return rep->output_buffer_length;
 }
@@ -221,7 +225,7 @@ smb2_process_change_notify_variable(struct smb2_context *smb2,
 {
         struct smb2_change_notify_reply *rep = pdu->payload;
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
-        
+
         rep->output = (uint8_t *)iov->buf;
         return 0;
 }
@@ -234,13 +238,6 @@ smb2_process_change_notify_request_fixed(struct smb2_context *smb2,
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
         uint16_t struct_size;
 
-        req = malloc(sizeof(*req));
-        if (req == NULL) {
-                smb2_set_error(smb2, "Failed to allocate NOTIFY request");
-                return -1;
-        }
-        pdu->payload = req;
-
         smb2_get_uint16(iov, 0, &struct_size);
         if (struct_size != SMB2_CHANGE_NOTIFY_REQUEST_SIZE ||
             (struct_size & 0xfffe) != iov->len) {
@@ -250,6 +247,14 @@ smb2_process_change_notify_request_fixed(struct smb2_context *smb2,
                                (int)iov->len);
                 return -1;
         }
+
+        req = malloc(sizeof(*req));
+        if (req == NULL) {
+                smb2_set_error(smb2, "Failed to allocate "
+                                "change-notify request");
+                return -1;
+        }
+        pdu->payload = req;
 
         smb2_get_uint16(iov, 2, &req->flags);
         memcpy(req->file_id, iov->buf + 8, SMB2_FD_SIZE);

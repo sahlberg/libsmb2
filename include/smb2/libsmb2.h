@@ -55,6 +55,18 @@ typedef int (*smb2_accepted_cb)(const int fd, void *cb_data);
  */
 typedef void (*smb2_client_connection)(struct smb2_context *smb2, void *cb_data);
 
+/*
+ * callback when a server notifies of an oplock or lease break
+ * the type of break is determined from the stuct_size in the request
+ * (notification) passed in.  the app can set the new oplock level
+ * or new lease state for the acknowledgement that will be sent back
+ */
+typedef void (*smb2_oplock_or_lease_break_cb)(struct smb2_context *smb2,
+           int status,
+           struct smb2_oplock_or_lease_break_reply *rep,
+           uint8_t *new_oplock_level,
+           uint32_t *new_lease_state);
+
 /* Stat structure */
 #define SMB2_TYPE_FILE      0x00000000
 #define SMB2_TYPE_DIRECTORY 0x00000001
@@ -121,7 +133,7 @@ struct smb2_context *smb2_init_context(void);
 
 /*
  * Close an SMB2 context
- * 
+ *
  * closes socket if open, and clears keys but leave
  * context allocated.  the context will be destroyed
  * at a time later when it won't be in-use
@@ -267,8 +279,8 @@ void smb2_set_timeout(struct smb2_context *smb2, int seconds);
  */
 void smb2_set_passthrough(struct smb2_context *smb2,
                       int passthrough);
- 
-/* 
+
+/*
  * Get the current passthrough setting
  */
 void smb2_get_passthrough(struct smb2_context *smb2,
@@ -316,7 +328,7 @@ struct smb2_libversion
 void smb2_get_libsmb2Version(struct smb2_libversion *smb2_ver);
 
 /*
- * gets the (currently) negotiated dialect 
+ * gets the (currently) negotiated dialect
  */
 uint16_t smb2_get_dialect(struct smb2_context *smb2);
 
@@ -378,11 +390,17 @@ void smb2_set_error(struct smb2_context *smb2,
                     const char *error_string, ...);
 
 /*
- * Register an error callback, so any calls to smb2_set_error will call this 
+ * Register an error callback, so any calls to smb2_set_error will call this
  * function with the error string generated
  */
 void smb2_register_error_callback(struct smb2_context *smb,
                     smb2_error_cb error_cb);
+
+/*
+ * register for oplock or lease break callbacks
+ */
+void smb2_set_oplock_or_lease_break_callback(struct smb2_context *smb2,
+                    smb2_oplock_or_lease_break_cb cb);
 
 /*
  * Set the smb2 context passworkd from a file (see NTLM_USER_FILE)
@@ -682,6 +700,10 @@ struct smb2fh;
  * -errno : An error occurred.
  *          Command_data is NULL.
  */
+int smb2_open_async_with_oplock_or_lease(struct smb2_context *smb2, const char *path, int flags,
+                    uint8_t oplock_level, uint32_t lease_state, smb2_lease_key lease_key,
+                    smb2_command_cb cb, void *cb_data);
+
 int smb2_open_async(struct smb2_context *smb2, const char *path, int flags,
                     smb2_command_cb cb, void *cb_data);
 
@@ -1181,6 +1203,11 @@ const char *smb2_utf16_to_utf8(const uint16_t *str, size_t len);
 /************* Server-side API **********************************************/
 struct smb2_server;
 
+/* pdu handlers in general take the request from the client, and return
+ * < 0  on error, and the library should create an error reply
+ * == 0 on OK, and the library should use the reply struct (if needed) to create a reply
+ * > 0  if the handler created and queued a reply itself
+ */
 struct smb2_server_request_handlers {
         int (*destruction_event)(struct smb2_server *srvr, struct smb2_context *smb2);
         int (*authorize_user)(struct smb2_server *srvr, struct smb2_context *smb2,
@@ -1208,6 +1235,10 @@ struct smb2_server_request_handlers {
         int (*write_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
                             struct smb2_write_request *req,
                             struct smb2_write_reply *rep);
+        int (*oplock_break_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
+                            struct smb2_oplock_break_acknowledgement *req);
+        int (*lease_break_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
+                            struct smb2_lease_break_acknowledgement *req);
         int (*lock_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
                             struct smb2_lock_request *req);
         int (*ioctl_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
@@ -1219,7 +1250,8 @@ struct smb2_server_request_handlers {
                             struct smb2_query_directory_request *req,
                             struct smb2_query_directory_reply *rep);
         int (*change_notify_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
-                            struct smb2_change_notify_request *req);
+                            struct smb2_change_notify_request *req,
+                            struct smb2_change_notify_reply *rep);
         int (*query_info_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
                             struct smb2_query_info_request *req,
                             struct smb2_query_info_reply *rep);

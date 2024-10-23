@@ -46,6 +46,12 @@ ntlmssp_init_context(const char *user,
 void
 ntlmssp_destroy_context(struct auth_data *auth);
 
+void
+ntlmssp_set_spnego_wrapping(struct auth_data *auth, int wrap);
+
+int
+ntlmssp_get_spnego_wrapping(struct auth_data *auth);
+
 int
 ntlmssp_get_message_type(struct smb2_context *smb2,
                       uint8_t *ntlmssp_buffer, int len,
@@ -63,7 +69,7 @@ int
 ntlmssp_authenticate_blob(struct smb2_server *server, struct smb2_context *smb2,
                       struct auth_data *auth_data,
                       unsigned char *input_buf, int input_len);
-                      
+
 int
 ntlmssp_get_authenticated(struct auth_data *auth);
 
