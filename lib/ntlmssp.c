@@ -247,7 +247,7 @@ encode_ntlm_negotiate_message(struct smb2_context *smb2, struct auth_data *auth_
 
         flags = NTLMSSP_NEGOTIATE_128|
                 NTLMSSP_NEGOTIATE_EXTENDED_SESSIONSECURITY|
-                NTLMSSP_NEGOTIATE_KEY_EXCH|
+              /*  NTLMSSP_NEGOTIATE_KEY_EXCH| */
               /*  NTLMSSP_NEGOTIATE_VERSION| */
               /*  NTLMSSP_NEGOTIATE_TARGET_INFO| */
               /*  NTLMSSP_NEGOTIATE_ALWAYS_SIGN| */
