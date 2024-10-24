@@ -175,6 +175,7 @@ AC_CONFIG_FILES([
     include/Makefile
     lib/Makefile
     tests/Makefile
+    utils/Makefile
 ])
 
 AC_CONFIG_FILES([libsmb2.pc])
