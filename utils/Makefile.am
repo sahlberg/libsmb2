@@ -1,4 +1,4 @@
-noinst_PROGRAMS = smb2-ls
+noinst_PROGRAMS = smb2-cp smb2-ls
 
 AM_CPPFLAGS = \
 	-I$(abs_top_srcdir)/include \
@@ -8,3 +8,4 @@ AM_CPPFLAGS = \
 
 COMMON_LIBS = ../lib/libsmb2.la
 smb2_ls_LDADD = $(COMMON_LIBS)
+smb2_cp_LDADD = $(COMMON_LIBS)
