@@ -4,8 +4,7 @@
 
 echo "basic cat test with valgrind and session errors"
 
-# This test depends on the file CAT existing on the share used for testing
-# TODO: should create the file first
+../utils/smb2-cp ./prog_cat.c "${TESTURL}/CAT"
 
 NUM_CALLS=`libtool --mode=execute strace ./prog_cat "${TESTURL}/CAT" 2>&1 >/dev/null | grep readv |wc -l`
 
