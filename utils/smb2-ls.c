@@ -47,6 +47,7 @@ int main(int argc, char *argv[])
         struct smb2dir *dir;
         struct smb2dirent *ent;
         char *link;
+        int rc = 0;
 
         if (argc < 2) {
                 usage();
@@ -68,13 +69,13 @@ int main(int argc, char *argv[])
         smb2_set_security_mode(smb2, SMB2_NEGOTIATE_SIGNING_ENABLED);
 	if (smb2_connect_share(smb2, url->server, url->share, url->user) < 0) {
 		printf("smb2_connect_share failed. %s\n", smb2_get_error(smb2));
-		exit(10);
+                goto out_context;
 	}
 
 	dir = smb2_opendir(smb2, url->path);
 	if (dir == NULL) {
 		printf("smb2_opendir failed. %s\n", smb2_get_error(smb2));
-		exit(10);
+                goto out_disconnect;
 	}
 
         while ((ent = smb2_readdir(smb2, dir))) {
@@ -105,16 +106,21 @@ int main(int argc, char *argv[])
                         } else {
                                 asprintf(&link, "%s", ent->name);
                         }
-                        smb2_readlink(smb2, link, buf, 256);
-                        printf("    -> [%s]\n", buf);
+                        if (smb2_readlink(smb2, link, buf, 256) == 0) {
+                                printf("    -> [%s]\n", buf);
+                        } else {
+                                printf("    readlink failed\n");
+                        }
                         free(link);
                 }
         }
 
         smb2_closedir(smb2, dir);
+ out_disconnect:        
         smb2_disconnect_share(smb2);
+ out_context:
         smb2_destroy_url(url);
         smb2_destroy_context(smb2);
         
-	return 0;
+	return rc;
 }
