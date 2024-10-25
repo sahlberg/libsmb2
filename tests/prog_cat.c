@@ -39,7 +39,7 @@ struct pollfd {
 int poll(struct pollfd *fds, unsigned int nfds, int timo);
 #endif
 
-int is_finished;
+int is_finished = 0;
 uint8_t buf[256 * 1024];
 uint32_t pos;
 
@@ -72,13 +72,14 @@ void pr_cb(struct smb2_context *smb2, int status,
         if (status < 0) {
                 printf("failed to read file (%s) %s\n",
                        strerror(-status), smb2_get_error(smb2));
-                exit(10);
+                is_finished = 1;
+                return;
         }
 
         if (status == 0) {
                 if (smb2_close_async(smb2, fh, cl_cb, NULL) < 0) {
                         printf("Failed to call smb2_close_async()\n");
-                        exit(10);
+                        is_finished = 1;
                 }
                 return;
         }
@@ -88,7 +89,8 @@ void pr_cb(struct smb2_context *smb2, int status,
         pos += status;
         if (smb2_pread_async(smb2, fh, buf, 102400, pos, pr_cb, fh) < 0) {
                 printf("Failed to call smb2_pread_async()\n");
-                exit(10);
+                is_finished = 1;
+                return;
         }
 }
 
@@ -100,12 +102,14 @@ void of_cb(struct smb2_context *smb2, int status,
         if (status) {
                 printf("failed to open file (%s) %s\n",
                        strerror(-status), smb2_get_error(smb2));
-                exit(10);
+                is_finished = 1;
+                return;
         }
 
         if (smb2_pread_async(smb2, fh, buf, 102400, 0, pr_cb, fh) < 0) {
                 printf("Failed to call smb2_pread_async()\n");
-                exit(10);
+                is_finished = 1;
+                return;
         }
 }
 
@@ -115,13 +119,15 @@ void cf_cb(struct smb2_context *smb2, int status,
         if (status) {
                 printf("failed to connect share (%s) %s\n",
                        strerror(-status), smb2_get_error(smb2));
-                exit(10);
+                is_finished = 1;
+                return;
         }
 
         if (smb2_open_async(smb2, private_data, O_RDONLY,
                             of_cb, NULL) < 0) {
                 printf("Failed to call smb2_open_async()\n");
-                exit(10);
+                is_finished = 1;
+                return;
         }
 }
 
@@ -130,6 +136,7 @@ int main(int argc, char *argv[])
         struct smb2_context *smb2;
         struct smb2_url *url;
 	struct pollfd pfd;
+        int rc = 0;
 
         if (argc < 2) {
                 usage();
@@ -152,7 +159,7 @@ int main(int argc, char *argv[])
 	if (smb2_connect_share_async(smb2, url->server, url->share, url->user,
                                      cf_cb, (void *)url->path) != 0) {
 		printf("smb2_connect_share failed. %s\n", smb2_get_error(smb2));
-		exit(10);
+                goto finished;
 	}
 
         while (!is_finished) {
@@ -161,7 +168,7 @@ int main(int argc, char *argv[])
 
 		if (poll(&pfd, 1, 1000) < 0) {
 			printf("Poll failed");
-			exit(10);
+                        goto finished;
 		}
                 if (pfd.revents == 0) {
                         continue;
@@ -169,12 +176,13 @@ int main(int argc, char *argv[])
 		if (smb2_service(smb2, pfd.revents) < 0) {
 			printf("smb2_service failed with : %s\n",
                                smb2_get_error(smb2));
-			break;
+			goto finished;
 		}
 	}
 
+ finished:
         smb2_destroy_url(url);
         smb2_destroy_context(smb2);
 
-	return 0;
+	return rc;
 }

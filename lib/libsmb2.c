@@ -2602,6 +2602,12 @@ disconnect_cb_1(struct smb2_context *smb2, int status,
         struct disconnect_data *dc_data = private_data;
         struct smb2_pdu *pdu;
 
+        if (status != SMB2_STATUS_SUCCESS) {
+                smb2_set_nterror(smb2, status, "%s", nterror_to_str(status));
+                dc_data->cb(smb2, -ENOMEM, NULL, dc_data->cb_data);
+                free(dc_data);
+                return;
+        }
         pdu = smb2_cmd_logoff_async(smb2, disconnect_cb_2, dc_data);
         if (pdu == NULL) {
                 dc_data->cb(smb2, -ENOMEM, NULL, dc_data->cb_data);
