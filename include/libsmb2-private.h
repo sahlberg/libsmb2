@@ -257,7 +257,7 @@ struct smb2_context {
         smb2_change_events_cb change_events;
 
         /* dcerpc settings */
-        int ndr;
+        uint8_t ndr;
         int endianness;
 
         /* to maintain lists of contexts for server used */
