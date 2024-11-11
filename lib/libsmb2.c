@@ -830,7 +830,8 @@ send_session_setup_request(struct smb2_context *smb2,
         req.security_mode = (uint8_t)smb2->security_mode;
 
         if (smb2->sec == SMB2_SEC_NTLMSSP) {
-                /*ntlmssp_set_spnego_wrapping(c_data->auth_data, 1);*/
+                /* do this to wrap in spnego if needed */
+                /*tlmssp_set_spnego_wrapping(c_data->auth_data, 1);*/
                 if (ntlmssp_generate_blob(NULL, smb2, time(NULL), c_data->auth_data,
                                           buf, len,
                                           &req.security_buffer,
@@ -1667,7 +1668,7 @@ create_cb_2(struct smb2_context *smb2, int status,
             void *command_data, void *private_data)
 {
         struct create_cb_data *create_data = private_data;
-        
+
         if (status != SMB2_STATUS_SUCCESS) {
                 status = -nterror_to_errno(status);
         }
@@ -1731,7 +1732,7 @@ smb2_unlink_internal(struct smb2_context *smb2, const char *path,
                 smb2_set_error(smb2, "Failed to create create command");
                 return -ENOMEM;
         }
-        
+
         memset(&cl_req, 0, sizeof(struct smb2_close_request));
         cl_req.flags = SMB2_CLOSE_FLAG_POSTQUERY_ATTRIB;
         memcpy(cl_req.file_id, compound_file_id, SMB2_FD_SIZE);
@@ -1744,7 +1745,7 @@ smb2_unlink_internal(struct smb2_context *smb2, const char *path,
                 return -ENOMEM;
         }
         smb2_add_compound_pdu(smb2, pdu, next_pdu);
-        
+
         smb2_queue_pdu(smb2, pdu);
 
         return 0;
@@ -1814,7 +1815,7 @@ smb2_mkdir_async(struct smb2_context *smb2, const char *path,
                 return -ENOMEM;
         }
         smb2_add_compound_pdu(smb2, pdu, next_pdu);
-        
+
         smb2_queue_pdu(smb2, pdu);
 
         return 0;
@@ -3404,16 +3405,34 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
 
         pdu = NULL;
 
-        if (smb2->sec == SMB2_SEC_NTLMSSP) {
+        if (smb2->sec == SMB2_SEC_UNDEFINED || smb2->sec == SMB2_SEC_NTLMSSP) {
+                /* if we haven't set sec type yet, and the blob contains
+                 * valid ntlmssp, use our ntlmssp implementation, but supress
+                 * error-setting while sniffing. if we are expecting ntlmssp
+                 * insist on a valid message
+                 * TODO - perhaps use krb5+ntlmssp if configured?
+                 */
                 if (ntlmssp_get_message_type(smb2,
                                 req->security_buffer, req->security_buffer_length,
+                                smb2->sec == SMB2_SEC_UNDEFINED,
                                 &message_type,
                                 &response_token, &response_length,
-                                &is_spnego_wrapped) < 0) {
-                        smb2_set_error(smb2, "No message type in NTLMSSP %s", smb2_get_error(smb2));
+                                &is_spnego_wrapped) >= 0) {
+                        smb2->sec = SMB2_SEC_NTLMSSP;
+                } else {
+
+#ifdef HAVE_LIBKRB5
+                        smb2->sec = SMB2_SEC_KRB5;
+#else
+                        smb2_set_error(smb2, "No message type in NTLMSSP %s",
+                                        smb2_get_error(smb2));
                         smb2_close_context(smb2);
                         return;
+#endif
                 }
+        }
+
+        if (smb2->sec == SMB2_SEC_NTLMSSP) {
                 /* set error code in header - more processing required if negotiate req not auth req */
                 if (message_type == NEGOTIATE_MESSAGE) {
                         if (c_data->auth_data) {
@@ -3481,8 +3500,44 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
         }
 #ifdef HAVE_LIBKRB5
         else {
-                /* TODO: */
-                have_valid_session_key = 0;
+                if (!c_data->auth_data) {
+                        /* note that for server, the auth creds really only need to be
+                         * setup once for all connections, but we do it each time to
+                         * simplify auth_data lifetime, perhaps TODO?
+                         */
+                        c_data->auth_data = krb5_init_server_cred(server, smb2);
+                        if (!c_data->auth_data) {
+                                smb2_set_error(smb2, "can not init auth data %s", smb2_get_error(smb2));
+                                smb2_close_context(smb2);
+                                return;
+                        }
+                        smb2->connect_data = c_data;
+                }
+
+                if (krb5_session_reply(smb2, c_data->auth_data,
+                                         req->security_buffer,
+                                         req->security_buffer_length,
+                                         &more_processing_needed)) {
+                        return;
+                }
+
+                /* alloc a pdu for next request */
+                if (more_processing_needed) {
+                        smb2->next_pdu = smb2_allocate_pdu(smb2, SMB2_SESSION_SETUP,
+                                                smb2_session_setup_request_cb, cb_data);
+                        smb2->session_id = server->session_counter++;
+                } else {
+                        smb2->next_pdu = smb2_allocate_pdu(smb2, SMB2_TREE_CONNECT,
+                                                smb2_general_client_request_cb, cb_data);
+                }
+                rep.security_buffer_length =
+                        krb5_get_output_token_length(c_data->auth_data);
+                rep.security_buffer =
+                        krb5_get_output_token_buffer(c_data->auth_data);
+
+                if (!krb5_session_get_session_key(smb2, c_data->auth_data)) {
+                        have_valid_session_key = 1;
+                }
         }
 #endif
         if (smb2->sign && have_valid_session_key == 0) {
@@ -3720,18 +3775,8 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
         now.tv_sec = 0;
         rep.server_start_time = smb2_timeval_to_win(&now);
 
-        smb2->sec = SMB2_SEC_NTLMSSP;
-
-        if (smb2->sec == SMB2_SEC_UNDEFINED) {
-#ifdef HAVE_LIBKRB5
-                smb2->sec = SMB2_SEC_KRB5;
-#else
-                smb2->sec = SMB2_SEC_NTLMSSP;
-#endif
-        }
-
         rep.security_buffer_length = smb2_spnego_create_negotiate_reply_blob(
-                                        smb2, (void*)&rep.security_buffer);
+                                        smb2, 1, (void*)&rep.security_buffer);
 
         pdu = smb2_cmd_negotiate_reply_async(smb2, &rep, NULL, cb_data);
         if (rep.security_buffer) {
@@ -3828,7 +3873,6 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
         if (err != 0) {
                 return err;
         }
-
         server->session_counter = 0x1234;
 
         do {
@@ -3857,7 +3901,7 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
                         }
                 }
 
-                /* 100ms select timeout to allow period pdu timeouts */
+                /* 100ms select timeout to allow periodic pdu timeouts */
                 timeout.tv_sec = 0;
                 timeout.tv_usec = 100000;
 

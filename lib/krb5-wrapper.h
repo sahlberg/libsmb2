@@ -79,7 +79,7 @@ krb5_negotiate_reply(struct smb2_context *smb2,
 
 int
 krb5_negotiate_request(struct smb2_context *smb2, void **neg_init_token);
-                     
+
 int
 krb5_session_get_session_key(struct smb2_context *smb2,
                              struct private_auth_data *auth_data);
@@ -88,6 +88,15 @@ int
 krb5_session_request(struct smb2_context *smb2,
                      struct private_auth_data *auth_data,
                      unsigned char *buf, int len);
+
+struct private_auth_data *
+krb5_init_server_cred(struct smb2_server *server, struct smb2_context *smb2);
+
+int
+krb5_session_reply(struct smb2_context *smb2,
+                     struct private_auth_data *auth_data,
+                     unsigned char *buf, int len,
+                     int *more_processing_needed);
 
 void
 krb5_set_gss_error(struct smb2_context *smb2, char *func,

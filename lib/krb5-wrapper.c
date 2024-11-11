@@ -109,10 +109,10 @@ display_status(int type, uint32_t err)
 {
         gss_buffer_desc text;
         uint32_t msg_ctx;
-        char *msg, *tmp;
+        char *msg, *tmp, *tv;
         uint32_t maj, min;
 
-        msg = NULL;
+        asprintf(&msg, " ");
         msg_ctx = 0;
         do {
                 maj = gss_display_status(&min, err, type,
@@ -121,17 +121,24 @@ display_status(int type, uint32_t err)
                         return msg;
                 }
 
-                tmp = NULL;
-                if (msg) {
-                        tmp = msg;
-                        min = asprintf(&msg, "%s, %*s", msg,
-                                       (int)text.length, (char *)text.value);
-                } else {
-                        min = asprintf(&msg, "%*s", (int)text.length,
-                                       (char *)text.value);
+                tv = malloc(text.length + 4);
+                if (tv) {
+                        memcpy(tv, text.value, text.length);
+                        tv[text.length] = 0;
+
+                        tmp = NULL;
+                        if (msg) {
+                                tmp = msg;
+                                min = asprintf(&msg, "%s, %s", tmp, tv);
+                                free(tmp);
+                        } else {
+                                min = asprintf(&msg, "%s", tv);
+                        }
+                        free(tv);
+                        if (min == -1) {
+                               return msg;
+                        }
                 }
-                if (min == -1) return tmp;
-                free(tmp);
                 gss_release_buffer(&min, &text);
         } while (msg_ctx != 0);
 
@@ -144,7 +151,9 @@ krb5_set_gss_error(struct smb2_context *smb2, char *func,
 {
         char *err_maj = display_status(GSS_C_GSS_CODE, maj);
         char *err_min = display_status(GSS_C_MECH_CODE, min);
-        smb2_set_error(smb2, "%s: (%s, %s)", func, err_maj, err_min);
+        if (smb2) {
+                smb2_set_error(smb2, "%s: (%s, %s)", func, err_maj, err_min);
+        }
         free(err_min);
         free(err_maj);
 }
@@ -162,6 +171,7 @@ krb5_negotiate_reply(struct smb2_context *smb2,
         gss_buffer_desc user;
         char user_principal[2048];
         char *nc_password = NULL;
+        char *spos;
         gss_buffer_desc passwd;
         gss_OID_set_desc mechOidSet;
 
@@ -180,7 +190,16 @@ krb5_negotiate_reply(struct smb2_context *smb2,
         }
         auth_data->context = GSS_C_NO_CONTEXT;
 
-        if (asprintf(&auth_data->g_server, "cifs@%s", server) < 0) {
+        /* strip any port off server and form service@host.domain string
+        */
+        strncpy(user_principal, server, sizeof(user_principal) - 1);
+        user_principal[sizeof(user_principal) - 1] = '\0';
+        spos = strchr(user_principal, ':');
+        if (spos) {
+                *spos = '\0';
+        }
+        if (asprintf(&auth_data->g_server, "cifs@%s%s%s", user_principal,
+                        domain ? "." : "", domain ? domain : "") < 0) {
                 smb2_set_error(smb2, "Failed to allocate server string");
                 return NULL;
         }
@@ -194,6 +213,13 @@ krb5_negotiate_reply(struct smb2_context *smb2,
         if (maj != GSS_S_COMPLETE) {
                 krb5_set_gss_error(smb2, "gss_import_name", maj, min);
                 return NULL;
+        }
+
+        /* if there is a delegated credential in the context, just use tha
+        */
+        if (smb2->cred_handle) {
+                auth_data->cred = smb2->cred_handle;
+                return auth_data;
         }
 
         if (smb2->use_cached_creds) {
@@ -222,7 +248,7 @@ krb5_negotiate_reply(struct smb2_context *smb2,
         /* TODO: the proper mechanism (SPNEGO vs NTLM vs KRB5) should be
          * selected based on the SMB negotiation flags */
         #ifdef __APPLE__
-        auth_data->mech_type = GSS_SPNEGO_MECHANISM;
+        auth_data->mech_type = GSS_KRB5_MECHANISM; /* GSS_SPNEGO_MECHANISM; */
         #else
         auth_data->mech_type = &gss_mech_spnego;
         #endif
@@ -230,11 +256,7 @@ krb5_negotiate_reply(struct smb2_context *smb2,
 
         /* Create creds for the user */
         mechOidSet.count = 1;
-        #ifdef __APPLE__
-        mechOidSet.elements = discard_const(GSS_SPNEGO_MECHANISM);
-        #else
-        mechOidSet.elements = discard_const(&gss_mech_spnego);
-        #endif
+        mechOidSet.elements = discard_const(auth_data->mech_type);
 
         if (smb2->use_cached_creds) {
                 krb5_error_code ret = 0;
@@ -377,7 +399,7 @@ krb5_session_request(struct smb2_context *smb2,
         /* NOTE: this call is not async, a helper thread should be used if that
          * is an issue */
         auth_data->req_flags = GSS_C_SEQUENCE_FLAG | GSS_C_MUTUAL_FLAG |
-                GSS_C_REPLAY_FLAG;
+                GSS_C_DELEG_FLAG | GSS_C_REPLAY_FLAG;
         maj = gss_init_sec_context(&min, auth_data->cred,
                                    &auth_data->context,
                                    auth_data->target_name,
@@ -401,6 +423,178 @@ krb5_session_request(struct smb2_context *smb2,
         if (GSS_ERROR(maj)) {
                 krb5_set_gss_error(smb2, "gss_init_sec_context", maj, min);
                 return -1;
+        }
+
+        return 0;
+}
+
+struct private_auth_data *
+krb5_init_server_cred(struct smb2_server *server, struct smb2_context *smb2)
+{
+        struct private_auth_data *auth_data;
+        char user_principal[1024];
+        uint32_t maj, min;
+
+        auth_data = calloc(1, sizeof(struct private_auth_data));
+        if (auth_data == NULL) {
+                smb2_set_error(smb2, "Failed to allocate private_auth_data");
+                return NULL;
+        }
+        auth_data->context = GSS_C_NO_CONTEXT;
+
+        if (!server->proxy_authentication) {
+                gss_buffer_desc name_buf;
+                gss_name_t service_name;
+                gss_OID mech = /* GSS_C_NO_OID; */ GSS_KRB5_MECHANISM; /*GSS_SPNEGO_MECHANISM;*/
+                gss_OID_set mechs = GSS_C_NO_OID_SET;
+                gss_OID_set_desc mechlist;
+                char *spos;
+
+                /* strip any port off server and form service@host.domain string
+                */
+                strncpy(user_principal, server->hostname, sizeof(user_principal) - 1);
+                user_principal[sizeof(user_principal) - 1] = '\0';
+                spos = strchr(user_principal, ':');
+                if (spos) {
+                        *spos = '\0';
+                }
+                if (asprintf(&auth_data->g_server, "cifs@%s%s%s", user_principal,
+                                server->domain[0] ? "." : "", server->domain) < 0) {
+                        smb2_set_error(smb2, "Failed to allocate server string");
+                        return NULL;
+                }
+
+                name_buf.value = auth_data->g_server;
+                name_buf.length = strlen(name_buf.value) + 1;
+
+                maj = gss_import_name(&min, &name_buf,
+                                GSS_C_NT_HOSTBASED_SERVICE, &service_name);
+
+                if (maj != GSS_S_COMPLETE) {
+                        krb5_set_gss_error(smb2, "gss_import_name", maj, min);
+                        return NULL;
+                }
+                if (mech != GSS_C_NO_OID) {
+                        mechlist.count = 1;
+                        mechlist.elements = mech;
+                        mechs = &mechlist;
+                }
+
+                maj = gss_acquire_cred(&min, service_name, 0,
+                                mechs, GSS_C_ACCEPT,
+                                &auth_data->cred,
+                                NULL, NULL);
+                if (maj != GSS_S_COMPLETE) {
+                        krb5_set_gss_error(smb2, "acquire server creds", maj, min);
+                        (void) gss_release_name(&min, &service_name);
+                        return NULL;
+                }
+                (void) gss_release_name(&min, &service_name);
+        } else {
+                /* not authenticating client ourselves, just get default cred */
+                maj = gss_acquire_cred(&min, GSS_C_NO_NAME, 0,
+                        GSS_C_NO_OID_SET, GSS_C_ACCEPT,
+                        &auth_data->cred,
+                        NULL, NULL);
+                if (maj != GSS_S_COMPLETE) {
+                        krb5_set_gss_error(smb2, "acquire server creds", maj, min);
+                        /* note, we dont' really fail here, just pass no-creds to accept */
+                        auth_data->cred = GSS_C_NO_CREDENTIAL;
+                }
+        }
+        return auth_data;
+}
+
+int
+krb5_session_reply(struct smb2_context *smb2,
+                     struct private_auth_data *auth_data,
+                     unsigned char *buf, int len,
+                     int *more_processing_needed)
+{
+        uint32_t maj, min;
+        gss_name_t client;
+        gss_OID doid;
+        gss_buffer_desc *input_token = NULL;
+        gss_buffer_desc token = GSS_C_EMPTY_BUFFER;
+        struct gss_cred_id_t_desc_struct * ret_delegated_cred_handle;
+        OM_uint32 ret_timefor;
+        OM_uint32 ret_flags;
+
+        *more_processing_needed = 0;
+
+        if (auth_data->output_token.value) {
+                gss_release_buffer(&min, &auth_data->output_token);
+                auth_data->output_token.length = 0;
+                auth_data->output_token.value = NULL;
+        }
+
+        token.value = buf;
+        token.length = len;
+        input_token = &token;
+
+        maj = gss_accept_sec_context(&min,
+                                   &auth_data->context,
+                                   auth_data->cred,
+                                   input_token,
+                                   GSS_C_NO_CHANNEL_BINDINGS,
+                                   &client,
+                                   &doid,
+                                   &auth_data->output_token,
+                                   &ret_flags,
+                                   &ret_timefor,
+                                   &ret_delegated_cred_handle);
+
+        if (maj & GSS_S_CONTINUE_NEEDED) {
+                *more_processing_needed = 1;
+                return 0;
+        }
+
+        if (GSS_ERROR(maj)) {
+                krb5_set_gss_error(smb2, "gss_accept_sec_context", maj, min);
+                return -1;
+        }
+
+        maj = gss_display_name(&min, client, &token, NULL);
+        if (GSS_ERROR(maj)) {
+                krb5_set_gss_error(smb2, "gss_display_name", maj, min);
+                return -1;
+        }
+
+        /* client name is in user@domain format, so set that into the client context */
+        if (token.length && (char*)token.value) {
+                char *user;
+                char *dpos;
+                int namelen = token.length;;
+
+                user = malloc(namelen + 1);
+                if (!user) {
+                        smb2_set_error(smb2, "can not alloc name buffer");
+                        return -1;
+                }
+                memcpy(user, (char*)token.value, namelen);
+                user[namelen] = 0;
+
+                dpos = strchr(user, '@');
+                if (dpos) {
+                        *dpos++ = '\0';
+                }
+
+                smb2_set_user(smb2, user);
+                smb2_set_domain(smb2, dpos ? dpos : "");
+
+                free(user);
+        }
+
+        /* if the client credential is delegatable and the client is pass-through
+         * save the client's cred for use in a proxy client
+         */
+        if ((ret_flags & GSS_C_DELEG_FLAG) && (ret_delegated_cred_handle)) {
+                if (smb2->passthrough) {
+                        smb2->cred_handle = ret_delegated_cred_handle;
+                } else {
+                        smb2->cred_handle = NULL;
+                        maj = gss_release_cred(&min, &ret_delegated_cred_handle);
+                }
         }
 
         return 0;
