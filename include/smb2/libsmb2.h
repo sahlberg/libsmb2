@@ -367,6 +367,13 @@ void smb2_set_authentication(struct smb2_context *smb2, int val);
  * Default is to try to authenticate as the current user.
  */
 void smb2_set_user(struct smb2_context *smb2, const char *user);
+
+/*
+ * Get the username associated with a context.
+ * returns NULL if none
+ */
+const char *smb2_get_user(struct smb2_context *smb2);
+
 /*
  * Set the password that we will try to authenticate as.
  * This function is only needed when libsmb2 is built --without-libkrb5
@@ -415,6 +422,12 @@ void smb2_set_password_from_file(struct smb2_context *smb2);
  * This function is only needed when libsmb2 is built --without-libkrb5
  */
 void smb2_set_domain(struct smb2_context *smb2, const char *domain);
+
+/*
+ * Get the domain associated with a context.
+ * returns NULL if none
+ */
+const char *smb2_get_domain(struct smb2_context *smb2);
 /*
  * Set the workstation when authenticating.
  * This function is only needed when libsmb2 is built --without-libkrb5
@@ -432,6 +445,13 @@ void smb2_set_opaque(struct smb2_context *smb2, void *opaque);
  */
 void *smb2_get_opaque(struct smb2_context *smb2);
 
+/*
+ * copy credential handle from one context to another (and set
+ * it NULL in source context)
+ * returns 0 if handle transferred,
+ * or -1 if not (no handle or no context, or not applicable)
+ */
+int smb2_delegate_credentials(struct smb2_context *in, struct smb2_context *out);
 
 /*
  * Sets the client_guid for this context.
@@ -1276,6 +1296,9 @@ struct smb2_server {
         uint32_t max_write_size;
         int signing_enabled;
         int allow_anonymous;
+        /* this can be set non-0 to delegate client authentication to
+         * another client and allow any authentication to this server */
+        int proxy_authentication;
         /* saved from negotiate to be used in validate negotiate info */
         uint32_t capabilities;
         uint32_t security_mode;
