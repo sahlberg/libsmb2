@@ -1015,6 +1015,10 @@ ntlmssp_authenticate_blob(struct smb2_server *server, struct smb2_context *smb2,
         ntlmssp_get_utf16_field(input_buf, input_len, 4*11, &auth_data->workstation);
         memcpy(&u32, &input_buf[4*15], 4);
 
+        smb2_set_user(smb2, auth_data->user);
+        smb2_set_domain(smb2, auth_data->domain);
+        smb2_set_workstation(smb2, auth_data->workstation);
+
         /* call server handler to get pw for this user */
         if (server && server->handlers) {
                 if(server->handlers->authorize_user(server, smb2,
@@ -1039,10 +1043,6 @@ ntlmssp_authenticate_blob(struct smb2_server *server, struct smb2_context *smb2,
                 }
                 return -1;
         }
-
-        smb2_set_user(smb2, auth_data->user);
-        smb2_set_domain(smb2, auth_data->domain);
-        smb2_set_workstation(smb2, auth_data->workstation);
 
         /* negotiate_flags = le32toh(u32); */
 
