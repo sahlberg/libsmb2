@@ -198,12 +198,18 @@ krb5_negotiate_reply(struct smb2_context *smb2,
         if (spos) {
                 *spos = '\0';
         }
+#if 0
         if (asprintf(&auth_data->g_server, "cifs@%s%s%s", user_principal,
                         domain ? "." : "", domain ? domain : "") < 0) {
                 smb2_set_error(smb2, "Failed to allocate server string");
                 return NULL;
         }
-
+#else
+        if (asprintf(&auth_data->g_server, "cifs@%s", user_principal) < 0) {
+                smb2_set_error(smb2, "Failed to allocate server string");
+                return NULL;
+        }
+#endif
         target.value = auth_data->g_server;
         target.length = strlen(auth_data->g_server);
 
@@ -244,6 +250,8 @@ krb5_negotiate_reply(struct smb2_context *smb2,
                 krb5_set_gss_error(smb2, "gss_import_name", maj, min);
                 return NULL;
         }
+
+        printf("user =%s= for server =%s=\n", (char*)user.value, auth_data->g_server);
 
         /* TODO: the proper mechanism (SPNEGO vs NTLM vs KRB5) should be
          * selected based on the SMB negotiation flags */
@@ -442,10 +450,14 @@ krb5_init_server_cred(struct smb2_server *server, struct smb2_context *smb2)
         }
         auth_data->context = GSS_C_NO_CONTEXT;
 
-        if (!server->proxy_authentication) {
+        if (1) { //server->proxy_authentication) {
                 gss_buffer_desc name_buf;
                 gss_name_t service_name;
+        #ifdef __APPLE__
                 gss_OID mech = /* GSS_C_NO_OID; */ GSS_KRB5_MECHANISM; /*GSS_SPNEGO_MECHANISM;*/
+        #else
+                gss_OID mech = GSS_C_NO_OID;
+        #endif
                 gss_OID_set mechs = GSS_C_NO_OID_SET;
                 gss_OID_set_desc mechlist;
                 char *spos;
@@ -453,22 +465,26 @@ krb5_init_server_cred(struct smb2_server *server, struct smb2_context *smb2)
                 /* strip any port off server and form service@host.domain string
                 */
                 strncpy(user_principal, server->hostname, sizeof(user_principal) - 1);
+
                 user_principal[sizeof(user_principal) - 1] = '\0';
                 spos = strchr(user_principal, ':');
                 if (spos) {
                         *spos = '\0';
                 }
-                if (asprintf(&auth_data->g_server, "cifs@%s%s%s", user_principal,
-                                server->domain[0] ? "." : "", server->domain) < 0) {
+                if (asprintf(&auth_data->g_server, "cifs/%s", user_principal) < 0) {
                         smb2_set_error(smb2, "Failed to allocate server string");
                         return NULL;
                 }
 
+                //strcpy(auth_data->g_server, "bdodge");
+
                 name_buf.value = auth_data->g_server;
                 name_buf.length = strlen(name_buf.value) + 1;
 
+                printf("ac service=%s\n", auth_data->g_server);
+
                 maj = gss_import_name(&min, &name_buf,
-                                GSS_C_NT_HOSTBASED_SERVICE, &service_name);
+                                GSS_C_NT_USER_NAME, /*GSS_C_NT_HOSTBASED_SERVICE,*/ &service_name);
 
                 if (maj != GSS_S_COMPLETE) {
                         krb5_set_gss_error(smb2, "gss_import_name", maj, min);
@@ -493,7 +509,7 @@ krb5_init_server_cred(struct smb2_server *server, struct smb2_context *smb2)
         } else {
                 /* not authenticating client ourselves, just get default cred */
                 maj = gss_acquire_cred(&min, GSS_C_NO_NAME, 0,
-                        GSS_C_NO_OID_SET, GSS_C_ACCEPT,
+                        GSS_C_NO_OID_SET, GSS_C_BOTH,
                         &auth_data->cred,
                         NULL, NULL);
                 if (maj != GSS_S_COMPLETE) {
@@ -516,7 +532,7 @@ krb5_session_reply(struct smb2_context *smb2,
         gss_OID doid;
         gss_buffer_desc *input_token = NULL;
         gss_buffer_desc token = GSS_C_EMPTY_BUFFER;
-        struct gss_cred_id_t_desc_struct * ret_delegated_cred_handle;
+        gss_cred_id_t ret_delegated_cred_handle;
         OM_uint32 ret_timefor;
         OM_uint32 ret_flags;
 
