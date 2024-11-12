@@ -188,7 +188,7 @@ struct smb2_context {
 
 #ifdef HAVE_LIBKRB5
         /* for delegation of client creds to proxy-client */
-        struct gss_cred_id_t_desc_struct *cred_handle;
+        gss_cred_id_t cred_handle;
 #endif
         /*
          * For handling received smb3 encrypted blobs
