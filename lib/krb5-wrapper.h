@@ -58,6 +58,7 @@ struct private_auth_data {
         gss_const_OID mech_type;
         uint32_t req_flags;
         gss_buffer_desc output_token;
+        int get_proxy_cred;
         char *g_server;
 };
 

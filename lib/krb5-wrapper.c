@@ -100,6 +100,10 @@ krb5_free_auth_data(struct private_auth_data *auth)
                 gss_release_name(&min, &auth->user_name);
         }
 
+        if (auth->cred) {
+                gss_release_cred(&min, &auth->cred);
+        }
+
         free(auth->g_server);
         free(auth);
 }
@@ -190,26 +194,19 @@ krb5_negotiate_reply(struct smb2_context *smb2,
         }
         auth_data->context = GSS_C_NO_CONTEXT;
 
-        /* strip any port off server and form service@host.domain string
-        */
+        /* strip any port off server */
         strncpy(user_principal, server, sizeof(user_principal) - 1);
         user_principal[sizeof(user_principal) - 1] = '\0';
         spos = strchr(user_principal, ':');
         if (spos) {
                 *spos = '\0';
         }
-#if 0
+        /* form the spn cfs@hostname.domain */
         if (asprintf(&auth_data->g_server, "cifs@%s%s%s", user_principal,
                         domain ? "." : "", domain ? domain : "") < 0) {
                 smb2_set_error(smb2, "Failed to allocate server string");
                 return NULL;
         }
-#else
-        if (asprintf(&auth_data->g_server, "cifs@%s", user_principal) < 0) {
-                smb2_set_error(smb2, "Failed to allocate server string");
-                return NULL;
-        }
-#endif
         target.value = auth_data->g_server;
         target.length = strlen(auth_data->g_server);
 
@@ -221,10 +218,11 @@ krb5_negotiate_reply(struct smb2_context *smb2,
                 return NULL;
         }
 
-        /* if there is a delegated credential in the context, just use tha
+        /* if there is a delegated credential in the context, just use that
         */
         if (smb2->cred_handle) {
                 auth_data->cred = smb2->cred_handle;
+                smb2->cred_handle = NULL;
                 return auth_data;
         }
 
@@ -250,8 +248,6 @@ krb5_negotiate_reply(struct smb2_context *smb2,
                 krb5_set_gss_error(smb2, "gss_import_name", maj, min);
                 return NULL;
         }
-
-        printf("user =%s= for server =%s=\n", (char*)user.value, auth_data->g_server);
 
         /* TODO: the proper mechanism (SPNEGO vs NTLM vs KRB5) should be
          * selected based on the SMB negotiation flags */
@@ -309,7 +305,7 @@ krb5_negotiate_reply(struct smb2_context *smb2,
         }
 
         if (maj != GSS_S_COMPLETE) {
-                krb5_set_gss_error(smb2, "gss_acquire_cred", maj, min);
+                krb5_set_gss_error(smb2, "gss_acquire_cred (client)", maj, min);
                 return NULL;
         }
 
@@ -441,7 +437,9 @@ krb5_init_server_cred(struct smb2_server *server, struct smb2_context *smb2)
 {
         struct private_auth_data *auth_data;
         char user_principal[1024];
+        gss_buffer_desc name_buf;
         uint32_t maj, min;
+        char *spos;
 
         auth_data = calloc(1, sizeof(struct private_auth_data));
         if (auth_data == NULL) {
@@ -449,74 +447,69 @@ krb5_init_server_cred(struct smb2_server *server, struct smb2_context *smb2)
                 return NULL;
         }
         auth_data->context = GSS_C_NO_CONTEXT;
+        auth_data->get_proxy_cred = 0;
 
-        if (1) { //server->proxy_authentication) {
-                gss_buffer_desc name_buf;
-                gss_name_t service_name;
+        /* strip any port off server host */
+        strncpy(user_principal, server->hostname, sizeof(user_principal) - 1);
+        user_principal[sizeof(user_principal) - 1] = '\0';
+        spos = strchr(user_principal, ':');
+        if (spos) {
+                *spos = '\0';
+        }
+        /* form spn cifs/hostname.domain */
+        if (asprintf(&auth_data->g_server, "cifs@%s%s%s", user_principal,
+                        server->domain[0] ? "." : "",
+                        server->domain[0] ? server->domain : "") < 0) {
+                smb2_set_error(smb2, "Failed to allocate server string");
+                return NULL;
+        }
+
+        name_buf.value = auth_data->g_server;
+        name_buf.length = strlen(name_buf.value) + 1;
+
+        maj = gss_import_name(&min, &name_buf,
+                        GSS_C_NT_HOSTBASED_SERVICE, &auth_data->target_name);
+
+        if (maj != GSS_S_COMPLETE) {
+                krb5_set_gss_error(smb2, "gss_import_name", maj, min);
+                return NULL;
+        }
+
+        if (!server->proxy_authentication) {
+                /* we, the server, will decrypt the client's ticket ourselfs
+                 * which means we will need the key for the service the client uses
+                 * in our key-table (i.e. cifs/hosthame.domain)
+                 * this path isn't tested completely yet
+                 */
         #ifdef __APPLE__
-                gss_OID mech = /* GSS_C_NO_OID; */ GSS_KRB5_MECHANISM; /*GSS_SPNEGO_MECHANISM;*/
+                gss_OID mech = GSS_C_NO_OID;
         #else
                 gss_OID mech = GSS_C_NO_OID;
         #endif
                 gss_OID_set mechs = GSS_C_NO_OID_SET;
                 gss_OID_set_desc mechlist;
-                char *spos;
 
-                /* strip any port off server and form service@host.domain string
-                */
-                strncpy(user_principal, server->hostname, sizeof(user_principal) - 1);
-
-                user_principal[sizeof(user_principal) - 1] = '\0';
-                spos = strchr(user_principal, ':');
-                if (spos) {
-                        *spos = '\0';
-                }
-                if (asprintf(&auth_data->g_server, "cifs/%s", user_principal) < 0) {
-                        smb2_set_error(smb2, "Failed to allocate server string");
-                        return NULL;
-                }
-
-                //strcpy(auth_data->g_server, "bdodge");
-
-                name_buf.value = auth_data->g_server;
-                name_buf.length = strlen(name_buf.value) + 1;
-
-                printf("ac service=%s\n", auth_data->g_server);
-
-                maj = gss_import_name(&min, &name_buf,
-                                GSS_C_NT_USER_NAME, /*GSS_C_NT_HOSTBASED_SERVICE,*/ &service_name);
-
-                if (maj != GSS_S_COMPLETE) {
-                        krb5_set_gss_error(smb2, "gss_import_name", maj, min);
-                        return NULL;
-                }
                 if (mech != GSS_C_NO_OID) {
                         mechlist.count = 1;
                         mechlist.elements = mech;
                         mechs = &mechlist;
                 }
 
-                maj = gss_acquire_cred(&min, service_name, 0,
+                maj = gss_acquire_cred(&min, auth_data->target_name, 0,
                                 mechs, GSS_C_ACCEPT,
                                 &auth_data->cred,
                                 NULL, NULL);
                 if (maj != GSS_S_COMPLETE) {
-                        krb5_set_gss_error(smb2, "acquire server creds", maj, min);
-                        (void) gss_release_name(&min, &service_name);
+                        krb5_set_gss_error(smb2, "gss_acquire_cred (server)", maj, min);
                         return NULL;
                 }
-                (void) gss_release_name(&min, &service_name);
         } else {
-                /* not authenticating client ourselves, just get default cred */
-                maj = gss_acquire_cred(&min, GSS_C_NO_NAME, 0,
-                        GSS_C_NO_OID_SET, GSS_C_BOTH,
-                        &auth_data->cred,
-                        NULL, NULL);
-                if (maj != GSS_S_COMPLETE) {
-                        krb5_set_gss_error(smb2, "acquire server creds", maj, min);
-                        /* note, we dont' really fail here, just pass no-creds to accept */
-                        auth_data->cred = GSS_C_NO_CREDENTIAL;
-                }
+                /* passing no-credential to accept will actually work directly IFF
+                 * the client has sent a delegated credential, but that's a special case
+                 * so accept the client's cred blindly and use that to get a proxy cred
+                 */
+                auth_data->cred = GSS_C_NO_CREDENTIAL;
+                auth_data->get_proxy_cred = 1;
         }
         return auth_data;
 }
@@ -599,6 +592,36 @@ krb5_session_reply(struct smb2_context *smb2,
                 smb2_set_domain(smb2, dpos ? dpos : "");
 
                 free(user);
+        }
+
+        if (auth_data->get_proxy_cred) {
+#ifdef __APPLE__
+                if (!((ret_flags & GSS_C_DELEG_FLAG) && (ret_delegated_cred_handle))) {
+                        smb2_set_error(smb2, "Apple has no way to proxy credentials");
+                        return -1;
+                }
+#else
+                gss_cred_id_t proxy_cred;
+
+                /* not authenticating client ourselves, get a proxy credential from the
+                 * client's credential to impersonate the client
+                 */
+                maj = gss_acquire_cred_impersonate_name(&min,
+                                            &auth_data->cred,
+                                            our_service_name,
+                                            NULL,
+                                            GSS_C_NO_OID_SET,
+                                            GSS_C_INITIATE,
+                                            &proxy_cred,
+                                            NULL,
+                                            NULL);
+                if (maj != GSS_S_COMPLETE) {
+                        krb5_set_gss_error(smb2, "gss_acquire_cred_impersonate_name", maj, min);
+                        return -1;
+                }
+
+                ret_flags |= GSS_C_DELEG_FLAG;
+#endif
         }
 
         /* if the client credential is delegatable and the client is pass-through
