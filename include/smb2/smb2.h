@@ -1031,6 +1031,15 @@ struct  smb2_ioctl_validate_negotiate_info {
 
 #define SMB2_CHANGE_NOTIFY_REQUEST_SIZE 32
 
+#define SMB2_NOTIFY_CHANGE_FILE_ACTION_ADDED                0x0001
+#define SMB2_NOTIFY_CHANGE_FILE_ACTION_REMOVED              0x0002
+#define SMB2_NOTIFY_CHANGE_FILE_ACTION_MODIFIED             0x0003
+#define SMB2_NOTIFY_CHANGE_FILE_ACTION_RENAMED_OLD_NAME     0x0004
+#define SMB2_NOTIFY_CHANGE_FILE_ACTION_RENAMED_NEW_NAME     0x0005
+#define SMB2_NOTIFY_CHANGE_FILE_ACTION_ADDED_STREAM         0x0006
+#define SMB2_NOTIFY_CHANGE_FILE_ACTION_REMOVED_STREAM       0x0007
+#define SMB2_NOTIFY_CHANGE_FILE_ACTION_MODIFIED_STREAM      0x0008
+
 struct smb2_change_notify_request {
         uint16_t flags;
         uint32_t output_buffer_length;
@@ -1045,6 +1054,19 @@ struct smb2_change_notify_reply {
         uint32_t output_buffer_length;
         uint8_t *output;
 };
+
+struct smb2_file_notify_change_information {
+        uint32_t action;
+        const char *name;
+        struct smb2_file_notify_change_information *next;
+};
+
+int
+smb2_decode_filenotifychangeinformation(
+    struct smb2_context *smb2,
+    struct smb2_file_notify_change_information *fnc,
+    struct smb2_iovec *vec,
+    uint32_t next_entry_offset);
 
 #define SMB2_OPLOCK_LEVEL_NONE        0x00
 #define SMB2_OPLOCK_LEVEL_II          0x01

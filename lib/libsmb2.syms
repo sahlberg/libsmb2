@@ -146,3 +146,10 @@ lsa_LookupSids2_req_coder
 lsa_OpenPolicy2_rep_coder
 lsa_OpenPolicy2_req_coder
 lsa_RPC_SID_coder
+smb2_cmd_change_notify_async
+smb2_get_uint32
+smb2_utf16_to_utf8
+free_smb2_file_notify_change_information
+smb2_notify_change
+smb2_notify_change_file_id_async
+smb2_notify_change_async
