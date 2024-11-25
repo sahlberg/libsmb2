@@ -3609,11 +3609,15 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
         int d;
         int dialect_index;
         struct smb2_timeval now;
-        /*void *auth_data;*/
 
         memset(&rep, 0, sizeof(rep));
         memset(&err, 0, sizeof(err));
         smb2_set_error(smb2, "");
+
+        if (status != SMB2_STATUS_SUCCESS) {
+                /* context is being destroyed */
+                return;
+        }
 
         /* negotiate highest version in request dialects */
         switch (smb2->version) {

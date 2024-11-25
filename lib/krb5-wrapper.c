@@ -81,6 +81,8 @@ krb5_free_auth_data(struct private_auth_data *auth)
 {
         uint32_t maj, min;
 
+        gss_release_buffer(&min, &auth->output_token);
+
         /* Delete context */
         if (auth->context) {
                 maj = gss_delete_sec_context(&min, &auth->context,
@@ -89,8 +91,6 @@ krb5_free_auth_data(struct private_auth_data *auth)
                         /* No logging, yet. Do we care? */
                 }
         }
-
-        gss_release_buffer(&min, &auth->output_token);
 
         if (auth->target_name) {
                 gss_release_name(&min, &auth->target_name);
@@ -206,7 +206,6 @@ krb5_negotiate_reply(struct smb2_context *smb2,
                 smb2_set_error(smb2, "Failed to allocate server string");
                 return NULL;
         }
-        printf("target=%s=\n", auth_data->g_server);
 
         target.value = auth_data->g_server;
         target.length = strlen(auth_data->g_server);
@@ -222,19 +221,22 @@ krb5_negotiate_reply(struct smb2_context *smb2,
         /* if there is a delegated credential in the context, just use that
         */
         if (smb2->cred_handle) {
-                printf("delhand\n");
                 auth_data->cred = smb2->cred_handle;
                 smb2->cred_handle = NULL;
                 return auth_data;
         }
 
+        /* using cached-creds with a memory-cache means the password supplied as
+         * a parameter is used to setup the ticket, as opposed to having to do
+         * a "kinit user" in the environment.  this cache does not persist
+         */
         if (smb2->use_cached_creds) {
-                memset(&user_principal[0], 0, 2048);
-                if (sprintf(&user_principal[0], "%s@%s", user_name, domain) < 0) {
-                        smb2_set_error(smb2, "Failed to allocate user principal");
+                memset(&user_principal[0], 0, sizeof(user_principal));
+                if (snprintf(&user_principal[0], sizeof(user_principal),
+                                "%s@%s", user_name, domain) < 0) {
+                        smb2_set_error(smb2, "Failed to generate user principal");
                         return NULL;
                 }
-
                 user.value = discard_const(user_principal);
                 user.length = strlen(user_principal);
         } else {
@@ -254,15 +256,16 @@ krb5_negotiate_reply(struct smb2_context *smb2,
         /* TODO: the proper mechanism (SPNEGO vs NTLM vs KRB5) should be
          * selected based on the SMB negotiation flags */
         #ifdef __APPLE__
-        auth_data->mech_type = GSS_KRB5_MECHANISM; /* GSS_SPNEGO_MECHANISM; */
+        auth_data->mech_type = auth_data->use_spenego ? GSS_SPNEGO_MECHANISM : GSS_KRB5_MECHANISM;
         #else
-        auth_data->mech_type = gss_mech_krb5;// &gss_mech_spnego;
+        auth_data->mech_type = auth_data->use_spnego ? &gss_mech_spnego : gss_mech_krb5;
         #endif
-        auth_data->cred = GSS_C_NO_CREDENTIAL;
 
         /* Create creds for the user */
         mechOidSet.count = 1;
         mechOidSet.elements = discard_const(auth_data->mech_type);
+
+        auth_data->cred = GSS_C_NO_CREDENTIAL;
 
         if (smb2->use_cached_creds) {
                 krb5_error_code ret = 0;
@@ -302,8 +305,8 @@ krb5_negotiate_reply(struct smb2_context *smb2,
                                                      NULL, NULL);
         } else {
                 maj = gss_acquire_cred(&min, auth_data->user_name, 0,
-                                       GSS_C_NO_OID_SET,/*&mechOidSet,*/ GSS_C_INITIATE,
-                                       &auth_data->cred, NULL, NULL);
+                                       &mechOidSet, GSS_C_INITIATE, &auth_data->cred,
+                                       NULL, NULL);
         }
 
         if (maj != GSS_S_COMPLETE) {
@@ -311,7 +314,7 @@ krb5_negotiate_reply(struct smb2_context *smb2,
                 return NULL;
         }
         #ifndef __APPLE__ /* gss_set_neg_mechs is not defined on macOS/iOS. */
-        if (smb2->sec != SMB2_SEC_UNDEFINED) {
+        if (smb2->sec != SMB2_SEC_UNDEFINED && !smb2->use_cached_creds) {
                 gss_OID_set_desc wantMech;
 
                 wantMech.count = 1;
@@ -403,8 +406,12 @@ krb5_session_request(struct smb2_context *smb2,
         /* TODO return -errno instead of just -1 */
         /* NOTE: this call is not async, a helper thread should be used if that
          * is an issue */
-        auth_data->req_flags = GSS_C_SEQUENCE_FLAG | GSS_C_MUTUAL_FLAG |
-                /*GSS_C_DELEG_FLAG |*/ GSS_C_REPLAY_FLAG;
+        auth_data->req_flags =    GSS_C_SEQUENCE_FLAG
+                                | GSS_C_MUTUAL_FLAG
+                                /* setting this flag gives a delegatable ticket
+                                 * without server doing s4u2proxy */
+                                /*| GSS_C_DELEG_FLAG */
+                                | GSS_C_REPLAY_FLAG;
         maj = gss_init_sec_context(&min, auth_data->cred,
                                    &auth_data->context,
                                    auth_data->target_name,
@@ -490,7 +497,7 @@ krb5_init_server_cred(struct smb2_server *server, struct smb2_context *smb2)
         if (!auth_data->get_proxy_cred) {
                 /* we, the server, will decrypt the client's ticket ourselves
                  * which means we will need the key for the service the client uses
-                 * in our key-table (i.e. cifs/hosthame@domain)
+                 * for us in our key-table (i.e. cifs/hosthame@domain)
                  * you can sync the keytable with AD using "msktutil --auto-update"
                  */
                 maj = gss_acquire_cred(&min, auth_data->target_name,
@@ -534,15 +541,11 @@ krb5_session_reply(struct smb2_context *smb2,
         OM_uint32 ret_timefor;
         OM_uint32 ret_flags = 0;
 
-        gss_OID mech = GSS_C_NO_OID;
-        int use_spnego = 0;
-
+        gss_OID mech;
         gss_OID_set mechs = GSS_C_NO_OID_SET;
         gss_OID_set_desc mechlist;
 
-        mech = use_spnego ? discard_const(&gss_mech_spnego) : discard_const(gss_mech_krb5);
-
-        *more_processing_needed = 0;
+        mech = auth_data->use_spnego ? discard_const(&gss_mech_spnego) : discard_const(gss_mech_krb5);
 
         if (mech != GSS_C_NO_OID) {
                 mechlist.count = 1;
@@ -550,14 +553,16 @@ krb5_session_reply(struct smb2_context *smb2,
                 mechs = &mechlist;
         }
 
+        *more_processing_needed = 0;
+
         if (auth_data->output_token.value) {
                 gss_release_buffer(&min, &auth_data->output_token);
                 auth_data->output_token.length = 0;
                 auth_data->output_token.value = NULL;
         }
 
-        /* accept client context */
-
+        /* accept client context
+        */
         token.value = buf;
         token.length = len;
         input_token = &token;
@@ -616,6 +621,7 @@ krb5_session_reply(struct smb2_context *smb2,
                 printf("----- accepted sec client %s  delegatable=%d %s\n",
                                 user, ret_flags & GSS_C_DELEG_FLAG,  ret_delegated_cred_handle ? "yes" : "no");
 
+                gss_release_buffer(&min, &token);
                 free(user);
         }
 

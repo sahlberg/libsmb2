@@ -63,6 +63,7 @@ struct private_auth_data {
         gss_key_value_set_desc *store;
         int get_proxy_cred;
         int s4u2self;
+        int use_spnego;
         char *g_server;
 };
 
