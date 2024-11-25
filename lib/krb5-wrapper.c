@@ -479,7 +479,7 @@ krb5_init_server_cred(struct smb2_server *server, struct smb2_context *smb2)
                 *spos = '\0';
         }
         /* form spn cifs/hostname, gss will append realm itself */
-        if (asprintf(&auth_data->g_server, "xcifs@%s", user_principal) < 0) {
+        if (asprintf(&auth_data->g_server, "cifs@%s", user_principal) < 0) {
                 smb2_set_error(smb2, "Failed to allocate server string");
                 return NULL;
         }
