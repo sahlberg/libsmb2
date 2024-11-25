@@ -36,6 +36,7 @@ extern "C" {
 #import <GSS/GSS.h>
 #else
 #include <gssapi/gssapi.h>
+#include <gssapi/gssapi_ext.h>
 
 static const gss_OID_desc gss_mech_spnego = {
     6, "\x2b\x06\x01\x05\x05\x02"
@@ -53,12 +54,15 @@ static const gss_OID_desc spnego_mech_ntlmssp = {
 struct private_auth_data {
         gss_ctx_id_t context;
         gss_cred_id_t cred;
+        gss_cred_id_t service_cred;
         gss_name_t user_name;
         gss_name_t target_name;
         gss_const_OID mech_type;
         uint32_t req_flags;
         gss_buffer_desc output_token;
+        gss_key_value_set_desc *store;
         int get_proxy_cred;
+        int s4u2self;
         char *g_server;
 };
 
