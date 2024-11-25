@@ -60,7 +60,6 @@ struct private_auth_data {
         gss_const_OID mech_type;
         uint32_t req_flags;
         gss_buffer_desc output_token;
-        gss_key_value_set_desc *store;
         int get_proxy_cred;
         int s4u2self;
         int use_spnego;

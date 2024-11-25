@@ -256,7 +256,7 @@ krb5_negotiate_reply(struct smb2_context *smb2,
         /* TODO: the proper mechanism (SPNEGO vs NTLM vs KRB5) should be
          * selected based on the SMB negotiation flags */
         #ifdef __APPLE__
-        auth_data->mech_type = auth_data->use_spenego ? GSS_SPNEGO_MECHANISM : GSS_KRB5_MECHANISM;
+        auth_data->mech_type = auth_data->use_spnego ? GSS_SPNEGO_MECHANISM : GSS_KRB5_MECHANISM;
         #else
         auth_data->mech_type = auth_data->use_spnego ? &gss_mech_spnego : gss_mech_krb5;
         #endif
@@ -541,18 +541,6 @@ krb5_session_reply(struct smb2_context *smb2,
         OM_uint32 ret_timefor;
         OM_uint32 ret_flags = 0;
 
-        gss_OID mech;
-        gss_OID_set mechs = GSS_C_NO_OID_SET;
-        gss_OID_set_desc mechlist;
-
-        mech = auth_data->use_spnego ? discard_const(&gss_mech_spnego) : discard_const(gss_mech_krb5);
-
-        if (mech != GSS_C_NO_OID) {
-                mechlist.count = 1;
-                mechlist.elements = mech;
-                mechs = &mechlist;
-        }
-
         *more_processing_needed = 0;
 
         if (auth_data->output_token.value) {
@@ -618,9 +606,6 @@ krb5_session_reply(struct smb2_context *smb2,
                 smb2_set_user(smb2, user);
                 smb2_set_domain(smb2, dpos ? dpos : "");
 
-                printf("----- accepted sec client %s  delegatable=%d %s\n",
-                                user, ret_flags & GSS_C_DELEG_FLAG,  ret_delegated_cred_handle ? "yes" : "no");
-
                 gss_release_buffer(&min, &token);
                 free(user);
         }
@@ -632,6 +617,18 @@ krb5_session_reply(struct smb2_context *smb2,
                         return -1;
                 }
 #else
+                gss_OID mech;
+                gss_OID_set mechs = GSS_C_NO_OID_SET;
+                gss_OID_set_desc mechlist;
+
+                mech = auth_data->use_spnego ? discard_const(&gss_mech_spnego) : discard_const(gss_mech_krb5);
+
+                if (mech != GSS_C_NO_OID) {
+                        mechlist.count = 1;
+                        mechlist.elements = mech;
+                        mechs = &mechlist;
+                }
+
                 /* Do an S4U2Self operation to validate client ticket
                 */
                 gss_cred_id_t impersonator_cred_handle = GSS_C_NO_CREDENTIAL;
