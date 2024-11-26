@@ -32,12 +32,13 @@
 extern "C" {
 #endif
 
+#include <krb5/krb5.h>
+
 #if __APPLE__
 #import <GSS/GSS.h>
 #else
 #include <gssapi/gssapi.h>
 #include <gssapi/gssapi_ext.h>
-#include <krb5/krb5.h>
 
 static const gss_OID_desc gss_mech_spnego = {
     6, "\x2b\x06\x01\x05\x05\x02"

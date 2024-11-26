@@ -57,7 +57,6 @@
 #include <sys/unistd.h>
 #endif
 
-#include <krb5/krb5.h>
 #if __APPLE__
 #include <GSS/GSS.h>
 #else
@@ -770,16 +769,24 @@ krb5_session_reply(struct smb2_context *smb2,
                 gss_cred_id_t impersonator_cred_handle = GSS_C_NO_CREDENTIAL;
                 gss_cred_id_t user_cred_handle = GSS_C_NO_CREDENTIAL;
                 gss_OID mech;
-                gss_OID_set mechs = GSS_C_NO_OID_SET;
-                gss_OID_set_desc mechlist;
                 OM_uint32 xmin;
 
-                mech = auth_data->use_spnego ? discard_const(&gss_mech_spnego) : discard_const(gss_mech_krb5);
+                #ifdef __APPLE__
+                mech = auth_data->use_spnego ? GSS_SPNEGO_MECHANISM : GSS_KRB5_MECHANISM;
+                #else
+                gss_OID_set mechs = GSS_C_NO_OID_SET;
+                gss_OID_set_desc mechlist;
+
+                mech = auth_data->use_spnego ?
+                       discard_const(&gss_mech_spnego) : discard_const(gss_mech_krb5);
+
                 if (mech != GSS_C_NO_OID) {
                         mechlist.count = 1;
-                        mechlist.elements = mech;
+                        mechlist.elements = discard_const(mech);
                         mechs = &mechlist;
                 }
+                #endif
+
                 (void)gss_release_cred(&min, &ret_delegated_cred_handle);
 
                 maj = init_accept_sec_context(smb2, mech,
