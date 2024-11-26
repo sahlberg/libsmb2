@@ -3505,7 +3505,7 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                          * setup once for all connections, but we do it each time to
                          * simplify auth_data lifetime, perhaps TODO?
                          */
-                        c_data->auth_data = krb5_init_server_cred(server, smb2);
+                        c_data->auth_data = krb5_init_server_cred(server, smb2, NULL);
                         if (!c_data->auth_data) {
                                 smb2_set_error(smb2, "can not init auth data %s", smb2_get_error(smb2));
                                 smb2_close_context(smb2);

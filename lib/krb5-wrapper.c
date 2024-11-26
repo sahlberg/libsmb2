@@ -83,6 +83,11 @@ krb5_free_auth_data(struct private_auth_data *auth)
 
         gss_release_buffer(&min, &auth->output_token);
 
+        if (auth->krb5_Ccache) {
+                krb5_cc_destroy(auth->krb5_cctx, auth->krb5_Ccache);
+                krb5_free_context(auth->krb5_cctx);
+        }
+
         /* Delete context */
         if (auth->context) {
                 maj = gss_delete_sec_context(&min, &auth->context,
@@ -270,21 +275,21 @@ krb5_negotiate_reply(struct smb2_context *smb2,
         if (smb2->use_cached_creds) {
                 krb5_error_code ret = 0;
                 const char *cname = NULL;
-                krb5_context    krb5_cctx;
-                krb5_ccache     krb5_Ccache;
 
                 /* krb5 cache management */
-                ret = krb5_init_context(&krb5_cctx);
+                ret = krb5_init_context(&auth_data->krb5_cctx);
                 if (ret) {
-                    smb2_set_error(smb2, "Failed to initialize krb5 context - %s", krb5_get_error_message(krb5_cctx, ret));
+                    smb2_set_error(smb2, "Failed to initialize krb5 context - %s",
+                                   krb5_get_error_message(auth_data->krb5_cctx, ret));
                     return NULL;
                 }
-                ret = krb5_cc_new_unique(krb5_cctx, "MEMORY", NULL, &krb5_Ccache);
+                ret = krb5_cc_new_unique(auth_data->krb5_cctx, "MEMORY", NULL, &auth_data->krb5_Ccache);
                 if (ret != 0) {
-                    smb2_set_error(smb2, "Failed to create krb5 credentials cache - %s", krb5_get_error_message(krb5_cctx, ret));
+                    smb2_set_error(smb2, "Failed to create krb5 credentials cache - %s",
+                                   krb5_get_error_message(auth_data->krb5_cctx, ret));
                     return NULL;
                 }
-                cname = krb5_cc_get_name(krb5_cctx, krb5_Ccache);
+                cname = krb5_cc_get_name(auth_data->krb5_cctx, auth_data->krb5_Ccache);
                 if (cname == NULL) {
                     smb2_set_error(smb2, "Failed to retrieve the credentials cache name");
                     return NULL;
@@ -442,10 +447,13 @@ krb5_session_request(struct smb2_context *smb2,
 
 static OM_uint32
 establish_contexts(struct smb2_context *smb2,
-                      gss_OID imech, gss_cred_id_t icred, gss_cred_id_t acred,
-                      gss_name_t tname, OM_uint32 flags, gss_ctx_id_t *ictx,
+                      gss_OID imech,
+                      gss_cred_id_t icred, gss_cred_id_t acred,
+                      gss_name_t tname, OM_uint32 flags,
+                      gss_ctx_id_t *ictx,
                       gss_ctx_id_t *actx,
-                      gss_name_t *src_name, gss_OID *amech,
+                      gss_name_t *src_name,
+                      gss_OID *amech,
                       gss_cred_id_t *deleg_cred)
 {
         OM_uint32 minor, imaj, amaj;
@@ -508,9 +516,13 @@ init_accept_sec_context(struct smb2_context *smb2,
         }
 
         flags = GSS_C_REPLAY_FLAG | GSS_C_SEQUENCE_FLAG;
-        establish_contexts(smb2, gss_mech_krb5, claimant_cred_handle, verifier_cred_handle,
-                        target_name, flags, &initiator_context,
-                        &acceptor_context, &source_name, &mech,
+        establish_contexts(smb2, mech,
+                        claimant_cred_handle, verifier_cred_handle,
+                        target_name, flags,
+                        &initiator_context,
+                        &acceptor_context,
+                        &source_name,
+                        NULL,
                         deleg_cred_handle);
 
         (void)gss_release_name(&minor, &source_name);
@@ -521,11 +533,12 @@ init_accept_sec_context(struct smb2_context *smb2,
 }
 
 struct private_auth_data *
-krb5_init_server_cred(struct smb2_server *server, struct smb2_context *smb2)
+krb5_init_server_cred(struct smb2_server *server, struct smb2_context *smb2, const char *password)
 {
         struct private_auth_data *auth_data;
         char user_principal[1024];
         gss_buffer_desc name_buf;
+        gss_cred_usage_t cred_usage;
         uint32_t maj, min;
         char *spos;
 
@@ -574,33 +587,9 @@ krb5_init_server_cred(struct smb2_server *server, struct smb2_context *smb2)
                 return NULL;
         }
 
-        if (!auth_data->get_proxy_cred) {
-                /* we, the server, will decrypt the client's ticket ourselves
-                 * which means we will need the key for the service the client uses
-                 * for us in our key-table (i.e. cifs/hosthame@domain)
-                 * you can sync the keytable with AD using "msktutil --auto-update"
-                 */
-                maj = gss_acquire_cred(&min, auth_data->target_name,
-                                        GSS_C_INDEFINITE,
-                                        mechs, GSS_C_ACCEPT,
-                                        &auth_data->cred,
-                                        NULL, NULL);
-                if (GSS_ERROR(maj)) {
-                        krb5_set_gss_error(smb2, "gss_acquire_cred (server)", maj, min);
-                        return NULL;
-                }
-        } else {
-                /* we will delegate to a real server, so attempt delegation
-                */
-                maj = gss_acquire_cred(&min, GSS_C_NO_NAME,
-                                        GSS_C_INDEFINITE,
-                                        mechs, GSS_C_BOTH,
-                                        &auth_data->cred,
-                                        NULL, NULL);
-                if (GSS_ERROR(maj)) {
-                        krb5_set_gss_error(smb2, "gss_acquire_cred (proxy)", maj, min);
-                        return NULL;
-                }
+        if (auth_data->get_proxy_cred) {
+                /* do constrained delegation */
+                cred_usage = GSS_C_BOTH;
 #ifndef __APPLE__
                 /* get a proxy ticket when user is known in session reply.  note that this
                  * isnt absolutely required if the accept returns a delegatable cred but it
@@ -608,6 +597,75 @@ krb5_init_server_cred(struct smb2_server *server, struct smb2_context *smb2)
                  */
                 auth_data->s4u2self = 1;
 #endif
+        } else {
+                cred_usage = GSS_C_ACCEPT;
+        }
+
+        if (smb2->use_cached_creds) {
+                gss_buffer_desc passwd;
+                krb5_error_code ret = 0;
+                const char *cname = NULL;
+                krb5_principal  service_princ = NULL;
+                krb5_context    krb5_cctx;
+                krb5_ccache     krb5_Ccache;
+                OM_uint32  xmin;
+
+                /* krb5 cache management
+                 *
+                 *   this doesnt work yet! TODO
+                 */
+                ret = krb5_init_context(&krb5_cctx);
+                if (ret) {
+                    smb2_set_error(smb2, "Failed to initialize krb5 context - %s", krb5_get_error_message(krb5_cctx, ret));
+                    return NULL;
+                }
+                ret = krb5_parse_name(krb5_cctx, user_principal, &service_princ);
+                if (ret != 0) {
+                    smb2_set_error(smb2, "Failed to parse principal- %s", krb5_get_error_message(krb5_cctx, ret));
+                    return NULL;
+                }
+
+                ret = krb5_cc_new_unique(krb5_cctx, "MEMORY", NULL, &krb5_Ccache);
+                if (ret != 0) {
+                    smb2_set_error(smb2, "Failed to create krb5 credentials cache - %s", krb5_get_error_message(krb5_cctx, ret));
+                    return NULL;
+                }
+
+                ret = krb5_cc_initialize(krb5_cctx, krb5_Ccache, service_princ);
+                if (ret != 0) {
+                    smb2_set_error(smb2, "Failed to initialze krb5 credentials cache - %s", krb5_get_error_message(krb5_cctx, ret));
+                    return NULL;
+                }
+
+                cname = krb5_cc_get_name(krb5_cctx, krb5_Ccache);
+                if (cname == NULL) {
+                    smb2_set_error(smb2, "Failed to retrieve the credentials cache name");
+                    return NULL;
+                }
+
+                maj = gss_krb5_ccache_name(&min, cname, NULL);
+                if (maj != GSS_S_COMPLETE) {
+                        krb5_set_gss_error(smb2, "gss_krb5_ccache_name", maj, min);
+                        return NULL;
+                }
+
+                passwd.value = strdup(password);
+                passwd.length = strlen(passwd.value);
+
+                maj = gss_acquire_cred_with_password(&min, auth_data->target_name, &passwd,
+                                                     GSS_C_INDEFINITE,
+                                                     mechs, cred_usage, &auth_data->cred,
+                                                     NULL, NULL);
+                (void)gss_release_buffer(&xmin, &passwd);
+        } else {
+                maj = gss_acquire_cred(&min, auth_data->target_name,
+                                       GSS_C_INDEFINITE,
+                                       mechs, cred_usage, &auth_data->cred,
+                                       NULL, NULL);
+        }
+        if (GSS_ERROR(maj)) {
+                krb5_set_gss_error(smb2, "gss_acquire_cred (server)", maj, min);
+                return NULL;
         }
 
         return auth_data;
@@ -620,7 +678,6 @@ krb5_session_reply(struct smb2_context *smb2,
                      int *more_processing_needed)
 {
         uint32_t maj, min;
-        gss_OID doid;
         gss_buffer_desc *input_token = NULL;
         gss_buffer_desc token = GSS_C_EMPTY_BUFFER;
         gss_cred_id_t ret_delegated_cred_handle;
@@ -648,7 +705,7 @@ krb5_session_reply(struct smb2_context *smb2,
                                    input_token,
                                    GSS_C_NO_CHANNEL_BINDINGS,
                                    &auth_data->user_name,
-                                   &doid,
+                                   NULL,
                                    &auth_data->output_token,
                                    &ret_flags,
                                    &ret_timefor,
@@ -715,6 +772,7 @@ krb5_session_reply(struct smb2_context *smb2,
                 gss_OID mech;
                 gss_OID_set mechs = GSS_C_NO_OID_SET;
                 gss_OID_set_desc mechlist;
+                OM_uint32 xmin;
 
                 mech = auth_data->use_spnego ? discard_const(&gss_mech_spnego) : discard_const(gss_mech_krb5);
                 if (mech != GSS_C_NO_OID) {
@@ -722,11 +780,15 @@ krb5_session_reply(struct smb2_context *smb2,
                         mechlist.elements = mech;
                         mechs = &mechlist;
                 }
+                (void)gss_release_cred(&min, &ret_delegated_cred_handle);
+
                 maj = init_accept_sec_context(smb2, mech,
                                 user_cred_handle, auth_data->cred,
                                 &ret_delegated_cred_handle);
-                (void)gss_release_cred(&min, &impersonator_cred_handle);
-                (void)gss_release_cred(&min, &user_cred_handle);
+
+                (void)gss_release_cred(&xmin, &impersonator_cred_handle);
+                (void)gss_release_cred(&xmin, &user_cred_handle);
+
                 if (maj != GSS_S_COMPLETE) {
                         krb5_set_gss_error(smb2, "init_accept_sec_context (proxy ctx)", maj, min);
                         return -1;
@@ -759,6 +821,9 @@ krb5_session_reply(struct smb2_context *smb2,
                         maj = init_accept_sec_context(smb2, mech,
                                         user_cred_handle, auth_data->cred,
                                         &ret_delegated_cred_handle);
+
+                        (void)gss_release_cred(&xmin, &user_cred_handle);
+
                         if (maj != GSS_S_COMPLETE) {
                                 krb5_set_gss_error(smb2, "init_accept_sec_context (impersonate)", maj, min);
                                 return -1;

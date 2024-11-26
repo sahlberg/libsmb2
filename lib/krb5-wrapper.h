@@ -37,6 +37,7 @@ extern "C" {
 #else
 #include <gssapi/gssapi.h>
 #include <gssapi/gssapi_ext.h>
+#include <krb5/krb5.h>
 
 static const gss_OID_desc gss_mech_spnego = {
     6, "\x2b\x06\x01\x05\x05\x02"
@@ -54,7 +55,6 @@ static const gss_OID_desc spnego_mech_ntlmssp = {
 struct private_auth_data {
         gss_ctx_id_t context;
         gss_cred_id_t cred;
-        gss_cred_id_t service_cred;
         gss_name_t user_name;
         gss_name_t target_name;
         gss_const_OID mech_type;
@@ -64,6 +64,8 @@ struct private_auth_data {
         int s4u2self;
         int use_spnego;
         char *g_server;
+        krb5_context krb5_cctx;
+        krb5_ccache krb5_Ccache;
 };
 
 void
@@ -95,7 +97,8 @@ krb5_session_request(struct smb2_context *smb2,
                      unsigned char *buf, int len);
 
 struct private_auth_data *
-krb5_init_server_cred(struct smb2_server *server, struct smb2_context *smb2);
+krb5_init_server_cred(struct smb2_server *server,
+               struct smb2_context *smb2, const char *password);
 
 int
 krb5_session_reply(struct smb2_context *smb2,
