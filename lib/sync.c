@@ -888,7 +888,9 @@ static void sync_notify_change_cb(struct smb2_context *smb2, int status,
 }
 
 
-// One-off command for getting notify change response
+/**
+ * One-off sync command for getting notify change response
+ */
 struct smb2_file_notify_change_information *smb2_notify_change(struct smb2_context *smb2, const char *path, uint16_t flags, uint32_t filter)
 {
         struct sync_cb_data *cb_data;
@@ -900,7 +902,6 @@ struct smb2_file_notify_change_information *smb2_notify_change(struct smb2_conte
                 return NULL;
         }
 
-        /* smb2dir takes ownership of cb_data on success */
 	if (smb2_notify_change_async(smb2, path, flags, filter, 0,
                                sync_notify_change_cb, cb_data) != 0) {
 		smb2_set_error(smb2, "smb2_notify_change failed");
@@ -910,9 +911,11 @@ struct smb2_file_notify_change_information *smb2_notify_change(struct smb2_conte
 
 	if (wait_for_reply(smb2, cb_data) < 0) {
                 cb_data->status = SMB2_STATUS_CANCELLED;
+                free(cb_data);
                 return NULL;
         }
 
 	ptr = cb_data->ptr;
+        free(cb_data);
         return ptr;
 }
