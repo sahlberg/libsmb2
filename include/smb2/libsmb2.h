@@ -1234,9 +1234,6 @@ int smb2_notify_change_file_id_async(struct smb2_context *smb2, const smb2_file_
 /*
  * Sync notify_change()
  *
- * Returns:
- * 0      : successfully send the message and received a reply.
- * -errno : Failure.
  */
 struct smb2_file_notify_change_information *smb2_notify_change(struct smb2_context *smb2, const char *path, uint16_t flags, uint32_t filter);
 

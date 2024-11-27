@@ -2891,9 +2891,10 @@ notify_change_cb(struct smb2_context *smb2, int status,
                 );
         }
         if (notify_change_data->loop) {
-                smb2_notify_change_file_id_async(smb2, &notify_change_data->file_id, notify_change_data->flags, notify_change_data->filter, notify_change_data->loop, notify_change_data->cb, notify_change_data->cb_data);
+                smb2_notify_change_file_id_async(smb2, &notify_change_data->file_id, notify_change_data->flags, notify_change_data->filter, 
+                        notify_change_data->loop, notify_change_data->cb, notify_change_data->cb_data);
         }
-
+        free(notify_change_data);
 }
 
 int smb2_notify_change_file_id_async(struct smb2_context *smb2, const smb2_file_id *file_id, uint16_t flags, uint32_t filter, int loop,
@@ -2903,7 +2904,7 @@ int smb2_notify_change_file_id_async(struct smb2_context *smb2, const smb2_file_
         struct smb2_change_notify_request ch_req;
         struct smb2_pdu *pdu;
 
-        notify_change_cb_data = malloc(sizeof(struct notify_change_cb_data));
+        notify_change_cb_data = calloc(1, sizeof(struct notify_change_cb_data));
         if (notify_change_cb_data == NULL) {
                 fprintf(stderr, "Failed to allocate notify_change_data");
                 return -1;
