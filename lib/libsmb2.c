@@ -2852,10 +2852,13 @@ free_smb2_file_notify_change_information(struct smb2_context *smb2, struct smb2_
 struct notify_change_cb_data {
         smb2_command_cb cb;
         void *cb_data;
+        // fileid of the directory to get notified
         smb2_file_id file_id;
-        // do a new notify_change request after each response
+        // filter of SMB2_CHANGE_NOTIFY_FILE_NOTIFY_CHANGE_* flags
         uint16_t filter;
-        uint32_t flags;        
+        // flags such as SMB2_CHANGE_NOTIFY_WATCH_TREE
+        uint32_t flags;      
+        // do a new notify_change request after each response if 1
         uint32_t loop;
         uint32_t status;
 };
