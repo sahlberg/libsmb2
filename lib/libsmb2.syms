@@ -151,5 +151,5 @@ smb2_get_uint32
 smb2_utf16_to_utf8
 free_smb2_file_notify_change_information
 smb2_notify_change
-smb2_notify_change_file_id_async
+smb2_notify_change_filehandle_async
 smb2_notify_change_async
