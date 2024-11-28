@@ -2852,8 +2852,8 @@ free_smb2_file_notify_change_information(struct smb2_context *smb2, struct smb2_
 struct notify_change_cb_data {
         smb2_command_cb cb;
         void *cb_data;
-        // fileid of the directory to get notified
-        smb2_file_id file_id;
+        // smb2fh file handle of the directory to get notified
+        struct smb2fh *fh;
         // filter of SMB2_CHANGE_NOTIFY_FILE_NOTIFY_CHANGE_* flags
         uint16_t filter;
         // flags such as SMB2_CHANGE_NOTIFY_WATCH_TREE
@@ -2894,13 +2894,15 @@ notify_change_cb(struct smb2_context *smb2, int status,
                 );
         }
         if (notify_change_data->loop) {
-                smb2_notify_change_file_id_async(smb2, &notify_change_data->file_id, notify_change_data->flags, notify_change_data->filter, 
+                smb2_notify_change_filehandle_async(smb2, notify_change_data->fh, notify_change_data->flags, notify_change_data->filter, 
                         notify_change_data->loop, notify_change_data->cb, notify_change_data->cb_data);
+        } else {
+                smb2_close(smb2, notify_change_data->fh);
         }
         free(notify_change_data);
 }
 
-int smb2_notify_change_file_id_async(struct smb2_context *smb2, const smb2_file_id *file_id, uint16_t flags, uint32_t filter, int loop,
+int smb2_notify_change_filehandle_async(struct smb2_context *smb2, struct smb2fh *smb2_dir_fh, uint16_t flags, uint32_t filter, int loop,
                        smb2_command_cb cb, void *cb_data)
 {       
         struct notify_change_cb_data *notify_change_cb_data;
@@ -2915,7 +2917,8 @@ int smb2_notify_change_file_id_async(struct smb2_context *smb2, const smb2_file_
         memset(notify_change_cb_data, 0, sizeof(struct notify_change_cb_data));
         notify_change_cb_data->cb = cb;
         notify_change_cb_data->cb_data = cb_data;
-        memcpy(notify_change_cb_data->file_id, file_id, SMB2_FD_SIZE);
+        notify_change_cb_data->fh = smb2_dir_fh;
+
         notify_change_cb_data->flags = flags;
         notify_change_cb_data->filter = filter;
         notify_change_cb_data->loop = loop;
@@ -2924,6 +2927,7 @@ int smb2_notify_change_file_id_async(struct smb2_context *smb2, const smb2_file_
         memset(&ch_req, 0, sizeof(struct smb2_change_notify_request));
         ch_req.flags = flags;
         ch_req.output_buffer_length = DEFAULT_OUTPUT_BUFFER_LENGTH;
+        const smb2_file_id *file_id = smb2_get_file_id(smb2_dir_fh);
         memcpy(ch_req.file_id, file_id, SMB2_FD_SIZE);
         ch_req.completion_filter = filter;
 
@@ -2946,11 +2950,9 @@ int smb2_notify_change_async(struct smb2_context *smb2, const char *path, uint16
         fh = smb2_open(smb2, path, O_DIRECTORY);
         if (fh == NULL) {
 		printf("smb2_open failed. %s\n", smb2_get_error(smb2));
-		exit(10);
+                return -1;
         }
-        const smb2_file_id *file_id = smb2_get_file_id(fh);
-
-        return smb2_notify_change_file_id_async(smb2, file_id, flags, filter, loop, cb, cb_data);
+        return smb2_notify_change_filehandle_async(smb2, fh, flags, filter, loop, cb, cb_data);
 
 }
 
