@@ -1,6 +1,6 @@
 /* -*-  mode:c; tab-width:8; c-basic-offset:8; indent-tabs-mode:nil;  -*- */
 /*
-   Copyright (C) 2017 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
+   Copyright (C) 2024 by Tryggvi Larusson <tryggvi.larusson@netapp.com>
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
