@@ -1003,12 +1003,15 @@ ntlmssp_authenticate_blob(struct smb2_server *server, struct smb2_context *smb2,
         }
         if (auth_data->domain) {
                 free(auth_data->domain);
+                auth_data->domain = NULL;
         }
         if (auth_data->user) {
                 free(auth_data->user);
+                auth_data->user = NULL;
         }
         if (auth_data->workstation) {
                 free(auth_data->workstation);
+                auth_data->workstation = NULL;
         }
         ntlmssp_get_utf16_field(input_buf, input_len, 4*7, &auth_data->domain);
         ntlmssp_get_utf16_field(input_buf, input_len, 4*9, &auth_data->user);
