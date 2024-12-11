@@ -331,6 +331,61 @@ smb2_spnego_wrap_ntlmssp_challenge(struct smb2_context *smb2, const uint8_t *ntl
 }
 
 int
+smb2_spnego_wrap_ntlmssp_auth(struct smb2_context *smb2, const uint8_t *ntlmssp_token,
+               const int token_len, void **neg_targ_token)
+{
+        struct asn1ber_context asn_encoder;
+        uint8_t *neg_token;
+        int alloc_len;
+        int pos[6];
+
+        alloc_len = 64 + 2 * token_len;
+        neg_token = calloc(1, alloc_len);
+        if (neg_token == NULL) {
+                smb2_set_error(smb2, "Failed to allocate spnego wrapper");
+                return 0;
+        }
+
+        memset(&asn_encoder, 0, sizeof(asn_encoder));
+        asn_encoder.dst = neg_token;
+        asn_encoder.dst_size = alloc_len;
+        asn_encoder.dst_head = 0;
+
+        asn1ber_ber_from_typecode(&asn_encoder, ASN1_CONTEXT(1));               /* A1 XX */
+        /* save location of total length */
+        asn1ber_save_out_state(&asn_encoder, &pos[0]);
+        asn1ber_ber_reserve_length(&asn_encoder, 5);
+
+        asn1ber_ber_from_typecode(&asn_encoder, ASN1_SEQUENCE(0));              /* 30 YY */
+        /* save location of sub length */
+        asn1ber_save_out_state(&asn_encoder, &pos[1]);
+        asn1ber_ber_reserve_length(&asn_encoder, 5);
+
+        /* negTokenTarg */
+        /*   ntlm service provider */
+        asn1ber_ber_from_typecode(&asn_encoder, ASN1_CONTEXT(2));               /* A2 ZZ */
+        /* save location of total length */
+        asn1ber_save_out_state(&asn_encoder, &pos[2]);
+        asn1ber_ber_reserve_length(&asn_encoder, 5);
+
+        asn1ber_ber_from_typecode(&asn_encoder, asnOCTET_STRING);               /* 04 zz */
+        /* save location of total length */
+        asn1ber_save_out_state(&asn_encoder, &pos[3]);
+        asn1ber_ber_reserve_length(&asn_encoder, 5);
+
+        memcpy(asn_encoder.dst + asn_encoder.dst_head, ntlmssp_token, token_len);
+        asn_encoder.dst_head += token_len;
+
+        asn1ber_annotate_length(&asn_encoder, pos[3], 5);
+        asn1ber_annotate_length(&asn_encoder, pos[2], 5);
+        asn1ber_annotate_length(&asn_encoder, pos[1], 5);
+        asn1ber_annotate_length(&asn_encoder, pos[0], 5);
+
+        *neg_targ_token = neg_token;
+        return asn_encoder.dst_head;
+}
+
+int
 smb2_spnego_wrap_authenticate_result(struct smb2_context *smb2, const int authorized_ok, void **blob)
 {
         struct asn1ber_context asn_encoder;
@@ -429,13 +484,15 @@ smb2_spnego_unwrap_targ(struct smb2_context *smb2, const uint8_t *spnego,
                 require_noerr(ret, fail);
                 switch (typecode) {
                 case ASN1_CONTEXT(0):
+                        /* num mechs, or neg-result */
                         ret = asn1ber_uint32_from_ber(&asn_decoder, mechanisms);
                         require_noerr(ret, fail);
                         break;
                 case ASN1_CONTEXT(1):
-                        /* supported mechanism */
+                        /* a supported mechanism */
                         ret = asn1ber_oid_from_ber(&asn_decoder, &oid);
                         require_noerr(ret, fail);
+                        break;
                 case ASN1_CONTEXT(2):
                         /* response token */
                         require_typeandlen(&asn_decoder, asnOCTET_STRING, 8, fail);

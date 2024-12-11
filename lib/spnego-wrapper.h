@@ -44,6 +44,10 @@ int smb2_spnego_wrap_ntlmssp_challenge(struct smb2_context *smb2,
                 const uint8_t *ntlmssp_token,
                 const int token_len, void **neg_targ_token);
 
+int smb2_spnego_wrap_ntlmssp_auth(struct smb2_context *smb2,
+                const uint8_t *ntlmssp_token,
+                const int token_len, void **neg_targ_token);
+
 int smb2_spnego_wrap_authenticate_result(struct smb2_context *smb2,
                 const int authorized_ok, void **blob);
 

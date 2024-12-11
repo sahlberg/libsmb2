@@ -66,7 +66,7 @@ int asn1ber_next_byte(struct asn1ber_context *actx, uint8_t *outb)
     if (!actx || !actx->src || actx->src_tail >= actx->src_count) {
         return -1;
     }
-    
+
     actx->src_tail++;
     *outb = actx->src[actx->src_tail - 1];
     return 0;
@@ -77,7 +77,7 @@ int asn1ber_out_byte(struct asn1ber_context *actx, uint8_t inb)
     if (!actx || !actx->dst || actx->dst_head >= actx->dst_size) {
         return -1;
     }
-    
+
     actx->dst[actx->dst_head++] = inb;
     return 0;
 }
@@ -87,7 +87,7 @@ int asn1ber_save_out_state(struct asn1ber_context *actx, int *out_pos)
     if (!out_pos || !actx || !actx->dst || actx->dst_head >= actx->dst_size) {
         return -1;
     }
-    
+
     *out_pos = actx->dst_head;
     return 0;
 }
@@ -101,7 +101,7 @@ int asn1ber_annotate_length(struct asn1ber_context *actx, int out_pos, int reser
     if (!actx || !actx->dst || actx->dst_head >= actx->dst_size) {
         return -1;
     }
-    
+
     /* bytes added since out_pos snap-shot */
     bytes_made = actx->dst_head - out_pos;
     bytes_made -= reserved;
@@ -138,9 +138,9 @@ int asn1ber_length_from_ber(struct asn1ber_context *actx, uint32_t *len)
     if (b & 0x80)
     {
         uint32_t vallen;
-        
+
         val = 0;
-        
+
         /* length is number of bytes of length, not actual length */
         vallen = b & 0x7F;
         if (vallen > 4)
@@ -218,7 +218,7 @@ int asn1ber_request_from_ber(struct asn1ber_context *actx, ber_type_t *opcode, u
     {
         return result;
     }
-    
+
     return 0;
 }
 
@@ -598,6 +598,7 @@ int asn1ber_oid_from_ber(struct asn1ber_context *actx, struct asn1ber_oid_value 
             return result;
         }
         oval = (beroid_type_t)(b & 0x7F);
+        vallen--;
 
         while ((b & 0x80) && (vallen > 0))
         {
@@ -608,9 +609,9 @@ int asn1ber_oid_from_ber(struct asn1ber_context *actx, struct asn1ber_oid_value 
             }
             oval <<= 7;
             oval |= (beroid_type_t)(b & 0x7F);
+            vallen--;
         }
         ((beroid_type_t*)(oid->elements))[i++] = oval;
-        vallen--;
     }
     if (vallen != 0)
     {
