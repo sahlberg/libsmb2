@@ -11,7 +11,9 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 
 #include <inttypes.h>
 #if !defined(__amigaos4__) && !defined(__AMIGA__) && !defined(__AROS__)
@@ -100,11 +102,17 @@ int main(int argc, char *argv[])
                 printf("%-20s %-9s %15"PRIu64" %s", ent->name, type, ent->st.smb2_size, asctime(localtime(&t)));
                 if (ent->st.smb2_type == SMB2_TYPE_LINK) {
                         char buf[256];
-
+                        
                         if (url->path && url->path[0]) {
-                                asprintf(&link, "%s/%s", url->path, ent->name);
+                                if (asprintf(&link, "%s/%s", url->path, ent->name) < 0) {
+                                        printf("asprintf failed\n");
+                                        goto out_disconnect;
+                                }
                         } else {
-                                asprintf(&link, "%s", ent->name);
+                                if (asprintf(&link, "%s", ent->name) < 0) {
+                                        printf("asprintf failed\n");
+                                        goto out_disconnect;
+                                }
                         }
                         if (smb2_readlink(smb2, link, buf, 256) == 0) {
                                 printf("    -> [%s]\n", buf);

@@ -29,9 +29,9 @@ if(NOT ESP_PLATFORM)
   else()
     project(libsmb2
             LANGUAGES C
-            VERSION 4.0.0
+            VERSION 6.0.0
     )  
-    set(VERSION 4.0.0)
+    set(VERSION 6.0.0)
     set(PACKAGE "libsmb2")
     set(PACKAGE_BUGREPORT "ronniesahlberg@gmail.com")
     set(PACKAGE_NAME "libsmb2")
