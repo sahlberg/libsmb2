@@ -111,6 +111,9 @@ void
 krb5_set_gss_error(struct smb2_context *smb2, char *func,
                    uint32_t maj, uint32_t min);
 
+int
+krb5_can_do_ntlmssp(void);
+
 #ifdef __cplusplus
 }
 #endif

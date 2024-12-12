@@ -161,6 +161,8 @@ krb5_set_gss_error(struct smb2_context *smb2, char *func,
         char *err_min = display_status(GSS_C_MECH_CODE, min);
         if (smb2) {
                 smb2_set_error(smb2, "%s: (%s, %s)", func, err_maj, err_min);
+        } else {
+                printf("%s %s\n", err_maj, err_min);
         }
         free(err_min);
         free(err_maj);
@@ -318,7 +320,8 @@ krb5_negotiate_reply(struct smb2_context *smb2,
                 return NULL;
         }
         #ifndef __APPLE__ /* gss_set_neg_mechs is not defined on macOS/iOS. */
-        if (smb2->sec != SMB2_SEC_UNDEFINED && 0) {
+        #ifdef SMB2_USER_KRB5_FOR_NTLLM
+        if (smb2->sec != SMB2_SEC_UNDEFINED) {
                 gss_OID_set_desc wantMech;
 
                 wantMech.count = 1;
@@ -334,6 +337,7 @@ krb5_negotiate_reply(struct smb2_context *smb2,
                         return NULL;
                 }
         }
+        #endif
         #endif
 
         if (nc_password) {
@@ -540,11 +544,14 @@ krb5_init_server_cred(struct smb2_server *server, struct smb2_context *smb2, con
         gss_cred_usage_t cred_usage;
         uint32_t maj, min;
         char *spos;
-
-#ifdef __APPLE__
         gss_OID mech = GSS_C_NO_OID;
-#else
-        gss_OID mech = discard_const(gss_mech_krb5);
+
+#ifndef __APPLE__
+        if (smb2->sec != SMB2_SEC_KRB5) {
+                mech = discard_const(gss_mech_krb5);
+        } else {
+                mech = GSS_C_NO_OID;
+        }
 #endif
         gss_OID_set mechs = GSS_C_NO_OID_SET;
         gss_OID_set_desc mechlist;
@@ -657,7 +664,8 @@ krb5_init_server_cred(struct smb2_server *server, struct smb2_context *smb2, con
                                                      NULL, NULL);
                 (void)gss_release_buffer(&xmin, &passwd);
         } else {
-                maj = gss_acquire_cred(&min, auth_data->target_name,
+                maj = gss_acquire_cred(&min,
+                                        smb2->sec == SMB2_SEC_NTLMSSP ? GSS_C_NO_NAME : auth_data->target_name,
                                        GSS_C_INDEFINITE,
                                        mechs, cred_usage, &auth_data->cred,
                                        NULL, NULL);
@@ -862,6 +870,38 @@ unsigned char *
 krb5_get_output_token_buffer(struct private_auth_data *auth_data)
 {
         return auth_data->output_token.value;
+}
+
+int
+krb5_can_do_ntlmssp(void)
+{
+#ifndef __APPLE__
+        gss_OID_set mech_attrs;
+        gss_OID_set known_mech_attrs;
+        uint32_t maj, min;
+
+        gss_OID mech = discard_const(&spnego_mech_ntlmssp);
+
+        /* if we can acquire an initiator context with an ntlmssp mechanism
+         * it means krb5 has the ntlmssp plugin installed and we can use
+         * krb5 for all authentication purposes
+         */
+        maj = gss_inquire_attrs_for_mech(&min,
+                               mech,
+                               &mech_attrs,
+                               &known_mech_attrs);
+
+        if (GSS_ERROR(maj)) {
+                krb5_set_gss_error(NULL, "gss_inquire_attrs_for_mech (ntlmssp cap check)", maj, min);
+                return 0;
+        }
+
+        gss_release_oid_set(&min, &mech_attrs);
+        gss_release_oid_set(&min, &known_mech_attrs);
+        return 1;
+#else
+        return 0;
+#endif
 }
 
 #endif /* HAVE_LIBKRB5 */

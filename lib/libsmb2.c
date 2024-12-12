@@ -3879,6 +3879,9 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
         }
         server->session_counter = 0x1234;
 
+#ifdef HAVE_LIBKRB5
+        server->use_krb5_for_ntlmssp = krb5_can_do_ntlmssp();
+#endif
         do {
                 /* select on the file descriptors of all active client connections and our server socket
                    for the first readable event
