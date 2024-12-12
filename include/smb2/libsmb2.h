@@ -354,6 +354,12 @@ void smb2_set_seal(struct smb2_context *smb2, int val);
  */
 void smb2_set_sign(struct smb2_context *smb2, int val);
 
+enum smb2_sec {
+        SMB2_SEC_UNDEFINED = 0,
+        SMB2_SEC_NTLMSSP,
+        SMB2_SEC_KRB5,
+};
+
 /*
  * Set authentication method.
  * SMB2_SEC_UNDEFINED (use KRB if available or NTLM if not)

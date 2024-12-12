@@ -560,6 +560,7 @@ smb2_spnego_unwrap_gssapi(struct smb2_context *smb2, const uint8_t *spnego,
                 }
         }
         /* mech token */
+        require_typeandlen(&asn_decoder, ASN1_CONTEXT(2), 10, fail);
         require_typeandlen(&asn_decoder, asnOCTET_STRING, 7, fail);
         *token  = asn_decoder.src + asn_decoder.src_tail;
         if (mechanisms) {
