@@ -378,6 +378,13 @@ void smb2_destroy_context(struct smb2_context *smb2)
         free(discard_const(smb2->workstation));
         free(smb2->enc);
 
+#ifdef HAVE_LIBKRB5
+        if (smb2->cred_handle) {
+                OM_uint32 min;
+                (void) gss_release_cred(&min, &smb2->cred_handle);
+                smb2->cred_handle = NULL;
+        }
+#endif
         if (smb2->connect_data) {
             free_c_data(smb2, smb2->connect_data);  /* sets smb2->connect_data to NULL */
         }
@@ -614,6 +621,14 @@ void smb2_set_user(struct smb2_context *smb2, const char *user)
 #endif
 }
 
+const char *smb2_get_user(struct smb2_context *smb2)
+{
+        if (smb2 && smb2->user) {
+                return smb2->user;
+        }
+        return NULL;
+}
+
 void smb2_set_password(struct smb2_context *smb2, const char *password)
 {
         if (smb2->password) {
@@ -632,6 +647,14 @@ void smb2_set_domain(struct smb2_context *smb2, const char *domain)
                 free(discard_const(smb2->domain));
         }
         smb2->domain = strdup(domain);
+}
+
+const char *smb2_get_domain(struct smb2_context *smb2)
+{
+        if (smb2 && smb2->domain) {
+                return smb2->domain;
+        }
+        return NULL;
 }
 
 void smb2_set_workstation(struct smb2_context *smb2, const char *workstation)
@@ -702,4 +725,22 @@ void smb2_set_oplock_or_lease_break_callback(struct smb2_context *smb2,
 {
         smb2->oplock_or_lease_break_cb = cb;
 }
+
+#ifdef HAVE_LIBKRB5
+int smb2_delegate_credentials(struct smb2_context *in, struct smb2_context *out)
+{
+        if (in && out && in->cred_handle) {
+                out->cred_handle = in->cred_handle;
+                in->cred_handle = NULL;
+                return 0;
+        } else {
+                return -1;
+        }
+}
+#else
+int smb2_delegate_credentials(struct smb2_context *in, struct smb2_context *out)
+{
+        return -1;
+}
+#endif
 

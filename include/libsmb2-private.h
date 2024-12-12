@@ -23,6 +23,14 @@
 extern "C" {
 #endif
 
+#ifdef HAVE_LIBKRB5
+#if __APPLE__
+#import <GSS/GSS.h>
+#else
+#include <gssapi/gssapi.h>
+#endif
+#endif
+
 #define MIN(a,b) (((a)<(b))?(a):(b))
 
 #ifndef discard_const
@@ -102,12 +110,6 @@ enum smb2_recv_state {
         SMB2_RECV_TRFM,
 };
 
-enum smb2_sec {
-        SMB2_SEC_UNDEFINED = 0,
-        SMB2_SEC_NTLMSSP,
-        SMB2_SEC_KRB5,
-};
-
 /* current tree id stack, note: index 0 in the stack is not used
 */
 #define SMB2_MAX_TREE_NESTING 32
@@ -121,7 +123,7 @@ struct sync_cb_data {
 	int status;
 	void *ptr;
 };
-        
+
 struct smb2_context {
 
         t_socket fd;
@@ -181,6 +183,11 @@ struct smb2_context {
         uint16_t cypher;
         uint8_t preauthhash[SMB2_PREAUTH_HASH_SIZE];
 
+
+#ifdef HAVE_LIBKRB5
+        /* for delegation of client creds to proxy-client */
+        gss_cred_id_t cred_handle;
+#endif
         /*
          * For handling received smb3 encrypted blobs
          */
@@ -286,7 +293,7 @@ struct smb2_pdu {
 
         /* pointer to the unmarshalled payload in a reply */
         void *payload;
-    
+
         /* callback that frees the any additional memory allocated in the payload.
          * Or null if no additional memory needs to be freed.
          */
