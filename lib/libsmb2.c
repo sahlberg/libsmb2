@@ -872,6 +872,7 @@ negotiate_cb(struct smb2_context *smb2, int status,
 {
         struct connect_data *c_data = private_data;
         struct smb2_negotiate_reply *rep = command_data;
+        uint32_t spnego_mechs;
         int ret;
 
         smb3_update_preauth_hash(smb2, smb2->in.niov - 1, &smb2->in.iov[1]);
@@ -929,6 +930,33 @@ negotiate_cb(struct smb2_context *smb2, int status,
 
         if (smb2->seal) {
                 smb2->sign = 0;
+        }
+
+        /* if there is a gssapi blob in the reply, parse it to determine which
+         * mechanisms are supported if caller hasn't explicitly set security
+         */
+        if (smb2->sec == SMB2_SEC_UNDEFINED &&
+                        rep->security_buffer && rep->security_buffer_length) {
+                spnego_mechs = 0;
+                smb2_spnego_unwrap_gssapi(smb2, rep->security_buffer,
+                        rep->security_buffer_length, 1,
+                        NULL, &spnego_mechs);
+#ifdef HAVE_LIBKRB5
+                if (spnego_mechs & SPNEGO_MECHANISM_KRB5) {
+                        smb2->sec = SMB2_SEC_KRB5;
+                }
+#endif
+                if (smb2->sec == SMB2_SEC_UNDEFINED &&
+                                (spnego_mechs & SPNEGO_MECHANISM_NTLMSSP)) {
+                        smb2->sec = SMB2_SEC_NTLMSSP;
+                }
+        }
+        if (smb2->sec == SMB2_SEC_UNDEFINED) {
+#ifdef HAVE_LIBKRB5
+                smb2->sec = SMB2_SEC_KRB5;
+#else
+                smb2->sec = SMB2_SEC_NTLMSSP;
+#endif
         }
 
         if (smb2->sec == SMB2_SEC_NTLMSSP) {
@@ -1020,13 +1048,6 @@ connect_cb(struct smb2_context *smb2, int status,
 
         memcpy(req.client_guid, smb2_get_client_guid(smb2), SMB2_GUID_SIZE);
 
-        if (smb2->sec == SMB2_SEC_UNDEFINED) {
-#ifdef HAVE_LIBKRB5
-                smb2->sec = SMB2_SEC_KRB5;
-#else
-                smb2->sec = SMB2_SEC_NTLMSSP;
-#endif
-        }
         smb3_init_preauth_hash(smb2);
         pdu = smb2_cmd_negotiate_async(smb2, &req, negotiate_cb, c_data);
         if (pdu == NULL) {
@@ -3518,6 +3539,7 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                                          req->security_buffer,
                                          req->security_buffer_length,
                                          &more_processing_needed)) {
+                        smb2_close_context(smb2);
                         return;
                 }
 
@@ -3545,6 +3567,7 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                 smb2_set_error(smb2, "Signing required by server. Session "
                                "Key is not available %s",
                                smb2_get_error(smb2));
+                smb2_close_context(smb2);
                 return;
         }
 
@@ -3564,9 +3587,10 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
         if (!pdu) {
                 pdu = smb2_cmd_session_setup_reply_async(smb2, &rep, NULL, cb_data);
                 if (pdu == NULL) {
+                        smb2_set_error(smb2, "can not alloc pdu for session setup reply");
+                        smb2_close_context(smb2);
                         return;
                 }
-
                 if (more_processing_needed) {
                         pdu->header.status = SMB2_STATUS_MORE_PROCESSING_REQUIRED;
                 }
