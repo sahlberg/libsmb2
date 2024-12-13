@@ -78,6 +78,11 @@ static const struct asn1ber_oid_value oid_spnego_mech_krb5 = {
         7, { 1, 2, 840, 113554,  1, 2, 2 }
 };
 
+/* hack for older microsoft systems, note its the same as krb5 oid if only 16-bit elements */
+static const struct asn1ber_oid_value oid_spnego_mech_ms_krb5 = {
+        7, { 1, 2, 840, 48018,  1, 2, 2 }
+};
+
 static const struct asn1ber_oid_value oid_spnego_mech_ntlmssp = {
         10, { 1, 3, 6, 1, 4, 1, 311, 2, 2, 10 }
 };
@@ -555,6 +560,8 @@ smb2_spnego_unwrap_gssapi(struct smb2_context *smb2, const uint8_t *spnego,
                 require_noerr(ret, fail);
                 mech_bytes -= (asn_decoder.src_tail - decode_pos);
                 if (!oid_compare(&oid, &oid_spnego_mech_krb5)) {
+                        mechs |= SPNEGO_MECHANISM_KRB5;
+                } else if (!oid_compare(&oid, &oid_spnego_mech_ms_krb5)) {
                         mechs |= SPNEGO_MECHANISM_KRB5;
                 } else if (!oid_compare(&oid, &oid_spnego_mech_ntlmssp)) {
                         mechs |= SPNEGO_MECHANISM_NTLMSSP;
