@@ -539,7 +539,7 @@ int asn1ber_oid_from_ber(struct asn1ber_context *actx, struct asn1ber_oid_value 
 {
     int result;
     int i;
-    uint16_t oval;
+    beroid_type_t oval;
     uint32_t vallen;
     uint8_t b = 0;
 

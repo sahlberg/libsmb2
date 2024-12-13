@@ -233,22 +233,24 @@ int smb2_spnego_wrap_gssapi(struct smb2_context *smb2,
         /* end mech types */
         asn1ber_annotate_length(&asn_encoder, pos[3], 5);
 
-        /* context 2 mech token */
-        asn1ber_ber_from_typecode(&asn_encoder, ASN1_CONTEXT(2));               /* A2 yy */
-        /* save location of total length */
-        asn1ber_save_out_state(&asn_encoder, &pos[3]);
-        asn1ber_ber_reserve_length(&asn_encoder, 5);
+        if (ntlmssp_token && token_len) {
+                /* context 2 mech token */
+                asn1ber_ber_from_typecode(&asn_encoder, ASN1_CONTEXT(2));               /* A2 yy */
+                /* save location of total length */
+                asn1ber_save_out_state(&asn_encoder, &pos[3]);
+                asn1ber_ber_reserve_length(&asn_encoder, 5);
 
-        /* ntlmssp token */
-        asn1ber_ber_from_typecode(&asn_encoder, asnOCTET_STRING);               /* 04 nn */
-        /* save location of total length */
-        asn1ber_save_out_state(&asn_encoder, &pos[4]);
-        asn1ber_ber_reserve_length(&asn_encoder, 5);
+                /* ntlmssp token */
+                asn1ber_ber_from_typecode(&asn_encoder, asnOCTET_STRING);               /* 04 nn */
+                /* save location of total length */
+                asn1ber_save_out_state(&asn_encoder, &pos[4]);
+                asn1ber_ber_reserve_length(&asn_encoder, 5);
 
-        memcpy(asn_encoder.dst + asn_encoder.dst_head, ntlmssp_token, token_len);
-        asn_encoder.dst_head += token_len;
+                memcpy(asn_encoder.dst + asn_encoder.dst_head, ntlmssp_token, token_len);
+                asn_encoder.dst_head += token_len;
 
-        asn1ber_annotate_length(&asn_encoder, pos[4], 5);
+                asn1ber_annotate_length(&asn_encoder, pos[4], 5);
+        }
         asn1ber_annotate_length(&asn_encoder, pos[3], 5);
         asn1ber_annotate_length(&asn_encoder, pos[2], 5);
         asn1ber_annotate_length(&asn_encoder, pos[1], 5);
@@ -554,19 +556,28 @@ smb2_spnego_unwrap_gssapi(struct smb2_context *smb2, const uint8_t *spnego,
                 mech_bytes -= (asn_decoder.src_tail - decode_pos);
                 if (!oid_compare(&oid, &oid_spnego_mech_krb5)) {
                         mechs |= SPNEGO_MECHANISM_KRB5;
-                }
-                else if (!oid_compare(&oid, &oid_spnego_mech_ntlmssp)) {
+                } else if (!oid_compare(&oid, &oid_spnego_mech_ntlmssp)) {
                         mechs |= SPNEGO_MECHANISM_NTLMSSP;
                 }
         }
-        /* mech token */
-        require_typeandlen(&asn_decoder, ASN1_CONTEXT(2), 10, fail);
-        require_typeandlen(&asn_decoder, asnOCTET_STRING, 7, fail);
-        *token  = asn_decoder.src + asn_decoder.src_tail;
         if (mechanisms) {
                 *mechanisms = mechs;
         }
-        return typelen;
+        /* mech token, if present, follows */
+        if (token) {
+                *token = NULL;
+                typelen = 0;
+                if (asn_decoder.src_count > 2 &&
+                                asn_decoder.src[asn_decoder.src_tail] == ASN1_CONTEXT(2)) {
+                        /* mech token, note we expect NTLMSSP (7 bytes) at least here */
+                        require_typeandlen(&asn_decoder, ASN1_CONTEXT(2), 10, fail);
+                        require_typeandlen(&asn_decoder, asnOCTET_STRING, 7, fail);
+                        *token  = asn_decoder.src + asn_decoder.src_tail;
+                }
+                return typelen;
+        } else {
+                return 0;
+        }
 
 fail:
         if (!suppress_errors) {
