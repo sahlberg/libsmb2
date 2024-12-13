@@ -645,6 +645,10 @@ void smb2_set_domain(struct smb2_context *smb2, const char *domain)
 {
         if (smb2->domain) {
                 free(discard_const(smb2->domain));
+                smb2->domain = NULL;
+        }
+        if (domain == NULL) {
+                return;
         }
         smb2->domain = strdup(domain);
 }
@@ -661,6 +665,10 @@ void smb2_set_workstation(struct smb2_context *smb2, const char *workstation)
 {
         if (smb2->workstation) {
                 free(discard_const(smb2->workstation));
+                smb2->workstation = NULL;
+        }
+        if (workstation == NULL) {
+                return;
         }
         smb2->workstation = strdup(workstation);
 }
