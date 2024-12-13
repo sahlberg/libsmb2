@@ -196,6 +196,7 @@ krb5_negotiate_reply(struct smb2_context *smb2,
         auth_data = calloc(1, sizeof(struct private_auth_data));
         if (auth_data == NULL) {
                 smb2_set_error(smb2, "Failed to allocate private_auth_data");
+                krb5_free_auth_data(auth_data);
                 return NULL;
         }
         auth_data->context = GSS_C_NO_CONTEXT;
@@ -210,6 +211,7 @@ krb5_negotiate_reply(struct smb2_context *smb2,
         /* form spn cifs/hostname.domain */
         if (asprintf(&auth_data->g_server, "cifs@%s", user_principal) < 0) {
                 smb2_set_error(smb2, "Failed to allocate server string");
+                krb5_free_auth_data(auth_data);
                 return NULL;
         }
 
@@ -221,6 +223,7 @@ krb5_negotiate_reply(struct smb2_context *smb2,
 
         if (maj != GSS_S_COMPLETE) {
                 krb5_set_gss_error(smb2, "gss_import_name", maj, min);
+                krb5_free_auth_data(auth_data);
                 return NULL;
         }
 
@@ -256,6 +259,7 @@ krb5_negotiate_reply(struct smb2_context *smb2,
 
         if (maj != GSS_S_COMPLETE) {
                 krb5_set_gss_error(smb2, "gss_import_name", maj, min);
+                krb5_free_auth_data(auth_data);
                 return NULL;
         }
 
@@ -280,25 +284,28 @@ krb5_negotiate_reply(struct smb2_context *smb2,
                 /* krb5 cache management */
                 ret = krb5_init_context(&auth_data->krb5_cctx);
                 if (ret) {
-                    smb2_set_error(smb2, "Failed to initialize krb5 context - %s",
-                                   krb5_get_error_message(auth_data->krb5_cctx, ret));
-                    return NULL;
+                        smb2_set_error(smb2, "Failed to initialize krb5 context - %s",
+                                        krb5_get_error_message(auth_data->krb5_cctx, ret));
+                        return NULL;
                 }
                 ret = krb5_cc_new_unique(auth_data->krb5_cctx, "MEMORY", NULL, &auth_data->krb5_Ccache);
                 if (ret != 0) {
-                    smb2_set_error(smb2, "Failed to create krb5 credentials cache - %s",
-                                   krb5_get_error_message(auth_data->krb5_cctx, ret));
-                    return NULL;
+                        smb2_set_error(smb2, "Failed to create krb5 credentials cache - %s",
+                                        krb5_get_error_message(auth_data->krb5_cctx, ret));
+                        krb5_free_auth_data(auth_data);
+                        return NULL;
                 }
                 cname = krb5_cc_get_name(auth_data->krb5_cctx, auth_data->krb5_Ccache);
                 if (cname == NULL) {
-                    smb2_set_error(smb2, "Failed to retrieve the credentials cache name");
-                    return NULL;
+                        smb2_set_error(smb2, "Failed to retrieve the credentials cache name");
+                        krb5_free_auth_data(auth_data);
+                        return NULL;
                 }
 
                 maj = gss_krb5_ccache_name(&min, cname, NULL);
                 if (maj != GSS_S_COMPLETE) {
                         krb5_set_gss_error(smb2, "gss_krb5_ccache_name", maj, min);
+                        krb5_free_auth_data(auth_data);
                         return NULL;
                 }
 
@@ -316,8 +323,9 @@ krb5_negotiate_reply(struct smb2_context *smb2,
         }
 
         if (maj != GSS_S_COMPLETE) {
-                krb5_set_gss_error(smb2, "gss_acquire_cred (client)", maj, min);
-                return NULL;
+                        krb5_set_gss_error(smb2, "gss_acquire_cred (client)", maj, min);
+                        krb5_free_auth_data(auth_data);
+                        return NULL;
         }
         #ifndef __APPLE__ /* gss_set_neg_mechs is not defined on macOS/iOS. */
         #ifdef SMB2_USER_KRB5_FOR_NTLLM
@@ -334,6 +342,7 @@ krb5_negotiate_reply(struct smb2_context *smb2,
                 maj = gss_set_neg_mechs(&min, auth_data->cred, &wantMech);
                 if (GSS_ERROR(maj)) {
                         krb5_set_gss_error(smb2, "gss_set_neg_mechs", maj, min);
+                        krb5_free_auth_data(auth_data);
                         return NULL;
                 }
         }
@@ -471,32 +480,29 @@ establish_contexts(struct smb2_context *smb2,
                 imaj = gss_init_sec_context(&minor, icred, ictx, tname, imech, flags,
                         GSS_C_INDEFINITE, GSS_C_NO_CHANNEL_BINDINGS, &atok, NULL, &itok,
                                 NULL, NULL);
-                        if (GSS_ERROR(imaj)) {
-                                krb5_set_gss_error(smb2, "gss_init_sec_context (est)", imaj, minor);
-                                break;
-                        }
-                        if (amaj == GSS_S_COMPLETE)
-                                break;
+                if (GSS_ERROR(imaj)) {
+                        krb5_set_gss_error(smb2, "gss_init_sec_context (est)", imaj, minor);
+                        break;
+                }
+                if (amaj == GSS_S_COMPLETE)
+                        break;
 
-                        (void)gss_release_buffer(&minor, &atok);
-                        amaj = gss_accept_sec_context(&minor, actx, acred, &itok, GSS_C_NO_CHANNEL_BINDINGS,
-                                src_name, amech, &atok, NULL, NULL,
-                                        deleg_cred);
-                                if (GSS_ERROR(amaj)) {
-                                        krb5_set_gss_error(smb2, "gss_accept_sec_context (est)", amaj, minor);
-                                        break;
-                                }
-                                (void)gss_release_buffer(&minor, &itok);
-                                if (imaj == GSS_S_COMPLETE)
-                                        break;
+                (void)gss_release_buffer(&minor, &atok);
+                amaj = gss_accept_sec_context(&minor, actx, acred, &itok, GSS_C_NO_CHANNEL_BINDINGS,
+                        src_name, amech, &atok, NULL, NULL,
+                                deleg_cred);
+                if (GSS_ERROR(amaj)) {
+                        krb5_set_gss_error(smb2, "gss_accept_sec_context (est)", amaj, minor);
+                        break;
+                }
+                (void)gss_release_buffer(&minor, &itok);
+                if (imaj == GSS_S_COMPLETE)
+                        break;
         }
-
-        if (imaj != GSS_S_COMPLETE || amaj != GSS_S_COMPLETE)
-                printf("One side wants to continue after the other is done");
 
         (void)gss_release_buffer(&minor, &itok);
         (void)gss_release_buffer(&minor, &atok);
-        return imaj;
+        return imaj | amaj;
 }
 
 static OM_uint32
