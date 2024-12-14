@@ -179,7 +179,9 @@ static void opendir_cb(struct smb2_context *smb2, int status,
         if (cb_data->status == SMB2_STATUS_CANCELLED) {
                 return;
         }
-
+        if (status) {
+                cb_data->status = status;
+        }
         cb_data->is_finished = 1;
         cb_data->ptr = command_data;
 }
@@ -195,7 +197,6 @@ struct smb2dir *smb2_opendir(struct smb2_context *smb2, const char *path)
                 return NULL;
         }
 
-        /* smb2dir takes wnership of cb_data on success */
 	if (smb2_opendir_async(smb2, path,
                                opendir_cb, cb_data) != 0) {
 		smb2_set_error(smb2, "smb2_opendir_async failed");
@@ -205,10 +206,12 @@ struct smb2dir *smb2_opendir(struct smb2_context *smb2, const char *path)
 
 	if (wait_for_reply(smb2, cb_data) < 0) {
                 cb_data->status = SMB2_STATUS_CANCELLED;
+                free(cb_data);
                 return NULL;
         }
 
 	ptr = cb_data->ptr;
+        free(cb_data);
         return ptr;
 }
 
