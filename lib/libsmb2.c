@@ -2910,10 +2910,12 @@ smb2_create_request_cb(struct smb2_server *server, struct smb2_context *smb2, vo
                 pdu = smb2_cmd_error_reply_async(smb2,
                                 &err, SMB2_CREATE, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
         }
-        if (req->name) {
-                smb2_free_data(smb2, discard_const(req->name));
-        }
         if (pdu != NULL) {
+                if (req->name) {
+                        /* this will get auto-free when context is closed
+                         * if we dont do it here, so not required */
+                        smb2_free_data(smb2, discard_const(req->name));
+                }
                 smb2_queue_pdu(smb2, pdu);
         }
 }
@@ -3205,10 +3207,12 @@ smb2_query_directory_request_cb(struct smb2_server *server, struct smb2_context 
                         pdu = smb2_cmd_query_directory_reply_async(smb2, req, &rep, NULL, cb_data);
                 }
         }
-        if (req->name) {
-                smb2_free_data(smb2, discard_const(req->name));
-        }
         if (pdu != NULL) {
+                if (req->name) {
+                        /* this will get auto-free when context is closed
+                         * if we dont do it here, so not required */
+                        smb2_free_data(smb2, discard_const(req->name));
+                }
                 smb2_queue_pdu(smb2, pdu);
         }
 }
