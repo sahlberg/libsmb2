@@ -265,11 +265,12 @@ smb2_process_read_fixed(struct smb2_context *smb2,
 }
 
 static void free_read_reply(struct smb2_context *smb2, void * payload) {
+    struct smb2_read_reply *rep;
     if (payload == NULL) {
         return;
     }
     
-    struct smb2_read_reply *rep = (struct smb2_read_reply*)payload;
+    rep = (struct smb2_read_reply*)payload;
     if (rep->data_length != 0 && rep->data != NULL) {
         free(rep->data);
     }

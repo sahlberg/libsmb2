@@ -79,4 +79,6 @@ sysclib_IMPORTS_end
 
 stdio_IMPORTS_start
 I_printf
+I_putchar
+I_puts
 stdio_IMPORTS_end

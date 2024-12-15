@@ -33,7 +33,7 @@
 				WarnAsError="TRUE"
 				Detect64BitPortabilityProblems="FALSE"
 				DebugInformationFormat="3"
-				CompileAs="1"/>
+				CompileAs="0"/>
 			<Tool
 				Name="VCCustomBuildTool"/>
 			<Tool
@@ -140,7 +140,7 @@
 				WarnAsError="TRUE"
 				Detect64BitPortabilityProblems="FALSE"
 				DebugInformationFormat="3"
-				CompileAs="1"/>
+				CompileAs="0"/>
 			<Tool
 				Name="VCCustomBuildTool"/>
 			<Tool
@@ -280,9 +280,6 @@
 				RelativePath="..\lib\dcerpc-srvsvc.c">
 			</File>
 			<File
-				RelativePath="..\lib\dcerpc.c">
-			</File>
-			<File
 				RelativePath="..\lib\errors.c">
 			</File>
 			<File
@@ -368,6 +365,9 @@
 			</File>
 			<File
 				RelativePath="..\lib\smb2-cmd-negotiate.c">
+			</File>
+			<File
+				RelativePath="..\lib\smb2-cmd-notify-change.c">
 			</File>
 			<File
 				RelativePath="..\lib\smb2-cmd-query-directory.c">

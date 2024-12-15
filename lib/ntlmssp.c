@@ -124,8 +124,9 @@ struct auth_data {
 void
 hex_print(const char *blurb, uint8_t *data, int len)
 {
+	int i;
         printf("%s\n", blurb);
-        for (int i = 0; i < len; i++) {
+        for (i = 0; i < len; i++) {
                 printf("%02X ", data[i]);
                 if (!((i + 1) & 0xf)) {
                         printf("\n");

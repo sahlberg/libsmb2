@@ -442,7 +442,7 @@ int
 smb2_process_create_request_variable(struct smb2_context *smb2,
                           struct smb2_pdu *pdu)
 {
-        struct smb2_create_request *req = (struct smb2_create_request*)pdu->payload;;
+        struct smb2_create_request *req = (struct smb2_create_request*)pdu->payload;
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
         uint32_t offset;
         void *ptr;
