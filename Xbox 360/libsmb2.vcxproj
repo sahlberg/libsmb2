@@ -278,7 +278,6 @@
     <ClCompile Include="..\lib\compat.c" />
     <ClCompile Include="..\lib\dcerpc-lsa.c" />
     <ClCompile Include="..\lib\dcerpc-srvsvc.c" />
-    <ClCompile Include="..\lib\dcerpc.c" />
     <ClCompile Include="..\lib\errors.c" />
     <ClCompile Include="..\lib\hmac-md5.c" />
     <ClCompile Include="..\lib\hmac.c" />
@@ -300,6 +299,7 @@
     <ClCompile Include="..\lib\smb2-cmd-lock.c" />
     <ClCompile Include="..\lib\smb2-cmd-logoff.c" />
     <ClCompile Include="..\lib\smb2-cmd-negotiate.c" />
+    <ClCompile Include="..\lib\smb2-cmd-notify-change.c" />
     <ClCompile Include="..\lib\smb2-cmd-query-directory.c" />
     <ClCompile Include="..\lib\smb2-cmd-query-info.c" />
     <ClCompile Include="..\lib\smb2-cmd-read.c" />

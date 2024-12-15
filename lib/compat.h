@@ -634,6 +634,7 @@ struct iovec {
 #ifndef __NDS__
 #include <network.h>
 #endif
+#if !defined(HAVE_SOCKADDR_STORAGE)
 struct sockaddr_storage {
 #ifdef HAVE_SOCKADDR_SA_LEN
 	unsigned char ss_len;
@@ -641,6 +642,7 @@ struct sockaddr_storage {
 	unsigned char ss_family;
 	unsigned char fill[127];
 };
+#endif
 
 struct addrinfo {
 	int	ai_flags;	/* AI_PASSIVE, AI_CANONNAME */
@@ -652,10 +654,6 @@ struct addrinfo {
 	struct sockaddr *ai_addr;	/* binary address */
 	struct addrinfo *ai_next;	/* next structure in linked list */
 };
-
-#ifdef __NDS__
-typedef int socklen_t;
-#endif
 
 #endif
 #define sockaddr_in6 sockaddr_in
@@ -732,6 +730,9 @@ void smb2_freeaddrinfo(struct addrinfo *res);
 #define setsockopt net_setsockopt
 s32 getsockopt(int sockfd, int level, int optname, void *optval, socklen_t *optlen);
 #define select net_select
+#define accept net_accept
+#define listen net_listen
+#define bind net_bind
 #endif
 
 struct pollfd {

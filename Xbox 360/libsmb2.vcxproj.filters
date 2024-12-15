@@ -129,9 +129,6 @@
     <ClCompile Include="..\lib\compat.c">
       <Filter>lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\lib\dcerpc.c">
-      <Filter>lib</Filter>
-    </ClCompile>
     <ClCompile Include="..\lib\dcerpc-lsa.c">
       <Filter>lib</Filter>
     </ClCompile>
@@ -262,6 +259,9 @@
       <Filter>lib</Filter>
     </ClCompile>
     <ClCompile Include="..\lib\smb2-cmd-lock.c">
+      <Filter>lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\lib\smb2-cmd-notify-change.c">
       <Filter>lib</Filter>
     </ClCompile>
   </ItemGroup>
