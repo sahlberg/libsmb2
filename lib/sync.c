@@ -189,7 +189,7 @@ static void opendir_cb(struct smb2_context *smb2, int status,
 struct smb2dir *smb2_opendir(struct smb2_context *smb2, const char *path)
 {
         struct sync_cb_data *cb_data;
-        void *ptr;
+        struct smb2dir *dir;
 
         cb_data = calloc(1, sizeof(struct sync_cb_data));
         if (cb_data == NULL) {
@@ -210,9 +210,14 @@ struct smb2dir *smb2_opendir(struct smb2_context *smb2, const char *path)
                 return NULL;
         }
 
-	ptr = cb_data->ptr;
-        free(cb_data);
-        return ptr;
+	dir = cb_data->ptr;
+        if (dir) {
+                /* Give ownership of cb_data to dir. It will be freed when dir is freed */
+                dir->free_cb_data = free;
+        } else {
+                free(cb_data);
+        }
+        return dir;
 }
 
 /*

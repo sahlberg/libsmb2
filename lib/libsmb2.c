@@ -157,22 +157,6 @@ struct connect_data {
         struct smb2_server *server_context;
 };
 
-struct smb2_dirent_internal {
-        struct smb2_dirent_internal *next;
-        struct smb2dirent dirent;
-};
-
-struct smb2dir {
-        struct smb2dir *next;
-        smb2_command_cb cb;
-        void *cb_data;
-        smb2_file_id file_id;
-
-        struct smb2_dirent_internal *entries;
-        struct smb2_dirent_internal *current_entry;
-        int index;
-};
-
 struct smb2fh {
         struct smb2fh *next;
         smb2_command_cb cb;
@@ -226,6 +210,9 @@ free_smb2dir(struct smb2_context *smb2, struct smb2dir *dir)
                 free(discard_const(dir->entries->dirent.name));
                 free(dir->entries);
                 dir->entries = e;
+        }
+        if (dir->free_cb_data) {
+                dir->free_cb_data(dir->cb_data);
         }
         free(dir);
 }
