@@ -321,6 +321,24 @@ struct smb2_pdu {
         time_t timeout;
 };
 
+struct smb2_dirent_internal {
+        struct smb2_dirent_internal *next;
+        struct smb2dirent dirent;
+};
+
+struct smb2dir {
+        struct smb2dir *next;
+        smb2_command_cb cb;
+        void (*free_cb_data)(void *);
+        void *cb_data;
+        smb2_file_id file_id;
+
+        struct smb2_dirent_internal *entries;
+        struct smb2_dirent_internal *current_entry;
+        int index;
+};
+
+        
 #define smb2_is_server(ctx) ((ctx)->owning_server != NULL)
 
 void smb2_set_nterror(struct smb2_context *smb2, int nterror,

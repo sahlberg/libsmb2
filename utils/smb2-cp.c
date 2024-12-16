@@ -16,7 +16,9 @@
 */
 
 #define _FILE_OFFSET_BITS 64
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 
 #include <inttypes.h>
 #if !defined(__amigaos4__) && !defined(__AMIGA__) && !defined(__AROS__)

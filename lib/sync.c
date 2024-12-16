@@ -179,7 +179,9 @@ static void opendir_cb(struct smb2_context *smb2, int status,
         if (cb_data->status == SMB2_STATUS_CANCELLED) {
                 return;
         }
-
+        if (status) {
+                cb_data->status = status;
+        }
         cb_data->is_finished = 1;
         cb_data->ptr = command_data;
 }
@@ -187,7 +189,7 @@ static void opendir_cb(struct smb2_context *smb2, int status,
 struct smb2dir *smb2_opendir(struct smb2_context *smb2, const char *path)
 {
         struct sync_cb_data *cb_data;
-        void *ptr;
+        struct smb2dir *dir;
 
         cb_data = calloc(1, sizeof(struct sync_cb_data));
         if (cb_data == NULL) {
@@ -195,7 +197,6 @@ struct smb2dir *smb2_opendir(struct smb2_context *smb2, const char *path)
                 return NULL;
         }
 
-        /* smb2dir takes wnership of cb_data on success */
 	if (smb2_opendir_async(smb2, path,
                                opendir_cb, cb_data) != 0) {
 		smb2_set_error(smb2, "smb2_opendir_async failed");
@@ -205,11 +206,18 @@ struct smb2dir *smb2_opendir(struct smb2_context *smb2, const char *path)
 
 	if (wait_for_reply(smb2, cb_data) < 0) {
                 cb_data->status = SMB2_STATUS_CANCELLED;
+                free(cb_data);
                 return NULL;
         }
 
-	ptr = cb_data->ptr;
-        return ptr;
+	dir = cb_data->ptr;
+        if (dir) {
+                /* Give ownership of cb_data to dir. It will be freed when dir is freed */
+                dir->free_cb_data = free;
+        } else {
+                free(cb_data);
+        }
+        return dir;
 }
 
 /*

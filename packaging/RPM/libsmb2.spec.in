@@ -90,10 +90,12 @@ development libraries for LibSMB2
 %{_includedir}/smb2/smb2.h
 %{_includedir}/smb2/smb2-errors.h
 %{_libdir}/libsmb2.a
-%{_libdir}/libsmb2.la
 %{_libdir}/pkgconfig/libsmb2.pc
 
 %changelog
+* Wed Dec 11 2024 : Version 6.0.0
+ - Major rewrites to DCE-RPC
+ - Initial support for building servers
 * Mon Jan 17 2022 : Version 4.0.0
  - Add support for SMB3 encryption
  - Add support for Anonymous NTLMSSP logins
