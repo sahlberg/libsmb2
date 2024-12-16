@@ -341,8 +341,7 @@ ntlm_decode_challenge_message(struct smb2_context *smb2, struct auth_data *auth_
                                         break;
                                 }
 
-                                switch (attr_code) {
-                                case 0: /* end of list */
+                                if (attr_code == 0) { /* end of list */
                                         /*  insert target-name */
                                         if (auth_data->target_info && auth_data->target_info_len) {
                                                 utf16_spn = smb2_utf8_to_utf16((char*)auth_data->target_info);
@@ -368,8 +367,7 @@ ntlm_decode_challenge_message(struct smb2_context *smb2, struct auth_data *auth_
                                         outoff += 4;
                                         attr_code = 0;
                                         attr_len = 0;
-                                        break;
-                                default:
+                                } else {
                                         u16 = htole16(attr_code);
                                         memcpy(&auth_data->ntlm_buf[outoff], &u16, 2);
                                         u16 = htole16(attr_len);
@@ -377,7 +375,6 @@ ntlm_decode_challenge_message(struct smb2_context *smb2, struct auth_data *auth_
                                         outoff += 4;
                                         memcpy(&auth_data->ntlm_buf[outoff], &buf[inoff + 4], attr_len);
                                         outoff += attr_len;
-                                        break;
                                 }
 
                                 inoff += 4 + attr_len;

@@ -816,8 +816,6 @@ send_session_setup_request(struct smb2_context *smb2,
         req.security_mode = (uint8_t)smb2->security_mode;
 
         if (smb2->sec == SMB2_SEC_NTLMSSP) {
-                /* do this to wrap in spnego if needed */
-                /* ntlmssp_set_spnego_wrapping(c_data->auth_data, 1); */
                 if (ntlmssp_generate_blob(NULL, smb2, time(NULL), c_data->auth_data,
                                           buf, len,
                                           &req.security_buffer,
