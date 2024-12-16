@@ -93,6 +93,10 @@ development libraries for LibSMB2
 %{_libdir}/pkgconfig/libsmb2.pc
 
 %changelog
+* Mon Dec 16 2024 : Version 6.1.0
+ - Fix return code for smb2-ls on failure
+ - Fix memory errors in smb2_opendir()
+ - Add a macro to test for the version of the share-enum api
 * Wed Dec 11 2024 : Version 6.0.0
  - Major rewrites to DCE-RPC
  - Initial support for building servers
@@ -107,7 +111,7 @@ development libraries for LibSMB2
  - Add support for 3.1.1 signing
  - Add support for PS2(EE) and PS3
  - Fixes to UCS2 when compose characters are used.
- 
+
  - Various MacOS fixes
  - Fix a few NULL dereferences
 * Mon Jun 10 2019 : Version 3.0.0

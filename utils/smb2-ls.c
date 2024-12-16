@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
         struct smb2dir *dir;
         struct smb2dirent *ent;
         char *link;
-        int rc = 0;
+        int rc = 1;
 
         if (argc < 2) {
                 usage();
@@ -58,14 +58,14 @@ int main(int argc, char *argv[])
 	smb2 = smb2_init_context();
         if (smb2 == NULL) {
                 fprintf(stderr, "Failed to init context\n");
-                exit(0);
+                exit(1);
         }
 
         url = smb2_parse_url(smb2, argv[1]);
         if (url == NULL) {
                 fprintf(stderr, "Failed to parse url: %s\n",
                         smb2_get_error(smb2));
-                exit(0);
+                exit(1);
         }
 
         smb2_set_security_mode(smb2, SMB2_NEGOTIATE_SIGNING_ENABLED);
@@ -123,12 +123,13 @@ int main(int argc, char *argv[])
                 }
         }
 
+        rc = 0;
         smb2_closedir(smb2, dir);
  out_disconnect:        
         smb2_disconnect_share(smb2);
  out_context:
         smb2_destroy_url(url);
         smb2_destroy_context(smb2);
-        
+
 	return rc;
 }

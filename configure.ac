@@ -1,4 +1,4 @@
-AC_INIT([libsmb2],[6.0.0],[ronniesahlberg@gmail.com])
+AC_INIT([libsmb2],[6.1.0],[ronniesahlberg@gmail.com])
 
 AC_PREREQ([2.71])
 AC_CONFIG_HEADERS([config.h])

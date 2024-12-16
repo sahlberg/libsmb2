@@ -74,7 +74,7 @@ libsmb2_la_SOURCES = \
 	usha.c
 
 SOCURRENT=6
-SOREVISION=0
+SOREVISION=1
 SOAGE=0
 libsmb2_la_LDFLAGS = \
 	-version-info $(SOCURRENT):$(SOREVISION):$(SOAGE) -bindir $(bindir) \
