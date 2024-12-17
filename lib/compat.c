@@ -181,6 +181,7 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
 #ifdef __ANDROID__
 /* getlogin_r() was added in API 28 */
 #if __ANDROID_API__ < 28
+#include <errno.h>
 #define NEED_GETLOGIN_R
 #define login_num ENXIO
 #endif
