@@ -629,6 +629,14 @@ const char *smb2_get_user(struct smb2_context *smb2)
         return NULL;
 }
 
+const char *smb2_get_workstation(struct smb2_context *smb2)
+{
+        if (smb2 && smb2->workstation) {
+                return smb2->workstation;
+        }
+        return NULL;
+}
+
 void smb2_set_password(struct smb2_context *smb2, const char *password)
 {
         if (smb2->password) {
