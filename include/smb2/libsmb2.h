@@ -1183,6 +1183,21 @@ int smb2_echo_async(struct smb2_context *smb2,
  */
 int smb2_echo(struct smb2_context *smb2);
 
+void
+free_smb2_file_notify_change_information(struct smb2_context *smb2, struct smb2_file_notify_change_information *fnc);
+
+int smb2_notify_change_async(struct smb2_context *smb2, const char *path, uint16_t flags, uint32_t filter, int loop,
+                       smb2_command_cb cb, void *cb_data);
+
+int smb2_notify_change_filehandle_async(struct smb2_context *smb2, struct smb2fh *smb2_dir_fh, uint16_t flags, uint32_t filter, int loop,
+                       smb2_command_cb cb, void *cb_data);
+
+/*
+ * Sync notify_change()
+ *
+ */
+struct smb2_file_notify_change_information *smb2_notify_change(struct smb2_context *smb2, const char *path, uint16_t flags, uint32_t filter);
+
 /* Utilities that help by being public
 */
 
