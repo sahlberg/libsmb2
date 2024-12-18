@@ -350,7 +350,8 @@ od_close_cb(struct smb2_context *smb2, int status,
         struct smb2dir *dir = private_data;
 
         if (status != SMB2_STATUS_SUCCESS) {
-                dir->cb(smb2, -ENOMEM, NULL, dir->cb_data);
+                dir->cb(smb2, -nterror_to_errno(status),
+                        NULL, dir->cb_data);
                 free_smb2dir(smb2, dir);
                 return;
         }
