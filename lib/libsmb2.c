@@ -1046,11 +1046,17 @@ smb2_connect_share_async(struct smb2_context *smb2,
                 return -EINVAL;
         }
         smb2->server = strdup(server);
+        if (smb2->server == NULL) {
+                return -ENOMEM;
+        }
 
         if (smb2->share) {
                 free(discard_const(smb2->share));
         }
         smb2->share = strdup(share);
+        if (smb2->share == NULL) {
+                return -ENOMEM;
+        }
 
         if (user) {
                 smb2_set_user(smb2, user);
