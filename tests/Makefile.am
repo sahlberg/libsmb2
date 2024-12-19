@@ -4,7 +4,7 @@ AM_CPPFLAGS = -I${srcdir}/../include -I${srcdir}/../include/smb2 \
 AM_CFLAGS = $(WARN_CFLAGS)
 LDADD = ../lib/libsmb2.la
 
-noinst_PROGRAMS = prog_mkdir prog_rmdir prog_cat \
+noinst_PROGRAMS = prog_ls prog_mkdir prog_rmdir prog_cat \
 	smb2-dcerpc-coder-test
 
 EXTRA_PROGRAMS = ld_sockerr
