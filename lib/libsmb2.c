@@ -1082,6 +1082,10 @@ smb2_connect_share_async(struct smb2_context *smb2,
                 smb2_set_error(smb2, "Failed to strdup(share)");
                 return -ENOMEM;
         }
+        if (smb2->user == NULL) {
+                smb2_set_error(smb2, "smb2->user is NULL");
+                return -ENOMEM;
+        }
         c_data->user = strdup(smb2->user);
         if (c_data->user == NULL) {
                 free_c_data(smb2, c_data);
