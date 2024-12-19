@@ -29,9 +29,37 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "libsmb2.h"
 #include "libsmb2-raw.h"
 
-#ifdef __AROS__
-#include "asprintf.h"
-#endif
+#include <sys/syscall.h>
+#include <dlfcn.h>
+
+int alloc_fail = -1;
+
+void *(*real_malloc)(size_t size);
+void *(*real_calloc)(size_t nelem, size_t size);
+
+void *malloc(size_t size)
+{
+        static int call_idx = 0;
+
+        call_idx++;
+
+        if (call_idx == alloc_fail) {
+                return NULL;
+        }
+        return real_malloc(size);
+}
+
+void *calloc(size_t nelem, size_t size)
+{
+        static int call_idx = 0;
+
+        call_idx++;
+
+        if (call_idx == alloc_fail) {
+                return NULL;
+        }
+        return real_calloc(nelem, size);
+}
 
 int usage(void)
 {
@@ -50,6 +78,19 @@ int main(int argc, char *argv[])
         struct smb2dirent *ent;
         char *link;
         int rc = 1;
+
+	if (getenv("ALLOC_FAIL") != NULL) {
+		alloc_fail = atoi(getenv("ALLOC_FAIL"));
+	}
+        /* https://bugzilla.redhat.com/show_bug.cgi?id=2333389 */
+        //if (alloc_fail == 1) {
+        //        alloc_fail = -1;
+        //}
+
+	real_malloc = dlsym(RTLD_NEXT, "malloc");
+	real_calloc = dlsym(RTLD_NEXT, "calloc");
+        
+        printf("Alloc fail at %d\n", alloc_fail);
 
         if (argc < 2) {
                 usage();
