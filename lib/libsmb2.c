@@ -1045,6 +1045,10 @@ smb2_connect_share_async(struct smb2_context *smb2,
                 smb2_set_error(smb2, "No server name provided");
                 return -EINVAL;
         }
+        if (share == NULL) {
+                smb2_set_error(smb2, "No share name provided");
+                return -EINVAL;
+        }
         smb2->server = strdup(server);
         if (smb2->server == NULL) {
                 return -ENOMEM;
