@@ -276,6 +276,9 @@ static void close_cb(struct smb2_context *smb2, int status,
 {
         struct sync_cb_data *cb_data = private_data;
 
+        if (status == SMB2_STATUS_SHUTDOWN) {
+                return;
+        }
         if (cb_data->status == SMB2_STATUS_CANCELLED) {
                 free(cb_data);
                 return;
