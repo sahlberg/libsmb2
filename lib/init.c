@@ -545,7 +545,10 @@ void smb2_set_password_from_file(struct smb2_context *smb2)
 #else
         name = getenv("NTLM_USER_FILE");
 #endif
-        if (name == NULL) {
+        if (name == NULL || smb2->user == NULL) {
+#ifdef _MSC_UWP
+                free(name);
+#endif
                 return;
         }
         fh = fopen(name, "r");
