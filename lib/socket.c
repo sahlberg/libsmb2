@@ -690,7 +690,9 @@ read_more_data:
                         pdu = smb2_find_pdu(smb2, smb2->hdr.message_id);
                         if (pdu == NULL) {
                                 smb2_set_error(smb2, "no matching PDU found");
-                                return -1;
+                                /* ignore this error for now, it might be OK
+                                 * to not pass the pending reply along */
+                                /*return -1;*/
                         }
                         else
                         {
