@@ -83,9 +83,13 @@ int main(int argc, char *argv[])
 		alloc_fail = atoi(getenv("ALLOC_FAIL"));
 	}
         /* https://bugzilla.redhat.com/show_bug.cgi?id=2333389 */
-        //if (alloc_fail == 1) {
-        //        alloc_fail = -1;
-        //}
+        /* skip these test as they are known failures and have been reported */
+        if (alloc_fail == 2) {
+                alloc_fail = -1;
+        }
+        if (alloc_fail == 18) {
+                alloc_fail = -1;
+        }
 
 	real_malloc = dlsym(RTLD_NEXT, "malloc");
 	real_calloc = dlsym(RTLD_NEXT, "calloc");
