@@ -348,7 +348,7 @@ smb2_free_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
         if (pdu->free_payload != NULL) {
             pdu->free_payload(smb2, pdu->payload);
         }
-    
+
         free(pdu->payload);
         free(pdu->crypt);
         free(pdu);
@@ -584,9 +584,6 @@ smb2_correlate_reply(struct smb2_context *smb2, struct smb2_pdu *pdu)
         struct smb2_pdu *req_pdu;
         int ret = 0;
 
-        /* set reply flag */
-        pdu->header.flags |= SMB2_FLAGS_SERVER_TO_REDIR;
-
         req_pdu = smb2_find_pdu_by_command(smb2, pdu->header.command);
         if (req_pdu == NULL) {
                 if (pdu->header.command != SMB2_OPLOCK_BREAK) {
@@ -601,8 +598,6 @@ smb2_correlate_reply(struct smb2_context *smb2, struct smb2_pdu *pdu)
                         pdu->header.session_id = 0;
                 }
         }  else {
-                SMB2_LIST_REMOVE(&smb2->waitqueue, req_pdu);
-
                 pdu->header.credit_request_response =
                                         64 + req_pdu->header.credit_charge;
 
@@ -615,7 +610,12 @@ smb2_correlate_reply(struct smb2_context *smb2, struct smb2_pdu *pdu)
                 if (pdu->header.command != SMB2_TREE_CONNECT) {
                         pdu->header.sync.tree_id = req_pdu->header.sync.tree_id;
                 }
-                smb2_free_pdu(smb2, req_pdu);
+
+                /* leave pdu in waitqueue if this is an async reply */
+                if (!(pdu->header.flags & SMB2_FLAGS_ASYNC_COMMAND)) {
+                        SMB2_LIST_REMOVE(&smb2->waitqueue, req_pdu);
+                        smb2_free_pdu(smb2, req_pdu);
+                }
         }
         return ret;
 }
@@ -628,10 +628,15 @@ smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
         /* Update all the PDU headers in this chain */
         for (p = pdu; p; p = p->next_compound) {
                 if (smb2_is_server(smb2)) {
-                        if (!(pdu->header.flags & SMB2_FLAGS_ASYNC_COMMAND)) {
-                                smb2_correlate_reply(smb2, p);
-                                /* TODO - care about check reply failures? */
+                        /* set reply flag, servers will only reply */
+                        pdu->header.flags |= SMB2_FLAGS_SERVER_TO_REDIR;
+
+                        /* set async flag for status==pending */
+                        if (pdu->header.status == SMB2_STATUS_PENDING) {
+                                pdu->header.flags |= SMB2_FLAGS_ASYNC_COMMAND;
                         }
+                        smb2_correlate_reply(smb2, p);
+                        /* TODO - care about check reply failures? */
                 }
                 smb2_encode_header(smb2, &p->out.iov[0], &p->header);
                 if (smb2->sign ||
