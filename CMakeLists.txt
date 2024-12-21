@@ -57,14 +57,23 @@ endif()
       option(BUILD_SHARED_LIBS "Build shared libraries" ON)
     endif()
       option(ENABLE_EXAMPLES "Build example programs" OFF)
-
+      option(ENABLE_LIBKRB5 "Enable libkrb5 support" ON)
+      option(ENABLE_GSSAPI "Enable gssapi support" ON)
       list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
   endif()
 
   if(CMAKE_SYSTEM_NAME MATCHES Linux)
-    find_package(LibKrb5)
+    if (ENABLE_LIBKRB5)
+      find_package(LibKrb5)
+    endif()
   elseif(IOS)
+<<<<<<< HEAD
     find_package(GSSAPI)
+=======
+    if (ENABLE_GSSAPI)
+      find_package(GSSAPI)
+    endif()
+>>>>>>> upstream/master
   endif()
 
   if(NOT ESP_PLATFORM)
@@ -95,9 +104,19 @@ endif()
     endif()
 
     if(CMAKE_SYSTEM_NAME MATCHES Linux)
+<<<<<<< HEAD
       set(core_DEPENDS ${LIBKRB5_LIBRARY} CACHE STRING "" FORCE)
     elseif(IOS)
       set(core_DEPENDS ${GSSAPI_LIBRARIES} CACHE STRING "" FORCE)
+=======
+      if (ENABLE_LIBKRB5)
+        set(core_DEPENDS ${LIBKRB5_LIBRARY} CACHE STRING "" FORCE)
+      endif()
+    elseif(IOS)
+      if (ENABLE_GSSAPI)
+        set(core_DEPENDS ${GSSAPI_LIBRARIES} CACHE STRING "" FORCE)
+      endif()
+>>>>>>> upstream/master
     endif()
 
     if(MSVC AND BUILD_SHARED_LIBS)

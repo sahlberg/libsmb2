@@ -329,7 +329,7 @@ void smb2_destroy_context(struct smb2_context *smb2)
 
                 smb2->outqueue = pdu->next;
                 if (pdu->cb) {
-                        pdu->cb(smb2, SMB2_STATUS_CANCELLED, NULL, pdu->cb_data);
+                        pdu->cb(smb2, SMB2_STATUS_SHUTDOWN, NULL, pdu->cb_data);
                 }
                 smb2_free_pdu(smb2, pdu);
         }
@@ -337,7 +337,7 @@ void smb2_destroy_context(struct smb2_context *smb2)
                 struct smb2_pdu *pdu = smb2->pdu;
 
                 if (pdu->cb) {
-                        pdu->cb(smb2, SMB2_STATUS_CANCELLED, NULL, pdu->cb_data);
+                        pdu->cb(smb2, SMB2_STATUS_SHUTDOWN, NULL, pdu->cb_data);
                 }
                 smb2_free_pdu(smb2, smb2->pdu);
         }
@@ -346,7 +346,7 @@ void smb2_destroy_context(struct smb2_context *smb2)
 
                 smb2->waitqueue = pdu->next;
                 if (pdu->cb) {
-                        pdu->cb(smb2, SMB2_STATUS_CANCELLED, NULL, pdu->cb_data);
+                        pdu->cb(smb2, SMB2_STATUS_SHUTDOWN, NULL, pdu->cb_data);
                 }
                 if (pdu == smb2->pdu) {
                         smb2->pdu = NULL;
@@ -552,7 +552,10 @@ void smb2_set_password_from_file(struct smb2_context *smb2)
 #else
         name = getenv("NTLM_USER_FILE");
 #endif
-        if (name == NULL) {
+        if (name == NULL || smb2->user == NULL) {
+#ifdef _MSC_UWP
+                free(name);
+#endif
                 return;
         }
         fh = fopen(name, "r");

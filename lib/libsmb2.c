@@ -350,7 +350,8 @@ od_close_cb(struct smb2_context *smb2, int status,
         struct smb2dir *dir = private_data;
 
         if (status != SMB2_STATUS_SUCCESS) {
-                dir->cb(smb2, -ENOMEM, NULL, dir->cb_data);
+                dir->cb(smb2, -nterror_to_errno(status),
+                        NULL, dir->cb_data);
                 free_smb2dir(smb2, dir);
                 return;
         }
@@ -1064,12 +1065,22 @@ smb2_connect_share_async(struct smb2_context *smb2,
                 smb2_set_error(smb2, "No server name provided");
                 return -EINVAL;
         }
+        if (share == NULL) {
+                smb2_set_error(smb2, "No share name provided");
+                return -EINVAL;
+        }
         smb2->server = strdup(server);
+        if (smb2->server == NULL) {
+                return -ENOMEM;
+        }
 
         if (smb2->share) {
                 free(discard_const(smb2->share));
         }
         smb2->share = strdup(share);
+        if (smb2->share == NULL) {
+                return -ENOMEM;
+        }
 
         if (user) {
                 smb2_set_user(smb2, user);
@@ -1089,6 +1100,10 @@ smb2_connect_share_async(struct smb2_context *smb2,
         if (c_data->share == NULL) {
                 free_c_data(smb2, c_data);
                 smb2_set_error(smb2, "Failed to strdup(share)");
+                return -ENOMEM;
+        }
+        if (smb2->user == NULL) {
+                smb2_set_error(smb2, "smb2->user is NULL");
                 return -ENOMEM;
         }
         c_data->user = strdup(smb2->user);

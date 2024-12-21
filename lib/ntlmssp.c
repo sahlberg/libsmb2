@@ -152,17 +152,32 @@ ntlmssp_init_context(const char *user,
 
         if (user) {
                 auth_data->user = strdup(user);
+                if (auth_data->user == NULL) {
+                        goto failed;
+                }
         }
         if (password) {
                 auth_data->password = strdup(password);
+                if (auth_data->password == NULL) {
+                        goto failed;
+                }
         }
         if (domain) {
                 auth_data->domain = strdup(domain);
+                if (auth_data->domain == NULL) {
+                        goto failed;
+                }
         }
         if (workstation) {
                 auth_data->workstation = strdup(workstation);
+                if (auth_data->workstation == NULL) {
+                        goto failed;
+                }
         }
         auth_data->client_challenge = malloc(8);
+        if (auth_data->client_challenge == NULL) {
+                goto failed;
+        }
         memcpy(auth_data->client_challenge, client_challenge, 8);
         auth_data->is_authenticated = 0;
         memset(auth_data->exported_session_key, 0, SMB2_KEY_SIZE);
@@ -171,6 +186,13 @@ ntlmssp_init_context(const char *user,
         auth_data->wintime = smb2_timeval_to_win(&tv);
 
         return auth_data;
+ failed:
+        free(auth_data->user);
+        free(auth_data->password);
+        free(auth_data->domain);
+        free(auth_data->workstation);
+        free(auth_data->client_challenge);
+        return NULL;
 }
 
 void
@@ -209,6 +231,9 @@ encoder(const void *buffer, size_t size, void *ptr)
                 free(tmp);
         }
 
+        if (auth_data->buf == NULL) {
+                return -1;
+        }
         memcpy(auth_data->buf + auth_data->len, buffer, size);
         auth_data->len += size;
 
@@ -453,6 +478,10 @@ NTOWFv2(const char *user, const char *password, const char *domain,
         struct smb2_utf16 *utf16_userdomain = NULL;
         unsigned char ntlm_hash[16];
 
+        if (user == NULL || password == NULL) {
+                return -1;
+        }
+        
         /* ntlm:F638EDF864C4805DC65D9BF2BB77E4C0 */
         if ((strlen(password) == 37) && (strncmp(password, "ntlm:", 5) == 0)) {
                 if (ntlm_convert_password_hash(password + 5, ntlm_hash) < 0) {

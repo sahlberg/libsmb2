@@ -24,7 +24,7 @@ extern "C" {
 #endif
 
 #define LIBSMB2_SHARE_ENUM_V2 1
-        
+
 struct smb2_iovec {
         uint8_t *buf;
         size_t len;
@@ -1325,7 +1325,6 @@ struct smb2_server {
         uint32_t max_write_size;
         int signing_enabled;
         int allow_anonymous;
-        int use_krb5_for_ntlmssp;
         /* this can be set non-0 to delegate client authentication to
          * another client and allow any authentication to this server */
         int proxy_authentication;
