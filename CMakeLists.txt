@@ -67,13 +67,9 @@ endif()
       find_package(LibKrb5)
     endif()
   elseif(IOS)
-<<<<<<< HEAD
-    find_package(GSSAPI)
-=======
     if (ENABLE_GSSAPI)
       find_package(GSSAPI)
     endif()
->>>>>>> upstream/master
   endif()
 
   if(NOT ESP_PLATFORM)
@@ -104,11 +100,6 @@ endif()
     endif()
 
     if(CMAKE_SYSTEM_NAME MATCHES Linux)
-<<<<<<< HEAD
-      set(core_DEPENDS ${LIBKRB5_LIBRARY} CACHE STRING "" FORCE)
-    elseif(IOS)
-      set(core_DEPENDS ${GSSAPI_LIBRARIES} CACHE STRING "" FORCE)
-=======
       if (ENABLE_LIBKRB5)
         set(core_DEPENDS ${LIBKRB5_LIBRARY} CACHE STRING "" FORCE)
       endif()
@@ -116,7 +107,6 @@ endif()
       if (ENABLE_GSSAPI)
         set(core_DEPENDS ${GSSAPI_LIBRARIES} CACHE STRING "" FORCE)
       endif()
->>>>>>> upstream/master
     endif()
 
     if(MSVC AND BUILD_SHARED_LIBS)
