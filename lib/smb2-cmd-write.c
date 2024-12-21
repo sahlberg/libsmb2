@@ -84,7 +84,7 @@ smb2_encode_write_request(struct smb2_context *smb2,
         smb2_set_uint32(iov, 32, req->channel);
         smb2_set_uint32(iov, 36, req->remaining_bytes);
         smb2_set_uint16(iov, 42, req->write_channel_info_length);
-        smb2_set_uint32(iov, 44, req->flags);
+        smb2_set_uint32(iov, 46, req->flags);
 
         if (req->write_channel_info_length > 0 &&
             req->write_channel_info != NULL) {
@@ -262,10 +262,11 @@ smb2_process_write_request_fixed(struct smb2_context *smb2,
         smb2_get_uint32(iov, 4, &req->length);
         smb2_get_uint64(iov, 8, &req->offset);
         memcpy(req->file_id, iov->buf + 16, SMB2_FD_SIZE);
-        smb2_get_uint32(iov, 24, &req->channel);
-        smb2_get_uint32(iov, 28, &req->remaining_bytes);
-        smb2_get_uint16(iov, 32, &req->write_channel_info_offset);
-        smb2_get_uint16(iov, 34, &req->write_channel_info_length);
+        smb2_get_uint32(iov, 32, &req->channel);
+        smb2_get_uint32(iov, 36, &req->remaining_bytes);
+        smb2_get_uint16(iov, 42, &req->write_channel_info_offset);
+        smb2_get_uint16(iov, 44, &req->write_channel_info_length);
+        smb2_get_uint32(iov, 46, &req->flags);
         req->buf = NULL;
 
         if (req->write_channel_info_length) {

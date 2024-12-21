@@ -24,7 +24,7 @@ extern "C" {
 #endif
 
 #define LIBSMB2_SHARE_ENUM_V2 1
-        
+
 struct smb2_iovec {
         uint8_t *buf;
         size_t len;
@@ -356,6 +356,12 @@ void smb2_set_seal(struct smb2_context *smb2, int val);
  */
 void smb2_set_sign(struct smb2_context *smb2, int val);
 
+enum smb2_sec {
+        SMB2_SEC_UNDEFINED = 0,
+        SMB2_SEC_NTLMSSP,
+        SMB2_SEC_KRB5,
+};
+
 /*
  * Set authentication method.
  * SMB2_SEC_UNDEFINED (use KRB if available or NTLM if not)
@@ -375,6 +381,18 @@ void smb2_set_user(struct smb2_context *smb2, const char *user);
  * returns NULL if none
  */
 const char *smb2_get_user(struct smb2_context *smb2);
+
+/*
+ * Get the workstation associated with a context.
+ * returns NULL if none
+ */
+const char *smb2_get_workstation(struct smb2_context *smb2);
+
+/*
+ * Get the domain associated with a context.
+ * returns NULL if none
+ */
+const char *smb2_get_domain(struct smb2_context *smb2);
 
 /*
  * Set the password that we will try to authenticate as.
@@ -563,6 +581,15 @@ struct smb2_pdu;
  */
 int smb2_get_tree_id_for_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu, uint32_t *tree_id);
 int smb2_set_tree_id_for_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu, uint32_t tree_id);
+
+/*
+ * Get session id
+ *
+ * Returns:
+ * 0      : OK
+ * -errno :
+ */
+int smb2_get_session_id(struct smb2_context *smb2, uint64_t *session_id);
 
 /*
  * This function returns a description of the last encountered error.

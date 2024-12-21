@@ -24,7 +24,14 @@ extern "C" {
 #endif
 
 #ifdef HAVE_LIBKRB5
-#include "krb5-wrapper.h"
+#include <krb5/krb5.h>
+
+#if __APPLE__
+#import <GSS/GSS.h>
+#else
+#include <gssapi/gssapi.h>
+#include <gssapi/gssapi_ext.h>
+#endif
 #endif
 
 #define MIN(a,b) (((a)<(b))?(a):(b))
@@ -104,12 +111,6 @@ enum smb2_recv_state {
         SMB2_RECV_VARIABLE,
         SMB2_RECV_PAD,
         SMB2_RECV_TRFM,
-};
-
-enum smb2_sec {
-        SMB2_SEC_UNDEFINED = 0,
-        SMB2_SEC_NTLMSSP,
-        SMB2_SEC_KRB5,
 };
 
 /* current tree id stack, note: index 0 in the stack is not used
@@ -340,7 +341,7 @@ struct smb2dir {
         int index;
 };
 
-        
+
 #define smb2_is_server(ctx) ((ctx)->owning_server != NULL)
 
 void smb2_set_nterror(struct smb2_context *smb2, int nterror,
