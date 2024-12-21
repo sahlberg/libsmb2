@@ -24,7 +24,14 @@ extern "C" {
 #endif
 
 #ifdef HAVE_LIBKRB5
-#include "krb5-wrapper.h"
+#include <krb5/krb5.h>
+
+#if __APPLE__
+#import <GSS/GSS.h>
+#else
+#include <gssapi/gssapi.h>
+#include <gssapi/gssapi_ext.h>
+#endif
 #endif
 
 #define MIN(a,b) (((a)<(b))?(a):(b))
