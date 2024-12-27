@@ -113,12 +113,6 @@ enum smb2_recv_state {
         SMB2_RECV_TRFM,
 };
 
-enum smb2_sec {
-        SMB2_SEC_UNDEFINED = 0,
-        SMB2_SEC_NTLMSSP,
-        SMB2_SEC_KRB5,
-};
-
 /* current tree id stack, note: index 0 in the stack is not used
 */
 #define SMB2_MAX_TREE_NESTING 32
