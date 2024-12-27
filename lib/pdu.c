@@ -249,6 +249,13 @@ smb2_set_tree_id_for_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu, uint32
         return -1;
 }
 
+int smb2_get_session_id(struct smb2_context* smb2, uint64_t *session_id)
+{
+        *session_id = smb2->session_id;
+
+        return 0;
+}
+
 int
 smb2_connect_tree_id(struct smb2_context *smb2, uint32_t tree_id)
 {

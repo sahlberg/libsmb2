@@ -577,6 +577,15 @@ int smb2_get_tree_id_for_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu, ui
 int smb2_set_tree_id_for_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu, uint32_t tree_id);
 
 /*
+ * Get session id
+ *
+ * Returns:
+ * 0      : OK
+ * -errno :
+ */
+int smb2_get_session_id(struct smb2_context *smb2, uint64_t *session_id);
+
+/*
  * This function returns a description of the last encountered error.
  */
 const char *smb2_get_error(struct smb2_context *smb2);

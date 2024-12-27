@@ -3858,7 +3858,7 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
                         }
                 }
 
-                /* 100ms select timeout to allow period pdu timeouts */
+                /* 100ms select timeout to allow periodic pdu timeouts */
                 timeout.tv_sec = 0;
                 timeout.tv_usec = 100000;
 
