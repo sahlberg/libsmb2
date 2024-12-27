@@ -122,23 +122,6 @@ struct auth_data {
 #define NTLMSSP_NEGOTIATE_UNICODE                          0x00000001
 
 void
-hex_print(const char *blurb, uint8_t *data, int len)
-{
-	int i;
-        printf("%s\n", blurb);
-        for (i = 0; i < len; i++) {
-                printf("%02X ", data[i]);
-                if (!((i + 1) & 0xf)) {
-                        printf("\n");
-                }
-        }
-        if ((len & 0xf)) {
-                printf("\n");
-        }
-        printf("\n");
-}
-
-void
 ntlmssp_destroy_context(struct auth_data *auth)
 {
         free(auth->ntlm_buf);
