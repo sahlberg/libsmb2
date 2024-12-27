@@ -53,7 +53,7 @@ void print_sid(RPC_SID *sid)
                 ia <<= 8;
                 ia |= sid->IdentifierAuthority[i];
         }
-        printf("%ld", ia);
+        printf("%"PRIu64, ia);
         for (i = 0; i < sid->SubAuthorityCount; i++) {
                 printf("-%d", sid->SubAuthority[i]);
         }
