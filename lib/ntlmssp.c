@@ -1083,6 +1083,8 @@ ntlmssp_generate_blob(struct smb2_server *server, struct smb2_context *smb2, tim
                                         if (auth_data->domain == NULL) {
                                                 return -1;
                                         }
+                                        /* Update the password now that we know the domain */
+                                        smb2_set_password_from_file(smb2);
                                 }
                                 if (encode_ntlm_auth(smb2, t, auth_data,
                                                      (char *)&auth_data->ntlm_buf[24]) < 0) {
