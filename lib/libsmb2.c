@@ -857,6 +857,7 @@ negotiate_cb(struct smb2_context *smb2, int status,
 {
         struct connect_data *c_data = private_data;
         struct smb2_negotiate_reply *rep = command_data;
+        uint32_t spnego_mechs;
         int ret;
 
         smb3_update_preauth_hash(smb2, smb2->in.niov - 1, &smb2->in.iov[1]);
@@ -914,6 +915,33 @@ negotiate_cb(struct smb2_context *smb2, int status,
 
         if (smb2->seal) {
                 smb2->sign = 0;
+        }
+
+        /* if there is a gssapi blob in the reply, parse it to determine which
+         * mechanisms are supported if caller hasn't explicitly set security
+         */
+        if (smb2->sec == SMB2_SEC_UNDEFINED &&
+                        rep->security_buffer && rep->security_buffer_length) {
+                spnego_mechs = 0;
+                smb2_spnego_unwrap_gssapi(smb2, rep->security_buffer,
+                        rep->security_buffer_length, 1,
+                        NULL, &spnego_mechs);
+#ifdef HAVE_LIBKRB5
+                if (spnego_mechs & SPNEGO_MECHANISM_KRB5) {
+                        smb2->sec = SMB2_SEC_KRB5;
+                }
+#endif
+                if (smb2->sec == SMB2_SEC_UNDEFINED &&
+                                (spnego_mechs & SPNEGO_MECHANISM_NTLMSSP)) {
+                        smb2->sec = SMB2_SEC_NTLMSSP;
+                }
+        }
+        if (smb2->sec == SMB2_SEC_UNDEFINED) {
+#ifdef HAVE_LIBKRB5
+                smb2->sec = SMB2_SEC_KRB5;
+#else
+                smb2->sec = SMB2_SEC_NTLMSSP;
+#endif
         }
 
         if (smb2->sec == SMB2_SEC_NTLMSSP) {
@@ -1005,13 +1033,6 @@ connect_cb(struct smb2_context *smb2, int status,
 
         memcpy(req.client_guid, smb2_get_client_guid(smb2), SMB2_GUID_SIZE);
 
-        if (smb2->sec == SMB2_SEC_UNDEFINED) {
-#ifdef HAVE_LIBKRB5
-                smb2->sec = SMB2_SEC_KRB5;
-#else
-                smb2->sec = SMB2_SEC_NTLMSSP;
-#endif
-        }
         smb3_init_preauth_hash(smb2);
         pdu = smb2_cmd_negotiate_async(smb2, &req, negotiate_cb, c_data);
         if (pdu == NULL) {
@@ -1667,7 +1688,7 @@ create_cb_2(struct smb2_context *smb2, int status,
             void *command_data, void *private_data)
 {
         struct create_cb_data *create_data = private_data;
-        
+
         if (status != SMB2_STATUS_SUCCESS) {
                 status = -nterror_to_errno(status);
         }
@@ -1731,7 +1752,7 @@ smb2_unlink_internal(struct smb2_context *smb2, const char *path,
                 smb2_set_error(smb2, "Failed to create create command");
                 return -ENOMEM;
         }
-        
+
         memset(&cl_req, 0, sizeof(struct smb2_close_request));
         cl_req.flags = SMB2_CLOSE_FLAG_POSTQUERY_ATTRIB;
         memcpy(cl_req.file_id, compound_file_id, SMB2_FD_SIZE);
@@ -1744,7 +1765,7 @@ smb2_unlink_internal(struct smb2_context *smb2, const char *path,
                 return -ENOMEM;
         }
         smb2_add_compound_pdu(smb2, pdu, next_pdu);
-        
+
         smb2_queue_pdu(smb2, pdu);
 
         return 0;
@@ -1814,7 +1835,7 @@ smb2_mkdir_async(struct smb2_context *smb2, const char *path,
                 return -ENOMEM;
         }
         smb2_add_compound_pdu(smb2, pdu, next_pdu);
-        
+
         smb2_queue_pdu(smb2, pdu);
 
         return 0;
@@ -2888,10 +2909,12 @@ smb2_create_request_cb(struct smb2_server *server, struct smb2_context *smb2, vo
                 pdu = smb2_cmd_error_reply_async(smb2,
                                 &err, SMB2_CREATE, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
         }
-        if (req->name) {
-                smb2_free_data(smb2, discard_const(req->name));
-        }
         if (pdu != NULL) {
+                if (req->name) {
+                        /* this will get auto-free when context is closed
+                         * if we dont do it here, so not required */
+                        smb2_free_data(smb2, discard_const(req->name));
+                }
                 smb2_queue_pdu(smb2, pdu);
         }
 }
@@ -3183,10 +3206,12 @@ smb2_query_directory_request_cb(struct smb2_server *server, struct smb2_context 
                         pdu = smb2_cmd_query_directory_reply_async(smb2, req, &rep, NULL, cb_data);
                 }
         }
-        if (req->name) {
-                smb2_free_data(smb2, discard_const(req->name));
-        }
         if (pdu != NULL) {
+                if (req->name) {
+                        /* this will get auto-free when context is closed
+                         * if we dont do it here, so not required */
+                        smb2_free_data(smb2, discard_const(req->name));
+                }
                 smb2_queue_pdu(smb2, pdu);
         }
 }
@@ -3404,16 +3429,34 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
 
         pdu = NULL;
 
-        if (smb2->sec == SMB2_SEC_NTLMSSP) {
+        if (smb2->sec == SMB2_SEC_UNDEFINED || smb2->sec == SMB2_SEC_NTLMSSP) {
+                /* if we haven't set sec type yet, and the blob contains
+                 * valid ntlmssp, use our ntlmssp implementation, but supress
+                 * error-setting while sniffing. if we are expecting ntlmssp
+                 * insist on a valid message
+                 * TODO - perhaps use krb5+ntlmssp if configured?
+                 */
                 if (ntlmssp_get_message_type(smb2,
                                 req->security_buffer, req->security_buffer_length,
+                                smb2->sec == SMB2_SEC_UNDEFINED,
                                 &message_type,
                                 &response_token, &response_length,
-                                &is_spnego_wrapped) < 0) {
-                        smb2_set_error(smb2, "No message type in NTLMSSP %s", smb2_get_error(smb2));
+                                &is_spnego_wrapped) >= 0) {
+                        smb2->sec = SMB2_SEC_NTLMSSP;
+                } else {
+
+#ifdef HAVE_LIBKRB5
+                        smb2->sec = SMB2_SEC_KRB5;
+#else
+                        smb2_set_error(smb2, "No message type in NTLMSSP %s",
+                                        smb2_get_error(smb2));
                         smb2_close_context(smb2);
                         return;
+#endif
                 }
+        }
+
+        if (smb2->sec == SMB2_SEC_NTLMSSP) {
                 /* set error code in header - more processing required if negotiate req not auth req */
                 if (message_type == NEGOTIATE_MESSAGE) {
                         if (c_data->auth_data) {
@@ -3481,8 +3524,45 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
         }
 #ifdef HAVE_LIBKRB5
         else {
-                /* TODO: */
-                have_valid_session_key = 0;
+                if (!c_data->auth_data) {
+                        /* note that for server, the auth creds really only need to be
+                         * setup once for all connections, but we do it each time to
+                         * simplify auth_data lifetime, perhaps TODO?
+                         */
+                        c_data->auth_data = krb5_init_server_cred(server, smb2, NULL);
+                        if (!c_data->auth_data) {
+                                smb2_set_error(smb2, "can not init auth data %s", smb2_get_error(smb2));
+                                smb2_close_context(smb2);
+                                return;
+                        }
+                        smb2->connect_data = c_data;
+                }
+
+                if (krb5_session_reply(smb2, c_data->auth_data,
+                                         req->security_buffer,
+                                         req->security_buffer_length,
+                                         &more_processing_needed)) {
+                        smb2_close_context(smb2);
+                        return;
+                }
+
+                /* alloc a pdu for next request */
+                if (more_processing_needed) {
+                        smb2->next_pdu = smb2_allocate_pdu(smb2, SMB2_SESSION_SETUP,
+                                                smb2_session_setup_request_cb, cb_data);
+                        smb2->session_id = server->session_counter++;
+                } else {
+                        smb2->next_pdu = smb2_allocate_pdu(smb2, SMB2_TREE_CONNECT,
+                                                smb2_general_client_request_cb, cb_data);
+                }
+                rep.security_buffer_length =
+                        krb5_get_output_token_length(c_data->auth_data);
+                rep.security_buffer =
+                        krb5_get_output_token_buffer(c_data->auth_data);
+
+                if (!krb5_session_get_session_key(smb2, c_data->auth_data)) {
+                        have_valid_session_key = 1;
+                }
         }
 #endif
         if (smb2->sign && have_valid_session_key == 0) {
@@ -3490,6 +3570,7 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                 smb2_set_error(smb2, "Signing required by server. Session "
                                "Key is not available %s",
                                smb2_get_error(smb2));
+                smb2_close_context(smb2);
                 return;
         }
 
@@ -3509,9 +3590,10 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
         if (!pdu) {
                 pdu = smb2_cmd_session_setup_reply_async(smb2, &rep, NULL, cb_data);
                 if (pdu == NULL) {
+                        smb2_set_error(smb2, "can not alloc pdu for session setup reply");
+                        smb2_close_context(smb2);
                         return;
                 }
-
                 if (more_processing_needed) {
                         pdu->header.status = SMB2_STATUS_MORE_PROCESSING_REQUIRED;
                 }
@@ -3554,11 +3636,15 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
         int d;
         int dialect_index;
         struct smb2_timeval now;
-        /*void *auth_data;*/
 
         memset(&rep, 0, sizeof(rep));
         memset(&err, 0, sizeof(err));
         smb2_set_error(smb2, "");
+
+        if (status != SMB2_STATUS_SUCCESS) {
+                /* context is being destroyed */
+                return;
+        }
 
         /* negotiate highest version in request dialects */
         switch (smb2->version) {
@@ -3720,18 +3806,8 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
         now.tv_sec = 0;
         rep.server_start_time = smb2_timeval_to_win(&now);
 
-        smb2->sec = SMB2_SEC_NTLMSSP;
-
-        if (smb2->sec == SMB2_SEC_UNDEFINED) {
-#ifdef HAVE_LIBKRB5
-                smb2->sec = SMB2_SEC_KRB5;
-#else
-                smb2->sec = SMB2_SEC_NTLMSSP;
-#endif
-        }
-
         rep.security_buffer_length = smb2_spnego_create_negotiate_reply_blob(
-                                        smb2, (void*)&rep.security_buffer);
+                                        smb2, 1, (void*)&rep.security_buffer);
 
         pdu = smb2_cmd_negotiate_reply_async(smb2, &rep, NULL, cb_data);
         if (rep.security_buffer) {
@@ -3828,7 +3904,6 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
         if (err != 0) {
                 return err;
         }
-
         server->session_counter = 0x1234;
 
         do {

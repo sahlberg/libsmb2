@@ -55,6 +55,7 @@ ntlmssp_get_spnego_wrapping(struct auth_data *auth);
 int
 ntlmssp_get_message_type(struct smb2_context *smb2,
                       uint8_t *ntlmssp_buffer, int len,
+                      int suppress_errors,
                       uint32_t *message_type,
                       uint8_t **ntlmssp_ptr, int *ntlmssp_len,
                       int *is_wrapped);
