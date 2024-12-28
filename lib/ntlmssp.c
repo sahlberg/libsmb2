@@ -94,6 +94,7 @@ struct auth_data {
         char *password;
         char *domain;
         char *workstation;
+        char *target_name;
         uint8_t *client_challenge;
         uint8_t server_challenge[8];
         uint8_t *target_info;
@@ -130,6 +131,7 @@ ntlmssp_destroy_context(struct auth_data *auth)
         free(auth->password);
         free(auth->domain);
         free(auth->workstation);
+        free(auth->target_name);
         free(auth->client_challenge);
         free(auth->target_info);
         free(auth);
@@ -338,6 +340,7 @@ ntlm_decode_challenge_message(struct smb2_context *smb2, struct auth_data *auth_
                 memcpy(&auth_data->ntlm_buf[16], &u32, 4);
 
                 if (inlen > 0 && inlen < len && (outoff + inlen) < alloc_len) {
+                        auth_data->target_name = discard_const(smb2_utf16_to_utf8((const uint16_t *)&buf[inoff], inlen / 2));
                         memcpy(&auth_data->ntlm_buf[outoff], &buf[inoff], inlen);
                         outoff += inlen;
                 }
@@ -360,7 +363,6 @@ ntlm_decode_challenge_message(struct smb2_context *smb2, struct auth_data *auth_
                                 attr_code = htole16(u16);
                                 memcpy(&u16, &buf[inoff + 2], 2);
                                 attr_len = htole16(u16);
-
                                 if (attr_len > inlen || (outoff + attr_len) > alloc_len) {
                                         /* invalid, must be out of parse? */
                                         break;
@@ -1074,6 +1076,13 @@ ntlmssp_generate_blob(struct smb2_server *server, struct smb2_context *smb2, tim
                                                 ntlmssp, ntlmssp_len) < 0) {
                                         smb2_set_error(smb2, "can not decode challenge");
                                         return -1;
+                                }
+                                if (auth_data->domain == NULL && auth_data->target_name) {
+                                        smb2_set_domain(smb2, auth_data->target_name);
+                                        auth_data->domain = strdup(auth_data->target_name);
+                                        if (auth_data->domain == NULL) {
+                                                return -1;
+                                        }
                                 }
                                 if (encode_ntlm_auth(smb2, t, auth_data,
                                                      (char *)&auth_data->ntlm_buf[24]) < 0) {
