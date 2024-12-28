@@ -101,9 +101,10 @@ struct smb2_context *dcerpc_get_smb2_context(struct dcerpc_context *dce);
 void *dcerpc_get_pdu_payload(struct dcerpc_pdu *pdu);
 
 int dcerpc_open_async(struct dcerpc_context *dce, dcerpc_cb cb, void *cb_data);
-int dcerpc_call_async(struct dcerpc_context *dce, int opnum,
+int dcerpc_call_async(struct dcerpc_context *dce,
+                      int opnum,
                       dcerpc_coder req_coder, void *req,
-                      dcerpc_coder rep_coder, int rep_size,
+                      dcerpc_coder rep_coder, int decode_size,
                       dcerpc_cb cb, void *cb_data);
 
 int dcerpc_do_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,

@@ -1568,17 +1568,17 @@ dcerpc_call_cb(struct smb2_context *smb2, int status,
 int
 dcerpc_call_async(struct dcerpc_context *dce,
                   int opnum,
-                  dcerpc_coder encoder, void *ptr,
-                  dcerpc_coder decoder, int decode_size,
+                  dcerpc_coder req_coder, void *req,
+                  dcerpc_coder rep_coder, int decode_size,
                   dcerpc_cb cb, void *cb_data)
 {
         struct dcerpc_pdu *pdu;
         struct smb2_pdu *smb2_pdu;
-        struct smb2_ioctl_request req;
+        struct smb2_ioctl_request smb2_req;
         struct smb2_iovec iov _U_;
         int offset = 0, o;
         uint32_t v;
-        
+
         pdu = dcerpc_allocate_pdu(dce, DCERPC_ENCODE, NSE_BUF_SIZE);
         if (pdu == NULL) {
                 return -ENOMEM;
@@ -1595,7 +1595,7 @@ dcerpc_call_async(struct dcerpc_context *dce,
         pdu->req.context_id = dce->tctx_id;
         pdu->req.opnum = opnum;
 
-        pdu->coder = decoder;
+        pdu->coder = rep_coder;
         pdu->decode_size = decode_size;
         pdu->cb = cb;
         pdu->cb_data = cb_data;
@@ -1610,7 +1610,7 @@ dcerpc_call_async(struct dcerpc_context *dce,
 
         /* encode the blob */
         pdu->top_level = 1;
-        if (encoder(dce, pdu, &iov, &offset, ptr)) {
+        if (req_coder(dce, pdu, &iov, &offset, req)) {
                 return -1;
         }
 
@@ -1627,14 +1627,14 @@ dcerpc_call_async(struct dcerpc_context *dce,
                 return -1;
         }
 
-        memset(&req, 0, sizeof(struct smb2_ioctl_request));
-        req.ctl_code = SMB2_FSCTL_PIPE_TRANSCEIVE;
-        memcpy(req.file_id, dce->file_id, SMB2_FD_SIZE);
-        req.input_count = (uint32_t)iov.len;
-        req.input = iov.buf;
-        req.flags = SMB2_0_IOCTL_IS_FSCTL;
+        memset(&smb2_req, 0, sizeof(struct smb2_ioctl_request));
+        smb2_req.ctl_code = SMB2_FSCTL_PIPE_TRANSCEIVE;
+        memcpy(smb2_req.file_id, dce->file_id, SMB2_FD_SIZE);
+        smb2_req.input_count = (uint32_t)iov.len;
+        smb2_req.input = iov.buf;
+        smb2_req.flags = SMB2_0_IOCTL_IS_FSCTL;
 
-        smb2_pdu = smb2_cmd_ioctl_async(dce->smb2, &req, dcerpc_call_cb, pdu);
+        smb2_pdu = smb2_cmd_ioctl_async(dce->smb2, &smb2_req, dcerpc_call_cb, pdu);
         if (smb2_pdu == NULL) {
                 dcerpc_free_pdu(dce, pdu);
                 return -ENOMEM;
