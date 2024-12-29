@@ -483,7 +483,7 @@ NTOWFv2(const char *user, const char *password, const char *domain,
         if (user == NULL || password == NULL) {
                 return -1;
         }
-        
+
         /* ntlm:F638EDF864C4805DC65D9BF2BB77E4C0 */
         if ((strlen(password) == 37) && (strncmp(password, "ntlm:", 5) == 0)) {
                 if (ntlm_convert_password_hash(password + 5, ntlm_hash) < 0) {

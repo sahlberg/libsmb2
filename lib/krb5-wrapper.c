@@ -600,13 +600,6 @@ krb5_init_server_cred(struct smb2_server *server, struct smb2_context *smb2, con
         if (auth_data->get_proxy_cred) {
                 /* do constrained delegation */
                 cred_usage = GSS_C_BOTH;
-#ifndef __APPLE__
-                /* get a proxy ticket when user is known in session reply.  note that this
-                 * isnt absolutely required if the accept returns a delegatable cred but it
-                 * does help find issues
-                 */
-                auth_data->s4u2self = 1;
-#endif
         } else {
                 cred_usage = GSS_C_ACCEPT;
         }
@@ -777,15 +770,20 @@ krb5_session_reply(struct smb2_context *smb2,
                 free(user);
         }
 
-        if (auth_data->get_proxy_cred) {
-                gss_cred_id_t impersonator_cred_handle = GSS_C_NO_CREDENTIAL;
+        if (auth_data->get_proxy_cred && (!(ret_flags & GSS_C_DELEG_FLAG) ||
+                        (ret_delegated_cred_handle == GSS_C_NO_CREDENTIAL))) {
                 gss_cred_id_t user_cred_handle = GSS_C_NO_CREDENTIAL;
                 gss_OID mech;
                 OM_uint32 xmin;
 
-                #ifdef __APPLE__
-                mech = auth_data->use_spnego ? GSS_SPNEGO_MECHANISM : GSS_KRB5_MECHANISM;
-                #else
+                /* did not got a proxy credential when accepting the
+                 * the client context, so attempt an s4u2self
+                 * with user-name to get one
+                 */
+#ifdef __APPLE__
+                smb2_set_error(smb2, "Apple has no way to proxy credentials");
+                return -1;
+#else
                 gss_OID_set mechs = GSS_C_NO_OID_SET;
                 gss_OID_set_desc mechlist;
 
@@ -797,58 +795,31 @@ krb5_session_reply(struct smb2_context *smb2,
                         mechlist.elements = discard_const(mech);
                         mechs = &mechlist;
                 }
-                #endif
+                maj = gss_acquire_cred_impersonate_name(&min,
+                                auth_data->cred,
+                                auth_data->user_name,
+                                GSS_C_INDEFINITE,
+                                mechs,
+                                GSS_C_INITIATE,
+                                &user_cred_handle,
+                                NULL,
+                                NULL);
 
-                (void)gss_release_cred(&min, &ret_delegated_cred_handle);
-
+                if (maj != GSS_S_COMPLETE) {
+                        krb5_set_gss_error(smb2, "gss_acquire_cred_impersonate_name", maj, min);
+                        return -1;
+                }
                 maj = init_accept_sec_context(smb2, mech,
                                 user_cred_handle, auth_data->cred,
                                 &ret_delegated_cred_handle);
 
-                (void)gss_release_cred(&xmin, &impersonator_cred_handle);
                 (void)gss_release_cred(&xmin, &user_cred_handle);
 
                 if (maj != GSS_S_COMPLETE) {
-                        krb5_set_gss_error(smb2, "init_accept_sec_context (proxy ctx)", maj, min);
+                        krb5_set_gss_error(smb2, "init_accept_sec_context (impersonate)", maj, min);
                         return -1;
                 }
-
-                if (auth_data->s4u2self) {
-#ifdef __APPLE__
-                        if (!((ret_flags & GSS_C_DELEG_FLAG) && (ret_delegated_cred_handle))) {
-                                smb2_set_error(smb2, "Apple has no way to proxy credentials");
-                                return -1;
-                        }
-#else
-                        (void)gss_release_cred(&min, &ret_delegated_cred_handle);
-
-                        maj = gss_acquire_cred_impersonate_name(&min,
-                                        auth_data->cred,
-                                        auth_data->user_name,
-                                        GSS_C_INDEFINITE,
-                                        mechs,
-                                        GSS_C_INITIATE,
-                                        &user_cred_handle,
-                                        NULL,
-                                        NULL);
-
-                        if (maj != GSS_S_COMPLETE) {
-                                krb5_set_gss_error(smb2, "gss_acquire_cred_impersonate_name", maj, min);
-                                return -1;
-                        }
-
-                        maj = init_accept_sec_context(smb2, mech,
-                                        user_cred_handle, auth_data->cred,
-                                        &ret_delegated_cred_handle);
-
-                        (void)gss_release_cred(&xmin, &user_cred_handle);
-
-                        if (maj != GSS_S_COMPLETE) {
-                                krb5_set_gss_error(smb2, "init_accept_sec_context (impersonate)", maj, min);
-                                return -1;
-                        }
 #endif
-                }
         }
         /* if the client credential is delegatable and the client is pass-through
          * save the client's cred for use in a proxy client

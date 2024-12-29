@@ -63,7 +63,7 @@ void cl_cb(struct dcerpc_context *dce, int status,
            void *command_data, void *cb_data)
 {
         struct lsa_close_rep *rep = command_data;
-        
+
         if (status) {
                 dcerpc_free_data(dce, rep);
                 printf("failed to close policy handle (%s) %s\n",
@@ -287,6 +287,6 @@ int main(int argc, char *argv[])
         smb2_disconnect_share(smb2);
         smb2_destroy_url(url);
         smb2_destroy_context(smb2);
-        
+
 	return 0;
 }

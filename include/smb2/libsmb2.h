@@ -24,7 +24,7 @@ extern "C" {
 #endif
 
 #define LIBSMB2_SHARE_ENUM_V2 1
-        
+
 struct smb2_iovec {
         uint8_t *buf;
         size_t len;
@@ -381,6 +381,18 @@ void smb2_set_user(struct smb2_context *smb2, const char *user);
  * returns NULL if none
  */
 const char *smb2_get_user(struct smb2_context *smb2);
+
+/*
+ * Get the workstation associated with a context.
+ * returns NULL if none
+ */
+const char *smb2_get_workstation(struct smb2_context *smb2);
+
+/*
+ * Get the domain associated with a context.
+ * returns NULL if none
+ */
+const char *smb2_get_domain(struct smb2_context *smb2);
 
 /*
  * Set the password that we will try to authenticate as.
