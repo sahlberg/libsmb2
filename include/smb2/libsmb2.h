@@ -455,6 +455,12 @@ const char *smb2_get_domain(struct smb2_context *smb2);
 void smb2_set_workstation(struct smb2_context *smb2, const char *workstation);
 
 /*
+ * Get the workstation associated with a context.
+ * returns NULL if none
+ */
+const char *smb2_get_workstation(struct smb2_context *smb2);
+
+/*
  * Sets the address to some user defined object. May be used to make
  * additional context data available in the async callbacks.
  */

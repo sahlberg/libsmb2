@@ -161,8 +161,6 @@ krb5_set_gss_error(struct smb2_context *smb2, char *func,
         char *err_min = display_status(GSS_C_MECH_CODE, min);
         if (smb2) {
                 smb2_set_error(smb2, "%s: (%s, %s)", func, err_maj, err_min);
-        } else {
-                printf("%s %s\n", err_maj, err_min);
         }
         free(err_min);
         free(err_maj);
@@ -603,11 +601,11 @@ krb5_init_server_cred(struct smb2_server *server, struct smb2_context *smb2, con
                 /* do constrained delegation */
                 cred_usage = GSS_C_BOTH;
 #ifndef __APPLE__
-                /* get a proxy ticket when user is known in session reply.  note that this
-                 * isnt absolutely required if the accept returns a delegatable cred but it
-                 * does help find issues
+                /* set this non-0 to also get proxy ticket when user is known in
+                 * session reply.  note that this isnt required if the accept returns
+                 * a delegatable cred but it might help find issues (or cause some)
                  */
-                auth_data->s4u2self = 1;
+                auth_data->s4u2self = 0;
 #endif
         } else {
                 cred_usage = GSS_C_ACCEPT;

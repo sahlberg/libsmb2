@@ -31,8 +31,8 @@ extern "C" {
 #else
 #include <gssapi/gssapi.h>
 #include <gssapi/gssapi_ext.h>
-#endif
-#endif
+#endif /* __APPLE__ */
+#endif /* HAVE_LIBKRB5 */
 
 #define MIN(a,b) (((a)<(b))?(a):(b))
 

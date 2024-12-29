@@ -594,7 +594,10 @@ void smb2_set_password_from_file(struct smb2_context *smb2)
                         continue;
                 }
                 *user++ = 0;
-                password = strchr(user, ':');
+                if (domain[0] && smb2->domain && strcmp(smb2->domain, domain)) {
+                        continue;
+                }
+                password = strchr(user, ':');                
                 if (password == NULL) {
                         continue;
                 }
@@ -604,6 +607,9 @@ void smb2_set_password_from_file(struct smb2_context *smb2)
                         continue;
                 }
                 smb2_set_password(smb2, password);
+                if (smb2->domain) {
+                        break;
+                }
         }
         fclose(fh);
 }
