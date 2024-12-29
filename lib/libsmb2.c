@@ -3206,12 +3206,10 @@ smb2_query_directory_request_cb(struct smb2_server *server, struct smb2_context 
                         pdu = smb2_cmd_query_directory_reply_async(smb2, req, &rep, NULL, cb_data);
                 }
         }
+        if (req->name) {
+                smb2_free_data(smb2, discard_const(req->name));
+        }
         if (pdu != NULL) {
-                if (req->name) {
-                        /* this will get auto-free when context is closed
-                         * if we dont do it here, so not required */
-                        smb2_free_data(smb2, discard_const(req->name));
-                }
                 smb2_queue_pdu(smb2, pdu);
         }
 }
@@ -3319,7 +3317,7 @@ smb2_general_client_request_cb(struct smb2_context *smb2, int status, void *comm
                 smb2_close_context(smb2);
                 return;
         }
-        if (status == SMB2_STATUS_CANCELLED) {
+        if (status == SMB2_STATUS_CANCELLED || status == SMB2_STATUS_SHUTDOWN) {
                 return;
         }
 
