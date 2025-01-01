@@ -62,7 +62,6 @@ struct private_auth_data {
         uint32_t req_flags;
         gss_buffer_desc output_token;
         int get_proxy_cred;
-        int s4u2self;
         int use_spnego;
         char *g_server;
         krb5_context krb5_cctx;
