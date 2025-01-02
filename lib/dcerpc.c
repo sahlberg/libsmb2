@@ -1575,7 +1575,7 @@ dcerpc_call_async(struct dcerpc_context *dce,
         struct dcerpc_pdu *pdu;
         struct smb2_pdu *smb2_pdu;
         struct smb2_ioctl_request smb2_req;
-        struct smb2_iovec iov _U_;
+        struct smb2_iovec iov;
         int offset = 0, o;
         uint32_t v;
 
