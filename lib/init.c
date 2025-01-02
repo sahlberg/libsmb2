@@ -528,9 +528,9 @@ void smb2_set_security_mode(struct smb2_context *smb2, uint16_t security_mode)
         smb2->security_mode = security_mode;
 }
 
-#if !defined(_XBOX) && !defined(_IOP) && !defined(__amigaos4__) && !defined(__AMIGA__) && !defined(__AROS__)
 void smb2_set_password_from_file(struct smb2_context *smb2)
 {
+#if !defined(_XBOX) && !defined(_IOP) && !defined(__amigaos4__) && !defined(__AMIGA__) && !defined(__AROS__)
         char *name = NULL;
         FILE *fh;
         char buf[256];
@@ -612,8 +612,8 @@ void smb2_set_password_from_file(struct smb2_context *smb2)
                 }
         }
         fclose(fh);
+#endif /* !defined(_XBOX) && !defined(_IOP) &&  ... */
 }
-#endif /* !_IOP */
 
 void smb2_set_user(struct smb2_context *smb2, const char *user)
 {
@@ -625,9 +625,7 @@ void smb2_set_user(struct smb2_context *smb2, const char *user)
                 return;
         }
         smb2->user = strdup(user);
-#if !defined(_XBOX) && !defined(_IOP) && !defined(__amigaos4__) && !defined(__AMIGA__) && !defined(__AROS__)
         smb2_set_password_from_file(smb2);
-#endif
 }
 
 const char *smb2_get_user(struct smb2_context *smb2)
