@@ -421,9 +421,7 @@ void smb2_set_oplock_or_lease_break_callback(struct smb2_context *smb2,
  * Set the smb2 context passworkd from a file (see NTLM_USER_FILE)
  * depends on user/domain being already set in smb2 context
  */
-#if !defined(_XBOX) && !defined(_IOP) && !defined(__amigaos4__) && !defined(__AMIGA__) && !defined(__AROS__)
 void smb2_set_password_from_file(struct smb2_context *smb2);
-#endif
 
 /*
  * Set the domain when authenticating.
