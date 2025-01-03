@@ -4051,11 +4051,9 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
         }
 
 #if HAVE_LIBKRB5
-        if (server->keytab_path) {
-                err = krb5_init_server_credentials(server, server->keytab_path);
-                if (err) {
-                        return err;
-                }
+        err = krb5_init_server_credentials(server, server->keytab_path);
+        if (err) {
+                return err;
         }
 #endif
         err = smb2_bind_and_listen(server->port, max_connections, &server->fd);

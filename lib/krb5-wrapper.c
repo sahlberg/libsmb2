@@ -836,6 +836,10 @@ krb5_renew_server_credentials(struct smb2_server *server)
         struct private_auth_data *auth_data = server->auth_data;
         int ret;
 
+        if (!auth_data || !auth_data->keytab) {
+                return 0;
+        }
+
         do { /* try */
                 if (!auth_data) {
                         ret = -1;
@@ -872,6 +876,13 @@ krb5_init_server_credentials(struct smb2_server *server, const char *keytab_path
         int ret = -1;
 
         server->error[0] = '\0';
+
+        /* without a key table path, there is no need for this as the default one will
+         * be used in gss_acquire_cred and the initial creds will have to be done via kinit
+         */
+        if (!server || !keytab_path || !keytab_path[0]) {
+                return 0;
+        }
 
         do { // try
                 auth_data = calloc(1, sizeof(struct private_auth_data));
