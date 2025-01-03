@@ -1234,6 +1234,7 @@ smb2_open_async_with_oplock_or_lease(struct smb2_context *smb2, const char *path
                         break;
         }
 
+#ifdef O_DIRECTORY
         if (flags & O_DIRECTORY) {
                 /* must be directory */
                 create_options |= SMB2_FILE_DIRECTORY_FILE;
@@ -1241,7 +1242,9 @@ smb2_open_async_with_oplock_or_lease(struct smb2_context *smb2, const char *path
                 /* must not be directory */
                 create_options |= SMB2_FILE_NON_DIRECTORY_FILE;
         }
-
+#else
+        create_options |= SMB2_FILE_NON_DIRECTORY_FILE;
+#endif
 
         if (flags & O_SYNC) {
                 desired_access |= SMB2_SYNCHRONIZE;
@@ -2947,7 +2950,11 @@ int smb2_notify_change_async(struct smb2_context *smb2, const char *path, uint16
                        smb2_command_cb cb, void *cb_data)
 {       
         struct smb2fh *fh;
+#ifdef O_DIRECTORY
         fh = smb2_open(smb2, path, O_DIRECTORY);
+#else
+        fh = smb2_open(smb2, path, 0);
+#endif
         if (fh == NULL) {
 		printf("smb2_open failed. %s\n", smb2_get_error(smb2));
                 return -1;
