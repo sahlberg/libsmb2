@@ -63,6 +63,8 @@ typedef void (*smb2_client_connection)(struct smb2_context *smb2, void *cb_data)
  * (notification) passed in.  the app can set the new oplock level
  * or new lease state for the acknowledgement that will be sent back
  */
+struct smb2_oplock_or_lease_break_reply;
+
 typedef void (*smb2_oplock_or_lease_break_cb)(struct smb2_context *smb2,
            int status,
            struct smb2_oplock_or_lease_break_reply *rep,
