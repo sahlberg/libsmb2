@@ -427,6 +427,7 @@ krb5_session_request(struct smb2_context *smb2,
                                  * without server doing s4u2proxy */
                                 /*| GSS_C_DELEG_FLAG */
                                 | GSS_C_REPLAY_FLAG;
+
         maj = gss_init_sec_context(&min, auth_data->cred,
                                    &auth_data->context,
                                    auth_data->target_name,
@@ -540,9 +541,10 @@ init_accept_sec_context(struct smb2_context *smb2,
 }
 
 struct private_auth_data *
-krb5_init_server_cred(struct smb2_server *server, struct smb2_context *smb2, const char *password)
+krb5_init_server_client_cred(struct smb2_server *server, struct smb2_context *smb2, const char *password)
 {
         struct private_auth_data *auth_data;
+        struct private_auth_data *server_auth_data;
         char user_principal[1024];
         gss_buffer_desc name_buf;
         gss_cred_usage_t cred_usage;
@@ -604,67 +606,59 @@ krb5_init_server_cred(struct smb2_server *server, struct smb2_context *smb2, con
                 cred_usage = GSS_C_ACCEPT;
         }
 
-        if (smb2->use_cached_creds) {
-                gss_buffer_desc passwd;
-                krb5_error_code ret = 0;
-                const char *cname = NULL;
-                krb5_principal  service_princ = NULL;
-                krb5_context    krb5_cctx;
-                krb5_ccache     krb5_Ccache;
-                OM_uint32  xmin;
+        if (server->auth_data && ((struct private_auth_data *)server->auth_data)->keytab) {
+                char keytab_path[256];
+                char ccache_path[256];
+                const char *cctype, *ccname;
+                gss_key_value_element_desc kve[2];
+                gss_key_value_set_desc kvd;
+                int ret;
 
-                /* krb5 cache management
-                 *
-                 *   this doesnt work yet! TODO
-                 */
-                ret = krb5_init_context(&krb5_cctx);
+                server_auth_data = (struct private_auth_data *)server->auth_data;
+
+                ret = krb5_kt_get_name(server_auth_data->krb5_cctx,
+                               server_auth_data->keytab, keytab_path, sizeof(keytab_path));
                 if (ret) {
-                    smb2_set_error(smb2, "Failed to initialize krb5 context - %s", krb5_get_error_message(krb5_cctx, ret));
-                    return NULL;
-                }
-                ret = krb5_parse_name(krb5_cctx, user_principal, &service_princ);
-                if (ret != 0) {
-                    smb2_set_error(smb2, "Failed to parse principal- %s", krb5_get_error_message(krb5_cctx, ret));
-                    return NULL;
-                }
-
-                ret = krb5_cc_new_unique(krb5_cctx, "MEMORY", NULL, &krb5_Ccache);
-                if (ret != 0) {
-                    smb2_set_error(smb2, "Failed to create krb5 credentials cache - %s", krb5_get_error_message(krb5_cctx, ret));
-                    return NULL;
-                }
-
-                ret = krb5_cc_initialize(krb5_cctx, krb5_Ccache, service_princ);
-                if (ret != 0) {
-                    smb2_set_error(smb2, "Failed to initialze krb5 credentials cache - %s", krb5_get_error_message(krb5_cctx, ret));
-                    return NULL;
-                }
-
-                cname = krb5_cc_get_name(krb5_cctx, krb5_Ccache);
-                if (cname == NULL) {
-                    smb2_set_error(smb2, "Failed to retrieve the credentials cache name");
-                    return NULL;
-                }
-
-                maj = gss_krb5_ccache_name(&min, cname, NULL);
-                if (maj != GSS_S_COMPLETE) {
-                        krb5_set_gss_error(smb2, "gss_krb5_ccache_name", maj, min);
+                        smb2_set_error(smb2, "krb5_kt_get_name: %d", ret);
                         return NULL;
                 }
 
-                passwd.value = strdup(password);
-                passwd.length = strlen(passwd.value);
+                cctype = krb5_cc_get_type(server_auth_data->krb5_cctx, server_auth_data->krb5_Ccache);
+                ccname = krb5_cc_get_name(server_auth_data->krb5_cctx, server_auth_data->krb5_Ccache);
 
-                maj = gss_acquire_cred_with_password(&min, auth_data->target_name, &passwd,
-                                                     GSS_C_INDEFINITE,
-                                                     mechs, cred_usage, &auth_data->cred,
-                                                     NULL, NULL);
-                (void)gss_release_buffer(&xmin, &passwd);
+                if (!cctype || !ccname) {
+                        smb2_set_error(smb2, "Can't get ccache name");
+                        return NULL;
+                }
+
+                snprintf(ccache_path, sizeof(ccache_path), "%s:%s", cctype, ccname);
+
+                /* set the keytable and cache to what we used when server started */
+                kve[0].key = "keytab";
+                kve[0].value = keytab_path;
+
+                kve[1].key = "ccache";
+                kve[1].value = ccache_path;
+
+                kvd.count = 2;
+                kvd.elements = kve;
+
+                maj = gss_acquire_cred_from(&min,
+                                        auth_data->target_name,
+                                        GSS_C_INDEFINITE,
+                                        mechs,
+                                        cred_usage,
+                                        &kvd,
+                                        &auth_data->cred,
+                                        NULL, NULL);
         } else {
                 maj = gss_acquire_cred(&min,
-                                        smb2->sec == SMB2_SEC_NTLMSSP ? GSS_C_NO_NAME : auth_data->target_name,
+                                       smb2->sec == SMB2_SEC_NTLMSSP ?
+                                                GSS_C_NO_NAME : auth_data->target_name,
                                        GSS_C_INDEFINITE,
-                                       mechs, cred_usage, &auth_data->cred,
+                                       mechs,
+                                       cred_usage,
+                                       &auth_data->cred,
                                        NULL, NULL);
         }
         if (GSS_ERROR(maj)) {
@@ -833,6 +827,185 @@ krb5_session_reply(struct smb2_context *smb2,
                 }
         }
         return 0;
+}
+
+
+int
+krb5_renew_server_credentials(struct smb2_server *server)
+{
+        struct private_auth_data *auth_data = server->auth_data;
+        int ret;
+
+        do { /* try */
+                if (!auth_data) {
+                        ret = -1;
+                        break;
+                }
+                /* this is the equivalent of "kinit -kt keytab_path -c ccache_path principal"
+                */
+                ret = krb5_get_init_creds_keytab(auth_data->krb5_cctx, &auth_data->server_cred,
+                                auth_data->principal, auth_data->keytab, 0, NULL, NULL);
+                if (ret) {
+                        snprintf(server->error, sizeof(server->error), "Can't init creds with keytab: %d", ret);
+                        break;
+                }
+                ret = krb5_cc_store_cred(auth_data->krb5_cctx, auth_data->krb5_Ccache, &auth_data->server_cred);
+                if (ret) {
+                        snprintf(server->error, sizeof(server->error), "Can't store creds: %d", ret);
+                        break;
+                }
+        }
+        while (0); /* catch */
+
+        return ret;
+}
+
+int
+krb5_init_server_credentials(struct smb2_server *server, const char *keytab_path)
+{
+        struct private_auth_data *auth_data;
+        gss_buffer_desc name;
+        char hostname[128];
+        char principal_name[256];
+        char *spos;
+        OM_uint32 maj, min;
+        int ret = -1;
+
+        server->error[0] = '\0';
+
+        do { // try
+                auth_data = calloc(1, sizeof(struct private_auth_data));
+                if (auth_data == NULL) {
+                        snprintf(server->error, sizeof(server->error), "Can't alloc auth_data");
+                        break;
+                }
+
+                /* strip any port off server host */
+                strncpy(hostname, server->hostname, sizeof(hostname) - 1);
+                hostname[sizeof(hostname) - 1] = '\0';
+                spos = strchr(hostname, ':');
+                if (spos) {
+                        *spos = '\0';
+                }
+
+                snprintf(principal_name, sizeof(principal_name), "cifs/%s", hostname);
+
+                /* form spn cifs/hostname.domain */
+                if (asprintf(&auth_data->g_server, "cifs@%s", hostname) < 0) {
+                        snprintf(server->error, sizeof(server->error),
+                                       "Failed to allocate server string");
+                        ret = -1;
+                        break;
+                }
+
+                name.value = auth_data->g_server;
+                name.length = strlen(auth_data->g_server);
+
+                maj = gss_import_name(&min, &name, GSS_C_NT_HOSTBASED_SERVICE,
+                                      &auth_data->target_name);
+
+                if (maj != GSS_S_COMPLETE) {
+                        snprintf(server->error, sizeof(server->error),
+                                        "gss_import_name %u %u", maj, min);
+                        ret = -1;
+                        break;
+                }
+
+                ret = krb5_init_context(&auth_data->krb5_cctx);
+                if (ret) {
+                        snprintf(server->error, sizeof(server->error),
+                                        "Can't init krb5 context: %d", ret);
+                        break;
+                }
+
+                ret = krb5_parse_name(auth_data->krb5_cctx, principal_name, &auth_data->principal);
+                if (ret) {
+                        snprintf(server->error, sizeof(server->error),
+                                        "Can't parse principal name: %d", ret);
+                        break;
+                }
+
+                ret = krb5_kt_resolve(auth_data->krb5_cctx, keytab_path, &auth_data->keytab);
+                if (ret) {
+                        snprintf(server->error, sizeof(server->error),
+                                        "Can't resolve krb5 key table: %d", ret);
+                        break;
+                }
+
+                if (1) {
+                        const char *cname;
+
+                        /* use a private memory cache for server credentials instead of default, so a client
+                         * can kinit on the same machine and not mess up our creds */
+
+                        ret = krb5_cc_new_unique(auth_data->krb5_cctx, "MEMORY", NULL, &auth_data->krb5_Ccache);
+                        if (ret != 0) {
+                                snprintf(server->error, sizeof(server->error),
+                                                "Failed to create krb5 credentials cache");
+                                break;
+                        }
+
+                        ret = krb5_cc_initialize(auth_data->krb5_cctx, auth_data->krb5_Ccache, auth_data->principal);
+                        if (ret != 0) {
+                                snprintf(server->error, sizeof(server->error),
+                                                "Failed to initialze krb5 credentials cache");
+                                break;
+                        }
+
+                        cname = krb5_cc_get_name(auth_data->krb5_cctx, auth_data->krb5_Ccache);
+                        if (cname == NULL) {
+                                snprintf(server->error, sizeof(server->error),
+                                               "Failed to retrieve the credentials cache name");
+                                break;
+                        }
+
+                        maj = gss_krb5_ccache_name(&min, cname, NULL);
+                        if (maj != GSS_S_COMPLETE) {
+                                snprintf(server->error, sizeof(server->error),
+                                               "gss_krb5_ccache_name %u %u", maj, min);
+                                ret = -1;
+                                break;
+                        }
+                } else {
+                        /* use default cache */
+                        ret = krb5_cc_default(auth_data->krb5_cctx, &auth_data->krb5_Ccache);
+                        if (ret) {
+                                snprintf(server->error, sizeof(server->error),
+                                               "Can't get default ccache: %d", ret);
+                                break;
+                        }
+                }
+
+                ret = krb5_cc_initialize(auth_data->krb5_cctx, auth_data->krb5_Ccache, auth_data->principal);
+                if (ret != 0) {
+                        snprintf(server->error, sizeof(server->error),
+                                       "Failed to initialze krb5 credentials cache: %d", ret);
+                        break;
+                }
+
+                server->auth_data = auth_data;
+        }
+        while (0); /* catch */
+
+        if (ret) {
+                if (auth_data) {
+                        krb5_free_auth_data(auth_data);
+                }
+                server->auth_data = NULL;
+        } else {
+                server->auth_data = auth_data;
+        }
+        return ret;
+}
+
+
+void
+krb5_free_server_credentials(struct smb2_server *server)
+{
+        if (server && server->auth_data) {
+                krb5_free_auth_data(server->auth_data);
+                server->auth_data = NULL;
+        }
 }
 
 int
