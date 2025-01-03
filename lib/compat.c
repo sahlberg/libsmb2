@@ -245,7 +245,6 @@ socklen_t *optlen)
 #ifdef __GC__
          return net_getsockopt(sockfd, level, optname, optval, (socklen_t)optlen);
 #else
-	 printf("not yet supported");
 	 return 0;
 #endif
 

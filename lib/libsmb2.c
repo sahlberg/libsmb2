@@ -2877,15 +2877,15 @@ notify_change_cb(struct smb2_context *smb2, int status,
         struct smb2_file_notify_change_information *fnc = calloc(1, sizeof(struct smb2_file_notify_change_information));
 
         if (status) {
-                printf("notify_change_cb failed (%s) %s\n",
-                        strerror(-status), smb2_get_error(smb2));
+                smb2_set_error(smb2, "notify_change_cb failed (%s) %s\n",
+                               strerror(-status), smb2_get_error(smb2));
         }
 
         vec.buf = rep->output;
         vec.len = rep->output_buffer_length;
 
         if (smb2_decode_filenotifychangeinformation(smb2, fnc, &vec, 0)) {
-                printf("Failed to decode file notify change information\n");
+                smb2_set_error(smb2, "Failed to decode file notify change information\n");
         }
 
         if (notify_change_data->cb) {
@@ -2914,7 +2914,7 @@ int smb2_notify_change_filehandle_async(struct smb2_context *smb2, struct smb2fh
 
         notify_change_cb_data = calloc(1, sizeof(struct notify_change_cb_data));
         if (notify_change_cb_data == NULL) {
-                fprintf(stderr, "Failed to allocate notify_change_data");
+                smb2_set_error(smb2, "Failed to allocate notify_change_data");
                 return -1;
         }
         memset(notify_change_cb_data, 0, sizeof(struct notify_change_cb_data));
@@ -2937,7 +2937,7 @@ int smb2_notify_change_filehandle_async(struct smb2_context *smb2, struct smb2fh
         pdu = smb2_cmd_change_notify_async(smb2, &ch_req,
                                              notify_change_cb, notify_change_cb_data);
         if (pdu == NULL) {
-                fprintf(stderr, "Failed to create change_notify command\n");
+                smb2_set_error(smb2, "Failed to create change_notify command\n");
                 free(notify_change_cb_data);
                 return -1;
         }
@@ -2956,7 +2956,7 @@ int smb2_notify_change_async(struct smb2_context *smb2, const char *path, uint16
         fh = smb2_open(smb2, path, 0);
 #endif
         if (fh == NULL) {
-		printf("smb2_open failed. %s\n", smb2_get_error(smb2));
+		smb2_set_error(smb2, "smb2_open failed. %s\n", smb2_get_error(smb2));
                 return -1;
         }
         return smb2_notify_change_filehandle_async(smb2, fh, flags, filter, loop, cb, cb_data);
