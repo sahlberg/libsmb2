@@ -2828,7 +2828,7 @@ smb2_decode_filenotifychangeinformation(
     uint32_t next_entry_offset)
 {
         uint32_t name_len;
-        
+
         smb2_get_uint32(vec, next_entry_offset+4, &fnc->action);
         smb2_get_uint32(vec, next_entry_offset+8, &name_len);
         fnc->name = smb2_utf16_to_utf8((uint16_t *)&vec->buf[next_entry_offset+12], name_len / 2);
@@ -2860,7 +2860,7 @@ struct notify_change_cb_data {
         // filter of SMB2_CHANGE_NOTIFY_FILE_NOTIFY_CHANGE_* flags
         uint16_t filter;
         // flags such as SMB2_CHANGE_NOTIFY_WATCH_TREE
-        uint32_t flags;      
+        uint32_t flags;
         // do a new notify_change request after each response if 1
         uint32_t loop;
         uint32_t status;
@@ -2897,7 +2897,7 @@ notify_change_cb(struct smb2_context *smb2, int status,
                 );
         }
         if (notify_change_data->loop) {
-                smb2_notify_change_filehandle_async(smb2, notify_change_data->fh, notify_change_data->flags, notify_change_data->filter, 
+                smb2_notify_change_filehandle_async(smb2, notify_change_data->fh, notify_change_data->flags, notify_change_data->filter,
                         notify_change_data->loop, notify_change_data->cb, notify_change_data->cb_data);
         } else {
                 smb2_close(smb2, notify_change_data->fh);
@@ -2907,7 +2907,7 @@ notify_change_cb(struct smb2_context *smb2, int status,
 
 int smb2_notify_change_filehandle_async(struct smb2_context *smb2, struct smb2fh *smb2_dir_fh, uint16_t flags, uint32_t filter, int loop,
                        smb2_command_cb cb, void *cb_data)
-{       
+{
         struct notify_change_cb_data *notify_change_cb_data;
         struct smb2_change_notify_request ch_req;
         struct smb2_pdu *pdu;
@@ -2948,7 +2948,7 @@ int smb2_notify_change_filehandle_async(struct smb2_context *smb2, struct smb2fh
 
 int smb2_notify_change_async(struct smb2_context *smb2, const char *path, uint16_t flags, uint32_t filter, int loop,
                        smb2_command_cb cb, void *cb_data)
-{       
+{
         struct smb2fh *fh;
 #ifdef O_DIRECTORY
         fh = smb2_open(smb2, path, O_DIRECTORY);
@@ -2956,7 +2956,7 @@ int smb2_notify_change_async(struct smb2_context *smb2, const char *path, uint16
         fh = smb2_open(smb2, path, 0);
 #endif
         if (fh == NULL) {
-		smb2_set_error(smb2, "smb2_open failed. %s\n", smb2_get_error(smb2));
+                smb2_set_error(smb2, "smb2_open failed. %s\n", smb2_get_error(smb2));
                 return -1;
         }
         return smb2_notify_change_filehandle_async(smb2, fh, flags, filter, loop, cb, cb_data);
@@ -3674,11 +3674,7 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
 #ifdef HAVE_LIBKRB5
         else {
                 if (!c_data->auth_data) {
-                        /* note that for server, the auth creds really only need to be
-                         * setup once for all connections, but we do it each time to
-                         * simplify auth_data lifetime, perhaps TODO?
-                         */
-                        c_data->auth_data = krb5_init_server_cred(server, smb2, NULL);
+                        c_data->auth_data = krb5_init_server_client_cred(server, smb2, NULL);
                         if (!c_data->auth_data) {
                                 smb2_set_error(smb2, "can not init auth data %s", smb2_get_error(smb2));
                                 smb2_close_context(smb2);
@@ -4033,6 +4029,10 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
         struct timeval timeout;
         int err = -1;
         static const char *default_domain = "WORKGROUP";
+        time_t now;
+#if HAVE_LIBKRB5
+        static time_t credential_renewal_time = 0;
+#endif
 
         if (!server->max_transact_size) {
                 server->max_transact_size = 0x100000;
@@ -4049,6 +4049,13 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
                 strncpy(server->domain, default_domain,
                                MIN(sizeof(server->domain),strlen(default_domain) + 1));
         }
+
+#if HAVE_LIBKRB5
+        err = krb5_init_server_credentials(server, server->keytab_path);
+        if (err) {
+                return err;
+        }
+#endif
         err = smb2_bind_and_listen(server->port, max_connections, &server->fd);
         if (err != 0) {
                 return err;
@@ -4094,7 +4101,7 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
                            );
 
                 if (ready > 0) {
-                        time_t t = time(NULL);
+                        now = time(NULL);
 
                         /* for each client context ready to read, process that context */
                         for (smb2 = smb2_active_contexts(); smb2; smb2 = smb2->next) {
@@ -4113,7 +4120,7 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
                                                 smb2_close_context(smb2);
                                         }
                                 }
-                                if (!SMB2_VALID_SOCKET(smb2->fd) && ((time(NULL) - t) > (smb2->timeout)))
+                                if (!SMB2_VALID_SOCKET(smb2->fd) && ((time(NULL) - now) > (smb2->timeout)))
                                 {
                                         smb2_set_error(smb2, "Timeout expired and no connection exists\n");
                                         smb2_close_context(smb2);
@@ -4169,6 +4176,16 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
                                 /* client connections are destroyed when they timeout or get disconnected */
                         }
                 }
+#if HAVE_LIBKRB5
+                /* renew kerberos credentials daily */
+                time(&now);
+
+                if (credential_renewal_time < now) {
+                        credential_renewal_time = now + 60*60*24;
+
+                        err = krb5_renew_server_credentials(server);
+                }
+#endif
         }
         while (err == 0);
 
@@ -4179,6 +4196,9 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
                 smb2 = smb2_active_contexts();
                 smb2_destroy_context(smb2);
         }
+#if HAVE_LIBKRB5
+        krb5_free_server_credentials(server);
+#endif
         return err;
 }
 
