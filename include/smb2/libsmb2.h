@@ -24,7 +24,7 @@ extern "C" {
 #endif
 
 #define LIBSMB2_SHARE_ENUM_V2 1
-        
+
 struct smb2_iovec {
         uint8_t *buf;
         size_t len;
@@ -1340,6 +1340,10 @@ struct smb2_server {
         /* saved from negotiate to be used in validate negotiate info */
         uint32_t capabilities;
         uint32_t security_mode;
+        /* for kerberos, credential context */
+        char keytab_path[256];
+        char error[128];
+        void *auth_data;
 };
 
 int smb2_bind_and_listen(const uint16_t port, const int max_connections, int *out_fd);
