@@ -91,8 +91,8 @@ struct auth_data {
         size_t ntlm_len;
 
         char *user;
-        char *password;
         char *domain;
+        char *password;
         char *workstation;
         char *target_name;
         uint8_t *client_challenge;
@@ -137,6 +137,40 @@ ntlmssp_destroy_context(struct auth_data *auth)
         free(auth);
 }
 
+static int
+auth_data_set_password(struct auth_data *auth_data, const char *password)
+{
+        free(auth_data->password);
+        auth_data->password = NULL;
+                
+        if (password == NULL) {
+                return 0;
+        }
+        
+        auth_data->password = strdup(password);
+        if (auth_data->password == NULL) {
+                return -ENOMEM;
+        }
+        return 0;
+}
+
+static int
+auth_data_set_domain(struct auth_data *auth_data, const char *domain)
+{
+        free(auth_data->domain);
+        auth_data->domain = NULL;
+                
+        if (domain == NULL) {
+                return 0;
+        }
+
+        auth_data->domain = strdup(domain);
+        if (auth_data->domain == NULL) {
+                return -ENOMEM;
+        }
+        return 0;
+}
+
 struct auth_data *
 ntlmssp_init_context(const char *user,
                      const char *password,
@@ -158,17 +192,11 @@ ntlmssp_init_context(const char *user,
                         goto failed;
                 }
         }
-        if (password) {
-                auth_data->password = strdup(password);
-                if (auth_data->password == NULL) {
-                        goto failed;
-                }
+        if (auth_data_set_password(auth_data, password) < 0) {
+                goto failed;
         }
-        if (domain) {
-                auth_data->domain = strdup(domain);
-                if (auth_data->domain == NULL) {
-                        goto failed;
-                }
+        if (auth_data_set_domain(auth_data, domain) < 0) {
+                goto failed;
         }
         if (workstation) {
                 auth_data->workstation = strdup(workstation);
@@ -600,6 +628,18 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
         tv.tv_usec = 0;
         t = smb2_timeval_to_win(&tv);
 
+        /*
+         * If we discovered the domain (and a new associated password in NTLM_USER_FILE)
+         * on receiving the challenge message we need to update auth_data with the
+         * new domain/password.
+         */
+        if (auth_data_set_password(auth_data, smb2->password) < 0) {
+                goto finished;
+        }
+        if (auth_data_set_domain(auth_data, smb2->domain) < 0) {
+                goto finished;
+        }
+        
         if (auth_data->password == NULL) {
                 anonymous = 1;
                 goto encode;
@@ -608,8 +648,7 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
          * Generate Concatenation of(NTProofStr, temp)
          */
         if (NTOWFv2(auth_data->user, auth_data->password,
-                    auth_data->domain, ResponseKeyNT)
-            < 0) {
+                    auth_data->domain, ResponseKeyNT) < 0) {
                 goto finished;
         }
 

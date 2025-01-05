@@ -597,6 +597,9 @@ void smb2_set_password_from_file(struct smb2_context *smb2)
                 if (domain[0] && smb2->domain && strcmp(smb2->domain, domain)) {
                         continue;
                 }
+                if (domain[0] && smb2->domain == NULL) {
+                        continue;
+                }
                 password = strchr(user, ':');                
                 if (password == NULL) {
                         continue;
@@ -666,6 +669,7 @@ void smb2_set_domain(struct smb2_context *smb2, const char *domain)
                 return;
         }
         smb2->domain = strdup(domain);
+        smb2_set_password_from_file(smb2);
 }
 
 const char *smb2_get_domain(struct smb2_context *smb2)
