@@ -1,5 +1,6 @@
-#ifndef _AES_H_
-#define _AES_H_
+
+#ifndef _AES_APPLE_H_
+#define _AES_APPLE_H_
 
 /*
    Copyright (C) 2025 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
@@ -22,8 +23,12 @@
 #include "config.h"
 #endif
 
+#ifdef HAVE_STDINT_H
 #include <stdint.h>
+#endif
 
-void AES128_ECB_encrypt(uint8_t* input, const uint8_t* key, uint8_t *output);
+#ifdef __APPLE__
+void AES128_ECB_encrypt_apple(const uint8_t* input, const uint8_t* key, uint8_t *output);
+#endif
 
 #endif

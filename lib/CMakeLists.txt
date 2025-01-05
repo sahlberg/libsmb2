@@ -5,6 +5,7 @@ endif()
 if(ESP_PLATFORM)
   set(COMPONENT_SRCS
     aes.c
+    aes_reference.c
     aes128ccm.c
     alloc.c
     asn1-ber.c
@@ -69,6 +70,7 @@ elseif(IOP AND BUILD_IRX)
             ps2/smb2man.c
             ps2/imports.c
             aes.c
+	    aes_reference.c
             aes128ccm.c
             alloc.c
             asn1-ber.c
@@ -126,6 +128,8 @@ BUILD_IOP_IMPORTS(${CMAKE_CURRENT_SOURCE_DIR}/ps2/imports.c ${CMAKE_CURRENT_SOUR
 
 else()
   set(SOURCES aes.c
+	    aes_reference.c
+            aes_apple.c
             aes128ccm.c
             alloc.c
             asn1-ber.c
