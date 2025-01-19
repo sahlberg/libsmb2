@@ -654,6 +654,12 @@ smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
         smb2_add_to_outqueue(smb2, pdu);
 }
 
+void
+smb2_set_pdu_status(struct smb2_context *smb2, struct smb2_pdu *pdu, int status)
+{
+        pdu->header.status = status;
+}
+
 struct smb2_pdu *
 smb2_find_pdu(struct smb2_context *smb2,
               uint64_t message_id) {

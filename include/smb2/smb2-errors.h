@@ -544,4 +544,6 @@
 #define SMB2_STATUS_SERVER_UNAVAILABLE                 0xC0000466
 
 /* Warning codes */
-#define SMB2_STATUS_STOPPED_ON_SYMLINK  0x8000002d
+#define SMB2_STATUS_BUFFER_OVERFLOW                    0x80000005
+#define SMB2_STATUS_STOPPED_ON_SYMLINK                 0x8000002D
+
