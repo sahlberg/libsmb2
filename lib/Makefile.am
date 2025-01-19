@@ -8,6 +8,7 @@ libsmb2_la_CPPFLAGS = -I$(abs_top_srcdir)/include \
 
 libsmb2_la_SOURCES = \
 	aes.h \
+	aes_reference.c \
 	aes.c \
 	aes128ccm.h \
 	aes128ccm.c \
