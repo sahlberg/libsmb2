@@ -634,6 +634,14 @@ struct smb2_file_position_info {
 };
 
 /*
+ * FILE_NAME_INFORMATION
+ */
+struct smb2_file_name_info {
+        uint32_t file_name_length;
+        const uint8_t *name;
+};
+
+/*
  * FILE_ALL_INFORMATION.
  */
 struct smb2_file_all_info {

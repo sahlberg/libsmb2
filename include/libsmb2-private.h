@@ -32,7 +32,7 @@ extern "C" {
 #include <gssapi/gssapi.h>
 #include <gssapi/gssapi_ext.h>
 #endif /* __APPLE__ */
-#endif /* HAVE_LIBKRB5 */ 
+#endif /* HAVE_LIBKRB5 */
 
 #define MIN(a,b) (((a)<(b))?(a):(b))
 
@@ -341,7 +341,7 @@ struct smb2dir {
         int index;
 };
 
-        
+
 #define smb2_is_server(ctx) ((ctx)->owning_server != NULL)
 
 void smb2_set_nterror(struct smb2_context *smb2, int nterror,
@@ -554,6 +554,13 @@ int smb2_encode_file_network_open_info(struct smb2_context *smb2,
                                        struct smb2_file_network_open_info *fs,
                                        struct smb2_iovec *vec);
 
+int smb2_decode_file_normalized_name_info(struct smb2_context *smb2,
+                                          void *memctx,
+                                          struct smb2_file_name_info *fs,
+                                          struct smb2_iovec *vec);
+int smb2_encode_file_normalized_name_info(struct smb2_context *smb2,
+                                          struct smb2_file_name_info *fs,
+                                          struct smb2_iovec *vec);
 int smb2_decode_security_descriptor(struct smb2_context *smb2,
                                     void *memctx,
                                     struct smb2_security_descriptor *sd,
