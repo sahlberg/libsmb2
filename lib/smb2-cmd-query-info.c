@@ -204,6 +204,9 @@ smb2_encode_query_info_reply(struct smb2_context *smb2,
                                                 (struct smb2_file_network_open_info *)rep->output_buffer, iov);
                                 break;
                         case SMB2_FILE_NORMALIZED_NAME_INFORMATION:
+                                created_output_buffer_length =
+                                        smb2_encode_file_normalized_name_info(smb2,
+                                                (struct smb2_file_name_info *)rep->output_buffer, iov);
                                 break;
                         case SMB2_FILE_PIPE_INFORMATION:
                                 break;
@@ -300,6 +303,11 @@ smb2_encode_query_info_reply(struct smb2_context *smb2,
                                         req->info_type, req->file_info_class);
                         }
                 } else {
+                        if (created_output_buffer_length > req->output_buffer_length) {
+                                /* truncate output buffer to what request can handle in return */
+                                created_output_buffer_length = req->output_buffer_length;
+                                smb2_set_pdu_status(smb2, pdu, SMB2_STATUS_BUFFER_OVERFLOW);
+                        }
                         iov->len = PAD_TO_64BIT(created_output_buffer_length);
                         rep->output_buffer_length = created_output_buffer_length;
                 }
@@ -472,6 +480,14 @@ int smb2_process_query_info_variable(struct smb2_context *smb2,
                         }
                         break;
                 case SMB2_FILE_NORMALIZED_NAME_INFORMATION:
+                        ptr = smb2_alloc_init(smb2,
+                                  sizeof(struct smb2_file_name_info));
+                        if (smb2_decode_file_normalized_name_info(smb2, ptr, ptr, &vec)) {
+                                smb2_set_error(smb2, "could not decode file "
+                                               "normalized name info. %s",
+                                               smb2_get_error(smb2));
+                                return -1;
+                        }
                         break;
                 case SMB2_FILE_PIPE_INFORMATION:
                         break;

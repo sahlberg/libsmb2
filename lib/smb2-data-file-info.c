@@ -320,3 +320,74 @@ smb2_encode_file_network_open_info(struct smb2_context *smb2,
         return 52;
 }
 
+
+int
+smb2_decode_file_normalized_name_info(struct smb2_context *smb2,
+                          void *memctx,
+                          struct smb2_file_name_info *fs,
+                          struct smb2_iovec *vec)
+{
+        struct smb2_iovec v _U_;
+        uint32_t name_len;
+        const char *name;
+
+        if (vec->len < 40) {
+                return -1;
+        }
+
+        v.buf = &vec->buf[0];
+        v.len = 4;
+        smb2_get_uint32(vec, 0, &name_len);
+
+        fs->file_name_length = name_len / 2;
+
+        if (name_len > 0) {
+                if (vec->len < (name_len + 4)) {
+                        return -1;
+                }
+                name = smb2_utf16_to_utf8((uint16_t *)&vec->buf[4], name_len / 2);
+                fs->name = smb2_alloc_data(smb2, memctx, strlen(name) + 1);
+                if (fs->name == NULL) {
+                        free(discard_const(name));
+                        return -1;
+                }
+                strcpy(discard_const(fs->name), name);
+                free(discard_const(name));
+        } else {
+                fs->name = NULL;
+        }
+        return 0;
+}
+
+int
+smb2_encode_file_normalized_name_info(struct smb2_context *smb2,
+                          struct smb2_file_name_info *fs,
+                          struct smb2_iovec *vec)
+{
+        struct smb2_utf16 *name = NULL;
+        int name_len;
+
+        if (vec->len < 4) {
+                return -1;
+        }
+
+        if (fs->name) {
+                name = smb2_utf8_to_utf16((const char*)fs->name);
+                if (name) {
+                        name_len = 2 * name->len;
+                        if (vec->len < name_len + 4) {
+                                return -1;
+                        }
+                        smb2_set_uint32(vec, 0, name_len);
+                        memcpy((uint16_t *)&vec->buf[4], name->val, name_len);
+                        free(name);
+                        return 4 + name_len;
+                } else {
+                        return -1;
+                }
+        } else {
+                smb2_set_uint32(vec, 0, 0);
+                return 4;
+        }
+}
+

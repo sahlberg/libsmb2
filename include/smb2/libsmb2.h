@@ -642,6 +642,7 @@ void smb2_add_compound_pdu(struct smb2_context *smb2,
                            struct smb2_pdu *pdu, struct smb2_pdu *next_pdu);
 void smb2_free_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu);
 void smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu);
+void smb2_set_pdu_status(struct smb2_context *smb2, struct smb2_pdu *pdu, int status);
 int smb2_pdu_is_compound(struct smb2_context *smb2);
 
 /*
