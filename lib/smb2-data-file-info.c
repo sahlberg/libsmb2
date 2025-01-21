@@ -146,6 +146,103 @@ smb2_encode_file_standard_info(struct smb2_context *smb2,
 }
 
 int
+smb2_decode_file_stream_info(struct smb2_context *smb2,
+                               void *memctx,
+                               struct smb2_file_stream_info *fs,
+                               struct smb2_iovec *vec)
+{
+        int offset = 0;
+        uint32_t our_offset = 0;
+        const char *name;
+
+        do {
+                smb2_get_uint32(vec, offset + 0, &fs->next_entry_offset);
+                smb2_get_uint32(vec, offset + 4, &fs->stream_name_length);
+                smb2_get_uint64(vec, offset + 8, &fs->stream_size);
+                smb2_get_uint64(vec, offset + 16, &fs->stream_allocation_size);
+
+                if (fs->stream_name_length > 0) {
+                        name = smb2_utf16_to_utf8((uint16_t *)&vec->buf[offset + 24],
+                                       fs->stream_name_length / 2);
+                        if (!name) {
+                                return -1;
+                        }
+                        fs->stream_name_length = strlen(name);
+                        fs->stream_name = smb2_alloc_data(smb2, memctx, fs->stream_name_length + 1);
+                        if (fs->stream_name == NULL) {
+                                free(discard_const(name));
+                                return -1;
+                        }
+                        strcpy(discard_const(fs->stream_name), name);
+                        free(discard_const(name));
+                } else {
+                        fs->stream_name = NULL;
+                }
+
+                if (!fs->next_entry_offset) {
+                        break;
+                }
+
+                offset += fs->next_entry_offset;
+
+                /* note - since name is now a separate alloc, our offset is just
+                 * sizeof struct alone, so update our struct
+                 */
+                our_offset += sizeof(struct smb2_file_stream_info);
+                fs->next_entry_offset = our_offset;
+
+                fs++;
+        } while (fs->next_entry_offset && ((offset + 24) <= vec->len));
+
+        return 0;
+}
+
+int
+smb2_encode_file_stream_info(struct smb2_context *smb2,
+                             struct smb2_file_stream_info *fs,
+                             struct smb2_iovec *vec)
+{
+        uint32_t offset = 0;
+        uint32_t fslen;
+        struct smb2_utf16 *name = NULL;
+        int name_len = 0;
+
+        do {
+                smb2_set_uint64(vec, offset + 8, fs->stream_size);
+                smb2_set_uint64(vec, offset + 16, fs->stream_allocation_size);
+
+                if (fs->stream_name) {
+                        name = smb2_utf8_to_utf16((const char*)fs->stream_name);
+                        if (name) {
+                                name_len = 2 * name->len;
+                                smb2_set_uint32(vec, offset + 4, name_len);
+                                memcpy((uint16_t *)&vec->buf[offset + 24], name->val, name_len);
+                                free(name);
+                        } else {
+                                return -1;
+                        }
+                } else {
+                        name_len = 0;
+                        smb2_set_uint32(vec, offset + 4, 0);
+                }
+
+                fslen = 24 + name_len;
+
+                if (fs->next_entry_offset) {
+                        smb2_set_uint32(vec, offset + 0, offset + fslen);
+                        offset += fslen;
+                        fs++;
+                } else {
+                        smb2_set_uint32(vec, offset + 0, 0);
+                        offset += fslen;
+                        break;
+                }
+        } while ((offset + 24) <= vec->len);
+
+        return (int)offset;
+}
+
+int
 smb2_decode_file_position_info(struct smb2_context *smb2,
                                void *memctx,
                                struct smb2_file_position_info *fs,
@@ -269,7 +366,7 @@ smb2_decode_file_network_open_info(struct smb2_context *smb2,
 {
         uint64_t t;
 
-	if (vec->len < 56) {
+        if (vec->len < 56) {
                 return -1;
         }
 
@@ -296,11 +393,11 @@ smb2_encode_file_network_open_info(struct smb2_context *smb2,
                                    struct smb2_file_network_open_info *fs,
                                    struct smb2_iovec *vec)
 {
-		uint64_t t;
+        uint64_t t;
+
         if (vec->len < 56) {
                 return -1;
         }
-
 
         t = smb2_tv_timeval_to_win(&fs->creation_time);
         smb2_set_uint64(vec, 0, t);

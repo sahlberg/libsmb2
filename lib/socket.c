@@ -458,6 +458,8 @@ read_more_data:
 
                 if (!smb2_is_server(smb2)) {
                         smb2->credits += smb2->hdr.credit_request_response;
+                        /* Got credit, recheck if there are pending pdu to be sent. */
+                        smb2_change_events(smb2, smb2->fd, smb2_which_events(smb2));
                 }
 
                 if (!smb2_is_server(smb2) && !(smb2->hdr.flags & SMB2_FLAGS_SERVER_TO_REDIR)) {

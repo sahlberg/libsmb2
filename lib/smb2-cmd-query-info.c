@@ -225,6 +225,9 @@ smb2_encode_query_info_reply(struct smb2_context *smb2,
                                                 (struct smb2_file_standard_info *)rep->output_buffer, iov);
                                 break;
                         case SMB2_FILE_STREAM_INFORMATION:
+                                created_output_buffer_length =
+                                        smb2_encode_file_stream_info(smb2,
+                                                (struct smb2_file_stream_info *)rep->output_buffer, iov);
                                 break;
                         case SMB2_FILE_INFO_CLASS_RESERVED:
                                 break;
@@ -518,6 +521,15 @@ int smb2_process_query_info_variable(struct smb2_context *smb2,
                         }
                         break;
                 case SMB2_FILE_STREAM_INFORMATION:
+                        /* we would have to parse the chain to get proper alloc size, so just
+                         * massively over-alloc based on vec size */
+                        ptr = smb2_alloc_init(smb2, (1 + (vec.len / 24)) * sizeof(struct smb2_file_stream_info));
+                        if (smb2_decode_file_stream_info(smb2, ptr, ptr, &vec)) {
+                                smb2_set_error(smb2, "could not decode file "
+                                               "stream info. %s",
+                                               smb2_get_error(smb2));
+                                return -1;
+                        }
                         break;
                 case SMB2_FILE_INFO_CLASS_RESERVED:
                         break;
