@@ -143,9 +143,17 @@ smb2_cmd_read_async(struct smb2_context *smb2,
                 return NULL;
         }
 
-        /* Add a vector for the buffer that the application gave us */
-        smb2_add_iovector(smb2, &pdu->in, req->buf,
-                          req->length, NULL);
+        /* Add a vector for the reply buffer that the application gave us */
+        if (req->length) {
+                if (!req->buf) {
+                        /* need a place to put read data, so fail if app doesn't supply one */
+                        smb2_set_error(smb2, "No buffer for read reply data");
+                        smb2_free_pdu(smb2, pdu);
+                        return NULL;
+                }
+
+                smb2_add_iovector(smb2, &pdu->in, req->buf, req->length, NULL);
+        }
 
         if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
                 smb2_free_pdu(smb2, pdu);
@@ -269,7 +277,7 @@ static void free_read_reply(struct smb2_context *smb2, void * payload) {
     if (payload == NULL) {
         return;
     }
-    
+
     rep = (struct smb2_read_reply*)payload;
     if (rep->data_length != 0 && rep->data != NULL) {
         free(rep->data);
@@ -313,7 +321,7 @@ smb2_process_read_request_fixed(struct smb2_context *smb2,
                 return -1;
         }
 
-        req = malloc(sizeof(*req));
+        req = calloc(1, sizeof(*req));
         if (req == NULL) {
                 smb2_set_error(smb2, "Failed to allocate read request");
                 return -1;
@@ -339,16 +347,6 @@ smb2_process_read_request_fixed(struct smb2_context *smb2,
                 free(req);
                 return -1;
         }
-
-        /* provide an iovec to read the data into */
-        req->buf = malloc(req->length);
-        if (!req->buf) {
-                smb2_set_error(smb2, "can not alloc for read reply data");
-                pdu->payload = NULL;
-                free(req);
-                return -1;
-        }
-        smb2_add_iovector(smb2,  &pdu->in, req->buf, req->length, free);
 
         if (req->read_channel_info_length == 0) {
                 return 0;
