@@ -3060,12 +3060,10 @@ smb2_create_request_cb(struct smb2_server *server, struct smb2_context *smb2, vo
                 pdu = smb2_cmd_error_reply_async(smb2,
                                 &err, SMB2_CREATE, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
         }
-        if (pdu != NULL) {
-                if (req->name) {
-                        /* this will get auto-free when context is closed
-                         * if we dont do it here, so not required */
-                        smb2_free_data(smb2, discard_const(req->name));
-                }
+        if (req->name) {
+                smb2_free_data(smb2, discard_const(req->name));
+        }
+        if (pdu) {
                 smb2_queue_pdu(smb2, pdu);
         }
 }
@@ -3263,6 +3261,9 @@ smb2_ioctl_request_cb(struct smb2_server *server, struct smb2_context *smb2, voi
                 rep.output = (uint8_t*)&out_info;
                 rep.output_count = sizeof(out_info);
                 pdu = smb2_cmd_ioctl_reply_async(smb2, &rep, NULL, cb_data);
+                if (req->input) {
+                        smb2_free_data(smb2, discard_const(req->input));
+                }
         }
         else {
                 if (server->handlers && server->handlers->ioctl_cmd) {
@@ -3681,6 +3682,9 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                                 return;
                         }
                         smb2->connect_data = c_data;
+                        if  (!smb2->session_id) {
+                                smb2->session_id = server->session_counter++;
+                        }
                 }
 
                 if (krb5_session_reply(smb2, c_data->auth_data,
@@ -3952,7 +3956,9 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
         rep.server_start_time = smb2_timeval_to_win(&now);
 
         rep.security_buffer_length = smb2_spnego_create_negotiate_reply_blob(
-                                        smb2, 1, (void*)&rep.security_buffer);
+                                        smb2,
+                                        (smb2->sec == SMB2_SEC_UNDEFINED || smb2->sec == SMB2_SEC_NTLMSSP),
+                                        (void*)&rep.security_buffer);
 
         pdu = smb2_cmd_negotiate_reply_async(smb2, &rep, NULL, cb_data);
         if (rep.security_buffer) {

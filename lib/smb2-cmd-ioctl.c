@@ -388,9 +388,6 @@ smb2_process_ioctl_request_variable(struct smb2_context *smb2,
         struct smb2_iovec vec;
         void *ptr = NULL;
         struct smb2_ioctl_validate_negotiate_info *info;
-        /* this one is handled locally regardless of proxy or not */
-        ptr = smb2_alloc_init(smb2, sizeof(struct smb2_ioctl_validate_negotiate_info));
-        info = ptr;
 
         if (req->input_count > iov->len - IOVREQ_OFFSET) {
                 return -EINVAL;
@@ -401,6 +398,9 @@ smb2_process_ioctl_request_variable(struct smb2_context *smb2,
 
         switch (req->ctl_code) {
         case SMB2_FSCTL_VALIDATE_NEGOTIATE_INFO:
+                /* this one is handled locally regardless of proxy or not */
+                ptr = smb2_alloc_init(smb2, sizeof(struct smb2_ioctl_validate_negotiate_info));
+                info = ptr;
                 smb2_get_uint32(&vec, 0, &info->capabilities);
                 memcpy(info->guid, &vec.buf[4], 16);
                 smb2_get_uint16(&vec, 20, &info->security_mode);
