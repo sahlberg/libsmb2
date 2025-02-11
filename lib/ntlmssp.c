@@ -142,11 +142,11 @@ auth_data_set_password(struct auth_data *auth_data, const char *password)
 {
         free(auth_data->password);
         auth_data->password = NULL;
-                
+
         if (password == NULL) {
                 return 0;
         }
-        
+
         auth_data->password = strdup(password);
         if (auth_data->password == NULL) {
                 return -ENOMEM;
@@ -159,7 +159,7 @@ auth_data_set_domain(struct auth_data *auth_data, const char *domain)
 {
         free(auth_data->domain);
         auth_data->domain = NULL;
-                
+
         if (domain == NULL) {
                 return 0;
         }
@@ -511,7 +511,7 @@ NTOWFv2(const char *user, const char *password, const char *domain,
         if (user == NULL || password == NULL) {
                 return -1;
         }
-        
+
         /* ntlm:F638EDF864C4805DC65D9BF2BB77E4C0 */
         if ((strlen(password) == 37) && (strncmp(password, "ntlm:", 5) == 0)) {
                 if (ntlm_convert_password_hash(password + 5, ntlm_hash) < 0) {
@@ -639,7 +639,7 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
         if (auth_data_set_domain(auth_data, smb2->domain) < 0) {
                 goto finished;
         }
-        
+
         if (auth_data->password == NULL) {
                 anonymous = 1;
                 goto encode;
@@ -1380,16 +1380,19 @@ ntlmssp_get_message_type(struct smb2_context *smb2,
                         *is_wrapped = 0;
                 }
         }
-        memcpy(&u32, ntlmssp + 8, sizeof(uint32_t));
-        if (message_type) {
-                *message_type = le32toh(u32);
-        }
         if (ntlmssp_ptr) {
                 *ntlmssp_ptr = ntlmssp;
         }
         if (ntlmssp_len) {
                 *ntlmssp_len = ntlm_len;
         }
-        return 0;
+        if (!memcmp(ntlmssp, "NTLMSSP", 7)) {
+                memcpy(&u32, ntlmssp + 8, sizeof(uint32_t));
+                if (message_type) {
+                        *message_type = le32toh(u32);
+                }
+                return 0;
+        }
+        return -1;
 }
 
