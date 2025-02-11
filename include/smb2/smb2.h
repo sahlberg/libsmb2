@@ -558,10 +558,12 @@ struct smb2_read_reply {
 #define SMB2_FILE_MODE_INFORMATION              0x10
 #define SMB2_FILE_ALIGNMENT_INFORMATION         0x11
 #define SMB2_FILE_ALL_INFORMATION               0x12
+#define SMB2_FILE_ALLOCATION_INFORMATION        0x13
 #define SMB2_FILE_END_OF_FILE_INFORMATION       0x14
 #define SMB2_FILE_ALTERNATE_NAME_INFORMATION    0x15
 #define SMB2_FILE_OBJECT_ID_INFORMATION         0x1D
 #define SMB2_FILE_ATTRIBUTE_TAG_INFORMATION     0x23
+#define SMB2_FILE_VALID_DATA_LENGTH_INFORMATION 0x27
 #define SMB2_FILE_NORMALIZED_NAME_INFORMATION   0x30
 #define SMB2_FILE_ID_INFORMATION                0x3B
 
@@ -624,6 +626,17 @@ struct smb2_file_standard_info {
         uint32_t number_of_links;
         uint8_t delete_pending;
         uint8_t directory;
+};
+
+/*
+ * FILE_STREAM_INFORMATION
+ */
+struct smb2_file_stream_info {
+        uint32_t next_entry_offset;
+        uint32_t stream_name_length;
+        uint64_t stream_size;
+        uint64_t stream_allocation_size;
+        const char *stream_name;
 };
 
 /*
