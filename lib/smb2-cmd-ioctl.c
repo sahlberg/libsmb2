@@ -355,10 +355,10 @@ smb2_process_ioctl_request_fixed(struct smb2_context *smb2,
         smb2_get_uint32(iov, 24, &req->input_offset);
         smb2_get_uint32(iov, 28, &req->input_count);
         smb2_get_uint32(iov, 32, &req->max_input_response);
-        smb2_get_uint32(iov, 40, &req->output_offset);
-        smb2_get_uint32(iov, 44, &req->output_count);
-        smb2_get_uint32(iov, 48, &req->max_output_response);
-        smb2_get_uint32(iov, 52, &req->flags);
+        smb2_get_uint32(iov, 36, &req->output_offset);
+        smb2_get_uint32(iov, 40, &req->output_count);
+        smb2_get_uint32(iov, 44, &req->max_output_response);
+        smb2_get_uint32(iov, 48, &req->flags);
 
         if (req->input_count == 0) {
                 return 0;
