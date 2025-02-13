@@ -192,12 +192,15 @@ smb2_encode_ioctl_reply(struct smb2_context *smb2,
         smb2_set_uint16(iov, 0, SMB2_IOCTL_REPLY_SIZE);
         smb2_set_uint32(iov, 4, rep->ctl_code);
         memcpy(iov->buf + 8, rep->file_id, SMB2_FD_SIZE);
+        /* input offset */
         smb2_set_uint32(iov, 24, SMB2_HEADER_SIZE +
                         (SMB2_IOCTL_REPLY_SIZE & 0xfffffffe));
         smb2_set_uint32(iov, 28, rep->input_count);
+        /* output offset, aligned after input */
         smb2_set_uint32(iov, 32, SMB2_HEADER_SIZE +
                         (SMB2_IOCTL_REPLY_SIZE & 0xfffffffe) +
                         PAD_TO_64BIT(rep->input_count));
+        /* output_count */
         smb2_set_uint32(iov, 36, len);
         smb2_set_uint32(iov, 40, rep->flags);
 
@@ -259,6 +262,8 @@ smb2_process_ioctl_fixed(struct smb2_context *smb2,
 
         smb2_get_uint32(iov, 4, &rep->ctl_code);
         memcpy(rep->file_id, iov->buf + 8, SMB2_FD_SIZE);
+        smb2_get_uint32(iov, 24, &rep->input_offset);
+        smb2_get_uint32(iov, 28, &rep->input_count);
         smb2_get_uint32(iov, 32, &rep->output_offset);
         smb2_get_uint32(iov, 36, &rep->output_count);
         smb2_get_uint32(iov, 40, &rep->flags);
@@ -277,9 +282,11 @@ smb2_process_ioctl_fixed(struct smb2_context *smb2,
         }
 
         /* Return the amount of data that the output buffer will take up.
-         * Including any padding before the output buffer itself.
+         * Including any padding before the input and output buffer itself.
+         * note: input_count should be 0, but there are exceptions, see
+         * MS-SMB 3.3.5.15.8 (passthrough)
          */
-        return IOV_OFFSET + rep->output_count;
+        return IOV_OFFSET + PAD_TO_64BIT(rep->input_count) + rep->output_count;
 }
 
 int
