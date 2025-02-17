@@ -456,6 +456,7 @@ krb5_session_request(struct smb2_context *smb2,
         return 0;
 }
 
+#ifndef __APPLE__
 static OM_uint32
 establish_contexts(struct smb2_context *smb2,
                       gss_OID imech,
@@ -539,12 +540,12 @@ init_accept_sec_context(struct smb2_context *smb2,
         (void)gss_delete_sec_context(&minor, &acceptor_context, NULL);
         return major;
 }
+#endif
 
 struct private_auth_data *
 krb5_init_server_client_cred(struct smb2_server *server, struct smb2_context *smb2, const char *password)
 {
         struct private_auth_data *auth_data;
-        struct private_auth_data *server_auth_data;
         char user_principal[1024];
         gss_buffer_desc name_buf;
         gss_cred_usage_t cred_usage;
@@ -605,8 +606,9 @@ krb5_init_server_client_cred(struct smb2_server *server, struct smb2_context *sm
         } else {
                 cred_usage = GSS_C_ACCEPT;
         }
-
+#ifndef __APPLE__
         if (server->auth_data && ((struct private_auth_data *)server->auth_data)->keytab) {
+                struct private_auth_data *server_auth_data;
                 char keytab_path[256];
                 char ccache_path[256];
                 const char *cctype, *ccname;
@@ -651,7 +653,9 @@ krb5_init_server_client_cred(struct smb2_server *server, struct smb2_context *sm
                                         &kvd,
                                         &auth_data->cred,
                                         NULL, NULL);
-        } else {
+        } else
+#endif
+        {
                 maj = gss_acquire_cred(&min,
                                        smb2->sec == SMB2_SEC_NTLMSSP ?
                                                 GSS_C_NO_NAME : auth_data->target_name,
@@ -766,10 +770,6 @@ krb5_session_reply(struct smb2_context *smb2,
 
         if (auth_data->get_proxy_cred && (!(ret_flags & GSS_C_DELEG_FLAG) ||
                         (ret_delegated_cred_handle == GSS_C_NO_CREDENTIAL))) {
-                gss_cred_id_t user_cred_handle = GSS_C_NO_CREDENTIAL;
-                gss_OID mech;
-                OM_uint32 xmin;
-
                 /* did not got a proxy credential when accepting the
                  * the client context, so attempt an s4u2self
                  * with user-name to get one
@@ -778,6 +778,10 @@ krb5_session_reply(struct smb2_context *smb2,
                 smb2_set_error(smb2, "Apple has no way to proxy credentials");
                 return -1;
 #else
+                gss_cred_id_t user_cred_handle = GSS_C_NO_CREDENTIAL;
+                gss_OID mech;
+                OM_uint32 xmin;
+
                 gss_OID_set mechs = GSS_C_NO_OID_SET;
                 gss_OID_set_desc mechlist;
 
