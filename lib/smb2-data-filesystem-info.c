@@ -88,6 +88,7 @@ smb2_encode_file_fs_volume_info(struct smb2_context *smb2,
 {
         uint64_t t;
         struct smb2_utf16 *name;
+        int name_len;
 
         t = smb2_timeval_to_win(&fs->creation_time);
         smb2_set_uint64(vec,  0, t);
@@ -95,12 +96,12 @@ smb2_encode_file_fs_volume_info(struct smb2_context *smb2,
         smb2_set_uint8(vec,  16, fs->supports_objects);
         smb2_set_uint8(vec,  17, fs->reserved);
         name = smb2_utf8_to_utf16((char*)fs->volume_label);
-        smb2_set_uint32(vec, 12, 2 * name->len);
-        memcpy(&vec->buf[18], name->val, 2 * name->len);
-        vec->len += 2 * name->len;
+        name_len = 2 * name->len;
+        smb2_set_uint32(vec, 12, name_len);
+        memcpy(&vec->buf[18], name->val, name_len);
         free(name);
 
-        return 0;
+        return 18 + name_len;
 }
 
 int
@@ -135,7 +136,7 @@ smb2_encode_file_fs_size_info(struct smb2_context *smb2,
         smb2_set_uint32(vec, 16, fs->sectors_per_allocation_unit);
         smb2_set_uint32(vec, 20, fs->bytes_per_sector);
 
-        return 0;
+        return 24;
 }
 
 int
@@ -165,7 +166,7 @@ smb2_encode_file_fs_device_info(struct smb2_context *smb2,
 
         smb2_set_uint32(vec,  0, fs->device_type);
         smb2_set_uint32(vec,  4, fs->characteristics);
-        return 0;
+        return 8;
 }
 
 int
@@ -208,8 +209,9 @@ smb2_encode_file_fs_attribute_info(struct smb2_context *smb2,
                               struct smb2_iovec *vec)
 {
         struct smb2_utf16 *name;
+        int name_len;
 
-        if (vec->len < 20) {
+        if (vec->len < 12) {
                 return -1;
         }
 
@@ -217,11 +219,11 @@ smb2_encode_file_fs_attribute_info(struct smb2_context *smb2,
         smb2_set_uint32(vec,  4, fs->maximum_component_name_length);
 
         name = smb2_utf8_to_utf16((char*)fs->filesystem_name);
-        smb2_set_uint32(vec, 8, 2 * name->len);
-        memcpy(&vec->buf[12], name->val, 2 * name->len);
-        vec->len += 2 * name->len;
+        name_len = 2  * name->len;
+        smb2_set_uint32(vec, 8, name_len);
+        memcpy(&vec->buf[12], name->val, name_len);
         free(name);
-        return 0;
+        return 12 + name_len;
 }
 
 int
@@ -230,7 +232,7 @@ smb2_decode_file_fs_control_info(struct smb2_context *smb2,
                                  struct smb2_file_fs_control_info *fs,
                                  struct smb2_iovec *vec)
 {
-        if (vec->len < 48) {
+        if (vec->len < 44) {
                 return -1;
         }
 
@@ -241,7 +243,7 @@ smb2_decode_file_fs_control_info(struct smb2_context *smb2,
         smb2_get_uint64(vec, 32, &fs->default_quota_limit);
         smb2_get_uint32(vec, 40, &fs->file_system_control_flags);
 
-        return 0;
+        return 44;
 }
 
 int
@@ -260,7 +262,7 @@ smb2_encode_file_fs_control_info(struct smb2_context *smb2,
         smb2_set_uint64(vec, 32, fs->default_quota_limit);
         smb2_set_uint32(vec, 40, fs->file_system_control_flags);
 
-        return 0;
+        return 44;
 }
 
 int
@@ -297,7 +299,7 @@ smb2_encode_file_fs_full_size_info(struct smb2_context *smb2,
         smb2_set_uint32(vec, 24, fs->sectors_per_allocation_unit);
         smb2_set_uint32(vec, 28, fs->bytes_per_sector);
 
-        return 0;
+        return 32;
 }
 
 int
@@ -330,7 +332,7 @@ smb2_encode_file_fs_object_id_info(struct smb2_context *smb2,
         memcpy(&vec->buf[SMB2_GUID_SIZE], fs->extended_info,
                          sizeof(fs->extended_info));
 
-        return 0;
+        return SMB2_GUID_SIZE + sizeof(fs->extended_info);
 }
 
 int
@@ -377,6 +379,6 @@ smb2_encode_file_fs_sector_size_info(struct smb2_context *smb2,
         smb2_set_uint32(vec, 20, fs->byte_offset_for_sector_alignment);
         smb2_set_uint32(vec, 24, fs->byte_offset_for_partition_alignment);
 
-        return 0;
+        return 28;
 }
 
