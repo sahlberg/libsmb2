@@ -3060,10 +3060,10 @@ smb2_create_request_cb(struct smb2_server *server, struct smb2_context *smb2, vo
                 pdu = smb2_cmd_error_reply_async(smb2,
                                 &err, SMB2_CREATE, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
         }
-        if (req->name) {
-                smb2_free_data(smb2, discard_const(req->name));
-        }
         if (pdu) {
+                if (req->name) {
+                        smb2_free_data(smb2, discard_const(req->name));
+                }
                 smb2_queue_pdu(smb2, pdu);
         }
 }

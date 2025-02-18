@@ -611,10 +611,29 @@ smb2_correlate_reply(struct smb2_context *smb2, struct smb2_pdu *pdu)
                         pdu->header.sync.tree_id = req_pdu->header.sync.tree_id;
                 }
 
-                /* leave pdu in waitqueue if this is an async reply */
-                if (!(pdu->header.flags & SMB2_FLAGS_ASYNC_COMMAND)) {
-                        SMB2_LIST_REMOVE(&smb2->waitqueue, req_pdu);
-                        smb2_free_pdu(smb2, req_pdu);
+                /* remove the request from the waitqueue when we get its reply
+                 * unless this is an async status-pending reply
+                */
+                if ((pdu->header.flags & SMB2_FLAGS_ASYNC_COMMAND) &&
+                               (pdu->header.status == SMB2_STATUS_PENDING)) {
+                        /* the real reply will be queued later so we leave the request
+                         * in the list to be correlated with that. we will also mark the
+                         * request as async as well so when the real reply gets here
+                         * we will know to set the async-id and flag
+                         */
+                        pdu->header.async.async_id = ++smb2->async_id;
+                        req_pdu->header.async.async_id = pdu->header.async.async_id;
+                        req_pdu->header.flags |= SMB2_FLAGS_ASYNC_COMMAND;
+               } else {
+                       /* if this is the real-reply to an async operation, also
+                        * set the async flag and id (MS-SMB2 3.2.5.1.5)
+                        */
+                       if (req_pdu->header.flags & SMB2_FLAGS_ASYNC_COMMAND) {
+                               pdu->header.flags |= SMB2_FLAGS_ASYNC_COMMAND;
+                               pdu->header.async.async_id = req_pdu->header.async.async_id;
+                       }
+                       SMB2_LIST_REMOVE(&smb2->waitqueue, req_pdu);
+                       smb2_free_pdu(smb2, req_pdu);
                 }
         }
         return ret;

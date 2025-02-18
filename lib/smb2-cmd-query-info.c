@@ -304,6 +304,7 @@ smb2_encode_query_info_reply(struct smb2_context *smb2,
                                 smb2_set_error(smb2, "No encoding for info_type/"
                                         "info_class %d/%d yet",
                                         req->info_type, req->file_info_class);
+                                iov->len = 0;
                         }
                 } else {
                         if (created_output_buffer_length > req->output_buffer_length) {

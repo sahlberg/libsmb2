@@ -153,10 +153,11 @@ smb2_decode_file_stream_info(struct smb2_context *smb2,
 {
         int offset = 0;
         uint32_t our_offset = 0;
+        uint32_t next_offset;
         const char *name;
 
         do {
-                smb2_get_uint32(vec, offset + 0, &fs->next_entry_offset);
+                smb2_get_uint32(vec, offset + 0, &next_offset);
                 smb2_get_uint32(vec, offset + 4, &fs->stream_name_length);
                 smb2_get_uint64(vec, offset + 8, &fs->stream_size);
                 smb2_get_uint64(vec, offset + 16, &fs->stream_allocation_size);
@@ -179,20 +180,19 @@ smb2_decode_file_stream_info(struct smb2_context *smb2,
                         fs->stream_name = NULL;
                 }
 
-                if (!fs->next_entry_offset) {
-                        break;
+                if (next_offset) {
+                        offset += next_offset;
+
+                        /* note - since name is now a separate alloc, our offset is just
+                         * sizeof struct alone, so update our struct
+                         */
+                        our_offset += sizeof(struct smb2_file_stream_info);
+                        fs->next_entry_offset = our_offset;
+                } else {
+                        fs->next_entry_offset = 0;
                 }
-
-                offset += fs->next_entry_offset;
-
-                /* note - since name is now a separate alloc, our offset is just
-                 * sizeof struct alone, so update our struct
-                 */
-                our_offset += sizeof(struct smb2_file_stream_info);
-                fs->next_entry_offset = our_offset;
-
                 fs++;
-        } while (fs->next_entry_offset && ((offset + 24) <= vec->len));
+        } while (next_offset && ((offset + 24) <= vec->len));
 
         return 0;
 }
@@ -203,6 +203,7 @@ smb2_encode_file_stream_info(struct smb2_context *smb2,
                              struct smb2_iovec *vec)
 {
         uint32_t offset = 0;
+        uint32_t padded_offset;
         uint32_t fslen;
         struct smb2_utf16 *name = NULL;
         int name_len = 0;
@@ -229,15 +230,21 @@ smb2_encode_file_stream_info(struct smb2_context *smb2,
                 fslen = 24 + name_len;
 
                 if (fs->next_entry_offset) {
-                        smb2_set_uint32(vec, offset + 0, offset + fslen);
+                        padded_offset = PAD_TO_64BIT(offset + fslen);
+                        smb2_set_uint32(vec, offset + 0, padded_offset);
                         offset += fslen;
+                        while (offset < padded_offset) {
+                                smb2_set_uint8(vec, offset, 0);
+                                offset++;
+                        }
                         fs++;
                 } else {
+                        padded_offset =  0;
                         smb2_set_uint32(vec, offset + 0, 0);
                         offset += fslen;
                         break;
                 }
-        } while ((offset + 24) <= vec->len);
+        } while (padded_offset && ((offset + 24) <= vec->len));
 
         return (int)offset;
 }

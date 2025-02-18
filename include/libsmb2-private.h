@@ -174,6 +174,7 @@ struct smb2_context {
         int  tree_id_cur;
         uint64_t message_id;
         uint64_t session_id;
+        uint64_t async_id;
         uint8_t *session_key;
         uint8_t session_key_size;
 
