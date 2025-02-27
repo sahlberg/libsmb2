@@ -515,7 +515,8 @@ read_more_data:
                         }
                 }
                 else {
-                        if (smb2->hdr.command != SMB2_OPLOCK_BREAK) {
+                        if ((smb2->hdr.command != SMB2_OPLOCK_BREAK) ||
+                                        (smb2->hdr.message_id != 0xffffffffffffffffULL)) {
                                 if (smb2->pdu) {
                                         smb2_free_pdu(smb2, smb2->pdu);
                                         smb2->pdu = NULL;
@@ -527,7 +528,9 @@ read_more_data:
                                 }
                                 SMB2_LIST_REMOVE(&smb2->waitqueue, pdu);
                         } else {
-                                /* oplock and lease break notifications won't have a pdu */
+                                /* oplock and lease break notifications won't have a pdu so make one
+                                 * oplock replies (that are NOT notifications, i.e. have a valid message_id)
+                                 * are normal replies handled above */
                                 pdu = smb2->pdu;
                                 if (!pdu) {
                                         pdu = smb2->pdu = smb2_allocate_pdu(smb2, SMB2_OPLOCK_BREAK,
