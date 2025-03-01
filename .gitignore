@@ -24,6 +24,11 @@ config.log
 config.status
 config.sub
 configure
+config.guess~
+config.sub~
+configure~
+install-sh~
+
 depcomp
 install-sh
 m4/

@@ -598,8 +598,23 @@ smb2_correlate_reply(struct smb2_context *smb2, struct smb2_pdu *pdu)
                         pdu->header.session_id = 0;
                 }
         }  else {
-                pdu->header.credit_request_response =
-                                        64 + req_pdu->header.credit_charge;
+                uint16_t credit_grant = req_pdu->header.credit_request_response;
+
+                /* some clients (lookin at you nautilus) break if their credits
+                 * increment too far (and probably wrap to 0) so limit credits
+                 * to what the client requests only and if the clients charge
+                 * is greater than ours, charge the larger amount so they cant
+                 * accumulate on the client
+                 */
+                if (credit_grant > 0xf000) {
+                        pdu->header.credit_request_response = 0xffff;
+                } else {
+                        pdu->header.credit_request_response = credit_grant;
+                }
+
+                if (req_pdu->header.credit_charge > pdu->header.credit_charge) {
+                        pdu->header.credit_charge = req_pdu->header.credit_charge;
+                }
 
                 /* replies always have to have the same message-id and tree-id as
                  * the request we sent, so use the request from the wait queue

@@ -102,7 +102,7 @@ smb2_encode_lock_request(struct smb2_context *smb2,
                 }
                 iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
 
-                for (i = 0, offset = 0; i < req->lock_count; i++) {
+                for (i = 0, offset = 0; i < req->lock_count - 1; i++) {
                         smb2_set_uint64(iov, offset, elements->offset);
                         smb2_set_uint64(iov, offset + 8, elements->length);
                         smb2_set_uint32(iov, offset + 16, elements->flags);
