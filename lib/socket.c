@@ -302,14 +302,15 @@ smb2_write_to_socket(struct smb2_context *smb2)
                                  * PDUs as individual PDUs.
                                  */
                                 pdu->next_compound = NULL;
-                                smb2->credits -= pdu->header.credit_charge;
 
                                 if (!smb2_is_server(smb2)) {
+                                        smb2->credits -= pdu->header.credit_charge;
                                         /* queue requests we send to correlate replies with */
                                         SMB2_LIST_ADD_END(&smb2->waitqueue, pdu);
                                 }
                                 else {
-                                        smb2->credits += pdu->header.credit_request_response;
+                                        /* alway allow writing replies */
+                                        smb2->credits = 128;
                                         /* no longer need this reply we've sent */
                                         smb2_free_pdu(smb2, pdu);
                                 }
@@ -513,6 +514,8 @@ read_more_data:
                         if (pdu->header.command > SMB2_SESSION_SETUP) {
                                 pdu->header.command = smb2->hdr.command;
                         }
+                        pdu->header.credit_charge = smb2->hdr.credit_charge;
+                        pdu->header.credit_request_response = smb2->hdr.credit_request_response;
                 }
                 else {
                         if ((smb2->hdr.command != SMB2_OPLOCK_BREAK) ||
