@@ -565,31 +565,18 @@ smb2_add_to_outqueue(struct smb2_context *smb2, struct smb2_pdu *pdu)
         smb2_change_events(smb2, smb2->fd, smb2_which_events(smb2));
 }
 
-struct smb2_pdu *
-smb2_find_pdu_by_command(struct smb2_context *smb2,
-              uint32_t command) {
-        struct smb2_pdu *pdu;
-
-        for (pdu = smb2->waitqueue; pdu; pdu = pdu->next) {
-                if (pdu->header.command == command) {
-                        break;
-                }
-        }
-        return pdu;
-}
-
 static int
 smb2_correlate_reply(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
         struct smb2_pdu *req_pdu;
         int ret = 0;
 
-        req_pdu = smb2_find_pdu_by_command(smb2, pdu->header.command);
+        req_pdu = smb2_find_pdu(smb2, pdu->header.message_id);
         if (req_pdu == NULL) {
                 if (pdu->header.command != SMB2_OPLOCK_BREAK) {
                         smb2_set_error(smb2, "no matching request PDU "
-                                       "found for reply to cmd %d",
-                                        pdu->header.command);
+                                       "found for reply to cmd %d id %llu",
+                                        pdu->header.command, pdu->header.message_id);
                         return -1;
                 } else {
                         /* sending an unsolicited break */
@@ -598,13 +585,28 @@ smb2_correlate_reply(struct smb2_context *smb2, struct smb2_pdu *pdu)
                         pdu->header.session_id = 0;
                 }
         }  else {
-                pdu->header.credit_request_response =
-                                        64 + req_pdu->header.credit_charge;
+                uint16_t credit_grant = req_pdu->header.credit_request_response;
+
+                /* some clients (lookin at you nautilus) break if their credits
+                 * increment too far (and probably wrap to 0) so limit credits
+                 * to what the client requests only and if the clients charge
+                 * is greater than ours, charge the larger amount so they cant
+                 * accumulate on the client
+                 */
+                if (credit_grant > 0xf000) {
+                        pdu->header.credit_request_response = 0xffff;
+                } else {
+                        pdu->header.credit_request_response = credit_grant;
+                }
+
+                if (req_pdu->header.credit_charge > pdu->header.credit_charge) {
+                        pdu->header.credit_charge = req_pdu->header.credit_charge;
+                }
 
                 /* replies always have to have the same message-id and tree-id as
                  * the request we sent, so use the request from the wait queue
                  * to make sure that is the case. (exception is tree-connect where
-                 * the reply has the new tree-id and request was 0 )
+                 * the reply has the new tree-id and request was 0)
                  */
                 pdu->header.message_id = req_pdu->header.message_id;
                 if (pdu->header.command != SMB2_TREE_CONNECT) {
@@ -654,6 +656,14 @@ smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
                         if (pdu->header.status == SMB2_STATUS_PENDING) {
                                 pdu->header.flags |= SMB2_FLAGS_ASYNC_COMMAND;
                         }
+
+                        /* if server handler didnt set message id (which it can if
+                         * it replies out of order for example) use the id from
+                         * the request */
+                        if (!pdu->header.message_id) {
+                                pdu->header.message_id = smb2->hdr.message_id;
+                        }
+
                         smb2_correlate_reply(smb2, p);
                         /* TODO - care about check reply failures? */
                 }
@@ -677,6 +687,18 @@ void
 smb2_set_pdu_status(struct smb2_context *smb2, struct smb2_pdu *pdu, int status)
 {
         pdu->header.status = status;
+}
+
+void
+smb2_set_pdu_message_id(struct smb2_context *smb2, struct smb2_pdu *pdu, uint64_t message_id)
+{
+        pdu->header.message_id = message_id;
+}
+
+uint64_t
+smb2_get_pdu_message_id(struct smb2_context *smb2, struct smb2_pdu *pdu)
+{
+        return pdu->header.message_id;
 }
 
 struct smb2_pdu *

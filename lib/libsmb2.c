@@ -4128,7 +4128,7 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
                                 }
                                 if (!SMB2_VALID_SOCKET(smb2->fd) && ((time(NULL) - now) > (smb2->timeout)))
                                 {
-                                        smb2_set_error(smb2, "Timeout expired and no connection exists\n");
+                                        smb2_set_error(smb2, "Timeout expired and no connection exists");
                                         smb2_close_context(smb2);
                                 }
                                 if (smb2->timeout) {
@@ -4159,6 +4159,7 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
                                         smb2->max_transact_size = server->max_transact_size;
                                         smb2->max_read_size     = server->max_read_size;
                                         smb2->max_write_size    = server->max_write_size;
+
                                         if (cb) {
                                                 cb(smb2, cb_data);
                                         }
@@ -4168,7 +4169,9 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
                                 }
                         }
 
-                        /* cull connection-less clients here, one per iteration (since active list changes on destroy)*/
+                        /* cull connection-less servers here (servers who's client has disconnected)
+                         * do only one per iteration since active list changes on destroy
+                         */
                         for (smb2 = smb2_active_contexts(); smb2; smb2 = smb2->next) {
                                 if (smb2_is_server(smb2)) {
                                         if (!SMB2_VALID_SOCKET(smb2_get_fd(smb2))) {
