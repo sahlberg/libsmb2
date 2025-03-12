@@ -698,7 +698,12 @@ smb2_set_pdu_message_id(struct smb2_context *smb2, struct smb2_pdu *pdu, uint64_
 uint64_t
 smb2_get_pdu_message_id(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
-        return pdu->header.message_id;
+        if (pdu) {
+                return pdu->header.message_id;
+        } else if (smb2) {
+                return smb2->hdr.message_id;
+        }
+        return 0;
 }
 
 struct smb2_pdu *
