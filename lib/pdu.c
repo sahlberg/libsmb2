@@ -657,11 +657,13 @@ smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
                                 pdu->header.flags |= SMB2_FLAGS_ASYNC_COMMAND;
                         }
 
-                        /* if server handler didnt set message id (which it can if
-                         * it replies out of order for example) use the id from
-                         * the request */
-                        if (!pdu->header.message_id) {
-                                pdu->header.message_id = smb2->hdr.message_id;
+                        /* the server handler functions must set message id unless this
+                         * is a negotiate request, in which case it should be 0
+                         */
+                        if (!pdu->header.message_id && pdu->header.command != SMB2_NEGOTIATE) {
+                                smb2_set_error(smb2, "Queued pdu has no message id");
+                                smb2_free_pdu(smb2, pdu);
+                                return;
                         }
 
                         smb2_correlate_reply(smb2, p);
@@ -701,7 +703,7 @@ smb2_get_pdu_message_id(struct smb2_context *smb2, struct smb2_pdu *pdu)
         if (pdu) {
                 return pdu->header.message_id;
         } else if (smb2) {
-                return smb2->hdr.message_id;
+                return smb2->message_id;
         }
         return 0;
 }

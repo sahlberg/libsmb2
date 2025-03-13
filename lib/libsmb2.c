@@ -2983,6 +2983,7 @@ smb2_logoff_request_cb(struct smb2_server *server, struct smb2_context *smb2, vo
                                 &err, SMB2_LOGOFF, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
         }
         if (pdu != NULL) {
+                smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
                 smb2_queue_pdu(smb2, pdu);
         }
 }
@@ -3009,6 +3010,7 @@ smb2_tree_connect_request_cb(struct smb2_server *server, struct smb2_context *sm
                                 &err, SMB2_TREE_CONNECT, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
         }
         if (pdu != NULL) {
+                smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
                 smb2_queue_pdu(smb2, pdu);
         }
 }
@@ -3033,6 +3035,7 @@ smb2_tree_disconnect_request_cb(struct smb2_server *server, struct smb2_context 
                                 &err, SMB2_TREE_DISCONNECT, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
         }
         if (pdu != NULL) {
+                smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
                 smb2_queue_pdu(smb2, pdu);
         }
 
@@ -3064,6 +3067,7 @@ smb2_create_request_cb(struct smb2_server *server, struct smb2_context *smb2, vo
                 if (req->name) {
                         smb2_free_data(smb2, discard_const(req->name));
                 }
+                smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
                 smb2_queue_pdu(smb2, pdu);
         }
 }
@@ -3090,6 +3094,7 @@ smb2_close_request_cb(struct smb2_server *server, struct smb2_context *smb2, voi
                                 &err, SMB2_CLOSE, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
         }
         if (pdu != NULL) {
+                smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
                 smb2_queue_pdu(smb2, pdu);
         }
 }
@@ -3114,6 +3119,7 @@ smb2_flush_request_cb(struct smb2_server *server, struct smb2_context *smb2, voi
                                 &err, SMB2_FLUSH, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
         }
         if (pdu != NULL) {
+                smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
                 smb2_queue_pdu(smb2, pdu);
         }
 }
@@ -3140,6 +3146,7 @@ smb2_read_request_cb(struct smb2_server *server, struct smb2_context *smb2, void
                                 &err, SMB2_READ, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
         }
         if (pdu != NULL) {
+                smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
                 smb2_queue_pdu(smb2, pdu);
         }
 }
@@ -3166,6 +3173,7 @@ smb2_write_request_cb(struct smb2_server *server, struct smb2_context *smb2, voi
                                 &err, SMB2_WRITE, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
         }
         if (pdu != NULL) {
+                smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
                 smb2_queue_pdu(smb2, pdu);
         }
 }
@@ -3209,6 +3217,7 @@ smb2_oplock_break_request_cb(struct smb2_server *server, struct smb2_context *sm
                                 &err, SMB2_LOCK, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
         }
         if (pdu != NULL) {
+                smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
                 smb2_queue_pdu(smb2, pdu);
         }
 }
@@ -3233,6 +3242,7 @@ smb2_lock_request_cb(struct smb2_server *server, struct smb2_context *smb2, void
                                 &err, SMB2_LOCK, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
         }
         if (pdu != NULL) {
+                smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
                 smb2_queue_pdu(smb2, pdu);
         }
 }
@@ -3279,6 +3289,7 @@ smb2_ioctl_request_cb(struct smb2_server *server, struct smb2_context *smb2, voi
                 }
         }
         if (pdu != NULL) {
+                smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
                 smb2_queue_pdu(smb2, pdu);
         }
 }
@@ -3299,6 +3310,7 @@ smb2_cancel_request_cb(struct smb2_server *server, struct smb2_context *smb2, vo
                                 &err, SMB2_CANCEL, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
         }
         if (pdu != NULL) {
+                smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
                 smb2_queue_pdu(smb2, pdu);
         }
 }
@@ -3322,6 +3334,7 @@ smb2_echo_request_cb(struct smb2_server *server, struct smb2_context *smb2, void
                                 &err, SMB2_ECHO, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
         }
         if (pdu != NULL) {
+                smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
                 smb2_queue_pdu(smb2, pdu);
         }
 }
@@ -3362,6 +3375,7 @@ smb2_query_directory_request_cb(struct smb2_server *server, struct smb2_context 
                 smb2_free_data(smb2, discard_const(req->name));
         }
         if (pdu != NULL) {
+                smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
                 smb2_queue_pdu(smb2, pdu);
         }
 }
@@ -3389,6 +3403,7 @@ smb2_change_notify_request_cb(struct smb2_server *server, struct smb2_context *s
                 pdu = smb2_cmd_change_notify_reply_async(smb2, &rep, NULL, cb_data);
         }
         if (pdu != NULL) {
+                smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
                 smb2_queue_pdu(smb2, pdu);
         }
 }
@@ -3426,6 +3441,7 @@ smb2_query_info_request_cb(struct smb2_server *server, struct smb2_context *smb2
                 }
         }
         if (pdu != NULL) {
+                smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
                 smb2_queue_pdu(smb2, pdu);
         }
 }
@@ -3451,6 +3467,7 @@ smb2_set_info_request_cb(struct smb2_server *server, struct smb2_context *smb2, 
                 pdu = smb2_cmd_set_info_reply_async(smb2, req, NULL, cb_data);
         }
         if (pdu != NULL) {
+                smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
                 smb2_queue_pdu(smb2, pdu);
         }
 }
@@ -3767,6 +3784,8 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                 smb2_close_context(smb2);
                 return;
         }
+
+        smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
         smb2_queue_pdu(smb2, pdu);
         smb3_update_preauth_hash(smb2, pdu->out.niov, &pdu->out.iov[0]);
 }
@@ -3794,6 +3813,9 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
                 /* context is being destroyed */
                 return;
         }
+
+        /* assume we can always reply */
+        smb2->credits = 128;
 
         /* negotiate highest version in request dialects */
         switch (smb2->version) {
@@ -3841,6 +3863,7 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
                         if (pdu == NULL) {
                                 return;
                         }
+                        smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
                         smb2_queue_pdu(smb2, pdu);
                         return;
                 }
@@ -3968,6 +3991,7 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
                 return;
         }
 
+        smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
         smb2_queue_pdu(smb2, pdu);
         smb3_update_preauth_hash(smb2, pdu->out.niov, &pdu->out.iov[0]);
 
