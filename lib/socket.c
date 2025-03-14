@@ -508,10 +508,10 @@ read_more_data:
                                 pdu->header.sync.tree_id = smb2->hdr.sync.tree_id;
                         }
                         /* if the session is properly opened then we could get
-                         * any request from the client, so use the headers command
-                         * not the pdus command for the rest of input
+                         * any request from the client, so use the header's command
+                         * not the pdu's command for the rest of input
                          */
-                        if (pdu->header.command > SMB2_SESSION_SETUP) {
+                        if (smb2->hdr.command > SMB2_SESSION_SETUP) {
                                 pdu->header.command = smb2->hdr.command;
                         }
                         pdu->header.credit_charge = smb2->hdr.credit_charge;
