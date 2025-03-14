@@ -545,12 +545,12 @@ smb2_decode_header(struct smb2_context *smb2, struct smb2_iovec *iov,
                                 smb2_select_tree_id(smb2, hdr->sync.tree_id);
                                 break;
                         }
-
-                        if (smb2_is_server(smb2)) {
-                                /* remember message id to format reply */
-                                smb2->message_id = hdr->message_id;
-                        }
                 }
+        }
+        if (smb2_is_server(smb2)) {
+                /* remember message id to format a reply for this
+                 * request (or ack this notification) */
+                smb2->message_id = hdr->message_id;
         }
         smb2_get_uint64(iov, 40, &hdr->session_id);
         memcpy(&hdr->signature, iov->buf + 48, 16);
