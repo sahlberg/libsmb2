@@ -102,6 +102,7 @@
 #include "libsmb2.h"
 #include "libsmb2-raw.h"
 #include "libsmb2-private.h"
+#include "smb2-signing.h"
 #include "portable-endian.h"
 #include "ntlmssp.h"
 
@@ -3480,6 +3481,8 @@ smb2_general_client_request_cb(struct smb2_context *smb2, int status, void *comm
 {
         struct connect_data *c_data = cb_data;
         struct smb2_server *server = c_data->server_context;
+        enum smb2_command next_cmd = SMB2_TREE_CONNECT;
+        smb2_command_cb next_cb = smb2_general_client_request_cb;
 
         if (!smb2->pdu) {
                 smb2_set_error(smb2, "No pdu for general client request");
@@ -3491,16 +3494,18 @@ smb2_general_client_request_cb(struct smb2_context *smb2, int status, void *comm
         }
 
         switch (smb2->pdu->header.command) {
+        case SMB2_SESSION_SETUP:
+                printf("New session IN session\n");
+                smb2_session_setup_request_cb(smb2, status, command_data, cb_data);
+                /* session setup cb allocs next_pdu itself */
+                next_cb = NULL;
+                break;
         case SMB2_LOGOFF:
                 smb2_logoff_request_cb(server, smb2, command_data, cb_data);
-                /* alloc a pdu for next session setup request */
-                smb2->next_pdu = smb2_allocate_pdu(smb2, SMB2_TREE_CONNECT, smb2_session_setup_request_cb, cb_data);
-                if (!smb2->next_pdu) {
-                        smb2_set_error(smb2, "can not alloc pdu for authorization session setup request");
-                        smb2_close_context(smb2);
-                }
-                /* note special case */
-                return;
+                /* prep for a new session setup req */
+                next_cmd = SMB2_SESSION_SETUP;
+                next_cb = smb2_session_setup_request_cb;
+                break;
         case SMB2_TREE_CONNECT:
                 smb2_tree_connect_request_cb(server, smb2, command_data, cb_data);
                 break;
@@ -3555,16 +3560,18 @@ smb2_general_client_request_cb(struct smb2_context *smb2, int status, void *comm
                 break;
         }
 
-        /* alloc a pdu for next request. note that we dont really expect a tree connect, its just to
-         * allow pdu reading to know to allow for any command above negotiate and session-setup */
-        smb2->next_pdu = smb2_allocate_pdu(smb2, SMB2_TREE_CONNECT, smb2_general_client_request_cb, cb_data);
-        if (!smb2->next_pdu) {
-                smb2_set_error(smb2, "can not alloc pdu for authorization session setup request");
-                smb2_close_context(smb2);
+        if (next_cb) {
+                /* alloc a pdu for next request. note that we dont really expect a tree connect, its just to
+                 * allow pdu reading to know to allow for any command above negotiate and session-setup
+                 */
+                smb2->next_pdu = smb2_allocate_pdu(smb2, next_cmd, next_cb, cb_data);
+                if (!smb2->next_pdu) {
+                        smb2_set_error(smb2, "can not alloc pdu for authorization session setup request");
+                        smb2_close_context(smb2);
+                }
         }
 }
 
-#include "smb2-signing.h"
 static void
 smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
 {
