@@ -3932,9 +3932,9 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
                 }
 
                 if (smb2->sign &&
-                    !(req->security_mode & SMB2_NEGOTIATE_SIGNING_ENABLED)) {
+                    !(req->security_mode & SMB2_NEGOTIATE_SIGNING_REQUIRED)) {
                         smb2_set_error(smb2, "Signing required but client "
-                                       "does not support signing.");
+                                       "does not require signing.");
                         smb2_close_context(smb2);
                         return;
                 }
@@ -3946,14 +3946,12 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
                 if (!server->allow_anonymous ||
                                 (smb2->password && smb2->password[0])) {
                         if (server->signing_enabled) {
-                                if (req->security_mode & SMB2_NEGOTIATE_SIGNING_ENABLED &&
-                                                smb2->dialect == SMB2_VERSION_0210) {
+                                if (smb2->dialect == SMB2_VERSION_0210) {
                                         /* smb2.1 requires signing if enabled on both sides
                                          * regardless of what the flags say */
                                         smb2->sign = 1;
                                 }
-                                if (req->security_mode & SMB2_NEGOTIATE_SIGNING_ENABLED &&
-                                                smb2->dialect >= SMB2_VERSION_0311) {
+                                if (smb2->dialect >= SMB2_VERSION_0311) {
                                         /* smb3.1.1 requires signing if enabled on both sides
                                          * regardless of what the flags say */
                                         smb2->sign = 1;
