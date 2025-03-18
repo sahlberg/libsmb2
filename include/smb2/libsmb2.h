@@ -398,7 +398,7 @@ void smb2_win_to_timeval(uint64_t smb2_time, struct smb2_timeval *tv);
 /*
  * Convert unit timeval to a win timestamp
  */
-time_t smb2_timeval_to_win(struct smb2_timeval *tv);
+uint64_t smb2_timeval_to_win(struct smb2_timeval *tv);
 
 /*
  * set the context error string

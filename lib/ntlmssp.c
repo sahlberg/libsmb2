@@ -102,7 +102,7 @@ struct auth_data {
 
         int spnego_wrap;
         int is_authenticated;
-        time_t wintime;
+        uint64_t wintime;
         uint8_t exported_session_key[SMB2_KEY_SIZE];
 };
 
@@ -615,7 +615,7 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
         unsigned int NTChallengeResponse_len = 0;
         unsigned char NTProofStr[16];
         unsigned char LMStr[16];
-        time_t t;
+        uint64_t t;
         struct smb2_timeval tv _U_;
         char *server_name_buf;
         uint32_t server_name_len;
