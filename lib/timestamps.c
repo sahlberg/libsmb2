@@ -55,10 +55,10 @@
 #include <libsmb2.h>
 #include "libsmb2-private.h"
 
-time_t
+uint64_t
 smb2_timeval_to_win(struct smb2_timeval *tv)
 {
-        return (tv->tv_sec * 10000000) +
+        return ((uint64_t)tv->tv_sec * 10000000) +
                 116444736000000000 + tv->tv_usec * 10;
 }
 
