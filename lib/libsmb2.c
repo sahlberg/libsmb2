@@ -3811,6 +3811,7 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
         int d;
         int dialect_index;
         struct smb2_timeval now;
+        int will_sign = 0;
 
         memset(&rep, 0, sizeof(rep));
         memset(&err, 0, sizeof(err));
@@ -3932,26 +3933,34 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
                 }
 
                 if (req->security_mode & SMB2_NEGOTIATE_SIGNING_REQUIRED) {
-                        smb2->sign = 1;
+                        will_sign = 1;
                 }
 
                 if (!server->allow_anonymous ||
                                 (smb2->password && smb2->password[0])) {
-                        if (server->signing_enabled) {
-                                if (smb2->dialect == SMB2_VERSION_0210) {
-                                        /* smb2.1 requires signing if enabled on both sides
-                                         * regardless of what the flags say */
-                                        smb2->sign = 1;
-                                }
-                                if (smb2->dialect >= SMB2_VERSION_0311) {
-                                        /* smb3.1.1 requires signing if enabled on both sides
-                                         * regardless of what the flags say */
-                                        smb2->sign = 1;
-                                }
+                        if (smb2->dialect == SMB2_VERSION_0210) {
+                                /* smb2.1 requires signing if enabled on both sides
+                                 * regardless of what the flags say */
+                                will_sign = 1;
+                        }
+                        if (smb2->dialect >= SMB2_VERSION_0311) {
+                                /* smb3.1.1 requires signing if enabled on both sides
+                                 * regardless of what the flags say */
+                                will_sign = 1;
                         }
                 }
+
                 if (smb2->seal) {
                         smb2->sign = 0;
+                } else if (will_sign) {
+                        if (server->signing_enabled) {
+                                smb2->sign = 1;
+                        } else {
+                                smb2_set_error(smb2, "Signing required but server "
+                                               "does not have signing enabled.");
+                                smb2_close_context(smb2);
+                                return;
+                        }
                 }
         }
 
