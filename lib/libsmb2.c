@@ -3897,7 +3897,7 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
                 smb2_set_client_guid(smb2, req->client_guid);
         }
         else {
-                /* sn smb1-negotiate, list all dialects */
+                /* an smb1-negotiate, list all dialects */
                 smb2->dialect = SMB2_VERSION_WILDCARD;
         }
 
@@ -3929,14 +3929,6 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
                                 smb2_close_context(smb2);
                                 return;
                         }
-                }
-
-                if (smb2->sign &&
-                    !(req->security_mode & SMB2_NEGOTIATE_SIGNING_REQUIRED)) {
-                        smb2_set_error(smb2, "Signing required but client "
-                                       "does not require signing.");
-                        smb2_close_context(smb2);
-                        return;
                 }
 
                 if (req->security_mode & SMB2_NEGOTIATE_SIGNING_REQUIRED) {
