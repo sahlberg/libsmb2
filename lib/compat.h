@@ -604,6 +604,10 @@ struct sockaddr_storage {
 #define ENODATA ENOATTR
 #endif
 
+#ifndef ENOLINK
+#define ENOLINK ENOATTR
+#endif
+
 #endif /* PS4_PLATFORM */
 
 #ifdef __vita__
