@@ -102,6 +102,7 @@
 #include "libsmb2.h"
 #include "libsmb2-raw.h"
 #include "libsmb2-private.h"
+#include "smb2-signing.h"
 #include "portable-endian.h"
 #include "ntlmssp.h"
 
@@ -2983,6 +2984,7 @@ smb2_logoff_request_cb(struct smb2_server *server, struct smb2_context *smb2, vo
                                 &err, SMB2_LOGOFF, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
         }
         if (pdu != NULL) {
+                smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
                 smb2_queue_pdu(smb2, pdu);
         }
 }
@@ -3009,6 +3011,7 @@ smb2_tree_connect_request_cb(struct smb2_server *server, struct smb2_context *sm
                                 &err, SMB2_TREE_CONNECT, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
         }
         if (pdu != NULL) {
+                smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
                 smb2_queue_pdu(smb2, pdu);
         }
 }
@@ -3033,6 +3036,7 @@ smb2_tree_disconnect_request_cb(struct smb2_server *server, struct smb2_context 
                                 &err, SMB2_TREE_DISCONNECT, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
         }
         if (pdu != NULL) {
+                smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
                 smb2_queue_pdu(smb2, pdu);
         }
 
@@ -3064,6 +3068,7 @@ smb2_create_request_cb(struct smb2_server *server, struct smb2_context *smb2, vo
                 if (req->name) {
                         smb2_free_data(smb2, discard_const(req->name));
                 }
+                smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
                 smb2_queue_pdu(smb2, pdu);
         }
 }
@@ -3090,6 +3095,7 @@ smb2_close_request_cb(struct smb2_server *server, struct smb2_context *smb2, voi
                                 &err, SMB2_CLOSE, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
         }
         if (pdu != NULL) {
+                smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
                 smb2_queue_pdu(smb2, pdu);
         }
 }
@@ -3114,6 +3120,7 @@ smb2_flush_request_cb(struct smb2_server *server, struct smb2_context *smb2, voi
                                 &err, SMB2_FLUSH, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
         }
         if (pdu != NULL) {
+                smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
                 smb2_queue_pdu(smb2, pdu);
         }
 }
@@ -3140,6 +3147,7 @@ smb2_read_request_cb(struct smb2_server *server, struct smb2_context *smb2, void
                                 &err, SMB2_READ, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
         }
         if (pdu != NULL) {
+                smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
                 smb2_queue_pdu(smb2, pdu);
         }
 }
@@ -3166,6 +3174,7 @@ smb2_write_request_cb(struct smb2_server *server, struct smb2_context *smb2, voi
                                 &err, SMB2_WRITE, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
         }
         if (pdu != NULL) {
+                smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
                 smb2_queue_pdu(smb2, pdu);
         }
 }
@@ -3209,6 +3218,7 @@ smb2_oplock_break_request_cb(struct smb2_server *server, struct smb2_context *sm
                                 &err, SMB2_LOCK, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
         }
         if (pdu != NULL) {
+                smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
                 smb2_queue_pdu(smb2, pdu);
         }
 }
@@ -3233,6 +3243,7 @@ smb2_lock_request_cb(struct smb2_server *server, struct smb2_context *smb2, void
                                 &err, SMB2_LOCK, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
         }
         if (pdu != NULL) {
+                smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
                 smb2_queue_pdu(smb2, pdu);
         }
 }
@@ -3279,6 +3290,7 @@ smb2_ioctl_request_cb(struct smb2_server *server, struct smb2_context *smb2, voi
                 }
         }
         if (pdu != NULL) {
+                smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
                 smb2_queue_pdu(smb2, pdu);
         }
 }
@@ -3299,6 +3311,7 @@ smb2_cancel_request_cb(struct smb2_server *server, struct smb2_context *smb2, vo
                                 &err, SMB2_CANCEL, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
         }
         if (pdu != NULL) {
+                smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
                 smb2_queue_pdu(smb2, pdu);
         }
 }
@@ -3322,6 +3335,7 @@ smb2_echo_request_cb(struct smb2_server *server, struct smb2_context *smb2, void
                                 &err, SMB2_ECHO, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
         }
         if (pdu != NULL) {
+                smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
                 smb2_queue_pdu(smb2, pdu);
         }
 }
@@ -3362,6 +3376,7 @@ smb2_query_directory_request_cb(struct smb2_server *server, struct smb2_context 
                 smb2_free_data(smb2, discard_const(req->name));
         }
         if (pdu != NULL) {
+                smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
                 smb2_queue_pdu(smb2, pdu);
         }
 }
@@ -3389,6 +3404,7 @@ smb2_change_notify_request_cb(struct smb2_server *server, struct smb2_context *s
                 pdu = smb2_cmd_change_notify_reply_async(smb2, &rep, NULL, cb_data);
         }
         if (pdu != NULL) {
+                smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
                 smb2_queue_pdu(smb2, pdu);
         }
 }
@@ -3426,6 +3442,7 @@ smb2_query_info_request_cb(struct smb2_server *server, struct smb2_context *smb2
                 }
         }
         if (pdu != NULL) {
+                smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
                 smb2_queue_pdu(smb2, pdu);
         }
 }
@@ -3451,6 +3468,7 @@ smb2_set_info_request_cb(struct smb2_server *server, struct smb2_context *smb2, 
                 pdu = smb2_cmd_set_info_reply_async(smb2, req, NULL, cb_data);
         }
         if (pdu != NULL) {
+                smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
                 smb2_queue_pdu(smb2, pdu);
         }
 }
@@ -3463,6 +3481,8 @@ smb2_general_client_request_cb(struct smb2_context *smb2, int status, void *comm
 {
         struct connect_data *c_data = cb_data;
         struct smb2_server *server = c_data->server_context;
+        enum smb2_command next_cmd = SMB2_TREE_CONNECT;
+        smb2_command_cb next_cb = smb2_general_client_request_cb;
 
         if (!smb2->pdu) {
                 smb2_set_error(smb2, "No pdu for general client request");
@@ -3474,16 +3494,18 @@ smb2_general_client_request_cb(struct smb2_context *smb2, int status, void *comm
         }
 
         switch (smb2->pdu->header.command) {
+        case SMB2_SESSION_SETUP:
+                printf("New session IN session\n");
+                smb2_session_setup_request_cb(smb2, status, command_data, cb_data);
+                /* session setup cb allocs next_pdu itself */
+                next_cb = NULL;
+                break;
         case SMB2_LOGOFF:
                 smb2_logoff_request_cb(server, smb2, command_data, cb_data);
-                /* alloc a pdu for next session setup request */
-                smb2->next_pdu = smb2_allocate_pdu(smb2, SMB2_TREE_CONNECT, smb2_session_setup_request_cb, cb_data);
-                if (!smb2->next_pdu) {
-                        smb2_set_error(smb2, "can not alloc pdu for authorization session setup request");
-                        smb2_close_context(smb2);
-                }
-                /* note special case */
-                return;
+                /* prep for a new session setup req */
+                next_cmd = SMB2_SESSION_SETUP;
+                next_cb = smb2_session_setup_request_cb;
+                break;
         case SMB2_TREE_CONNECT:
                 smb2_tree_connect_request_cb(server, smb2, command_data, cb_data);
                 break;
@@ -3538,16 +3560,18 @@ smb2_general_client_request_cb(struct smb2_context *smb2, int status, void *comm
                 break;
         }
 
-        /* alloc a pdu for next request. note that we dont really expect a tree connect, its just to
-         * allow pdu reading to know to allow for any command above negotiate and session-setup */
-        smb2->next_pdu = smb2_allocate_pdu(smb2, SMB2_TREE_CONNECT, smb2_general_client_request_cb, cb_data);
-        if (!smb2->next_pdu) {
-                smb2_set_error(smb2, "can not alloc pdu for authorization session setup request");
-                smb2_close_context(smb2);
+        if (next_cb) {
+                /* alloc a pdu for next request. note that we dont really expect a tree connect, its just to
+                 * allow pdu reading to know to allow for any command above negotiate and session-setup
+                 */
+                smb2->next_pdu = smb2_allocate_pdu(smb2, next_cmd, next_cb, cb_data);
+                if (!smb2->next_pdu) {
+                        smb2_set_error(smb2, "can not alloc pdu for authorization session setup request");
+                        smb2_close_context(smb2);
+                }
         }
 }
 
-#include "smb2-signing.h"
 static void
 smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
 {
@@ -3767,6 +3791,8 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                 smb2_close_context(smb2);
                 return;
         }
+
+        smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
         smb2_queue_pdu(smb2, pdu);
         smb3_update_preauth_hash(smb2, pdu->out.niov, &pdu->out.iov[0]);
 }
@@ -3785,6 +3811,7 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
         int d;
         int dialect_index;
         struct smb2_timeval now;
+        int will_sign = 0;
 
         memset(&rep, 0, sizeof(rep));
         memset(&err, 0, sizeof(err));
@@ -3794,6 +3821,9 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
                 /* context is being destroyed */
                 return;
         }
+
+        /* assume we can always reply */
+        smb2->credits = 128;
 
         /* negotiate highest version in request dialects */
         switch (smb2->version) {
@@ -3841,6 +3871,7 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
                         if (pdu == NULL) {
                                 return;
                         }
+                        smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
                         smb2_queue_pdu(smb2, pdu);
                         return;
                 }
@@ -3867,7 +3898,7 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
                 smb2_set_client_guid(smb2, req->client_guid);
         }
         else {
-                /* sn smb1-negotiate, list all dialects */
+                /* an smb1-negotiate, list all dialects */
                 smb2->dialect = SMB2_VERSION_WILDCARD;
         }
 
@@ -3901,37 +3932,35 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
                         }
                 }
 
-                if (smb2->sign &&
-                    !(req->security_mode & SMB2_NEGOTIATE_SIGNING_ENABLED)) {
-                        smb2_set_error(smb2, "Signing required but client "
-                                       "does not support signing.");
-                        smb2_close_context(smb2);
-                        return;
-                }
-
                 if (req->security_mode & SMB2_NEGOTIATE_SIGNING_REQUIRED) {
-                        smb2->sign = 1;
+                        will_sign = 1;
                 }
 
                 if (!server->allow_anonymous ||
                                 (smb2->password && smb2->password[0])) {
-                        if (server->signing_enabled) {
-                                if (req->security_mode & SMB2_NEGOTIATE_SIGNING_ENABLED &&
-                                                smb2->dialect == SMB2_VERSION_0210) {
-                                        /* smb2.1 requires signing if enabled on both sides
-                                         * regardless of what the flags say */
-                                        smb2->sign = 1;
-                                }
-                                if (req->security_mode & SMB2_NEGOTIATE_SIGNING_ENABLED &&
-                                                smb2->dialect >= SMB2_VERSION_0311) {
-                                        /* smb3.1.1 requires signing if enabled on both sides
-                                         * regardless of what the flags say */
-                                        smb2->sign = 1;
-                                }
+                        if (smb2->dialect == SMB2_VERSION_0210) {
+                                /* smb2.1 requires signing if enabled on both sides
+                                 * regardless of what the flags say */
+                                will_sign = 1;
+                        }
+                        if (smb2->dialect >= SMB2_VERSION_0311) {
+                                /* smb3.1.1 requires signing if enabled on both sides
+                                 * regardless of what the flags say */
+                                will_sign = 1;
                         }
                 }
+
                 if (smb2->seal) {
                         smb2->sign = 0;
+                } else if (will_sign) {
+                        if (server->signing_enabled) {
+                                smb2->sign = 1;
+                        } else {
+                                smb2_set_error(smb2, "Signing required but server "
+                                               "does not have signing enabled.");
+                                smb2_close_context(smb2);
+                                return;
+                        }
                 }
         }
 
@@ -3968,6 +3997,7 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
                 return;
         }
 
+        smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
         smb2_queue_pdu(smb2, pdu);
         smb3_update_preauth_hash(smb2, pdu->out.niov, &pdu->out.iov[0]);
 
