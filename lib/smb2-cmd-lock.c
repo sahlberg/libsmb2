@@ -55,7 +55,6 @@
 #include "libsmb2.h"
 #include "libsmb2-private.h"
 
-
 static int
 smb2_encode_lock_request(struct smb2_context *smb2,
                           struct smb2_pdu *pdu,
@@ -265,7 +264,7 @@ smb2_process_lock_request_fixed(struct smb2_context *smb2,
         }
 
         ptr = smb2_alloc_init(smb2,
-                        req->lock_count * SMB2_LOCK_ELEMENT_SIZE);
+                        req->lock_count * sizeof(struct smb2_lock_element));
         if (!ptr) {
                 smb2_set_error(smb2, "can not alloc lock buffer.");
                 pdu->payload = NULL;
@@ -280,8 +279,8 @@ smb2_process_lock_request_fixed(struct smb2_context *smb2,
         if (req->lock_count > 0) {
                 struct smb2_iovec vec;
 
-                vec.buf = iov->buf + 24;
-                vec.len = iov->len - 24;
+                vec.buf = iov->buf + SMB2_LOCK_ELEMENT_SIZE;
+                vec.len = iov->len - SMB2_LOCK_ELEMENT_SIZE;
                 smb2_parse_locks(smb2, &vec, 0, 1, ptr);
         }
         return SMB2_LOCK_ELEMENT_SIZE * (req->lock_count - 1);

@@ -192,6 +192,8 @@ smb2_process_flush_request_fixed(struct smb2_context *smb2,
                 smb2_set_error(smb2, "Failed to allocate flush request");
                 return -1;
         }
+
+        memcpy(req->file_id, &iov->buf[8], SMB2_FD_SIZE);
         pdu->payload = req;
         return 0;
 }
