@@ -113,7 +113,7 @@ smb2_alloc_data(struct smb2_context *smb2, void *memctx, size_t size)
         }
 
 #ifndef _MSC_VER
-        hdr = container_of(memctx, struct smb2_alloc_header, buf);
+        hdr = (struct smb2_alloc_header *)(void *)container_of(memctx, struct smb2_alloc_header, buf);
 #else
         {
           const char* __mptr = memctx;
@@ -138,7 +138,7 @@ smb2_free_data(struct smb2_context *smb2, void *ptr)
         }
 
 #ifndef _MSC_VER
-        hdr = container_of(ptr, struct smb2_alloc_header, buf);
+        hdr = (struct smb2_alloc_header *)(void *)container_of(ptr, struct smb2_alloc_header, buf);
 #else
         {
           const char* __mptr = ptr;
