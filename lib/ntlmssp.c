@@ -368,7 +368,7 @@ ntlm_decode_challenge_message(struct smb2_context *smb2, struct auth_data *auth_
                 memcpy(&auth_data->ntlm_buf[16], &u32, 4);
 
                 if (inlen > 0 && inlen < len && (outoff + inlen) < alloc_len) {
-                        auth_data->target_name = discard_const(smb2_utf16_to_utf8((const uint16_t *)&buf[inoff], inlen / 2));
+                        auth_data->target_name = discard_const(smb2_utf16_to_utf8((const uint16_t *)(void *)&buf[inoff], inlen / 2));
                         memcpy(&auth_data->ntlm_buf[outoff], &buf[inoff], inlen);
                         outoff += inlen;
                 }
@@ -1173,7 +1173,7 @@ ntlmssp_get_utf16_field(uint8_t *input_buf, int input_len, int offset, char **re
         memcpy(&u32, &input_buf[offset + 4], 4);
         field_off = le32toh(u32);
         if (field_len && field_off) {
-                *result = (char*)smb2_utf16_to_utf8((uint16_t*)(input_buf + field_off), field_len / 2);
+                *result = (char*)smb2_utf16_to_utf8((uint16_t *)(void *)(input_buf + field_off), field_len / 2);
         }
 }
 

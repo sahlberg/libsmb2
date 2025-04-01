@@ -370,7 +370,7 @@ smb2_set_uint16(struct smb2_iovec *iov, int offset, uint16_t value)
         if (offset + sizeof(uint16_t) > iov->len) {
                 return -1;
         }
-        *(uint16_t *)(iov->buf + offset) = htole16(value);
+        *(uint16_t *)(void *)(iov->buf + offset) = htole16(value);
         return 0;
 }
 
@@ -380,7 +380,7 @@ smb2_set_uint32(struct smb2_iovec *iov, int offset, uint32_t value)
         if (offset + sizeof(uint32_t) > iov->len) {
                 return -1;
         }
-        *(uint32_t *)(iov->buf + offset) = htole32(value);
+        *(uint32_t *)(void *)(iov->buf + offset) = htole32(value);
         return 0;
 }
 

@@ -82,7 +82,7 @@ smb2_decode_fileidfulldirectoryinformation(
         smb2_get_uint32(vec, 64, &fs->ea_size);
         smb2_get_uint64(vec, 72, &fs->file_id);
 
-        fs->name = smb2_utf16_to_utf8((uint16_t *)&vec->buf[80], name_len / 2);
+        fs->name = smb2_utf16_to_utf8((uint16_t *)(void *)&vec->buf[80], name_len / 2);
 
         smb2_get_uint64(vec, 8, &t);
         smb2_win_to_timeval(t, &fs->creation_time);
@@ -226,7 +226,7 @@ smb2_encode_query_directory_reply(struct smb2_context *smb2,
                         in_offset = 0;
                         in_remain = fslen;
                         do {
-                                fs = (struct smb2_fileidbothdirectoryinformation*)(rep->output_buffer + in_offset);
+                                fs = (struct smb2_fileidbothdirectoryinformation*)(void *)(rep->output_buffer + in_offset);
                                 fname_len = 0;
                                 if (fs->name && fs->name[0]) {
                                         name = smb2_utf8_to_utf16(fs->name);
@@ -290,7 +290,7 @@ smb2_encode_query_directory_reply(struct smb2_context *smb2,
         else {
 
                 do {
-                        fs = (struct smb2_fileidbothdirectoryinformation*)(rep->output_buffer + in_offset);
+                        fs = (struct smb2_fileidbothdirectoryinformation*)(void *)(rep->output_buffer + in_offset);
                         fname_len = 0;
                         if (fs->name && fs->name[0]) {
                                 name = smb2_utf8_to_utf16(fs->name);
@@ -543,7 +543,7 @@ smb2_process_query_directory_request_variable(struct smb2_context *smb2,
         int name_byte_len;
 
         if (req->file_name_length > 0) {
-                req->name = smb2_utf16_to_utf8((uint16_t*)&iov->buf[IOVREQ_OFFSET], req->file_name_length / 2);
+                req->name = smb2_utf16_to_utf8((uint16_t*)(void *)&iov->buf[IOVREQ_OFFSET], req->file_name_length / 2);
                 if (req->name) {
                         name_byte_len = strlen(req->name) + 1;
                         ptr = smb2_alloc_init(smb2, name_byte_len);

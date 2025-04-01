@@ -68,7 +68,7 @@ smb2_decode_file_fs_volume_info(struct smb2_context *smb2,
         smb2_get_uint32(vec, 12, &fs->volume_label_length);
         smb2_get_uint8(vec,  16, &fs->supports_objects);
         smb2_get_uint8(vec,  17, &fs->reserved);
-        name = smb2_utf16_to_utf8((uint16_t *)&vec->buf[18],
+        name = smb2_utf16_to_utf8((uint16_t *)(void *)&vec->buf[18],
                             fs->volume_label_length / 2);
         fs->volume_label = smb2_alloc_data(smb2, memctx, strlen(name) + 1);
         if (fs->volume_label == NULL) {
@@ -187,7 +187,7 @@ smb2_decode_file_fs_attribute_info(struct smb2_context *smb2,
         smb2_get_uint32(vec, 8, &name_len);
 
         if (name_len > 0) {
-                name = smb2_utf16_to_utf8((uint16_t*)&vec->buf[12], name_len / 2);
+                name = smb2_utf16_to_utf8((uint16_t *)(void *)&vec->buf[12], name_len / 2);
                 if (!name) {
 
                         return -1;

@@ -69,7 +69,7 @@
 
 #define container_of(ptr, type, member) ({                      \
         const typeof( ((type *)0)->member ) *__mptr = (ptr);    \
-        (type *)( (char *)__mptr - offsetof(type,member) );})
+        (type *)(void *)( (char *)__mptr - offsetof(type,member) );})
 
 struct dcerpc_deferred_pointer {
         dcerpc_coder coder;
@@ -292,9 +292,9 @@ dcerpc_set_uint16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 return -1;
         }
         if (!(pdu->hdr.packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN)) {
-                *(uint16_t *)(iov->buf + *offset) = htobe16(value);
+                *(uint16_t *)(void *)(iov->buf + *offset) = htobe16(value);
         } else {
-                *(uint16_t *)(iov->buf + *offset) = htole16(value);
+                *(uint16_t *)(void *)(iov->buf + *offset) = htole16(value);
         }
         *offset += 2;
 
@@ -311,9 +311,9 @@ dcerpc_set_uint32(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 return -1;
         }
         if (!(pdu->hdr.packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN)) {
-                *(uint32_t *)(iov->buf + *offset) = htobe32(value);
+                *(uint32_t *)(void *)(iov->buf + *offset) = htobe32(value);
         } else {
-                *(uint32_t *)(iov->buf + *offset) = htole32(value);
+                *(uint32_t *)(void *)(iov->buf + *offset) = htole32(value);
         }
         *offset += 4;
         return 0;
@@ -329,9 +329,9 @@ dcerpc_set_uint64(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 return -1;
         }
         if (!(pdu->hdr.packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN)) {
-                *(uint64_t *)(iov->buf + *offset) = htobe64(value);
+                *(uint64_t *)(void *)(iov->buf + *offset) = htobe64(value);
         } else {
-                *(uint64_t *)(iov->buf + *offset) = htole64(value);
+                *(uint64_t *)(void *)(iov->buf + *offset) = htole64(value);
         }
         *offset += 8;
         return 0;
@@ -361,9 +361,9 @@ dcerpc_get_uint16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 return -1;
         }
         if (!(pdu->hdr.packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN)) {
-                val = be16toh(*(uint16_t *)(iov->buf + *offset));
+                val = be16toh(*(uint16_t *)(void *)(iov->buf + *offset));
         } else {
-                val = le16toh(*(uint16_t *)(iov->buf + *offset));
+                val = le16toh(*(uint16_t *)(void *)(iov->buf + *offset));
         }
         *value = val;
         *offset += 2;
@@ -383,9 +383,9 @@ dcerpc_get_uint32(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         }
         
         if (!(pdu->hdr.packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN)) {
-                val = be32toh(*(uint32_t *)(iov->buf + *offset));
+                val = be32toh(*(uint32_t *)(void *)(iov->buf + *offset));
         } else {
-                val = le32toh(*(uint32_t *)(iov->buf + *offset));
+                val = le32toh(*(uint32_t *)(void *)(iov->buf + *offset));
         }
         *value = val;
         *offset += 4;
@@ -404,9 +404,9 @@ dcerpc_get_uint64(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 return -1;
         }
         if (!(pdu->hdr.packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN)) {
-                val = be64toh(*(uint64_t *)(iov->buf + *offset));
+                val = be64toh(*(uint64_t *)(void *)(iov->buf + *offset));
         } else {
-                val = le64toh(*(uint64_t *)(iov->buf + *offset));
+                val = le64toh(*(uint64_t *)(void *)(iov->buf + *offset));
         }
         *value = val;
         *offset += 8;
@@ -1053,10 +1053,10 @@ dcerpc_decode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                         if (dcerpc_get_uint16(ctx, pdu, iov, &o, &v)) {
                                 return -1;
                         }
-                        *(uint16_t *)&iov->buf[*offset + i * 2] = v;
+                        *(uint16_t *)(void *)&iov->buf[*offset + i * 2] = v;
                 }
         }
-        tmp = smb2_utf16_to_utf8((uint16_t *)(&iov->buf[*offset]), (size_t)s->actual_count);
+        tmp = smb2_utf16_to_utf8((uint16_t *)(void *)(&iov->buf[*offset]), (size_t)s->actual_count);
         *offset += (int)s->actual_count * 2;
 
         str = smb2_alloc_data(ctx->smb2, pdu->payload, strlen(tmp) + 1);

@@ -531,7 +531,7 @@ smb2_parse_netname_request_context(struct smb2_context *smb2,
         char *client;
 
         memcpy(netname, iov->buf + offset, len);
-        client = discard_const(smb2_utf16_to_utf8((uint16_t *)netname, len));
+        client = discard_const(smb2_utf16_to_utf8((uint16_t *)(void *)netname, len));
         free(client);
         return 0;
 }

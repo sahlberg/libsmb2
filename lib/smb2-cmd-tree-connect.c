@@ -260,7 +260,7 @@ smb2_process_tree_connect_request_variable(struct smb2_context *smb2,
         struct smb2_tree_connect_request *req = (struct smb2_tree_connect_request*)pdu->payload;
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
 
-        req->path = (uint16_t*)iov->buf;
+        req->path = (uint16_t*)(void *)iov->buf;
         return 0;
 }
 

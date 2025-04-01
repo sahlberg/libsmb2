@@ -68,7 +68,7 @@
 
 #define container_of(ptr, type, member) ({                      \
         const typeof( ((type *)0)->member ) *__mptr = (ptr);    \
-        (type *)( (char *)__mptr - offsetof(type,member) );})
+        (type *)(void *)( (char *)__mptr - offsetof(type,member) );})
 
 struct smb2_alloc_entry {
         struct smb2_alloc_entry *next;

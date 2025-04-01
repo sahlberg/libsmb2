@@ -2832,7 +2832,7 @@ smb2_decode_filenotifychangeinformation(
 
         smb2_get_uint32(vec, next_entry_offset+4, &fnc->action);
         smb2_get_uint32(vec, next_entry_offset+8, &name_len);
-        fnc->name = smb2_utf16_to_utf8((uint16_t *)&vec->buf[next_entry_offset+12], name_len / 2);
+        fnc->name = smb2_utf16_to_utf8((uint16_t *)(void *)&vec->buf[next_entry_offset+12], name_len / 2);
 
         smb2_get_uint32(vec, next_entry_offset, &next_entry_offset);
         if (next_entry_offset != 0) {

@@ -450,7 +450,7 @@ smb2_process_create_request_variable(struct smb2_context *smb2,
 
         req->name = NULL;
         if (req->name_length > 0) {
-                req->name = smb2_utf16_to_utf8((const uint16_t*)iov->buf, req->name_length / 2);
+                req->name = smb2_utf16_to_utf8((const uint16_t *)(void *)iov->buf, req->name_length / 2);
                 if (req->name) {
                         name_byte_len = strlen(req->name) + 1;
                         ptr = smb2_alloc_init(smb2, name_byte_len);
