@@ -120,7 +120,9 @@ display_status(int type, uint32_t err)
         char *msg, *tmp, *tv;
         uint32_t maj, min;
 
-        asprintf(&msg, " ");
+        if (asprintf(&msg, " ") < 0) {
+                return NULL;
+        }
         msg_ctx = 0;
         do {
                 maj = gss_display_status(&min, err, type,
