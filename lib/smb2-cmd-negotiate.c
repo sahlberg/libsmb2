@@ -520,18 +520,16 @@ smb2_parse_encryption_request_context(struct smb2_context *smb2,
 {
         return 0;
 }
-
+#include <stdio.h>
 static int
 smb2_parse_netname_request_context(struct smb2_context *smb2,
                               struct smb2_negotiate_request *req,
                               struct smb2_iovec *iov,
                               int offset, int len)
 {
-        char netname[128];
         char *client;
 
-        memcpy(netname, iov->buf + offset, len);
-        client = discard_const(smb2_utf16_to_utf8((uint16_t *)(void *)netname, len));
+        client = discard_const(smb2_utf16_to_utf8((uint16_t *)(void *)(iov->buf + offset), len / 2));
         free(client);
         return 0;
 }
@@ -595,7 +593,7 @@ smb2_process_negotiate_request_variable(struct smb2_context *smb2,
         int offset;
         int has_0311 = 0;
 		    uint32_t d;
-        
+
         for (d = 0; d < req->dialect_count && d < SMB2_NEGOTIATE_MAX_DIALECTS; d++) {
                 smb2_get_uint16(iov, d * 2, &req->dialects[d]);
                 if (req->dialects[d] == 0x0311) {
