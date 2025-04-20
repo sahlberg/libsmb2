@@ -859,7 +859,7 @@ int smb2_echo(struct smb2_context *smb2)
         struct sync_cb_data *cb_data;
         int rc = 0;
 
-        if (SMB2_VALID_SOCKET(smb2->fd)) {
+        if (!SMB2_VALID_SOCKET(smb2->fd)) {
                 smb2_set_error(smb2, "Not Connected to Server");
                 return -ENOMEM;
         }
