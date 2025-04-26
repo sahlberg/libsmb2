@@ -61,7 +61,7 @@ typedef int t_socket;
 #define WIN32_LEAN_AND_MEAN
 #endif /* !WIN32_LEAN_AND_MEAN */
 
-#ifdef XBOX_PLATFORM /* MSVC 2003 and Xbox XDK Doesn´t have stdint.h header */
+#ifdef XBOX_PLATFORM /* MSVC 2003 and Xbox XDK doesn´t have stdint.h header */
 typedef char int8_t;
 typedef short int16_t;
 typedef short int_least16_t;

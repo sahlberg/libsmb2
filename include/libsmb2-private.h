@@ -655,6 +655,8 @@ int dcerpc_align_3264(struct dcerpc_context *ctx, int offset);
 struct connect_data;                                           /* defined in libsmb2.c */
 void free_c_data(struct smb2_context*, struct connect_data*);  /* defined in libsmb2.c */
 
+int smb2_is_error_response(struct smb2_context *smb2, struct smb2_pdu *pdu);
+
 #ifdef __cplusplus
 }
 #endif

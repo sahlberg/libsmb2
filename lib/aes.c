@@ -16,6 +16,16 @@
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
+#endif
+
+#include "compat.h"
+
 #include "aes.h"
 
 #ifdef __APPLE__

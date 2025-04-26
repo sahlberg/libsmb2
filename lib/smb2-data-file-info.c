@@ -47,6 +47,10 @@
 #include <sys/time.h>
 #endif
 
+#ifdef HAVE_STDIO_H
+#include <stdio.h>
+#endif
+
 #include "compat.h"
 
 #include "smb2.h"
@@ -144,8 +148,6 @@ smb2_encode_file_standard_info(struct smb2_context *smb2,
 
         return 24;
 }
-
-#include <stdio.h>
 
 int
 smb2_decode_file_stream_info(struct smb2_context *smb2,
@@ -487,8 +489,6 @@ smb2_decode_file_normalized_name_info(struct smb2_context *smb2,
         return 0;
 }
 
-#include <stdio.h>
-
 int
 smb2_encode_file_normalized_name_info(struct smb2_context *smb2,
                           struct smb2_file_name_info *fs,
@@ -528,4 +528,3 @@ smb2_encode_file_normalized_name_info(struct smb2_context *smb2,
         smb2_set_uint32(vec, 0, fs->file_name_length);
         return 4 + fs->file_name_length;
 }
-
