@@ -685,6 +685,18 @@ smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
         smb2_add_to_outqueue(smb2, pdu);
 }
 
+struct smb2_pdu *
+smb2_get_compound_pdu(struct smb2_context *smb2,
+                      struct smb2_pdu *pdu)
+{
+        /* find the last pdu in the chain */
+        if (pdu && pdu->next_compound) {
+                return pdu->next_compound;
+        }
+
+        return NULL;
+}
+
 void
 smb2_set_pdu_status(struct smb2_context *smb2, struct smb2_pdu *pdu, int status)
 {
@@ -702,8 +714,24 @@ smb2_get_pdu_message_id(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
         if (pdu) {
                 return pdu->header.message_id;
-        } else if (smb2) {
+        }
+        return 0;
+}
+
+uint64_t
+smb2_get_last_request_message_id(struct smb2_context *smb2)
+{
+        if (smb2) {
                 return smb2->message_id;
+        }
+        return 0;
+}
+
+uint64_t
+smb2_get_last_reply_message_id(struct smb2_context *smb2)
+{
+        if (smb2) {
+                return smb2->hdr.message_id;
         }
         return 0;
 }
