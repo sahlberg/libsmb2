@@ -623,7 +623,7 @@ struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url);
 void smb2_destroy_url(struct smb2_url *url);
 
 /*
- * The functions are used when creating compound low level commands.
+ * These functions are used when creating compound low level commands.
  * The general pattern for compound chains is
  * 1, pdu = smb2_cmd_*_async(smb2, ...)
  *
@@ -642,9 +642,18 @@ void smb2_add_compound_pdu(struct smb2_context *smb2,
                            struct smb2_pdu *pdu, struct smb2_pdu *next_pdu);
 void smb2_free_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu);
 void smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu);
+
+/*
+ * These are used to access/modify pdus from application level
+ * useful for proxies, etc.
+ */
+struct smb2_pdu *smb2_get_compound_pdu(struct smb2_context *smb2,
+                           struct smb2_pdu *pdu);
 void smb2_set_pdu_status(struct smb2_context *smb2, struct smb2_pdu *pdu, int status);
 void smb2_set_pdu_message_id(struct smb2_context *smb2, struct smb2_pdu *pdu, uint64_t message_id);
 uint64_t smb2_get_pdu_message_id(struct smb2_context *smb2, struct smb2_pdu *pdu);
+uint64_t smb2_get_last_request_message_id(struct smb2_context *smb2);
+uint64_t smb2_get_last_reply_message_id(struct smb2_context *smb2);
 int smb2_pdu_is_compound(struct smb2_context *smb2);
 
 /*
