@@ -15,14 +15,21 @@
    You should have received a copy of the GNU Lesser General Public License
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
-void aes128ccm_encrypt(unsigned char *key,
-		       unsigned char *nonce, size_t nlen,
-		       unsigned char *aad, size_t alen,
-		       unsigned char *p, size_t plen,
-		       unsigned char *m, size_t mlen);
 
-int aes128ccm_decrypt(unsigned char *key,
-		      unsigned char *nonce, size_t nlen,
-		      unsigned char *aad, size_t alen,
-		      unsigned char *p, size_t plen,
-		      unsigned char *m, size_t mlen);
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+void aes128ccm_encrypt(unsigned char* key,
+	unsigned char* nonce, size_t nlen,
+	unsigned char* aad, size_t alen,
+	unsigned char* p, size_t plen,
+	unsigned char* m, size_t mlen);
+int aes128ccm_decrypt(unsigned char* key,
+	unsigned char* nonce, size_t nlen,
+	unsigned char* aad, size_t alen,
+	unsigned char* p, size_t plen,
+	unsigned char* m, size_t mlen);
+#ifdef __cplusplus
+}
+#endif // DEBUG

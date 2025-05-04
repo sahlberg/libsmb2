@@ -43,10 +43,6 @@
 #include <sys/types.h>
 #endif
 
-#ifdef HAVE_SYS_STAT_H
-#include <sys/stat.h>
-#endif
-
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
@@ -57,14 +53,16 @@
 
 #include "compat.h"
 
-#include "smb2-signing.h"
-
 #define EBC 1
 #define CBC 1
 
+#include "smb2.h"
+#include "libsmb2.h"
+#include "libsmb2-private.h"
 #include "aes.h"
 #include "sha.h"
 #include "sha-private.h"
+#include "smb2-signing.h"
 
 #define AES128_KEY_LEN     16
 #define AES_BLOCK_SIZE     16

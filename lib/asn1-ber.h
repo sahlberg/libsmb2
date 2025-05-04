@@ -20,14 +20,6 @@
    You should have received a copy of the GNU Lesser General Public License
    along with this program; if not, see <http:/www.gnu.org/licenses/>.
 */
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#ifdef HAVE_STDINT_H
-#include <stdint.h>
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif

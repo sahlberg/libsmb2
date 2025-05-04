@@ -2912,6 +2912,7 @@ int smb2_notify_change_filehandle_async(struct smb2_context *smb2, struct smb2fh
         struct notify_change_cb_data *notify_change_cb_data;
         struct smb2_change_notify_request ch_req;
         struct smb2_pdu *pdu;
+        const smb2_file_id *file_id;
 
         notify_change_cb_data = calloc(1, sizeof(struct notify_change_cb_data));
         if (notify_change_cb_data == NULL) {
@@ -2931,7 +2932,7 @@ int smb2_notify_change_filehandle_async(struct smb2_context *smb2, struct smb2fh
         memset(&ch_req, 0, sizeof(struct smb2_change_notify_request));
         ch_req.flags = flags;
         ch_req.output_buffer_length = DEFAULT_OUTPUT_BUFFER_LENGTH;
-        const smb2_file_id *file_id = smb2_get_file_id(smb2_dir_fh);
+        file_id = smb2_get_file_id(smb2_dir_fh);
         memcpy(ch_req.file_id, file_id, SMB2_FD_SIZE);
         ch_req.completion_filter = filter;
 

@@ -18,23 +18,10 @@
    You should have received a copy of the GNU Lesser General Public License
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "slist.h"
-#include "smb2.h"
-#include "libsmb2.h"
-#include "libsmb2-raw.h"
-#include "libsmb2-private.h"
 
 int
 smb2_pdu_add_signature(struct smb2_context *smb2,

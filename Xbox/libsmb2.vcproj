@@ -30,7 +30,7 @@
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile="$(OutDir)/$(ProjectName).pch"
 				WarningLevel="3"
-				WarnAsError="TRUE"
+				WarnAsError="FALSE"
 				Detect64BitPortabilityProblems="FALSE"
 				DebugInformationFormat="3"
 				CompileAs="0"/>
@@ -137,7 +137,7 @@
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile="$(OutDir)/$(ProjectName).pch"
 				WarningLevel="3"
-				WarnAsError="TRUE"
+				WarnAsError="FALSE"
 				Detect64BitPortabilityProblems="FALSE"
 				DebugInformationFormat="3"
 				CompileAs="0"/>
@@ -175,7 +175,7 @@
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile="$(OutDir)/$(ProjectName).pch"
 				WarningLevel="3"
-				WarnAsError="TRUE"
+				WarnAsError="FALSE"
 				Detect64BitPortabilityProblems="FALSE"
 				DebugInformationFormat="3"
 				CompileAs="1"/>
@@ -259,6 +259,18 @@
 				RelativePath="..\lib\aes128ccm.h">
 			</File>
 			<File
+				RelativePath="..\lib\aes_apple.c">
+			</File>
+			<File
+				RelativePath="..\lib\aes_apple.h">
+			</File>
+			<File
+				RelativePath="..\lib\aes_reference.c">
+			</File>
+			<File
+				RelativePath="..\lib\aes_reference.h">
+			</File>
+			<File
 				RelativePath="..\lib\alloc.c">
 			</File>
 			<File
@@ -278,6 +290,9 @@
 			</File>
 			<File
 				RelativePath="..\lib\dcerpc-srvsvc.c">
+			</File>
+			<File
+				RelativePath="..\lib\dcerpc.c">
 			</File>
 			<File
 				RelativePath="..\lib\errors.c">
@@ -370,6 +385,9 @@
 				RelativePath="..\lib\smb2-cmd-notify-change.c">
 			</File>
 			<File
+				RelativePath="..\lib\smb2-cmd-oplock-break.c">
+			</File>
+			<File
 				RelativePath="..\lib\smb2-cmd-query-directory.c">
 			</File>
 			<File
@@ -406,6 +424,18 @@
 				RelativePath="..\lib\smb2-data-security-descriptor.c">
 			</File>
 			<File
+				RelativePath="..\lib\smb2-fixed.c">
+			</File>
+			<File
+				RelativePath="..\lib\smb2-pdu-message-id.c">
+			</File>
+			<File
+				RelativePath="..\lib\smb2-process.c">
+			</File>
+			<File
+				RelativePath="..\lib\smb2-process.h">
+			</File>
+			<File
 				RelativePath="..\lib\smb2-share-enum.c">
 			</File>
 			<File
@@ -413,6 +443,12 @@
 			</File>
 			<File
 				RelativePath="..\lib\smb2-signing.h">
+			</File>
+			<File
+				RelativePath="..\lib\smb2-tree-id.c">
+			</File>
+			<File
+				RelativePath="..\lib\smb2-value.c">
 			</File>
 			<File
 				RelativePath="..\lib\smb3-seal.c">
