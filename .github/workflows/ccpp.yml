@@ -81,7 +81,7 @@ jobs:
   build-ps3-ppu:
     name: PS3 PPU build
 
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
 
     - name: Checkout

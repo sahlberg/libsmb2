@@ -47,6 +47,8 @@
 #include <sys/time.h>
 #endif
 
+#include <stdio.h>
+
 #include <errno.h>
 
 #include "compat.h"
@@ -520,7 +522,7 @@ smb2_parse_encryption_request_context(struct smb2_context *smb2,
 {
         return 0;
 }
-#include <stdio.h>
+
 static int
 smb2_parse_netname_request_context(struct smb2_context *smb2,
                               struct smb2_negotiate_request *req,
