@@ -99,6 +99,8 @@
 #include <sys/socket.h>
 #endif
 
+#include <errno.h>
+
 #include "compat.h"
 
 #include "slist.h"
