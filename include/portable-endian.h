@@ -56,12 +56,12 @@
 #define htole64(x) (x)
 #define le64toh(x) (x)
 
-#elif defined(__linux__) || defined(__CYGWIN__) || defined(ESP_PLATFORM) || defined(__NetBSD__) || defined(__FreeBSD__) || defined(__DragonFly__) || defined(__OpenBSD__)
+#elif defined(__linux__) || defined(__CYGWIN__) || defined(ESP_PLATFORM) || defined(__NetBSD__) || defined(__FreeBSD__) || defined(__DragonFly__) || defined(__OpenBSD__) || defined(__GNU__)
 
-#if defined(__linux__) || defined(__CYGWIN__) || defined(PS4_PLATFORM) || defined(ESP_PLATFORM)
+#if defined(__linux__) || defined(__CYGWIN__) || defined(PS4_PLATFORM) || defined(ESP_PLATFORM) || defined(__GNU__)
 #include <endian.h>
 /* Include byteswap.h on linux since it might not be automatically included in some cases (e.g. alpine / musl) */
-#if defined(__linux__)
+#if defined(__linux__) || defined(__GLIBC__)
 #include <byteswap.h>
 #endif
 #else
