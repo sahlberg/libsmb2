@@ -63,11 +63,16 @@ libsmb2_la_SOURCES = \
 	smb2-data-filesystem-info.c \
 	smb2-data-reparse-point.c \
 	smb2-data-security-descriptor.c \
+	smb2-fixed.c \
+	smb2-pdu-message-id.c \
+	smb2-process.c \
 	smb2-share-enum.c \
 	smb3-seal.h \
 	smb3-seal.c \
+	smb2-value.c
 	smb2-signing.h \
 	smb2-signing.c \
+	smb2-tree-id.c \
 	socket.c \
 	spnego-wrapper.c \
 	sync.c \

@@ -28,6 +28,7 @@ NOTE:   String length must be evenly divisible by 16byte (str_len % 16 == 0)
 /*****************************************************************************/
 /* Includes:                                                                 */
 /*****************************************************************************/
+
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -36,10 +37,13 @@ NOTE:   String length must be evenly divisible by 16byte (str_len % 16 == 0)
 #include <stdint.h>
 #endif
 
+#include <string.h> // CBC mode, for memset
+
 #include "compat.h"
 
-#include <string.h> // CBC mode, for memset
 #include "aes_reference.h"
+
+
 
 
 /*****************************************************************************/

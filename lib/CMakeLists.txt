@@ -50,8 +50,13 @@ if(ESP_PLATFORM)
     smb2-data-security-descriptor.c
     smb2-data-reparse-point.c
     smb2-share-enum.c
+	smb2-pdu-message-id.c
+	smb2-fixed.c
+    smb2-process.c
     smb3-seal.c
     smb2-signing.c
+	smb2-tree-id.c
+	smb2-value.c
     socket.c
     spnego-wrapper.c
     sync.c
@@ -115,8 +120,13 @@ elseif(IOP AND BUILD_IRX)
             smb2-data-security-descriptor.c
             smb2-data-reparse-point.c
             smb2-share-enum.c
+            smb2-pdu-message-id.c
+			smb2-fixed.c
             smb3-seal.c
             smb2-signing.c
+            smb2-tree-id.c
+            smb2-process.c
+			smb2-value.c
             socket.c
             spnego-wrapper.c
             sync.c
@@ -174,8 +184,13 @@ else()
             smb2-data-security-descriptor.c
             smb2-data-reparse-point.c
             smb2-share-enum.c
+			smb2-pdu-message-id.c
+			smb2-fixed.c
             smb3-seal.c
             smb2-signing.c
+            smb2-tree-id.c
+            smb2-process.c
+			smb2-value.c
             socket.c
             spnego-wrapper.c
             sync.c
