@@ -17,9 +17,12 @@ to browse the filesystem and read/write assets.
 needed, i.e. the ISO and the VMCs, and more?
 
 3a, Convert all file handles to a 16 byte file id.
-File id are the 16 bytes found in
-   smb2_get_file_id(iop_file_t->privdata->fh) TODO need API?
-
+Pass the iop_file_t to devctl(CONVERT_FID)
+and f->provdata will point to the 16 byte file id.
+So just keep the iop_file_t around and use it for the usmb calls later.
+(hoping that ps2's os does not clear/frees them when the  underlying
+ device is unloaded).
+ 
 3b, Call usmb2_init_context to initialize the much smaller context we need
 for the usmb2 API. This takes ovnership of the open socket so the smb2_context
 can no longer be used to perform any I/O.
@@ -30,7 +33,8 @@ calling
         smb2_destroy_url(url);
         smb2_disconnect_share(smb2);
         smb2_destroy_context(smb2);
-as well as unloading the irx from memory.
+and are performed by calling devctl(DISCONNECT_ALL).
+Unload the irx from memory.
 
 4, load and initialize usmb2man.irx. Use the file ids from 3a and the
 new usmb2_context from 3b to use the three supported operations:

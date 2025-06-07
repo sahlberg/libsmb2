@@ -231,6 +231,17 @@ static int smb2_DisconnectAll(void)
         return 0;
 }
 
+static int smb2_ConvertFid(iop_file_t *f)
+{
+        struct file_fh *ffh = f->privdata;
+
+        fid = malloc(16);
+        memcpy(fid, smb2_get_file_id(ffh->fh), 16);
+        free(f->privdata);
+        f->privdata = fid;
+        return 0;
+}
+
 int SMB2_devctl(iop_file_t *f, const char *devname, int cmd,
                 void *arg, unsigned int arglen,
                 void *bufp, unsigned int buflen)
@@ -248,7 +259,9 @@ int SMB2_devctl(iop_file_t *f, const char *devname, int cmd,
         case SMB2_DEVCTL_DISCONNECT_ALL:
             r = smb2_DisconnectAll();
             break;
-
+        case SMB2_DEVCTL_CONVERT_FID:
+            r = smb2_ConvertFid(f);
+            break;
         default:
             r = -EINVAL;
     }
@@ -315,6 +328,8 @@ int SMB2_open(iop_file_t *f, const char *filename, int flags, int mode)
         goto out;
     }
 
+    /* put the raw 16 byte fid as the first 16 bytes of f->privdata */
+    memcpy(&ffh->fid[0], smb2_get_file_id(ffh->fh), 16);
     f->privdata = ffh;
 
 
