@@ -1,3 +1,54 @@
+Special version of libsmbs for use on PS2 applications like neutrio and OPL.
+In addition to building smb2man.irx, which is a full libsmb2 implementation
+it can also build usmb2man.irx that is a minimal smb2 implementation that
+only implements singlethreaded synchronous read/write/stat.
+
+The goal with usmb2man is to weigh in at <10kb total RAM and code size and
+be used to stream game in-game data to/from the ISO or VMC.
+
+See ps2-ubms2-cat.c for a linux example on how to switch between smb2
+and usmb2 API:
+
+Operations will be
+1, Load and initialize smb2man.irx. Use the full smb2 implementation
+to browse the filesystem and read/write assets.
+
+2, When a game is about to start, open all the filehandles that will be
+needed, i.e. the ISO and the VMCs, and more?
+
+3a, Convert all file handles to a 16 byte file id.
+File id are the 16 bytes found in
+   smb2_get_file_id(iop_file_t->privdata->fh) TODO need API?
+
+3b, Call usmb2_init_context to initialize the much smaller context we need
+for the usmb2 API. This takes ovnership of the open socket so the smb2_context
+can no longer be used to perform any I/O.
+usmb2_context is designed to be as small as possible.
+
+3c, Tear down and free up all the resources for smb2_context. This includes
+calling
+        smb2_destroy_url(url);
+        smb2_disconnect_share(smb2);
+        smb2_destroy_context(smb2);
+as well as unloading the irx from memory.
+
+4, load and initialize usmb2man.irx. Use the file ids from 3a and the
+new usmb2_context from 3b to use the three supported operations:
+read/write/stat.
+
+
+Memory consumption (on X86_64)
+16 bytes for each open file, the file ids.
+
+
+TODO
+* smb2man has a smb2Connect() that initializes the context and maps
+  the share. We need to add a SMB2_DEVCTL_DISCONNECT that destroys the
+  context.
+
+===
+
+
 Libsmb2 is a userspace client/server library for accessing or serving
 SMB2/SMB3 shares on a network.
 It is high performance and fully async. It supports both zero-copy
