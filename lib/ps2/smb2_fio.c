@@ -218,6 +218,19 @@ static int smb2_Connect(smb2Connect_in_t *in, smb2Connect_out_t *out)
     return 0;
 }
 
+static int smb2_DisconnectAll(void)
+{
+        struct smb2_share_list *s;
+
+        while (shares) {
+                s = shares->next;
+                smb2_destroy_context(shares->smb2);
+                free(shares);
+                shares = s;
+        };
+        return 0;
+}
+
 int SMB2_devctl(iop_file_t *f, const char *devname, int cmd,
                 void *arg, unsigned int arglen,
                 void *bufp, unsigned int buflen)
@@ -231,6 +244,9 @@ int SMB2_devctl(iop_file_t *f, const char *devname, int cmd,
     switch (cmd) {
         case SMB2_DEVCTL_CONNECT:
             r = smb2_Connect((smb2Connect_in_t *)arg, (smb2Connect_out_t *)bufp);
+            break;
+        case SMB2_DEVCTL_DISCONNECT_ALL:
+            r = smb2_DisconnectAll();
             break;
 
         default:
