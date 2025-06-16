@@ -1247,7 +1247,10 @@ dcerpc_bind_coder(struct dcerpc_context *ctx,
                 if (dcerpc_uuid_coder(ctx, pdu, iov, offset, &pdu->bind.p_cont_elem[i].abstract_syntax->uuid)) {
                         return -1;
                 }
-                if (dcerpc_uint32_coder(ctx, pdu, iov, offset, &pdu->bind.p_cont_elem[i].abstract_syntax->vers)) {
+                if (dcerpc_uint16_coder(ctx, pdu, iov, offset, &pdu->bind.p_cont_elem[i].abstract_syntax->vers)) {
+                        return -1;
+                }
+                if (dcerpc_uint16_coder(ctx, pdu, iov, offset, &pdu->bind.p_cont_elem[i].abstract_syntax->vers_minor)) {
                         return -1;
                 }
                 //qqq TODO allocate transfer_syntaxes on decode
@@ -1255,7 +1258,10 @@ dcerpc_bind_coder(struct dcerpc_context *ctx,
                         if (dcerpc_uuid_coder(ctx, pdu, iov, offset, &pdu->bind.p_cont_elem[i].transfer_syntaxes[j]->uuid)) {
                                 return -1;
                         }
-                        if (dcerpc_uint32_coder(ctx, pdu, iov, offset, &pdu->bind.p_cont_elem[i].transfer_syntaxes[j]->vers)) {
+                        if (dcerpc_uint16_coder(ctx, pdu, iov, offset, &pdu->bind.p_cont_elem[i].transfer_syntaxes[j]->vers)) {
+                                return -1;
+                        }
+                        if (dcerpc_uint16_coder(ctx, pdu, iov, offset, &pdu->bind.p_cont_elem[i].transfer_syntaxes[j]->vers_minor)) {
                                 return -1;
                         }
                 }
