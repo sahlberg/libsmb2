@@ -464,6 +464,18 @@ smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
         smb2_add_to_outqueue(smb2, pdu);
 }
 
+struct smb2_pdu *
+smb2_get_compound_pdu(struct smb2_context *smb2,
+                      struct smb2_pdu *pdu)
+{
+        /* find the last pdu in the chain */
+        if (pdu && pdu->next_compound) {
+                return pdu->next_compound;
+        }
+
+        return NULL;
+}
+
 void
 smb2_set_pdu_status(struct smb2_context *smb2, struct smb2_pdu *pdu, int status)
 {
