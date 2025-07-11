@@ -150,7 +150,7 @@ smb2_encode_set_info_request(struct smb2_context *smb2,
                                 }
                         }
 
-                        len = 20 + name->len * 2;
+                        len = 28 + name->len * 2;
                         smb2_set_uint32(iov, 4, len); /* buffer length */
 
                         buf = calloc(len, sizeof(uint8_t));
