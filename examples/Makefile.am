@@ -1,6 +1,7 @@
 noinst_PROGRAMS = smb2-cat-async smb2-cat-sync \
 	smb2-ftruncate-sync \
 	smb2-ls-async \
+	smb2-ls-epoll \
 	smb2-put-async \
 	smb2-put-sync \
 	smb2-raw-fsstat-async \
@@ -30,6 +31,7 @@ smb2_cat_async_LDADD = $(COMMON_LIBS)
 smb2_cat_sync_LDADD = $(COMMON_LIBS)
 smb2_ftruncate_sync_LDADD = $(COMMON_LIBS)
 smb2_ls_async_LDADD = $(COMMON_LIBS)
+smb2_ls_epoll_LDADD = $(COMMON_LIBS)
 smb2_put_async_LDADD = $(COMMON_LIBS)
 smb2_put_sync_LDADD = $(COMMON_LIBS)
 smb2_raw_fsstat_async_LDADD = $(COMMON_LIBS)
