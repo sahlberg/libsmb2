@@ -29,6 +29,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "libsmb2.h"
 #include "libsmb2-raw.h"
 
+#define READ_SIZE 102400
+
 #if defined(__amigaos4__) || defined(__AMIGA__) || defined(__AROS__)
 struct pollfd {
         int fd;
@@ -86,7 +88,7 @@ void pr_cb(struct smb2_context *smb2, int status,
         write(STDOUT_FILENO, buf, status);
 
         pos += status;
-        if (smb2_pread_async(smb2, fh, buf, 102400, pos, pr_cb, fh) < 0) {
+        if (smb2_pread_async(smb2, fh, buf, READ_SIZE, pos, pr_cb, fh) < 0) {
                 printf("Failed to call smb2_pread_async()\n");
                 exit(10);
         }
@@ -103,7 +105,7 @@ void of_cb(struct smb2_context *smb2, int status,
                 exit(10);
         }
 
-        if (smb2_pread_async(smb2, fh, buf, 102400, 0, pr_cb, fh) < 0) {
+        if (smb2_pread_async(smb2, fh, buf, READ_SIZE, 0, pr_cb, fh) < 0) {
                 printf("Failed to call smb2_pread_async()\n");
                 exit(10);
         }
