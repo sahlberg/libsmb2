@@ -568,6 +568,7 @@ void smb2_set_password_from_file(struct smb2_context *smb2)
 
         smb2_set_password(smb2, NULL);
 
+        /* Match on domain if available, else match on server name */
         while (!feof(fh)) {
                 if (fgets(buf, 256, fh) == NULL) {
                         break;
@@ -594,24 +595,25 @@ void smb2_set_password_from_file(struct smb2_context *smb2)
                         continue;
                 }
                 *user++ = 0;
-                if (domain[0] && smb2->domain && strcmp(smb2->domain, domain)) {
-                        continue;
-                }
-                if (domain[0] && smb2->domain == NULL) {
-                        continue;
-                }
                 password = strchr(user, ':');                
                 if (password == NULL) {
                         continue;
                 }
                 *password++ = 0;
 
-                if (strcmp(user, smb2->user)) {
-                        continue;
+                if (domain[0] && smb2->domain && !strcmp(smb2->domain, domain)) {
+                        smb2_set_password(smb2, password);
+                        fclose(fh);
+                        return;
                 }
-                smb2_set_password(smb2, password);
-                if (smb2->domain) {
-                        break;
+                if (domain[0] && smb2->server && !strcmp(smb2->server, domain)) {
+                        smb2_set_password(smb2, password);
+                        fclose(fh);
+                        return;
+                }
+                if (!domain[0]) {
+                        /* wildcard. grab this as default but continue looking for a better match */
+                        smb2_set_password(smb2, password);
                 }
         }
         fclose(fh);
