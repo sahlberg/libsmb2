@@ -562,6 +562,12 @@ static void
 smb2_add_to_outqueue(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
         SMB2_LIST_ADD_END(&smb2->outqueue, pdu);
+
+        /* opportunistically try to write it to the socket right away */
+        if (smb2->outqueue == pdu) {
+                smb2_write_to_socket(smb2);
+        }
+
         smb2_change_events(smb2, smb2->fd, smb2_which_events(smb2));
 }
 

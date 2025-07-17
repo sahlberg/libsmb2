@@ -206,7 +206,7 @@ smb2_get_fds(struct smb2_context *smb2, size_t *fd_count, int *timeout)
         }
 }
 
-static int
+int
 smb2_write_to_socket(struct smb2_context *smb2)
 {
         struct smb2_pdu *pdu;
