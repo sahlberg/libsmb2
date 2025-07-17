@@ -31,12 +31,20 @@
 
 int readv_close = -1;
 
-int (*real_readv)(int fd, const struct iovec *iov, int iovcnt);
-
 ssize_t readv(int fd, const struct iovec *iov, int iovcnt)
 {
         static int call_idx = 0;
+        static int (*real_readv)(int fd, const struct iovec *iov, int iovcnt) = NULL;
 
+        if (real_readv == NULL) {
+                real_readv = dlsym(RTLD_NEXT, "readv");
+                
+                /* Close the socket at this call to readv */
+                if (getenv("READV_CLOSE") != NULL) {
+                        readv_close = atoi(getenv("READV_CLOSE"));
+                }
+        }
+        
         call_idx++;
 
         if (call_idx == readv_close) {
@@ -48,14 +56,3 @@ ssize_t readv(int fd, const struct iovec *iov, int iovcnt)
         return real_readv(fd, iov, iovcnt);
 }
 
-
-static void __attribute__((constructor))
-_init(void)
-{
-        /* Close the socket at this call to readv */
-	if (getenv("READV_CLOSE") != NULL) {
-		readv_close = atoi(getenv("READV_CLOSE"));
-	}
-
-	real_readv = dlsym(RTLD_NEXT, "readv");
-}

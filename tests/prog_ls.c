@@ -34,12 +34,14 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 int alloc_fail = -1;
 
-void *(*real_malloc)(size_t size);
-void *(*real_calloc)(size_t nelem, size_t size);
-
 void *malloc(size_t size)
 {
         static int call_idx = 0;
+        static void *(*real_malloc)(size_t) = NULL;
+
+        if (real_malloc == NULL) {
+               real_malloc = dlsym(RTLD_NEXT, "malloc");
+        }
 
         call_idx++;
 
@@ -52,6 +54,11 @@ void *malloc(size_t size)
 void *calloc(size_t nelem, size_t size)
 {
         static int call_idx = 0;
+        static void *(*real_calloc)(size_t, size_t) = NULL;
+
+        if (real_calloc == NULL) {
+               real_calloc = dlsym(RTLD_NEXT, "calloc");
+        }
 
         call_idx++;
 
@@ -91,9 +98,6 @@ int main(int argc, char *argv[])
                 alloc_fail = -1;
         }
 
-	real_malloc = dlsym(RTLD_NEXT, "malloc");
-	real_calloc = dlsym(RTLD_NEXT, "calloc");
-        
         printf("Alloc fail at %d\n", alloc_fail);
 
         if (argc < 2) {
