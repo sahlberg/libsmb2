@@ -378,7 +378,7 @@ read_more_data:
                 int err = errno;
                 if (err == EINTR || err == EAGAIN || err == EWOULDBLOCK) {
 #endif
-                        return 0;
+                        return -EAGAIN;
                 }
                 smb2_set_error(smb2, "Read from socket failed, "
                                "errno:%d. Closing socket.", err);
@@ -500,7 +500,7 @@ read_more_data:
                         pdu = smb2->pdu;
                         if (!pdu) {
                                 smb2_set_error(smb2, "no pdu for request");
-                                return -ENOMEM;
+                                return -1;
                         }
                         /* set the pdu header's message id to the request's id and
                         *  the tree id to the request's tree id
@@ -779,21 +779,31 @@ static ssize_t smb2_readv_from_socket(struct smb2_context *smb2,
 static int
 smb2_read_from_socket(struct smb2_context *smb2)
 {
-        /* initialize the input vectors to the spl and the header
-         * which are both static data in the smb2 context.
-         * additional vectors will be added when we can map this to
-         * the corresponding pdu.
-         */
-        if (smb2->in.num_done == 0) {
-                smb2->recv_state = SMB2_RECV_SPL;
-                smb2->spl = 0;
+        int count;
 
-                smb2_free_iovector(smb2, &smb2->in);
-                smb2_add_iovector(smb2, &smb2->in, (uint8_t *)&smb2->spl,
-                                  SMB2_SPL_SIZE, NULL);
+        while(1) {
+                /* initialize the input vectors to the spl and the header
+                 * which are both static data in the smb2 context.
+                 * additional vectors will be added when we can map this to
+                 * the corresponding pdu.
+                 */
+                if (smb2->in.num_done == 0) {
+                        smb2->recv_state = SMB2_RECV_SPL;
+                        smb2->spl = 0;
+
+                        smb2_free_iovector(smb2, &smb2->in);
+                        smb2_add_iovector(smb2, &smb2->in, (uint8_t *)&smb2->spl,
+                                          SMB2_SPL_SIZE, NULL);
+                }
+
+                count = smb2_read_data(smb2, smb2_readv_from_socket, 0);
+                if (count == -EAGAIN) {
+                        return 0;
+                }
+                if (count) {
+                        return count;
+                }
         }
-
-        return smb2_read_data(smb2, smb2_readv_from_socket, 0);
 }
 
 static ssize_t smb2_readv_from_buf(struct smb2_context *smb2,
