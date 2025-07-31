@@ -85,7 +85,10 @@ void pr_cb(struct smb2_context *smb2, int status,
                 return;
         }
 
-        write(STDOUT_FILENO, buf, status);
+        if(write(STDOUT_FILENO, buf, status) < 0) {
+            printf("Failed to write to STDOUT\n");
+            exit(10);
+        }
 
         pos += status;
         if (smb2_pread_async(smb2, fh, buf, READ_SIZE, pos, pr_cb, fh) < 0) {
