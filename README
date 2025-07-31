@@ -307,7 +307,6 @@ Nintendo Switch CPU is a Custom Nvidia Tegra X1.
 To compile libsmb2 for the Nintendo Switch, first install the devkitPro with libnx to set it up.
 
 Then to build libsmb2, run
-  $ cd lib
   $ make -f Makefile.platform switch_install
 
 The process will copy the resulting libsmb2.a and the include/smb2 headers to your
@@ -341,7 +340,6 @@ Nintendo DS CPU is both ARM7TDMI and ARM946E-S.
 To compile libsmb2 for the Nintendo DS, first install the devkitPro with libnds using pacman to set it up.
 
 Then to build libsmb2, run
-  $ cd lib
   $ make -f Makefile.platform ds_install
 
 The process will copy the resulting libsmb29.a and the include/smb2 headers to your
@@ -353,7 +351,6 @@ Nintendo Wii-U CPU is a IBM "Espresso" PowerPC-based 45 nm, with 4 cores and a c
 To compile libsmb2 for the Nintendo WII-U, first install the devkitPro with libwut using pacman to set it up.
 
 Then to build libsmb2, run
-  $ cd lib
   $ make -f Makefile.platform wiiu_install
 
 The process will copy the resulting libsmb2.a and the include/smb2 headers to your
@@ -383,7 +380,6 @@ To compile libsmb2 for the Dreamcast, first install the KOS toolchain and
 and set it up.
 
 Then to build libsmb2, run
-  $ cd lib
   $ make -f Makefile.platform clean dc_install
 
 The process will copy the resulting libsmb2.a and the include/smb2 headers to your
