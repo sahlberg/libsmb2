@@ -27,22 +27,24 @@ So just keep the iop_file_t around and use it for the usmb calls later.
 for the usmb2 API. This takes ovnership of the open socket so the smb2_context
 can no longer be used to perform any I/O.
 usmb2_context is designed to be as small as possible.
+This also tears down the original smb2_context and releases all memory assosiated with it.
 
-3c, Tear down and free up all the resources for smb2_context. This includes
-calling
-        smb2_destroy_url(url);
-        smb2_disconnect_share(smb2);
-        smb2_destroy_context(smb2);
-and are performed by calling devctl(DISCONNECT_ALL).
-Unload the irx from memory.
+4, Use usmb2.c and keep accessing the files
 
-4, load and initialize usmb2man.irx. Use the file ids from 3a and the
-new usmb2_context from 3b to use the three supported operations:
-read/write/stat.
 
 
 Memory consumption (on X86_64)
 16 bytes for each open file, the file ids.
+
+Usmb2 context: 248 bytes
+
+Object file for usmb2 is ~2kb
+$ gcc -c -Os -I include/smb2 -I include examples/usmb2.c -o a.o 
+$ strip examples/usmb2.o
+$ ls -l examples/usmb2.o
+-rw-r--r-- 1 sahlberg sahlberg 2088 Aug  2 17:20 examples/usmb2.o
+
+
 
 
 TODO

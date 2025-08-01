@@ -66,6 +66,7 @@ smb2_get_max_write_size
 smb2_get_opaque
 smb2_get_passthrough
 smb2_init_context
+usmb2_init_context
 smb2_mkdir
 smb2_mkdir_async
 smb2_share_enum_async

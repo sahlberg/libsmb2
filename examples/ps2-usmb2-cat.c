@@ -30,6 +30,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "libsmb2.h"
 #include "libsmb2-raw.h"
 
+#include "usmb2.h"
+
 #define MAXBUF 16 * 1024 * 1024
 uint8_t buf[MAXBUF];
 uint32_t pos;
@@ -50,6 +52,7 @@ int main(int argc, char *argv[])
         struct smb2fh *fh;
         int rc = 0;
         smb2_file_id fid;
+        struct usmb2_context *usmb2;
         
         if (argc < 2) {
                 usage();
@@ -93,14 +96,25 @@ int main(int argc, char *argv[])
         memcpy(&fid[0], smb2_get_file_id(fh), SMB2_FD_SIZE);
         // Do NOT close the file:  smb2_close(smb2, fh);
 
-        /* 3b */
-        // TO BE DEFINED
-        
-        /* 3c */
-        /* Close down smb2 */
-        smb2_destroy_url(url);
-        smb2_disconnect_share(smb2);
-        smb2_destroy_context(smb2);
 
+        /* 3b */
+        /*
+         * Switch to USMB2. After this the smb2 context is no longer valid and no libsmb2
+         * can be used.
+         */
+        smb2_destroy_url(url);
+        usmb2 = usmb2_init_context(smb2);
+        printf("usmb2:%p\n", usmb2);
+
+
+        /*
+         * Now perform a READ on the file descriptor using USMB2
+         */
+        usmb2_pread(usmb2, &fid[0], buf, 4, 0);
+        printf("BUF: %s\n", buf);
+        printf("Size: %d BLOCKS\n", usmb2_size(usmb2, &fid[0]));
+        //usmb2_pwrite(usmb2, &fid[0], buf, 4, 0);
+        printf("usmb2 %lu\n", sizeof(struct usmb2_context));
+        
 	return rc;
 }

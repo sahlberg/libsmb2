@@ -75,6 +75,8 @@
 #include "libsmb2-private.h"
 #include "slist.h"
 
+#include "usmb2.h"
+
 #define MAX_URL_SIZE 1024
 
 /* This is a list of all allocated contexts so servers can iterate over each
@@ -770,4 +772,27 @@ int smb2_delegate_credentials(struct smb2_context *in, struct smb2_context *out)
         return -1;
 }
 #endif
+
+
+struct usmb2_context *usmb2_init_context(struct smb2_context *smb2)
+{
+        struct usmb2_context *usmb2;
+
+        usmb2 = calloc(1, sizeof(struct usmb2_context));
+        if (usmb2 == NULL) {
+                return NULL;
+        }
+
+        usmb2->fd = smb2->fd;
+        smb2->fd = -1;
+        usmb2->message_id = smb2->message_id;
+        usmb2->session_id = smb2->session_id;
+        usmb2->tree_id = smb2_tree_id(smb2);
+        
+        /* Close down smb2 */
+        smb2_disconnect_share(smb2);
+        smb2_destroy_context(smb2);
+
+        return usmb2;
+}
 
