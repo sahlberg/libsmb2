@@ -135,6 +135,16 @@ int usmb2_pread(struct usmb2_context *usmb2, uint8_t *fid, uint8_t *buf, int cou
         /* number of bytes returned */
         u32 = le32toh(*(uint32_t *)&usmb2->buf[4 + 64 + 4]);
 
+        /* Read data from socket */
+        while (u32) {
+                len = read(usmb2->fd, buf, u32);
+                if (len < 0) {
+                        continue;
+                }
+                u32 -= len;
+                buf += len;
+        }
+
         /* We only read in 512 byte chunks so we will never need to worry about padding until next pdu*/
         return u32 / 512;
 }
