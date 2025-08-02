@@ -136,12 +136,13 @@ int usmb2_pread(struct usmb2_context *usmb2, uint8_t *fid, uint8_t *buf, int cou
         u32 = le32toh(*(uint32_t *)&usmb2->buf[4 + 64 + 4]);
 
         /* Read data from socket */
-        while (u32) {
-                len = read(usmb2->fd, buf, u32);
+        spl = u32;
+        while (spl) {
+                len = read(usmb2->fd, buf, spl);
                 if (len < 0) {
                         continue;
                 }
-                u32 -= len;
+                spl -= len;
                 buf += len;
         }
 
