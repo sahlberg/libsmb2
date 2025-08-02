@@ -181,7 +181,7 @@ int usmb2_pwrite(struct usmb2_context *usmb2, uint8_t *fid, uint8_t *buf, int co
 
         /* Write the request to the socket */
         hdr = &usmb2->buf[0];
-        spl = spl + 4;
+        spl = 64 + 48 + 4;
         while (spl) {
                 len = write(usmb2->fd, hdr, spl);
                 if (len < 0) {
@@ -191,6 +191,16 @@ int usmb2_pwrite(struct usmb2_context *usmb2, uint8_t *fid, uint8_t *buf, int co
                 hdr += len;
         }
 
+        /* Write the data to the socket */
+        while (count) {
+                len = write(usmb2->fd, buf, count);
+                if (len < 0) {
+                        return -1;
+                }
+                count -= len;
+                buf += len;
+        }
+        
         /* Read SPL, SMB2 header and read reply header from socket */
         spl = 4 + 64 + 16;
         hdr = &usmb2->buf[0];
