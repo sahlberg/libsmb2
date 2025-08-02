@@ -1,9 +1,9 @@
-Special version of libsmbs for use on PS2 applications like neutrio and OPL.
+Special version of libsmb2 for use on PS2 applications like neutrio and OPL.
 In addition to building smb2man.irx, which is a full libsmb2 implementation
-it can also build usmb2man.irx that is a minimal smb2 implementation that
+it can also build usmb2.o that is a minimal smb2 implementation that
 only implements singlethreaded synchronous read/write/stat.
 
-The goal with usmb2man is to weigh in at <10kb total RAM and code size and
+The goal with usmb2.o is to weigh in at <10kb total RAM and code size and
 be used to stream game in-game data to/from the ISO or VMC.
 
 See ps2-ubms2-cat.c for a linux example on how to switch between smb2
@@ -29,7 +29,7 @@ can no longer be used to perform any I/O.
 usmb2_context is designed to be as small as possible.
 This also tears down the original smb2_context and releases all memory assosiated with it.
 
-4, Use usmb2.c and keep accessing the files
+4, Use usmb2.o and keep accessing the files
 
 
 
