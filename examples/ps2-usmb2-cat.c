@@ -113,7 +113,7 @@ int main(int argc, char *argv[])
         usmb2_pread(usmb2, &fid[0], buf, 4, 0);
         printf("BUF: %s\n", buf);
         printf("Size: %d BLOCKS\n", usmb2_size(usmb2, &fid[0]));
-        usmb2_pwrite(usmb2, &fid[1], buf, 4, 0);
+        //usmb2_pwrite(usmb2, &fid[1], buf, 4, 0);
         printf("usmb2 %lu\n", sizeof(struct usmb2_context));
         
 	return rc;
