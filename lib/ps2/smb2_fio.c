@@ -235,7 +235,7 @@ static int smb2_ConvertFid(iop_file_t *f)
 {
         struct file_fh *ffh = f->privdata;
 
-        fid = malloc(16);
+        const smb2_file_id *fid = malloc(16);
         memcpy(fid, smb2_get_file_id(ffh->fh), 16);
         free(f->privdata);
         f->privdata = fid;
@@ -283,6 +283,7 @@ struct file_fh
 {
     struct smb2_context *smb2;
     struct smb2fh *fh;
+    const smb2_file_id fid;
 };
 
 int SMB2_open(iop_file_t *f, const char *filename, int flags, int mode)
