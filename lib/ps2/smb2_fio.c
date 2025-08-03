@@ -30,6 +30,10 @@
 #include <smb2/smb2.h>
 #include <smb2/libsmb2.h>
 
+#ifndef discard_const
+#define discard_const(ptr) ((void *)((intptr_t)(ptr)))
+#endif
+
 /* Uncomment to enable debug logging */
 /*#define DEBUG*/
 #ifdef DEBUG
@@ -236,7 +240,7 @@ static int smb2_ConvertFid(iop_file_t *f)
         struct file_fh *ffh = f->privdata;
 
         const smb2_file_id *fid = malloc(16);
-        memcpy(fid, smb2_get_file_id(ffh->fh), 16);
+        memcpy(discard_const(fid), smb2_get_file_id(ffh->fh), 16);
         free(f->privdata);
         f->privdata = fid;
         return 0;
@@ -330,7 +334,7 @@ int SMB2_open(iop_file_t *f, const char *filename, int flags, int mode)
     }
 
     /* put the raw 16 byte fid as the first 16 bytes of f->privdata */
-    memcpy(&ffh->fid[0], smb2_get_file_id(ffh->fh), 16);
+    memcpy(discard_const(&ffh->fid[0]), smb2_get_file_id(ffh->fh), 16);
     f->privdata = ffh;
 
 
