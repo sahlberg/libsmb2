@@ -18,6 +18,7 @@
 
 #include "usmb2.h"
 
+#define CMD_CREATE   5
 #define CMD_READ     8
 #define CMD_WRITE    9
 #define CMD_GETINFO 16
@@ -124,6 +125,54 @@ static int usmb2_build_request(struct usmb2_context *usmb2, int command,
         
         return 0;
 }
+
+/* OPEN */
+uint8_t *usmb2_open(struct usmb2_context *usmb2, const char *name, int mode)
+{
+        int len = strlen(name) * 2;
+        uint8_t *ptr;
+
+        memset(usmb2->buf, 0, sizeof(usmb2->buf));
+        /*
+         * Command header
+         */
+        /* struct size (16 bits) */
+        usmb2->buf[4 + 64] = 0x39;
+        /* impersonation level 2 */
+        usmb2->buf[4 + 64 +  4] = 0x02;
+        /* desided access : READ, READ EA, READ ATTRIBUTES */
+        usmb2->buf[4 + 64 + 24] = 0x89;
+        /* share access : READ, WRITE */
+        usmb2->buf[4 + 64 + 32] = 0x03;
+        /* create disposition: open  if file exist open it, else fail */
+        usmb2->buf[4 + 64 + 36] = 0x01;
+        /* create options: non-direcotry.  must not be a directory */
+        usmb2->buf[4 + 64 + 40] = 0x40;
+        /* name offset */
+        usmb2->buf[4 + 64 + 44] = 0x78;
+        /* name length in bytes. i.e. 2 times the number of ucs2 characters */
+        usmb2->buf[4 + 64 + 46] = len;
+
+        ptr = &usmb2->buf[4 + 0x78];
+        while (*name) {
+                *ptr = *name++;
+                ptr += 2;
+        }
+
+
+        if (usmb2_build_request(usmb2, CMD_CREATE,
+                                0x78 + len, NULL, 0,
+                                4 + 64 + 88)) {
+                   return NULL;
+        }
+
+        ptr = malloc(16);
+        if (ptr) {
+                memcpy(ptr, &usmb2->buf[4 + 64 + 64], 16);
+        }
+        return ptr;
+}
+
 
 /* READ */
 int usmb2_pread(struct usmb2_context *usmb2, uint8_t *fid, uint8_t *buf, int count, int offset)

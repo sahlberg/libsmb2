@@ -49,9 +49,8 @@ int main(int argc, char *argv[])
 {
         struct smb2_context *smb2;
         struct smb2_url *url;
-        struct smb2fh *fh;
-        int rc = 0;
-        smb2_file_id fid;
+        uint8_t *fh;
+        int i, rc = 0;
         struct usmb2_context *usmb2;
         
         if (argc < 2) {
@@ -77,46 +76,28 @@ int main(int argc, char *argv[])
 		exit(10);
 	}
 
-        /* 2 */
-        /* Open a file using the libsmb2 API */
-        fh = smb2_open(smb2, url->path, O_RDONLY);
-        if (fh == NULL) {
-		printf("smb2_open failed. %s\n", smb2_get_error(smb2));
-		exit(10);
-        }
-
-        /* 3a */
-        /*
-         * Convert the filehandle to a 16 byte fid. Don't close it as we want
-         * the file to remain open on the server side.
-         * The memory allocated for fh will be released when we destroy the
-         * context.
-         * Each file id is 16 bytes in size.
-         */
-        memcpy(&fid[0], smb2_get_file_id(fh), SMB2_FD_SIZE);
-        // Do NOT close the file:  smb2_close(smb2, fh);
-
-
         /* 3b */
         /*
          * Switch to USMB2. After this the smb2 context is no longer valid and no libsmb2
          * can be used.
          */
-        smb2_destroy_url(url);
         usmb2 = usmb2_init_context(smb2);
         printf("usmb2:%p\n", usmb2);
 
-
-        /*
-         * Now perform a READ on the file descriptor using USMB2
-         */
-        usmb2_pread(usmb2, &fid[0], buf, 30, 0);
+        fh = usmb2_open(usmb2, url->path, O_RDONLY);
+        if (fh == NULL) {
+		printf("usmb2_open failed\n");
+		exit(10);
+        }
+        printf("FID: ");for (i = 0; i < 16; i++) printf("%02x ", fh[i]);printf("\n");
+        usmb2_pread(usmb2, fh, buf, 30, 0);
         printf("BUF: %s\n", buf);
-        usmb2_pread(usmb2, &fid[0], buf, 30, 2);
+        usmb2_pread(usmb2, fh, buf, 30, 2);
         printf("BUF: %s\n", buf);
-        printf("Size: %d bytes\n", usmb2_size(usmb2, &fid[0]));
-        //usmb2_pwrite(usmb2, &fid[1], buf, 4, 0);
+        printf("Size: %d bytes\n", usmb2_size(usmb2, fh));
+        //usmb2_pwrite(usmb2, fh, buf, 4, 0);
         printf("usmb2 %lu\n", sizeof(struct usmb2_context));
         
+        smb2_destroy_url(url);
 	return rc;
 }
