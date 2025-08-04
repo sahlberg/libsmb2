@@ -242,7 +242,7 @@ static int smb2_ConvertFid(iop_file_t *f)
         const smb2_file_id *fid = malloc(16);
         memcpy(discard_const(fid), smb2_get_file_id(ffh->fh), 16);
         free(f->privdata);
-        f->privdata = fid;
+        f->privdata = discard_const(fid);
         return 0;
 }
 
