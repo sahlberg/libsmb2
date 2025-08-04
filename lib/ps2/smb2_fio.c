@@ -235,6 +235,13 @@ static int smb2_DisconnectAll(void)
         return 0;
 }
 
+struct file_fh
+{
+    struct smb2_context *smb2;
+    struct smb2fh *fh;
+    const smb2_file_id fid;
+};
+
 static int smb2_ConvertFid(iop_file_t *f)
 {
         struct file_fh *ffh = f->privdata;
@@ -281,13 +288,6 @@ struct dir_fh
     struct smb2dir *fh;
     int is_root;
     struct smb2_share_list *shares;
-};
-
-struct file_fh
-{
-    struct smb2_context *smb2;
-    struct smb2fh *fh;
-    const smb2_file_id fid;
 };
 
 int SMB2_open(iop_file_t *f, const char *filename, int flags, int mode)
