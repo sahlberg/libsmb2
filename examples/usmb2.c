@@ -23,8 +23,6 @@
 #define CMD_GETINFO 16
 
 static int usmb2_build_request(struct usmb2_context *usmb2, int command,
-                               uint32_t struct_size, uint32_t length,
-                               uint64_t offset, uint8_t *fid, int fid_extra_offset,
                                int spl,
                                uint8_t *outdata, int outcount,
                                int incount)
@@ -33,7 +31,6 @@ static int usmb2_build_request(struct usmb2_context *usmb2, int command,
         uint8_t *buf = &usmb2->buf[0];
         uint32_t status;
 
-        memset(usmb2->buf, 0, sizeof(usmb2->buf));
         /*
          * SPL
          */
@@ -70,24 +67,6 @@ static int usmb2_build_request(struct usmb2_context *usmb2, int command,
         /* session id */
         *(uint64_t *)buf = htole64(usmb2->session_id);
         buf += 24; /* 16 byte signature is all zero */
-
-        /*
-         * Command header
-         */
-        /* struct size (16 bits) + FILE_INFO + SMB2_FILE_STANDARD_INFO */
-        *(uint32_t *)buf = htole32(struct_size);
-        buf += 4;
-        
-        /* length */
-        *(uint32_t *)buf = htole32(length);
-        buf += 4;
-
-        /* offset */
-        *(uint64_t *)buf = htole64(offset);
-        buf += 8 + fid_extra_offset;
-
-        /* fid. fid is stored 8 bytes further into the pdu for getinfo vs read/write */
-        memcpy(buf, fid, 16);
 
 
         /*
@@ -133,6 +112,8 @@ static int usmb2_build_request(struct usmb2_context *usmb2, int command,
                 buf += len;
         }
 
+        /* handle padding ? */
+        
         /*
          * Status, fail hard if not successful.  Might need to add a check for pending here.
          */
@@ -144,17 +125,35 @@ static int usmb2_build_request(struct usmb2_context *usmb2, int command,
         return 0;
 }
 
-/* READ in units of 512 bytes */
+/* READ */
 int usmb2_pread(struct usmb2_context *usmb2, uint8_t *fid, uint8_t *buf, int count, int offset)
 {
         int spl, len;
         uint32_t u32;
+        uint8_t *ptr = &usmb2->buf[4 + 64];
 
-        count  *= 512;
-        offset *= 512;
+        memset(usmb2->buf, 0, sizeof(usmb2->buf));
+        /*
+         * Command header
+         */
+        /* struct size (16 bits) + FILE_INFO + SMB2_FILE_STANDARD_INFO */
+        *(uint32_t *)ptr = htole32(0x00000031);
+        ptr += 4;
         
-        if (usmb2_build_request(usmb2, CMD_READ, 0x00000031, count, offset, fid, 0,
-                            64 + 48 + 8, NULL, 0,
+        /* length */
+        *(uint32_t *)ptr = htole32(count);
+        ptr += 4;
+
+        /* offset */
+        *(uint64_t *)ptr = htole64(offset);
+        ptr += 8;
+
+        /* fid. fid is stored 8 bytes further into the pdu for getinfo vs read/write */
+        memcpy(ptr, fid, 16);
+
+        
+        if (usmb2_build_request(usmb2, CMD_READ,
+                                64 + 48 + 8, NULL, 0,
                                 4 + 64 + 16)) {
                    return -1;
         }
@@ -173,36 +172,72 @@ int usmb2_pread(struct usmb2_context *usmb2, uint8_t *fid, uint8_t *buf, int cou
                 buf += len;
         }
 
-        /* We only read in 512 byte chunks so we will never need to worry about padding until next pdu*/
-        return u32 / 512;
+        return u32;
 }
 
-/* WRITE in units of 512 bytes */
+/* WRITE */
 int usmb2_pwrite(struct usmb2_context *usmb2, uint8_t *fid, uint8_t *buf, int count, int offset)
 {
-        count  *= 512;
-        offset *= 512;
+        uint8_t *ptr = &usmb2->buf[4 + 64];
+
+        memset(usmb2->buf, 0, sizeof(usmb2->buf));
+        /*
+         * Command header
+         */
+        /* struct size (16 bits) + data offset == 0x70 */
+        *(uint32_t *)ptr = htole32(0x00700031);
+        ptr += 4;
         
-        if (usmb2_build_request(usmb2, CMD_WRITE, 0x00700031, count, offset, fid, 0,
-                            64 + 48 + count, buf, count,
+        /* length */
+        *(uint32_t *)ptr = htole32(count);
+        ptr += 4;
+
+        /* offset */
+        *(uint64_t *)ptr = htole64(offset);
+        ptr += 8;
+
+        /* fid. fid is stored 8 bytes further into the pdu for getinfo vs read/write */
+        memcpy(ptr, fid, 16);
+        
+        if (usmb2_build_request(usmb2, CMD_WRITE,
+                                64 + 48 + count, buf, count,
                                 4 + 64 + 16)) {
                    return -1;
         }
 
         /* number of bytes returned */
-        /* We only read in 512 byte chunks so we will never need to worry about padding until next pdu*/
-        return le32toh(*(uint32_t *)&usmb2->buf[4 + 64 + 4]) / 512;
+        return le32toh(*(uint32_t *)&usmb2->buf[4 + 64 + 4]);
 }
 
-/* return units of 512 bytes */
+/* SIZE in bytes */
 int usmb2_size(struct usmb2_context *usmb2, uint8_t *fid)
 {
-        if (usmb2_build_request(usmb2, CMD_GETINFO, 0x05010029, 0x0000ffff, 0x00000068, fid, 8,
-                            64 + 40, NULL, 0,
+        uint8_t *ptr = &usmb2->buf[4 + 64];
+
+        memset(usmb2->buf, 0, sizeof(usmb2->buf));
+        /*
+         * Command header
+         */
+        /* struct size (16 bits) + FILE_INFO + SMB2_FILE_STANDARD_INFO */
+        *(uint32_t *)ptr = htole32(0x05010029);
+        ptr += 4;
+        
+        /* length */
+        *(uint32_t *)ptr = htole32(0x0000ffff);
+        ptr += 4;
+
+        /* offset */
+        *(uint64_t *)ptr = htole64(0x00000068);
+        ptr += 16;
+
+        /* fid. fid is stored 8 bytes further into the pdu for getinfo vs read/write */
+        memcpy(ptr, fid, 16);
+
+        if (usmb2_build_request(usmb2, CMD_GETINFO,
+                                64 + 40, NULL, 0,
                                 4 + 64 + 8 + 24)) {
                    return -1;
         }
 
-        /* We only read in 512 byte chunks so we will never need to worry about padding until next pdu*/
-        return le64toh(*(uint32_t *)&usmb2->buf[4 + 64 + 8 + 8]) / 512;
+        return le64toh(*(uint32_t *)&usmb2->buf[4 + 64 + 8 + 8]);
 }

@@ -110,9 +110,11 @@ int main(int argc, char *argv[])
         /*
          * Now perform a READ on the file descriptor using USMB2
          */
-        usmb2_pread(usmb2, &fid[0], buf, 4, 0);
+        usmb2_pread(usmb2, &fid[0], buf, 30, 0);
         printf("BUF: %s\n", buf);
-        printf("Size: %d BLOCKS\n", usmb2_size(usmb2, &fid[0]));
+        usmb2_pread(usmb2, &fid[0], buf, 30, 2);
+        printf("BUF: %s\n", buf);
+        printf("Size: %d bytes\n", usmb2_size(usmb2, &fid[0]));
         //usmb2_pwrite(usmb2, &fid[1], buf, 4, 0);
         printf("usmb2 %lu\n", sizeof(struct usmb2_context));
         
