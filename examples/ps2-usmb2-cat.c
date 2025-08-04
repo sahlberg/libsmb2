@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
         struct smb2_context *smb2;
         struct smb2_url *url;
         uint8_t *fh;
-        int i, rc = 0;
+        int rc = 0;
         struct usmb2_context *usmb2;
         
         if (argc < 2) {
@@ -81,22 +81,28 @@ int main(int argc, char *argv[])
          * Switch to USMB2. After this the smb2 context is no longer valid and no libsmb2
          * can be used.
          */
+        printf("Size of usmb2 structure %lu\n", sizeof(struct usmb2_context));
         usmb2 = usmb2_init_context(smb2);
         printf("usmb2:%p\n", usmb2);
 
+        /* Map the share */
+        if (usmb2_treeconnect(usmb2, "\\\\10.10.10.11\\SNAP-1")) {
+                printf("failed to map share\n");
+                exit(10);
+        }
+        
+        /* Open the file */
         fh = usmb2_open(usmb2, url->path, O_RDONLY);
         if (fh == NULL) {
 		printf("usmb2_open failed\n");
 		exit(10);
         }
-        printf("FID: ");for (i = 0; i < 16; i++) printf("%02x ", fh[i]);printf("\n");
+        
         usmb2_pread(usmb2, fh, buf, 30, 0);
         printf("BUF: %s\n", buf);
         usmb2_pread(usmb2, fh, buf, 30, 2);
         printf("BUF: %s\n", buf);
         printf("Size: %d bytes\n", usmb2_size(usmb2, fh));
-        //usmb2_pwrite(usmb2, fh, buf, 4, 0);
-        printf("usmb2 %lu\n", sizeof(struct usmb2_context));
         
         smb2_destroy_url(url);
 	return rc;

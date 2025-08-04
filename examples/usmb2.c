@@ -18,10 +18,11 @@
 
 #include "usmb2.h"
 
-#define CMD_CREATE   5
-#define CMD_READ     8
-#define CMD_WRITE    9
-#define CMD_GETINFO 16
+#define CMD_TREE_CONNECT  3
+#define CMD_CREATE        5
+#define CMD_READ          8
+#define CMD_WRITE         9
+#define CMD_GETINFO      16
 
 static int usmb2_build_request(struct usmb2_context *usmb2, int command,
                                int spl,
@@ -123,6 +124,40 @@ static int usmb2_build_request(struct usmb2_context *usmb2, int command,
                 return -1;
         }
         
+        return 0;
+}
+
+/* TREE CONNECT */
+int usmb2_treeconnect(struct usmb2_context *usmb2, const char *unc)
+{
+        int len = strlen(unc) * 2;
+        uint8_t *ptr;
+
+        memset(usmb2->buf, 0, sizeof(usmb2->buf));
+        /*
+         * Command header
+         */
+        /* struct size (16 bits) */
+        usmb2->buf[4 + 64] = 0x09;
+        /* unc offset */
+        usmb2->buf[4 + 64 + 4] = 0x48;
+        /* unc length in bytes. i.e. 2 times the number of ucs2 characters */
+        usmb2->buf[4 + 64 + 6] = len;
+
+
+        ptr = &usmb2->buf[4 + 0x48];
+        while (*unc) {
+                *ptr = *unc++;
+                ptr += 2;
+        }
+
+
+        if (usmb2_build_request(usmb2, CMD_TREE_CONNECT,
+                                0x48 + len, NULL, 0,
+                                4 + 64 + 16)) {
+                   return -1;
+        }
+        usmb2->tree_id = *(uint32_t *)&usmb2->buf[4 + 36];
         return 0;
 }
 

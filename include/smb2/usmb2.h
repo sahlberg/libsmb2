@@ -27,6 +27,11 @@ struct usmb2_context {
         uint8_t buf[USMB2_SIZE];
 };
 
+/* Connect to a share. The unc must be of the form \\ip-address\share-name
+ * On success it will fill in tree id in the usmb2 context.
+ */
+int usmb2_treeconnect(struct usmb2_context *usmb2, const char *unc);
+
 /* Open a file. Unicode is out of scope for a tiny-smb2 clients so the filenames you use better
  * be clean 7-bit ASCII.
  * TODO: currently only support O_RDONLY.  Need to add O_RDWR support.
