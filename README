@@ -1,4 +1,4 @@
-Special version of libsmb2 for use on PS2 applications like neutrio and OPL.
+Special version of libsmb2 for use on PS2 applications like neutrino and OPL.
 In addition to building smb2man.irx, which is a full libsmb2 implementation
 it can also build usmb2.o that is a minimal smb2 implementation that
 only implements singlethreaded synchronous read/write/stat.
