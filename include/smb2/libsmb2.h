@@ -1378,15 +1378,6 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
  */
 #include <smb2/libsmb2-dcerpc-srvsvc.h>
 
-
-
-/*
- * Destroys the original smb2 context and replaces it with a light-weight usmb2_context.
- * The socket remains open.
- */
-struct usmb2_context *usmb2_init_context(struct smb2_context *smb2);
-
-
 #ifdef __cplusplus
 }
 #endif

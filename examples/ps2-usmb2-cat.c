@@ -13,6 +13,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 #define _GNU_SOURCE
 
+#include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
 #if !defined(__amigaos4__) && !defined(__AMIGA__) && !defined(__AROS__)
@@ -25,10 +26,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-
-#include "smb2.h"
-#include "libsmb2.h"
-#include "libsmb2-raw.h"
 
 #include "usmb2.h"
 
@@ -47,8 +44,6 @@ int usage(void)
 
 int main(int argc, char *argv[])
 {
-        struct smb2_context *smb2;
-        struct smb2_url *url;
         uint8_t *fh;
         int rc = 0;
         struct usmb2_context *usmb2;
@@ -57,32 +52,8 @@ int main(int argc, char *argv[])
                 usage();
         }
 
-        /* 1 */
-	smb2 = smb2_init_context();
-        if (smb2 == NULL) {
-                fprintf(stderr, "Failed to init context\n");
-                exit(0);
-        }
 
-        url = smb2_parse_url(smb2, argv[1]);
-        if (url == NULL) {
-                fprintf(stderr, "Failed to parse url: %s\n",
-                        smb2_get_error(smb2));
-                exit(0);
-        }
-
-	if (smb2_connect_share(smb2, url->server, url->share, url->user) != 0) {
-		printf("smb2_connect_share failed. %s\n", smb2_get_error(smb2));
-		exit(10);
-	}
-
-        /* 3b */
-        /*
-         * Switch to USMB2. After this the smb2 context is no longer valid and no libsmb2
-         * can be used.
-         */
-        printf("Size of usmb2 structure %lu\n", sizeof(struct usmb2_context));
-        usmb2 = usmb2_init_context(smb2);
+        usmb2 = usmb2_init_context(htonl(0x0a0a0a0b)); /* 10.10.10.11 */
         printf("usmb2:%p\n", usmb2);
 
         /* Map the share */
@@ -90,9 +61,10 @@ int main(int argc, char *argv[])
                 printf("failed to map share\n");
                 exit(10);
         }
+        printf("mapped the share\n");
         
         /* Open the file */
-        fh = usmb2_open(usmb2, url->path, O_RDONLY);
+        fh = usmb2_open(usmb2, "advancedsettings.xml", O_RDONLY);
         if (fh == NULL) {
 		printf("usmb2_open failed\n");
 		exit(10);
@@ -104,6 +76,5 @@ int main(int argc, char *argv[])
         printf("BUF: %s\n", buf);
         printf("Size: %d bytes\n", usmb2_size(usmb2, fh));
         
-        smb2_destroy_url(url);
 	return rc;
 }

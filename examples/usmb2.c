@@ -1,6 +1,7 @@
 /* -*-  mode:c; tab-width:8; c-basic-offset:8; indent-tabs-mode:nil;  -*- */
 #define _GNU_SOURCE
 
+#include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
@@ -9,12 +10,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
-
-#include "smb2.h"
-#include "libsmb2.h"
-#include "libsmb2-raw.h"
 
 #include "usmb2.h"
 
@@ -325,3 +323,31 @@ int usmb2_size(struct usmb2_context *usmb2, uint8_t *fid)
 
         return le64toh(*(uint32_t *)&usmb2->buf[4 + 64 + 8 + 8]);
 }
+
+struct usmb2_context *usmb2_init_context(uint32_t ip)
+{
+        struct usmb2_context *usmb2;
+        struct sockaddr_in sin;
+        int socksize = sizeof(struct sockaddr_in);
+
+        usmb2 = calloc(1, sizeof(struct usmb2_context));
+        if (usmb2 == NULL) {
+                return NULL;
+        }
+
+        usmb2->fd = socket(AF_INET, SOCK_STREAM, 0);
+
+        sin.sin_family = AF_INET;
+        sin.sin_port = htons(445);
+        memcpy(&sin.sin_addr, &ip, 4);
+#ifdef HAVE_SOCK_SIN_LEN
+        sin.sin_len = socksize;
+#endif
+        if (connect(usmb2->fd, (struct sockaddr *)&sin, socksize) != 0) {
+                free(usmb2);
+                return NULL;
+        }
+        
+        return usmb2;
+}
+
