@@ -16,11 +16,12 @@
 
 #include "usmb2.h"
 
-#define CMD_TREE_CONNECT  3
-#define CMD_CREATE        5
-#define CMD_READ          8
-#define CMD_WRITE         9
-#define CMD_GETINFO      16
+#define CMD_NEGOTIATE_PROTOCOL  0
+#define CMD_TREE_CONNECT        3
+#define CMD_CREATE              5
+#define CMD_READ                8
+#define CMD_WRITE               9
+#define CMD_GETINFO            16
 
 static int usmb2_build_request(struct usmb2_context *usmb2, int command,
                                int spl,
@@ -49,7 +50,11 @@ static int usmb2_build_request(struct usmb2_context *usmb2, int command,
          * Credit charge in smb2 is 1 per 64kb requested but we never read > 2048 bytes
          * so we can hardcode it to 1.
          */
-        *(uint32_t *)buf = htole32(0x00010040);
+        if (command != CMD_NEGOTIATE_PROTOCOL) {
+                *(uint32_t *)buf = htole32(0x00010040);
+        } else {
+                *(uint32_t *)buf = htole32(0x00000040);
+        }
         buf += 8; /* status, 4 bytes, is zero */
         
         /* command + credit request */
@@ -121,6 +126,37 @@ static int usmb2_build_request(struct usmb2_context *usmb2, int command,
         if (status) {
                 return -1;
         }
+        
+        return 0;
+}
+
+/* NEGOTIATE PROTOCOL */
+int usmb2_negotiateprotocol(struct usmb2_context *usmb2)
+{
+        uint8_t *ptr = &usmb2->buf[4 + 64];
+
+        memset(usmb2->buf, 0, sizeof(usmb2->buf));
+        /*
+         * Command header
+         */
+        /* struct size (16 bits) + DialectCount=1 */
+        *(uint32_t *)ptr = htole32(0x00010024);
+        ptr += 12; /* SecurityMode=0, Capabilities=0 */
+
+        /* client guid */
+        ptr[0] = 0xaa;
+        ptr[15] = 0xbb;
+        ptr += 24;
+
+        /* dialects 3.00 */
+         *(uint32_t *)ptr = htole32(0x0000300);
+
+        if (usmb2_build_request(usmb2, CMD_NEGOTIATE_PROTOCOL,
+                                64 + 40, NULL, 0,
+                                4 + 64 + 64)) {
+                   return -1;
+        }
+        /*TODO   read the neg context from the socket */
         
         return 0;
 }
@@ -324,6 +360,7 @@ int usmb2_size(struct usmb2_context *usmb2, uint8_t *fid)
         return le64toh(*(uint32_t *)&usmb2->buf[4 + 64 + 8 + 8]);
 }
 
+
 struct usmb2_context *usmb2_init_context(uint32_t ip)
 {
         struct usmb2_context *usmb2;
@@ -347,7 +384,11 @@ struct usmb2_context *usmb2_init_context(uint32_t ip)
                 free(usmb2);
                 return NULL;
         }
-        
+
+        if (usmb2_negotiateprotocol(usmb2)) {
+                free(usmb2);
+                return NULL;
+        }
+
         return usmb2;
 }
-
