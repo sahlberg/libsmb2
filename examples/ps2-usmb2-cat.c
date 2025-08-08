@@ -44,7 +44,7 @@ int usage(void)
 
 int main(int argc, char *argv[])
 {
-        //uint8_t *fh;
+        uint8_t *fh;
         int rc = 0;
         struct usmb2_context *usmb2;
         
@@ -56,13 +56,11 @@ int main(int argc, char *argv[])
         usmb2 = usmb2_init_context(htonl(0x0a0a0a0b)); /* 10.10.10.11 */
         printf("usmb2:%p\n", usmb2);
 
-#if 0        
         /* Map the share */
         if (usmb2_treeconnect(usmb2, "\\\\10.10.10.11\\SNAP-1")) {
                 printf("failed to map share\n");
                 exit(10);
         }
-        printf("mapped the share\n");
         
         /* Open the file */
         fh = usmb2_open(usmb2, "advancedsettings.xml", O_RDONLY);
@@ -76,7 +74,6 @@ int main(int argc, char *argv[])
         usmb2_pread(usmb2, fh, buf, 30, 2);
         printf("BUF: %s\n", buf);
         printf("Size: %d bytes\n", usmb2_size(usmb2, fh));
-#endif
-        
+
 	return rc;
 }

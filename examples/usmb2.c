@@ -24,6 +24,9 @@
 #define CMD_WRITE               9
 #define CMD_GETINFO            16
 
+#define STATUS_SUCCESS          0x00000000
+#define STATUS_MORE_PROCESSING  0xc0000016
+
 static int write_to_socket(struct usmb2_context *usmb2, uint8_t *buf, int len)
 {
         int count;
@@ -56,7 +59,8 @@ static int read_from_socket(struct usmb2_context *usmb2, uint8_t *buf, int len)
         
 static int usmb2_build_request(struct usmb2_context *usmb2,
                                int command, int commandoutcount, int commandincount,
-                               uint8_t *outdata, int outdatacount)
+                               uint8_t *outdata, int outdatacount,
+                               uint8_t *indata, int indatacount)
 {
         uint32_t spl;
         uint8_t *buf = &usmb2->buf[0];
@@ -101,7 +105,7 @@ static int usmb2_build_request(struct usmb2_context *usmb2,
         buf += 4;
 
         /* session id */
-        *(uint64_t *)buf = htole64(usmb2->session_id);
+        *(uint64_t *)buf = usmb2->session_id;
         buf += 24; /* 16 byte signature is all zero */
 
 
@@ -139,6 +143,13 @@ static int usmb2_build_request(struct usmb2_context *usmb2,
         read_from_socket(usmb2, &usmb2->buf[0], 64);
         spl -= 64;
 
+        if (command == CMD_SESSION_SETUP) {
+                usmb2->session_id = *(uint64_t *)&usmb2->buf[0x28];
+        }
+        if (command == CMD_TREE_CONNECT) {
+                usmb2->tree_id = *(uint32_t *)&usmb2->buf[0x24];
+        }
+
         //qqq handle keepalives
         
         /*
@@ -160,8 +171,14 @@ static int usmb2_build_request(struct usmb2_context *usmb2,
         /*
          * Read data
          */
-        //qqq ...
-
+        if (indata) {
+                if (indatacount > spl) {
+                        indatacount = spl;
+                }
+                read_from_socket(usmb2, indata, indatacount);
+                spl -= indatacount;
+        }
+        
         /*
          * Read padding
          */
@@ -193,15 +210,83 @@ int usmb2_negotiateprotocol(struct usmb2_context *usmb2)
 
         if (usmb2_build_request(usmb2,
                                 CMD_NEGOTIATE_PROTOCOL, 40, 64,
-                                NULL, 0)) {
+                                NULL, 0, NULL, 0)) {
                    return -1;
         }
-        /* neg reply is in usmb2->buf */
+        /* reply is in usmb2->buf */
         
         return 0;
 }
 
-#if 0
+static int create_ntlmssp_blob(struct usmb2_context *usmb2, int cmd)
+{
+        uint8_t *ptr = &usmb2->buf[4 + 64 + 12];
+
+        ptr = &usmb2->buf[4 + 64 + 24];
+        memcpy(ptr, "NTLMSSP", 7);
+        ptr += 8;
+        if (cmd == 1) {
+                /* NTLMSSP_NEGOTIATE */
+                *ptr = cmd;
+                ptr += 4;
+                /* flags qqq trim this down  */
+                *(uint32_t *)ptr = htole32(0x20080227);
+                
+                return 32;
+        }
+        if (cmd == 3) {
+                /* NTLMSSP_AUTH */
+                *ptr = cmd;
+                ptr += 0x34;
+                /* qqq what is this, just uninitialized data in my capture ? */
+                *(uint32_t *)ptr = htole32(0x20088817);
+                
+                return 72;
+        }
+        return -1;
+}
+
+/* SESSION_SETUP */
+int usmb2_sessionsetup(struct usmb2_context *usmb2)
+{
+        int len, cmd;
+        uint32_t status;
+        uint8_t *ptr;
+
+        cmd = 1;
+
+ again:
+        memset(usmb2->buf, 0, sizeof(usmb2->buf));
+        len = create_ntlmssp_blob(usmb2, cmd);
+
+        /*
+         * Command header
+         */
+        /* struct size (16 bits) + Flags=0 */
+        *(uint32_t *)&usmb2->buf[4 + 64] = htole32(0x00000019);
+
+        /* buffer offset and buffer length */
+        ptr = &usmb2->buf[4 + 64 + 12];
+        *ptr = 0x58;
+        ptr += 2;
+        *(uint16_t *)ptr = htole16(len);
+
+        
+        status = usmb2_build_request(usmb2,
+                                     CMD_SESSION_SETUP, 24 + len, 64,
+                                     NULL, 0, NULL, 0);
+        if (cmd == 1 && status == STATUS_MORE_PROCESSING) {
+                cmd = 3;
+                goto again;
+        }
+        if (status) {
+                   return -1;
+        }
+        /* reply is in usmb2->buf */
+        
+        return 0;
+}
+
 /* TREE CONNECT */
 int usmb2_treeconnect(struct usmb2_context *usmb2, const char *unc)
 {
@@ -226,17 +311,17 @@ int usmb2_treeconnect(struct usmb2_context *usmb2, const char *unc)
                 ptr += 2;
         }
 
-
-        if (usmb2_build_request(usmb2, CMD_TREE_CONNECT,
-                                8 + len, NULL, 0,
-                                64 + 16)) {
+        if (usmb2_build_request(usmb2,
+                                CMD_TREE_CONNECT, 8 + len, 16,
+                                NULL, 0, NULL, 0)) {
                    return -1;
         }
-        usmb2->tree_id = *(uint32_t *)&usmb2->buf[4 + 36];
+
         return 0;
 }
 
 /* OPEN */
+/* qqq TODO add support for O_RDWR */
 uint8_t *usmb2_open(struct usmb2_context *usmb2, const char *name, int mode)
 {
         int len = strlen(name) * 2;
@@ -270,15 +355,15 @@ uint8_t *usmb2_open(struct usmb2_context *usmb2, const char *name, int mode)
         }
 
 
-        if (usmb2_build_request(usmb2, CMD_CREATE,
-                                0x38 + len, NULL, 0,
-                                64 + 88)) {
+        if (usmb2_build_request(usmb2,
+                                CMD_CREATE, 0x38 + len, 88,
+                                NULL, 0, NULL, 0)) {
                    return NULL;
         }
 
         ptr = malloc(16);
         if (ptr) {
-                memcpy(ptr, &usmb2->buf[4 + 64 + 64], 16);
+                memcpy(ptr, &usmb2->buf[64], 16);
         }
         return ptr;
 }
@@ -287,7 +372,6 @@ uint8_t *usmb2_open(struct usmb2_context *usmb2, const char *name, int mode)
 /* READ */
 int usmb2_pread(struct usmb2_context *usmb2, uint8_t *fid, uint8_t *buf, int count, int offset)
 {
-        int spl, len;
         uint32_t u32;
         uint8_t *ptr = &usmb2->buf[4 + 64];
 
@@ -311,29 +395,19 @@ int usmb2_pread(struct usmb2_context *usmb2, uint8_t *fid, uint8_t *buf, int cou
         memcpy(ptr, fid, 16);
 
         
-        if (usmb2_build_request(usmb2, CMD_READ,
-                                48 + 8, NULL, 0,
-                                64 + 16)) {
+        if (usmb2_build_request(usmb2,
+                                CMD_READ, 48 + 8, 16,
+                                NULL, 0, buf, count)) {
                    return -1;
         }
 
         /* number of bytes returned */
-        u32 = le32toh(*(uint32_t *)&usmb2->buf[4 + 64 + 4]);
-
-        /* Read data from socket */
-        spl = u32;
-        while (spl) {
-                len = read(usmb2->fd, buf, spl);
-                if (len < 0) {
-                        continue;
-                }
-                spl -= len;
-                buf += len;
-        }
+        u32 = le32toh(*(uint32_t *)&usmb2->buf[4]);
 
         return u32;
 }
 
+#if 0
 /* WRITE */
 int usmb2_pwrite(struct usmb2_context *usmb2, uint8_t *fid, uint8_t *buf, int count, int offset)
 {
@@ -358,15 +432,15 @@ int usmb2_pwrite(struct usmb2_context *usmb2, uint8_t *fid, uint8_t *buf, int co
         /* fid. fid is stored 8 bytes further into the pdu for getinfo vs read/write */
         memcpy(ptr, fid, 16);
         
-        if (usmb2_build_request(usmb2, CMD_WRITE,
-                                48 + count, buf, count,
-                                64 + 16)) {
+        if (usmb2_build_request(usmb2, CMD_WRITE, qqq
+                                48 + count, buf, count, NULL, 0)) {
                    return -1;
         }
 
         /* number of bytes returned */
         return le32toh(*(uint32_t *)&usmb2->buf[4 + 64 + 4]);
 }
+#endif
 
 /* SIZE in bytes */
 int usmb2_size(struct usmb2_context *usmb2, uint8_t *fid)
@@ -392,22 +466,21 @@ int usmb2_size(struct usmb2_context *usmb2, uint8_t *fid)
         /* fid. fid is stored 8 bytes further into the pdu for getinfo vs read/write */
         memcpy(ptr, fid, 16);
 
-        if (usmb2_build_request(usmb2, CMD_GETINFO,
-                                40, NULL, 0,
-                                64 + 8 + 24)) {
+        if (usmb2_build_request(usmb2,
+                                CMD_GETINFO, 40, 8,
+                                NULL, 0, NULL, 0)) {
                    return -1;
         }
 
-        return le64toh(*(uint32_t *)&usmb2->buf[4 + 64 + 8 + 8]);
+        return le64toh(*(uint32_t *)&usmb2->buf[8 + 8]);
 }
-#endif
 
 struct usmb2_context *usmb2_init_context(uint32_t ip)
 {
         struct usmb2_context *usmb2;
         struct sockaddr_in sin;
         int socksize = sizeof(struct sockaddr_in);
-
+        
         usmb2 = calloc(1, sizeof(struct usmb2_context));
         if (usmb2 == NULL) {
                 return NULL;
@@ -431,8 +504,10 @@ struct usmb2_context *usmb2_init_context(uint32_t ip)
                 return NULL;
         }
 
-        printf("oooik\n");
-        exit(0);
+        if (usmb2_sessionsetup(usmb2)) {
+                free(usmb2);
+                return NULL;
+        }
         
         return usmb2;
 }
