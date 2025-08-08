@@ -1,4 +1,11 @@
 /* -*-  mode:c; tab-width:8; c-basic-offset:8; indent-tabs-mode:nil;  -*- */
+/* PS2IOP does not use read/write to access the socket but lwip calls.
+   it will need this:
+
+#define write(a,b,c) lwip_send(a,b,c,0)
+#define read(a,b,c) lwip_recv(a,b,c,0)
+
+*/
 #define _GNU_SOURCE
 
 #include <arpa/inet.h>
