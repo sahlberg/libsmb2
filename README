@@ -8,10 +8,42 @@ Memory consumption (on X86_64)
 
 Usmb2 context: 248 bytes
 
-Object file for usmb2 is ~2kb
+Code size is ~1300 bytes.
+
 $ gcc -c -Os -I include/smb2 -I include examples/usmb2.c -o a.o 
 and check with objdump.  .text section is currently 0x4ed bytes in size.
-i.e. ~1300 bytes.
+
+
+Currently does not support authentication and crypto, so just like the old smbman.irx
+you will need to configure samba to allow failed authentications and map it to the nobody user,
+like this :
+
+-- smb.conf snippet begin --
+[global]
+        workgroup = SAMBA
+        max protocol = SMB3
+        min protocol = CORE
+        ntlm auth = yes
+        null passwords = yes
+        lanman auth = yes
+        strict sync = no
+        keepalive = 0
+        security = user
+        passdb backend = tdbsam
+        usershare allow guests = yes
+        name resolve order = lmhosts bcast host wins
+        log level = 0
+        guest ok = yes
+        guest account = nobody
+        map to guest = Bad User
+
+[SNAP-1]
+        path = /data/SNAP-1
+        available = yes
+        read only = no
+        browsable = yes
+        writable = yes
+-- smb.conf snippet end --
 
 ===
 
