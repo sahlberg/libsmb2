@@ -245,7 +245,7 @@ static int create_ntlmssp_blob(struct usmb2_context *usmb2, int cmd)
                 /* NTLMSSP_AUTH */
                 *ptr = cmd;
                 ptr += 0x34;
-                /* qqq what is this, just uninitialized data in my capture ? */
+                /* flags qqq trim this down */
                 *(uint32_t *)ptr = htole32(0x20088817);
                 
                 return 72;

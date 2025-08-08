@@ -14,9 +14,9 @@ $ gcc -c -Os -I include/smb2 -I include examples/usmb2.c -o a.o
 and check with objdump.  .text section is currently 0x4ed bytes in size.
 
 
-Currently does not support authentication and crypto, so just like the old smbman.irx
-you will need to configure samba to allow failed authentications and map it to the nobody user,
-like this :
+Currently does not support authentication and crypto, so just like the old
+smbman.irx you will need to configure samba (or windows) to allow Guest
+access. Like this :
 
 -- smb.conf snippet begin --
 [global]
