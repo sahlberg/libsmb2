@@ -1,38 +1,8 @@
-Special version of libsmb2 for use on PS2 applications like neutrino and OPL.
-In addition to building smb2man.irx, which is a full libsmb2 implementation
-it can also build usmb2.o that is a minimal smb2 implementation that
-only implements singlethreaded synchronous read/write/stat.
+USMB2
 
-The goal with usmb2.o is to weigh in at <10kb total RAM and code size and
-be used to stream game in-game data to/from the ISO or VMC.
+Special micro-SMB2 client for use on PS2 applications like neutrino and OPL.
 
-See ps2-ubms2-cat.c for a linux example on how to switch between smb2
-and usmb2 API:
-
-Operations will be
-1, Load and initialize smb2man.irx. Use the full smb2 implementation
-to browse the filesystem and read/write assets.
-
-2, When a game is about to start, open all the filehandles that will be
-needed, i.e. the ISO and the VMCs, and more?
-
-3a, Convert all file handles to a 16 byte file id.
-Pass the iop_file_t to devctl(CONVERT_FID)
-and f->provdata will point to the 16 byte file id.
-So just keep the iop_file_t around and use it for the usmb calls later.
-(hoping that ps2's os does not clear/frees them when the  underlying
- device is unloaded).
- 
-3b, Call usmb2_init_context to initialize the much smaller context we need
-for the usmb2 API. This takes ovnership of the open socket so the smb2_context
-can no longer be used to perform any I/O.
-usmb2_context is designed to be as small as possible.
-This also tears down the original smb2_context and releases all memory assosiated with it.
-
-4, Use usmb2.o and keep accessing the files
-
-
-
+See ps2-ubms2-cat.c for a linux example on how to use to map a share and read a file.
 Memory consumption (on X86_64)
 16 bytes for each open file, the file ids.
 
@@ -40,17 +10,8 @@ Usmb2 context: 248 bytes
 
 Object file for usmb2 is ~2kb
 $ gcc -c -Os -I include/smb2 -I include examples/usmb2.c -o a.o 
-$ strip examples/usmb2.o
-$ ls -l examples/usmb2.o
--rw-r--r-- 1 sahlberg sahlberg 2088 Aug  2 17:20 examples/usmb2.o
-
-
-
-
-TODO
-* smb2man has a smb2Connect() that initializes the context and maps
-  the share. We need to add a SMB2_DEVCTL_DISCONNECT that destroys the
-  context.
+and check with objdump.  .text section is currently 0x4ed bytes in size.
+i.e. ~1300 bytes.
 
 ===
 
