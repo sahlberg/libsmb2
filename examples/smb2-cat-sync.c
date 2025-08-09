@@ -89,14 +89,17 @@ int main(int argc, char *argv[])
                         rc = 1;
                         break;
                 }
-                write(STDOUT_FILENO, buf, count);
+                if (write(STDOUT_FILENO, buf, count) < 0) {
+                    printf("Failed to write to STDOUT\n");
+                    exit(10);
+                }
                 pos += count;
         };
-                
+
         smb2_close(smb2, fh);
         smb2_disconnect_share(smb2);
         smb2_destroy_url(url);
         smb2_destroy_context(smb2);
-        
+
 	return rc;
 }
