@@ -7,7 +7,7 @@
 #ifndef PORTABLE_ENDIAN_H__
 #define PORTABLE_ENDIAN_H__
 
-#if (defined(_WIN16) || defined(_WIN32) || defined(_WIN64)) && !defined(__WINDOWS__) && !defined(_XBOX) 
+#if (defined(_WIN16) || defined(_WIN32) || defined(_WIN64)) && !defined(__WINDOWS__) && !defined(_XBOX)
 #define __WINDOWS__
 #endif
 
@@ -105,7 +105,7 @@
 #define be64toh(x) betoh64(x)
 #endif
 
-#ifndef le64toh 
+#ifndef le64toh
 #define le64toh(x) letoh64(x)
 #endif
 
@@ -133,7 +133,7 @@
 #define __LITTLE_ENDIAN LITTLE_ENDIAN
 #define __PDP_ENDIAN PDP_ENDIAN
 
-#elif defined(PS3_PPU_PLATFORM)
+#elif defined(PS3_PPU_PLATFORM) || defined(__WIIU__) || defined(__WII__) || defined(__GC__)
 
 #define htobe16(x) (x)
 #define htole16(x) __builtin_bswap16(x)
@@ -150,7 +150,7 @@
 #define be64toh(x) (x)
 #define le64toh(x) __builtin_bswap64(x)
 
-#elif defined(__SWITCH__) || defined(__N3DS__) || defined(__WII__) || defined(__GC__) || defined(__WIIU__) || defined(__NDS__)
+#elif defined(__SWITCH__) || defined(__N3DS__) || defined(__NDS__)
 
 #include <machine/endian.h>
 #define htobe16(x) __bswap16(x)
