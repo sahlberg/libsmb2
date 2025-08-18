@@ -1762,6 +1762,11 @@ dcerpc_bind_async(struct dcerpc_context *dce, dcerpc_cb cb,
         pdu->bind.n_context_elem = dce->smb2->ndr ? 1 : 2;
         pdu->bind.p_cont_elem = smb2_alloc_data(dce->smb2, pdu->payload,
                      pdu->bind.n_context_elem * sizeof(struct p_cont_elem_t));
+        if (pdu->bind.p_cont_elem == NULL) {
+                smb2_set_error(dce->smb2, "Failed to allocate p_cont_elem");
+                dcerpc_free_pdu(dce, pdu);
+                return -ENOMEM;
+        }
         pce = pdu->bind.p_cont_elem;
         if (dce->smb2->ndr == 0 || dce->smb2->ndr == 1) {
                 pce->p_cont_id = 0;
@@ -1770,6 +1775,11 @@ dcerpc_bind_async(struct dcerpc_context *dce, dcerpc_cb cb,
                 pce->transfer_syntaxes = smb2_alloc_data(
                      dce->smb2, pdu->payload,
                      pce->n_transfer_syn * sizeof(struct p_cont_elem_t *));
+                if (pce->transfer_syntaxes == NULL) {
+                        smb2_set_error(dce->smb2, "Failed to allocate transfer_syntaxes");
+                        dcerpc_free_pdu(dce, pdu);
+                        return -ENOMEM;
+                }
                 pce->transfer_syntaxes[0] = &ndr32_syntax;
                 pce++;
         }
@@ -1780,6 +1790,11 @@ dcerpc_bind_async(struct dcerpc_context *dce, dcerpc_cb cb,
                 pce->transfer_syntaxes = smb2_alloc_data(
                      dce->smb2, pdu->payload,
                      pce->n_transfer_syn * sizeof(struct p_cont_elem_t *));
+                if (pce->transfer_syntaxes == NULL) {
+                        smb2_set_error(dce->smb2, "Failed to allocate transfer_syntaxes");
+                        dcerpc_free_pdu(dce, pdu);
+                        return -ENOMEM;
+                }
                 pce->transfer_syntaxes[0] = &ndr64_syntax;
         }
 

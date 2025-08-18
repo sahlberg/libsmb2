@@ -426,15 +426,25 @@ void smb2_free_iovector(struct smb2_context *smb2, struct smb2_io_vectors *v)
 }
 
 struct smb2_iovec *smb2_add_iovector(struct smb2_context *smb2,
-                                     struct smb2_io_vectors *v,
-                                     uint8_t *buf, size_t len,
-                                     void (*free)(void *))
+                                    struct smb2_io_vectors *v,
+                                    uint8_t *buf, size_t len,
+                                    void (*free_cb)(void *))
 {
-        struct smb2_iovec *iov = &v->iov[v->niov];
+                struct smb2_iovec *iov;
+                /* Bounds checking */
+                if (v->niov >= SMB2_MAX_VECTORS) {
+                        smb2_set_error(smb2, "Too many I/O vectors");
+                        /* Avoid leaks for caller-provided buffers */
+                        if (free_cb && buf) {
+                                free_cb(buf);
+                        }
+                        return NULL;
+                }
 
-        v->iov[v->niov].buf = buf;
-        v->iov[v->niov].len = len;
-        v->iov[v->niov].free = free;
+                iov = &v->iov[v->niov];
+                v->iov[v->niov].buf = buf;
+                v->iov[v->niov].len = len;
+                v->iov[v->niov].free = free_cb;
         v->total_size += len;
         v->niov++;
 

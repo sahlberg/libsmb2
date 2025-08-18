@@ -73,6 +73,10 @@ smb2_encode_change_notify_request(struct smb2_context *smb2,
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        if (iov == NULL) {
+                smb2_set_error(smb2, "Failed to add iovector for change-notify request");
+                return -1;
+        }
 
         smb2_set_uint16(iov, 0, SMB2_CHANGE_NOTIFY_REQUEST_SIZE);
         smb2_set_uint16(iov, 2, req->flags);
@@ -125,6 +129,10 @@ smb2_encode_change_notify_reply(struct smb2_context *smb2,
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        if (iov == NULL) {
+                smb2_set_error(smb2, "Failed to add iovector for change-notify reply");
+                return -1;
+        }
 
         smb2_set_uint16(iov, 0, SMB2_CHANGE_NOTIFY_REPLY_SIZE);
         rep->output_buffer_offset = SMB2_HEADER_SIZE + SMB2_CHANGE_NOTIFY_REQUEST_SIZE;
@@ -147,6 +155,10 @@ smb2_encode_change_notify_reply(struct smb2_context *smb2,
                                         buf,
                                         len,
                                         free);
+        if (iov == NULL) {
+                smb2_set_error(smb2, "Failed to add iovector for change-notify output buffer");
+                return -1;
+        }
 
         if (smb2->passthrough) {
                 memcpy(buf, rep->output, rep->output_buffer_length);

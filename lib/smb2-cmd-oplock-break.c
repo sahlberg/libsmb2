@@ -70,6 +70,10 @@ smb2_encode_oplock_break_acknowledgement(struct smb2_context *smb2,
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        if (iov == NULL) {
+                smb2_set_error(smb2, "Failed to add iovector for oplock break ack");
+                return -1;
+        }
 
         smb2_set_uint16(iov, 0, SMB2_OPLOCK_BREAK_ACKNOWLEDGE_SIZE);
         smb2_set_uint8(iov, 2, req->oplock_level);
@@ -121,6 +125,10 @@ smb2_encode_oplock_break_reply(struct smb2_context *smb2,
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        if (iov == NULL) {
+                smb2_set_error(smb2, "Failed to add iovector for oplock break reply");
+                return -1;
+        }
 
         smb2_set_uint16(iov, 0, SMB2_OPLOCK_BREAK_REPLY_SIZE);
         smb2_set_uint8(iov, 2, rep->oplock_level);
@@ -172,6 +180,10 @@ smb2_encode_oplock_break_notification(struct smb2_context *smb2,
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        if (iov == NULL) {
+                smb2_set_error(smb2, "Failed to add iovector for oplock break notification");
+                return -1;
+        }
 
         smb2_set_uint16(iov, 0, SMB2_OPLOCK_BREAK_REPLY_SIZE);
         smb2_set_uint8(iov, 2, rep->oplock_level);
@@ -222,6 +234,10 @@ smb2_encode_lease_break_acknowledgement(struct smb2_context *smb2,
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        if (iov == NULL) {
+                smb2_set_error(smb2, "Failed to add iovector for lease break ack");
+                return -1;
+        }
 
         smb2_set_uint16(iov, 0, SMB2_LEASE_BREAK_ACKNOWLEDGE_SIZE);
         smb2_set_uint32(iov, 4, req->flags);
@@ -275,6 +291,10 @@ smb2_encode_lease_break_reply(struct smb2_context *smb2,
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        if (iov == NULL) {
+                smb2_set_error(smb2, "Failed to add iovector for lease break reply");
+                return -1;
+        }
 
         smb2_set_uint16(iov, 0, SMB2_LEASE_BREAK_REPLY_SIZE);
         smb2_set_uint32(iov, 4, rep->flags);
@@ -327,6 +347,10 @@ smb2_encode_lease_break_notification(struct smb2_context *smb2,
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        if (iov == NULL) {
+                smb2_set_error(smb2, "Failed to add iovector for lease break notification");
+                return -1;
+        }
 
         smb2_set_uint16(iov, 0, SMB2_LEASE_BREAK_NOTIFICATION_SIZE);
         smb2_set_uint16(iov, 2, req->new_epoch);

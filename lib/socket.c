@@ -401,17 +401,28 @@ read_more_data:
         case SMB2_RECV_SPL:
                 smb2->spl = be32toh(smb2->spl);
                 smb2->recv_state = SMB2_RECV_HEADER;
-                smb2_add_iovector(smb2, &smb2->in, &smb2->header[0],
-                                  SMB2_HEADER_SIZE, NULL);
+                if (smb2_add_iovector(smb2, &smb2->in, &smb2->header[0],
+                                  SMB2_HEADER_SIZE, NULL) == NULL) {
+                        smb2_set_error(smb2, "Too many I/O vectors when adding header");
+                        return -1;
+                }
                 goto read_more_data;
         case SMB2_RECV_HEADER:
                 if (!memcmp(smb2->in.iov[smb2->in.niov - 1].buf, smb3tfrm, 4)) {
                         smb2->in.iov[smb2->in.niov - 1].len = 52;
                         len = smb2->spl - 52;
                         smb2->in.total_size -= 12;
-                        smb2_add_iovector(smb2, &smb2->in,
-                                          malloc(len),
-                                          len, free);
+                        {
+                                uint8_t *tmp = malloc(len);
+                                if (tmp == NULL) {
+                                        smb2_set_error(smb2, "malloc failed while adding TRFM payload");
+                                        return -1;
+                                }
+                                if (smb2_add_iovector(smb2, &smb2->in,tmp,len, free) == NULL) {
+                                        smb2_set_error(smb2, "Failed to add iovector for TRFM payload");
+                                        return -1;
+                                }
+                        }
                         memcpy(smb2->in.iov[smb2->in.niov - 1].buf,
                                &smb2->in.iov[smb2->in.niov - 2].buf[52], 12);
                         smb2->recv_state = SMB2_RECV_TRFM;
@@ -490,9 +501,16 @@ read_more_data:
                         }
                         /* Add padding before the next PDU */
                         smb2->recv_state = SMB2_RECV_PAD;
-                        smb2_add_iovector(smb2, &smb2->in,
-                                          malloc(len),
-                                          len, free);
+                        {
+                                uint8_t *tmp = malloc(len);
+                                if (tmp == NULL) {
+                                        smb2_set_error(smb2, "malloc failed while adding PENDING padding");
+                                        return -1;
+                                }
+                                if (smb2_add_iovector(smb2, &smb2->in,tmp, len, free) == NULL) {
+                                        return -1;
+                                }
+                        }
                         goto read_more_data;
                 }
 
@@ -555,9 +573,19 @@ read_more_data:
                 }
 
                 smb2->recv_state = SMB2_RECV_FIXED;
-                smb2_add_iovector(smb2, &smb2->in,
-                                  malloc(len & 0xfffe),
-                                  len & 0xfffe, free);
+                {
+                        size_t alen = len & 0xfffe;
+                        uint8_t *tmp = malloc(alen);
+                        if (tmp == NULL) {
+                                smb2_set_error(smb2, "malloc failed while adding FIXED payload");
+                                return -1;
+                        }
+                        if (smb2_add_iovector(smb2, &smb2->in,
+                                  tmp,
+                                  alen, free) == NULL) {
+                                return -1;
+                        }
+                }
                 goto read_more_data;
         case SMB2_RECV_FIXED:
                 len = smb2_process_payload_fixed(smb2, pdu);
@@ -576,9 +604,11 @@ read_more_data:
                                 if (num > (size_t)len) {
                                         num = (size_t)len;
                                 }
-                                smb2_add_iovector(smb2, &smb2->in,
+                                if (smb2_add_iovector(smb2, &smb2->in,
                                                   pdu->in.iov[i].buf,
-                                                  num, NULL);
+                                                  num, NULL) == NULL) {
+                                        return -1;
+                                }
                                 len -= num;
 
                                 if (len == 0) {
@@ -588,9 +618,18 @@ read_more_data:
                         }
                         if (len > 0) {
                                 smb2->recv_state = SMB2_RECV_VARIABLE;
-                                smb2_add_iovector(smb2, &smb2->in,
-                                                  malloc(len),
-                                                  len, free);
+                                {
+                                        uint8_t *tmp = malloc(len);
+                                        if (tmp == NULL) {
+                                                smb2_set_error(smb2, "malloc failed while adding VARIABLE tail");
+                                                return -1;
+                                        }
+                                        if (smb2_add_iovector(smb2, &smb2->in,
+                                                  tmp,
+                                                  len, free) == NULL) {
+                                                return -1;
+                                        }
+                                }
                                 goto read_more_data;
                         }
                 }
@@ -618,9 +657,18 @@ read_more_data:
                 if (len > 0) {
                         /* Add padding before the next PDU */
                         smb2->recv_state = SMB2_RECV_PAD;
-                        smb2_add_iovector(smb2, &smb2->in,
-                                          malloc(len),
-                                          len, free);
+                        {
+                                uint8_t *tmp = malloc(len);
+                                if (tmp == NULL) {
+                                        smb2_set_error(smb2, "malloc failed while adding PAD");
+                                        return -1;
+                                }
+                                if (smb2_add_iovector(smb2, &smb2->in,
+                                          tmp,
+                                          len, free) == NULL) {
+                                        return -1;
+                                }
+                        }
                         goto read_more_data;
                 }
 
@@ -658,9 +706,17 @@ read_more_data:
                 if (len > 0) {
                         /* Add padding before the next PDU */
                         smb2->recv_state = SMB2_RECV_PAD;
-                        smb2_add_iovector(smb2, &smb2->in,
-                                          malloc(len),
-                                          len, free);
+                        uint8_t * tmp = malloc(len);
+                        if (tmp == NULL) {
+                            smb2_set_error(smb2, "malloc failed while adding PAD");
+                            return -1;
+                        }
+                        if (smb2_add_iovector(smb2, &smb2->in,
+                                              tmp,
+                                              len, free) == NULL) {
+                                smb2_set_error(smb2, "Failed to add iovector for PAD");
+                                return -1;
+                        }
                         goto read_more_data;
                 }
 
@@ -756,8 +812,11 @@ read_more_data:
                 /* Record at which iov we ended in this loop so we know where to start in the next */
                 iov_offset = smb2->in.niov - 1;
                 smb2->recv_state = SMB2_RECV_HEADER;
-                smb2_add_iovector(smb2, &smb2->in, &smb2->header[0],
-                                  SMB2_HEADER_SIZE, NULL);
+                if (smb2_add_iovector(smb2, &smb2->in, &smb2->header[0],
+                                  SMB2_HEADER_SIZE, NULL) == NULL) {
+                        smb2_set_error(smb2, "Too many I/O vectors when adding chained header");
+                        return -1;
+                }
                 goto read_more_data;
         }
 
@@ -792,8 +851,11 @@ smb2_read_from_socket(struct smb2_context *smb2)
                         smb2->spl = 0;
 
                         smb2_free_iovector(smb2, &smb2->in);
-                        smb2_add_iovector(smb2, &smb2->in, (uint8_t *)&smb2->spl,
-                                          SMB2_SPL_SIZE, NULL);
+                        if (smb2_add_iovector(smb2, &smb2->in, (uint8_t *)&smb2->spl,
+                                          SMB2_SPL_SIZE, NULL) == NULL) {
+                                smb2_set_error(smb2, "Too many I/O vectors when adding SPL");
+                                return -1;
+                        }
                 }
 
                 count = smb2_read_data(smb2, smb2_readv_from_socket, 0);

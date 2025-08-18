@@ -579,7 +579,8 @@ char *strdup(const char *s)
 #endif /* !_IOP */
                 return NULL;
         }
-        memcpy(str, s, len + 1);
+        /* len already includes the NULL terminator */
+        memcpy(str, s, len);
         return str;
 }
 #endif /* NEED_STRDUP */

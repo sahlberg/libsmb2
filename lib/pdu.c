@@ -70,8 +70,10 @@ smb2_pad_to_64bit(struct smb2_context *smb2, struct smb2_io_vectors *v)
         if ((len & 0x07) == 0) {
                 return 0;
         }
-        if (smb2_add_iovector(smb2, v, &zero_bytes[0], 8 - (len & 0x07), NULL)
-            == NULL) {
+        if (smb2_add_iovector(smb2, v, 
+                        &zero_bytes[0], 
+                        8 - (len & 0x07), NULL)
+                        == NULL) {
                 return -1;
         }
 
@@ -153,7 +155,11 @@ smb2_allocate_pdu(struct smb2_context *smb2, enum smb2_command command,
         pdu->cb_data = cb_data;
         pdu->out.niov = 0;
 
-        smb2_add_iovector(smb2, &pdu->out, pdu->hdr, SMB2_HEADER_SIZE, NULL);
+        if (smb2_add_iovector(smb2, &pdu->out, pdu->hdr, SMB2_HEADER_SIZE, NULL) == NULL) {
+                free(pdu);
+                smb2_set_error(smb2, "Too many I/O vectors when adding SMB2 header");
+                return NULL;
+        }
 
         switch (command) {
         case SMB2_NEGOTIATE:

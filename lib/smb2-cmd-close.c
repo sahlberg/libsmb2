@@ -72,6 +72,10 @@ smb2_encode_close_request(struct smb2_context *smb2,
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        if (iov == NULL) {
+                smb2_set_error(smb2, "Failed to add iovector for close request");
+                return -1;
+        }
 
         smb2_set_uint16(iov, 0, SMB2_CLOSE_REQUEST_SIZE);
         smb2_set_uint16(iov, 2, req->flags);
@@ -122,6 +126,10 @@ smb2_encode_close_reply(struct smb2_context *smb2,
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        if (iov == NULL) {
+                smb2_set_error(smb2, "Failed to add iovector for close reply");
+                return -1;
+        }
 
         smb2_set_uint16(iov, 0, SMB2_CLOSE_REPLY_SIZE);
         smb2_set_uint16(iov, 2, rep->flags);

@@ -76,6 +76,10 @@ smb2_encode_lock_request(struct smb2_context *smb2,
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        if (iov == NULL) {
+                smb2_set_error(smb2, "Failed to add iovector for lock request");
+                return -1;
+        }
 
         smb2_set_uint16(iov, 0, SMB2_LOCK_REQUEST_SIZE);
         smb2_set_uint16(iov, 2, req->lock_count);
@@ -100,6 +104,10 @@ smb2_encode_lock_request(struct smb2_context *smb2,
                         return -1;
                 }
                 iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+                if (iov == NULL) {
+                        smb2_set_error(smb2, "Failed to add iovector for lock elements");
+                        return -1;
+                }
 
                 for (i = 0, offset = 0; i < req->lock_count - 1; i++) {
                         smb2_set_uint64(iov, offset, elements->offset);
@@ -154,6 +162,10 @@ smb2_encode_lock_reply(struct smb2_context *smb2,
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        if (iov == NULL) {
+                smb2_set_error(smb2, "Failed to add iovector for lock reply");
+                return -1;
+        }
 
         smb2_set_uint16(iov, 0, SMB2_LOCK_REPLY_SIZE);
         return 0;

@@ -70,6 +70,10 @@ smb2_encode_echo_request(struct smb2_context *smb2,
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        if (iov == NULL) {
+                smb2_set_error(smb2, "Failed to add iovector for echo request");
+                return -1;
+        }
 
         smb2_set_uint16(iov, 0, SMB2_ECHO_REQUEST_SIZE);
 
@@ -117,6 +121,10 @@ smb2_encode_echo_reply(struct smb2_context *smb2,
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        if (iov == NULL) {
+                smb2_set_error(smb2, "Failed to add iovector for echo reply");
+                return -1;
+        }
 
         smb2_set_uint16(iov, 0, SMB2_ECHO_REPLY_SIZE);
         return 0;
