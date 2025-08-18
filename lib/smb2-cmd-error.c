@@ -72,6 +72,10 @@ smb2_encode_error_reply(struct smb2_context *smb2,
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        if (iov == NULL) {
+                smb2_set_error(smb2, "Failed to add iovector for error reply");
+                return -1;
+        }
 
         smb2_set_uint16(iov, 0, SMB2_ERROR_REPLY_SIZE);
         smb2_set_uint8(iov, 2, rep->error_context_count);

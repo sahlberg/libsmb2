@@ -72,6 +72,10 @@ smb2_encode_flush_request(struct smb2_context *smb2,
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        if (iov == NULL) {
+                /* buf freed by add_iovector on failure */
+                return -1;
+        }
 
         smb2_set_uint16(iov, 0, SMB2_FLUSH_REQUEST_SIZE);
         memcpy(iov->buf + 8, req->file_id, SMB2_FD_SIZE);
@@ -120,6 +124,9 @@ smb2_encode_flush_reply(struct smb2_context *smb2,
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        if (iov == NULL) {
+                return -1;
+        }
 
         smb2_set_uint16(iov, 0, SMB2_FLUSH_REPLY_SIZE);
 

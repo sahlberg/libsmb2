@@ -72,6 +72,9 @@ smb2_encode_ioctl_request(struct smb2_context *smb2,
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        if (iov == NULL) {
+                return -1;
+        }
 
         smb2_set_uint16(iov, 0, SMB2_IOCTL_REQUEST_SIZE);
         smb2_set_uint32(iov, 4, req->ctl_code);
@@ -86,6 +89,9 @@ smb2_encode_ioctl_request(struct smb2_context *smb2,
         if (req->input_count) {
                 iov = smb2_add_iovector(smb2, &pdu->out, req->input,
                                         req->input_count, NULL);
+                if (iov == NULL) {
+                        return -1;
+                }
         }
 
         return 0;
@@ -133,6 +139,9 @@ smb2_encode_ioctl_reply(struct smb2_context *smb2,
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        if (iov == NULL) {
+                return -1;
+        }
 
         ioctlv = NULL;
         if (rep->output_count) {
@@ -161,6 +170,9 @@ smb2_encode_ioctl_reply(struct smb2_context *smb2,
                 }
                 memset(buf, 0, rep->output_count);
                 ioctlv = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+                if (ioctlv == NULL) {
+                        return -1;
+                }
 
                 switch (rep->ctl_code) {
                 case SMB2_FSCTL_VALIDATE_NEGOTIATE_INFO:

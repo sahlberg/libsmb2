@@ -72,6 +72,9 @@ smb2_encode_read_request(struct smb2_context *smb2,
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        if (iov == NULL) {
+                return -1;
+        }
 
         if (!smb2->supports_multi_credit && req->length > 64 * 1024) {
                 req->length = 64 * 1024;
@@ -107,6 +110,9 @@ smb2_encode_read_request(struct smb2_context *smb2,
                                                         buf,
                                                         len,
                                                         free);
+                        if (iov == NULL) {
+                                return -1;
+                        }
                 }
                 else {
                         smb2_set_error(smb2, "ChannelInfo not yet implemented");
@@ -120,7 +126,9 @@ smb2_encode_read_request(struct smb2_context *smb2,
         if (req->read_channel_info_length == 0) {
                 static uint8_t zero;
 
-                smb2_add_iovector(smb2, &pdu->out, &zero, 1, NULL);
+                if (smb2_add_iovector(smb2, &pdu->out, &zero, 1, NULL) == NULL) {
+                        return -1;
+                }
         }
 
         return 0;
@@ -152,7 +160,10 @@ smb2_cmd_read_async(struct smb2_context *smb2,
                         return NULL;
                 }
 
-                smb2_add_iovector(smb2, &pdu->in, req->buf, req->length, NULL);
+                if (smb2_add_iovector(smb2, &pdu->in, req->buf, req->length, NULL) == NULL) {
+                        smb2_free_pdu(smb2, pdu);
+                        return NULL;
+                }
         }
 
         if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
@@ -185,6 +196,9 @@ smb2_encode_read_reply(struct smb2_context *smb2,
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        if (iov == NULL) {
+                return -1;
+        }
 
         rep->data_offset = 0;
         if (rep->data_length && rep->data) {
@@ -196,7 +210,9 @@ smb2_encode_read_reply(struct smb2_context *smb2,
         smb2_set_uint32(iov, 8, rep->data_remaining);
 
         if (rep->data_length > 0 && rep->data) {
-                smb2_add_iovector(smb2, &pdu->out, rep->data, rep->data_length, free);
+                if (smb2_add_iovector(smb2, &pdu->out, rep->data, rep->data_length, free) == NULL) {
+                        return -1;
+                }
         }
 
         return 0;

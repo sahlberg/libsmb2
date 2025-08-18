@@ -77,6 +77,10 @@ smb2_encode_create_request(struct smb2_context *smb2,
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        if (iov == NULL) {
+                smb2_set_error(smb2, "Failed to add iovector for create request");
+                return -1;
+        }
 
         /* Name */
         if (req->name && req->name[0]) {
@@ -134,6 +138,10 @@ smb2_encode_create_request(struct smb2_context *smb2,
                                         buf,
                                         len,
                                         free);
+                if (iov == NULL) {
+                        smb2_set_error(smb2, "Failed to add iovector for create name");
+                        return -1;
+                }
                 /* Convert '/' to '\' */
                 for (i = 0; i < name->len; i++) {
                         smb2_get_uint16(iov, i * 2, &ch);
@@ -150,6 +158,10 @@ smb2_encode_create_request(struct smb2_context *smb2,
                 static uint8_t zero[8];
                 iov = smb2_add_iovector(smb2, &pdu->out,
                                                 zero, 8, NULL);
+                if (iov == NULL) {
+                        smb2_set_error(smb2, "Failed to add iovector for create empty name padding");
+                        return -1;
+                }
         }
         /* Create Context: note there is no encoding, we just pass along */
         if (req->create_context_length) {
@@ -165,6 +177,10 @@ smb2_encode_create_request(struct smb2_context *smb2,
                                         buf,
                                         len,
                                         free);
+                if (iov == NULL) {
+                        smb2_set_error(smb2, "Failed to add iovector for create context");
+                        return -1;
+                }
         }
 
         return 0;
@@ -212,6 +228,10 @@ smb2_encode_create_reply(struct smb2_context *smb2,
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        if (iov == NULL) {
+                smb2_set_error(smb2, "Failed to add iovector for create reply");
+                return -1;
+        }
 
         smb2_set_uint16(iov, 0, SMB2_CREATE_REPLY_SIZE);
         smb2_set_uint8(iov, 2, rep->oplock_level);
@@ -243,6 +263,10 @@ smb2_encode_create_reply(struct smb2_context *smb2,
                                         buf,
                                         len,
                                         free);
+                if (iov == NULL) {
+                        smb2_set_error(smb2, "Failed to add iovector for create reply context");
+                        return -1;
+                }
         }
 
         return 0;

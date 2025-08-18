@@ -117,6 +117,11 @@ smb2_encode_query_directory_request(struct smb2_context *smb2,
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        if (iov == NULL) {
+                smb2_set_error(smb2, "Failed to add iovector for query-directory request");
+                free(name);
+                return -1;
+        }
 
         /* Name */
         if (req->name && req->name[0]) {
@@ -149,6 +154,10 @@ smb2_encode_query_directory_request(struct smb2_context *smb2,
                                         buf,
                                         2 * name->len,
                                         free);
+                if (iov == NULL) {
+                        smb2_set_error(smb2, "Failed to add iovector for query-directory name");
+                        return -1;
+                }
         }
         free(name);
 
@@ -277,6 +286,10 @@ smb2_encode_query_directory_reply(struct smb2_context *smb2,
                                         buf,
                                         len,
                                         free);
+        if (iov == NULL) {
+                smb2_set_error(smb2, "Failed to add iovector for query-directory output buffer");
+                return -1;
+        }
 
         in_offset = 0;
         in_remain = fslen;

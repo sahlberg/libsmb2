@@ -72,6 +72,9 @@ smb2_encode_write_request(struct smb2_context *smb2,
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        if (iov == NULL) {
+                return -1;
+        }
 
         if (!smb2->supports_multi_credit && req->length > 64 * 1024) {
                 req->length = 64 * 1024;
@@ -106,6 +109,9 @@ smb2_encode_write_request(struct smb2_context *smb2,
                                                         buf,
                                                         len,
                                                         free);
+                        if (iov == NULL) {
+                                return -1;
+                        }
                 }
                 else {
                         smb2_set_error(smb2, "ChannelInfo not yet implemented");
@@ -139,8 +145,11 @@ smb2_cmd_write_async(struct smb2_context *smb2,
                 return NULL;
         }
 
-        smb2_add_iovector(smb2, &pdu->out, (uint8_t*)req->buf,
-                        req->length, pass_buf_ownership ? free : NULL);
+        if (smb2_add_iovector(smb2, &pdu->out, (uint8_t*)req->buf,
+                        req->length, pass_buf_ownership ? free : NULL) == NULL) {
+                smb2_free_pdu(smb2, pdu);
+                return NULL;
+        }
 
         /* Adjust credit charge for large payloads */
         if (smb2->supports_multi_credit) {
@@ -167,6 +176,9 @@ smb2_encode_write_reply(struct smb2_context *smb2,
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        if (iov == NULL) {
+                return -1;
+        }
 
         smb2_set_uint16(iov, 0, SMB2_WRITE_REPLY_SIZE);
         smb2_set_uint32(iov, 4, rep->count);

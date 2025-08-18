@@ -77,6 +77,10 @@ smb2_encode_set_info_request(struct smb2_context *smb2,
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        if (iov == NULL) {
+                smb2_set_error(smb2, "Failed to add iovector for set-info request header");
+                return -1;
+        }
 
         smb2_set_uint16(iov, 0, SMB2_SET_INFO_REQUEST_SIZE);
         smb2_set_uint8(iov, 2, req->info_type);
@@ -94,7 +98,11 @@ smb2_encode_set_info_request(struct smb2_context *smb2,
                                 return -1;
                         }
                         memcpy(buf, req->input_data, req->buffer_length);
-                        smb2_add_iovector(smb2, &pdu->out, buf, req->buffer_length, free);
+                        iov = smb2_add_iovector(smb2, &pdu->out, buf, req->buffer_length, free);
+                        if (iov == NULL) {
+                                smb2_set_error(smb2, "Failed to add iovector for set-info passthrough buffer");
+                                return -1;
+                        }
                 }
                 smb2_set_uint32(iov, 4, req->buffer_length);
                 smb2_set_uint16(iov, 8, req->buffer_offset);
@@ -116,6 +124,10 @@ smb2_encode_set_info_request(struct smb2_context *smb2,
                         }
                         iov = smb2_add_iovector(smb2, &pdu->out, buf, len,
                                                 free);
+                        if (iov == NULL) {
+                                smb2_set_error(smb2, "Failed to add iovector for set-info basic data");
+                                return -1;
+                        }
                         smb2_encode_file_basic_info(smb2, req->input_data, iov);
                         break;
                 case SMB2_FILE_END_OF_FILE_INFORMATION:
@@ -130,6 +142,10 @@ smb2_encode_set_info_request(struct smb2_context *smb2,
                         }
                         iov = smb2_add_iovector(smb2, &pdu->out, buf, len,
                                                 free);
+                        if (iov == NULL) {
+                                smb2_set_error(smb2, "Failed to add iovector for set-info EOF data");
+                                return -1;
+                        }
 
                         eofi = req->input_data;
                         smb2_set_uint64(iov, 0, eofi->end_of_file);
@@ -162,6 +178,11 @@ smb2_encode_set_info_request(struct smb2_context *smb2,
                         }
                         iov = smb2_add_iovector(smb2, &pdu->out, buf, len,
                                                 free);
+                        if (iov == NULL) {
+                                smb2_set_error(smb2, "Failed to add iovector for set-info rename data");
+                                free(name);
+                                return -1;
+                        }
 
                         smb2_set_uint8(iov, 0, rni->replace_if_exist);
                         smb2_set_uint64(iov, 8, 0u);
@@ -182,6 +203,10 @@ smb2_encode_set_info_request(struct smb2_context *smb2,
                         }
                         iov = smb2_add_iovector(smb2, &pdu->out, buf, len,
                                                 free);
+                        if (iov == NULL) {
+                                smb2_set_error(smb2, "Failed to add iovector for set-info disposition data");
+                                return -1;
+                        }
 
                         fdi = req->input_data;
                         smb2_set_uint8(iov, 0, fdi->delete_pending);
@@ -246,6 +271,10 @@ smb2_encode_set_info_reply(struct smb2_context *smb2,
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        if (iov == NULL) {
+                smb2_set_error(smb2, "Failed to add iovector for set-info reply header");
+                return -1;
+        }
         smb2_set_uint16(iov, 0, SMB2_SET_INFO_REPLY_SIZE);
         return 0;
 }

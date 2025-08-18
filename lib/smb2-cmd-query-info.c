@@ -77,6 +77,10 @@ smb2_encode_query_info_request(struct smb2_context *smb2,
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        if (iov == NULL) {
+                smb2_set_error(smb2, "Failed to add iovector for query-info request");
+                return -1;
+        }
 
         smb2_set_uint16(iov, 0, SMB2_QUERY_INFO_REQUEST_SIZE);
         smb2_set_uint8(iov, 2, req->info_type);
@@ -145,6 +149,10 @@ smb2_encode_query_info_reply(struct smb2_context *smb2,
         }
 
         cmdiov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        if (cmdiov == NULL) {
+                smb2_set_error(smb2, "Failed to add iovector for query-info reply header");
+                return -1;
+        }
 
         smb2_set_uint16(cmdiov, 0, SMB2_QUERY_INFO_REPLY_SIZE);
         smb2_set_uint16(cmdiov, 2, rep->output_buffer_offset);
@@ -164,6 +172,10 @@ smb2_encode_query_info_reply(struct smb2_context *smb2,
                                         buf,
                                         len + 1024,
                                         free);
+                if (iov == NULL) {
+                        smb2_set_error(smb2, "Failed to add iovector for query-info output buffer");
+                        return -1;
+                }
 
                 created_output_buffer_length = 0;
 

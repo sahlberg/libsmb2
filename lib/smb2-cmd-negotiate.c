@@ -75,6 +75,9 @@ smb2_encode_preauth_context(struct smb2_context *smb2, struct smb2_pdu *pdu)
         memset(buf, 0, len);
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        if (iov == NULL) {
+                return -1;
+        }
         smb2_set_uint16(iov, 0, SMB2_PREAUTH_INTEGRITY_CAP);
         smb2_set_uint16(iov, 2, data_len);
         smb2_set_uint16(iov, 8, 1);
@@ -105,6 +108,9 @@ smb2_encode_encryption_context(struct smb2_context *smb2, struct smb2_pdu *pdu)
         memset(buf, 0, len);
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        if (iov == NULL) {
+                return -1;
+        }
         smb2_set_uint16(iov, 0, SMB2_ENCRYPTION_CAP);
         smb2_set_uint16(iov, 2, data_len);
         smb2_set_uint16(iov, 8, 1);
@@ -140,6 +146,10 @@ smb2_encode_negotiate_request(struct smb2_context *smb2,
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        if (iov == NULL) {
+                smb2_set_error(smb2, "Failed to add iovector for negotiate request");
+                return -1;
+        }
 
         if (smb2->version == SMB2_VERSION_ANY ||
             smb2->version == SMB2_VERSION_ANY3 ||
@@ -223,6 +233,10 @@ smb2_encode_negotiate_reply(struct smb2_context *smb2,
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        if (iov == NULL) {
+                smb2_set_error(smb2, "Failed to add iovector for negotiate reply");
+                return -1;
+        }
 
         if (rep->security_buffer_length) {
                 seclen = rep->security_buffer_length;
@@ -235,10 +249,12 @@ smb2_encode_negotiate_reply(struct smb2_context *smb2,
                 }
                 memcpy(buf, rep->security_buffer, rep->security_buffer_length);
                 memset(buf + rep->security_buffer_length, 0, seclen - rep->security_buffer_length);
-                smb2_add_iovector(smb2, &pdu->out,
+                if (smb2_add_iovector(smb2, &pdu->out,
                                         buf,
-                                        len,
-                                        free);
+                                        seclen,
+                                        free) == NULL) {
+                        return -1;
+                }
         }
 
         if (smb2->dialect == SMB2_VERSION_ANY ||

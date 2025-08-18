@@ -148,8 +148,13 @@ smb3_decrypt_pdu(struct smb2_context *smb2)
 
                 smb2->spl = (uint32_t)smb2->enc_len;
                 smb2->recv_state = SMB2_RECV_HEADER;
-                smb2_add_iovector(smb2, &smb2->in, &smb2->header[0],
-                                  SMB2_HEADER_SIZE, NULL);
+                if (smb2_add_iovector(smb2, &smb2->in, &smb2->header[0],
+                                       SMB2_HEADER_SIZE, NULL) == NULL) {
+                        smb2_set_error(smb2, "Failed to add iovector for decrypted header");
+                        free(smb2->enc);
+                        smb2->enc = NULL;
+                        return -1;
+                }
         }
 
         rc = smb2_read_from_buf(smb2);

@@ -73,6 +73,10 @@ smb2_encode_session_setup_request(struct smb2_context *smb2,
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        if (iov == NULL) {
+                smb2_set_error(smb2, "Failed to add iovector for session setup request");
+                return -1;
+        }
 
         smb2_set_uint16(iov, 0, SMB2_SESSION_SETUP_REQUEST_SIZE);
         smb2_set_uint8(iov, 2, req->flags);
@@ -95,6 +99,10 @@ smb2_encode_session_setup_request(struct smb2_context *smb2,
                                 buf,
                                 req->security_buffer_length,
                                 free);
+        if (iov == NULL) {
+                smb2_set_error(smb2, "Failed to add iovector for session setup security buffer");
+                return -1;
+        }
         return 0;
 }
 
@@ -142,6 +150,10 @@ smb2_encode_session_setup_reply(struct smb2_context *smb2,
         }
 
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        if (iov == NULL) {
+                smb2_set_error(smb2, "Failed to add iovector for session setup reply");
+                return -1;
+        }
 
         smb2_set_uint16(iov, 0, SMB2_SESSION_SETUP_REPLY_SIZE);
         smb2_set_uint16(iov, 2, rep->session_flags);
@@ -164,6 +176,10 @@ smb2_encode_session_setup_reply(struct smb2_context *smb2,
                                         buf,
                                         len,
                                         free);
+                if (iov == NULL) {
+                        smb2_set_error(smb2, "Failed to add iovector for session setup reply buffer");
+                        return -1;
+                }
         }
         /* TODO append neg contexts? */
         return 0;
