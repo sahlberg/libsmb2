@@ -431,7 +431,11 @@ struct smb2_iovec *smb2_add_iovector(struct smb2_context *smb2,
                                      void (*free)(void *))
 {
         struct smb2_iovec *iov = &v->iov[v->niov];
-
+        // Add bounds checking
+        if (v->niov >= SMB2_MAX_VECTORS) {
+            smb2_set_error(smb2, "Too many I/O vectors");
+            return (struct smb2_iovec*) &v->iov[SMB2_MAX_VECTORS - 1]; // We dont return NULL to prevent null point deref.
+        }                                                              // I chose the simplest solution here, it can be treated more elegantly.
         v->iov[v->niov].buf = buf;
         v->iov[v->niov].len = len;
         v->iov[v->niov].free = free;
