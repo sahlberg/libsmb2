@@ -2827,14 +2827,18 @@ smb2_decode_filenotifychangeinformation(
     struct smb2_iovec *vec,
     uint32_t next_entry_offset)
 {
-        uint32_t name_len;
+        uint32_t name_len, tmp;
 
+        if (next_entry_offset + 12 > vec->len) {
+                return 0;
+        }
         smb2_get_uint32(vec, next_entry_offset+4, &fnc->action);
         smb2_get_uint32(vec, next_entry_offset+8, &name_len);
         fnc->name = smb2_utf16_to_utf8((uint16_t *)(void *)&vec->buf[next_entry_offset+12], name_len / 2);
 
-        smb2_get_uint32(vec, next_entry_offset, &next_entry_offset);
-        if (next_entry_offset != 0) {
+        smb2_get_uint32(vec, next_entry_offset, &tmp);
+        next_entry_offset += tmp;
+        if (tmp != 0) {
                 struct smb2_file_notify_change_information *next_fnc = calloc(1, sizeof(struct smb2_file_notify_change_information));
                 fnc->next = next_fnc;
                 smb2_decode_filenotifychangeinformation(smb2, next_fnc, vec, next_entry_offset);
