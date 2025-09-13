@@ -321,7 +321,6 @@ smb2_add_compound_pdu(struct smb2_context *smb2,
 {
         int i, offset;
 
-
         /* find the last pdu in the chain */
         while (pdu->next_compound) {
                 pdu = pdu->next_compound;
@@ -657,6 +656,7 @@ void
 smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
         struct smb2_pdu *p;
+        uint64_t prev_compound_mid = 0;
 
         /* Update all the PDU headers in this chain */
         for (p = pdu; p; p = p->next_compound) {
@@ -682,6 +682,15 @@ smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
                         /* TODO - care about check reply failures? */
                 }
                 smb2_encode_header(smb2, &p->out.iov[0], &p->header);
+                if (!smb2_is_server(smb2)) {
+                        /*
+                         * Track the mid of the previous command in the chain
+                         * so we can enforce ordering on receive.
+                         */
+                        p->prev_compound_mid = prev_compound_mid;
+                        prev_compound_mid = p->header.message_id;
+                }
+
                 if (smb2->sign ||
                     (p->header.command == SMB2_TREE_CONNECT && smb2->dialect == SMB2_VERSION_0311 && !smb2->seal)) {
                         if (smb2_pdu_add_signature(smb2, p) < 0) {
@@ -701,7 +710,6 @@ struct smb2_pdu *
 smb2_get_compound_pdu(struct smb2_context *smb2,
                       struct smb2_pdu *pdu)
 {
-        /* find the last pdu in the chain */
         if (pdu && pdu->next_compound) {
                 return pdu->next_compound;
         }

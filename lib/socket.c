@@ -549,6 +549,16 @@ read_more_data:
                                         smb2_set_error(smb2, "no matching PDU found");
                                         return -1;
                                 }
+                                /*
+                                 * If part of a compound chain, verify that
+                                 * the previous command has been processed.
+                                 */
+                                if (pdu->prev_compound_mid &&
+                                    smb2_find_pdu(smb2, pdu->prev_compound_mid)) {
+                                        smb2_set_error(smb2, "compound reply received out of order");
+                                        return -1;
+                                }
+
                                 SMB2_LIST_REMOVE(&smb2->waitqueue, pdu);
                         } else {
                                 /* oplock and lease break notifications won't have a pdu so make one

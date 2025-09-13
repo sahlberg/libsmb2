@@ -288,6 +288,7 @@ struct smb2_pdu {
         struct smb2_header header;
 
         struct smb2_pdu *next_compound;
+        uint64_t prev_compound_mid;
 
         smb2_command_cb cb;
         void *cb_data;
