@@ -71,8 +71,10 @@ smb2_mkdir_async
 smb2_share_enum_async
 smb2_open
 smb2_open_async
+smb2_open_async_pdu
 smb2_opendir
 smb2_opendir_async
+smb2_opendir_async_pdu
 smb2_parse_url
 smb2_pdu_is_compound
 smb2_pread

@@ -690,9 +690,6 @@ smb2_opendir_async_pdu(struct smb2_context *smb2, const char *path,
  */
 struct smb2dir *smb2_opendir(struct smb2_context *smb2, const char *path);
 
-/*
- * Deprecated. Use smb2_opendir_async_pdu() instead.
- */
 int smb2_opendir_async(struct smb2_context *smb2, const char *path,
                        smb2_command_cb cb, void *cb_data);
         
@@ -784,9 +781,6 @@ int smb2_open_async_with_oplock_or_lease(struct smb2_context *smb2, const char *
                     uint8_t oplock_level, uint32_t lease_state, smb2_lease_key lease_key,
                     smb2_command_cb cb, void *cb_data);
 
-/*
- * Deprecated. Use smb2_open_async_pdu() instead.
- */        
 int smb2_open_async(struct smb2_context *smb2, const char *path, int flags,
                     smb2_command_cb cb, void *cb_data);
 

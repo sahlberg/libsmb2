@@ -172,8 +172,6 @@ int main(int argc, char *argv[])
                         continue;
                 }
 		if (smb2_service(smb2, pfd.revents) < 0) {
-			printf("smb2_service failed with : %s\n",
-                               smb2_get_error(smb2));
 			break;
 		}
 	}
