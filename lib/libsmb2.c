@@ -467,16 +467,17 @@ opendir_cb(struct smb2_context *smb2, int status,
         smb2_queue_pdu(smb2, pdu);
 }
 
-int
-smb2_opendir_async(struct smb2_context *smb2, const char *path,
-                   smb2_command_cb cb, void *cb_data)
+static struct smb2_pdu *
+_smb2_opendir_async(struct smb2_context *smb2, const char *path,
+                    smb2_command_cb cb, void *cb_data, void (*free_cb)(void *),
+                    int caller_frees_pdu)
 {
         struct smb2_create_request req;
         struct smb2dir *dir;
         struct smb2_pdu *pdu;
 
         if (smb2 == NULL) {
-                return -EINVAL;
+                return NULL;
         }
 
         if (path == NULL) {
@@ -486,7 +487,7 @@ smb2_opendir_async(struct smb2_context *smb2, const char *path,
         dir = calloc(1, sizeof(struct smb2dir));
         if (dir == NULL) {
                 smb2_set_error(smb2, "Failed to allocate smb2dir.");
-                return -EINVAL;
+                return NULL;
         }
         SMB2_LIST_ADD(&smb2->dirs, dir);
         dir->cb = cb;
@@ -506,11 +507,33 @@ smb2_opendir_async(struct smb2_context *smb2, const char *path,
         if (pdu == NULL) {
                 free_smb2dir(smb2, dir);
                 smb2_set_error(smb2, "Failed to create opendir command.");
-                return -EINVAL;
+                return NULL;
         }
+        pdu->free_cb = free_cb;
+        pdu->caller_frees_pdu = caller_frees_pdu;
         smb2_queue_pdu(smb2, pdu);
 
-        return 0;
+        return pdu;
+}
+
+struct smb2_pdu *
+smb2_opendir_async_pdu(struct smb2_context *smb2, const char *path,
+                       smb2_command_cb cb, void *cb_data, void (*free_cb)(void *))
+{
+        struct smb2_pdu *pdu;
+
+        pdu = _smb2_opendir_async(smb2, path, cb, cb_data, free_cb, 1);
+        return pdu;
+}
+
+int
+smb2_opendir_async(struct smb2_context *smb2, const char *path,
+                   smb2_command_cb cb, void *cb_data)
+{
+        struct smb2_pdu *pdu;
+
+        pdu = _smb2_opendir_async(smb2, path, cb, cb_data, NULL, 0);
+        return pdu ? 0 : -1;
 }
 
 extern void
@@ -1174,10 +1197,11 @@ open_cb(struct smb2_context *smb2, int status,
         fh->cb(smb2, 0, fh, fh->cb_data);
 }
 
-int
-smb2_open_async_with_oplock_or_lease(struct smb2_context *smb2, const char *path, int flags,
+static struct smb2_pdu *
+_smb2_open_async_with_oplock_or_lease(struct smb2_context *smb2, const char *path, int flags,
                 uint8_t oplock_level, uint32_t lease_state, smb2_lease_key lease_key,
-                smb2_command_cb cb, void *cb_data)
+                smb2_command_cb cb, void *cb_data, void (*free_cb)(void *),
+                int caller_frees_pdu)
 {
         struct smb2fh *fh;
         struct smb2_create_request req;
@@ -1189,13 +1213,13 @@ smb2_open_async_with_oplock_or_lease(struct smb2_context *smb2, const char *path
         uint32_t file_attributes = 0;
 
         if (smb2 == NULL) {
-                return -EINVAL;
+                return NULL;
         }
 
         fh = calloc(1, sizeof(struct smb2fh));
         if (fh == NULL) {
                 smb2_set_error(smb2, "Failed to allocate smbfh");
-                return -ENOMEM;
+                return NULL;
         }
         SMB2_LIST_ADD(&smb2->fhs, fh);
 
@@ -1282,23 +1306,52 @@ smb2_open_async_with_oplock_or_lease(struct smb2_context *smb2, const char *path
         if (pdu == NULL) {
                 smb2_set_error(smb2, "Failed to create create command");
                 free_smb2fh(smb2, fh);
-                return -ENOMEM;
+                return NULL;
         }
         if (req.create_context && req.create_context_length) {
                 free(req.create_context);
         }
 
+        pdu->free_cb = free_cb;
+        pdu->caller_frees_pdu = caller_frees_pdu;
         smb2_queue_pdu(smb2, pdu);
 
-        return 0;
+        return pdu;
+}
+
+struct smb2_pdu *
+smb2_open_async_pdu(struct smb2_context *smb2, const char *path, int flags,
+                    smb2_command_cb cb, void *cb_data, void (*free_cb)(void *))
+{
+        return _smb2_open_async_with_oplock_or_lease(smb2, path, flags,
+                SMB2_OPLOCK_LEVEL_NONE, 0, NULL,
+                cb, cb_data, free_cb, 1);
+}
+        
+int
+smb2_open_async_with_oplock_or_lease(struct smb2_context *smb2, const char *path, int flags,
+                uint8_t oplock_level, uint32_t lease_state, smb2_lease_key lease_key,
+                smb2_command_cb cb, void *cb_data)
+        
+{
+        struct smb2_pdu *pdu;
+        
+        pdu = _smb2_open_async_with_oplock_or_lease(smb2, path, flags,
+                oplock_level, lease_state, lease_key,
+                cb, cb_data, NULL, 0);
+        return pdu ? 0 : -1;
 }
 
 int
 smb2_open_async(struct smb2_context *smb2, const char *path, int flags,
                 smb2_command_cb cb, void *cb_data)
 {
-        return smb2_open_async_with_oplock_or_lease(smb2, path, flags,
-                SMB2_OPLOCK_LEVEL_NONE, 0, NULL, cb, cb_data);
+        struct smb2_pdu *pdu;
+        
+        pdu = _smb2_open_async_with_oplock_or_lease(smb2, path, flags,
+                SMB2_OPLOCK_LEVEL_NONE, 0, NULL,
+                cb, cb_data, NULL, 0);
+        return pdu ? 0 : -1;
 }
 
 static void

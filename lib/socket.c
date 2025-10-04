@@ -536,8 +536,7 @@ read_more_data:
                         }
                         pdu->header.credit_charge = smb2->hdr.credit_charge;
                         pdu->header.credit_request_response = smb2->hdr.credit_request_response;
-                }
-                else {
+                } else {
                         if ((smb2->hdr.command != SMB2_OPLOCK_BREAK) ||
                                         (smb2->hdr.message_id != 0xffffffffffffffffULL)) {
                                 if (smb2->pdu) {
@@ -811,10 +810,11 @@ read_more_data:
                 pdu->cb(smb2, smb2->hdr.status, pdu->payload, pdu->cb_data);
                 smb2->pdu = smb2->next_pdu;
                 smb2->next_pdu = NULL;
-        }
-        else {
+        } else {
                 pdu->cb(smb2, smb2->hdr.status, pdu->payload, pdu->cb_data);
-                smb2_free_pdu(smb2, pdu);
+                if (!pdu->caller_frees_pdu) {
+                        smb2_free_pdu(smb2, pdu);
+                }
                 smb2->pdu = NULL;
         }
 

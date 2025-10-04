@@ -343,6 +343,9 @@ smb2_add_compound_pdu(struct smb2_context *smb2,
 void
 smb2_free_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
+        SMB2_LIST_REMOVE(&smb2->outqueue, pdu);
+        SMB2_LIST_REMOVE(&smb2->waitqueue, pdu);
+
         if (pdu->next_compound) {
                 smb2_free_pdu(smb2, pdu->next_compound);
         }
@@ -350,6 +353,10 @@ smb2_free_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
         smb2_free_iovector(smb2, &pdu->out);
         smb2_free_iovector(smb2, &pdu->in);
 
+        if (pdu->free_cb != NULL) {
+            pdu->free_cb(pdu->cb_data);
+        }
+        
         if (pdu->free_payload != NULL) {
             pdu->free_payload(smb2, pdu->payload);
         }

@@ -290,8 +290,10 @@ struct smb2_pdu {
         struct smb2_pdu *next_compound;
         uint64_t prev_compound_mid;
 
+        int caller_frees_pdu;
         smb2_command_cb cb;
         void *cb_data;
+        void (*free_cb)(void *);
 
         /* buffer to avoid having to malloc the headers */
         uint8_t hdr[SMB2_HEADER_SIZE];
