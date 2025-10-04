@@ -39,7 +39,7 @@
 #define SMB2_LIST_REMOVE(list, item) \
 	if ((*list) == (item)) { 				\
 	   (*list) = (item)->next;				\
-	} else {						\
+	} else if (*list) {					\
 	   void *head = (*list);				\
 	   while ((*list)->next && (*list)->next != (item))     \
 	     (*list) = (*list)->next;				\
