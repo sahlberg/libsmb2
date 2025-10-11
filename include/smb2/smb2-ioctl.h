@@ -23,7 +23,9 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-
+/*
+ * Or optionally just relicense this file to whatever license you want.
+ */
 #ifndef _SMB2_IOCTL_H_
 #define _SMB2_IOCTL_H_
 
