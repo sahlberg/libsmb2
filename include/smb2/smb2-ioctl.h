@@ -76,6 +76,7 @@
 #define FSCTL_SIS_COPYFILE                         0x00090100
 #define FSCTL_WRITE_USN_CLOSE_RECORD               0x000900EF
 
+#define FSCTL_SRV_ENUMERATE_SNAPSHOTS              0x00144064
 #define FSCTL_GET_SHADOW_COPY_DATA                 0x00144064
 
 
