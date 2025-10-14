@@ -55,6 +55,8 @@
 #include <sys/time.h>
 #endif
 
+#include <stdio.h>
+
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-raw.h"
@@ -260,6 +262,7 @@ struct smb2fh *smb2_open(struct smb2_context *smb2, const char *path, int flags)
         }
 
 	ptr = cb_data->ptr;
+        cb_data->ptr = NULL;
         smb2_free_pdu(smb2, pdu);
         return ptr;
 }

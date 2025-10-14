@@ -159,7 +159,6 @@ struct connect_data {
 };
 
 struct smb2fh {
-        struct smb2fh *next;
         smb2_command_cb cb;
         void *cb_data;
 
@@ -1166,15 +1165,7 @@ smb2_connect_share_async(struct smb2_context *smb2,
 static void
 free_smb2fh(struct smb2_context *smb2, struct smb2fh *fh)
 {
-        SMB2_LIST_REMOVE(&smb2->fhs, fh);
         free(fh);
-}
-
-void smb2_free_all_fhs(struct smb2_context *smb2)
-{
-        while (smb2->fhs) {
-                free_smb2fh(smb2, smb2->fhs);
-        }
 }
 
 static void
@@ -1221,7 +1212,6 @@ _smb2_open_async_with_oplock_or_lease(struct smb2_context *smb2, const char *pat
                 smb2_set_error(smb2, "Failed to allocate smbfh");
                 return NULL;
         }
-        SMB2_LIST_ADD(&smb2->fhs, fh);
 
         fh->cb = cb;
         fh->cb_data = cb_data;
@@ -1312,7 +1302,6 @@ _smb2_open_async_with_oplock_or_lease(struct smb2_context *smb2, const char *pat
                 free(req.create_context);
         }
 
-        pdu->free_cb = free_cb;
         pdu->caller_frees_pdu = caller_frees_pdu;
         smb2_queue_pdu(smb2, pdu);
 
@@ -2808,7 +2797,6 @@ smb2_fh_from_file_id(struct smb2_context *smb2, smb2_file_id *fileid)
                 return NULL;
         }
         memcpy(fh->file_id, fileid, SMB2_FD_SIZE);
-        SMB2_LIST_ADD(&smb2->fhs, fh);
 
         return fh;
 }
@@ -3551,7 +3539,6 @@ smb2_general_client_request_cb(struct smb2_context *smb2, int status, void *comm
 
         switch (smb2->pdu->header.command) {
         case SMB2_SESSION_SETUP:
-                printf("New session IN session\n");
                 smb2_session_setup_request_cb(smb2, status, command_data, cb_data);
                 /* session setup cb allocs next_pdu itself */
                 next_cb = NULL;

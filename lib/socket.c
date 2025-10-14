@@ -545,6 +545,7 @@ read_more_data:
                                 }
                                 pdu = smb2->pdu = smb2_find_pdu(smb2, smb2->hdr.message_id);
                                 if (pdu == NULL) {
+                                        printf("NO PDU FOUND\n");
                                         smb2_set_error(smb2, "no matching PDU found");
                                         return -1;
                                 }

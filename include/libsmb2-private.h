@@ -257,8 +257,6 @@ struct smb2_context {
         char error_string[MAX_ERROR_SIZE];
         int nterror;
 
-        /* Open filehandles */
-        struct smb2fh *fhs;
         /* Open dirhandles */
         struct smb2dir *dirs;
 
