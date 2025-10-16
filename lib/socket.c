@@ -545,9 +545,26 @@ read_more_data:
                                 }
                                 pdu = smb2->pdu = smb2_find_pdu(smb2, smb2->hdr.message_id);
                                 if (pdu == NULL) {
-                                        printf("NO PDU FOUND\n");
-                                        smb2_set_error(smb2, "no matching PDU found");
-                                        return -1;
+                                        len = smb2->spl - smb2->in.num_done;
+                                        if (!has_xfrmhdr) {
+                                                len += SMB2_SPL_SIZE;
+                                        }
+                                        if (len > SMB2_MAX_PDU_SIZE) {
+                                                smb2_set_error(smb2, "no matching PDU found");
+                                                return -1;
+                                        }
+                                        smb2->recv_state = SMB2_RECV_UNKNOWN;
+                                        {
+                                                uint8_t *tmp = malloc(len);
+                                                if (tmp == NULL) {
+                                                        smb2_set_error(smb2, "malloc failed while adding UNKNOWN padding");
+                                                        return -1;
+                                                }
+                                                if (smb2_add_iovector(smb2, &smb2->in, tmp, len, free) == NULL) {
+                                                        return -1;
+                                                }
+                                        }
+                                        goto read_more_data;
                                 }
                                 /*
                                  * If part of a compound chain, verify that
@@ -750,6 +767,14 @@ read_more_data:
                 /* We are all done now with this PDU. Reset num_done to 0
                  * and restart with a new SPL for the next chain.
                  */
+                return 0;
+        case SMB2_RECV_UNKNOWN:
+                /* We have finished reading the payload the the unknown reply we
+                 * just received. As it is not matching anything we are waiting on
+                 * there is no PDU associated with this and thus nothing else we need
+                 * to do.
+                 */
+                smb2->in.num_done = 0;
                 return 0;
         }
 

@@ -103,6 +103,14 @@ struct smb2_header {
  * 1: SMB2_RECV_SPL        SPL
  * 2: SMB2_RECV_HEADER     SMB3 Transform Header
  * 3: SMB2_RECV_TRFM       encrypted payload
+ *
+ * States for cancelled PDUs
+ * This is used when we receive a reply for a PDU not in our waitlist.
+ * This can for example happen if we have cancelled a pdu when it was
+ * in-flight.
+ * 1: SMB2_RECV_SPL        SPL
+ * 2: SMB2_RECV_HEADER     SMB3 Transform Header
+ * 3: SMB2_RECV_UNKNOWN    data for a PDU we are not waiting for
  */
 enum smb2_recv_state {
         SMB2_RECV_SPL = 0,
@@ -111,6 +119,7 @@ enum smb2_recv_state {
         SMB2_RECV_VARIABLE,
         SMB2_RECV_PAD,
         SMB2_RECV_TRFM,
+        SMB2_RECV_UNKNOWN,
 };
 
 /* current tree id stack, note: index 0 in the stack is not used
