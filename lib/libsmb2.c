@@ -203,7 +203,6 @@ send_session_setup_request(struct smb2_context *smb2,
 static void
 free_smb2dir(struct smb2_context *smb2, struct smb2dir *dir)
 {
-        SMB2_LIST_REMOVE(&smb2->dirs, dir);
         while (dir->entries) {
                 struct smb2_dirent_internal *e = dir->entries->next;
 
@@ -215,13 +214,6 @@ free_smb2dir(struct smb2_context *smb2, struct smb2dir *dir)
                 dir->free_cb_data(dir->cb_data);
         }
         free(dir);
-}
-
-void smb2_free_all_dirs(struct smb2_context *smb2)
-{
-        while (smb2->dirs) {
-                free_smb2dir(smb2, smb2->dirs);
-        }
 }
 
 void
@@ -488,7 +480,6 @@ _smb2_opendir_async(struct smb2_context *smb2, const char *path,
                 smb2_set_error(smb2, "Failed to allocate smb2dir.");
                 return NULL;
         }
-        SMB2_LIST_ADD(&smb2->dirs, dir);
         dir->cb = cb;
         dir->cb_data = cb_data;
 

@@ -266,9 +266,6 @@ struct smb2_context {
         char error_string[MAX_ERROR_SIZE];
         int nterror;
 
-        /* Open dirhandles */
-        struct smb2dir *dirs;
-
         /* callbacks for the eventsystem */
         int events;
         smb2_change_fd_cb change_fd;
@@ -341,7 +338,6 @@ struct smb2_dirent_internal {
 };
 
 struct smb2dir {
-        struct smb2dir *next;
         smb2_command_cb cb;
         void (*free_cb_data)(void *);
         void *cb_data;
@@ -646,8 +642,6 @@ int smb2_decode_reparse_data_buffer(struct smb2_context *smb2,
                                     void *memctx,
                                     struct smb2_reparse_data_buffer *rp,
                                     struct smb2_iovec *vec);
-void smb2_free_all_fhs(struct smb2_context *smb2);
-void smb2_free_all_dirs(struct smb2_context *smb2);
 
 int smb2_read_from_buf(struct smb2_context *smb2);
 void smb2_change_events(struct smb2_context *smb2, t_socket fd, int events);
