@@ -61,7 +61,6 @@ smb2_encode_set_info_request(struct smb2_context *smb2,
                              struct smb2_set_info_request *req)
 {
         int i, len;
-        uint16_t ch;
         uint8_t *buf;
         struct smb2_iovec *iov;
         struct smb2_file_end_of_file_info *eofi;
@@ -158,11 +157,10 @@ smb2_encode_set_info_request(struct smb2_context *smb2,
                                 smb2_set_error(smb2, "Could not convert name into UTF-16");
                                 return -1;
                         }
-                        /* Convert '/' to '\' */
+                        /* Convert '/' to '\' in-place before copying into the iovec */
                         for (i = 0; i < name->len; i++) {
-                                smb2_get_uint16(iov, i * 2, &ch);
-                                if (ch == 0x002f) {
-                                        smb2_set_uint16(iov, i * 2, 0x005c);
+                                if (name->val[i] == 0x002f) {
+                                        name->val[i] = 0x005c;
                                 }
                         }
 
