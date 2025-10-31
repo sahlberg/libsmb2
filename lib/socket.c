@@ -225,7 +225,7 @@ smb2_write_to_socket(struct smb2_context *smb2)
                 uint32_t spl = 0, tmp_spl, credit_charge = 0;
 
                 for (tmp_pdu = pdu; tmp_pdu; tmp_pdu = tmp_pdu->next_compound) {
-                        credit_charge += pdu->header.credit_charge;
+                        credit_charge += tmp_pdu->header.credit_charge;
                 }
                 if (smb2->dialect > SMB2_VERSION_0202) {
                         if (credit_charge > (uint32_t)smb2->credits) {
