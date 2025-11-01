@@ -75,6 +75,8 @@ typedef unsigned int uint32_t;
 typedef unsigned long long uint64_t;
 typedef unsigned int uint_t;
 typedef unsigned int uintptr_t;
+#else
+#include <stdint.h>	
 #endif
 
 #ifndef ENETRESET
@@ -608,7 +610,13 @@ struct sockaddr_storage {
 #define ENOLINK ENOATTR
 #endif
 
+#include <stdint.h>
+
 #endif /* PS4_PLATFORM */
+
+#ifdef __linux__
+#include <stdint.h>
+#endif
 
 #ifdef __vita__
 
