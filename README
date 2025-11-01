@@ -391,7 +391,7 @@ the preferred method of installation.
 Xbox (Xbox XDK)
 ----------------------
 Xbox CPU is a custom Intel Pentium III Coppermine-based processor which only supports litlle endian values.
-To compile libsmb2 for the Xbox, first install the Xbox XDK(with all features), Microsoft Visual C++ 2003 Professional and Windows XP.
+To compile libsmb2 for the Xbox, first install the RXDK from the Team Resurgent.
 
 Then to build libsmb2, go to Xbox folder 
 and open the provided .sln file, Then hit the green button to build:
