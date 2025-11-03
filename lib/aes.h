@@ -22,7 +22,7 @@
 #include "config.h"
 #endif
 
-#include <stdint.h>
+#include "compat.h"
 
 void AES128_ECB_encrypt(uint8_t* input, const uint8_t* key, uint8_t *output);
 
