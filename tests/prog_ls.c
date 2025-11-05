@@ -57,7 +57,12 @@ void *calloc(size_t nelem, size_t size)
         static void *(*real_calloc)(size_t, size_t) = NULL;
 
         if (real_calloc == NULL) {
-               real_calloc = dlsym(RTLD_NEXT, "calloc");
+                static int done_once = 0;
+                if (done_once) {
+                        return NULL;
+                }
+                done_once = 1;
+                real_calloc = dlsym(RTLD_NEXT, "calloc");
         }
 
         call_idx++;
