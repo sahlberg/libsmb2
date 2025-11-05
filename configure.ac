@@ -87,6 +87,8 @@ esac
 AM_CONDITIONAL([HAVE_WIN32], [test "${SYS}" = "mingw32"])
 AC_SUBST([LIBSOCKET])
 
+AC_CHECK_LIB([dl], [dlsym], [], [AC_MSG_ERROR([dlsym not found, libdl is required])])
+
 dnl  Check for poll.h
 AC_CHECK_HEADERS([poll.h])
 
