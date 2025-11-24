@@ -156,12 +156,27 @@ smb2_close_connecting_fds(struct smb2_context *smb2)
 }
 
 static int
+smb2_get_real_credit_charge_for_one_pdu(struct smb2_context *smb2, struct smb2_header *hdr)
+{
+        int credits;
+
+        credits = hdr->credit_charge;
+        if (hdr->command == SMB2_NEGOTIATE) {
+                /* Mirror the special case in smb2_allocate_pdu. */
+        } else if (smb2->dialect <= SMB2_VERSION_0202) {
+                ++ credits;
+        }
+
+        return credits;
+}
+
+static int
 smb2_get_credit_charge(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
         int credits = 0;
 
         while (pdu) {
-                credits += pdu->header.credit_charge;
+                credits += smb2_get_real_credit_charge_for_one_pdu(smb2, &pdu->header);
                 pdu = pdu->next_compound;
         }
 
@@ -222,15 +237,11 @@ smb2_write_to_socket(struct smb2_context *smb2)
                 size_t num_done = pdu->out.num_done;
                 int i, niov = 1;
                 ssize_t count;
-                uint32_t spl = 0, tmp_spl, credit_charge = 0;
+                uint32_t spl = 0, tmp_spl, credit_charge;
 
-                for (tmp_pdu = pdu; tmp_pdu; tmp_pdu = tmp_pdu->next_compound) {
-                        credit_charge += tmp_pdu->header.credit_charge;
-                }
-                if (smb2->dialect > SMB2_VERSION_0202) {
-                        if (credit_charge > (uint32_t)smb2->credits) {
-                                return 0;
-                        }
+                credit_charge = smb2_get_credit_charge(smb2, pdu);
+                if (credit_charge > (uint32_t)smb2->credits) {
+                        return 0;
                 }
 
                 if (pdu->seal) {
@@ -306,7 +317,7 @@ smb2_write_to_socket(struct smb2_context *smb2)
                                 pdu->next_compound = NULL;
 
                                 if (!smb2_is_server(smb2)) {
-                                        smb2->credits -= pdu->header.credit_charge;
+                                        smb2->credits -= smb2_get_real_credit_charge_for_one_pdu(smb2, &pdu->header);
                                         /* queue requests we send to correlate replies with */
                                         SMB2_LIST_ADD_END(&smb2->waitqueue, pdu);
                                 }
