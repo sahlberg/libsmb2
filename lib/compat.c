@@ -210,15 +210,16 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
 
 #endif
 
-#if defined(__SWITCH__) || defined(__3DS__) || defined(__WII__) || defined(__GC__) || defined(__WIIU__) || defined(__NDS__)
+#if defined(__SWITCH__) || defined(__3DS__) || defined(__wii__) || defined(__gamecube__) || defined(__WIIU__) || defined(__NDS__)
 
 #include <errno.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <unistd.h>
 #include <alloca.h>
 #include <stdio.h>
-#if !defined(__WII__) && !defined(__GC__)
+#if !defined(__wii__) && !defined(__gamecube__)
 #include <sys/socket.h>
 #endif
 #if defined(__NDS__)
@@ -228,7 +229,7 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
 #include <switch/types.h>
 #elif defined(__3DS__)
 #include <3ds/types.h>	
-#elif defined(__WII__) || defined(__GC__)
+#elif defined(__wii__) || defined(__gamecube__)
 #include <gctypes.h>
 #elif defined(__WIIU__)
 #include <wut_types.h>
@@ -238,11 +239,11 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
 
 #define login_num ENXIO
 
-#if defined(__WII__) || defined(__GC__)
+#if defined(__wii__) || defined(__gamecube__)
 s32 getsockopt(int sockfd, int level, int optname, void *optval,
 socklen_t *optlen)
 {
-#ifdef __GC__
+#ifdef __gamecube__
          return net_getsockopt(sockfd, level, optname, optval, (socklen_t)optlen);
 #else
 	 printf("not yet supported");

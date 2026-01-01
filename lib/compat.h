@@ -621,16 +621,16 @@ ssize_t readv(t_socket fd, const struct iovec *iov, int iovcnt);
 
 #endif
 
-#if defined(__SWITCH__) || defined(__3DS__) || defined(__WII__) || defined(__GC__) || defined(__WIIU__) || defined(__NDS__)
+#if defined(__SWITCH__) || defined(__3DS__) || defined(__wii__) || defined(__gamecube__) || defined(__WIIU__) || defined(__NDS__)
 
 #include <sys/types.h>
 
-#if defined(__3DS__) || defined(__WII__) || defined(__GC__) || defined(__WIIU__) || defined(__NDS__)
+#if defined(__3DS__) || defined(__wii__) || defined(__gamecube__) || defined(__WIIU__) || defined(__NDS__)
 struct iovec {
   void  *iov_base;
   size_t iov_len;
 };	
-#if defined(__WII__) || defined(__GC__) || defined(__NDS__)
+#if defined(__wii__) || defined(__gamecube__) || defined(__NDS__)
 #ifndef __NDS__
 #include <network.h>
 #endif
@@ -715,7 +715,7 @@ ssize_t writev(int fd, const struct iovec *iov, int iovcnt);
 ssize_t readv(int fd, const struct iovec *iov, int iovcnt);
 int getlogin_r(char *buf, size_t size);
 
-#if defined(__WII__) || defined(__GC__) || defined(__NDS__)
+#if defined(__wii__) || defined(__gamecube__) || defined(__NDS__)
 int smb2_getaddrinfo(const char *node, const char*service,
                 const struct addrinfo *hints,
                 struct addrinfo **res);

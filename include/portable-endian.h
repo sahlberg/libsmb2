@@ -133,7 +133,7 @@
 #define __LITTLE_ENDIAN LITTLE_ENDIAN
 #define __PDP_ENDIAN PDP_ENDIAN
 
-#elif defined(PS3_PPU_PLATFORM) || defined(__WIIU__) || defined(__WII__) || defined(__GC__)
+#elif defined(PS3_PPU_PLATFORM) || defined(__WIIU__) || defined(__wii__) || defined(__gamecube__)
 
 #define htobe16(x) (x)
 #define htole16(x) __builtin_bswap16(x)
