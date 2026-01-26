@@ -656,15 +656,6 @@ struct iovec {
 #ifndef __NDS__
 #include <network.h>
 #endif
-#if !defined(HAVE_SOCKADDR_STORAGE)
-struct sockaddr_storage {
-#ifdef HAVE_SOCKADDR_SA_LEN
-	unsigned char ss_len;
-#endif /* HAVE_SOCKADDR_SA_LEN */
-	unsigned char ss_family;
-	unsigned char fill[127];
-};
-#endif
 
 struct addrinfo {
 	int	ai_flags;	/* AI_PASSIVE, AI_CANONNAME */
