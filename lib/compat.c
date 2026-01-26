@@ -244,7 +244,7 @@ s32 getsockopt(int sockfd, int level, int optname, void *optval,
 socklen_t *optlen)
 {
 #ifdef __gamecube__
-         return net_getsockopt(sockfd, level, optname, optval, (socklen_t)optlen);
+         return net_getsockopt(sockfd, level, optname, optval, optlen);
 #else
 	 return 0;
 #endif
