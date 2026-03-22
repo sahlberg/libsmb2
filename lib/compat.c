@@ -120,17 +120,17 @@ struct MinList __filelist = { (struct MinNode *) &__filelist.mlh_Tail, NULL, (st
 
 #define login_num ENXIO
 
-#ifdef _IOP
-#define getpid_num() 27
-
-static unsigned long int next = 1; 
-
 int gethostname(char *name, size_t len)
 {
         strncpy(name, "PS2", len);
         return 0;
 }
 
+
+#ifdef _IOP
+#define getpid_num() 27
+
+static unsigned long int next = 1; 
 time_t time(time_t *tloc)
 {
         u32 sec, usec;
