@@ -224,6 +224,11 @@ set_target_properties(smb2 PROPERTIES
 endif()
 endif()
 
+if(CMAKE_SYSTEM_NAME MATCHES dreamcast)
+target_sources(smb2 PRIVATE dreamcast/vfs.c)
+install(FILES dreamcast/vfs.h DESTINATION ${INSTALL_INC_DIR}/smb2/ RENAME smb2-kos.h)
+endif()
+
 if(NOT MSVC)
   add_definitions("-D_U_=__attribute__((unused))")
 else()
