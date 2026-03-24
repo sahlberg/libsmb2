@@ -459,10 +459,10 @@ typedef size_t ssize_t;
 #endif
 
 long long int be64toh(long long int x);
+int gethostname(char *name, size_t len);
 #ifdef _IOP
 char *strdup(const char *s);
 
-int gethostname(char *name, size_t len);
 int random(void);
 void srandom(unsigned int seed);
 time_t time(time_t *tloc);
