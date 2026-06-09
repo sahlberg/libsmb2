@@ -196,10 +196,19 @@ smb2_decode_file_all_info(struct smb2_context *smb2,
         smb2_get_uint64(vec, 80, &fs->current_byte_offset);
         smb2_get_uint32(vec, 88, &fs->mode);
         smb2_get_uint32(vec, 92, &fs->alignment_requirement);
-        smb2_get_uint32(vec, 96, &name_len);
+        if (smb2_get_uint32(vec, 96, &name_len)) {
+                return -1;
+        }
 
         if (name_len > 0) {
-                name = smb2_utf16_to_utf8((uint16_t *)&vec->buf[100], name_len / 2);
+                if (name_len > vec->len - 100) {
+                        /* truncate if the server supplied a short reply */
+                        name_len = (uint32_t)(vec->len - 100);
+                }
+                name = smb2_utf16_to_utf8((uint16_t *)(void *)&vec->buf[100], name_len / 2);
+                if (!name) {
+                        return -1;
+                }
                 fs->name = smb2_alloc_data(smb2, memctx, strlen(name) + 1);
                 if (fs->name == NULL) {
                         free(discard_const(name));
