@@ -131,7 +131,7 @@ srvsvc_SHARE_INFO_0_CONTAINER_coder(struct dcerpc_context *dce, struct dcerpc_pd
         if (dcerpc_uint32_coder(dce, pdu, iov, offset, &ctr->EntriesRead)) {
                 return -1;
         }
-        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && !dcerpc_get_cr(pdu)) {
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && ctr->EntriesRead) {
                 dcerpc_set_size_is(pdu, ctr->EntriesRead);
                 if (ctr->share_info_0 == NULL) {
                         ctr->share_info_0 = smb2_alloc_data(
@@ -213,7 +213,7 @@ srvsvc_SHARE_INFO_1_CONTAINER_coder(struct dcerpc_context *dce, struct dcerpc_pd
         if (dcerpc_uint32_coder(dce, pdu, iov, offset, &ctr->EntriesRead)) {
                 return -1;
         }
-        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && !dcerpc_get_cr(pdu)) {
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && ctr->EntriesRead) {
                 dcerpc_set_size_is(pdu, ctr->EntriesRead);
                 if (ctr->share_info_1 == NULL) {
                         ctr->share_info_1 = smb2_alloc_data(
