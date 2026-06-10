@@ -109,7 +109,8 @@ srvsvc_SHARE_INFO_0_carray_coder(struct dcerpc_context *ctx,
                                  struct smb2_iovec *iov, int *offset,
                                  void *ptr)
 {
-        return dcerpc_carray_coder(ctx, pdu, iov, offset, ptr,
+        return dcerpc_carray_coder(ctx, pdu, iov, offset,
+                                   dcerpc_get_size_is(pdu), ptr,
                                    sizeof(struct srvsvc_SHARE_INFO_0),
                                    srvsvc_SHARE_INFO_0_coder);
 }
@@ -130,16 +131,20 @@ srvsvc_SHARE_INFO_0_CONTAINER_coder(struct dcerpc_context *dce, struct dcerpc_pd
         if (dcerpc_uint32_coder(dce, pdu, iov, offset, &ctr->EntriesRead)) {
                 return -1;
         }
-        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {
-                if (ctr->Buffer == NULL) {
-                        ctr->Buffer = smb2_alloc_data(
-                                  dcerpc_get_smb2_context(dce),
-                                  dcerpc_get_pdu_payload(pdu),
-                                  sizeof(struct srvsvc_SHARE_INFO_0_carray));
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && !dcerpc_get_cr(pdu)) {
+                dcerpc_set_size_is(pdu, ctr->EntriesRead);
+                if (ctr->share_info_0 == NULL) {
+                        ctr->share_info_0 = smb2_alloc_data(
+                                dcerpc_get_smb2_context(dce),
+                                dcerpc_get_pdu_payload(pdu),
+                                ctr->EntriesRead * sizeof(struct srvsvc_SHARE_INFO_0));
+                        if (ctr->share_info_0 == NULL) {
+                                return -1;
+                        }
                 }
         }
         if (dcerpc_ptr_coder(dce, pdu, iov, offset,
-                             ctr->Buffer,
+                             ctr->share_info_0,
                              PTR_UNIQUE,
                              srvsvc_SHARE_INFO_0_carray_coder)) {
                 return -1;
@@ -186,7 +191,8 @@ srvsvc_SHARE_INFO_1_carray_coder(struct dcerpc_context *ctx,
                                  struct smb2_iovec *iov, int *offset,
                                  void *ptr)
 {
-        return dcerpc_carray_coder(ctx, pdu, iov, offset, ptr,
+        return dcerpc_carray_coder(ctx, pdu, iov, offset,
+                                   dcerpc_get_size_is(pdu), ptr,
                                    sizeof(struct srvsvc_SHARE_INFO_1),
                                    srvsvc_SHARE_INFO_1_coder);
 }
@@ -207,16 +213,20 @@ srvsvc_SHARE_INFO_1_CONTAINER_coder(struct dcerpc_context *dce, struct dcerpc_pd
         if (dcerpc_uint32_coder(dce, pdu, iov, offset, &ctr->EntriesRead)) {
                 return -1;
         }
-        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {
-                if (ctr->Buffer == NULL) {
-                        ctr->Buffer = smb2_alloc_data(
-                                  dcerpc_get_smb2_context(dce),
-                                  dcerpc_get_pdu_payload(pdu),
-                                  sizeof(struct srvsvc_SHARE_INFO_1_carray));
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && !dcerpc_get_cr(pdu)) {
+                dcerpc_set_size_is(pdu, ctr->EntriesRead);
+                if (ctr->share_info_1 == NULL) {
+                        ctr->share_info_1 = smb2_alloc_data(
+                                dcerpc_get_smb2_context(dce),
+                                dcerpc_get_pdu_payload(pdu),
+                                ctr->EntriesRead * sizeof(struct srvsvc_SHARE_INFO_1));
+                        if (ctr->share_info_1 == NULL) {
+                                return -1;
+                        }
                 }
         }
         if (dcerpc_ptr_coder(dce, pdu, iov, offset,
-                             ctr->Buffer,
+                             ctr->share_info_1,
                              PTR_UNIQUE,
                              srvsvc_SHARE_INFO_1_carray_coder)) {
                 return -1;

@@ -54,14 +54,9 @@ int srvsvc_SHARE_INFO_0_coder(struct dcerpc_context *ctx,
                               struct smb2_iovec *iov, int *offset,
                               void *ptr);
 
-struct srvsvc_SHARE_INFO_0_carray {
-        uint32_t max_count;
-        struct srvsvc_SHARE_INFO_0 *share_info_0;
-};
-
 struct srvsvc_SHARE_INFO_0_CONTAINER {
         uint32_t EntriesRead;
-        struct srvsvc_SHARE_INFO_0_carray *Buffer;
+        struct srvsvc_SHARE_INFO_0 *share_info_0;
 };
 
 struct srvsvc_SHARE_INFO_1 {
@@ -74,14 +69,9 @@ int srvsvc_SHARE_INFO_1_coder(struct dcerpc_context *ctx,
                               struct smb2_iovec *iov, int *offset,
                               void *ptr);
 
-struct srvsvc_SHARE_INFO_1_carray {
-        uint32_t max_count;
-        struct srvsvc_SHARE_INFO_1 *share_info_1;
-};
-
 struct srvsvc_SHARE_INFO_1_CONTAINER {
         uint32_t EntriesRead;
-        struct srvsvc_SHARE_INFO_1_carray *Buffer;
+        struct srvsvc_SHARE_INFO_1 *share_info_1;
 };
         
 int srvsvc_SHARE_INFO_1_CONTAINER_coder(struct dcerpc_context *dce,

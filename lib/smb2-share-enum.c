@@ -170,13 +170,13 @@ smb2_share_enum_async(struct smb2_context *smb2,
                 nse->se_req.ses.Level = level;
                 nse->se_req.ses.ShareInfo.Level = level;
                 nse->se_req.ses.ShareInfo.Level0.EntriesRead = 0;
-                nse->se_req.ses.ShareInfo.Level0.Buffer = NULL;
+                nse->se_req.ses.ShareInfo.Level0.share_info_0 = NULL;
                 break;
         case SHARE_INFO_1:
                 nse->se_req.ses.Level = level;
                 nse->se_req.ses.ShareInfo.Level = level;
                 nse->se_req.ses.ShareInfo.Level1.EntriesRead = 0;
-                nse->se_req.ses.ShareInfo.Level1.Buffer = NULL;
+                nse->se_req.ses.ShareInfo.Level1.share_info_1 = NULL;
                 break;
         }
         nse->se_req.PreferedMaximumLength = 0xffffffff;

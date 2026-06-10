@@ -117,7 +117,7 @@ int dcerpc_ptr_coder(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
 int dcerpc_carray_coder(struct dcerpc_context *ctx,
                         struct dcerpc_pdu *pdu,
                         struct smb2_iovec *iov, int *offset,
-                        void *ptr, int elem_size, dcerpc_coder coder);
+                        int num, void *ptr, int elem_size, dcerpc_coder coder);
 int dcerpc_uint8_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                     struct smb2_iovec *iov, int *offset, void *ptr);
 int dcerpc_uint16_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
@@ -148,6 +148,9 @@ struct dcerpc_pdu *dcerpc_allocate_pdu(struct dcerpc_context *dce,
                                        int direction, int payload_size);
 void dcerpc_free_pdu(struct dcerpc_context *dce, struct dcerpc_pdu *pdu);
 
+void dcerpc_set_size_is(struct dcerpc_pdu *pdu, int size_is);
+int dcerpc_get_size_is(struct dcerpc_pdu *pdu);
+        
 #ifdef __cplusplus
 }
 #endif

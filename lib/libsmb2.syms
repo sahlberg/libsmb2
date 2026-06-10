@@ -9,7 +9,9 @@ dcerpc_do_coder
 dcerpc_free_data
 dcerpc_free_pdu
 dcerpc_get_error
+dcerpc_get_size_is
 dcerpc_set_endian
+dcerpc_set_size_is
 dcerpc_set_tctx
 dcerpc_get_cr
 dcerpc_ptr_coder
