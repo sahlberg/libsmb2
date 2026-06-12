@@ -150,6 +150,8 @@ void dcerpc_free_pdu(struct dcerpc_context *dce, struct dcerpc_pdu *pdu);
 
 void dcerpc_set_size_is(struct dcerpc_pdu *pdu, int size_is);
 int dcerpc_get_size_is(struct dcerpc_pdu *pdu);
+void dcerpc_set_switch_is(struct dcerpc_pdu *pdu, int switch_is);
+int dcerpc_get_switch_is(struct dcerpc_pdu *pdu);
         
 #ifdef __cplusplus
 }

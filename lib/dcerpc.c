@@ -270,6 +270,7 @@ struct dcerpc_pdu {
         int max_alignment;
 
         int size_is;   /* Passing size_is() value through a pointer */
+        int switch_is; /* Passing switch_is() value through a pointer */
 };
 
 int
@@ -1955,5 +1956,15 @@ void dcerpc_set_size_is(struct dcerpc_pdu *pdu, int size_is)
 int dcerpc_get_size_is(struct dcerpc_pdu *pdu)
 {
         return pdu->size_is;
+}
+
+void dcerpc_set_switch_is(struct dcerpc_pdu *pdu, int switch_is)
+{
+        pdu->switch_is = switch_is;
+}
+
+int dcerpc_get_switch_is(struct dcerpc_pdu *pdu)
+{
+        return pdu->switch_is;
 }
 
