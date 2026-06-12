@@ -925,6 +925,28 @@ dcerpc_carray_coder(struct dcerpc_context *ctx,
         return 0;
 }
 
+int dcerpc_union_coder(struct dcerpc_context *ctx,
+                       struct dcerpc_pdu *pdu,
+                       struct smb2_iovec *iov, int *offset,
+                       uint32_t *switch_is, void *ptr, dcerpc_coder coder)
+{
+        uint64_t p;
+
+        /* Conformance */
+        p = *switch_is;
+        if (dcerpc_uint3264_coder(ctx, pdu, iov, offset, &p)) {
+                return -1;
+        }
+
+        /* Data */
+        dcerpc_set_switch_is(pdu, p);
+        if (coder(ctx, pdu, iov, offset, ptr)) {
+                return -1;
+        }
+
+        return 0;
+}
+
 int
 dcerpc_ptr_coder(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                  struct smb2_iovec *iov, int *offset, void *ptr,

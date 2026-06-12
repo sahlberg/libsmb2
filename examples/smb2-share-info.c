@@ -53,24 +53,24 @@ void si_cb(struct dcerpc_context *dce, int status,
                        strerror(-status), dcerpc_get_error(dce));
                 exit(10);
         }
-        printf("%-20s %-20s", rep->InfoStruct.ShareInfo1.netname.utf8,
-               rep->InfoStruct.ShareInfo1.remark.utf8);
-        if ((rep->InfoStruct.ShareInfo1.type & 3) == SHARE_TYPE_DISKTREE) {
+        printf("%-20s %-20s", rep->InfoStruct.ShareInfo.ShareInfo1.netname.utf8,
+               rep->InfoStruct.ShareInfo.ShareInfo1.remark.utf8);
+        if ((rep->InfoStruct.ShareInfo.ShareInfo1.type & 3) == SHARE_TYPE_DISKTREE) {
                         printf(" DISKTREE");
         }
-        if ((rep->InfoStruct.ShareInfo1.type & 3) == SHARE_TYPE_PRINTQ) {
+        if ((rep->InfoStruct.ShareInfo.ShareInfo1.type & 3) == SHARE_TYPE_PRINTQ) {
                 printf(" PRINTQ");
         }
-        if ((rep->InfoStruct.ShareInfo1.type & 3) == SHARE_TYPE_DEVICE) {
+        if ((rep->InfoStruct.ShareInfo.ShareInfo1.type & 3) == SHARE_TYPE_DEVICE) {
                 printf(" DEVICE");
         }
-        if ((rep->InfoStruct.ShareInfo1.type & 3) == SHARE_TYPE_IPC) {
+        if ((rep->InfoStruct.ShareInfo.ShareInfo1.type & 3) == SHARE_TYPE_IPC) {
                 printf(" IPC");
         }
-        if (rep->InfoStruct.ShareInfo1.type & SHARE_TYPE_TEMPORARY) {
+        if (rep->InfoStruct.ShareInfo.ShareInfo1.type & SHARE_TYPE_TEMPORARY) {
                 printf(" TEMPORARY");
         }
-        if (rep->InfoStruct.ShareInfo1.type & SHARE_TYPE_HIDDEN) {
+        if (rep->InfoStruct.ShareInfo.ShareInfo1.type & SHARE_TYPE_HIDDEN) {
                 printf(" HIDDEN");
         }
 

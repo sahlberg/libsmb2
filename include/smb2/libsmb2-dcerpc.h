@@ -118,6 +118,10 @@ int dcerpc_carray_coder(struct dcerpc_context *ctx,
                         struct dcerpc_pdu *pdu,
                         struct smb2_iovec *iov, int *offset,
                         int num, void *ptr, int elem_size, dcerpc_coder coder);
+int dcerpc_union_coder(struct dcerpc_context *ctx,
+                       struct dcerpc_pdu *pdu,
+                       struct smb2_iovec *iov, int *offset,
+                       uint32_t *switch_is, void *ptr, dcerpc_coder coder);
 int dcerpc_uint8_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                     struct smb2_iovec *iov, int *offset, void *ptr);
 int dcerpc_uint16_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,

@@ -247,34 +247,43 @@ srvsvc_SHARE_INFO_1_CONTAINER_coder(struct dcerpc_context *dce, struct dcerpc_pd
  */
 static int
 srvsvc_SHARE_ENUM_UNION_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                         struct smb2_iovec *iov, int *offset,
-                         void *ptr)
+                              struct smb2_iovec *iov, int *offset,
+                              void *ptr)
 {
-        struct srvsvc_SHARE_ENUM_UNION *ctr = ptr;
-        uint64_t p;
+        union srvsvc_SHARE_ENUM_UNION *info = ptr;
 
-        p = ctr->Level;
-        if (dcerpc_uint3264_coder(ctx, pdu, iov, offset, &p)) {
-                return -1;
-        }
-        ctr->Level = (uint32_t)p;
-
-        switch (ctr->Level) {
+        switch (dcerpc_get_switch_is(pdu)) {
         case 0:
-                if (dcerpc_ptr_coder(ctx, pdu, iov, offset, &ctr->Level0,
+                if (dcerpc_ptr_coder(ctx, pdu, iov, offset, &info->Level0,
                                      PTR_UNIQUE,
                                      srvsvc_SHARE_INFO_0_CONTAINER_coder)) {
                         return -1;
                 }
                 break;
         case 1:
-                if (dcerpc_ptr_coder(ctx, pdu, iov, offset, &ctr->Level1,
+                if (dcerpc_ptr_coder(ctx, pdu, iov, offset, &info->Level1,
                                      PTR_UNIQUE,
                                      srvsvc_SHARE_INFO_1_CONTAINER_coder)) {
                         return -1;
                 }
                 break;
         };
+
+        return 0;
+}
+
+static int
+srvsvc_SHARE_ENUM_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                        struct smb2_iovec *iov, int *offset,
+                        void *ptr)
+{
+        struct srvsvc_SHARE_ENUM *info = ptr;
+
+        if (dcerpc_union_coder(ctx, pdu, iov, offset,
+                               &info->Level, &info->ShareEnum,
+                               srvsvc_SHARE_ENUM_UNION_coder)) {
+                return -1;
+        }
 
         return 0;
 }
@@ -295,7 +304,7 @@ srvsvc_SHARE_ENUM_STRUCT_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pd
         if (dcerpc_uint32_coder(ctx, pdu, iov, offset, &ses->Level)) {
                 return -1;
         }
-        if (srvsvc_SHARE_ENUM_UNION_coder(ctx, pdu, iov, offset, &ses->ShareInfo)) {
+        if (srvsvc_SHARE_ENUM_coder(ctx, pdu, iov, offset, &ses->ShareInfo)) {
                 return -1;
         }
 
@@ -383,20 +392,13 @@ srvsvc_NetrShareEnum_rep_coder(struct dcerpc_context *dce,
  * } SHARE_INFO, *PSHARE_INFO, *LPSHARE_INFO;
  */
 static int
-srvsvc_SHARE_INFO_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                           struct smb2_iovec *iov, int *offset,
-                          void *ptr)
+srvsvc_SHARE_INFO_UNION_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                              struct smb2_iovec *iov, int *offset,
+                              void *ptr)
 {
-        struct srvsvc_SHARE_INFO *info = ptr;
-        uint64_t p;
+        union srvsvc_SHARE_INFO_UNION *info = ptr;
 
-        p = info->level;
-        if (dcerpc_uint3264_coder(ctx, pdu, iov, offset, &p)) {
-                return -1;
-        }
-        info->level = (uint32_t)p;
-
-        switch (info->level) {
+        switch (dcerpc_get_switch_is(pdu)) {
         case 1:
                 if (dcerpc_ptr_coder(ctx, pdu, iov, offset, &info->ShareInfo1,
                                      PTR_UNIQUE,
@@ -405,6 +407,22 @@ srvsvc_SHARE_INFO_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 }
                 break;
         };
+
+        return 0;
+}
+
+static int
+srvsvc_SHARE_INFO_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                        struct smb2_iovec *iov, int *offset,
+                        void *ptr)
+{
+        struct srvsvc_SHARE_INFO *info = ptr;
+
+        if (dcerpc_union_coder(ctx, pdu, iov, offset,
+                               &info->Level, &info->ShareInfo,
+                               srvsvc_SHARE_INFO_UNION_coder)) {
+                return -1;
+        }
 
         return 0;
 }
