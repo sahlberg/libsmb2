@@ -98,6 +98,33 @@ void se_cb(struct smb2_context *smb2, int status,
                 break;
         }
 
+        printf("YAML:\n");
+        printf("---\n");
+        struct dcerpc_context *dce;
+        struct dcerpc_pdu *yaml_pdu;
+        struct smb2_iovec iov;
+        static unsigned char buf[65536];
+        int offset = 0;
+
+        dce = dcerpc_create_context(smb2);
+        if (dce == NULL) {
+		printf("Failed to create dce context. %s\n",
+                       smb2_get_error(smb2));
+		exit(10);
+        }
+        yaml_pdu = dcerpc_allocate_pdu(dce, ENCODING_YAML, DCERPC_ENCODE, sizeof(struct srvsvc_NetrShareEnum_rep));
+        iov.len = 65536;
+        iov.buf = buf;
+        if (srvsvc_NetrShareEnum_rep_coder(dce, yaml_pdu, &iov, &offset, rep)) {
+                printf("Failed to encode REP as YAML\n");
+                exit(10);
+        }
+        printf("Size:%d\n", offset);
+        printf("%s\n", iov.buf);
+        dcerpc_free_pdu(dce, yaml_pdu);
+        dcerpc_destroy_context(dce);
+                
+        
         smb2_free_data(smb2, rep);
 
         is_finished = 1;

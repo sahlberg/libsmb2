@@ -39,6 +39,11 @@ typedef int (*dcerpc_coder)(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                             struct smb2_iovec *iov, int *offset,
                             void *ptr);
 
+enum dcerpc_encoding {
+        ENCODING_NDR    = 0,
+        ENCODING_YAML   = 1
+};
+
 enum ptr_type {
         PTR_REF    = 0,
         PTR_UNIQUE = 1,
@@ -114,6 +119,7 @@ int dcerpc_do_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 #define DCERPC_DECODE 0
 #define DCERPC_ENCODE 1
 struct dcerpc_pdu *dcerpc_allocate_pdu(struct dcerpc_context *dce,
+                                       enum dcerpc_encoding encoding,
                                        int direction, int payload_size);
 void dcerpc_free_pdu(struct dcerpc_context *dce, struct dcerpc_pdu *pdu);
 

@@ -64,7 +64,7 @@ static void test_dcerpc_coder(struct dcerpc_context *dce, char *method,
         printf("Test codec for %s\n", method);
 
         /* Encode */
-        pdu1 = dcerpc_allocate_pdu(dce, DCERPC_ENCODE, req_size);
+        pdu1 = dcerpc_allocate_pdu(dce, ENCODING_NDR, DCERPC_ENCODE, req_size);
         iov.len = 65536;
         iov.buf = buf;
         memset(iov.buf, 0, iov.len);
@@ -116,7 +116,7 @@ static void test_dcerpc_coder(struct dcerpc_context *dce, char *method,
         }
         /* Decode it again */
         req2 = calloc(1, req_size);
-        pdu2 = dcerpc_allocate_pdu(dce, DCERPC_DECODE, req_size);
+        pdu2 = dcerpc_allocate_pdu(dce, ENCODING_NDR, DCERPC_DECODE, req_size);
         offset = 0;
         ndr_set_endian(pdu2, endian);
         if (ndr_ptr_coder(dce, pdu2, &iov, &offset, req2,

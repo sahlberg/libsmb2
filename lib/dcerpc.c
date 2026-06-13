@@ -260,6 +260,7 @@ struct dcerpc_pdu {
         int max_ptr;
         struct dcerpc_deferred_pointer ptrs[MAX_DEFERRED_PTR];
         int direction;
+        enum dcerpc_encoding encoding;
 
         /* All items are parsed twice, first to handle the conformance
          * fields and a second time to handle the data itself.
@@ -511,7 +512,8 @@ dcerpc_free_pdu(struct dcerpc_context *dce, struct dcerpc_pdu *pdu)
 }
 
 struct dcerpc_pdu *
-dcerpc_allocate_pdu(struct dcerpc_context *dce, int direction, int payload_size)
+dcerpc_allocate_pdu(struct dcerpc_context *dce, enum dcerpc_encoding encoding,
+                    int direction, int payload_size)
 {
         struct dcerpc_pdu *pdu;
 
@@ -523,6 +525,7 @@ dcerpc_allocate_pdu(struct dcerpc_context *dce, int direction, int payload_size)
 
         pdu->dce = dce;
         pdu->hdr.call_id = dce->call_id++;
+        pdu->encoding = encoding;
         pdu->direction = direction;
         pdu->top_level = 1;
         pdu->payload = smb2_alloc_init(dce->smb2, payload_size);
@@ -1600,7 +1603,7 @@ dcerpc_call_async(struct dcerpc_context *dce,
         int offset = 0, o;
         uint32_t v;
 
-        pdu = dcerpc_allocate_pdu(dce, DCERPC_ENCODE, NSE_BUF_SIZE);
+        pdu = dcerpc_allocate_pdu(dce, ENCODING_NDR, DCERPC_ENCODE, NSE_BUF_SIZE);
         if (pdu == NULL) {
                 return -ENOMEM;
         }
@@ -1759,7 +1762,7 @@ dcerpc_bind_async(struct dcerpc_context *dce, dcerpc_cb cb,
         int offset = 0;
         struct p_cont_elem_t *pce;
 
-        pdu = dcerpc_allocate_pdu(dce, DCERPC_ENCODE, NSE_BUF_SIZE);
+        pdu = dcerpc_allocate_pdu(dce, ENCODING_NDR, DCERPC_ENCODE, NSE_BUF_SIZE);
         if (pdu == NULL) {
                 return -ENOMEM;
         }
