@@ -115,7 +115,7 @@ void se_cb(struct smb2_context *smb2, int status,
         yaml_pdu = dcerpc_allocate_pdu(dce, ENCODING_YAML, DCERPC_ENCODE, sizeof(struct srvsvc_NetrShareEnum_rep));
         iov.len = 65536;
         iov.buf = buf;
-        if (srvsvc_NetrShareEnum_rep_coder(dce, yaml_pdu, &iov, &offset, rep)) {
+        if (srvsvc_NetrShareEnum_rep_coder("Response", dce, yaml_pdu, &iov, &offset, rep)) {
                 printf("Failed to encode REP as YAML\n");
                 exit(10);
         }

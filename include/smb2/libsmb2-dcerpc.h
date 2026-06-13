@@ -35,7 +35,7 @@ struct dcerpc_context;
 struct dcerpc_pdu;
 
 /* Encoder/Decoder for a DCERPC object */
-typedef int (*dcerpc_coder)(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+typedef int (*dcerpc_coder)(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                             struct smb2_iovec *iov, int *offset,
                             void *ptr);
 
@@ -112,7 +112,7 @@ int dcerpc_call_async(struct dcerpc_context *dce,
                       dcerpc_coder rep_coder, int decode_size,
                       dcerpc_cb cb, void *cb_data);
 
-int dcerpc_do_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+int dcerpc_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                     struct smb2_iovec *iov,
                     int *offset, void *ptr,
                     dcerpc_coder coder);
@@ -128,34 +128,34 @@ int dcerpc_get_size_is(struct dcerpc_pdu *pdu);
 void dcerpc_set_switch_is(struct dcerpc_pdu *pdu, int switch_is);
 int dcerpc_get_switch_is(struct dcerpc_pdu *pdu);
 
-int ndr_ptr_coder(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+int ndr_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                   struct smb2_iovec *iov, int *offset, void *ptr,
                   enum ptr_type type, dcerpc_coder coder);
-int ndr_carray_coder(struct dcerpc_context *ctx,
+int ndr_carray_coder(char *name, struct dcerpc_context *ctx,
                      struct dcerpc_pdu *pdu,
                      struct smb2_iovec *iov, int *offset,
                      int num, void *ptr, int elem_size, dcerpc_coder coder);
-int ndr_context_handle_coder(struct dcerpc_context *dce,
+int ndr_context_handle_coder(char *name, struct dcerpc_context *dce,
                              struct dcerpc_pdu *pdu,
                              struct smb2_iovec *iov, int *offset,
                              void *ptr);
-int ndr_uint8_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+int ndr_uint8_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                     struct smb2_iovec *iov, int *offset, void *ptr);
-int ndr_uint16_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+int ndr_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                      struct smb2_iovec *iov, int *offset, void *ptr);
-int ndr_uint32_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+int ndr_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                      struct smb2_iovec *iov, int *offset, void *ptr);
-int ndr_uint3264_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+int ndr_uint3264_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                        struct smb2_iovec *iov, int *offset, void *ptr);
-int ndr_union_coder(struct dcerpc_context *ctx,
+int ndr_union_coder(char *name, struct dcerpc_context *ctx,
                     struct dcerpc_pdu *pdu,
                     struct smb2_iovec *iov, int *offset,
                     uint32_t *switch_is, void *ptr, dcerpc_coder coder);
-int ndr_utf16_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+int ndr_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                     struct smb2_iovec *iov, int *offset, void *ptr);
-int ndr_utf16z_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+int ndr_utf16z_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                      struct smb2_iovec *iov, int *offset, void *ptr);
-int ndr_uuid_coder(struct dcerpc_context *dce,
+int ndr_uuid_coder(char *name, struct dcerpc_context *dce,
                    struct dcerpc_pdu *pdu,
                    struct smb2_iovec *iov, int *offset,
                    dcerpc_uuid_t *uuid);

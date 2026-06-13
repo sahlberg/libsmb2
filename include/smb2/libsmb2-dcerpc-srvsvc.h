@@ -49,7 +49,7 @@ enum SHARE_INFO_enum {
 struct srvsvc_SHARE_INFO_0 {
         struct dcerpc_utf16 netname;
 };
-int srvsvc_SHARE_INFO_0_coder(struct dcerpc_context *ctx,
+int srvsvc_SHARE_INFO_0_coder(char *name, struct dcerpc_context *ctx,
                               struct dcerpc_pdu *pdu,
                               struct smb2_iovec *iov, int *offset,
                               void *ptr);
@@ -64,7 +64,7 @@ struct srvsvc_SHARE_INFO_1 {
         uint32_t type;
         struct dcerpc_utf16 remark;
 };
-int srvsvc_SHARE_INFO_1_coder(struct dcerpc_context *ctx,
+int srvsvc_SHARE_INFO_1_coder(char *name, struct dcerpc_context *ctx,
                               struct dcerpc_pdu *pdu,
                               struct smb2_iovec *iov, int *offset,
                               void *ptr);
@@ -74,7 +74,7 @@ struct srvsvc_SHARE_INFO_1_CONTAINER {
         struct srvsvc_SHARE_INFO_1 *share_info_1;
 };
         
-int srvsvc_SHARE_INFO_1_CONTAINER_coder(struct dcerpc_context *dce,
+int srvsvc_SHARE_INFO_1_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                                         struct dcerpc_pdu *pdu,
                                         struct smb2_iovec *iov, int *offset,
                                         void *ptr);
@@ -163,19 +163,19 @@ struct srvsvc_NetrShareEnum_rep *
 smb2_share_enum_sync(struct smb2_context *smb2, enum SHARE_INFO_enum level);
 
 
-int srvsvc_NetrShareEnum_rep_coder(struct dcerpc_context *dce,
+int srvsvc_NetrShareEnum_rep_coder(char *name, struct dcerpc_context *dce,
                                    struct dcerpc_pdu *pdu,
                                    struct smb2_iovec *iov, int *offset,
                                    void *ptr);
-int srvsvc_NetrShareEnum_req_coder(struct dcerpc_context *ctx,
+int srvsvc_NetrShareEnum_req_coder(char *name, struct dcerpc_context *ctx,
                                    struct dcerpc_pdu *pdu,
                                    struct smb2_iovec *iov, int *offset,
                                    void *ptr);
-int srvsvc_NetrShareGetInfo_rep_coder(struct dcerpc_context *dce,
+int srvsvc_NetrShareGetInfo_rep_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
                                       struct smb2_iovec *iov, int *offset,
                                       void *ptr);
-int srvsvc_NetrShareGetInfo_req_coder(struct dcerpc_context *ctx,
+int srvsvc_NetrShareGetInfo_req_coder(char *name, struct dcerpc_context *ctx,
                                       struct dcerpc_pdu *pdu,
                                       struct smb2_iovec *iov, int *offset,
                                       void *ptr);
