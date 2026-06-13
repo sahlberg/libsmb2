@@ -102,20 +102,15 @@ struct srvsvc_NetrShareEnum_req {
 };
 
 struct srvsvc_NetrShareEnum_rep {
-        uint32_t status;
-
         struct srvsvc_SHARE_ENUM_STRUCT ses;
         uint32_t total_entries;
         uint32_t resume_handle;
+
+        uint32_t status;
 };
 
-union srvsvc_SHARE_INFO_UNION {
+union srvsvc_SHARE_INFO {
         struct srvsvc_SHARE_INFO_1 ShareInfo1;
-};
-
-struct srvsvc_SHARE_INFO {
-        uint32_t Level;
-        union srvsvc_SHARE_INFO_UNION ShareInfo;
 };
 
 struct srvsvc_NetrShareGetInfo_req {
@@ -125,9 +120,9 @@ struct srvsvc_NetrShareGetInfo_req {
 };
 
 struct srvsvc_NetrShareGetInfo_rep {
-        uint32_t status;
+        union srvsvc_SHARE_INFO InfoStruct;
 
-        struct srvsvc_SHARE_INFO InfoStruct;
+        uint32_t status;
 };
 
 struct srvsvc_rep {

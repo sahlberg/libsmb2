@@ -261,6 +261,7 @@ struct dcerpc_pdu {
         struct dcerpc_deferred_pointer ptrs[MAX_DEFERRED_PTR];
         int direction;
         enum dcerpc_encoding encoding;
+        void *request;
 
         /* All items are parsed twice, first to handle the conformance
          * fields and a second time to handle the data itself.
@@ -272,7 +273,36 @@ struct dcerpc_pdu {
 
         int size_is;   /* Passing size_is() value through a pointer */
         int switch_is; /* Passing switch_is() value through a pointer */
+        /* YAML */
+        int yaml_indentation;
+        int yaml_array_prefix;
 };
+
+static int yaml_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                      struct smb2_iovec *iov, int *offset, void *ptr);
+static int yaml_carray_coder(char *name, struct dcerpc_context *ctx,
+                      struct dcerpc_pdu *pdu,
+                      struct smb2_iovec *iov, int *offset,
+                      int num, void *ptr, int elem_size, dcerpc_coder coder);
+static int yaml_union_coder(char *name, struct dcerpc_context *ctx,
+                     struct dcerpc_pdu *pdu,
+                     struct smb2_iovec *iov, int *offset,
+                     uint32_t *switch_is, void *ptr, dcerpc_coder coder);
+static int yaml_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+                   struct smb2_iovec *iov, int *offset, void *ptr,
+                   enum ptr_type type, dcerpc_coder coder);
+static int yaml_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                     struct smb2_iovec *iov, int *offset,
+                     void *ptr);
+static int yaml_struct_coder(char *name, struct dcerpc_context *ctx,
+                             struct dcerpc_pdu *pdu,
+                             struct smb2_iovec *iov, int *offset,
+                             void *ptr, dcerpc_coder coder);
+static int yaml_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                         struct smb2_iovec *iov,
+                         int *offset, void *ptr,
+                         dcerpc_coder coder);
+
 
 int
 dcerpc_set_uint8(struct dcerpc_context *ctx, struct smb2_iovec *iov,
@@ -548,11 +578,11 @@ dcerpc_add_deferred_pointer(struct dcerpc_context *ctx,
         pdu->max_ptr++;
 }
 
-int
-dcerpc_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                struct smb2_iovec *iov,
-                int *offset, void *ptr,
-                dcerpc_coder coder)
+static int
+ndr_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+             struct smb2_iovec *iov,
+             int *offset, void *ptr,
+             dcerpc_coder coder)
 {
         pdu->max_alignment = 1;
         pdu->is_conformance_run = 1;
@@ -567,6 +597,21 @@ dcerpc_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         return 0;
 }
 
+int
+dcerpc_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+             struct smb2_iovec *iov,
+             int *offset, void *ptr,
+             dcerpc_coder coder)
+{
+        switch(pdu->encoding) {
+        case ENCODING_NDR:
+                return ndr_do_coder(name, ctx, pdu, iov, offset, ptr, coder);
+        case ENCODING_YAML:
+                return yaml_do_coder(name, ctx, pdu, iov, offset, ptr, coder);
+        };
+        return -1;
+}
+
 static int
 dcerpc_process_deferred_pointers(struct dcerpc_context *ctx,
                                  struct dcerpc_pdu *pdu,
@@ -579,7 +624,7 @@ dcerpc_process_deferred_pointers(struct dcerpc_context *ctx,
         while (pdu->cur_ptr != pdu->max_ptr) {
                 idx = pdu->cur_ptr++;
                 dp = &pdu->ptrs[idx];
-                if (dcerpc_do_coder("DEFERRED", ctx, pdu, iov, offset, dp->ptr, dp->coder)) {
+                if (ndr_do_coder("DEFERRED", ctx, pdu, iov, offset, dp->ptr, dp->coder)) {
                         return -1;
                 }
         }
@@ -601,6 +646,19 @@ ndr_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         } else {
                 return dcerpc_set_uint32(ctx, pdu, iov, offset, *(uint32_t *)ptr);
         }
+}
+
+int
+dcerpc_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                 struct smb2_iovec *iov, int *offset, void *ptr)
+{
+        switch(pdu->encoding) {
+        case ENCODING_NDR:
+                return ndr_uint32_coder(name, ctx, pdu, iov, offset, ptr);
+        case ENCODING_YAML:
+                return yaml_uint32_coder(name, ctx, pdu, iov, offset, ptr);
+        }
+        return -1;
 }
 
 int
@@ -749,7 +807,7 @@ ndr_encode_ptr(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
         case PTR_REF:
                 if (pdu->top_level) {
                         pdu->top_level = 0;
-                        if (dcerpc_do_coder(name, dce, pdu, iov, offset, ptr, coder)) {
+                        if (ndr_do_coder(name, dce, pdu, iov, offset, ptr, coder)) {
                                 return -1;
                         }
                         pdu->top_level = top_level;
@@ -778,7 +836,7 @@ ndr_encode_ptr(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                 }
                 if (pdu->top_level) {
                         pdu->top_level = 0;
-                        if (dcerpc_do_coder(name, dce, pdu, iov, offset, ptr, coder)) {
+                        if (ndr_do_coder(name, dce, pdu, iov, offset, ptr, coder)) {
                                 return -1;
                         }
                         pdu->top_level = top_level;
@@ -801,7 +859,7 @@ ndr_encode_ptr(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                 }
                 if (pdu->top_level) {
                         pdu->top_level = 0;
-                        if (dcerpc_do_coder(name, dce, pdu, iov, offset, ptr, coder)) {
+                        if (ndr_do_coder(name, dce, pdu, iov, offset, ptr, coder)) {
                                 return -1;
                         }
                         pdu->top_level = top_level;
@@ -853,7 +911,7 @@ ndr_decode_ptr(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
         case PTR_REF:
                 if (pdu->top_level) {
                         pdu->top_level = 0;
-                        if (dcerpc_do_coder(name, dce, pdu, iov, offset, ptr, coder)) {
+                        if (ndr_do_coder(name, dce, pdu, iov, offset, ptr, coder)) {
                                 return -1;
                         }
                         pdu->top_level = top_level;
@@ -875,7 +933,7 @@ ndr_decode_ptr(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                 
                 if (pdu->top_level) {
                         pdu->top_level = 0;
-                        if (dcerpc_do_coder(name, dce, pdu, iov, offset, ptr, coder)) {
+                        if (ndr_do_coder(name, dce, pdu, iov, offset, ptr, coder)) {
                                 return -1;
                         }
                         pdu->top_level = top_level;
@@ -928,6 +986,23 @@ ndr_carray_coder(char *name, struct dcerpc_context *ctx,
         return 0;
 }
 
+int
+dcerpc_carray_coder(char *name, struct dcerpc_context *ctx,
+                 struct dcerpc_pdu *pdu,
+                 struct smb2_iovec *iov, int *offset,
+                 int num, void *ptr, int elem_size, dcerpc_coder coder)
+{
+        switch(pdu->encoding) {
+        case ENCODING_NDR:
+                return ndr_carray_coder(name, ctx, pdu, iov, offset,
+                                        num, ptr, elem_size, coder);
+        case ENCODING_YAML:
+                return yaml_carray_coder(name, ctx, pdu, iov, offset,
+                                         num, ptr, elem_size, coder);
+        }
+        return -1;
+}
+
 int ndr_union_coder(char *name, struct dcerpc_context *ctx,
                     struct dcerpc_pdu *pdu,
                     struct smb2_iovec *iov, int *offset,
@@ -940,6 +1015,7 @@ int ndr_union_coder(char *name, struct dcerpc_context *ctx,
         if (ndr_uint3264_coder("", ctx, pdu, iov, offset, &p)) {
                 return -1;
         }
+        *switch_is = p;
 
         /* Data */
         dcerpc_set_switch_is(pdu, p);
@@ -948,6 +1024,46 @@ int ndr_union_coder(char *name, struct dcerpc_context *ctx,
         }
 
         return 0;
+}
+
+int dcerpc_union_coder(char *name, struct dcerpc_context *ctx,
+                       struct dcerpc_pdu *pdu,
+                       struct smb2_iovec *iov, int *offset,
+                       uint32_t *switch_is, void *ptr, dcerpc_coder coder)
+{
+        switch(pdu->encoding) {
+        case ENCODING_NDR:
+                return ndr_union_coder(name, ctx, pdu, iov, offset,
+                                       switch_is, ptr, coder);
+        case ENCODING_YAML:
+                return yaml_union_coder(name, ctx, pdu, iov, offset,
+                                        switch_is, ptr, coder);
+        }
+        return -1;
+}
+
+int ndr_struct_coder(char *name, struct dcerpc_context *ctx,
+                        struct dcerpc_pdu *pdu,
+                        struct smb2_iovec *iov, int *offset,
+                        void *ptr, dcerpc_coder coder)
+{
+        return coder(name, ctx, pdu, iov, offset, ptr);
+}
+
+int dcerpc_struct_coder(char *name, struct dcerpc_context *ctx,
+                        struct dcerpc_pdu *pdu,
+                        struct smb2_iovec *iov, int *offset,
+                        void *ptr, dcerpc_coder coder)
+{
+        switch(pdu->encoding) {
+        case ENCODING_NDR:
+                return ndr_struct_coder(name, ctx, pdu, iov, offset,
+                                        ptr, coder);
+        case ENCODING_YAML:
+                return yaml_struct_coder(name, ctx, pdu, iov, offset,
+                                         ptr, coder);
+        }
+        return -1;
 }
 
 int
@@ -962,6 +1078,22 @@ ndr_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                 return ndr_encode_ptr(name, dce, pdu, iov, offset, ptr,
                                       type, coder);
         }
+}
+
+int
+dcerpc_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+                 struct smb2_iovec *iov, int *offset, void *ptr,
+                 enum ptr_type type, dcerpc_coder coder)
+{
+        switch(pdu->encoding) {
+        case ENCODING_NDR:
+                return ndr_ptr_coder(name, dce, pdu, iov, offset, ptr,
+                                     type, coder);
+        case ENCODING_YAML:
+                return yaml_ptr_coder(name, dce, pdu, iov, offset, ptr,
+                                      type, coder);
+        }
+        return -1;
 }
 
 static int
@@ -1116,6 +1248,34 @@ ndr_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 return ndr_encode_utf16(ctx, pdu, iov, offset, ptr, 0);
         }
 }
+
+int
+dcerpc_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                   struct smb2_iovec *iov, int *offset,
+                   void *ptr)
+{
+        switch(pdu->encoding) {
+        case ENCODING_NDR:
+                return ndr_utf16_coder(name, ctx, pdu, iov, offset, ptr);
+        case ENCODING_YAML:
+                return yaml_utf16_coder(name, ctx, pdu, iov, offset, ptr);
+        }
+        return -1;
+}
+int
+dcerpc_utf16z_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                    struct smb2_iovec *iov, int *offset,
+                    void *ptr)
+{
+        switch(pdu->encoding) {
+        case ENCODING_NDR:
+                return ndr_utf16z_coder(name, ctx, pdu, iov, offset, ptr);
+        case ENCODING_YAML:
+                return yaml_utf16_coder(name, ctx, pdu, iov, offset, ptr);
+        }
+        return -1;
+}
+
 
 int
 dcerpc_header_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
@@ -1634,6 +1794,8 @@ dcerpc_call_async(struct dcerpc_context *dce,
 
         /* encode the blob */
         pdu->top_level = 1;
+        /* Remember the request in case we need to dereference it from the reply */
+        dcerpc_set_request(pdu, req);
         if (req_coder("Request", dce, pdu, &iov, &offset, req)) {
                 return -1;
         }
@@ -1991,5 +2153,158 @@ void dcerpc_set_switch_is(struct dcerpc_pdu *pdu, int switch_is)
 int dcerpc_get_switch_is(struct dcerpc_pdu *pdu)
 {
         return pdu->switch_is;
+}
+
+void dcerpc_set_request(struct dcerpc_pdu *pdu, void *request)
+{
+        pdu->request = request;
+}
+
+void *dcerpc_get_request(struct dcerpc_pdu *pdu)
+{
+        return pdu->request;
+}
+
+static void
+yaml_print_preamble(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                    struct smb2_iovec *iov, int *offset)
+{
+        int i;
+
+        for(i = 0; i < pdu->yaml_indentation; i++) {
+                if (*offset + 3 < iov->len) {
+                        strncat((char *)&iov->buf[*offset], "  ", iov->len - *offset);
+                        *offset += 2;
+                }
+        }
+        if (pdu->yaml_array_prefix) {
+                if (*offset + 3 < iov->len) {
+                        strncat((char *)&iov->buf[*offset], "- ", iov->len - *offset);
+                        *offset += 2;
+                }
+                pdu->yaml_array_prefix = 0;
+        }
+}
+
+static int
+yaml_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                  struct smb2_iovec *iov, int *offset, void *ptr)
+{
+        if (pdu->direction == DCERPC_DECODE) {
+                printf("yaml uint32 not supported\n");
+                return -1;
+        } else {
+                yaml_print_preamble(ctx, pdu, iov, offset);
+                if (*offset + 256 < iov->len) {
+                        *offset += snprintf((char *)&iov->buf[*offset], iov->len - *offset, "%s: %u\n", name, *(uint32_t *)ptr);
+                }
+                return 0;
+        }
+}
+
+static int
+yaml_carray_coder(char *name, struct dcerpc_context *ctx,
+                  struct dcerpc_pdu *pdu,
+                  struct smb2_iovec *iov, int *offset,
+                  int num, void *ptr, int elem_size, dcerpc_coder coder)
+{
+        int i;
+        uint8_t *data = ptr;
+
+        yaml_print_preamble(ctx, pdu, iov, offset);
+        if (*offset + 256 < iov->len) {
+                *offset += snprintf((char *)&iov->buf[*offset], iov->len - *offset, "%s:\n", name);
+        }
+
+        pdu->yaml_indentation++;
+        for (i = 0; i < num; i++) {
+                pdu->yaml_array_prefix = 1;
+                if (coder(name, ctx, pdu, iov, offset, &data[i * elem_size])) {
+                        return -1;
+                }
+        }
+        pdu->yaml_indentation--;
+        return 0;
+}
+
+static int
+yaml_union_coder(char *name, struct dcerpc_context *ctx,
+                 struct dcerpc_pdu *pdu,
+                 struct smb2_iovec *iov, int *offset,
+                 uint32_t *switch_is, void *ptr, dcerpc_coder coder)
+{
+        int ret;
+
+        yaml_print_preamble(ctx, pdu, iov, offset);
+        if (*offset + 256 < iov->len) {
+                *offset += snprintf((char *)&iov->buf[*offset], iov->len - *offset, "%s:\n", name);
+        }
+        
+        pdu->yaml_indentation++;
+        dcerpc_set_switch_is(pdu, *switch_is);
+        ret = coder(name, ctx, pdu, iov, offset, ptr);
+        pdu->yaml_indentation--;
+
+        return ret;
+}
+
+static int
+yaml_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+               struct smb2_iovec *iov, int *offset, void *ptr,
+               enum ptr_type type, dcerpc_coder coder)
+{
+        if (ptr == NULL) {
+                return 0;
+        }
+        if (pdu->direction == DCERPC_DECODE) {
+                return coder(name, dce, pdu, iov, offset, ptr);
+        } else {
+                return coder(name, dce, pdu, iov, offset, ptr);
+        }
+}
+
+static int
+yaml_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                 struct smb2_iovec *iov, int *offset,
+                 void *ptr)
+{
+        if (pdu->direction == DCERPC_DECODE) {
+                printf("yaml uint32 not supported\n");
+                return -1;
+        } else {
+                yaml_print_preamble(ctx, pdu, iov, offset);
+                if (*offset + 256 < iov->len) {
+                        *offset += snprintf((char *)&iov->buf[*offset], iov->len - *offset, "%s: %s\n", name, ((struct dcerpc_utf16 *)ptr)->utf8);
+                }
+                return 0;
+        }
+        return -1;
+}
+                
+static int
+yaml_struct_coder(char *name, struct dcerpc_context *ctx,
+                  struct dcerpc_pdu *pdu,
+                  struct smb2_iovec *iov, int *offset,
+                  void *ptr, dcerpc_coder coder)
+{
+        int ret;
+
+        yaml_print_preamble(ctx, pdu, iov, offset);
+                        *offset += snprintf((char *)&iov->buf[*offset], iov->len - *offset, "%s:\n", name);
+
+        pdu->yaml_indentation++;
+        ret = coder(name, ctx, pdu, iov, offset, ptr);
+        pdu->yaml_indentation--;
+        
+        return ret;
+}
+
+int
+yaml_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+             struct smb2_iovec *iov,
+             int *offset, void *ptr,
+             dcerpc_coder coder)
+{
+        return yaml_struct_coder(name,ctx, pdu, iov, offset, ptr, coder);
 }
 

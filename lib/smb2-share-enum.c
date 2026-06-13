@@ -87,7 +87,7 @@ srvsvc_ioctl_cb(struct dcerpc_context *dce, int status,
                 void *command_data, void *cb_data)
 {
         struct smb2nse *nse = cb_data;
-        struct srvsvc_rep *rep = command_data;
+        struct srvsvc_NetrShareEnum_rep *rep = command_data;
         struct smb2_context *smb2 = dcerpc_get_smb2_context(dce);
 
         if (status != SMB2_STATUS_SUCCESS) {
@@ -96,7 +96,7 @@ srvsvc_ioctl_cb(struct dcerpc_context *dce, int status,
                 dcerpc_destroy_context(dce);
                 return;
         }
-        
+
         nse->cb(smb2, rep->status, rep, nse->cb_data);
         nse_free(nse);
         dcerpc_destroy_context(dce);

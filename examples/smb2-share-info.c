@@ -32,6 +32,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #endif
 
 int is_finished;
+struct srvsvc_NetrShareGetInfo_req *si_req;
 
 int usage(void)
 {
@@ -53,28 +54,57 @@ void si_cb(struct dcerpc_context *dce, int status,
                        strerror(-status), dcerpc_get_error(dce));
                 exit(10);
         }
-        printf("%-20s %-20s", rep->InfoStruct.ShareInfo.ShareInfo1.netname.utf8,
-               rep->InfoStruct.ShareInfo.ShareInfo1.remark.utf8);
-        if ((rep->InfoStruct.ShareInfo.ShareInfo1.type & 3) == SHARE_TYPE_DISKTREE) {
+        printf("%-20s %-20s", rep->InfoStruct.ShareInfo1.netname.utf8,
+               rep->InfoStruct.ShareInfo1.remark.utf8);
+        if ((rep->InfoStruct.ShareInfo1.type & 3) == SHARE_TYPE_DISKTREE) {
                         printf(" DISKTREE");
         }
-        if ((rep->InfoStruct.ShareInfo.ShareInfo1.type & 3) == SHARE_TYPE_PRINTQ) {
+        if ((rep->InfoStruct.ShareInfo1.type & 3) == SHARE_TYPE_PRINTQ) {
                 printf(" PRINTQ");
         }
-        if ((rep->InfoStruct.ShareInfo.ShareInfo1.type & 3) == SHARE_TYPE_DEVICE) {
+        if ((rep->InfoStruct.ShareInfo1.type & 3) == SHARE_TYPE_DEVICE) {
                 printf(" DEVICE");
         }
-        if ((rep->InfoStruct.ShareInfo.ShareInfo1.type & 3) == SHARE_TYPE_IPC) {
+        if ((rep->InfoStruct.ShareInfo1.type & 3) == SHARE_TYPE_IPC) {
                 printf(" IPC");
         }
-        if (rep->InfoStruct.ShareInfo.ShareInfo1.type & SHARE_TYPE_TEMPORARY) {
+        if (rep->InfoStruct.ShareInfo1.type & SHARE_TYPE_TEMPORARY) {
                 printf(" TEMPORARY");
         }
-        if (rep->InfoStruct.ShareInfo.ShareInfo1.type & SHARE_TYPE_HIDDEN) {
+        if (rep->InfoStruct.ShareInfo1.type & SHARE_TYPE_HIDDEN) {
                 printf(" HIDDEN");
         }
 
         printf("\n");
+
+
+        struct smb2_context *smb2 = dcerpc_get_smb2_context(dce);
+        struct dcerpc_pdu *yaml_pdu;
+        struct smb2_iovec iov;
+        static unsigned char buf[65536];
+        int offset = 0;
+
+        dce = dcerpc_create_context(smb2);
+        if (dce == NULL) {
+		printf("Failed to create dce context. %s\n",
+                       smb2_get_error(smb2));
+		exit(10);
+        }
+        yaml_pdu = dcerpc_allocate_pdu(dce, ENCODING_YAML, DCERPC_ENCODE, sizeof(struct srvsvc_NetrShareGetInfo_rep));
+        iov.len = 65536;
+        iov.buf = buf;
+        /* We need to reference req->Level from the reply */
+        dcerpc_set_request(yaml_pdu, si_req);
+        if (dcerpc_do_coder("NetShareInfo-Response", dce, yaml_pdu, &iov, &offset, rep, srvsvc_NetrShareGetInfo_rep_coder)) {
+                printf("Failed to encode REP as YAML\n");
+                exit(10);
+        }
+        printf("YAML:\n");
+        printf("---\n");
+        printf("%s\n", iov.buf);
+        dcerpc_free_pdu(dce, yaml_pdu);
+        dcerpc_destroy_context(dce);
+
         dcerpc_free_data(dce, rep);
 
         is_finished = 1;
@@ -83,7 +113,6 @@ void si_cb(struct dcerpc_context *dce, int status,
 void co_cb(struct dcerpc_context *dce, int status,
            void *command_data, void *cb_data)
 {
-        struct srvsvc_NetrShareGetInfo_req *si_req;
         struct smb2_url *url = cb_data;
         char *server;
 
