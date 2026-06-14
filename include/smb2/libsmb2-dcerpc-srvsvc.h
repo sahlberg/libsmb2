@@ -79,9 +79,35 @@ int srvsvc_SHARE_INFO_1_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                                         struct smb2_iovec *iov, int *offset,
                                         void *ptr);
 
+struct srvsvc_SHARE_INFO_2 {
+        struct dcerpc_utf16 netname;
+        uint32_t type;
+        struct dcerpc_utf16 remark;
+        uint32_t permissions;
+        uint32_t max_users;
+        uint32_t current_users;
+        struct dcerpc_utf16 path;
+        struct dcerpc_utf16 passwd;
+};
+int srvsvc_SHARE_INFO_2_coder(char *name, struct dcerpc_context *ctx,
+                              struct dcerpc_pdu *pdu,
+                              struct smb2_iovec *iov, int *offset,
+                              void *ptr);
+
+struct srvsvc_SHARE_INFO_2_CONTAINER {
+        uint32_t EntriesRead;
+        struct srvsvc_SHARE_INFO_2 *share_info_2;
+};
+        
+int srvsvc_SHARE_INFO_2_CONTAINER_coder(char *name, struct dcerpc_context *dce,
+                                        struct dcerpc_pdu *pdu,
+                                        struct smb2_iovec *iov, int *offset,
+                                        void *ptr);
+
 union srvsvc_SHARE_ENUM_UNION {
         struct srvsvc_SHARE_INFO_0_CONTAINER Level0;
         struct srvsvc_SHARE_INFO_1_CONTAINER Level1;
+        struct srvsvc_SHARE_INFO_2_CONTAINER Level2;
 };
 
 struct srvsvc_SHARE_ENUM {

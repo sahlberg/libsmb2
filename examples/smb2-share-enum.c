@@ -156,15 +156,6 @@ int main(int argc, char *argv[])
                 exit(0);
         }
 
-        switch (level) {
-        case SHARE_INFO_0:
-        case SHARE_INFO_1:
-                break;
-        default:
-                fprintf(stderr, "level must be 0/1\n");
-                exit(0);
-        }
-
         url = smb2_parse_url(smb2, argv[optind]);
         if (url == NULL) {
                 fprintf(stderr, "Failed to parse url: %s\n",
