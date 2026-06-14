@@ -20,6 +20,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "smb2.h"
 #include "libsmb2.h"
@@ -33,11 +34,13 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 int is_finished;
 struct srvsvc_NetrShareGetInfo_req *si_req;
+char *server;
+int level;
 
 int usage(void)
 {
         fprintf(stderr, "Usage:\n"
-                "smb2-share-info <smb2-url>\n\n"
+                "smb2-share-info [-l level] <smb2-url>\n\n"
                 "URL format: "
                 "smb://[<domain;][<username>@]<host>[:<port>]/share\n");
         exit(1);
@@ -90,22 +93,38 @@ void si_cb(struct dcerpc_context *dce, int status,
                        smb2_get_error(smb2));
 		exit(10);
         }
+        printf("YAML:\n");
+        printf("---\n");
+        yaml_pdu = dcerpc_allocate_pdu(dce, ENCODING_YAML, DCERPC_ENCODE, sizeof(struct srvsvc_NetrShareGetInfo_req));
+        offset = 0;
+        iov.len = 65536;
+        iov.buf = buf;
+        /* We need to reference req->Level from the reply */
+        if (dcerpc_do_coder("NetrShareInfo-Request", dce, yaml_pdu, &iov, &offset, si_req, srvsvc_NetrShareGetInfo_req_coder)) {
+                printf("Failed to encode REQ as YAML\n");
+                exit(10);
+        }
+        printf("%s\n", iov.buf);
+        dcerpc_free_pdu(dce, yaml_pdu);
+        
+        printf("---\n");
         yaml_pdu = dcerpc_allocate_pdu(dce, ENCODING_YAML, DCERPC_ENCODE, sizeof(struct srvsvc_NetrShareGetInfo_rep));
+        offset = 0;
         iov.len = 65536;
         iov.buf = buf;
         /* We need to reference req->Level from the reply */
         dcerpc_set_request(yaml_pdu, si_req);
-        if (dcerpc_do_coder("NetShareInfo-Response", dce, yaml_pdu, &iov, &offset, rep, srvsvc_NetrShareGetInfo_rep_coder)) {
+        if (dcerpc_do_coder("NetrShareInfo-Response", dce, yaml_pdu, &iov, &offset, rep, srvsvc_NetrShareGetInfo_rep_coder)) {
                 printf("Failed to encode REP as YAML\n");
                 exit(10);
         }
-        printf("YAML:\n");
-        printf("---\n");
         printf("%s\n", iov.buf);
         dcerpc_free_pdu(dce, yaml_pdu);
-        dcerpc_destroy_context(dce);
 
+        
+        dcerpc_destroy_context(dce);
         dcerpc_free_data(dce, rep);
+        free(server);
 
         is_finished = 1;
 }
@@ -114,7 +133,6 @@ void co_cb(struct dcerpc_context *dce, int status,
            void *command_data, void *cb_data)
 {
         struct smb2_url *url = cb_data;
-        char *server;
 
         if (status != SMB2_STATUS_SUCCESS) {
                 printf("failed to connect to SRVSVC (%s) %s\n",
@@ -136,7 +154,7 @@ void co_cb(struct dcerpc_context *dce, int status,
         sprintf(server, "\\\\%s", url->server);
         si_req->ServerName.utf8 = server;
         si_req->NetName.utf8 = url->share;
-        si_req->Level = 1;
+        si_req->Level = level;
 
         if (dcerpc_call_async(dce,
                               SRVSVC_NETRSHAREGETINFO,
@@ -149,7 +167,6 @@ void co_cb(struct dcerpc_context *dce, int status,
                 free(si_req);
                 exit(10);
         }
-        free(server);
 }
 
 int main(int argc, char *argv[])
@@ -158,8 +175,19 @@ int main(int argc, char *argv[])
         struct dcerpc_context *dce;
         struct smb2_url *url;
 	struct pollfd pfd;
+        int opt;
 
-        if (argc < 2) {
+        while ((opt = getopt(argc, argv, "l:")) != -1) {
+                switch (opt) {
+                case 'l':
+                        level = atoi(optarg);
+                        break;
+                default: /* '?' */
+                        usage();
+                }
+        }
+
+        if (optind >= argc) {
                 usage();
         }
 
@@ -169,7 +197,7 @@ int main(int argc, char *argv[])
                 exit(0);
         }
 
-        url = smb2_parse_url(smb2, argv[1]);
+        url = smb2_parse_url(smb2, argv[optind]);
         if (url == NULL) {
                 fprintf(stderr, "Failed to parse url: %s\n",
                         smb2_get_error(smb2));
