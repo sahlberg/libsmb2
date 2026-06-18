@@ -48,7 +48,7 @@ enum SHARE_INFO_enum {
 };
 
 struct srvsvc_SHARE_INFO_0 {
-        struct dcerpc_utf16 netname;
+        char *netname;
 };
 int srvsvc_SHARE_INFO_0_coder(char *name, struct dcerpc_context *ctx,
                               struct dcerpc_pdu *pdu,
@@ -61,9 +61,9 @@ struct srvsvc_SHARE_INFO_0_CONTAINER {
 };
 
 struct srvsvc_SHARE_INFO_1 {
-        struct dcerpc_utf16 netname;
+        char *netname;
         uint32_t type;
-        struct dcerpc_utf16 remark;
+        char *remark;
 };
 int srvsvc_SHARE_INFO_1_coder(char *name, struct dcerpc_context *ctx,
                               struct dcerpc_pdu *pdu,
@@ -81,14 +81,14 @@ int srvsvc_SHARE_INFO_1_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                                         void *ptr);
 
 struct srvsvc_SHARE_INFO_2 {
-        struct dcerpc_utf16 netname;
+        char *netname;
         uint32_t type;
-        struct dcerpc_utf16 remark;
+        char *remark;
         uint32_t permissions;
         uint32_t max_users;
         uint32_t current_users;
-        struct dcerpc_utf16 path;
-        struct dcerpc_utf16 passwd;
+        char *path;
+        char *passwd;
 };
 int srvsvc_SHARE_INFO_2_coder(char *name, struct dcerpc_context *ctx,
                               struct dcerpc_pdu *pdu,
@@ -117,7 +117,7 @@ struct srvsvc_SHARE_ENUM_STRUCT {
 };
 
 struct srvsvc_NetrShareEnum_req {
-        struct dcerpc_utf16 ServerName;
+        char *ServerName;
         struct srvsvc_SHARE_ENUM_STRUCT ses;
         uint32_t PreferedMaximumLength;
         uint32_t ResumeHandle;
@@ -138,18 +138,14 @@ union srvsvc_SHARE_INFO {
 };
 
 struct srvsvc_NetrShareGetInfo_req {
-        struct dcerpc_utf16 ServerName;
-        struct dcerpc_utf16 NetName;
+        char *ServerName;
+        char *NetName;
         uint32_t Level;
 };
 
 struct srvsvc_NetrShareGetInfo_rep {
         union srvsvc_SHARE_INFO InfoStruct;
 
-        uint32_t status;
-};
-
-struct srvsvc_rep {
         uint32_t status;
 };
 

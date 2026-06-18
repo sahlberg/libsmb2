@@ -1108,10 +1108,11 @@ ndr_encode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 
         /* Conformance part */
         if (pdu->is_conformance_run) {
-                if (s->utf8 == NULL) {
-                        s->utf8 = "";
+                if (s->utf8) {
+                        s->utf16 = smb2_utf8_to_utf16(s->utf8);
+                } else {
+                        s->utf16 = smb2_utf8_to_utf16("");
                 }
-                s->utf16 = smb2_utf8_to_utf16(s->utf8);
                 if (s->utf16 == NULL) {
                         return -1;
                 }
@@ -1222,6 +1223,48 @@ ndr_decode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         return 0;
 }
 
+/* ptr is char ** */
+int
+_ndr_utf16z_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                 struct smb2_iovec *iov, int *offset,
+                  void *ptr, int nult)
+{
+        struct dcerpc_utf16 **u = ptr;
+        struct dcerpc_utf16 *utf16;
+        const char **s = ptr;
+        const char *str;
+        int ret = -1;
+
+        if (pdu->is_conformance_run) {
+                /* Swap the char * pointer to dcerpc_utf16 * */
+                utf16 = calloc(1, sizeof(struct dcerpc_utf16));
+                if (utf16 == NULL) {
+                        return -1;
+                }
+                utf16->utf8 = *s;
+                *u = utf16;
+                ptr = utf16;
+        } else {
+                ptr = *u;
+        }
+        
+        if (pdu->direction == DCERPC_DECODE) {
+                ret = ndr_decode_utf16(ctx, pdu, iov, offset, ptr, nult);
+        } else {
+                ret = ndr_encode_utf16(ctx, pdu, iov, offset, ptr, nult);
+        }
+        
+        if (!pdu->is_conformance_run) {
+                /* swap the pointer back */
+                utf16 = *u;
+                str = utf16->utf8;
+                *s = str;
+                free(utf16);
+        }
+
+        return ret;
+}
+
 /* Handle \0 terminated utf16 strings */
 /* ptr is char ** */
 int
@@ -1229,24 +1272,17 @@ ndr_utf16z_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                  struct smb2_iovec *iov, int *offset,
                  void *ptr)
 {
-        if (pdu->direction == DCERPC_DECODE) {
-                return ndr_decode_utf16(ctx, pdu, iov, offset, ptr, 1);
-        } else {
-                return ndr_encode_utf16(ctx, pdu, iov, offset, ptr, 1);
-        }
+        return _ndr_utf16z_coder(name, ctx, pdu, iov, offset, ptr, 1);
 }
 
 /* Handle utf16 strings that are NOT \0 terminated */
+/* ptr is char ** */
 int
 ndr_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 struct smb2_iovec *iov, int *offset,
                 void *ptr)
 {
-        if (pdu->direction == DCERPC_DECODE) {
-                return ndr_decode_utf16(ctx, pdu, iov, offset, ptr, 0);
-        } else {
-                return ndr_encode_utf16(ctx, pdu, iov, offset, ptr, 0);
-        }
+        return _ndr_utf16z_coder(name, ctx, pdu, iov, offset, ptr, 0);
 }
 
 int
@@ -2274,7 +2310,7 @@ yaml_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         } else {
                 yaml_print_preamble(ctx, pdu, iov, offset);
                 if (*offset + 256 < iov->len) {
-                        *offset += snprintf((char *)&iov->buf[*offset], iov->len - *offset, "%s: %s\n", name, ((struct dcerpc_utf16 *)ptr)->utf8);
+                        *offset += snprintf((char *)&iov->buf[*offset], iov->len - *offset, "%s: %s\n", name, *(char **)ptr);
                 }
                 return 0;
         }

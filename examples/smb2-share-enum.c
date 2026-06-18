@@ -67,14 +67,14 @@ void se_cb(struct smb2_context *smb2, int status,
         case SHARE_INFO_0:
                 printf("Number of shares:%d\n", rep->ses.ShareEnum.Level0.EntriesRead);
                 for (i = 0; i < rep->ses.ShareEnum.Level0.EntriesRead; i++) {
-                        printf("%-20s\n", rep->ses.ShareEnum.Level0.share_info_0[i].netname.utf8);
+                        printf("%-20s\n", rep->ses.ShareEnum.Level0.share_info_0[i].netname);
                 }
                 break;
         case SHARE_INFO_1:
                 printf("Number of shares:%d\n", rep->ses.ShareEnum.Level1.EntriesRead);
                 for (i = 0; i < rep->ses.ShareEnum.Level1.EntriesRead; i++) {
-                        printf("%-20s %-20s", rep->ses.ShareEnum.Level1.share_info_1[i].netname.utf8,
-                               rep->ses.ShareEnum.Level1.share_info_1[i].remark.utf8);
+                        printf("%-20s %-20s", rep->ses.ShareEnum.Level1.share_info_1[i].netname,
+                               rep->ses.ShareEnum.Level1.share_info_1[i].remark);
                         if ((rep->ses.ShareEnum.Level1.share_info_1[i].type & 3) == SHARE_TYPE_DISKTREE) {
                                 printf(" DISKTREE");
                         }

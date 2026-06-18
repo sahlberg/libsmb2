@@ -78,7 +78,7 @@ struct smb2nse {
 static void
 nse_free(struct smb2nse *nse)
 {
-        free(discard_const(nse->se_req.ServerName.utf8));
+        free(discard_const(nse->se_req.ServerName));
         free(nse);
 }
 
@@ -163,7 +163,7 @@ smb2_share_enum_async(struct smb2_context *smb2,
         }
         
         sprintf(server, "\\\\%s", smb2->server);
-        nse->se_req.ServerName.utf8 = server;
+        nse->se_req.ServerName = server;
 
         nse->se_req.ses.Level = level;
         nse->se_req.PreferedMaximumLength = 0xffffffff;

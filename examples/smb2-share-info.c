@@ -51,14 +51,13 @@ void si_cb(struct dcerpc_context *dce, int status,
 {
         struct srvsvc_NetrShareGetInfo_rep *rep = command_data;
 
-        free(cb_data);
         if (status) {
                 printf("failed to get info for share (%s) %s\n",
                        strerror(-status), dcerpc_get_error(dce));
                 exit(10);
         }
-        printf("%-20s %-20s", rep->InfoStruct.ShareInfo1.netname.utf8,
-               rep->InfoStruct.ShareInfo1.remark.utf8);
+        printf("%-20s %-20s", rep->InfoStruct.ShareInfo1.netname,
+               rep->InfoStruct.ShareInfo1.remark);
         if ((rep->InfoStruct.ShareInfo1.type & 3) == SHARE_TYPE_DISKTREE) {
                         printf(" DISKTREE");
         }
@@ -127,6 +126,7 @@ void si_cb(struct dcerpc_context *dce, int status,
         free(server);
 
         is_finished = 1;
+        free(cb_data);  /* si_req */
 }
 
 void co_cb(struct dcerpc_context *dce, int status,
@@ -152,8 +152,8 @@ void co_cb(struct dcerpc_context *dce, int status,
                 exit(10);
         }
         sprintf(server, "\\\\%s", url->server);
-        si_req->ServerName.utf8 = server;
-        si_req->NetName.utf8 = url->share;
+        si_req->ServerName = server;
+        si_req->NetName = (char *)url->share;
         si_req->Level = level;
 
         if (dcerpc_call_async(dce,
