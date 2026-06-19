@@ -14,6 +14,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #define _GNU_SOURCE
 
 #include <inttypes.h>
+#include <fcntl.h>
 #include <poll.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -33,97 +34,60 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #endif
 
 int is_finished;
-struct srvsvc_NetrShareGetInfo_req *si_req;
-char *server;
-int level;
+struct dcerpc_service *service;
+uint8_t buf[65536];
+struct smb2_iovec iov = {buf, sizeof(buf), NULL};
+int offset;
+
+
+struct rpc_cb_data {
+        struct dcerpc_procedure *proc;
+        void *req;
+        struct dcerpc_pdu *req_pdu;
+        void *rep;
+        struct dcerpc_pdu *rep_pdu;
+};
 
 int usage(void)
 {
         fprintf(stderr, "Usage:\n"
-                "smb2-share-info [-l level] <smb2-url>\n\n"
+                "dcerpc <smb2-url> request.yaml\n\n"
                 "URL format: "
-                "smb://[<domain;][<username>@]<host>[:<port>]/share\n");
+                "smb://[<domain;][<username>@]<host>[:<port>]/IPC$/<service-name>\n");
         exit(1);
 }
 
 void si_cb(struct dcerpc_context *dce, int status,
                 void *command_data, void *cb_data)
 {
-        struct srvsvc_NetrShareGetInfo_rep *rep = command_data;
+        struct rpc_cb_data *rpc_cb_data = cb_data;
+        int offset;
 
-        if (status) {
-                printf("failed to get info for share (%s) %s\n",
-                       strerror(-status), dcerpc_get_error(dce));
-                exit(10);
-        }
-        printf("%-20s %-20s", rep->InfoStruct.ShareInfo1.netname,
-               rep->InfoStruct.ShareInfo1.remark);
-        if ((rep->InfoStruct.ShareInfo1.type & 3) == SHARE_TYPE_DISKTREE) {
-                        printf(" DISKTREE");
-        }
-        if ((rep->InfoStruct.ShareInfo1.type & 3) == SHARE_TYPE_PRINTQ) {
-                printf(" PRINTQ");
-        }
-        if ((rep->InfoStruct.ShareInfo1.type & 3) == SHARE_TYPE_DEVICE) {
-                printf(" DEVICE");
-        }
-        if ((rep->InfoStruct.ShareInfo1.type & 3) == SHARE_TYPE_IPC) {
-                printf(" IPC");
-        }
-        if (rep->InfoStruct.ShareInfo1.type & SHARE_TYPE_TEMPORARY) {
-                printf(" TEMPORARY");
-        }
-        if (rep->InfoStruct.ShareInfo1.type & SHARE_TYPE_HIDDEN) {
-                printf(" HIDDEN");
-        }
+        offset = 0;
+        memset(buf, 0, sizeof(buf));
 
-        printf("\n");
-
-
-        struct smb2_context *smb2 = dcerpc_get_smb2_context(dce);
-        struct dcerpc_pdu *yaml_pdu;
-        struct smb2_iovec iov;
-        static unsigned char buf[65536];
-        int offset = 0;
-
-        dce = dcerpc_create_context(smb2);
-        if (dce == NULL) {
-		printf("Failed to create dce context. %s\n",
-                       smb2_get_error(smb2));
-		exit(10);
-        }
         printf("YAML:\n");
         printf("---\n");
-        yaml_pdu = dcerpc_allocate_pdu(dce, ENCODING_YAML, DCERPC_ENCODE, sizeof(struct srvsvc_NetrShareGetInfo_req));
-        offset = 0;
-        iov.len = 65536;
-        iov.buf = buf;
-        if (dcerpc_do_coder("NetrShareInfo: Request", dce, yaml_pdu, &iov, &offset, si_req, srvsvc_NetrShareGetInfo_req_coder)) {
-                printf("Failed to encode REQ as YAML\n");
+        rpc_cb_data->rep = command_data;
+        rpc_cb_data->rep_pdu = dcerpc_allocate_pdu(dce, ENCODING_YAML, DCERPC_ENCODE, rpc_cb_data->proc->rep_size);
+        if (rpc_cb_data->rep_pdu == NULL) {
+                printf("failed to allocate Response pdu\n");
                 exit(10);
         }
-        printf("%s\n", iov.buf);
-        dcerpc_free_pdu(dce, yaml_pdu);
         
-        printf("---\n");
-        yaml_pdu = dcerpc_allocate_pdu(dce, ENCODING_YAML, DCERPC_ENCODE, sizeof(struct srvsvc_NetrShareGetInfo_rep));
-        offset = 0;
-        iov.len = 65536;
-        iov.buf = buf;
-        /* We need to reference req->Level from the reply */
-        dcerpc_set_request(yaml_pdu, si_req);
-        if (dcerpc_do_coder("NetrShareInfo: Response", dce, yaml_pdu, &iov, &offset, rep, srvsvc_NetrShareGetInfo_rep_coder)) {
+        /* We might need to reference req from the reply */
+        dcerpc_set_request(rpc_cb_data->rep_pdu, rpc_cb_data->req);
+        if (dcerpc_do_coder(rpc_cb_data->proc->name, dce, rpc_cb_data->rep_pdu, &iov, &offset, rpc_cb_data->rep, rpc_cb_data->proc->rep_coder)) {
                 printf("Failed to encode REP as YAML\n");
                 exit(10);
         }
         printf("%s\n", iov.buf);
-        dcerpc_free_pdu(dce, yaml_pdu);
 
         
-        dcerpc_free_data(dce, rep);
-        dcerpc_destroy_context(dce);
-        free(server);
-        free(cb_data);  /* si_req */
+        dcerpc_free_pdu(dce, rpc_cb_data->req_pdu);
+        dcerpc_free_pdu(dce, rpc_cb_data->rep_pdu);
+        
+        free(rpc_cb_data);
 
         is_finished = 1;
 }
@@ -131,7 +95,9 @@ void si_cb(struct dcerpc_context *dce, int status,
 void co_cb(struct dcerpc_context *dce, int status,
            void *command_data, void *cb_data)
 {
-        struct smb2_url *url = cb_data;
+        int i;
+        char *name;
+        struct rpc_cb_data *rpc_cb_data;
 
         if (status != SMB2_STATUS_SUCCESS) {
                 printf("failed to connect to SRVSVC (%s) %s\n",
@@ -139,31 +105,53 @@ void co_cb(struct dcerpc_context *dce, int status,
                 exit(10);
         }
 
-        si_req = calloc(1, sizeof(struct srvsvc_NetrShareGetInfo_req));
-        if (si_req == NULL) {
-                printf("failed to allocate srvsvc_NetrShareGetInfo_req\n");
+        rpc_cb_data = calloc(1, sizeof(*rpc_cb_data));
+        if (rpc_cb_data == NULL) {
+                printf("Failed to allocate rpc_cb_data structure\n");
+                exit(9);
+        }
+        
+        /* Find the name of the procedure */
+        name = (char *)&iov.buf[offset];
+        while (offset < iov.len && iov.buf[offset] != ':') {
+                offset++;
+        }
+        for (i = 0; service->procs[i].name; i++) {
+                if (!strncmp(name, service->procs[i].name, offset)) {
+                        rpc_cb_data->proc = &service->procs[i];
+                        break;
+                }
+        }
+        offset = 0;
+
+        if (rpc_cb_data->proc == NULL) {
+                printf("Could not find a procedure with the name %s\n", name);
+                exit(9);
+        }
+
+        rpc_cb_data->req = calloc(1, rpc_cb_data->proc->req_size);
+        if (rpc_cb_data->req == NULL) {
+                printf("failed to allocate Request structure\n");
                 exit(10);
         }
 
-        server = malloc(strlen(url->server) + 3);
-        if (server == NULL) {
-                printf("failed to allocate ServerName\n");
+        rpc_cb_data->req_pdu = dcerpc_allocate_pdu(dce, ENCODING_YAML, DCERPC_DECODE, rpc_cb_data->proc->req_size);
+        if (rpc_cb_data->req_pdu == NULL) {
+                printf("Failed to allocate request PDU\n");
+                exit(9);
+        }
+        if (dcerpc_do_coder(rpc_cb_data->proc->name, dce, rpc_cb_data->req_pdu, &iov, &offset, rpc_cb_data->req, rpc_cb_data->proc->req_coder)) {
+                printf("Failed to decode REQ from YAML\n");
                 exit(10);
         }
-        sprintf(server, "\\\\%s", url->server);
-        si_req->ServerName = server;
-        si_req->NetName = (char *)url->share;
-        si_req->Level = level;
 
         if (dcerpc_call_async(dce,
-                              SRVSVC_NETRSHAREGETINFO,
-                              srvsvc_NetrShareGetInfo_req_coder, si_req,
-                              srvsvc_NetrShareGetInfo_rep_coder,
-                              sizeof(struct srvsvc_NetrShareGetInfo_rep),
-                              si_cb, si_req) != 0) {
+                              rpc_cb_data->proc->opnum,
+                              rpc_cb_data->proc->req_coder, rpc_cb_data->req,
+                              rpc_cb_data->proc->rep_coder, rpc_cb_data->proc->rep_size,
+                              si_cb, rpc_cb_data) != 0) {
                 printf("dcerpc_call_async failed with %s\n",
                        dcerpc_get_error(dce));
-                free(si_req);
                 exit(10);
         }
 }
@@ -174,21 +162,19 @@ int main(int argc, char *argv[])
         struct dcerpc_context *dce;
         struct smb2_url *url;
 	struct pollfd pfd;
-        int opt;
+        int i, fd;
 
-        while ((opt = getopt(argc, argv, "l:")) != -1) {
-                switch (opt) {
-                case 'l':
-                        level = atoi(optarg);
-                        break;
-                default: /* '?' */
-                        usage();
-                }
-        }
-
-        if (optind >= argc) {
+        if (argc < 3) {
                 usage();
         }
+
+        fd = open(argv[2], O_RDONLY);
+        if (fd == -1) {
+                printf("Failed to open yaml file : %s\n", argv[2]);
+                exit(9);
+        }
+        read(fd, iov.buf, iov.len);
+        close(fd);
 
 	smb2 = smb2_init_context();
         if (smb2 == NULL) {
@@ -196,7 +182,7 @@ int main(int argc, char *argv[])
                 exit(0);
         }
 
-        url = smb2_parse_url(smb2, argv[optind]);
+        url = smb2_parse_url(smb2, argv[1]);
         if (url == NULL) {
                 fprintf(stderr, "Failed to parse url: %s\n",
                         smb2_get_error(smb2));
@@ -208,7 +194,7 @@ int main(int argc, char *argv[])
 
         smb2_set_security_mode(smb2, SMB2_NEGOTIATE_SIGNING_ENABLED);
 
-        if (smb2_connect_share(smb2, url->server, "IPC$", NULL) < 0) {
+        if (smb2_connect_share(smb2, url->server, url->share, NULL) < 0) {
 		printf("Failed to connect to IPC$. %s\n",
                        smb2_get_error(smb2));
 		exit(10);
@@ -221,8 +207,19 @@ int main(int argc, char *argv[])
 		exit(10);
         }
 
-        if (dcerpc_connect_context_async(dce, "srvsvc", &srvsvc_interface,
-                       co_cb, url) != 0) {
+        for (i = 0; dcerpc_services[i].name; i++) {
+                service = &dcerpc_services[i];
+                if (!strcmp(service->name, url->path)) {
+                        break;
+                }
+        }
+        if (service->name == NULL) {
+                printf("Could not find a service with the name %s\n", url->path);
+                exit(10);
+        }
+        
+        if (dcerpc_connect_context_async(dce, url->path, service->interface,
+                       co_cb, NULL) != 0) {
 		printf("Failed to connect dce context. %s\n",
                        smb2_get_error(smb2));
 		exit(10);

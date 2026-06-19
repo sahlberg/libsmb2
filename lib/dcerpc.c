@@ -67,6 +67,11 @@
 #include "libsmb2-raw.h"
 #include "libsmb2-private.h"
 
+struct dcerpc_service dcerpc_services[] = {
+        {"srvsvc", &srvsvc_interface, srvsvc_procs},
+        {NULL, NULL}
+};
+
 #define container_of(ptr, type, member) ({                      \
         const typeof( ((type *)0)->member ) *__mptr = (ptr);    \
         (type *)(void *)( (char *)__mptr - offsetof(type,member) );})
@@ -276,6 +281,8 @@ struct dcerpc_pdu {
         /* YAML */
         int yaml_indentation;
         int yaml_array_prefix;
+        char *yaml_key;
+        char *yaml_val;
 };
 
 /*
@@ -2278,13 +2285,59 @@ yaml_print_preamble(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         }
 }
 
+int
+yamp_next_kv(struct dcerpc_pdu *pdu, struct smb2_iovec *iov, int *offset)
+{
+        char *str;
+
+        if (pdu->yaml_key) {
+                return 0;
+        }
+
+        str = (char *)&iov->buf[*offset];
+        while (iov->buf[*offset] != '\0') {
+                if (iov->buf[*offset] == '\n') {
+                        iov->buf[(*offset)++] = 0;
+                        break;
+                }
+                (*offset)++;
+        }
+
+        pdu->yaml_indentation = 0;
+        while (*str == ' ') {
+                str++;
+                pdu->yaml_indentation++;
+        }
+        
+        pdu->yaml_key = str;
+        str = strchr(str, ':');
+        if (str == NULL) {
+                pdu->yaml_val = NULL;
+                return 0;
+        }
+        *str++ = 0;
+        while (*str == ' ') {
+                str++;
+        }
+        pdu->yaml_val = str;
+
+        return 0;
+}
+
 static int
 yaml_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                   struct smb2_iovec *iov, int *offset, void *ptr)
 {
         if (pdu->direction == DCERPC_DECODE) {
-                printf("yaml uint32 not supported\n");
-                return -1;
+                yamp_next_kv(pdu, iov, offset);
+                if (strcmp(pdu->yaml_key,  name)) {
+                        printf("Wrong YAML key encountered for uint32. Expected %s but got %s\n",
+                               name, pdu->yaml_key);
+                        return -1;
+                }
+                pdu->yaml_key = NULL;
+                *(uint32_t *)ptr = strtol(pdu->yaml_val, NULL, 0);
+                return 0;
         } else {
                 yaml_print_preamble(ctx, pdu, iov, offset);
                 if (*offset + 256 < iov->len) {
@@ -2303,19 +2356,24 @@ yaml_carray_coder(char *name, struct dcerpc_context *ctx,
         int i;
         uint8_t *data = ptr;
 
-        yaml_print_preamble(ctx, pdu, iov, offset);
-        if (*offset + 256 < iov->len) {
-                *offset += snprintf((char *)&iov->buf[*offset], iov->len - *offset, "%s:\n", name);
-        }
-
-        pdu->yaml_indentation++;
-        for (i = 0; i < num; i++) {
-                pdu->yaml_array_prefix = 1;
-                if (coder(name, ctx, pdu, iov, offset, &data[i * elem_size])) {
-                        return -1;
+        if (pdu->direction == DCERPC_DECODE) {
+                printf("yaml carray not supported for %s\n", name);
+                exit(9);
+        } else {
+                yaml_print_preamble(ctx, pdu, iov, offset);
+                if (*offset + 256 < iov->len) {
+                        *offset += snprintf((char *)&iov->buf[*offset], iov->len - *offset, "%s:\n", name);
                 }
+
+                pdu->yaml_indentation++;
+                for (i = 0; i < num; i++) {
+                        pdu->yaml_array_prefix = 1;
+                        if (coder(name, ctx, pdu, iov, offset, &data[i * elem_size])) {
+                                return -1;
+                        }
+                }
+                pdu->yaml_indentation--;
         }
-        pdu->yaml_indentation--;
         return 0;
 }
 
@@ -2327,16 +2385,20 @@ yaml_union_coder(char *name, struct dcerpc_context *ctx,
 {
         int ret;
 
-        yaml_print_preamble(ctx, pdu, iov, offset);
-        if (*offset + 256 < iov->len) {
-                *offset += snprintf((char *)&iov->buf[*offset], iov->len - *offset, "%s:\n", name);
-        }
+        if (pdu->direction == DCERPC_DECODE) {
+                printf("yaml union not supported for %s\n", name);
+                exit(9);
+        } else {
+                yaml_print_preamble(ctx, pdu, iov, offset);
+                if (*offset + 256 < iov->len) {
+                        *offset += snprintf((char *)&iov->buf[*offset], iov->len - *offset, "%s:\n", name);
+                }
         
-        pdu->yaml_indentation++;
-        dcerpc_set_switch_is(pdu, *switch_is);
-        ret = coder(name, ctx, pdu, iov, offset, ptr);
-        pdu->yaml_indentation--;
-
+                pdu->yaml_indentation++;
+                dcerpc_set_switch_is(pdu, *switch_is);
+                ret = coder(name, ctx, pdu, iov, offset, ptr);
+                pdu->yaml_indentation--;
+        }
         return ret;
 }
 
@@ -2349,6 +2411,12 @@ yaml_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                 return 0;
         }
         if (pdu->direction == DCERPC_DECODE) {
+                yamp_next_kv(pdu, iov, offset);
+                if (strcmp(pdu->yaml_key,  name)) {
+                        printf("Wrong YAML key encountered for ptr. Expected %s but got %s\n",
+                               name, pdu->yaml_key);
+                        return -1;
+                }
                 return coder(name, dce, pdu, iov, offset, ptr);
         } else {
                 return coder(name, dce, pdu, iov, offset, ptr);
@@ -2361,8 +2429,15 @@ yaml_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                  void *ptr)
 {
         if (pdu->direction == DCERPC_DECODE) {
-                printf("yaml uint32 not supported\n");
-                return -1;
+                yamp_next_kv(pdu, iov, offset);
+                if (strcmp(pdu->yaml_key,  name)) {
+                        printf("Wrong YAML key encountered for ptr. Expected %s but got %s\n",
+                               name, pdu->yaml_key);
+                        return -1;
+                }
+                pdu->yaml_key = NULL;
+                *(char **)ptr = pdu->yaml_val;
+                return 0;
         } else {
                 yaml_print_preamble(ctx, pdu, iov, offset);
                 if (*offset + 256 < iov->len) {
@@ -2381,13 +2456,23 @@ yaml_struct_coder(char *name, struct dcerpc_context *ctx,
 {
         int ret;
 
-        yaml_print_preamble(ctx, pdu, iov, offset);
-                        *offset += snprintf((char *)&iov->buf[*offset], iov->len - *offset, "%s:\n", name);
+        if (pdu->direction == DCERPC_DECODE) {
+                yamp_next_kv(pdu, iov, offset);
+                if (strcmp(pdu->yaml_key,  name)) {
+                        printf("Wrong YAML key encountered for struct. Expected %s but got %s\n",
+                               name, pdu->yaml_key);
+                        return -1;
+                }
+                pdu->yaml_key = NULL;
+                ret = coder(name, ctx, pdu, iov, offset, ptr);
+        } else {
+                yaml_print_preamble(ctx, pdu, iov, offset);
+                *offset += snprintf((char *)&iov->buf[*offset], iov->len - *offset, "%s:\n", name);
 
-        pdu->yaml_indentation++;
-        ret = coder(name, ctx, pdu, iov, offset, ptr);
-        pdu->yaml_indentation--;
-        
+                pdu->yaml_indentation++;
+                ret = coder(name, ctx, pdu, iov, offset, ptr);
+                pdu->yaml_indentation--;
+        }
         return ret;
 }
 
@@ -2397,6 +2482,16 @@ yaml_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
              int *offset, void *ptr,
              dcerpc_coder coder)
 {
-        return yaml_struct_coder(name,ctx, pdu, iov, offset, ptr, coder);
+        if (pdu->direction == DCERPC_DECODE) {
+                yamp_next_kv(pdu, iov, offset);
+                if (strcmp(pdu->yaml_key,  name)) {
+                        printf("Wrong YAML key encountered for do. Expected %s but got %s\n",
+                               name, pdu->yaml_key);
+                        return -1;
+                }
+                return yaml_struct_coder(name,ctx, pdu, iov, offset, ptr, coder);
+        } else {
+                return yaml_struct_coder(name,ctx, pdu, iov, offset, ptr, coder);
+        }
 }
 

@@ -194,6 +194,9 @@ int srvsvc_NetrShareGetInfo_req_coder(char *name, struct dcerpc_context *ctx,
                                       struct dcerpc_pdu *pdu,
                                       struct smb2_iovec *iov, int *offset,
                                       void *ptr);
+
+extern struct dcerpc_procedure srvsvc_procs[];
+        
 #ifdef __cplusplus
 }
 #endif

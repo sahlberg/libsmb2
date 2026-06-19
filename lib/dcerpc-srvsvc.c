@@ -611,3 +611,12 @@ srvsvc_NetrShareGetInfo_rep_coder(char *name, struct dcerpc_context *dce,
 
         return 0;
 }
+
+struct dcerpc_procedure srvsvc_procs[] = {
+        {SRVSVC_NETRSHAREGETINFO, "NetrShareInfo",
+         srvsvc_NetrShareGetInfo_req_coder, sizeof(struct srvsvc_NetrShareGetInfo_req),
+         srvsvc_NetrShareGetInfo_rep_coder, sizeof(struct srvsvc_NetrShareGetInfo_rep),
+        },
+        {-1, NULL, NULL, 0, NULL, 0}
+};
+

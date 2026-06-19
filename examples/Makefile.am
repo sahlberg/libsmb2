@@ -1,4 +1,4 @@
-noinst_PROGRAMS = smb2-cat-async smb2-cat-sync \
+noinst_PROGRAMS = dcerpc smb2-cat-async smb2-cat-sync \
 	smb2-ftruncate-sync \
 	smb2-ls-async \
 	smb2-ls-epoll \
@@ -28,6 +28,7 @@ AM_CPPFLAGS = \
 	-Wall -Werror
 
 COMMON_LIBS = ../lib/libsmb2.la
+dcerpc_LDADD = $(COMMON_LIBS)
 smb2_cat_async_LDADD = $(COMMON_LIBS)
 smb2_cat_sync_LDADD = $(COMMON_LIBS)
 smb2_ftruncate_sync_LDADD = $(COMMON_LIBS)

@@ -14,6 +14,7 @@ dcerpc_get_cr
 dcerpc_get_request
 dcerpc_set_request
 dcerpc_get_smb2_context
+dcerpc_services
 ndr_carray_coder
 ndr_context_handle_coder
 ndr_ptr_coder

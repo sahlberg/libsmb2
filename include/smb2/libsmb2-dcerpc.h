@@ -89,6 +89,23 @@ extern p_syntax_id_t srvsvc_interface;
 typedef void (*dcerpc_cb)(struct dcerpc_context *dce, int status,
                           void *command_data, void *cb_data);
 
+struct dcerpc_procedure {
+        int opnum;
+        char *name;
+        dcerpc_coder req_coder;
+        int req_size;
+        dcerpc_coder rep_coder;
+        int rep_size;
+};
+
+struct dcerpc_service {
+        const char *name;
+        p_syntax_id_t *interface;
+        struct dcerpc_procedure *procs;
+};
+        
+extern struct dcerpc_service dcerpc_services[];
+
 struct dcerpc_context *dcerpc_create_context(struct smb2_context *smb2);
 void dcerpc_free_data(struct dcerpc_context *dce, void *data);
 const char *dcerpc_get_error(struct dcerpc_context *dce);
