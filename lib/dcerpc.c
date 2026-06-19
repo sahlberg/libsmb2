@@ -278,6 +278,58 @@ struct dcerpc_pdu {
         int yaml_array_prefix;
 };
 
+/*
+ * NDR
+ */
+#define RPTR 0x5270747272747052
+#define UPTR 0x5570747272747055
+static int ndr_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                        struct smb2_iovec *iov, int *offset, void *ptr, dcerpc_coder coder);
+int ndr_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                     struct smb2_iovec *iov, int *offset, void *ptr);
+int ndr_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                     struct smb2_iovec *iov, int *offset, void *ptr);
+int ndr_uint8_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                    struct smb2_iovec *iov, int *offset, void *ptr);
+int ndr_uint3264_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                       struct smb2_iovec *iov, int *offset, void *ptr);
+static int ndr_conformance_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                                 struct smb2_iovec *iov, int *offset, void *ptr);
+static int ndr_encode_ptr(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+                          struct smb2_iovec *iov, int *offset, void *ptr,
+                          enum ptr_type type, dcerpc_coder coder);
+static int ndr_decode_ptr(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+                          struct smb2_iovec *iov, int *offset, void *ptr,
+                          enum ptr_type type, dcerpc_coder coder);
+int ndr_carray_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                     struct smb2_iovec *iov, int *offset,
+                     int num, void *ptr, int elem_size, dcerpc_coder coder);
+int ndr_union_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                    struct smb2_iovec *iov, int *offset,
+                    uint32_t *switch_is, void *ptr, dcerpc_coder coder);
+int ndr_struct_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                     struct smb2_iovec *iov, int *offset, void *ptr, dcerpc_coder coder);
+int ndr_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+                  struct smb2_iovec *iov, int *offset, void *ptr,
+                  enum ptr_type type, dcerpc_coder coder);
+static int ndr_encode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                            struct smb2_iovec *iov, int *offset, void *ptr, int nult);
+static int ndr_decode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                            struct smb2_iovec *iov, int *offset, void *ptr, int nult);
+int _ndr_utf16z_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                      struct smb2_iovec *iov, int *offset, void *ptr, int nult);
+int ndr_utf16z_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                     struct smb2_iovec *iov, int *offset, void *ptr);
+int ndr_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                    struct smb2_iovec *iov, int *offset, void *ptr);
+int ndr_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                   struct smb2_iovec *iov, int *offset, dcerpc_uuid_t *uuid);
+int ndr_context_handle_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+                             struct smb2_iovec *iov, int *offset, void *ptr);
+
+/*
+ * YAML
+ */
 static int yaml_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                       struct smb2_iovec *iov, int *offset, void *ptr);
 static int yaml_carray_coder(char *name, struct dcerpc_context *ctx,
@@ -578,25 +630,6 @@ dcerpc_add_deferred_pointer(struct dcerpc_context *ctx,
         pdu->max_ptr++;
 }
 
-static int
-ndr_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-             struct smb2_iovec *iov,
-             int *offset, void *ptr,
-             dcerpc_coder coder)
-{
-        pdu->max_alignment = 1;
-        pdu->is_conformance_run = 1;
-        if (coder(name, ctx, pdu, iov, offset, ptr)) {
-                return -1;
-        }
-        *offset = (*offset + (pdu->max_alignment - 1)) & ~(pdu->max_alignment - 1);
-        pdu->is_conformance_run = 0;
-        if (coder(name, ctx, pdu, iov, offset, ptr)) {
-                return -1;
-        }
-        return 0;
-}
-
 int
 dcerpc_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
              struct smb2_iovec *iov,
@@ -632,23 +665,6 @@ dcerpc_process_deferred_pointers(struct dcerpc_context *ctx,
 }
 
 int
-ndr_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                 struct smb2_iovec *iov, int *offset, void *ptr)
-{
-        if (pdu->is_conformance_run) {
-                if (pdu->max_alignment < 4) {
-                        pdu->max_alignment = 4;
-                }
-                return 0;
-        }
-        if (pdu->direction == DCERPC_DECODE) {
-                return dcerpc_get_uint32(ctx, pdu, iov, offset, ptr);
-        } else {
-                return dcerpc_set_uint32(ctx, pdu, iov, offset, *(uint32_t *)ptr);
-        }
-}
-
-int
 dcerpc_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                  struct smb2_iovec *iov, int *offset, void *ptr)
 {
@@ -659,331 +675,6 @@ dcerpc_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *p
                 return yaml_uint32_coder(name, ctx, pdu, iov, offset, ptr);
         }
         return -1;
-}
-
-int
-ndr_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                 struct smb2_iovec *iov, int *offset, void *ptr)
-{
-        if (pdu->is_conformance_run) {
-                if (pdu->max_alignment < 2) {
-                        pdu->max_alignment = 2;
-                }
-                return 0;
-        }
-        
-        if (pdu->direction == DCERPC_DECODE) {
-                return dcerpc_get_uint16(ctx, pdu, iov, offset, ptr);
-        } else {
-                return dcerpc_set_uint16(ctx, pdu, iov, offset, *(uint16_t *)ptr);
-        }
-}
-
-int
-ndr_uint8_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                   struct smb2_iovec *iov, int *offset, void *ptr)
-{
-        if (pdu->is_conformance_run) {
-                if (pdu->max_alignment < 1) {
-                        pdu->max_alignment = 1;
-                }
-                return 0;
-        }
-        if (pdu->direction == DCERPC_DECODE) {
-                return dcerpc_get_uint8(ctx, iov, offset, ptr);
-        } else {
-                return dcerpc_set_uint8(ctx, iov, offset, *(uint8_t *)ptr);
-        }
-
-        return 0;
-}
-
-/* Encode words that vary in size depending on the transport syntax */
-int
-ndr_uint3264_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                   struct smb2_iovec *iov, int *offset, void *ptr)
-{
-        uint32_t u32 = 0;
-        uint64_t val = *(uint64_t *)ptr;
-
-        if (pdu->is_conformance_run) {
-                if (ctx->tctx_id) {
-                        if (pdu->max_alignment < 8) {
-                                pdu->max_alignment = 8;
-                        }
-                } else {
-                        if (pdu->max_alignment < 4) {
-                                pdu->max_alignment = 4;
-                        }
-                }
-                return 0;
-        }
-        if (pdu->direction == DCERPC_DECODE) {
-                if (ctx->tctx_id) {
-                        if (dcerpc_get_uint64(ctx, pdu, iov, offset, ptr)) {
-                                return -1;
-                        }
-                } else {
-                        if (dcerpc_get_uint32(ctx, pdu, iov, offset, &u32)) {
-                                return -1;
-                        }
-                        *(uint64_t *)ptr = u32;
-                }
-        } else {
-                if (ctx->tctx_id) {
-                        if (dcerpc_set_uint64(ctx, pdu, iov, offset, val)) {
-                                return -1;
-                        }
-                } else {
-                        if (dcerpc_set_uint32(ctx, pdu, iov, offset, (uint32_t)val)) {
-                                return -1;
-                        }
-                }
-        }
-        return 0;
-}
-
-static int
-ndr_conformance_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                         struct smb2_iovec *iov, int *offset, void *ptr)
-{
-        uint32_t u32 = 0;
-        uint64_t val = *(uint64_t *)ptr;
-
-        if (!pdu->is_conformance_run) {
-                return 0;
-        }
-
-        if (pdu->direction == DCERPC_DECODE) {
-                if (ctx->tctx_id) {
-                        if (dcerpc_get_uint64(ctx, pdu, iov, offset, ptr)) {
-                                return -1;
-                        }
-                } else {
-                        if (dcerpc_get_uint32(ctx, pdu, iov, offset, &u32)) {
-                                return -1;
-                        }
-                        *(uint64_t *)ptr = u32;
-                }
-        } else {
-                if (ctx->tctx_id) {
-                        if (dcerpc_set_uint64(ctx, pdu, iov, offset, val)) {
-                                return -1;
-                        }
-                } else {
-                        if (dcerpc_set_uint32(ctx, pdu, iov, offset, val)) {
-                                return -1;
-                        }
-                }
-        }
-        return 0;
-}
-
-#define RPTR 0x5270747272747052
-#define UPTR 0x5570747272747055
-static int
-ndr_encode_ptr(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
-               struct smb2_iovec *iov,
-               int *offset, void *ptr,
-               enum ptr_type type, dcerpc_coder coder)
-{
-        int top_level = pdu->top_level;
-        uint64_t val;
-
-        if (pdu->is_conformance_run) {
-                if (dce->tctx_id) {
-                        if (pdu->max_alignment < 8) {
-                                pdu->max_alignment = 8;
-                        }
-                } else {
-                        if (pdu->max_alignment < 4) {
-                                pdu->max_alignment = 4;
-                        }
-                }
-                return 0;
-        }
-
-        switch (type) {
-        case PTR_REF:
-                if (pdu->top_level) {
-                        pdu->top_level = 0;
-                        if (ndr_do_coder(name, dce, pdu, iov, offset, ptr, coder)) {
-                                return -1;
-                        }
-                        pdu->top_level = top_level;
-                        goto out;
-                }
-
-                val = RPTR;
-                if (ndr_uint3264_coder("ReferentId", dce, pdu, iov, offset, &val)) {
-                        return -1;
-                }
-                dcerpc_add_deferred_pointer(dce, pdu, (dcerpc_coder)coder, ptr);
-                break;
-        case PTR_FULL:
-                if (ptr == NULL) {
-                        val = 0;
-                        if (ndr_uint3264_coder("ReferentId", dce, pdu, iov, offset, &val)) {
-                                return -1;
-                        }
-                        goto out;
-                }
-                
-                pdu->ptr_id++;
-                val = pdu->ptr_id;
-                if (ndr_uint3264_coder("ReferentId", dce, pdu, iov, offset, &val)) {
-                        return -1;
-                }
-                if (pdu->top_level) {
-                        pdu->top_level = 0;
-                        if (ndr_do_coder(name, dce, pdu, iov, offset, ptr, coder)) {
-                                return -1;
-                        }
-                        pdu->top_level = top_level;
-                } else {
-                        dcerpc_add_deferred_pointer(dce, pdu, (dcerpc_coder)coder, ptr);
-                }
-                break;
-        case PTR_UNIQUE:
-                if (ptr == NULL) {
-                        val = 0;
-                        if (ndr_uint3264_coder("ReferentId", dce, pdu, iov, offset, &val)) {
-                                return -1;
-                        }
-                        goto out;
-                }
-
-                val = UPTR;
-                if (ndr_uint3264_coder("ReferentId", dce, pdu, iov, offset, &val)) {
-                        return -1;
-                }
-                if (pdu->top_level) {
-                        pdu->top_level = 0;
-                        if (ndr_do_coder(name, dce, pdu, iov, offset, ptr, coder)) {
-                                return -1;
-                        }
-                        pdu->top_level = top_level;
-                } else {
-                        dcerpc_add_deferred_pointer(dce, pdu, (dcerpc_coder)coder, ptr);
-                }
-                break;
-        }
-
- out:
-        if (pdu->top_level) {
-                pdu->top_level = 0;
-                if (dcerpc_process_deferred_pointers(dce, pdu, iov, offset)) {
-                        return -1;
-                }
-                pdu->top_level = top_level;
-        }
-        return 0;
-}
-
-/* TODO conformance split
- * during the conformance run we need to do the alignment in all the
-  coders, even for the coders that do  not have any conformance data.
-*/
-static int
-ndr_decode_ptr(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
-               struct smb2_iovec *iov, int *offset, void *ptr,
-               enum ptr_type type, dcerpc_coder coder)
-{
-        int top_level = pdu->top_level;
-        uint64_t p;
-
-        if (pdu->is_conformance_run) {
-                if (!(type==PTR_REF && pdu->top_level)) {
-                        if (dce->tctx_id) {
-                                if (pdu->max_alignment < 8) {
-                                        pdu->max_alignment = 8;
-                                }
-                        } else {
-                                if (pdu->max_alignment < 4) {
-                                        pdu->max_alignment = 4;
-                                }
-                        }
-                }
-                return 0;
-        }
-        
-        switch (type) {
-        case PTR_REF:
-                if (pdu->top_level) {
-                        pdu->top_level = 0;
-                        if (ndr_do_coder(name, dce, pdu, iov, offset, ptr, coder)) {
-                                return -1;
-                        }
-                        pdu->top_level = top_level;
-                        goto out;
-                }
-
-                if (ndr_uint3264_coder("ReferentId", dce, pdu, iov, offset, &p)) {
-                        return -1;
-                }
-                dcerpc_add_deferred_pointer(dce, pdu, (dcerpc_coder)coder, ptr);
-                break;
-        case PTR_UNIQUE:
-                if (ndr_uint3264_coder("ReferentId", dce, pdu, iov, offset, &p)) {
-                        return -1;
-                }
-                if (p == 0 || ptr == NULL) {
-                        return 0;
-                }
-                
-                if (pdu->top_level) {
-                        pdu->top_level = 0;
-                        if (ndr_do_coder(name, dce, pdu, iov, offset, ptr, coder)) {
-                                return -1;
-                        }
-                        pdu->top_level = top_level;
-                } else {
-                        dcerpc_add_deferred_pointer(dce, pdu, (dcerpc_coder)coder, ptr);
-                }
-                break;
-        case PTR_FULL:
-                /* not implemented yet */
-                break;
-        }
-
- out:
-        if (pdu->top_level) {
-                pdu->top_level = 0;
-                if (dcerpc_process_deferred_pointers(dce, pdu, iov, offset)) {
-                        return -1;
-                }
-                pdu->top_level = top_level;
-        }
-        return 0;
-}
-
-int
-ndr_carray_coder(char *name, struct dcerpc_context *ctx,
-                 struct dcerpc_pdu *pdu,
-                 struct smb2_iovec *iov, int *offset,
-                 int num, void *ptr, int elem_size, dcerpc_coder coder)
-{
-        int i;
-        uint64_t p;
-        uint8_t *data = ptr;
-
-        /* Conformance */
-        p = num;
-        if (ndr_conformance_coder(ctx, pdu, iov, offset, &p)) {
-                return -1;
-        }
-        if (p != num) {
-                return -1;
-        }
-
-        /* Data */
-        for (i = 0; i < p; i++) {
-                if (coder(name, ctx, pdu, iov, offset, &data[i * elem_size])) {
-                        return -1;
-                }
-        }
-
-        return 0;
 }
 
 int
@@ -1003,29 +694,6 @@ dcerpc_carray_coder(char *name, struct dcerpc_context *ctx,
         return -1;
 }
 
-int ndr_union_coder(char *name, struct dcerpc_context *ctx,
-                    struct dcerpc_pdu *pdu,
-                    struct smb2_iovec *iov, int *offset,
-                    uint32_t *switch_is, void *ptr, dcerpc_coder coder)
-{
-        uint64_t p;
-
-        /* Conformance */
-        p = *switch_is;
-        if (ndr_uint3264_coder("", ctx, pdu, iov, offset, &p)) {
-                return -1;
-        }
-        *switch_is = p;
-
-        /* Data */
-        dcerpc_set_switch_is(pdu, p);
-        if (coder(name, ctx, pdu, iov, offset, ptr)) {
-                return -1;
-        }
-
-        return 0;
-}
-
 int dcerpc_union_coder(char *name, struct dcerpc_context *ctx,
                        struct dcerpc_pdu *pdu,
                        struct smb2_iovec *iov, int *offset,
@@ -1040,14 +708,6 @@ int dcerpc_union_coder(char *name, struct dcerpc_context *ctx,
                                         switch_is, ptr, coder);
         }
         return -1;
-}
-
-int ndr_struct_coder(char *name, struct dcerpc_context *ctx,
-                        struct dcerpc_pdu *pdu,
-                        struct smb2_iovec *iov, int *offset,
-                        void *ptr, dcerpc_coder coder)
-{
-        return coder(name, ctx, pdu, iov, offset, ptr);
 }
 
 int dcerpc_struct_coder(char *name, struct dcerpc_context *ctx,
@@ -1067,20 +727,6 @@ int dcerpc_struct_coder(char *name, struct dcerpc_context *ctx,
 }
 
 int
-ndr_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
-              struct smb2_iovec *iov, int *offset, void *ptr,
-              enum ptr_type type, dcerpc_coder coder)
-{
-        if (pdu->direction == DCERPC_DECODE) {
-                return ndr_decode_ptr(name, dce, pdu, iov, offset, ptr,
-                                      type, coder);
-        } else {
-                return ndr_encode_ptr(name, dce, pdu, iov, offset, ptr,
-                                      type, coder);
-        }
-}
-
-int
 dcerpc_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                  struct smb2_iovec *iov, int *offset, void *ptr,
                  enum ptr_type type, dcerpc_coder coder)
@@ -1094,195 +740,6 @@ dcerpc_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                                       type, coder);
         }
         return -1;
-}
-
-static int
-ndr_encode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                 struct smb2_iovec *iov, int *offset,
-                 void *ptr, int nult)
-{
-        struct dcerpc_utf16 *s = ptr;
-        int i;
-        uint64_t val;
-        uint16_t zero = 0;
-
-        /* Conformance part */
-        if (pdu->is_conformance_run) {
-                if (s->utf8) {
-                        s->utf16 = smb2_utf8_to_utf16(s->utf8);
-                } else {
-                        s->utf16 = smb2_utf8_to_utf16("");
-                }
-                if (s->utf16 == NULL) {
-                        return -1;
-                }
-
-                if (nult) {
-                        val = s->utf16->len + 1;
-                } else {
-                        val = s->utf16->len;
-                }
-                s->actual_count = (uint32_t)val;
-                if (!nult) {
-                        if (val & 0x01) val++;
-                }
-                s->max_count = (uint32_t)val;
-                s->offset    = 0;
-
-                val = s->max_count;
-                if (ndr_conformance_coder(ctx, pdu, iov, offset, &val)) {
-                        return -1;
-                }
-                val = s->offset;
-                if (ndr_conformance_coder(ctx, pdu, iov, offset, &val)) {
-                        return -1;
-                }
-                val = s->actual_count;
-                if (ndr_conformance_coder(ctx, pdu, iov, offset, &val)) {
-                        return -1;
-                }
-                if (pdu->max_alignment < 2) {
-                        pdu->max_alignment = 2;
-                }
-                return 0;
-        }
-
-        /* Data part */
-        for (i = 0; i < s->utf16->len; i++) {
-                if (ndr_uint16_coder("Utf16", ctx, pdu, iov, offset, &s->utf16->val[i])) {
-                        return -1;
-                }
-        }
-        if (nult) {
-                if (ndr_uint16_coder("Nult", ctx, pdu, iov, offset, &zero)) {
-                        return -1;
-                }
-        }
-        free(s->utf16);
-        return 0;
-}
-
-static int
-ndr_decode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                 struct smb2_iovec *iov, int *offset,
-                 void *ptr, int nult)
-{
-        struct dcerpc_utf16 *s = ptr;
-        uint64_t val; /* Any fundament of this? */
-        char *str;
-        const char *tmp;
-
-        /* Conformance part */
-        if (pdu->is_conformance_run) {
-                if (ndr_conformance_coder(ctx, pdu, iov, offset, &val)) {
-                        return -1;
-                }
-                s->max_count = (uint32_t)val;
-                if (ndr_conformance_coder(ctx, pdu, iov, offset, &val)) {
-                        return -1;
-                }
-                s->offset = (uint32_t)val;
-                if (ndr_conformance_coder(ctx, pdu, iov, offset, &val)) {
-                        return -1;
-                }
-                s->actual_count = (uint32_t)val;
-                if (pdu->max_alignment < 2) {
-                        pdu->max_alignment = 2;
-                }
-                return 0;
-        }
-        
-        /* Data part */
-        if (*offset + s->actual_count * 2 > iov->len) {
-                return -1;
-        }
-        if (!(pdu->hdr.packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN)) {
-                int i, o;
-                uint16_t v;
-                for (i = 0; i < s->actual_count; i++) {
-                        o = *offset + i *2;
-                        if (dcerpc_get_uint16(ctx, pdu, iov, &o, &v)) {
-                                return -1;
-                        }
-                        *(uint16_t *)(void *)&iov->buf[*offset + i * 2] = v;
-                }
-        }
-        tmp = smb2_utf16_to_utf8((uint16_t *)(void *)(&iov->buf[*offset]), (size_t)s->actual_count);
-        *offset += (int)s->actual_count * 2;
-
-        str = smb2_alloc_data(ctx->smb2, pdu->payload, strlen(tmp) + 1);
-        if (str == NULL) {
-                free(discard_const(tmp));
-                return -1;
-        }
-        strcat(str, tmp);
-        free(discard_const(tmp));
-
-        s->utf8 = str;
-
-        return 0;
-}
-
-/* ptr is char ** */
-int
-_ndr_utf16z_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                 struct smb2_iovec *iov, int *offset,
-                  void *ptr, int nult)
-{
-        struct dcerpc_utf16 **u = ptr;
-        struct dcerpc_utf16 *utf16;
-        const char **s = ptr;
-        const char *str;
-        int ret = -1;
-
-        if (pdu->is_conformance_run) {
-                /* Swap the char * pointer to dcerpc_utf16 * */
-                utf16 = calloc(1, sizeof(struct dcerpc_utf16));
-                if (utf16 == NULL) {
-                        return -1;
-                }
-                utf16->utf8 = *s;
-                *u = utf16;
-                ptr = utf16;
-        } else {
-                ptr = *u;
-        }
-        
-        if (pdu->direction == DCERPC_DECODE) {
-                ret = ndr_decode_utf16(ctx, pdu, iov, offset, ptr, nult);
-        } else {
-                ret = ndr_encode_utf16(ctx, pdu, iov, offset, ptr, nult);
-        }
-        
-        if (!pdu->is_conformance_run) {
-                /* swap the pointer back */
-                utf16 = *u;
-                str = utf16->utf8;
-                *s = str;
-                free(utf16);
-        }
-
-        return ret;
-}
-
-/* Handle \0 terminated utf16 strings */
-/* ptr is char ** */
-int
-ndr_utf16z_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                 struct smb2_iovec *iov, int *offset,
-                 void *ptr)
-{
-        return _ndr_utf16z_coder(name, ctx, pdu, iov, offset, ptr, 1);
-}
-
-/* Handle utf16 strings that are NOT \0 terminated */
-/* ptr is char ** */
-int
-ndr_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                struct smb2_iovec *iov, int *offset,
-                void *ptr)
-{
-        return _ndr_utf16z_coder(name, ctx, pdu, iov, offset, ptr, 0);
 }
 
 int
@@ -1361,56 +818,6 @@ dcerpc_header_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 
         /* Call id */
         if (ndr_uint32_coder("CallId", ctx, pdu, iov, offset, &hdr->call_id)) {
-                return -1;
-        }
-
-        return 0;
-}
-
-int
-ndr_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-               struct smb2_iovec *iov, int *offset,
-               dcerpc_uuid_t *uuid)
-{
-        int i;
-        
-        if (ndr_uint32_coder("V1", ctx, pdu, iov, offset, &uuid->v1)) {
-                return -1;
-        }
-        if (ndr_uint16_coder("V2", ctx, pdu, iov, offset, &uuid->v2)) {
-                return -1;
-        }
-        if (ndr_uint16_coder("V3", ctx, pdu, iov, offset, &uuid->v3)) {
-                return -1;
-        }
-        for (i = 0; i < 8; i++) {
-                if (ndr_uint8_coder("V4", ctx, pdu, iov, offset, &uuid->v4[i])) {
-                        return -1;
-                }
-        }
-
-        return 0;
-}        
-
-/**********************
- * typedef struct ndr_context_handle {
- *    unsigned32 context_handle_attributes;
- *    dcerpc_uuid_t context_handle_uuid;
- * } ndr_context_handle;
- **********************/
-int
-ndr_context_handle_coder(char *name, struct dcerpc_context *dce,
-                         struct dcerpc_pdu *pdu,
-                         struct smb2_iovec *iov, int *offset,
-                         void *ptr)
-{
-        struct ndr_context_handle *handle = ptr;
-
-        if (ndr_uint32_coder("ContextHandleAttributes", dce, pdu, iov, offset, &handle->context_handle_attributes)) {
-                return -1;
-        }
-        if (ndr_uuid_coder("UUID", dce, pdu, iov, offset,
-                           &handle->context_handle_uuid)) {
                 return -1;
         }
 
@@ -2201,6 +1608,655 @@ void *dcerpc_get_request(struct dcerpc_pdu *pdu)
         return pdu->request;
 }
 
+/*
+ * NDR
+ */
+static int
+ndr_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+             struct smb2_iovec *iov,
+             int *offset, void *ptr,
+             dcerpc_coder coder)
+{
+        pdu->max_alignment = 1;
+        pdu->is_conformance_run = 1;
+        if (coder(name, ctx, pdu, iov, offset, ptr)) {
+                return -1;
+        }
+        *offset = (*offset + (pdu->max_alignment - 1)) & ~(pdu->max_alignment - 1);
+        pdu->is_conformance_run = 0;
+        if (coder(name, ctx, pdu, iov, offset, ptr)) {
+                return -1;
+        }
+        return 0;
+}
+
+int
+ndr_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                 struct smb2_iovec *iov, int *offset, void *ptr)
+{
+        if (pdu->is_conformance_run) {
+                if (pdu->max_alignment < 4) {
+                        pdu->max_alignment = 4;
+                }
+                return 0;
+        }
+        if (pdu->direction == DCERPC_DECODE) {
+                return dcerpc_get_uint32(ctx, pdu, iov, offset, ptr);
+        } else {
+                return dcerpc_set_uint32(ctx, pdu, iov, offset, *(uint32_t *)ptr);
+        }
+}
+
+int
+ndr_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                 struct smb2_iovec *iov, int *offset, void *ptr)
+{
+        if (pdu->is_conformance_run) {
+                if (pdu->max_alignment < 2) {
+                        pdu->max_alignment = 2;
+                }
+                return 0;
+        }
+        
+        if (pdu->direction == DCERPC_DECODE) {
+                return dcerpc_get_uint16(ctx, pdu, iov, offset, ptr);
+        } else {
+                return dcerpc_set_uint16(ctx, pdu, iov, offset, *(uint16_t *)ptr);
+        }
+}
+
+int
+ndr_uint8_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                   struct smb2_iovec *iov, int *offset, void *ptr)
+{
+        if (pdu->is_conformance_run) {
+                if (pdu->max_alignment < 1) {
+                        pdu->max_alignment = 1;
+                }
+                return 0;
+        }
+        if (pdu->direction == DCERPC_DECODE) {
+                return dcerpc_get_uint8(ctx, iov, offset, ptr);
+        } else {
+                return dcerpc_set_uint8(ctx, iov, offset, *(uint8_t *)ptr);
+        }
+
+        return 0;
+}
+
+/* Encode words that vary in size depending on the transport syntax */
+int
+ndr_uint3264_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                   struct smb2_iovec *iov, int *offset, void *ptr)
+{
+        uint32_t u32 = 0;
+        uint64_t val = *(uint64_t *)ptr;
+
+        if (pdu->is_conformance_run) {
+                if (ctx->tctx_id) {
+                        if (pdu->max_alignment < 8) {
+                                pdu->max_alignment = 8;
+                        }
+                } else {
+                        if (pdu->max_alignment < 4) {
+                                pdu->max_alignment = 4;
+                        }
+                }
+                return 0;
+        }
+        if (pdu->direction == DCERPC_DECODE) {
+                if (ctx->tctx_id) {
+                        if (dcerpc_get_uint64(ctx, pdu, iov, offset, ptr)) {
+                                return -1;
+                        }
+                } else {
+                        if (dcerpc_get_uint32(ctx, pdu, iov, offset, &u32)) {
+                                return -1;
+                        }
+                        *(uint64_t *)ptr = u32;
+                }
+        } else {
+                if (ctx->tctx_id) {
+                        if (dcerpc_set_uint64(ctx, pdu, iov, offset, val)) {
+                                return -1;
+                        }
+                } else {
+                        if (dcerpc_set_uint32(ctx, pdu, iov, offset, (uint32_t)val)) {
+                                return -1;
+                        }
+                }
+        }
+        return 0;
+}
+
+static int
+ndr_conformance_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                         struct smb2_iovec *iov, int *offset, void *ptr)
+{
+        uint32_t u32 = 0;
+        uint64_t val = *(uint64_t *)ptr;
+
+        if (!pdu->is_conformance_run) {
+                return 0;
+        }
+
+        if (pdu->direction == DCERPC_DECODE) {
+                if (ctx->tctx_id) {
+                        if (dcerpc_get_uint64(ctx, pdu, iov, offset, ptr)) {
+                                return -1;
+                        }
+                } else {
+                        if (dcerpc_get_uint32(ctx, pdu, iov, offset, &u32)) {
+                                return -1;
+                        }
+                        *(uint64_t *)ptr = u32;
+                }
+        } else {
+                if (ctx->tctx_id) {
+                        if (dcerpc_set_uint64(ctx, pdu, iov, offset, val)) {
+                                return -1;
+                        }
+                } else {
+                        if (dcerpc_set_uint32(ctx, pdu, iov, offset, val)) {
+                                return -1;
+                        }
+                }
+        }
+        return 0;
+}
+
+static int
+ndr_encode_ptr(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+               struct smb2_iovec *iov,
+               int *offset, void *ptr,
+               enum ptr_type type, dcerpc_coder coder)
+{
+        int top_level = pdu->top_level;
+        uint64_t val;
+
+        if (pdu->is_conformance_run) {
+                if (dce->tctx_id) {
+                        if (pdu->max_alignment < 8) {
+                                pdu->max_alignment = 8;
+                        }
+                } else {
+                        if (pdu->max_alignment < 4) {
+                                pdu->max_alignment = 4;
+                        }
+                }
+                return 0;
+        }
+
+        switch (type) {
+        case PTR_REF:
+                if (pdu->top_level) {
+                        pdu->top_level = 0;
+                        if (ndr_do_coder(name, dce, pdu, iov, offset, ptr, coder)) {
+                                return -1;
+                        }
+                        pdu->top_level = top_level;
+                        goto out;
+                }
+
+                val = RPTR;
+                if (ndr_uint3264_coder("ReferentId", dce, pdu, iov, offset, &val)) {
+                        return -1;
+                }
+                dcerpc_add_deferred_pointer(dce, pdu, (dcerpc_coder)coder, ptr);
+                break;
+        case PTR_FULL:
+                if (ptr == NULL) {
+                        val = 0;
+                        if (ndr_uint3264_coder("ReferentId", dce, pdu, iov, offset, &val)) {
+                                return -1;
+                        }
+                        goto out;
+                }
+                
+                pdu->ptr_id++;
+                val = pdu->ptr_id;
+                if (ndr_uint3264_coder("ReferentId", dce, pdu, iov, offset, &val)) {
+                        return -1;
+                }
+                if (pdu->top_level) {
+                        pdu->top_level = 0;
+                        if (ndr_do_coder(name, dce, pdu, iov, offset, ptr, coder)) {
+                                return -1;
+                        }
+                        pdu->top_level = top_level;
+                } else {
+                        dcerpc_add_deferred_pointer(dce, pdu, (dcerpc_coder)coder, ptr);
+                }
+                break;
+        case PTR_UNIQUE:
+                if (ptr == NULL) {
+                        val = 0;
+                        if (ndr_uint3264_coder("ReferentId", dce, pdu, iov, offset, &val)) {
+                                return -1;
+                        }
+                        goto out;
+                }
+
+                val = UPTR;
+                if (ndr_uint3264_coder("ReferentId", dce, pdu, iov, offset, &val)) {
+                        return -1;
+                }
+                if (pdu->top_level) {
+                        pdu->top_level = 0;
+                        if (ndr_do_coder(name, dce, pdu, iov, offset, ptr, coder)) {
+                                return -1;
+                        }
+                        pdu->top_level = top_level;
+                } else {
+                        dcerpc_add_deferred_pointer(dce, pdu, (dcerpc_coder)coder, ptr);
+                }
+                break;
+        }
+
+ out:
+        if (pdu->top_level) {
+                pdu->top_level = 0;
+                if (dcerpc_process_deferred_pointers(dce, pdu, iov, offset)) {
+                        return -1;
+                }
+                pdu->top_level = top_level;
+        }
+        return 0;
+}
+
+/* TODO conformance split
+ * during the conformance run we need to do the alignment in all the
+  coders, even for the coders that do  not have any conformance data.
+*/
+static int
+ndr_decode_ptr(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+               struct smb2_iovec *iov, int *offset, void *ptr,
+               enum ptr_type type, dcerpc_coder coder)
+{
+        int top_level = pdu->top_level;
+        uint64_t p;
+
+        if (pdu->is_conformance_run) {
+                if (!(type==PTR_REF && pdu->top_level)) {
+                        if (dce->tctx_id) {
+                                if (pdu->max_alignment < 8) {
+                                        pdu->max_alignment = 8;
+                                }
+                        } else {
+                                if (pdu->max_alignment < 4) {
+                                        pdu->max_alignment = 4;
+                                }
+                        }
+                }
+                return 0;
+        }
+        
+        switch (type) {
+        case PTR_REF:
+                if (pdu->top_level) {
+                        pdu->top_level = 0;
+                        if (ndr_do_coder(name, dce, pdu, iov, offset, ptr, coder)) {
+                                return -1;
+                        }
+                        pdu->top_level = top_level;
+                        goto out;
+                }
+
+                if (ndr_uint3264_coder("ReferentId", dce, pdu, iov, offset, &p)) {
+                        return -1;
+                }
+                dcerpc_add_deferred_pointer(dce, pdu, (dcerpc_coder)coder, ptr);
+                break;
+        case PTR_UNIQUE:
+                if (ndr_uint3264_coder("ReferentId", dce, pdu, iov, offset, &p)) {
+                        return -1;
+                }
+                if (p == 0 || ptr == NULL) {
+                        return 0;
+                }
+                
+                if (pdu->top_level) {
+                        pdu->top_level = 0;
+                        if (ndr_do_coder(name, dce, pdu, iov, offset, ptr, coder)) {
+                                return -1;
+                        }
+                        pdu->top_level = top_level;
+                } else {
+                        dcerpc_add_deferred_pointer(dce, pdu, (dcerpc_coder)coder, ptr);
+                }
+                break;
+        case PTR_FULL:
+                /* not implemented yet */
+                break;
+        }
+
+ out:
+        if (pdu->top_level) {
+                pdu->top_level = 0;
+                if (dcerpc_process_deferred_pointers(dce, pdu, iov, offset)) {
+                        return -1;
+                }
+                pdu->top_level = top_level;
+        }
+        return 0;
+}
+
+int
+ndr_carray_coder(char *name, struct dcerpc_context *ctx,
+                 struct dcerpc_pdu *pdu,
+                 struct smb2_iovec *iov, int *offset,
+                 int num, void *ptr, int elem_size, dcerpc_coder coder)
+{
+        int i;
+        uint64_t p;
+        uint8_t *data = ptr;
+
+        /* Conformance */
+        p = num;
+        if (ndr_conformance_coder(ctx, pdu, iov, offset, &p)) {
+                return -1;
+        }
+        if (p != num) {
+                return -1;
+        }
+
+        /* Data */
+        for (i = 0; i < p; i++) {
+                if (coder(name, ctx, pdu, iov, offset, &data[i * elem_size])) {
+                        return -1;
+                }
+        }
+
+        return 0;
+}
+
+int ndr_union_coder(char *name, struct dcerpc_context *ctx,
+                    struct dcerpc_pdu *pdu,
+                    struct smb2_iovec *iov, int *offset,
+                    uint32_t *switch_is, void *ptr, dcerpc_coder coder)
+{
+        uint64_t p;
+
+        /* Conformance */
+        p = *switch_is;
+        if (ndr_uint3264_coder("", ctx, pdu, iov, offset, &p)) {
+                return -1;
+        }
+        *switch_is = p;
+
+        /* Data */
+        dcerpc_set_switch_is(pdu, p);
+        if (coder(name, ctx, pdu, iov, offset, ptr)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int ndr_struct_coder(char *name, struct dcerpc_context *ctx,
+                        struct dcerpc_pdu *pdu,
+                        struct smb2_iovec *iov, int *offset,
+                        void *ptr, dcerpc_coder coder)
+{
+        return coder(name, ctx, pdu, iov, offset, ptr);
+}
+
+int
+ndr_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+              struct smb2_iovec *iov, int *offset, void *ptr,
+              enum ptr_type type, dcerpc_coder coder)
+{
+        if (pdu->direction == DCERPC_DECODE) {
+                return ndr_decode_ptr(name, dce, pdu, iov, offset, ptr,
+                                      type, coder);
+        } else {
+                return ndr_encode_ptr(name, dce, pdu, iov, offset, ptr,
+                                      type, coder);
+        }
+}
+
+static int
+ndr_encode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                 struct smb2_iovec *iov, int *offset,
+                 void *ptr, int nult)
+{
+        struct dcerpc_utf16 *s = ptr;
+        int i;
+        uint64_t val;
+        uint16_t zero = 0;
+
+        /* Conformance part */
+        if (pdu->is_conformance_run) {
+                if (s->utf8) {
+                        s->utf16 = smb2_utf8_to_utf16(s->utf8);
+                } else {
+                        s->utf16 = smb2_utf8_to_utf16("");
+                }
+                if (s->utf16 == NULL) {
+                        return -1;
+                }
+
+                if (nult) {
+                        val = s->utf16->len + 1;
+                } else {
+                        val = s->utf16->len;
+                }
+                s->actual_count = (uint32_t)val;
+                if (!nult) {
+                        if (val & 0x01) val++;
+                }
+                s->max_count = (uint32_t)val;
+                s->offset    = 0;
+
+                val = s->max_count;
+                if (ndr_conformance_coder(ctx, pdu, iov, offset, &val)) {
+                        return -1;
+                }
+                val = s->offset;
+                if (ndr_conformance_coder(ctx, pdu, iov, offset, &val)) {
+                        return -1;
+                }
+                val = s->actual_count;
+                if (ndr_conformance_coder(ctx, pdu, iov, offset, &val)) {
+                        return -1;
+                }
+                if (pdu->max_alignment < 2) {
+                        pdu->max_alignment = 2;
+                }
+                return 0;
+        }
+
+        /* Data part */
+        for (i = 0; i < s->utf16->len; i++) {
+                if (ndr_uint16_coder("Utf16", ctx, pdu, iov, offset, &s->utf16->val[i])) {
+                        return -1;
+                }
+        }
+        if (nult) {
+                if (ndr_uint16_coder("Nult", ctx, pdu, iov, offset, &zero)) {
+                        return -1;
+                }
+        }
+        free(s->utf16);
+        return 0;
+}
+
+static int
+ndr_decode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                 struct smb2_iovec *iov, int *offset,
+                 void *ptr, int nult)
+{
+        struct dcerpc_utf16 *s = ptr;
+        uint64_t val; /* Any fundament of this? */
+        char *str;
+        const char *tmp;
+
+        /* Conformance part */
+        if (pdu->is_conformance_run) {
+                if (ndr_conformance_coder(ctx, pdu, iov, offset, &val)) {
+                        return -1;
+                }
+                s->max_count = (uint32_t)val;
+                if (ndr_conformance_coder(ctx, pdu, iov, offset, &val)) {
+                        return -1;
+                }
+                s->offset = (uint32_t)val;
+                if (ndr_conformance_coder(ctx, pdu, iov, offset, &val)) {
+                        return -1;
+                }
+                s->actual_count = (uint32_t)val;
+                if (pdu->max_alignment < 2) {
+                        pdu->max_alignment = 2;
+                }
+                return 0;
+        }
+        
+        /* Data part */
+        if (*offset + s->actual_count * 2 > iov->len) {
+                return -1;
+        }
+        if (!(pdu->hdr.packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN)) {
+                int i, o;
+                uint16_t v;
+                for (i = 0; i < s->actual_count; i++) {
+                        o = *offset + i *2;
+                        if (dcerpc_get_uint16(ctx, pdu, iov, &o, &v)) {
+                                return -1;
+                        }
+                        *(uint16_t *)(void *)&iov->buf[*offset + i * 2] = v;
+                }
+        }
+        tmp = smb2_utf16_to_utf8((uint16_t *)(void *)(&iov->buf[*offset]), (size_t)s->actual_count);
+        *offset += (int)s->actual_count * 2;
+
+        str = smb2_alloc_data(ctx->smb2, pdu->payload, strlen(tmp) + 1);
+        if (str == NULL) {
+                free(discard_const(tmp));
+                return -1;
+        }
+        strcat(str, tmp);
+        free(discard_const(tmp));
+
+        s->utf8 = str;
+
+        return 0;
+}
+
+/* ptr is char ** */
+int
+_ndr_utf16z_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                 struct smb2_iovec *iov, int *offset,
+                  void *ptr, int nult)
+{
+        struct dcerpc_utf16 **u = ptr;
+        struct dcerpc_utf16 *utf16;
+        const char **s = ptr;
+        const char *str;
+        int ret = -1;
+
+        if (pdu->is_conformance_run) {
+                /* Swap the char * pointer to dcerpc_utf16 * */
+                utf16 = calloc(1, sizeof(struct dcerpc_utf16));
+                if (utf16 == NULL) {
+                        return -1;
+                }
+                utf16->utf8 = *s;
+                *u = utf16;
+                ptr = utf16;
+        } else {
+                ptr = *u;
+        }
+        
+        if (pdu->direction == DCERPC_DECODE) {
+                ret = ndr_decode_utf16(ctx, pdu, iov, offset, ptr, nult);
+        } else {
+                ret = ndr_encode_utf16(ctx, pdu, iov, offset, ptr, nult);
+        }
+        
+        if (!pdu->is_conformance_run) {
+                /* swap the pointer back */
+                utf16 = *u;
+                str = utf16->utf8;
+                *s = str;
+                free(utf16);
+        }
+
+        return ret;
+}
+
+/* Handle \0 terminated utf16 strings */
+/* ptr is char ** */
+int
+ndr_utf16z_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                 struct smb2_iovec *iov, int *offset,
+                 void *ptr)
+{
+        return _ndr_utf16z_coder(name, ctx, pdu, iov, offset, ptr, 1);
+}
+
+/* Handle utf16 strings that are NOT \0 terminated */
+/* ptr is char ** */
+int
+ndr_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                struct smb2_iovec *iov, int *offset,
+                void *ptr)
+{
+        return _ndr_utf16z_coder(name, ctx, pdu, iov, offset, ptr, 0);
+}
+
+int
+ndr_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+               struct smb2_iovec *iov, int *offset,
+               dcerpc_uuid_t *uuid)
+{
+        int i;
+        
+        if (ndr_uint32_coder("V1", ctx, pdu, iov, offset, &uuid->v1)) {
+                return -1;
+        }
+        if (ndr_uint16_coder("V2", ctx, pdu, iov, offset, &uuid->v2)) {
+                return -1;
+        }
+        if (ndr_uint16_coder("V3", ctx, pdu, iov, offset, &uuid->v3)) {
+                return -1;
+        }
+        for (i = 0; i < 8; i++) {
+                if (ndr_uint8_coder("V4", ctx, pdu, iov, offset, &uuid->v4[i])) {
+                        return -1;
+                }
+        }
+
+        return 0;
+}        
+
+/**********************
+ * typedef struct ndr_context_handle {
+ *    unsigned32 context_handle_attributes;
+ *    dcerpc_uuid_t context_handle_uuid;
+ * } ndr_context_handle;
+ **********************/
+int
+ndr_context_handle_coder(char *name, struct dcerpc_context *dce,
+                         struct dcerpc_pdu *pdu,
+                         struct smb2_iovec *iov, int *offset,
+                         void *ptr)
+{
+        struct ndr_context_handle *handle = ptr;
+
+        if (ndr_uint32_coder("ContextHandleAttributes", dce, pdu, iov, offset, &handle->context_handle_attributes)) {
+                return -1;
+        }
+        if (ndr_uuid_coder("UUID", dce, pdu, iov, offset,
+                           &handle->context_handle_uuid)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+/*
+ * YAML
+ */
 static void
 yaml_print_preamble(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                     struct smb2_iovec *iov, int *offset)
