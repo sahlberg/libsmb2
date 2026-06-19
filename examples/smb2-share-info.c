@@ -121,12 +121,12 @@ void si_cb(struct dcerpc_context *dce, int status,
         dcerpc_free_pdu(dce, yaml_pdu);
 
         
-        dcerpc_destroy_context(dce);
         dcerpc_free_data(dce, rep);
+        dcerpc_destroy_context(dce);
         free(server);
+        free(cb_data);  /* si_req */
 
         is_finished = 1;
-        free(cb_data);  /* si_req */
 }
 
 void co_cb(struct dcerpc_context *dce, int status,
