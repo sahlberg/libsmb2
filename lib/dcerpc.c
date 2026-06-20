@@ -2386,8 +2386,8 @@ yaml_union_coder(char *name, struct dcerpc_context *ctx,
         int ret;
 
         if (pdu->direction == DCERPC_DECODE) {
-                printf("yaml union not supported for %s\n", name);
-                exit(9);
+                yamp_next_kv(pdu, iov, offset);
+                ret = coder(name, ctx, pdu, iov, offset, ptr);
         } else {
                 yaml_print_preamble(ctx, pdu, iov, offset);
                 if (*offset + 256 < iov->len) {
@@ -2413,6 +2413,9 @@ yaml_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
         if (pdu->direction == DCERPC_DECODE) {
                 yamp_next_kv(pdu, iov, offset);
                 if (strcmp(pdu->yaml_key,  name)) {
+                        if (type == PTR_UNIQUE) {
+                                return 0;
+                        }
                         printf("Wrong YAML key encountered for ptr. Expected %s but got %s\n",
                                name, pdu->yaml_key);
                         return -1;

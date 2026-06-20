@@ -431,6 +431,16 @@ srvsvc_SHARE_ENUM_STRUCT_coder(char *name, struct dcerpc_context *ctx,
         return 0;
 }
 
+int
+srvsvc_SHARE_ENUM_STRUCT_struct_coder(char *name, struct dcerpc_context *ctx,
+                               struct dcerpc_pdu *pdu,
+                               struct smb2_iovec *iov, int *offset,
+                               void *ptr)
+{
+        return dcerpc_struct_coder(name, ctx, pdu, iov, offset, ptr,
+                                   srvsvc_SHARE_ENUM_STRUCT_coder);
+}
+
 
 /*****************
  * Function: 0x0f
@@ -455,7 +465,7 @@ srvsvc_NetrShareEnum_req_coder(char *name, struct dcerpc_context *ctx,
                 return -1;
         }
         if (dcerpc_ptr_coder("InfoStruct", ctx, pdu, iov, offset, &req->ses,
-                             PTR_REF, srvsvc_SHARE_ENUM_STRUCT_coder)) {
+                             PTR_REF, srvsvc_SHARE_ENUM_STRUCT_struct_coder)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("PreferedMaximumLength", ctx, pdu, iov, offset, &req->PreferedMaximumLength,
@@ -613,6 +623,10 @@ srvsvc_NetrShareGetInfo_rep_coder(char *name, struct dcerpc_context *dce,
 }
 
 struct dcerpc_procedure srvsvc_procs[] = {
+        {SRVSVC_NETRSHAREENUM, "NetrShareEnum",
+         srvsvc_NetrShareEnum_req_coder, sizeof(struct srvsvc_NetrShareEnum_req),
+         srvsvc_NetrShareEnum_rep_coder, sizeof(struct srvsvc_NetrShareEnum_rep),
+        },
         {SRVSVC_NETRSHAREGETINFO, "NetrShareInfo",
          srvsvc_NetrShareGetInfo_req_coder, sizeof(struct srvsvc_NetrShareGetInfo_req),
          srvsvc_NetrShareGetInfo_rep_coder, sizeof(struct srvsvc_NetrShareGetInfo_rep),
