@@ -84,7 +84,9 @@ void si_cb(struct dcerpc_context *dce, int status,
         printf("%s\n", iov.buf);
 
         
+        free(rpc_cb_data->req);
         dcerpc_free_pdu(dce, rpc_cb_data->req_pdu);
+        dcerpc_free_data(dce, rpc_cb_data->rep);
         dcerpc_free_pdu(dce, rpc_cb_data->rep_pdu);
         
         free(rpc_cb_data);
