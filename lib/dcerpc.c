@@ -278,6 +278,7 @@ struct dcerpc_pdu {
 
         int size_is;   /* Passing size_is() value through a pointer */
         int switch_is; /* Passing switch_is() value through a pointer */
+
         /* YAML */
         int yaml_indentation;
         int yaml_array_prefix;
@@ -2337,6 +2338,7 @@ yaml_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu
                 }
                 pdu->yaml_key = NULL;
                 *(uint32_t *)ptr = strtol(pdu->yaml_val, NULL, 0);
+                yamp_next_kv(pdu, iov, offset);
                 return 0;
         } else {
                 yaml_print_preamble(ctx, pdu, iov, offset);
@@ -2386,7 +2388,14 @@ yaml_union_coder(char *name, struct dcerpc_context *ctx,
         int ret;
 
         if (pdu->direction == DCERPC_DECODE) {
+                if (strcmp(pdu->yaml_key,  name)) {
+                        printf("Wrong YAML key encountered for union. Expected %s but got %s\n",
+                               name, pdu->yaml_key);
+                        return -1;
+                }
+                pdu->yaml_key = NULL;
                 yamp_next_kv(pdu, iov, offset);
+                name = pdu->yaml_key;
                 ret = coder(name, ctx, pdu, iov, offset, ptr);
         } else {
                 yaml_print_preamble(ctx, pdu, iov, offset);
@@ -2440,6 +2449,7 @@ yaml_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 }
                 pdu->yaml_key = NULL;
                 *(char **)ptr = pdu->yaml_val;
+                yamp_next_kv(pdu, iov, offset);
                 return 0;
         } else {
                 yaml_print_preamble(ctx, pdu, iov, offset);
@@ -2467,6 +2477,7 @@ yaml_struct_coder(char *name, struct dcerpc_context *ctx,
                         return -1;
                 }
                 pdu->yaml_key = NULL;
+                yamp_next_kv(pdu, iov, offset);
                 ret = coder(name, ctx, pdu, iov, offset, ptr);
         } else {
                 yaml_print_preamble(ctx, pdu, iov, offset);

@@ -25,6 +25,7 @@ extern "C" {
 
 #include <smb2/libsmb2-dcerpc.h>
 
+#define SRVSVC_NETRSHAREADD       0x0e
 #define SRVSVC_NETRSHAREENUM      0x0f
 #define SRVSVC_NETRSHAREGETINFO   0x10
 
@@ -116,6 +117,25 @@ struct srvsvc_SHARE_ENUM_STRUCT {
         union srvsvc_SHARE_ENUM_UNION ShareEnum;
 };
 
+union srvsvc_SHARE_INFO {
+        struct srvsvc_SHARE_INFO_0 ShareInfo0;
+        struct srvsvc_SHARE_INFO_1 ShareInfo1;
+        struct srvsvc_SHARE_INFO_2 ShareInfo2;
+};
+
+struct srvsvc_NetrShareAdd_req {
+        char *ServerName;
+        uint32_t Level;
+        union srvsvc_SHARE_INFO ShareInfo;
+        uint32_t ParmErr;
+};
+
+struct srvsvc_NetrShareAdd_rep {
+        uint32_t ParmErr;
+
+        uint32_t status;
+};
+        
 struct srvsvc_NetrShareEnum_req {
         char *ServerName;
         struct srvsvc_SHARE_ENUM_STRUCT ses;
@@ -129,12 +149,6 @@ struct srvsvc_NetrShareEnum_rep {
         uint32_t resume_handle;
 
         uint32_t status;
-};
-
-union srvsvc_SHARE_INFO {
-        struct srvsvc_SHARE_INFO_0 ShareInfo0;
-        struct srvsvc_SHARE_INFO_1 ShareInfo1;
-        struct srvsvc_SHARE_INFO_2 ShareInfo2;
 };
 
 struct srvsvc_NetrShareGetInfo_req {
