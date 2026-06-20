@@ -2471,6 +2471,7 @@ yaml_struct_coder(char *name, struct dcerpc_context *ctx,
         } else {
                 yaml_print_preamble(ctx, pdu, iov, offset);
                 *offset += snprintf((char *)&iov->buf[*offset], iov->len - *offset, "%s: %s\n", name, pdu->yaml_val);
+                pdu->yaml_val = "";
 
                 pdu->yaml_indentation++;
                 ret = coder(name, ctx, pdu, iov, offset, ptr);
