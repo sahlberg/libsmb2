@@ -2467,7 +2467,7 @@ yaml_struct_coder(char *name, struct dcerpc_context *ctx,
                 ret = coder(name, ctx, pdu, iov, offset, ptr);
         } else {
                 yaml_print_preamble(ctx, pdu, iov, offset);
-                *offset += snprintf((char *)&iov->buf[*offset], iov->len - *offset, "%s:\n", name);
+                *offset += snprintf((char *)&iov->buf[*offset], iov->len - *offset, "%s: %s\n", name, pdu->yaml_val);
 
                 pdu->yaml_indentation++;
                 ret = coder(name, ctx, pdu, iov, offset, ptr);
@@ -2491,6 +2491,7 @@ yaml_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 }
                 return yaml_struct_coder(name,ctx, pdu, iov, offset, ptr, coder);
         } else {
+                pdu->yaml_val = dcerpc_get_request(pdu) ? "Response" : "Request";
                 return yaml_struct_coder(name,ctx, pdu, iov, offset, ptr, coder);
         }
 }
