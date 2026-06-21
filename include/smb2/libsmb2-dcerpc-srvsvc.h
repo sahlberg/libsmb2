@@ -30,6 +30,7 @@ extern "C" {
 #define SRVSVC_NETRSHAREGETINFO   0x10
 #define SRVSVC_NETRSHARESETINFO   0x11
 #define SRVSVC_NETRSHAREDEL       0x12
+#define SRVSVC_NETRSHAREDELSTICKY 0x13
 
 struct dcerpc_context;
 struct dcerpc_pdu;
@@ -189,7 +190,8 @@ struct srvsvc_NetrShareDel_rep {
 
         uint32_t status;
 };
-        
+
+
 
 /*
  * Async share_enum()

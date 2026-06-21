@@ -1,0 +1,5 @@
+NetrShareDelSticky: Request
+  ServerName: \\10.10.10.11
+  NetName: SNAP-OLD
+  Reserved: 0
+

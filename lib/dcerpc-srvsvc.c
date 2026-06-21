@@ -824,6 +824,10 @@ struct dcerpc_procedure srvsvc_procs[] = {
          srvsvc_NetrShareDel_req_coder, sizeof(struct srvsvc_NetrShareDel_req),
          srvsvc_NetrShareDel_rep_coder, sizeof(struct srvsvc_NetrShareDel_rep),
         },
+        {SRVSVC_NETRSHAREDELSTICKY, "NetrShareDelSticky",
+         srvsvc_NetrShareDel_req_coder, sizeof(struct srvsvc_NetrShareDel_req),
+         srvsvc_NetrShareDel_rep_coder, sizeof(struct srvsvc_NetrShareDel_rep),
+        },
         {-1, NULL, NULL, 0, NULL, 0}
 };
 
