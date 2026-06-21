@@ -756,6 +756,53 @@ srvsvc_NetrShareSetInfo_rep_coder(char *name, struct dcerpc_context *dce,
         return 0;
 }
 
+/******************
+ * Function: 0x12
+ * NET_API_STATUS NetrShareDel (
+ * [in,string,unique] SRVSVC_HANDLE ServerName,
+ * [in,string] WCHAR *NetName,
+ * [in] DWORD reserved
+ * );
+ */
+int
+srvsvc_NetrShareDel_req_coder(char *name, struct dcerpc_context *dce,
+                              struct dcerpc_pdu *pdu,
+                              struct smb2_iovec *iov, int *offset,
+                              void *ptr)
+{
+        struct srvsvc_NetrShareDel_req *req = ptr;
+
+        if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("NetName", dce, pdu, iov, offset,
+                             discard_const(&req->NetName),
+                             PTR_REF, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Reserved", dce, pdu, iov, offset, &req->Reserved)) {
+                return -1;
+        }
+        return 0;
+}
+
+int
+srvsvc_NetrShareDel_rep_coder(char *name, struct dcerpc_context *dce,
+                              struct dcerpc_pdu *pdu,
+                              struct smb2_iovec *iov, int *offset,
+                              void *ptr)
+{
+        struct srvsvc_NetrShareDel_rep *rep = ptr;
+
+        if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+
 struct dcerpc_procedure srvsvc_procs[] = {
         {SRVSVC_NETRSHAREADD, "NetrShareAdd",
          srvsvc_NetrShareAdd_req_coder, sizeof(struct srvsvc_NetrShareAdd_req),
@@ -772,6 +819,10 @@ struct dcerpc_procedure srvsvc_procs[] = {
         {SRVSVC_NETRSHARESETINFO, "NetrShareSetInfo",
          srvsvc_NetrShareSetInfo_req_coder, sizeof(struct srvsvc_NetrShareSetInfo_req),
          srvsvc_NetrShareSetInfo_rep_coder, sizeof(struct srvsvc_NetrShareSetInfo_rep),
+        },
+        {SRVSVC_NETRSHAREDEL, "NetrShareDel",
+         srvsvc_NetrShareDel_req_coder, sizeof(struct srvsvc_NetrShareDel_req),
+         srvsvc_NetrShareDel_rep_coder, sizeof(struct srvsvc_NetrShareDel_rep),
         },
         {-1, NULL, NULL, 0, NULL, 0}
 };

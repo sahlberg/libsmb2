@@ -29,6 +29,7 @@ extern "C" {
 #define SRVSVC_NETRSHAREENUM      0x0f
 #define SRVSVC_NETRSHAREGETINFO   0x10
 #define SRVSVC_NETRSHARESETINFO   0x11
+#define SRVSVC_NETRSHAREDEL       0x12
 
 struct dcerpc_context;
 struct dcerpc_pdu;
@@ -178,6 +179,17 @@ struct srvsvc_NetrShareSetInfo_rep {
         uint32_t status;
 };
 
+struct srvsvc_NetrShareDel_req {
+        char *ServerName;
+        char *NetName;
+        uint32_t Reserved;
+};
+
+struct srvsvc_NetrShareDel_rep {
+
+        uint32_t status;
+};
+        
 
 /*
  * Async share_enum()
@@ -232,6 +244,14 @@ int srvsvc_NetrShareSetInfo_req_coder(char *name, struct dcerpc_context *ctx,
                                       struct dcerpc_pdu *pdu,
                                       struct smb2_iovec *iov, int *offset,
                                       void *ptr);
+int srvsvc_NetrShareDel_req_coder(char *name, struct dcerpc_context *ctx,
+                                  struct dcerpc_pdu *pdu,
+                                  struct smb2_iovec *iov, int *offset,
+                                  void *ptr);
+int srvsvc_NetrShareDel_rep_coder(char *name, struct dcerpc_context *dce,
+                                  struct dcerpc_pdu *pdu,
+                                  struct smb2_iovec *iov, int *offset,
+                                  void *ptr);
 
 extern struct dcerpc_procedure srvsvc_procs[];
         
