@@ -1,0 +1,9 @@
+NetrShareAdd: Request
+  ServerName: \\10.10.10.11
+  Level: 1
+  InfoStruct:
+    ShareInfo1:
+      NetName: NEW-SNAP
+      Type: 0
+      Remark: Boogaloo
+  ParmErr: 5
