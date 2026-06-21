@@ -31,6 +31,7 @@ extern "C" {
 #define SRVSVC_NETRSHARESETINFO   0x11
 #define SRVSVC_NETRSHAREDEL       0x12
 #define SRVSVC_NETRSHAREDELSTICKY 0x13
+#define SRVSVC_NETRSHARECHECK     0x14
 
 struct dcerpc_context;
 struct dcerpc_pdu;
@@ -187,6 +188,17 @@ struct srvsvc_NetrShareDel_req {
 };
 
 struct srvsvc_NetrShareDel_rep {
+
+        uint32_t status;
+};
+
+struct srvsvc_NetrShareCheck_req {
+        char *ServerName;
+        char *Device;
+};
+
+struct srvsvc_NetrShareCheck_rep {
+        uint32_t Type;
 
         uint32_t status;
 };

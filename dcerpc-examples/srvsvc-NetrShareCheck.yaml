@@ -1,0 +1,4 @@
+NetrShareCheck: Request
+  ServerName: \\10.10.10.11
+  Device: c:\foo
+

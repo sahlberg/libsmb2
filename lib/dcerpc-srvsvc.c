@@ -802,6 +802,54 @@ srvsvc_NetrShareDel_rep_coder(char *name, struct dcerpc_context *dce,
         return 0;
 }
 
+/******************
+ * Function: 0x13
+ * NET_API_STATUS NetrShareCheck (
+ * [in,string,unique] SRVSVC_HANDLE ServerName,
+ * [in,string] WCHAR *Device,
+ * [out] DWORD Type
+ * );
+ */
+int
+srvsvc_NetrShareCheck_req_coder(char *name, struct dcerpc_context *dce,
+                              struct dcerpc_pdu *pdu,
+                              struct smb2_iovec *iov, int *offset,
+                              void *ptr)
+{
+        struct srvsvc_NetrShareCheck_req *req = ptr;
+
+        if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("Device", dce, pdu, iov, offset,
+                             discard_const(&req->Device),
+                             PTR_REF, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        return 0;
+}
+
+int
+srvsvc_NetrShareCheck_rep_coder(char *name, struct dcerpc_context *dce,
+                                struct dcerpc_pdu *pdu,
+                                struct smb2_iovec *iov, int *offset,
+                                void *ptr)
+{
+        struct srvsvc_NetrShareCheck_rep *rep = ptr;
+
+        if (dcerpc_ptr_coder("Type", dce, pdu, iov, offset, &rep->Type,
+                             PTR_REF, dcerpc_uint32_coder)) {
+                return -1;
+        }
+
+        if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
+                return -1;
+        }
+
+        return 0;
+}
+
 
 struct dcerpc_procedure srvsvc_procs[] = {
         {SRVSVC_NETRSHAREADD, "NetrShareAdd",
@@ -827,6 +875,10 @@ struct dcerpc_procedure srvsvc_procs[] = {
         {SRVSVC_NETRSHAREDELSTICKY, "NetrShareDelSticky",
          srvsvc_NetrShareDel_req_coder, sizeof(struct srvsvc_NetrShareDel_req),
          srvsvc_NetrShareDel_rep_coder, sizeof(struct srvsvc_NetrShareDel_rep),
+        },
+        {SRVSVC_NETRSHARECHECK, "NetrShareCheck",
+         srvsvc_NetrShareCheck_req_coder, sizeof(struct srvsvc_NetrShareCheck_req),
+         srvsvc_NetrShareCheck_rep_coder, sizeof(struct srvsvc_NetrShareCheck_rep),
         },
         {-1, NULL, NULL, 0, NULL, 0}
 };
