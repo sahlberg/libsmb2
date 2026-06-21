@@ -506,7 +506,7 @@ srvsvc_SHARE_INFO_STRUCT_coder(char *name, struct dcerpc_context *ctx, struct dc
 {
         uint32_t Level = dcerpc_get_switch_is(pdu);
 
-        if (dcerpc_union_coder("ShareInfo", ctx, pdu, iov, offset,
+        if (dcerpc_union_coder("InfoStruct", ctx, pdu, iov, offset,
                                &Level, ptr,
                                srvsvc_SHARE_INFO_coder)) {
                 return -1;
@@ -541,7 +541,7 @@ srvsvc_NetrShareAdd_req_coder(char *name, struct dcerpc_context *dce,
         }
         dcerpc_set_switch_is(pdu, req->Level);
 
-        if (dcerpc_ptr_coder("ShareInfo", dce, pdu, iov, offset, &req->ShareInfo,
+        if (dcerpc_ptr_coder("InfoStruct", dce, pdu, iov, offset, &req->InfoStruct,
                              PTR_REF, srvsvc_SHARE_INFO_STRUCT_coder)) {
                 return -1;
         }
@@ -702,7 +702,7 @@ struct dcerpc_procedure srvsvc_procs[] = {
          srvsvc_NetrShareEnum_req_coder, sizeof(struct srvsvc_NetrShareEnum_req),
          srvsvc_NetrShareEnum_rep_coder, sizeof(struct srvsvc_NetrShareEnum_rep),
         },
-        {SRVSVC_NETRSHAREGETINFO, "NetrShareInfo",
+        {SRVSVC_NETRSHAREGETINFO, "NetrShareGetInfo",
          srvsvc_NetrShareGetInfo_req_coder, sizeof(struct srvsvc_NetrShareGetInfo_req),
          srvsvc_NetrShareGetInfo_rep_coder, sizeof(struct srvsvc_NetrShareGetInfo_rep),
         },

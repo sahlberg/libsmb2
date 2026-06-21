@@ -98,7 +98,7 @@ void si_cb(struct dcerpc_context *dce, int status,
         offset = 0;
         iov.len = 65536;
         iov.buf = buf;
-        if (dcerpc_do_coder("NetrShareInfo: Request", dce, yaml_pdu, &iov, &offset, si_req, srvsvc_NetrShareGetInfo_req_coder)) {
+        if (dcerpc_do_coder("NetrShareGetInfo: Request", dce, yaml_pdu, &iov, &offset, si_req, srvsvc_NetrShareGetInfo_req_coder)) {
                 printf("Failed to encode REQ as YAML\n");
                 exit(10);
         }
@@ -112,7 +112,7 @@ void si_cb(struct dcerpc_context *dce, int status,
         iov.buf = buf;
         /* We need to reference req->Level from the reply */
         dcerpc_set_request(yaml_pdu, si_req);
-        if (dcerpc_do_coder("NetrShareInfo: Response", dce, yaml_pdu, &iov, &offset, rep, srvsvc_NetrShareGetInfo_rep_coder)) {
+        if (dcerpc_do_coder("NetrShareGetInfo: Response", dce, yaml_pdu, &iov, &offset, rep, srvsvc_NetrShareGetInfo_rep_coder)) {
                 printf("Failed to encode REP as YAML\n");
                 exit(10);
         }

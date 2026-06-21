@@ -126,7 +126,7 @@ union srvsvc_SHARE_INFO {
 struct srvsvc_NetrShareAdd_req {
         char *ServerName;
         uint32_t Level;
-        union srvsvc_SHARE_INFO ShareInfo;
+        union srvsvc_SHARE_INFO InfoStruct;
         uint32_t ParmErr;
 };
 
