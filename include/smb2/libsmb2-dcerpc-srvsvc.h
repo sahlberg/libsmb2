@@ -28,6 +28,7 @@ extern "C" {
 #define SRVSVC_NETRSHAREADD       0x0e
 #define SRVSVC_NETRSHAREENUM      0x0f
 #define SRVSVC_NETRSHAREGETINFO   0x10
+#define SRVSVC_NETRSHARESETINFO   0x11
 
 struct dcerpc_context;
 struct dcerpc_pdu;
@@ -163,6 +164,21 @@ struct srvsvc_NetrShareGetInfo_rep {
         uint32_t status;
 };
 
+struct srvsvc_NetrShareSetInfo_req {
+        char *ServerName;
+        char *NetName;
+        uint32_t Level;
+        union srvsvc_SHARE_INFO InfoStruct;
+        uint32_t ParmErr;
+};
+
+struct srvsvc_NetrShareSetInfo_rep {
+        uint32_t ParmErr;
+
+        uint32_t status;
+};
+
+
 /*
  * Async share_enum()
  * This function only works when connected to the IPC$ share.
@@ -205,6 +221,14 @@ int srvsvc_NetrShareGetInfo_rep_coder(char *name, struct dcerpc_context *dce,
                                       struct smb2_iovec *iov, int *offset,
                                       void *ptr);
 int srvsvc_NetrShareGetInfo_req_coder(char *name, struct dcerpc_context *ctx,
+                                      struct dcerpc_pdu *pdu,
+                                      struct smb2_iovec *iov, int *offset,
+                                      void *ptr);
+int srvsvc_NetrShareSetInfo_rep_coder(char *name, struct dcerpc_context *dce,
+                                      struct dcerpc_pdu *pdu,
+                                      struct smb2_iovec *iov, int *offset,
+                                      void *ptr);
+int srvsvc_NetrShareSetInfo_req_coder(char *name, struct dcerpc_context *ctx,
                                       struct dcerpc_pdu *pdu,
                                       struct smb2_iovec *iov, int *offset,
                                       void *ptr);

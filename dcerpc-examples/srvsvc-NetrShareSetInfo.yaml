@@ -1,0 +1,11 @@
+NetrShareSetInfo: Request
+  ServerName: \\10.10.10.11
+  NetName: SNAP-1
+  Level: 1
+  InfoStruct:
+    ShareInfo1: 
+      NetName: SNAP-1
+      Type: 0
+      Remark: New Comment
+  ParmErr: 3
+

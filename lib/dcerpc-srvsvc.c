@@ -693,6 +693,69 @@ srvsvc_NetrShareGetInfo_rep_coder(char *name, struct dcerpc_context *dce,
         return 0;
 }
 
+/******************
+ * Function: 0x11
+ * NET_API_STATUS NetrShareSetInfo (
+ * [in,string,unique] SRVSVC_HANDLE ServerName,
+ * [in,string] WCHAR * NetName,
+ * [in] DWORD Level,
+ * [in, switch_is(Level)] LPSHARE_INFO ShareInfo,
+ * [in,out,unique] DWORD * ParmErr
+ * );
+*/
+int
+srvsvc_NetrShareSetInfo_req_coder(char *name, struct dcerpc_context *dce,
+                                  struct dcerpc_pdu *pdu,
+                                  struct smb2_iovec *iov, int *offset,
+                                  void *ptr)
+{
+        struct srvsvc_NetrShareSetInfo_req *req = ptr;
+
+        if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("NetName", dce, pdu, iov, offset,
+                             discard_const(&req->NetName),
+                             PTR_REF, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Level", dce, pdu, iov, offset, &req->Level)) {
+                return -1;
+        }
+        dcerpc_set_switch_is(pdu, req->Level);
+
+        if (dcerpc_ptr_coder("InfoStruct", dce, pdu, iov, offset, &req->InfoStruct,
+                             PTR_REF, srvsvc_SHARE_INFO_STRUCT_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("ParmErr", dce, pdu, iov, offset, &req->ParmErr,
+                             PTR_UNIQUE, dcerpc_uint32_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_NetrShareSetInfo_rep_coder(char *name, struct dcerpc_context *dce,
+                                  struct dcerpc_pdu *pdu,
+                                  struct smb2_iovec *iov, int *offset,
+                                  void *ptr)
+{
+        struct srvsvc_NetrShareSetInfo_rep *rep = ptr;
+
+        if (dcerpc_ptr_coder("ParmErr", dce, pdu, iov, offset, &rep->ParmErr,
+                             PTR_UNIQUE, dcerpc_uint32_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
+                return -1;
+        }
+
+        return 0;
+}
+
 struct dcerpc_procedure srvsvc_procs[] = {
         {SRVSVC_NETRSHAREADD, "NetrShareAdd",
          srvsvc_NetrShareAdd_req_coder, sizeof(struct srvsvc_NetrShareAdd_req),
@@ -705,6 +768,10 @@ struct dcerpc_procedure srvsvc_procs[] = {
         {SRVSVC_NETRSHAREGETINFO, "NetrShareGetInfo",
          srvsvc_NetrShareGetInfo_req_coder, sizeof(struct srvsvc_NetrShareGetInfo_req),
          srvsvc_NetrShareGetInfo_rep_coder, sizeof(struct srvsvc_NetrShareGetInfo_rep),
+        },
+        {SRVSVC_NETRSHARESETINFO, "NetrShareSetInfo",
+         srvsvc_NetrShareSetInfo_req_coder, sizeof(struct srvsvc_NetrShareSetInfo_req),
+         srvsvc_NetrShareSetInfo_rep_coder, sizeof(struct srvsvc_NetrShareSetInfo_rep),
         },
         {-1, NULL, NULL, 0, NULL, 0}
 };
