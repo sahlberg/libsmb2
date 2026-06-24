@@ -2917,6 +2917,21 @@ notify_change_cb(struct smb2_context *smb2, int status,
                                strerror(-status), smb2_get_error(smb2));
         }
 
+        if (status || rep == NULL) {
+                /* Error or cancellation -- e.g. smb2_destroy_context() flushing the pending
+                 * watch request with command_data == NULL. There is no reply to decode, so
+                 * signal the failure to the callback, do not re-arm, and free. Without this
+                 * the unconditional rep->output dereference below SEGVs whenever a watcher
+                 * is torn down with a notify request still outstanding. */
+                if (notify_change_data->cb) {
+                        notify_change_data->cb(smb2, status ? status : -EIO,
+                                               NULL, notify_change_data->cb_data);
+                }
+                free(fnc);
+                free(notify_change_data);
+                return;
+        }
+
         vec.buf = rep->output;
         vec.len = rep->output_buffer_length;
 
