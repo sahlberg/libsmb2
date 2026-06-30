@@ -166,17 +166,21 @@ int main(int argc, char *argv[])
 	struct pollfd pfd;
         int i, fd;
 
-        if (argc < 3) {
+        if (argc < 2) {
                 usage();
         }
 
-        fd = open(argv[2], O_RDONLY);
-        if (fd == -1) {
-                printf("Failed to open yaml file : %s\n", argv[2]);
-                exit(9);
+        if (argc < 3) {
+                read(0, iov.buf, iov.len);
+        } else {
+                fd = open(argv[2], O_RDONLY);
+                if (fd == -1) {
+                        printf("Failed to open yaml file : %s\n", argv[2]);
+                        exit(9);
+                }
+                read(fd, iov.buf, iov.len);
+                close(fd);
         }
-        read(fd, iov.buf, iov.len);
-        close(fd);
 
 	smb2 = smb2_init_context();
         if (smb2 == NULL) {
