@@ -2287,7 +2287,7 @@ yaml_print_preamble(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 }
 
 int
-yamp_next_kv(struct dcerpc_pdu *pdu, struct smb2_iovec *iov, int *offset)
+yaml_next_kv(struct dcerpc_pdu *pdu, struct smb2_iovec *iov, int *offset)
 {
         char *str;
 
@@ -2330,7 +2330,7 @@ yaml_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu
                   struct smb2_iovec *iov, int *offset, void *ptr)
 {
         if (pdu->direction == DCERPC_DECODE) {
-                yamp_next_kv(pdu, iov, offset);
+                yaml_next_kv(pdu, iov, offset);
                 if (strcmp(pdu->yaml_key,  name)) {
                         printf("Wrong YAML key encountered for uint32. Expected %s but got %s\n",
                                name, pdu->yaml_key);
@@ -2338,7 +2338,7 @@ yaml_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu
                 }
                 pdu->yaml_key = NULL;
                 *(uint32_t *)ptr = strtol(pdu->yaml_val, NULL, 0);
-                yamp_next_kv(pdu, iov, offset);
+                yaml_next_kv(pdu, iov, offset);
                 return 0;
         } else {
                 yaml_print_preamble(ctx, pdu, iov, offset);
@@ -2394,7 +2394,7 @@ yaml_union_coder(char *name, struct dcerpc_context *ctx,
                         return -1;
                 }
                 pdu->yaml_key = NULL;
-                yamp_next_kv(pdu, iov, offset);
+                yaml_next_kv(pdu, iov, offset);
                 name = pdu->yaml_key;
                 ret = coder(name, ctx, pdu, iov, offset, ptr);
         } else {
@@ -2420,7 +2420,7 @@ yaml_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                 return 0;
         }
         if (pdu->direction == DCERPC_DECODE) {
-                yamp_next_kv(pdu, iov, offset);
+                yaml_next_kv(pdu, iov, offset);
                 if (strcmp(pdu->yaml_key,  name)) {
                         if (type == PTR_UNIQUE) {
                                 return 0;
@@ -2441,7 +2441,7 @@ yaml_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                  void *ptr)
 {
         if (pdu->direction == DCERPC_DECODE) {
-                yamp_next_kv(pdu, iov, offset);
+                yaml_next_kv(pdu, iov, offset);
                 if (strcmp(pdu->yaml_key,  name)) {
                         printf("Wrong YAML key encountered for ptr. Expected %s but got %s\n",
                                name, pdu->yaml_key);
@@ -2449,7 +2449,7 @@ yaml_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 }
                 pdu->yaml_key = NULL;
                 *(char **)ptr = pdu->yaml_val;
-                yamp_next_kv(pdu, iov, offset);
+                yaml_next_kv(pdu, iov, offset);
                 return 0;
         } else {
                 yaml_print_preamble(ctx, pdu, iov, offset);
@@ -2470,14 +2470,14 @@ yaml_struct_coder(char *name, struct dcerpc_context *ctx,
         int ret;
 
         if (pdu->direction == DCERPC_DECODE) {
-                yamp_next_kv(pdu, iov, offset);
+                yaml_next_kv(pdu, iov, offset);
                 if (strcmp(pdu->yaml_key,  name)) {
                         printf("Wrong YAML key encountered for struct. Expected %s but got %s\n",
                                name, pdu->yaml_key);
                         return -1;
                 }
                 pdu->yaml_key = NULL;
-                yamp_next_kv(pdu, iov, offset);
+                yaml_next_kv(pdu, iov, offset);
                 ret = coder(name, ctx, pdu, iov, offset, ptr);
         } else {
                 yaml_print_preamble(ctx, pdu, iov, offset);
@@ -2498,7 +2498,7 @@ yaml_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
              dcerpc_coder coder)
 {
         if (pdu->direction == DCERPC_DECODE) {
-                yamp_next_kv(pdu, iov, offset);
+                yaml_next_kv(pdu, iov, offset);
                 if (strcmp(pdu->yaml_key,  name)) {
                         printf("Wrong YAML key encountered for do. Expected %s but got %s\n",
                                name, pdu->yaml_key);

@@ -84,14 +84,14 @@ p_syntax_id_t srvsvc_interface = {
  * } SHARE_INFO_0, *PSHARE_INFO_0, *LPSHARE_INFO_0;
  */
 int
-srvsvc_SHARE_INFO_0_coder(char *name, struct dcerpc_context *ctx,
+srvsvc_SHARE_INFO_0_coder(char *name, struct dcerpc_context *dce,
                            struct dcerpc_pdu *pdu,
                            struct smb2_iovec *iov, int *offset,
                            void *ptr)
 {
         struct srvsvc_SHARE_INFO_0 *nsi1 = ptr;
 
-        if (dcerpc_ptr_coder("NetName", ctx, pdu, iov, offset, &nsi1->netname,
+        if (dcerpc_ptr_coder("NetName", dce, pdu, iov, offset, &nsi1->netname,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
@@ -99,12 +99,12 @@ srvsvc_SHARE_INFO_0_coder(char *name, struct dcerpc_context *ctx,
 }
 
 int
-srvsvc_SHARE_INFO_0_STRUCT_coder(char *name, struct dcerpc_context *ctx,
+srvsvc_SHARE_INFO_0_STRUCT_coder(char *name, struct dcerpc_context *dce,
                           struct dcerpc_pdu *pdu,
                           struct smb2_iovec *iov, int *offset,
                           void *ptr)
 {
-        return dcerpc_struct_coder(name, ctx, pdu, iov, offset, ptr,
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
                                    srvsvc_SHARE_INFO_0_coder);
 }
 
@@ -112,12 +112,12 @@ srvsvc_SHARE_INFO_0_STRUCT_coder(char *name, struct dcerpc_context *ctx,
  *       [size_is(EntriesRead)] LPSHARE_INFO_0 Buffer;
  */
 static int
-srvsvc_SHARE_INFO_0_carray_coder(char *name, struct dcerpc_context *ctx,
+srvsvc_SHARE_INFO_0_carray_coder(char *name, struct dcerpc_context *dce,
                                  struct dcerpc_pdu *pdu,
                                  struct smb2_iovec *iov, int *offset,
                                  void *ptr)
 {
-        return dcerpc_carray_coder("ShareInfo0", ctx, pdu, iov, offset,
+        return dcerpc_carray_coder("ShareInfo0", dce, pdu, iov, offset,
                                    dcerpc_get_size_is(pdu), ptr,
                                    sizeof(struct srvsvc_SHARE_INFO_0),
                                    srvsvc_SHARE_INFO_0_coder);
@@ -170,21 +170,21 @@ srvsvc_SHARE_INFO_0_CONTAINER_coder(char *name, struct dcerpc_context *dce,
  * } SHARE_INFO_1, *PSHARE_INFO_1, *LPSHARE_INFO_1;
  */
 int
-srvsvc_SHARE_INFO_1_coder(char *name, struct dcerpc_context *ctx,
+srvsvc_SHARE_INFO_1_coder(char *name, struct dcerpc_context *dce,
                           struct dcerpc_pdu *pdu,
                           struct smb2_iovec *iov, int *offset,
                           void *ptr)
 {
         struct srvsvc_SHARE_INFO_1 *nsi1 = ptr;
 
-        if (dcerpc_ptr_coder("NetName", ctx, pdu, iov, offset, &nsi1->netname,
+        if (dcerpc_ptr_coder("NetName", dce, pdu, iov, offset, &nsi1->netname,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Type", ctx, pdu, iov, offset, &nsi1->type)) {
+        if (dcerpc_uint32_coder("Type", dce, pdu, iov, offset, &nsi1->type)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("Remark", ctx, pdu, iov, offset, &nsi1->remark,
+        if (dcerpc_ptr_coder("Remark", dce, pdu, iov, offset, &nsi1->remark,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
@@ -192,12 +192,12 @@ srvsvc_SHARE_INFO_1_coder(char *name, struct dcerpc_context *ctx,
 }
 
 int
-srvsvc_SHARE_INFO_1_STRUCT_coder(char *name, struct dcerpc_context *ctx,
+srvsvc_SHARE_INFO_1_STRUCT_coder(char *name, struct dcerpc_context *dce,
                           struct dcerpc_pdu *pdu,
                           struct smb2_iovec *iov, int *offset,
                           void *ptr)
 {
-        return dcerpc_struct_coder(name, ctx, pdu, iov, offset, ptr,
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
                                    srvsvc_SHARE_INFO_1_coder);
 }
 
@@ -205,12 +205,12 @@ srvsvc_SHARE_INFO_1_STRUCT_coder(char *name, struct dcerpc_context *ctx,
  *       [size_is(EntriesRead)] LPSHARE_INFO_1 Buffer;
  */
 static int
-srvsvc_SHARE_INFO_1_carray_coder(char *name, struct dcerpc_context *ctx,
+srvsvc_SHARE_INFO_1_carray_coder(char *name, struct dcerpc_context *dce,
                                  struct dcerpc_pdu *pdu,
                                  struct smb2_iovec *iov, int *offset,
                                  void *ptr)
 {
-        return dcerpc_carray_coder("ShareInfo1", ctx, pdu, iov, offset,
+        return dcerpc_carray_coder("ShareInfo1", dce, pdu, iov, offset,
                                    dcerpc_get_size_is(pdu), ptr,
                                    sizeof(struct srvsvc_SHARE_INFO_1),
                                    srvsvc_SHARE_INFO_1_STRUCT_coder);
@@ -269,38 +269,38 @@ srvsvc_SHARE_INFO_1_CONTAINER_coder(char *name, struct dcerpc_context *dce,
  * } SHARE_INFO_2, *PSHARE_INFO_2, *LPSHARE_INFO_2;
  */
 int
-srvsvc_SHARE_INFO_2_coder(char *name, struct dcerpc_context *ctx,
+srvsvc_SHARE_INFO_2_coder(char *name, struct dcerpc_context *dce,
                           struct dcerpc_pdu *pdu,
                           struct smb2_iovec *iov, int *offset,
                           void *ptr)
 {
         struct srvsvc_SHARE_INFO_2 *nsi2 = ptr;
 
-        if (dcerpc_ptr_coder("NetName", ctx, pdu, iov, offset, &nsi2->netname,
+        if (dcerpc_ptr_coder("NetName", dce, pdu, iov, offset, &nsi2->netname,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Type", ctx, pdu, iov, offset, &nsi2->type)) {
+        if (dcerpc_uint32_coder("Type", dce, pdu, iov, offset, &nsi2->type)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("Remark", ctx, pdu, iov, offset, &nsi2->remark,
+        if (dcerpc_ptr_coder("Remark", dce, pdu, iov, offset, &nsi2->remark,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Permissions", ctx, pdu, iov, offset, &nsi2->permissions)) {
+        if (dcerpc_uint32_coder("Permissions", dce, pdu, iov, offset, &nsi2->permissions)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("MaxUsers", ctx, pdu, iov, offset, &nsi2->max_users)) {
+        if (dcerpc_uint32_coder("MaxUsers", dce, pdu, iov, offset, &nsi2->max_users)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("CurrentUsers", ctx, pdu, iov, offset, &nsi2->current_users)) {
+        if (dcerpc_uint32_coder("CurrentUsers", dce, pdu, iov, offset, &nsi2->current_users)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("Path", ctx, pdu, iov, offset, &nsi2->path,
+        if (dcerpc_ptr_coder("Path", dce, pdu, iov, offset, &nsi2->path,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("Passwd", ctx, pdu, iov, offset, &nsi2->passwd,
+        if (dcerpc_ptr_coder("Passwd", dce, pdu, iov, offset, &nsi2->passwd,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
@@ -308,12 +308,12 @@ srvsvc_SHARE_INFO_2_coder(char *name, struct dcerpc_context *ctx,
 }
 
 int
-srvsvc_SHARE_INFO_2_STRUCT_coder(char *name, struct dcerpc_context *ctx,
+srvsvc_SHARE_INFO_2_STRUCT_coder(char *name, struct dcerpc_context *dce,
                           struct dcerpc_pdu *pdu,
                           struct smb2_iovec *iov, int *offset,
                           void *ptr)
 {
-        return dcerpc_struct_coder(name, ctx, pdu, iov, offset, ptr,
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
                                    srvsvc_SHARE_INFO_2_coder);
 }
 
@@ -321,12 +321,12 @@ srvsvc_SHARE_INFO_2_STRUCT_coder(char *name, struct dcerpc_context *ctx,
  *       [size_is(EntriesRead)] LPSHARE_INFO_2 Buffer;
  */
 static int
-srvsvc_SHARE_INFO_2_carray_coder(char *name, struct dcerpc_context *ctx,
+srvsvc_SHARE_INFO_2_carray_coder(char *name, struct dcerpc_context *dce,
                                  struct dcerpc_pdu *pdu,
                                  struct smb2_iovec *iov, int *offset,
                                  void *ptr)
 {
-        return dcerpc_carray_coder("ShareInfo2", ctx, pdu, iov, offset,
+        return dcerpc_carray_coder("ShareInfo2", dce, pdu, iov, offset,
                                    dcerpc_get_size_is(pdu), ptr,
                                    sizeof(struct srvsvc_SHARE_INFO_2),
                                    srvsvc_SHARE_INFO_2_STRUCT_coder);
@@ -383,7 +383,7 @@ srvsvc_SHARE_INFO_2_CONTAINER_coder(char *name, struct dcerpc_context *dce,
  * } SHARE_ENUM_UNION;
  */
 static int
-srvsvc_SHARE_ENUM_UNION_coder(char *name, struct dcerpc_context *ctx,
+srvsvc_SHARE_ENUM_UNION_coder(char *name, struct dcerpc_context *dce,
                               struct dcerpc_pdu *pdu,
                               struct smb2_iovec *iov, int *offset,
                               void *ptr)
@@ -392,19 +392,19 @@ srvsvc_SHARE_ENUM_UNION_coder(char *name, struct dcerpc_context *ctx,
 
         switch (dcerpc_get_switch_is(pdu)) {
         case 0:
-                if (dcerpc_ptr_coder("ShareInfo0Container", ctx, pdu, iov, offset, &info->Level0,
+                if (dcerpc_ptr_coder("ShareInfo0Container", dce, pdu, iov, offset, &info->Level0,
                                      PTR_UNIQUE, srvsvc_SHARE_INFO_0_CONTAINER_coder)) {
                         return -1;
                 }
                 break;
         case 1:
-                if (dcerpc_ptr_coder("ShareInfo1Container", ctx, pdu, iov, offset, &info->Level1,
+                if (dcerpc_ptr_coder("ShareInfo1Container", dce, pdu, iov, offset, &info->Level1,
                                      PTR_UNIQUE, srvsvc_SHARE_INFO_1_CONTAINER_coder)) {
                         return -1;
                 }
                 break;
         case 2:
-                if (dcerpc_ptr_coder("ShareInfo2Container", ctx, pdu, iov, offset, &info->Level2,
+                if (dcerpc_ptr_coder("ShareInfo2Container", dce, pdu, iov, offset, &info->Level2,
                                      PTR_UNIQUE, srvsvc_SHARE_INFO_2_CONTAINER_coder)) {
                         return -1;
                 }
@@ -421,18 +421,18 @@ srvsvc_SHARE_ENUM_UNION_coder(char *name, struct dcerpc_context *ctx,
  * } SHARE_ENUM_STRUCT, *PSHARE_ENUM_STRUCT, *LPSHARE_ENUM_STRUCT;
  */
 int
-srvsvc_SHARE_ENUM_STRUCT_coder(char *name, struct dcerpc_context *ctx,
+srvsvc_SHARE_ENUM_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                struct dcerpc_pdu *pdu,
                                struct smb2_iovec *iov, int *offset,
                                void *ptr)
 {
         struct srvsvc_SHARE_ENUM_STRUCT *ses = ptr;
 
-        if (dcerpc_uint32_coder("Level", ctx, pdu, iov, offset, &ses->Level)) {
+        if (dcerpc_uint32_coder("Level", dce, pdu, iov, offset, &ses->Level)) {
                 return -1;
         }
 
-        if (dcerpc_union_coder("ShareInfo", ctx, pdu, iov, offset,
+        if (dcerpc_union_coder("ShareInfo", dce, pdu, iov, offset,
                                &ses->Level, &ses->ShareEnum,
                                srvsvc_SHARE_ENUM_UNION_coder)) {
                 return -1;
@@ -442,12 +442,12 @@ srvsvc_SHARE_ENUM_STRUCT_coder(char *name, struct dcerpc_context *ctx,
 }
 
 int
-srvsvc_SHARE_ENUM_STRUCT_struct_coder(char *name, struct dcerpc_context *ctx,
+srvsvc_SHARE_ENUM_STRUCT_struct_coder(char *name, struct dcerpc_context *dce,
                                struct dcerpc_pdu *pdu,
                                struct smb2_iovec *iov, int *offset,
                                void *ptr)
 {
-        return dcerpc_struct_coder(name, ctx, pdu, iov, offset, ptr,
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
                                    srvsvc_SHARE_ENUM_STRUCT_coder);
 }
 
@@ -468,7 +468,7 @@ srvsvc_SHARE_ENUM_STRUCT_struct_coder(char *name, struct dcerpc_context *ctx,
  * } SHARE_INFO, *PSHARE_INFO, *LPSHARE_INFO;
  */
 static int
-srvsvc_SHARE_INFO_coder(char *name, struct dcerpc_context *ctx,
+srvsvc_SHARE_INFO_coder(char *name, struct dcerpc_context *dce,
                         struct dcerpc_pdu *pdu,
                         struct smb2_iovec *iov, int *offset,
                         void *ptr)
@@ -477,19 +477,19 @@ srvsvc_SHARE_INFO_coder(char *name, struct dcerpc_context *ctx,
 
         switch (dcerpc_get_switch_is(pdu)) {
         case 0:
-                if (dcerpc_ptr_coder("ShareInfo0", ctx, pdu, iov, offset, &info->ShareInfo0,
+                if (dcerpc_ptr_coder("ShareInfo0", dce, pdu, iov, offset, &info->ShareInfo0,
                                      PTR_UNIQUE, srvsvc_SHARE_INFO_0_STRUCT_coder)) {
                         return -1;
                 }
                 break;
         case 1:
-                if (dcerpc_ptr_coder("ShareInfo1", ctx, pdu, iov, offset, &info->ShareInfo1,
+                if (dcerpc_ptr_coder("ShareInfo1", dce, pdu, iov, offset, &info->ShareInfo1,
                                      PTR_UNIQUE, srvsvc_SHARE_INFO_1_STRUCT_coder)) {
                         return -1;
                 }
                 break;
         case 2:
-                if (dcerpc_ptr_coder("ShareInfo2", ctx, pdu, iov, offset, &info->ShareInfo2,
+                if (dcerpc_ptr_coder("ShareInfo2", dce, pdu, iov, offset, &info->ShareInfo2,
                                      PTR_UNIQUE, srvsvc_SHARE_INFO_2_STRUCT_coder)) {
                         return -1;
                 }
@@ -500,13 +500,13 @@ srvsvc_SHARE_INFO_coder(char *name, struct dcerpc_context *ctx,
 }
 
 static int
-srvsvc_SHARE_INFO_STRUCT_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+srvsvc_SHARE_INFO_STRUCT_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                                struct smb2_iovec *iov, int *offset,
                                void *ptr)
 {
         uint32_t Level = dcerpc_get_switch_is(pdu);
 
-        if (dcerpc_union_coder("InfoStruct", ctx, pdu, iov, offset,
+        if (dcerpc_union_coder("InfoStruct", dce, pdu, iov, offset,
                                &Level, ptr,
                                srvsvc_SHARE_INFO_coder)) {
                 return -1;
@@ -540,12 +540,12 @@ srvsvc_SERVER_INFO_100_coder(char *name, struct dcerpc_context *dce,
 }
 
 int
-srvsvc_SERVER_INFO_100_STRUCT_coder(char *name, struct dcerpc_context *ctx,
+srvsvc_SERVER_INFO_100_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                     struct dcerpc_pdu *pdu,
                                     struct smb2_iovec *iov, int *offset,
                                     void *ptr)
 {
-        return  dcerpc_struct_coder(name, ctx, pdu, iov, offset, ptr,
+        return  dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
                                     srvsvc_SERVER_INFO_100_coder);
 }
 
@@ -606,7 +606,7 @@ srvsvc_SERVER_INFO_100_STRUCT_coder(char *name, struct dcerpc_context *ctx,
  * } SERVER_INFO, *PSERVER_INFO, *LPSERVER_INFO;
  */
 static int
-srvsvc_SERVER_INFO_coder(char *name, struct dcerpc_context *ctx,
+srvsvc_SERVER_INFO_coder(char *name, struct dcerpc_context *dce,
                          struct dcerpc_pdu *pdu,
                          struct smb2_iovec *iov, int *offset,
                          void *ptr)
@@ -615,7 +615,7 @@ srvsvc_SERVER_INFO_coder(char *name, struct dcerpc_context *ctx,
 
         switch (dcerpc_get_switch_is(pdu)) {
         case 100:
-                if (dcerpc_ptr_coder("ServerInfo100", ctx, pdu, iov, offset, &info->ServerInfo100,
+                if (dcerpc_ptr_coder("ServerInfo100", dce, pdu, iov, offset, &info->ServerInfo100,
                                      PTR_UNIQUE, srvsvc_SERVER_INFO_100_STRUCT_coder)) {
                         return -1;
                 }
@@ -626,13 +626,13 @@ srvsvc_SERVER_INFO_coder(char *name, struct dcerpc_context *ctx,
 }
 
 static int
-srvsvc_SERVER_INFO_STRUCT_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+srvsvc_SERVER_INFO_STRUCT_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                                 struct smb2_iovec *iov, int *offset,
                                 void *ptr)
 {
         uint32_t Level = dcerpc_get_switch_is(pdu);
 
-        if (dcerpc_union_coder("InfoStruct", ctx, pdu, iov, offset,
+        if (dcerpc_union_coder("InfoStruct", dce, pdu, iov, offset,
                                &Level, ptr,
                                srvsvc_SERVER_INFO_coder)) {
                 return -1;
