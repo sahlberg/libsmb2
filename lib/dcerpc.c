@@ -1145,8 +1145,8 @@ dcerpc_send_pdu_cb_and_free(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
         dcerpc_cb pdu_cb = pdu->cb;
         void *pdu_cb_data = pdu->cb_data;
 
-        dcerpc_free_pdu(dce, pdu);
         pdu_cb(dce, status, command_data, pdu_cb_data);
+        dcerpc_free_pdu(dce, pdu);
 }
 
 static void

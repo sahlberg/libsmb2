@@ -32,6 +32,7 @@ extern "C" {
 #define SRVSVC_NETRSHAREDEL       0x12
 #define SRVSVC_NETRSHAREDELSTICKY 0x13
 #define SRVSVC_NETRSHARECHECK     0x14
+#define SRVSVC_NETRSERVERGETINFO  0x15
 
 struct dcerpc_context;
 struct dcerpc_pdu;
@@ -127,6 +128,15 @@ union srvsvc_SHARE_INFO {
         struct srvsvc_SHARE_INFO_2 ShareInfo2;
 };
 
+struct srvsvc_SERVER_INFO_100 {
+        uint32_t sv100_platform_id;
+        char *sv100_name;
+};
+        
+union srvsvc_SERVER_INFO {
+        struct srvsvc_SERVER_INFO_100 ServerInfo100;
+};
+        
 struct srvsvc_NetrShareAdd_req {
         char *ServerName;
         uint32_t Level;
@@ -203,6 +213,17 @@ struct srvsvc_NetrShareCheck_rep {
         uint32_t status;
 };
 
+struct srvsvc_NetrServerGetInfo_req {
+        char *ServerName;
+        uint32_t Level;
+};
+
+struct srvsvc_NetrServerGetInfo_rep {
+        union srvsvc_SERVER_INFO InfoStruct;
+
+        uint32_t status;
+};
+        
 
 
 /*
@@ -266,6 +287,14 @@ int srvsvc_NetrShareDel_rep_coder(char *name, struct dcerpc_context *dce,
                                   struct dcerpc_pdu *pdu,
                                   struct smb2_iovec *iov, int *offset,
                                   void *ptr);
+int srvsvc_NetrServerGetInfo_req_coder(char *name, struct dcerpc_context *ctx,
+                                       struct dcerpc_pdu *pdu,
+                                       struct smb2_iovec *iov, int *offset,
+                                       void *ptr);
+int srvsvc_NetrServerGetInfo_rep_coder(char *name, struct dcerpc_context *ctx,
+                                       struct dcerpc_pdu *pdu,
+                                       struct smb2_iovec *iov, int *offset,
+                                       void *ptr);
 
 extern struct dcerpc_procedure srvsvc_procs[];
         

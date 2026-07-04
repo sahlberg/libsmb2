@@ -515,6 +515,131 @@ srvsvc_SHARE_INFO_STRUCT_coder(char *name, struct dcerpc_context *ctx, struct dc
         return 0;
 }
 
+/*
+ * typedef struct _SERVER_INFO_100 {
+ *   DWORD sv100_platform_id;
+ *  [string] wchar_t* sv100_name;
+ * } SERVER_INFO_100, *PSERVER_INFO_100, *LPSERVER_INFO_100;
+ */
+int
+srvsvc_SERVER_INFO_100_coder(char *name, struct dcerpc_context *dce,
+                             struct dcerpc_pdu *pdu,
+                             struct smb2_iovec *iov, int *offset,
+                             void *ptr)
+{
+        struct srvsvc_SERVER_INFO_100 *si100 = ptr;
+
+        if (dcerpc_uint32_coder("SV100_Platform_Id", dce, pdu, iov, offset, &si100->sv100_platform_id)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("SV100_Name", dce, pdu, iov, offset, &si100->sv100_name,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        return 0;
+}
+
+int
+srvsvc_SERVER_INFO_100_STRUCT_coder(char *name, struct dcerpc_context *ctx,
+                                    struct dcerpc_pdu *pdu,
+                                    struct smb2_iovec *iov, int *offset,
+                                    void *ptr)
+{
+        return  dcerpc_struct_coder(name, ctx, pdu, iov, offset, ptr,
+                                    srvsvc_SERVER_INFO_100_coder);
+}
+
+
+/*
+ * typedef [switch_type(unsigned long)] union _SERVER_INFO {
+ *   [case(100)]  LPSERVER_INFO_100 ServerInfo100;
+ *   [case(101)]  LPSERVER_INFO_101 ServerInfo101;
+ *   [case(102)]  LPSERVER_INFO_102 ServerInfo102;
+ *   [case(103)]  LPSERVER_INFO_103 ServerInfo103;
+ *   [case(502)]  LPSERVER_INFO_502 ServerInfo502;
+ *   [case(503)]  LPSERVER_INFO_503 ServerInfo503;
+ *   [case(599)]  LPSERVER_INFO_599 ServerInfo599;
+ *   [case(1005)] LPSERVER_INFO_1005 ServerInfo1005;
+ *   [case(1107)] LPSERVER_INFO_1107 ServerInfo1107;
+ *   [case(1010)] LPSERVER_INFO_1010 ServerInfo1010;
+ *   [case(1016)] LPSERVER_INFO_1016 ServerInfo1016;
+ *   [case(1017)] LPSERVER_INFO_1017 ServerInfo1017;
+ *   [case(1018)] LPSERVER_INFO_1018 ServerInfo1018;
+ *   [case(1501)] LPSERVER_INFO_1501 ServerInfo1501;
+ *   [case(1502)] LPSERVER_INFO_1502 ServerInfo1502;
+ *   [case(1503)] LPSERVER_INFO_1503 ServerInfo1503;
+ *   [case(1506)] LPSERVER_INFO_1506 ServerInfo1506;
+ *   [case(1510)] LPSERVER_INFO_1510 ServerInfo1510;
+ *   [case(1511)] LPSERVER_INFO_1511 ServerInfo1511;
+ *   [case(1512)] LPSERVER_INFO_1512 ServerInfo1512;
+ *   [case(1513)] LPSERVER_INFO_1513 ServerInfo1513;
+ *   [case(1514)] LPSERVER_INFO_1514 ServerInfo1514;
+ *   [case(1515)] LPSERVER_INFO_1515 ServerInfo1515;
+ *   [case(1516)] LPSERVER_INFO_1516 ServerInfo1516;
+ *   [case(1518)] LPSERVER_INFO_1518 ServerInfo1518;
+ *   [case(1523)] LPSERVER_INFO_1523 ServerInfo1523;
+ *   [case(1528)] LPSERVER_INFO_1528 ServerInfo1528;
+ *   [case(1529)] LPSERVER_INFO_1529 ServerInfo1529;
+ *   [case(1530)] LPSERVER_INFO_1530 ServerInfo1530;
+ *   [case(1533)] LPSERVER_INFO_1533 ServerInfo1533;
+ *   [case(1534)] LPSERVER_INFO_1534 ServerInfo1534;
+ *   [case(1535)] LPSERVER_INFO_1535 ServerInfo1535;
+ *   [case(1536)] LPSERVER_INFO_1536 ServerInfo1536;
+ *   [case(1538)] LPSERVER_INFO_1538 ServerInfo1538;
+ *   [case(1539)] LPSERVER_INFO_1539 ServerInfo1539;
+ *   [case(1540)] LPSERVER_INFO_1540 ServerInfo1540;
+ *   [case(1541)] LPSERVER_INFO_1541 ServerInfo1541;
+ *   [case(1542)] LPSERVER_INFO_1542 ServerInfo1542;
+ *   [case(1543)] LPSERVER_INFO_1543 ServerInfo1543;
+ *   [case(1544)] LPSERVER_INFO_1544 ServerInfo1544;
+ *   [case(1545)] LPSERVER_INFO_1545 ServerInfo1545;
+ *   [case(1546)] LPSERVER_INFO_1546 ServerInfo1546;
+ *   [case(1547)] LPSERVER_INFO_1547 ServerInfo1547;
+ *   [case(1548)] LPSERVER_INFO_1548 ServerInfo1548;
+ *   [case(1549)] LPSERVER_INFO_1549 ServerInfo1549;
+ *   [case(1550)] LPSERVER_INFO_1550 ServerInfo1550;
+ *   [case(1552)] LPSERVER_INFO_1552 ServerInfo1552;
+ *   [case(1553)] LPSERVER_INFO_1553 ServerInfo1553;
+ *   [case(1554)] LPSERVER_INFO_1554 ServerInfo1554;
+ *   [case(1555)] LPSERVER_INFO_1555 ServerInfo1555;
+ *   [case(1556)] LPSERVER_INFO_1556 ServerInfo1556;
+ * } SERVER_INFO, *PSERVER_INFO, *LPSERVER_INFO;
+ */
+static int
+srvsvc_SERVER_INFO_coder(char *name, struct dcerpc_context *ctx,
+                         struct dcerpc_pdu *pdu,
+                         struct smb2_iovec *iov, int *offset,
+                         void *ptr)
+{
+        union srvsvc_SERVER_INFO *info = ptr;
+
+        switch (dcerpc_get_switch_is(pdu)) {
+        case 100:
+                if (dcerpc_ptr_coder("ServerInfo100", ctx, pdu, iov, offset, &info->ServerInfo100,
+                                     PTR_UNIQUE, srvsvc_SERVER_INFO_100_STRUCT_coder)) {
+                        return -1;
+                }
+                break;
+        };
+
+        return 0;
+}
+
+static int
+srvsvc_SERVER_INFO_STRUCT_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                                struct smb2_iovec *iov, int *offset,
+                                void *ptr)
+{
+        uint32_t Level = dcerpc_get_switch_is(pdu);
+
+        if (dcerpc_union_coder("InfoStruct", ctx, pdu, iov, offset,
+                               &Level, ptr,
+                               srvsvc_SERVER_INFO_coder)) {
+                return -1;
+        }
+        return 0;
+}
+
 /*****************
  * Function: 0x0e
  * NET_API_STATUS NetrShareAdd (
@@ -850,6 +975,54 @@ srvsvc_NetrShareCheck_rep_coder(char *name, struct dcerpc_context *dce,
         return 0;
 }
 
+/***********
+ * NetrServerGetInfo (
+ *   [in,string,unique] SRVSVC_HANDLE ServerName,
+ *   [in] DWORD Level,
+ *   [out, switch_is(Level)] LPSERVER_INFO InfoStruct
+ *);
+*/
+int srvsvc_NetrServerGetInfo_req_coder(char *name, struct dcerpc_context *dce,
+                                       struct dcerpc_pdu *pdu,
+                                       struct smb2_iovec *iov, int *offset,
+                                       void *ptr)
+{
+        struct srvsvc_NetrServerGetInfo_req *req = ptr;
+
+        if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Level", dce, pdu, iov, offset, &req->Level)) {
+                return -1;
+        }
+        dcerpc_set_switch_is(pdu, req->Level);
+
+        return 0;
+}
+        
+int srvsvc_NetrServerGetInfo_rep_coder(char *name, struct dcerpc_context *dce,
+                                       struct dcerpc_pdu *pdu,
+                                       struct smb2_iovec *iov, int *offset,
+                                       void *ptr)
+{
+        struct srvsvc_NetrServerGetInfo_rep *rep = ptr;
+        /* There is no Level in the reply so we must reference it from the request */
+        struct srvsvc_NetrServerGetInfo_req *req = dcerpc_get_request(pdu);
+
+        dcerpc_set_switch_is(pdu, req->Level);
+
+        if (dcerpc_ptr_coder("InfoStruct", dce, pdu, iov, offset, &rep->InfoStruct,
+                             PTR_REF, srvsvc_SERVER_INFO_STRUCT_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
+                return -1;
+        }
+
+        return 0;
+}
+
 
 struct dcerpc_procedure srvsvc_procs[] = {
         {SRVSVC_NETRSHAREADD, "NetrShareAdd",
@@ -879,6 +1052,10 @@ struct dcerpc_procedure srvsvc_procs[] = {
         {SRVSVC_NETRSHARECHECK, "NetrShareCheck",
          srvsvc_NetrShareCheck_req_coder, sizeof(struct srvsvc_NetrShareCheck_req),
          srvsvc_NetrShareCheck_rep_coder, sizeof(struct srvsvc_NetrShareCheck_rep),
+        },
+        {SRVSVC_NETRSERVERGETINFO, "NetrServerGetInfo",
+         srvsvc_NetrServerGetInfo_req_coder, sizeof(struct srvsvc_NetrServerGetInfo_req),
+         srvsvc_NetrServerGetInfo_rep_coder, sizeof(struct srvsvc_NetrServerGetInfo_rep),
         },
         {-1, NULL, NULL, 0, NULL, 0}
 };
