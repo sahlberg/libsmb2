@@ -66,6 +66,11 @@ void si_cb(struct dcerpc_context *dce, int status,
         offset = 0;
         memset(buf, 0, sizeof(buf));
 
+        if (command_data == NULL) {
+                printf("No Response pdu\n");
+                exit(10);
+        }
+        
         printf("YAML:\n");
         printf("---\n");
         rpc_cb_data->rep = command_data;
