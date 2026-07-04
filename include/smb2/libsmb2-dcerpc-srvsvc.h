@@ -132,9 +132,19 @@ struct srvsvc_SERVER_INFO_100 {
         uint32_t sv100_platform_id;
         char *sv100_name;
 };
+
+struct srvsvc_SERVER_INFO_101 {
+        uint32_t sv101_platform_id;
+        char *sv101_name;
+        uint32_t sv101_version_major;
+        uint32_t sv101_version_minor;
+        uint32_t sv101_type;
+        char *sv101_comment;
+};
         
 union srvsvc_SERVER_INFO {
         struct srvsvc_SERVER_INFO_100 ServerInfo100;
+        struct srvsvc_SERVER_INFO_101 ServerInfo101;
 };
         
 struct srvsvc_NetrShareAdd_req {

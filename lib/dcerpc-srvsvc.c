@@ -551,6 +551,58 @@ srvsvc_SERVER_INFO_100_STRUCT_coder(char *name, struct dcerpc_context *dce,
 
 
 /*
+ * typedef struct _SERVER_INFO_101 {
+ *   DWORD sv101_platform_id;
+ *   [string] wchar_t* sv101_name;
+ *   DWORD sv101_version_major;
+ *   DWORD sv101_version_minor;
+ *   DWORD sv101_type;
+ *   [string] wchar_t * sv101_comment;
+ * } SERVER_INFO_101, *PSERVER_INFO_101, *LPSERVER_INFO_101;
+ */
+int
+srvsvc_SERVER_INFO_101_coder(char *name, struct dcerpc_context *dce,
+                             struct dcerpc_pdu *pdu,
+                             struct smb2_iovec *iov, int *offset,
+                             void *ptr)
+{
+        struct srvsvc_SERVER_INFO_101 *si101 = ptr;
+
+        if (dcerpc_uint32_coder("SV101_Platform_Id", dce, pdu, iov, offset, &si101->sv101_platform_id)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("SV101_Name", dce, pdu, iov, offset, &si101->sv101_name,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("SV101_Version_Major", dce, pdu, iov, offset, &si101->sv101_version_major)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("SV101_Version_Minor", dce, pdu, iov, offset, &si101->sv101_version_minor)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("SV101_Type", dce, pdu, iov, offset, &si101->sv101_type)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("SV101_Comment", dce, pdu, iov, offset, &si101->sv101_comment,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        return 0;
+}
+
+int
+srvsvc_SERVER_INFO_101_STRUCT_coder(char *name, struct dcerpc_context *dce,
+                                    struct dcerpc_pdu *pdu,
+                                    struct smb2_iovec *iov, int *offset,
+                                    void *ptr)
+{
+        return  dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                    srvsvc_SERVER_INFO_101_coder);
+}
+
+
+/*
  * typedef [switch_type(unsigned long)] union _SERVER_INFO {
  *   [case(100)]  LPSERVER_INFO_100 ServerInfo100;
  *   [case(101)]  LPSERVER_INFO_101 ServerInfo101;
@@ -617,6 +669,12 @@ srvsvc_SERVER_INFO_coder(char *name, struct dcerpc_context *dce,
         case 100:
                 if (dcerpc_ptr_coder("ServerInfo100", dce, pdu, iov, offset, &info->ServerInfo100,
                                      PTR_UNIQUE, srvsvc_SERVER_INFO_100_STRUCT_coder)) {
+                        return -1;
+                }
+                break;
+        case 101:
+                if (dcerpc_ptr_coder("ServerInfo101", dce, pdu, iov, offset, &info->ServerInfo101,
+                                     PTR_UNIQUE, srvsvc_SERVER_INFO_101_STRUCT_coder)) {
                         return -1;
                 }
                 break;
