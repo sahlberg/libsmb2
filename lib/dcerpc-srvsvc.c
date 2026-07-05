@@ -409,6 +409,8 @@ srvsvc_SHARE_ENUM_UNION_coder(char *name, struct dcerpc_context *dce,
                         return -1;
                 }
                 break;
+        default:
+                return -1;
         };
 
         return 0;
@@ -494,6 +496,8 @@ srvsvc_SHARE_INFO_coder(char *name, struct dcerpc_context *dce,
                         return -1;
                 }
                 break;
+        default:
+                return -1;
         };
 
         return 0;
@@ -529,10 +533,10 @@ srvsvc_SERVER_INFO_100_coder(char *name, struct dcerpc_context *dce,
 {
         struct srvsvc_SERVER_INFO_100 *si100 = ptr;
 
-        if (dcerpc_uint32_coder("SV100_Platform_Id", dce, pdu, iov, offset, &si100->sv100_platform_id)) {
+        if (dcerpc_uint32_coder("Platform_Id", dce, pdu, iov, offset, &si100->platform_id)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("SV100_Name", dce, pdu, iov, offset, &si100->sv100_name,
+        if (dcerpc_ptr_coder("Name", dce, pdu, iov, offset, &si100->name,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
@@ -568,23 +572,23 @@ srvsvc_SERVER_INFO_101_coder(char *name, struct dcerpc_context *dce,
 {
         struct srvsvc_SERVER_INFO_101 *si101 = ptr;
 
-        if (dcerpc_uint32_coder("SV101_Platform_Id", dce, pdu, iov, offset, &si101->sv101_platform_id)) {
+        if (dcerpc_uint32_coder("Platform_Id", dce, pdu, iov, offset, &si101->platform_id)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("SV101_Name", dce, pdu, iov, offset, &si101->sv101_name,
+        if (dcerpc_ptr_coder("Name", dce, pdu, iov, offset, &si101->name,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("SV101_Version_Major", dce, pdu, iov, offset, &si101->sv101_version_major)) {
+        if (dcerpc_uint32_coder("Version_Major", dce, pdu, iov, offset, &si101->version_major)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("SV101_Version_Minor", dce, pdu, iov, offset, &si101->sv101_version_minor)) {
+        if (dcerpc_uint32_coder("Version_Minor", dce, pdu, iov, offset, &si101->version_minor)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("SV101_Type", dce, pdu, iov, offset, &si101->sv101_type)) {
+        if (dcerpc_uint32_coder("Type", dce, pdu, iov, offset, &si101->type)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("SV101_Comment", dce, pdu, iov, offset, &si101->sv101_comment,
+        if (dcerpc_ptr_coder("Comment", dce, pdu, iov, offset, &si101->comment,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
@@ -599,6 +603,170 @@ srvsvc_SERVER_INFO_101_STRUCT_coder(char *name, struct dcerpc_context *dce,
 {
         return  dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
                                     srvsvc_SERVER_INFO_101_coder);
+}
+
+/*
+ * typedef struct _SERVER_INFO_102 {
+ *    DWORD sv102_platform_id;
+ *    [string] wchar_t * sv102_name;
+ *    DWORD sv102_version_major;
+ *    DWORD sv102_version_minor;
+ *    DWORD sv102_type;
+ *    [string] wchar_t * sv102_comment;
+ *    DWORD sv102_users;
+ *    long sv102_disc;
+ *    int sv102_hidden;
+ *    DWORD sv102_announce;
+ *    DWORD sv102_anndelta;
+ *    DWORD sv102_licenses;
+ *    [string] wchar_t * sv102_userpath;
+ *    } SERVER_INFO_102, *PSERVER_INFO_102, *LPSERVER_INFO_102;
+ */
+int
+srvsvc_SERVER_INFO_102_coder(char *name, struct dcerpc_context *dce,
+                             struct dcerpc_pdu *pdu,
+                             struct smb2_iovec *iov, int *offset,
+                             void *ptr)
+{
+        struct srvsvc_SERVER_INFO_102 *si102 = ptr;
+
+        if (dcerpc_uint32_coder("Platform_Id", dce, pdu, iov, offset, &si102->platform_id)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("Name", dce, pdu, iov, offset, &si102->name,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Version_Major", dce, pdu, iov, offset, &si102->version_major)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Version_Minor", dce, pdu, iov, offset, &si102->version_minor)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Type", dce, pdu, iov, offset, &si102->type)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("Comment", dce, pdu, iov, offset, &si102->comment,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Users", dce, pdu, iov, offset, &si102->users)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Disc", dce, pdu, iov, offset, &si102->disc)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Hidden", dce, pdu, iov, offset, &si102->hidden)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Announce", dce, pdu, iov, offset, &si102->announce)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Anndelta", dce, pdu, iov, offset, &si102->anndelta)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Licenses", dce, pdu, iov, offset, &si102->licenses)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("UserPath", dce, pdu, iov, offset, &si102->userpath,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        return 0;
+}
+
+int
+srvsvc_SERVER_INFO_102_STRUCT_coder(char *name, struct dcerpc_context *dce,
+                                    struct dcerpc_pdu *pdu,
+                                    struct smb2_iovec *iov, int *offset,
+                                    void *ptr)
+{
+        return  dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                    srvsvc_SERVER_INFO_102_coder);
+}
+
+/*
+ * typedef struct _SERVER_INFO_103 {
+ *    DWORD sv103_platform_id;
+ *    [string] wchar_t * sv103_name;
+ *    DWORD sv103_version_major;
+ *    DWORD sv103_version_minor;
+ *    DWORD sv103_type;
+ *    [string] wchar_t * sv103_comment;
+ *    DWORD sv103_users;
+ *    long sv103_disc;
+ *    int sv103_hidden;
+ *    DWORD sv103_announce;
+ *    DWORD sv103_anndelta;
+ *    DWORD sv103_licenses;
+ *    [string] wchar_t * sv103_userpath;
+ *    DWORD sv103_capabilities;
+ *    } SERVER_INFO_103, *PSERVER_INFO_103, *LPSERVER_INFO_103;
+ */
+int
+srvsvc_SERVER_INFO_103_coder(char *name, struct dcerpc_context *dce,
+                             struct dcerpc_pdu *pdu,
+                             struct smb2_iovec *iov, int *offset,
+                             void *ptr)
+{
+        struct srvsvc_SERVER_INFO_103 *si103 = ptr;
+
+        if (dcerpc_uint32_coder("Platform_Id", dce, pdu, iov, offset, &si103->platform_id)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("Name", dce, pdu, iov, offset, &si103->name,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Version_Major", dce, pdu, iov, offset, &si103->version_major)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Version_Minor", dce, pdu, iov, offset, &si103->version_minor)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Type", dce, pdu, iov, offset, &si103->type)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("Comment", dce, pdu, iov, offset, &si103->comment,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Users", dce, pdu, iov, offset, &si103->users)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Disc", dce, pdu, iov, offset, &si103->disc)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Hidden", dce, pdu, iov, offset, &si103->hidden)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Announce", dce, pdu, iov, offset, &si103->announce)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Anndelta", dce, pdu, iov, offset, &si103->anndelta)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Licenses", dce, pdu, iov, offset, &si103->licenses)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("UserPath", dce, pdu, iov, offset, &si103->userpath,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Capabilities", dce, pdu, iov, offset, &si103->capabilities)) {
+                return -1;
+        }
+        return 0;
+}
+
+int
+srvsvc_SERVER_INFO_103_STRUCT_coder(char *name, struct dcerpc_context *dce,
+                                    struct dcerpc_pdu *pdu,
+                                    struct smb2_iovec *iov, int *offset,
+                                    void *ptr)
+{
+        return  dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                    srvsvc_SERVER_INFO_103_coder);
 }
 
 
@@ -678,6 +846,20 @@ srvsvc_SERVER_INFO_coder(char *name, struct dcerpc_context *dce,
                         return -1;
                 }
                 break;
+        case 102:
+                if (dcerpc_ptr_coder("ServerInfo102", dce, pdu, iov, offset, &info->ServerInfo102,
+                                     PTR_UNIQUE, srvsvc_SERVER_INFO_102_STRUCT_coder)) {
+                        return -1;
+                }
+                break;
+        case 103:
+                if (dcerpc_ptr_coder("ServerInfo103", dce, pdu, iov, offset, &info->ServerInfo103,
+                                     PTR_UNIQUE, srvsvc_SERVER_INFO_103_STRUCT_coder)) {
+                        return -1;
+                }
+                break;
+        default:
+                return -1;
         };
 
         return 0;

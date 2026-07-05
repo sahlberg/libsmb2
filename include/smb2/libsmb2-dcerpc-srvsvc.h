@@ -129,22 +129,57 @@ union srvsvc_SHARE_INFO {
 };
 
 struct srvsvc_SERVER_INFO_100 {
-        uint32_t sv100_platform_id;
-        char *sv100_name;
+        uint32_t platform_id;
+        char *name;
 };
 
 struct srvsvc_SERVER_INFO_101 {
-        uint32_t sv101_platform_id;
-        char *sv101_name;
-        uint32_t sv101_version_major;
-        uint32_t sv101_version_minor;
-        uint32_t sv101_type;
-        char *sv101_comment;
+        uint32_t platform_id;
+        char *name;
+        uint32_t version_major;
+        uint32_t version_minor;
+        uint32_t type;
+        char *comment;
+};
+        
+struct srvsvc_SERVER_INFO_102 {
+        uint32_t platform_id;
+        char *name;
+        uint32_t version_major;
+        uint32_t version_minor;
+        uint32_t type;
+        char *comment;
+        uint32_t users;
+        uint32_t disc;
+        uint32_t hidden;
+        uint32_t announce;
+        uint32_t anndelta;
+        uint32_t licenses;
+        char *userpath;
+};
+        
+struct srvsvc_SERVER_INFO_103 {
+        uint32_t platform_id;
+        char *name;
+        uint32_t version_major;
+        uint32_t version_minor;
+        uint32_t type;
+        char *comment;
+        uint32_t users;
+        uint32_t disc;
+        uint32_t hidden;
+        uint32_t announce;
+        uint32_t anndelta;
+        uint32_t licenses;
+        char *userpath;
+        uint32_t capabilities;
 };
         
 union srvsvc_SERVER_INFO {
         struct srvsvc_SERVER_INFO_100 ServerInfo100;
         struct srvsvc_SERVER_INFO_101 ServerInfo101;
+        struct srvsvc_SERVER_INFO_102 ServerInfo102;
+        struct srvsvc_SERVER_INFO_102 ServerInfo103;
 };
         
 struct srvsvc_NetrShareAdd_req {
