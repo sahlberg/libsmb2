@@ -356,6 +356,207 @@ smb2_decode_security_descriptor(struct smb2_context *smb2,
                         return -1;
                 }
         }
-        
+
+        return 0;
+}
+
+static int
+smb2_sid_size(struct smb2_sid *sid)
+{
+        if (sid == NULL) {
+                return 0;
+        }
+        return 8 + sid->sub_auth_count * 4;
+}
+
+static int
+smb2_ace_size(struct smb2_ace *ace)
+{
+        switch (ace->ace_type) {
+        case SMB2_ACCESS_ALLOWED_ACE_TYPE:
+        case SMB2_ACCESS_DENIED_ACE_TYPE:
+        case SMB2_SYSTEM_AUDIT_ACE_TYPE:
+        case SMB2_SYSTEM_MANDATORY_LABEL_ACE_TYPE:
+        case SMB2_SYSTEM_SCOPED_POLICY_ID_ACE_TYPE:
+                return 4 + 4 + smb2_sid_size(ace->sid);
+        case SMB2_ACCESS_ALLOWED_OBJECT_ACE_TYPE:
+        case SMB2_ACCESS_DENIED_OBJECT_ACE_TYPE:
+        case SMB2_SYSTEM_AUDIT_OBJECT_ACE_TYPE:
+                return 4 + 4 + 4 + SMB2_OBJECT_TYPE_SIZE * 2 +
+                        smb2_sid_size(ace->sid);
+        case SMB2_ACCESS_ALLOWED_CALLBACK_ACE_TYPE:
+        case SMB2_ACCESS_DENIED_CALLBACK_ACE_TYPE:
+        case SMB2_SYSTEM_RESOURCE_ATTRIBUTE_ACE_TYPE:
+                return 4 + 4 + smb2_sid_size(ace->sid) + (int)ace->ad_len;
+        default:
+                return 4 + (int)ace->raw_len;
+        }
+}
+
+static int
+smb2_acl_size(struct smb2_acl *acl)
+{
+        struct smb2_ace *ace;
+        int size = 8;
+
+        for (ace = acl->aces; ace; ace = ace->next) {
+                size += smb2_ace_size(ace);
+        }
+        return size;
+}
+
+int
+smb2_security_descriptor_size(struct smb2_security_descriptor *sd)
+{
+        int size = 20;
+
+        size += smb2_sid_size(sd->owner);
+        size += smb2_sid_size(sd->group);
+        if (sd->dacl) {
+                size += smb2_acl_size(sd->dacl);
+        }
+        return size;
+}
+
+static void
+encode_sid(struct smb2_sid *sid, struct smb2_iovec *iov, int offset)
+{
+        int i;
+
+        smb2_set_uint8(iov, offset, sid->revision);
+        smb2_set_uint8(iov, offset + 1, sid->sub_auth_count);
+        memcpy(iov->buf + offset + 2, sid->id_auth, SID_ID_AUTH_LEN);
+        for (i = 0; i < sid->sub_auth_count; i++) {
+                smb2_set_uint32(iov, offset + 8 + i * 4, sid->sub_auth[i]);
+        }
+}
+
+static int
+encode_ace(struct smb2_context *smb2, struct smb2_ace *ace,
+          struct smb2_iovec *iov, int offset)
+{
+        int size = smb2_ace_size(ace);
+
+        smb2_set_uint8(iov, offset, ace->ace_type);
+        smb2_set_uint8(iov, offset + 1, ace->ace_flags);
+        smb2_set_uint16(iov, offset + 2, size);
+
+        switch (ace->ace_type) {
+        case SMB2_ACCESS_ALLOWED_ACE_TYPE:
+        case SMB2_ACCESS_DENIED_ACE_TYPE:
+        case SMB2_SYSTEM_AUDIT_ACE_TYPE:
+        case SMB2_SYSTEM_MANDATORY_LABEL_ACE_TYPE:
+        case SMB2_SYSTEM_SCOPED_POLICY_ID_ACE_TYPE:
+                if (ace->sid == NULL) {
+                        smb2_set_error(smb2, "ace is missing a sid");
+                        return -1;
+                }
+                smb2_set_uint32(iov, offset + 4, ace->mask);
+                encode_sid(ace->sid, iov, offset + 8);
+                break;
+        case SMB2_ACCESS_ALLOWED_OBJECT_ACE_TYPE:
+        case SMB2_ACCESS_DENIED_OBJECT_ACE_TYPE:
+        case SMB2_SYSTEM_AUDIT_OBJECT_ACE_TYPE:
+                if (ace->sid == NULL) {
+                        smb2_set_error(smb2, "ace is missing a sid");
+                        return -1;
+                }
+                smb2_set_uint32(iov, offset + 4, ace->mask);
+                smb2_set_uint32(iov, offset + 8, ace->flags);
+                memcpy(iov->buf + offset + 12, ace->object_type,
+                       SMB2_OBJECT_TYPE_SIZE);
+                memcpy(iov->buf + offset + 12 + SMB2_OBJECT_TYPE_SIZE,
+                       ace->inherited_object_type, SMB2_OBJECT_TYPE_SIZE);
+                encode_sid(ace->sid, iov,
+                          offset + 12 + SMB2_OBJECT_TYPE_SIZE * 2);
+                break;
+        case SMB2_ACCESS_ALLOWED_CALLBACK_ACE_TYPE:
+        case SMB2_ACCESS_DENIED_CALLBACK_ACE_TYPE:
+        case SMB2_SYSTEM_RESOURCE_ATTRIBUTE_ACE_TYPE:
+                if (ace->sid == NULL) {
+                        smb2_set_error(smb2, "ace is missing a sid");
+                        return -1;
+                }
+                smb2_set_uint32(iov, offset + 4, ace->mask);
+                encode_sid(ace->sid, iov, offset + 8);
+                if (ace->ad_len) {
+                        memcpy(iov->buf + offset + 8 +
+                               smb2_sid_size(ace->sid),
+                               ace->ad_data, ace->ad_len);
+                }
+                break;
+        default:
+                if (ace->raw_len) {
+                        memcpy(iov->buf + offset + 4, ace->raw_data,
+                               ace->raw_len);
+                }
+                break;
+        }
+
+        return size;
+}
+
+static int
+encode_acl(struct smb2_context *smb2, struct smb2_acl *acl,
+          struct smb2_iovec *iov, int offset)
+{
+        struct smb2_ace *ace;
+        int pos = offset + 8;
+
+        smb2_set_uint8(iov, offset, acl->revision);
+        smb2_set_uint8(iov, offset + 1, 0); /* Sbz1 */
+        smb2_set_uint16(iov, offset + 2, smb2_acl_size(acl));
+        smb2_set_uint16(iov, offset + 4, acl->ace_count);
+        smb2_set_uint16(iov, offset + 6, 0); /* Sbz2 */
+
+        for (ace = acl->aces; ace; ace = ace->next) {
+                int ace_size = encode_ace(smb2, ace, iov, pos);
+
+                if (ace_size < 0) {
+                        return -1;
+                }
+                pos += ace_size;
+        }
+
+        return 0;
+}
+
+int
+smb2_encode_security_descriptor(struct smb2_context *smb2,
+                                struct smb2_security_descriptor *sd,
+                                struct smb2_iovec *vec)
+{
+        int pos = 20;
+        uint32_t offset_owner = 0, offset_group = 0, offset_dacl = 0;
+
+        smb2_set_uint8(vec, 0, sd->revision ? sd->revision : 1);
+        smb2_set_uint8(vec, 1, 0); /* Sbz1 */
+        smb2_set_uint16(vec, 2, sd->control | SMB2_SD_CONTROL_SR);
+
+        if (sd->owner) {
+                offset_owner = pos;
+                encode_sid(sd->owner, vec, pos);
+                pos += smb2_sid_size(sd->owner);
+        }
+        if (sd->group) {
+                offset_group = pos;
+                encode_sid(sd->group, vec, pos);
+                pos += smb2_sid_size(sd->group);
+        }
+        if (sd->dacl) {
+                offset_dacl = pos;
+                if (encode_acl(smb2, sd->dacl, vec, pos) < 0) {
+                        smb2_set_error(smb2, "failed to encode dacl: %s",
+                                       smb2_get_error(smb2));
+                        return -1;
+                }
+                pos += smb2_acl_size(sd->dacl);
+        }
+
+        smb2_set_uint32(vec, 4, offset_owner);
+        smb2_set_uint32(vec, 8, offset_group);
+        smb2_set_uint32(vec, 12, 0); /* Sacl: not supported */
+        smb2_set_uint32(vec, 16, offset_dacl);
+
         return 0;
 }

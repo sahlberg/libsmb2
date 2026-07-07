@@ -19,7 +19,8 @@ noinst_PROGRAMS = dcerpc smb2-cat-async smb2-cat-sync \
 	smb2-rename-sync \
 	smb2-CMD-FIND	\
 	smb2-server-sync \
-	smb2-notify
+	smb2-notify \
+	smb2-set-security-info
 
 AM_CPPFLAGS = \
 	-I$(abs_top_srcdir)/include \
@@ -52,3 +53,4 @@ smb2_rename_sync_LDADD = $(COMMON_LIBS)
 smb2_CMD_FIND_LDADD = $(COMMON_LIBS)
 smb2_server_sync_LDADD = $(COMMON_LIBS)
 smb2_notify_LDADD = $(COMMON_LIBS)
+smb2_set_security_info_LDADD = $(COMMON_LIBS)
