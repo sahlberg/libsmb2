@@ -17,7 +17,8 @@ set(SOURCES smb2-cat-async
             smb2-truncate-sync
             smb2-CMD-FIND
             smb2-server-sync
-            smb2-notify)
+            smb2-notify
+            smb2-set-security-info)
 
 foreach(TARGET ${SOURCES})
   add_executable(${TARGET} ${TARGET}.c)

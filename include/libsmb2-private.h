@@ -583,6 +583,10 @@ int smb2_decode_security_descriptor(struct smb2_context *smb2,
                                     void *memctx,
                                     struct smb2_security_descriptor *sd,
                                     struct smb2_iovec *vec);
+int smb2_security_descriptor_size(struct smb2_security_descriptor *sd);
+int smb2_encode_security_descriptor(struct smb2_context *smb2,
+                                    struct smb2_security_descriptor *sd,
+                                    struct smb2_iovec *vec);
 
 int smb2_decode_file_fs_volume_info(struct smb2_context *smb2,
                                     void *memctx,

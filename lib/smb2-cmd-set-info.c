@@ -67,6 +67,7 @@ smb2_encode_set_info_request(struct smb2_context *smb2,
         struct smb2_file_disposition_info *fdi;
         struct smb2_file_rename_info *rni;
         struct smb2_utf16 *name;
+        struct smb2_security_descriptor *sd;
 
         len = SMB2_SET_INFO_REQUEST_SIZE & 0xfffffffe;
         buf = calloc(len, sizeof(uint8_t));
@@ -214,6 +215,29 @@ smb2_encode_set_info_request(struct smb2_context *smb2,
                                        "info_class %d/%d yet",
                                        req->info_type,
                                        req->file_info_class);
+                        return -1;
+                }
+                break;
+
+        case SMB2_0_INFO_SECURITY:
+                sd = req->input_data;
+
+                len = smb2_security_descriptor_size(sd);
+                smb2_set_uint32(iov, 4, len); /* buffer length */
+
+                buf = calloc(len, sizeof(uint8_t));
+                if (buf == NULL) {
+                        smb2_set_error(smb2, "Failed to allocate set "
+                                       "info data buffer");
+                        return -1;
+                }
+                iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+                if (iov == NULL) {
+                        smb2_set_error(smb2, "Failed to add iovector for set-info security data");
+                        return -1;
+                }
+
+                if (smb2_encode_security_descriptor(smb2, sd, iov)) {
                         return -1;
                 }
                 break;
