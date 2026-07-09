@@ -347,6 +347,25 @@ typedef uint8_t smb2_file_id[SMB2_FD_SIZE];
 #define SMB2_LEASE_KEY_SIZE 16
 typedef uint8_t smb2_lease_key[SMB2_LEASE_KEY_SIZE];
 
+#define SMB2_SRV_COPYCHUNK_RESUME_KEY_SIZE 24
+
+struct smb2_srv_copychunk_resume_key {
+        uint8_t resume_key[SMB2_SRV_COPYCHUNK_RESUME_KEY_SIZE];
+};
+
+struct smb2_srv_copychunk {
+        uint64_t source_offset;
+        uint64_t target_offset;
+        uint32_t length;
+        uint32_t reserved;
+};
+
+struct smb2_srv_copychunk_reply {
+        uint32_t chunks_written;
+        uint32_t chunk_bytes_written;
+        uint32_t total_bytes_written;
+};
+
 struct smb2fh;
 smb2_file_id *smb2_get_file_id(struct smb2fh *fh);
 

@@ -2637,6 +2637,326 @@ smb2_readlink_async(struct smb2_context *smb2, const char *path,
         return 0;
 }
 
+struct smb2_ioctl_cb_data {
+        smb2_command_cb cb;
+        void *cb_data;
+        uint8_t *input;
+        uint32_t ctl_code;
+};
+
+static void
+smb2_ioctl_output_cb(struct smb2_context *smb2, int status,
+                     void *command_data, void *private_data)
+{
+        struct smb2_ioctl_cb_data *ioctl_data = private_data;
+        void *output = NULL;
+
+        if (status != SMB2_STATUS_SUCCESS) {
+                smb2_set_nterror(smb2, status, "%s", nterror_to_str(status));
+        }
+
+        /*
+         * command_data is only a valid struct smb2_ioctl_reply* when the
+         * reply used the IOCTL reply format. On success that is always the
+         * case; on error it is only true for the ctl codes/statuses that
+         * smb2_ioctl_status_uses_reply_format() recognizes (see
+         * smb2_is_error_response() in pdu.c, which decides the same thing
+         * when picking how to decode the reply). Any other error reply is
+         * struct smb2_error_reply* and must not be read as an ioctl reply.
+         */
+        if (status == SMB2_STATUS_SUCCESS ||
+            smb2_ioctl_status_uses_reply_format(ioctl_data->ctl_code, status)) {
+                struct smb2_ioctl_reply *rep = command_data;
+
+                if (rep != NULL) {
+                        output = rep->output;
+                }
+        }
+
+        ioctl_data->cb(smb2, -nterror_to_errno(status), output,
+                       ioctl_data->cb_data);
+        free(ioctl_data->input);
+        free(ioctl_data);
+}
+
+static int
+smb2_encode_copychunk_input(struct smb2_context *smb2,
+                            const struct smb2_srv_copychunk_resume_key *resume_key,
+                            const struct smb2_srv_copychunk *chunks,
+                            uint32_t chunk_count,
+                            uint8_t **input,
+                            uint32_t *input_count)
+{
+        struct smb2_iovec iov;
+        uint32_t i;
+
+        if (resume_key == NULL) {
+                smb2_set_error(smb2, "Resume key was NULL");
+                return -EINVAL;
+        }
+        if (chunk_count == 0) {
+                smb2_set_error(smb2, "Chunk count must be non-zero");
+                return -EINVAL;
+        }
+        if (chunks == NULL) {
+                smb2_set_error(smb2, "Chunk array was NULL");
+                return -EINVAL;
+        }
+        if (chunk_count > ((UINT32_MAX - 32) / 24)) {
+                smb2_set_error(smb2, "Chunk count too large");
+                return -EINVAL;
+        }
+
+        *input_count = 32 + (chunk_count * 24);
+        *input = calloc(*input_count, sizeof(uint8_t));
+        if (*input == NULL) {
+                smb2_set_error(smb2, "Failed to allocate copychunk input");
+                return -ENOMEM;
+        }
+
+        memset(&iov, 0, sizeof(iov));
+        iov.buf = *input;
+        iov.len = *input_count;
+
+        memcpy(iov.buf, resume_key->resume_key,
+               SMB2_SRV_COPYCHUNK_RESUME_KEY_SIZE);
+        smb2_set_uint32(&iov, 24, chunk_count);
+
+        for (i = 0; i < chunk_count; i++) {
+                uint32_t offset = 32 + (i * 24);
+
+                smb2_set_uint64(&iov, offset + 0, chunks[i].source_offset);
+                smb2_set_uint64(&iov, offset + 8, chunks[i].target_offset);
+                smb2_set_uint32(&iov, offset + 16, chunks[i].length);
+                smb2_set_uint32(&iov, offset + 20, chunks[i].reserved);
+        }
+
+        return 0;
+}
+
+static int
+smb2_copychunk_submit_async(struct smb2_context *smb2,
+                            uint32_t ctl_code,
+                            const struct smb2_srv_copychunk_resume_key *resume_key,
+                            struct smb2fh *dstfh,
+                            const struct smb2_srv_copychunk *chunks,
+                            uint32_t chunk_count,
+                            smb2_command_cb cb, void *cb_data)
+{
+        struct smb2_ioctl_cb_data *ioctl_data;
+        struct smb2_ioctl_request req;
+        struct smb2_pdu *pdu;
+        uint32_t input_count;
+        int ret;
+
+        if (smb2 == NULL) {
+                return -EINVAL;
+        }
+        if (dstfh == NULL) {
+                smb2_set_error(smb2, "Destination file handle was NULL");
+                return -EINVAL;
+        }
+        if (ctl_code != SMB2_FSCTL_SRV_COPYCHUNK &&
+            ctl_code != SMB2_FSCTL_SRV_COPYCHUNK_WRITE) {
+                smb2_set_error(smb2, "Invalid copychunk ctl_code: 0x%08x",
+                               ctl_code);
+                return -EINVAL;
+        }
+
+        ioctl_data = calloc(1, sizeof(struct smb2_ioctl_cb_data));
+        if (ioctl_data == NULL) {
+                smb2_set_error(smb2, "Failed to allocate ioctl_data");
+                return -ENOMEM;
+        }
+
+        ret = smb2_encode_copychunk_input(smb2, resume_key, chunks,
+                                          chunk_count, &ioctl_data->input,
+                                          &input_count);
+        if (ret != 0) {
+                free(ioctl_data);
+                return ret;
+        }
+
+        ioctl_data->cb = cb;
+        ioctl_data->cb_data = cb_data;
+        ioctl_data->ctl_code = ctl_code;
+
+        memset(&req, 0, sizeof(req));
+        req.ctl_code = ctl_code;
+        memcpy(req.file_id, dstfh->file_id, SMB2_FD_SIZE);
+        req.input_count = input_count;
+        req.input = ioctl_data->input;
+        req.flags = SMB2_0_IOCTL_IS_FSCTL;
+
+        pdu = smb2_cmd_ioctl_async(smb2, &req, smb2_ioctl_output_cb,
+                                   ioctl_data);
+        if (pdu == NULL) {
+                free(ioctl_data->input);
+                free(ioctl_data);
+                return -EINVAL;
+        }
+        smb2_queue_pdu(smb2, pdu);
+
+        return 0;
+}
+
+int
+smb2_request_resume_key_async(struct smb2_context *smb2, struct smb2fh *fh,
+                              smb2_command_cb cb, void *cb_data)
+{
+        struct smb2_ioctl_cb_data *ioctl_data;
+        struct smb2_ioctl_request req;
+        struct smb2_pdu *pdu;
+
+        if (smb2 == NULL) {
+                return -EINVAL;
+        }
+        if (fh == NULL) {
+                smb2_set_error(smb2, "File handle was NULL");
+                return -EINVAL;
+        }
+
+        ioctl_data = calloc(1, sizeof(struct smb2_ioctl_cb_data));
+        if (ioctl_data == NULL) {
+                smb2_set_error(smb2, "Failed to allocate ioctl_data");
+                return -ENOMEM;
+        }
+        ioctl_data->cb = cb;
+        ioctl_data->cb_data = cb_data;
+        ioctl_data->ctl_code = SMB2_FSCTL_SRV_REQUEST_RESUME_KEY;
+
+        memset(&req, 0, sizeof(req));
+        req.ctl_code = SMB2_FSCTL_SRV_REQUEST_RESUME_KEY;
+        memcpy(req.file_id, fh->file_id, SMB2_FD_SIZE);
+        req.flags = SMB2_0_IOCTL_IS_FSCTL;
+
+        pdu = smb2_cmd_ioctl_async(smb2, &req, smb2_ioctl_output_cb,
+                                   ioctl_data);
+        if (pdu == NULL) {
+                free(ioctl_data);
+                return -EINVAL;
+        }
+        smb2_queue_pdu(smb2, pdu);
+
+        return 0;
+}
+
+int
+smb2_copychunk_async(struct smb2_context *smb2,
+                     uint32_t ctl_code,
+                     const struct smb2_srv_copychunk_resume_key *resume_key,
+                     struct smb2fh *dstfh,
+                     const struct smb2_srv_copychunk *chunks,
+                     uint32_t chunk_count,
+                     smb2_command_cb cb, void *cb_data)
+{
+        return smb2_copychunk_submit_async(smb2, ctl_code, resume_key, dstfh,
+                                           chunks, chunk_count, cb, cb_data);
+}
+
+struct smb2_server_side_copy_data {
+        smb2_command_cb cb;
+        void *cb_data;
+        struct smb2fh *dstfh;
+        uint32_t ctl_code;
+        uint32_t chunk_count;
+        struct smb2_srv_copychunk *chunks;
+};
+
+static void
+smb2_server_side_copy_resume_key_cb(struct smb2_context *smb2, int status,
+                                    void *command_data, void *private_data)
+{
+        struct smb2_server_side_copy_data *copy_data = private_data;
+        int ret;
+
+        if (status != 0) {
+                copy_data->cb(smb2, status, NULL, copy_data->cb_data);
+                free(copy_data->chunks);
+                free(copy_data);
+                return;
+        }
+
+        ret = smb2_copychunk_submit_async(smb2, copy_data->ctl_code,
+                                          command_data, copy_data->dstfh,
+                                          copy_data->chunks,
+                                          copy_data->chunk_count,
+                                          copy_data->cb,
+                                          copy_data->cb_data);
+        smb2_free_data(smb2, command_data);
+        if (ret != 0) {
+                copy_data->cb(smb2, ret, NULL, copy_data->cb_data);
+        }
+        free(copy_data->chunks);
+        free(copy_data);
+}
+
+int
+smb2_server_side_copy_async(struct smb2_context *smb2,
+                            uint32_t ctl_code,
+                            struct smb2fh *srcfh, struct smb2fh *dstfh,
+                            const struct smb2_srv_copychunk *chunks,
+                            uint32_t chunk_count,
+                            smb2_command_cb cb, void *cb_data)
+{
+        struct smb2_server_side_copy_data *copy_data;
+        int ret;
+
+        if (smb2 == NULL) {
+                return -EINVAL;
+        }
+        if (srcfh == NULL || dstfh == NULL) {
+                smb2_set_error(smb2, "File handle was NULL");
+                return -EINVAL;
+        }
+        if (chunk_count == 0) {
+                smb2_set_error(smb2, "Chunk count must be non-zero");
+                return -EINVAL;
+        }
+        if (chunks == NULL) {
+                smb2_set_error(smb2, "Chunk array was NULL");
+                return -EINVAL;
+        }
+        if (ctl_code != SMB2_FSCTL_SRV_COPYCHUNK &&
+            ctl_code != SMB2_FSCTL_SRV_COPYCHUNK_WRITE) {
+                smb2_set_error(smb2, "Invalid copychunk ctl_code: 0x%08x",
+                               ctl_code);
+                return -EINVAL;
+        }
+
+        copy_data = calloc(1, sizeof(struct smb2_server_side_copy_data));
+        if (copy_data == NULL) {
+                smb2_set_error(smb2, "Failed to allocate copy_data");
+                return -ENOMEM;
+        }
+
+        copy_data->chunks = calloc(chunk_count,
+                                   sizeof(struct smb2_srv_copychunk));
+        if (copy_data->chunks == NULL) {
+                free(copy_data);
+                smb2_set_error(smb2, "Failed to allocate chunk copy");
+                return -ENOMEM;
+        }
+
+        memcpy(copy_data->chunks, chunks,
+               chunk_count * sizeof(struct smb2_srv_copychunk));
+        copy_data->cb = cb;
+        copy_data->cb_data = cb_data;
+        copy_data->dstfh = dstfh;
+        copy_data->ctl_code = ctl_code;
+        copy_data->chunk_count = chunk_count;
+
+        ret = smb2_request_resume_key_async(smb2, srcfh,
+                                            smb2_server_side_copy_resume_key_cb,
+                                            copy_data);
+        if (ret != 0) {
+                free(copy_data->chunks);
+                free(copy_data);
+        }
+
+        return ret;
+}
+
 struct disconnect_data {
         smb2_command_cb cb;
         void *cb_data;
@@ -4289,4 +4609,3 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
 #endif
         return err;
 }
-
