@@ -36,9 +36,9 @@
 int gethostname(char *name, size_t len)
 {
 #ifdef XBOX_PLATFORM
-	    strncpy(name, "XBOX", len);
+	    snprintf(name, len, "XBOX");
 #else
-        strncpy(name, "XBOX_360", len);
+        snprintf(name, len, "XBOX_360");
 #endif
 		return 0;
 }
@@ -122,7 +122,7 @@ struct MinList __filelist = { (struct MinNode *) &__filelist.mlh_Tail, NULL, (st
 
 int gethostname(char *name, size_t len)
 {
-        strncpy(name, "PS2", len);
+        snprintf(name, len, "PS2");
         return 0;
 }
 
@@ -150,7 +150,7 @@ int asprintf(char **strp, const char *fmt, ...)
 
         va_start(args, fmt);
         str = malloc(256);
-        len = sprintf(str, fmt, args);
+        len = vsnprintf(str, 256, fmt, args);
         va_end(args);
         *strp = str;
         return len;
