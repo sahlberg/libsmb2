@@ -56,6 +56,16 @@
 #include "libsmb2.h"
 #include "libsmb2-private.h"
 
+#define DEC_VLEN(l) \
+    do {                                                    \
+        if (v.len < (l)) {                                  \
+                smb2_set_error(smb2, "corrupted pdu");      \
+                return NULL;                                \
+        } else {                                            \
+                v.len -= (l);                               \
+        }                                                   \
+    } while(0);
+
 static struct smb2_sid *
 decode_sid(struct smb2_context *smb2, void *memctx, struct smb2_iovec *v)
 {
@@ -139,7 +149,7 @@ decode_ace(struct smb2_context *smb2, void *memctx, struct smb2_iovec *vec)
                 smb2_set_error(smb2, "not enough data for ace data.");
                 return NULL;
         }
-        v.len -= 4;
+        DEC_VLEN(4);
         v.buf = &v.buf[4];
 
         /* decode the content of the ace */
@@ -152,11 +162,7 @@ decode_ace(struct smb2_context *smb2, void *memctx, struct smb2_iovec *vec)
         case SMB2_SYSTEM_SCOPED_POLICY_ID_ACE_TYPE:
                 smb2_get_uint32(&v, 0, &ace->mask);
                 
-                if (v.len < 4) {
-                        smb2_set_error(smb2, "not enough data for ace data.");
-                        return NULL;
-                }
-                v.len -= 4;
+                DEC_VLEN(4);
                 v.buf = &v.buf[4];
                 ace->sid = decode_sid(smb2, memctx, &v);
                 break;
@@ -169,20 +175,20 @@ decode_ace(struct smb2_context *smb2, void *memctx, struct smb2_iovec *vec)
                 }
                 smb2_get_uint32(&v, 0, &ace->mask);
 
-                v.len -= 4;
+                DEC_VLEN(4);
                 v.buf = &v.buf[4];
                 smb2_get_uint32(&v, 0, &ace->flags);
 
-                v.len -= 4;
+                DEC_VLEN(4);
                 v.buf = &v.buf[4];
                 memcpy(ace->object_type, v.buf, SMB2_OBJECT_TYPE_SIZE);
 
-                v.len -= SMB2_OBJECT_TYPE_SIZE;
+                DEC_VLEN(SMB2_OBJECT_TYPE_SIZE);
                 v.buf = &v.buf[SMB2_OBJECT_TYPE_SIZE];
                 memcpy(ace->inherited_object_type, v.buf,
                        SMB2_OBJECT_TYPE_SIZE);
 
-                v.len -= SMB2_OBJECT_TYPE_SIZE;
+                DEC_VLEN(SMB2_OBJECT_TYPE_SIZE);
                 v.buf = &v.buf[SMB2_OBJECT_TYPE_SIZE];
                 ace->sid = decode_sid(smb2, memctx, &v);
                 break;
@@ -195,7 +201,7 @@ decode_ace(struct smb2_context *smb2, void *memctx, struct smb2_iovec *vec)
                         smb2_set_error(smb2, "not enough data for ace data.");
                         return NULL;
                 }
-                v.len -= 4;
+                DEC_VLEN(4);
                 v.buf = &v.buf[4];
                 ace->sid = decode_sid(smb2, memctx, &v);
 
@@ -263,7 +269,7 @@ decode_acl(struct smb2_context *smb2, void *memctx, struct smb2_iovec *vec)
         acl->ace_count = ace_count;
 
         /* Skip past the ACL header to the first ace. */
-        v.len -= 8;
+        DEC_VLEN(8);
         v.buf = &v.buf[8];
 
         for (i = 0; i < ace_count; i++) {
@@ -280,7 +286,7 @@ decode_acl(struct smb2_context *smb2, void *memctx, struct smb2_iovec *vec)
                                        smb2_get_error(smb2));
                         return NULL;
                 }
-                v.len -= ace->ace_size;
+                DEC_VLEN(ace->ace_size);
                 v.buf = &v.buf[ace->ace_size];
 
                 SMB2_LIST_ADD_END(&acl->aces, ace);
@@ -319,7 +325,8 @@ smb2_decode_security_descriptor(struct smb2_context *smb2,
         smb2_get_uint32(&v, 16, &offset_dacl);
 
         /* Owner */
-        if (offset_owner > 0 && offset_owner + 2 + SID_ID_AUTH_LEN < vec->len) {
+        if (offset_owner > 0 && offset_owner < vec->len &&
+            vec->len - offset_owner >= 2 + SID_ID_AUTH_LEN) {
                 v.buf = &vec->buf[offset_owner];
                 v.len = vec->len - offset_owner;
 
@@ -332,7 +339,8 @@ smb2_decode_security_descriptor(struct smb2_context *smb2,
         }
 
         /* Group */
-        if (offset_group > 0 && offset_group + 2 + SID_ID_AUTH_LEN < vec->len) {
+        if (offset_group > 0 && offset_group < vec->len &&
+            vec->len - offset_group >= 2 + SID_ID_AUTH_LEN) {
                 v.buf = &vec->buf[offset_group];
                 v.len = vec->len - offset_group;
 
@@ -345,7 +353,8 @@ smb2_decode_security_descriptor(struct smb2_context *smb2,
         }
 
         /* DACL */
-        if (offset_dacl > 0 && offset_dacl + 8 <= vec->len) {
+        if (offset_dacl > 0 && offset_dacl < vec->len &&
+            vec->len - offset_dacl >= 8) {
                 v.buf = &vec->buf[offset_dacl];
                 v.len = vec->len - offset_dacl;
 
