@@ -29,6 +29,8 @@
 
 #ifdef HAVE_STDLIB_H
 #include <stdlib.h>
+#elif
+void exit(int status);
 #endif
 
 #ifdef HAVE_STRING_H
