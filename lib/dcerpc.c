@@ -29,7 +29,7 @@
 
 #ifdef HAVE_STDLIB_H
 #include <stdlib.h>
-#elif
+#else
 void exit(int status);
 #endif
 
