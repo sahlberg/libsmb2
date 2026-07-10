@@ -8,6 +8,7 @@ noinst_PROGRAMS = dcerpc smb2-cat-async smb2-cat-sync \
 	smb2-raw-getsd-async \
 	smb2-raw-stat-async \
 	smb2-readlink \
+	smb2-server-side-copy-sync \
 	smb2-lsa-lookupsids \
 	smb2-lseek-sync \
 	smb2-share-enum \
@@ -41,6 +42,7 @@ smb2_raw_fsstat_async_LDADD = $(COMMON_LIBS)
 smb2_raw_getsd_async_LDADD = $(COMMON_LIBS)
 smb2_raw_stat_async_LDADD = $(COMMON_LIBS)
 smb2_readlink_LDADD = $(COMMON_LIBS)
+smb2_server_side_copy_sync_LDADD = $(COMMON_LIBS)
 smb2_lsa_lookupsids_LDADD = $(COMMON_LIBS)
 smb2_lseek_sync_LDADD = $(COMMON_LIBS)
 smb2_share_enum_LDADD = $(COMMON_LIBS)

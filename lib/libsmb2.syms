@@ -92,6 +92,8 @@ smb2_pread
 smb2_pread_async
 smb2_pwrite
 smb2_pwrite_async
+smb2_copychunk
+smb2_copychunk_async
 smb2_queue_pdu
 smb2_read
 smb2_read_async
@@ -100,6 +102,8 @@ smb2_register_error_callback
 smb2_rewinddir
 smb2_readlink
 smb2_readlink_async
+smb2_request_resume_key
+smb2_request_resume_key_async
 smb2_rmdir
 smb2_rmdir_async
 smb2_lseek
@@ -127,6 +131,8 @@ smb2_stat
 smb2_stat_async
 smb2_statvfs
 smb2_statvfs_async
+smb2_server_side_copy
+smb2_server_side_copy_async
 smb2_telldir
 smb2_timeval_to_win
 smb2_truncate
