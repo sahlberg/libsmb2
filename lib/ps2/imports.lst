@@ -68,6 +68,7 @@ I_strcpy
 I_strcat
 I_strchr
 I_strrchr
+I_strncat
 I_strncmp
 I_strncpy
 I_strcmp
