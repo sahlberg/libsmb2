@@ -202,6 +202,11 @@ smb2_encode_query_info_reply(struct smb2_context *smb2,
                                 break;
                         case SMB2_FILE_COMPRESSION_INFORMATION:
                                 break;
+                        case SMB2_FILE_DISPOSITION_INFORMATION:
+                                created_output_buffer_length =
+                                        smb2_encode_file_disposition_info(smb2,
+                                                (struct smb2_file_disposition_info *)rep->output_buffer, iov);
+                                break;
                         case SMB2_FILE_EA_INFORMATION:
                                 break;
                         case SMB2_FILE_FULL_EA_INFORMATION:
@@ -477,6 +482,16 @@ int smb2_process_query_info_variable(struct smb2_context *smb2,
                         break;
                 case SMB2_FILE_COMPRESSION_INFORMATION:
                         break;
+                case SMB2_FILE_DISPOSITION_INFORMATION:
+                        ptr = smb2_alloc_init(smb2,
+                                  sizeof(struct smb2_file_disposition_info));
+                        if (smb2_decode_file_disposition_info(smb2, ptr, ptr, &vec)) {
+                                smb2_set_error(smb2, "could not decode file "
+                                               "disposition info. %s",
+                                               smb2_get_error(smb2));
+                                return -1;
+                        }
+                        break;
                 case SMB2_FILE_EA_INFORMATION:
                         break;
                 case SMB2_FILE_FULL_EA_INFORMATION:
@@ -750,4 +765,3 @@ smb2_process_query_info_request_variable(struct smb2_context *smb2,
         req->input = (uint8_t *)vec.buf;
         return 0;
 }
-

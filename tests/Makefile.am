@@ -5,7 +5,7 @@ AM_CFLAGS = $(WARN_CFLAGS)
 LDADD = ../lib/libsmb2.la
 
 noinst_PROGRAMS = prog_ls prog_mkdir prog_rmdir prog_cat \
-	prog_cat_cancel prog_setsd prog_ssc \
+	prog_cat_cancel prog_query_disposition prog_setsd prog_ssc \
 	smb2-dcerpc-coder-test
 noinst_PROGRAMS += metastat-0202-censored
 

@@ -280,6 +280,30 @@ smb2_encode_file_position_info(struct smb2_context *smb2,
 }
 
 int
+smb2_decode_file_disposition_info(struct smb2_context *smb2,
+                                  void *memctx,
+                                  struct smb2_file_disposition_info *fs,
+                                  struct smb2_iovec *vec)
+{
+        if (vec->len < 1) {
+                smb2_set_error(smb2, "disposition info reply too short");
+                return -1;
+        }
+
+        smb2_get_uint8(vec, 0, &fs->delete_pending);
+        return 0;
+}
+
+int
+smb2_encode_file_disposition_info(struct smb2_context *smb2,
+                                  struct smb2_file_disposition_info *fs,
+                                  struct smb2_iovec *vec)
+{
+        smb2_set_uint8(vec, 0, fs->delete_pending);
+        return 1;
+}
+
+int
 smb2_decode_file_all_info(struct smb2_context *smb2,
                           void *memctx,
                           struct smb2_file_all_info *fs,
@@ -534,4 +558,3 @@ smb2_encode_file_normalized_name_info(struct smb2_context *smb2,
         smb2_set_uint32(vec, 0, fs->file_name_length);
         return 4 + fs->file_name_length;
 }
-
