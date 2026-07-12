@@ -1007,11 +1007,12 @@ connect_cb(struct smb2_context *smb2, int status,
 
         memset(&req, 0, sizeof(struct smb2_negotiate_request));
         req.capabilities = SMB2_GLOBAL_CAP_LARGE_MTU;
-        if (smb2->version == SMB2_VERSION_ANY  ||
-            smb2->version == SMB2_VERSION_ANY3 ||
-            smb2->version == SMB2_VERSION_0300 ||
-            smb2->version == SMB2_VERSION_0302 ||
-            smb2->version == SMB2_VERSION_0311) {
+        if (smb2->seal &&
+            (smb2->version == SMB2_VERSION_ANY  ||
+             smb2->version == SMB2_VERSION_ANY3 ||
+             smb2->version == SMB2_VERSION_0300 ||
+             smb2->version == SMB2_VERSION_0302 ||
+             smb2->version == SMB2_VERSION_0311)) {
                 req.capabilities |= SMB2_GLOBAL_CAP_ENCRYPTION;
         }
         req.security_mode = smb2->security_mode;
