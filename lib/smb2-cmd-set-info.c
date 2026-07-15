@@ -55,18 +55,68 @@
 #include "libsmb2.h"
 #include "libsmb2-private.h"
 
+/*
+ * FILE_RENAME_INFORMATION and FILE_LINK_INFORMATION share the same wire
+ * format: ReplaceIfExists, Reserved, RootDirectory, FileNameLength, FileName.
+ */
+static int
+smb2_encode_new_name(struct smb2_context *smb2, struct smb2_pdu *pdu,
+                     struct smb2_iovec *iov, uint8_t replace_if_exist,
+                     const uint8_t *file_name)
+{
+        int i, len;
+        uint8_t *buf;
+        struct smb2_utf16 *name;
+
+        name = smb2_utf8_to_utf16((char *)file_name);
+        if (name == NULL) {
+                smb2_set_error(smb2, "Could not convert name into UTF-16");
+                return -1;
+        }
+        /* Convert '/' to '\' in-place before copying into the iovec */
+        for (i = 0; i < name->len; i++) {
+                if (name->val[i] == 0x002f) {
+                        name->val[i] = 0x005c;
+                }
+        }
+
+        len = 28 + name->len * 2;
+        smb2_set_uint32(iov, 4, len); /* buffer length */
+
+        buf = calloc(len, sizeof(uint8_t));
+        if (buf == NULL) {
+                smb2_set_error(smb2, "Failed to allocate set info data buffer");
+                free(name);
+                return -1;
+        }
+        iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
+        if (iov == NULL) {
+                smb2_set_error(smb2, "Failed to add iovector for set-info new-name data");
+                free(name);
+                return -1;
+        }
+
+        smb2_set_uint8(iov, 0, replace_if_exist);
+        smb2_set_uint64(iov, 8, 0u);
+        smb2_set_uint32(iov, 16, name->len * 2);
+        memcpy(iov->buf + 20, name->val, name->len * 2);
+        free(name);
+
+        return 0;
+}
+
 static int
 smb2_encode_set_info_request(struct smb2_context *smb2,
                              struct smb2_pdu *pdu,
                              struct smb2_set_info_request *req)
 {
-        int i, len;
+        int len;
         uint8_t *buf;
         struct smb2_iovec *iov;
         struct smb2_file_end_of_file_info *eofi;
         struct smb2_file_disposition_info *fdi;
         struct smb2_file_rename_info *rni;
-        struct smb2_utf16 *name;
+        struct smb2_file_link_info *lni;
         struct smb2_security_descriptor *sd;
 
         len = SMB2_SET_INFO_REQUEST_SIZE & 0xfffffffe;
@@ -152,43 +202,19 @@ smb2_encode_set_info_request(struct smb2_context *smb2,
                         break;
                 case SMB2_FILE_RENAME_INFORMATION:
                         rni = req->input_data;
-
-                        name = smb2_utf8_to_utf16((char *)(rni->file_name));
-                        if (name == NULL) {
-                                smb2_set_error(smb2, "Could not convert name into UTF-16");
+                        if (smb2_encode_new_name(smb2, pdu, iov,
+                                                 rni->replace_if_exist,
+                                                 rni->file_name) < 0) {
                                 return -1;
                         }
-                        /* Convert '/' to '\' in-place before copying into the iovec */
-                        for (i = 0; i < name->len; i++) {
-                                if (name->val[i] == 0x002f) {
-                                        name->val[i] = 0x005c;
-                                }
-                        }
-
-                        len = 28 + name->len * 2;
-                        smb2_set_uint32(iov, 4, len); /* buffer length */
-
-                        buf = calloc(len, sizeof(uint8_t));
-                        if (buf == NULL) {
-                                smb2_set_error(smb2, "Failed to allocate set "
-                                               "info data buffer");
-                                free(name);
+                        break;
+                case SMB2_FILE_LINK_INFORMATION:
+                        lni = req->input_data;
+                        if (smb2_encode_new_name(smb2, pdu, iov,
+                                                 lni->replace_if_exist,
+                                                 lni->file_name) < 0) {
                                 return -1;
                         }
-                        iov = smb2_add_iovector(smb2, &pdu->out, buf, len,
-                                                free);
-                        if (iov == NULL) {
-                                smb2_set_error(smb2, "Failed to add iovector for set-info rename data");
-                                free(name);
-                                return -1;
-                        }
-
-                        smb2_set_uint8(iov, 0, rni->replace_if_exist);
-                        smb2_set_uint64(iov, 8, 0u);
-                        smb2_set_uint32(iov, 16, name->len * 2);
-                        memcpy(iov->buf + 20, name->val, name->len * 2);
-                        free(name);
-
                         break;
                 case SMB2_FILE_DISPOSITION_INFORMATION:
                         len = 1;

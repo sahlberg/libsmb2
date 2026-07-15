@@ -19,12 +19,22 @@ set(SOURCES smb2-cat-async
             smb2-CMD-FIND
             smb2-server-sync
             smb2-notify
-            smb2-set-security-info)
+            smb2-set-security-info
+            smb2-link-sync)
 
 foreach(TARGET ${SOURCES})
   add_executable(${TARGET} ${TARGET}.c)
   target_link_libraries(${TARGET} smb2 ${CORE_LIBRARIES})
   add_dependencies(${TARGET} smb2)
+  if(WIN32 AND BUILD_SHARED_LIBS)
+    add_custom_command(TARGET ${TARGET} POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different
+              $<TARGET_FILE:smb2> $<TARGET_FILE_DIR:${TARGET}>)
+  endif()
 endforeach()
 
-add_definitions(-Werror "-D_U_=__attribute__((unused))")
+if(NOT MSVC)
+  add_definitions(-Werror "-D_U_=__attribute__((unused))")
+else()
+  add_definitions("-D_U_=")
+endif()
