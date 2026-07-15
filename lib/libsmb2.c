@@ -715,7 +715,8 @@ session_setup_cb(struct smb2_context *smb2, int status,
                 return;
         }
 
-        if (rep->session_flags & SMB2_SESSION_FLAG_IS_ENCRYPT_DATA) {
+        if (smb2->seal_requested != SMB2_SEAL_NONE &&
+            (rep->session_flags & SMB2_SESSION_FLAG_IS_ENCRYPT_DATA)) {
                 smb2->seal = 1;
                 smb2->sign = 0;
         }
@@ -902,7 +903,8 @@ negotiate_cb(struct smb2_context *smb2, int status,
         smb2->cypher            = rep->cypher;
 
         if (smb2->seal && (smb2->dialect == SMB2_VERSION_0300 ||
-                           smb2->dialect == SMB2_VERSION_0302)) {
+                           smb2->dialect == SMB2_VERSION_0302 ||
+                           smb2->dialect == SMB2_VERSION_0311)) {
                 if(!(rep->capabilities & SMB2_GLOBAL_CAP_ENCRYPTION)) {
                         smb2_set_error(smb2, "Encryption requested but server "
                                        "does not support encryption.");
@@ -1007,7 +1009,16 @@ connect_cb(struct smb2_context *smb2, int status,
 
         memset(&req, 0, sizeof(struct smb2_negotiate_request));
         req.capabilities = SMB2_GLOBAL_CAP_LARGE_MTU;
-        if (smb2->seal &&
+        /*
+         * Advertise encryption capability unless the caller explicitly
+         * disabled it (SMB2_SEAL_NONE). This covers both SMB2_SEAL_MUST
+         * (caller wants encryption and negotiate_cb() will fail the
+         * connection if the server doesn't reciprocate) and the default
+         * SMB2_SEAL_MAYBE (advertise it so a share that mandates
+         * encryption can still be used via smb2-cmd-tree-connect.c's
+         * auto-detect, but tolerate a server that doesn't support it).
+         */
+        if (smb2->seal_requested != SMB2_SEAL_NONE &&
             (smb2->version == SMB2_VERSION_ANY  ||
              smb2->version == SMB2_VERSION_ANY3 ||
              smb2->version == SMB2_VERSION_0300 ||

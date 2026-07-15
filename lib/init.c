@@ -100,7 +100,16 @@ smb2_parse_args(struct smb2_context *smb2, const char *args)
                 }
 
                 if (!strcmp(args, "seal")) {
-                        smb2->seal = 1;
+                        /* bare "seal" or "seal=1" requires encryption;
+                         * "seal=0" explicitly disables it. Leaving the
+                         * argument out entirely keeps the default
+                         * (SMB2_SEAL_MAYBE): advertise but don't require.
+                         */
+                        if (value && !strcmp(value, "0")) {
+                                smb2_set_seal(smb2, 0);
+                        } else {
+                                smb2_set_seal(smb2, 1);
+                        }
                 } else if (!strcmp(args, "sign")) {
                         smb2->sign = 1;
                 } else if (!strcmp(args, "ndr3264")) {
@@ -709,7 +718,8 @@ void *smb2_get_opaque(struct smb2_context *smb2)
 
 void smb2_set_seal(struct smb2_context *smb2, int val)
 {
-        smb2->seal = val;
+        smb2->seal = val ? 1 : 0;
+        smb2->seal_requested = val ? SMB2_SEAL_MUST : SMB2_SEAL_NONE;
 }
 
 void smb2_set_sign(struct smb2_context *smb2, int val)

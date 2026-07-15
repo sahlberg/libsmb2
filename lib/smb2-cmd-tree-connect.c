@@ -227,7 +227,14 @@ smb2_process_tree_connect_fixed(struct smb2_context *smb2,
         smb2_get_uint32(iov, 8, &rep->capabilities);
         smb2_get_uint32(iov, 12, &rep->maximal_access);
 
-        if (!smb2->seal)
+        /*
+         * Auto-enable sealing if the share mandates it, unless the caller
+         * explicitly disabled encryption (SMB2_SEAL_NONE) -- in that case
+         * we never advertised SMB2_GLOBAL_CAP_ENCRYPTION during negotiate,
+         * so there is no negotiated cipher to actually seal with even if
+         * the share reports SMB2_SHAREFLAG_ENCRYPT_DATA.
+         */
+        if (!smb2->seal && smb2->seal_requested != SMB2_SEAL_NONE)
                 smb2->seal = !!(rep->share_flags & SMB2_SHAREFLAG_ENCRYPT_DATA);
 
         return 0;
