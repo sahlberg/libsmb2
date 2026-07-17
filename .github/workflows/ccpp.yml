@@ -217,7 +217,7 @@ jobs:
     steps:
     - name: Install dependencies
       run: |
-        sudo apt update -y && sudo apt upgrade -y && sudo apt install -y ffmpeg gettext smpq
+        sudo apt update -y && sudo apt upgrade -y && sudo apt install -y ffmpeg gettext
 
     - name: git checkout
       uses: actions/checkout@v4
@@ -236,7 +236,7 @@ jobs:
     steps:
     - name: Install dependencies
       run: |
-        sudo apt update -y && sudo apt upgrade -y && sudo apt install -y ffmpeg gettext smpq
+        sudo apt update -y && sudo apt upgrade -y && sudo apt install -y ffmpeg gettext
 
     - name: git checkout
       uses: actions/checkout@v4
