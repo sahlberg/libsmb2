@@ -715,7 +715,8 @@ session_setup_cb(struct smb2_context *smb2, int status,
                 return;
         }
 
-        if (rep->session_flags & SMB2_SESSION_FLAG_IS_ENCRYPT_DATA) {
+        if (smb2->seal_requested != SMB2_SEAL_NONE &&
+            (rep->session_flags & SMB2_SESSION_FLAG_IS_ENCRYPT_DATA)) {
                 smb2->seal = 1;
                 smb2->sign = 0;
         }
@@ -901,17 +902,18 @@ negotiate_cb(struct smb2_context *smb2, int status,
         smb2->dialect           = rep->dialect_revision;
         smb2->cypher            = rep->cypher;
 
-        if (smb2->seal && (smb2->dialect == SMB2_VERSION_0300 ||
-                           smb2->dialect == SMB2_VERSION_0302)) {
-                if(!(rep->capabilities & SMB2_GLOBAL_CAP_ENCRYPTION)) {
-                        smb2_set_error(smb2, "Encryption requested but server "
-                                       "does not support encryption.");
-                        smb2_close_context(smb2);
-                        c_data->cb(smb2, -ENOMEM, NULL, c_data->cb_data);
-                        free_c_data(smb2, c_data);
-                        return;
-                }
-        }
+        /*
+         * We used to hard-fail here if smb2->seal was requested and
+         * rep->capabilities lacked SMB2_GLOBAL_CAP_ENCRYPTION, but that bit
+         * is not a reliable signal in practice: e.g. Samba configured with
+         * "server smb encrypt = desired" supports per-share encryption
+         * (signalled later via share/session flags, same as the MAYBE
+         * auto-detect below) without setting this connection-wide
+         * capability bit in its negotiate reply. smb2->seal is already
+         * forced on for SMB2_SEAL_MUST, so every PDU from here on is still
+         * sealed on the wire; we just no longer abort the connection based
+         * on this bit alone.
+         */
 
         if (smb2->sign &&
             !(rep->security_mode & SMB2_NEGOTIATE_SIGNING_ENABLED)) {
@@ -927,9 +929,17 @@ negotiate_cb(struct smb2_context *smb2, int status,
                 smb2->sign = 1;
         }
 
-        if (smb2->seal) {
-                smb2->sign = 0;
-        }
+        /*
+         * Do not disable signing here even if smb2->seal is already true
+         * (SMB2_SEAL_MUST): actual sealing can't start until session_setup_cb()
+         * derives the encryption keys from the completed authentication
+         * exchange (smb2_allocate_pdu() never seals SESSION_SETUP/NEGOTIATE
+         * PDUs), so session setup still needs whatever signing the server
+         * just negotiated. Disabling signing prematurely here left session
+         * setup completely unprotected and made servers that expect it
+         * signed reject/drop the connection. See session_setup_cb() for
+         * where signing actually gets disabled, once sealing is real.
+         */
 
         /* if there is a gssapi blob in the reply, parse it to determine which
          * mechanisms are supported if caller hasn't explicitly set security
@@ -1007,11 +1017,21 @@ connect_cb(struct smb2_context *smb2, int status,
 
         memset(&req, 0, sizeof(struct smb2_negotiate_request));
         req.capabilities = SMB2_GLOBAL_CAP_LARGE_MTU;
-        if (smb2->version == SMB2_VERSION_ANY  ||
-            smb2->version == SMB2_VERSION_ANY3 ||
-            smb2->version == SMB2_VERSION_0300 ||
-            smb2->version == SMB2_VERSION_0302 ||
-            smb2->version == SMB2_VERSION_0311) {
+        /*
+         * Advertise encryption capability unless the caller explicitly
+         * disabled it (SMB2_SEAL_NONE). This covers both SMB2_SEAL_MUST
+         * (caller wants encryption and negotiate_cb() will fail the
+         * connection if the server doesn't reciprocate) and the default
+         * SMB2_SEAL_MAYBE (advertise it so a share that mandates
+         * encryption can still be used via smb2-cmd-tree-connect.c's
+         * auto-detect, but tolerate a server that doesn't support it).
+         */
+        if (smb2->seal_requested != SMB2_SEAL_NONE &&
+            (smb2->version == SMB2_VERSION_ANY  ||
+             smb2->version == SMB2_VERSION_ANY3 ||
+             smb2->version == SMB2_VERSION_0300 ||
+             smb2->version == SMB2_VERSION_0302 ||
+             smb2->version == SMB2_VERSION_0311)) {
                 req.capabilities |= SMB2_GLOBAL_CAP_ENCRYPTION;
         }
         req.security_mode = smb2->security_mode;

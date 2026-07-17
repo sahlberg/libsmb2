@@ -132,6 +132,23 @@ enum smb2_recv_state {
 #define MAX_CREDITS 1024
 #define SMB2_SALT_SIZE 32
 
+/*
+ * Tri-state for smb2->seal_requested, tracking what the caller asked for
+ * via smb2_set_seal()/the "seal=" URL argument, as distinct from whether
+ * sealing is currently active (smb2->seal):
+ *   SMB2_SEAL_NONE  : caller explicitly disabled encryption (seal=0). Do
+ *                     not advertise SMB2_GLOBAL_CAP_ENCRYPTION at all.
+ *   SMB2_SEAL_MAYBE : default, nobody called smb2_set_seal(). Advertise
+ *                     the capability, but tolerate a server that doesn't
+ *                     support/require it.
+ *   SMB2_SEAL_MUST  : caller explicitly requested encryption (seal=1).
+ *                     Advertise the capability and fail the connection if
+ *                     the server does not also negotiate it.
+ */
+#define SMB2_SEAL_NONE  (-1)
+#define SMB2_SEAL_MAYBE   0
+#define SMB2_SEAL_MUST    1
+
 struct sync_cb_data {
 	int is_finished;
 	int status;
@@ -190,6 +207,7 @@ struct smb2_context {
         uint8_t session_key_size;
 
         uint8_t seal:1;
+        int8_t seal_requested;
         uint8_t sign:1;
         uint8_t signing_key[SMB2_KEY_SIZE];
         uint8_t serverin_key[SMB2_KEY_SIZE];

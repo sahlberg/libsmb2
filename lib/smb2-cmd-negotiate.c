@@ -161,10 +161,12 @@ smb2_encode_negotiate_request(struct smb2_context *smb2,
                 }
                 req->negotiate_context_count++;
 
-                if (smb2_encode_encryption_context(smb2, pdu)) {
-                        return -1;
+                if (req->capabilities & SMB2_GLOBAL_CAP_ENCRYPTION) {
+                        if (smb2_encode_encryption_context(smb2, pdu)) {
+                                return -1;
+                        }
+                        req->negotiate_context_count++;
                 }
-                req->negotiate_context_count++;
         }
 
         smb2_set_uint16(iov, 0, SMB2_NEGOTIATE_REQUEST_SIZE);
@@ -643,4 +645,3 @@ smb2_process_negotiate_request_variable(struct smb2_context *smb2,
 
         return 0;
 }
-

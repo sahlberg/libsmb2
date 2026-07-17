@@ -349,8 +349,17 @@ void smb2_set_security_mode(struct smb2_context *smb2, uint16_t security_mode);
 
 /*
  * Set whether smb3 encryption should be used or not.
- * 0  : disable encryption. This is the default.
- * !0 : enable encryption.
+ *
+ * If this function is never called, the client still advertises support
+ * for encryption during negotiate, but tolerates a server that doesn't
+ * support/require it; a share that mandates encryption is still used
+ * transparently. Calling this function makes the request explicit:
+ *
+ * 0  : never advertise or use encryption, even if the server or a share
+ *      requires it (the connection/tree-connect will then fail against
+ *      a server/share that mandates encryption).
+ * !0 : require encryption. The connection fails if the server does not
+ *      also negotiate it.
  */
 void smb2_set_seal(struct smb2_context *smb2, int val);
 
