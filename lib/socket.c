@@ -950,7 +950,8 @@ smb2_close_connecting_fd(struct smb2_context *smb2, t_socket fd)
                 if (fd == smb2->connecting_fds[i]) {
                         memmove(&smb2->connecting_fds[i],
                                 &smb2->connecting_fds[i + 1],
-                                smb2->connecting_fds_count - i - 1);
+                                (smb2->connecting_fds_count - i - 1)
+                                * sizeof(smb2->connecting_fds[0]));
                         smb2->connecting_fds_count--;
                         return;
                 }
