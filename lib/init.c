@@ -123,6 +123,11 @@ smb2_parse_args(struct smb2_context *smb2, const char *args)
                 } else if (!strcmp(args, "be")) {
                         smb2->endianness = 1;
                 } else if (!strcmp(args, "sec")) {
+                        if (!value) {
+                                smb2_set_error(smb2, "Missing value for "
+                                               "argument: %s", args);
+                                return -1;
+                        }
                         if(!strcmp(value, "krb5")) {
                                 smb2->sec = SMB2_SEC_KRB5;
                         } else if(!strcmp(value, "krb5cc")) {
@@ -136,6 +141,11 @@ smb2_parse_args(struct smb2_context *smb2, const char *args)
                                 return -1;
                         }
                 } else if (!strcmp(args, "vers")) {
+                        if (!value) {
+                                smb2_set_error(smb2, "Missing value for "
+                                               "argument: %s", args);
+                                return -1;
+                        }
                         if(!strcmp(value, "2")) {
                                 smb2->version = SMB2_VERSION_ANY2;
                         } else if(!strcmp(value, "3")) {
@@ -157,6 +167,11 @@ smb2_parse_args(struct smb2_context *smb2, const char *args)
                                 return -1;
                         }
                 } else if (!strcmp(args, "timeout")) {
+                        if (!value) {
+                                smb2_set_error(smb2, "Missing value for "
+                                               "argument: %s", args);
+                                return -1;
+                        }
                         smb2->timeout = (int)strtol(value, NULL, 10);
                 } else {
                         smb2_set_error(smb2, "Unknown argument: %s", args);
