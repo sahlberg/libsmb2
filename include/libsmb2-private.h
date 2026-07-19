@@ -196,6 +196,7 @@ struct smb2_context {
         int credits;
 
         char client_guid[16];
+        char server_guid[16];
 
         uint32_t tree_id[SMB2_MAX_TREE_NESTING];
         int  tree_id_top;

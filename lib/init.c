@@ -530,6 +530,11 @@ const char *smb2_get_client_guid(struct smb2_context *smb2)
         return smb2->client_guid;
 }
 
+const char *smb2_get_server_guid(struct smb2_context *smb2)
+{
+        return smb2->server_guid;
+}
+ 
 uint16_t smb2_get_dialect(struct smb2_context *smb2)
 {
         return smb2->dialect;

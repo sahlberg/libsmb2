@@ -490,6 +490,11 @@ void smb2_set_client_guid(struct smb2_context *smb2, const uint8_t guid[SMB2_GUI
 const char *smb2_get_client_guid(struct smb2_context *smb2);
 
 /*
+ * Returns the server_guid for this context.
+ */
+const char *smb2_get_server_guid(struct smb2_context *smb2);
+        
+/*
  * Asynchronous call to connect a TCP connection to the server
  *
  * Returns:
