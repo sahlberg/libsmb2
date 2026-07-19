@@ -221,6 +221,7 @@ struct smb2_url *smb2_parse_url(struct smb2_context *smb2, const char *url)
         shared_folder = strchr(ptr, '/');
         if (!shared_folder) {
                 smb2_set_error(smb2, "Wrong URL format");
+                smb2_destroy_url(u);
                 return NULL;
         }
         len_shared_folder = strlen(shared_folder);
