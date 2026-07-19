@@ -323,15 +323,14 @@ void smb2_destroy_context(struct smb2_context *smb2)
                 return;
         }
 
+        smb2_close_connecting_fds(smb2);
+
         if (SMB2_VALID_SOCKET(smb2->fd)) {
                 if (smb2->change_fd) {
                         smb2->change_fd(smb2, smb2->fd, SMB2_DEL_FD);
                 }
                 close(smb2->fd);
                 smb2->fd = SMB2_INVALID_SOCKET;
-        }
-        else {
-                smb2_close_connecting_fds(smb2);
         }
 
         while (smb2->outqueue) {
@@ -350,6 +349,14 @@ void smb2_destroy_context(struct smb2_context *smb2)
                         pdu->cb(smb2, SMB2_STATUS_SHUTDOWN, NULL, pdu->cb_data);
                 }
                 smb2_free_pdu(smb2, smb2->pdu);
+        }
+        if (smb2->next_pdu) {
+                struct smb2_pdu *pdu = smb2->next_pdu;
+
+                if (pdu->cb) {
+                        pdu->cb(smb2, SMB2_STATUS_SHUTDOWN, NULL, pdu->cb_data);
+                }
+                smb2_free_pdu(smb2, smb2->next_pdu);
         }
         while (smb2->waitqueue) {
                 struct smb2_pdu *pdu = smb2->waitqueue;
