@@ -967,11 +967,27 @@ dcerpc_bind_ack_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         /* TODO: we need to handle the encode case.
         *        it is something like "\\PIPE\\srvsvc"
         */
+        if (*offset < 0 ||
+            (size_t)*offset + sec_addr_len > iov->len) {
+                smb2_set_error(ctx->smb2, "DCERPC bind_ack secondary address "
+                               "length out of bounds");
+                return -1;
+        }
         *offset += sec_addr_len;
         *offset = (*offset + 3) & ~3;
+        if (*offset < 0 || (size_t)*offset > iov->len) {
+                smb2_set_error(ctx->smb2, "DCERPC bind_ack secondary address "
+                               "padding out of bounds");
+                return -1;
+        }
 
         /* Number Of Results */
         if (ndr_uint8_coder("NumResults", ctx, pdu, iov, offset, &bind_ack->num_results)) {
+                return -1;
+        }
+        if (bind_ack->num_results > MAX_ACK_RESULTS) {
+                smb2_set_error(ctx->smb2, "DCERPC bind_ack has too many "
+                               "results (%u)", bind_ack->num_results);
                 return -1;
         }
         *offset += 3;
