@@ -769,6 +769,102 @@ srvsvc_SERVER_INFO_103_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                     srvsvc_SERVER_INFO_103_coder);
 }
 
+/*
+ * typedef struct _SERVER_INFO_502 {
+ *   DWORD sv502_sessopens;
+ *   DWORD sv502_sessvcs;
+ *   DWORD sv502_opensearch;
+ *   DWORD sv502_sizreqbuf;
+ *   DWORD sv502_initworkitems;
+ *   DWORD sv502_maxworkitems;
+ *   DWORD sv502_rawworkitems;
+ *   DWORD sv502_irpstacksize;
+ *   DWORD sv502_maxrawbuflen;
+ *   DWORD sv502_sessusers;
+ *   DWORD sv502_sessconns;
+ *   DWORD sv502_maxpagedmemoryusage;
+ *   DWORD sv502_maxnonpagedmemoryusage;
+ *   int sv502_enablesoftcompat;
+ *   int sv502_enableforcedlogoff;
+ *   int sv502_timesource;
+ *   int sv502_acceptdownlevelapis;
+ *   int sv502_lmannounce;
+ * } SERVER_INFO_502, *PSERVER_INFO_502, *LPSERVER_INFO_502;
+ */
+int
+srvsvc_SERVER_INFO_502_coder(char *name, struct dcerpc_context *dce,
+                             struct dcerpc_pdu *pdu,
+                             struct smb2_iovec *iov, int *offset,
+                             void *ptr)
+{
+        struct srvsvc_SERVER_INFO_502 *si502 = ptr;
+
+        if (dcerpc_uint32_coder("sessopens", dce, pdu, iov, offset, &si502->sessopens)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("sessvcs", dce, pdu, iov, offset, &si502->sessvcs)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("opensearch", dce, pdu, iov, offset, &si502->opensearch)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("sizreqbuf", dce, pdu, iov, offset, &si502->sizreqbuf)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("initworkitems", dce, pdu, iov, offset, &si502->initworkitems)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("maxworkitems", dce, pdu, iov, offset, &si502->maxworkitems)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("rawworkitems", dce, pdu, iov, offset, &si502->rawworkitems)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("irpstacksize", dce, pdu, iov, offset, &si502->irpstacksize)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("maxrawbuflen", dce, pdu, iov, offset, &si502->maxrawbuflen)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("sessusers", dce, pdu, iov, offset, &si502->sessusers)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("sessconns", dce, pdu, iov, offset, &si502->sessconns)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("maxpagedmemoryusage", dce, pdu, iov, offset, &si502->maxpagedmemoryusage)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("maxnonpagedmemoryusage", dce, pdu, iov, offset, &si502->maxnonpagedmemoryusage)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("enablesoftcompat", dce, pdu, iov, offset, &si502->enablesoftcompat)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("enableforcedlogoff", dce, pdu, iov, offset, &si502->enableforcedlogoff)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("timesource", dce, pdu, iov, offset, &si502->timesource)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("acceptdownlevelapis", dce, pdu, iov, offset, &si502->acceptdownlevelapis)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("lmannounce", dce, pdu, iov, offset, &si502->lmannounce)) {
+                return -1;
+        }
+        return 0;
+}
+
+int
+srvsvc_SERVER_INFO_502_STRUCT_coder(char *name, struct dcerpc_context *dce,
+                                    struct dcerpc_pdu *pdu,
+                                    struct smb2_iovec *iov, int *offset,
+                                    void *ptr)
+{
+        return  dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                    srvsvc_SERVER_INFO_502_coder);
+}
 
 /*
  * typedef [switch_type(unsigned long)] union _SERVER_INFO {
@@ -855,6 +951,12 @@ srvsvc_SERVER_INFO_coder(char *name, struct dcerpc_context *dce,
         case 103:
                 if (dcerpc_ptr_coder("ServerInfo103", dce, pdu, iov, offset, &info->ServerInfo103,
                                      PTR_UNIQUE, srvsvc_SERVER_INFO_103_STRUCT_coder)) {
+                        return -1;
+                }
+                break;
+        case 502:
+                if (dcerpc_ptr_coder("ServerInfo502", dce, pdu, iov, offset, &info->ServerInfo502,
+                                     PTR_UNIQUE, srvsvc_SERVER_INFO_502_STRUCT_coder)) {
                         return -1;
                 }
                 break;

@@ -174,12 +174,34 @@ struct srvsvc_SERVER_INFO_103 {
         char *userpath;
         uint32_t capabilities;
 };
+
+struct srvsvc_SERVER_INFO_502 {
+        uint32_t sessopens;
+        uint32_t sessvcs;
+        uint32_t opensearch;
+        uint32_t sizreqbuf;
+        uint32_t initworkitems;
+        uint32_t maxworkitems;
+        uint32_t rawworkitems;
+        uint32_t irpstacksize;
+        uint32_t maxrawbuflen;
+        uint32_t sessusers;
+        uint32_t sessconns;
+        uint32_t maxpagedmemoryusage;
+        uint32_t maxnonpagedmemoryusage;
+        uint32_t enablesoftcompat;
+        uint32_t enableforcedlogoff;
+        uint32_t timesource;
+        uint32_t acceptdownlevelapis;
+        uint32_t lmannounce;
+};
         
 union srvsvc_SERVER_INFO {
         struct srvsvc_SERVER_INFO_100 ServerInfo100;
         struct srvsvc_SERVER_INFO_101 ServerInfo101;
         struct srvsvc_SERVER_INFO_102 ServerInfo102;
-        struct srvsvc_SERVER_INFO_102 ServerInfo103;
+        struct srvsvc_SERVER_INFO_103 ServerInfo103;
+        struct srvsvc_SERVER_INFO_502 ServerInfo502;
 };
         
 struct srvsvc_NetrShareAdd_req {
