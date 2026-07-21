@@ -1278,6 +1278,7 @@ dcerpc_call_async(struct dcerpc_context *dce,
         /* Remember the request in case we need to dereference it from the reply */
         dcerpc_set_request(pdu, req);
         if (req_coder("Request", dce, pdu, &iov, &offset, req)) {
+                dcerpc_free_pdu(dce, pdu);
                 return -1;
         }
 
@@ -1286,11 +1287,13 @@ dcerpc_call_async(struct dcerpc_context *dce,
         /* Fixup frag_length and alloc_hint */
         o = 8;
         if (dcerpc_set_uint16(dce, pdu, &iov,  &o, offset)) {
+                dcerpc_free_pdu(dce, pdu);
                 return -1;
         }
         o = 16;
         v = offset - 24;
         if (ndr_uint32_coder("v", dce, pdu, &iov, &o, &v)) {
+                dcerpc_free_pdu(dce, pdu);
                 return -1;
         }
 
