@@ -166,6 +166,9 @@ open_file(const char *url, int flags)
 		free_file_context(file_context);
 		return NULL;
 	}
+	if (file_context->url->domain) {
+		smb2_set_domain(file_context->smb2, file_context->url->domain);
+	}
 
 	if (smb2_connect_share(file_context->smb2, file_context->url->server,
 			       file_context->url->share,

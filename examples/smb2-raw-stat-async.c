@@ -235,6 +235,9 @@ int main(int argc, char *argv[])
         if (url->user) {
                 smb2_set_user(smb2, url->user);
         }
+        if (url->domain) {
+                smb2_set_domain(smb2, url->domain);
+        }
 
         smb2_set_security_mode(smb2, SMB2_NEGOTIATE_SIGNING_ENABLED);
 	if (smb2_connect_share(smb2, url->server, url->share, url->user) != 0) {

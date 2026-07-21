@@ -63,6 +63,10 @@ int main(int argc, char *argv[])
                 exit(0);
         }
 
+        if (url->domain) {
+                smb2_set_domain(smb2, url->domain);
+        }
+
         smb2_set_security_mode(smb2, SMB2_NEGOTIATE_SIGNING_ENABLED);
 	if (smb2_connect_share(smb2, url->server, url->share, url->user) < 0) {
 		printf("smb2_connect_share failed. %s\n", smb2_get_error(smb2));

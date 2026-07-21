@@ -182,6 +182,10 @@ int main(int argc, char *argv[])
                 exit(0);
         }
 
+        if (url->domain) {
+                smb2_set_domain(smb2, url->domain);
+        }
+
         smb2_set_security_mode(smb2, SMB2_NEGOTIATE_SIGNING_ENABLED);
 
 

@@ -103,6 +103,9 @@ int main(int argc, char *argv[])
                 rc = 1;
                 goto out;
         }
+        if (src_url->domain) {
+                smb2_set_domain(smb2, src_url->domain);
+        }
 
         smb2_set_security_mode(smb2, SMB2_NEGOTIATE_SIGNING_ENABLED);
         if (smb2_connect_share(smb2, src_url->server, src_url->share, src_url->user) != 0) {
