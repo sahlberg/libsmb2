@@ -145,10 +145,15 @@ srvsvc_SHARE_INFO_0_CONTAINER_coder(char *name, struct dcerpc_context *dce,
         }                
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && ctr->EntriesRead) {
                 if (ctr->share_info_0 == NULL) {
+                        size_t esize = sizeof(struct srvsvc_SHARE_INFO_0);
+
+                        if (ctr->EntriesRead > SIZE_MAX / esize) {
+                                return -1;
+                        }
                         ctr->share_info_0 = smb2_alloc_data(
                                 dcerpc_get_smb2_context(dce),
                                 dcerpc_get_pdu_payload(pdu),
-                                ctr->EntriesRead * sizeof(struct srvsvc_SHARE_INFO_0));
+                                (size_t)ctr->EntriesRead * esize);
                         if (ctr->share_info_0 == NULL) {
                                 return -1;
                         }
@@ -238,10 +243,15 @@ srvsvc_SHARE_INFO_1_CONTAINER_coder(char *name, struct dcerpc_context *dce,
         }                
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && ctr->EntriesRead) {
                 if (ctr->share_info_1 == NULL) {
+                        size_t esize = sizeof(struct srvsvc_SHARE_INFO_1);
+
+                        if (ctr->EntriesRead > SIZE_MAX / esize) {
+                                return -1;
+                        }
                         ctr->share_info_1 = smb2_alloc_data(
                                 dcerpc_get_smb2_context(dce),
                                 dcerpc_get_pdu_payload(pdu),
-                                ctr->EntriesRead * sizeof(struct srvsvc_SHARE_INFO_1));
+                                (size_t)ctr->EntriesRead * esize);
                         if (ctr->share_info_1 == NULL) {
                                 return -1;
                         }
@@ -354,10 +364,15 @@ srvsvc_SHARE_INFO_2_CONTAINER_coder(char *name, struct dcerpc_context *dce,
         }                
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && ctr->EntriesRead) {
                 if (ctr->share_info_2 == NULL) {
+                        size_t esize = sizeof(struct srvsvc_SHARE_INFO_2);
+
+                        if (ctr->EntriesRead > SIZE_MAX / esize) {
+                                return -1;
+                        }
                         ctr->share_info_2 = smb2_alloc_data(
                                 dcerpc_get_smb2_context(dce),
                                 dcerpc_get_pdu_payload(pdu),
-                                ctr->EntriesRead * sizeof(struct srvsvc_SHARE_INFO_2));
+                                (size_t)ctr->EntriesRead * esize);
                         if (ctr->share_info_2 == NULL) {
                                 return -1;
                         }
