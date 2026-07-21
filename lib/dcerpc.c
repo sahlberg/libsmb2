@@ -578,12 +578,42 @@ dcerpc_connect_context_async(struct dcerpc_context *dce, const char *path,
         return 0;
 }
 
+static void
+dcerpc_close_cb(struct smb2_context *smb2 _U_, int status _U_,
+                void *command_data _U_, void *private_data _U_)
+{
+        /* best-effort close on destroy; nothing to free */
+}
+
 void
 dcerpc_destroy_context(struct dcerpc_context *dce)
 {
+        int i;
+        int opened = 0;
+
         if (dce == NULL) {
                 return;
         }
+
+        for (i = 0; i < SMB2_FD_SIZE; i++) {
+                if (dce->file_id[i]) {
+                        opened = 1;
+                        break;
+                }
+        }
+        if (opened && dce->smb2) {
+                struct smb2_close_request cl_req;
+                struct smb2_pdu *pdu;
+
+                memset(&cl_req, 0, sizeof(cl_req));
+                memcpy(cl_req.file_id, dce->file_id, SMB2_FD_SIZE);
+                pdu = smb2_cmd_close_async(dce->smb2, &cl_req,
+                                           dcerpc_close_cb, NULL);
+                if (pdu) {
+                        smb2_queue_pdu(dce->smb2, pdu);
+                }
+        }
+
         free(discard_const(dce->path));
         free(dce);
 }
