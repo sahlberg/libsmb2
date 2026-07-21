@@ -2006,10 +2006,20 @@ ndr_decode_ptr(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                 if (ndr_uint3264_coder("ReferentId", dce, pdu, iov, offset, &p)) {
                         return -1;
                 }
-                if (p == 0 || ptr == NULL) {
+                if (p == 0) {
                         return 0;
                 }
-                
+                if (ptr == NULL) {
+                        /* Non-null wire referent but no local buffer: fail
+                         * rather than leaving the referent body unconsumed
+                         * and desynchronizing the rest of the stub.
+                         */
+                        smb2_set_error(dce->smb2, "DCERPC unique pointer "
+                                       "referent present but destination is "
+                                       "NULL");
+                        return -1;
+                }
+
                 if (pdu->top_level) {
                         pdu->top_level = 0;
                         if (ndr_do_coder(name, dce, pdu, iov, offset, ptr, coder)) {
