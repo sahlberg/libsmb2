@@ -628,14 +628,19 @@ dcerpc_allocate_pdu(struct dcerpc_context *dce, enum dcerpc_encoding encoding,
         return pdu;
 }
 
-static void
+static int
 dcerpc_add_deferred_pointer(struct dcerpc_context *ctx,
                             struct dcerpc_pdu *pdu,
                             dcerpc_coder coder, void *ptr)
 {
+        if (pdu->max_ptr >= MAX_DEFERRED_PTR) {
+                smb2_set_error(ctx->smb2, "Too many deferred NDR pointers");
+                return -1;
+        }
         pdu->ptrs[pdu->max_ptr].coder = coder;
         pdu->ptrs[pdu->max_ptr].ptr = ptr;
         pdu->max_ptr++;
+        return 0;
 }
 
 int
@@ -1835,7 +1840,9 @@ ndr_encode_ptr(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                 if (ndr_uint3264_coder("ReferentId", dce, pdu, iov, offset, &val)) {
                         return -1;
                 }
-                dcerpc_add_deferred_pointer(dce, pdu, (dcerpc_coder)coder, ptr);
+                if (dcerpc_add_deferred_pointer(dce, pdu, (dcerpc_coder)coder, ptr)) {
+                        return -1;
+                }
                 break;
         case PTR_FULL:
                 if (ptr == NULL) {
@@ -1858,7 +1865,9 @@ ndr_encode_ptr(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                         }
                         pdu->top_level = top_level;
                 } else {
-                        dcerpc_add_deferred_pointer(dce, pdu, (dcerpc_coder)coder, ptr);
+                        if (dcerpc_add_deferred_pointer(dce, pdu, (dcerpc_coder)coder, ptr)) {
+                                return -1;
+                        }
                 }
                 break;
         case PTR_UNIQUE:
@@ -1881,7 +1890,9 @@ ndr_encode_ptr(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                         }
                         pdu->top_level = top_level;
                 } else {
-                        dcerpc_add_deferred_pointer(dce, pdu, (dcerpc_coder)coder, ptr);
+                        if (dcerpc_add_deferred_pointer(dce, pdu, (dcerpc_coder)coder, ptr)) {
+                                return -1;
+                        }
                 }
                 break;
         }
@@ -1938,7 +1949,9 @@ ndr_decode_ptr(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                 if (ndr_uint3264_coder("ReferentId", dce, pdu, iov, offset, &p)) {
                         return -1;
                 }
-                dcerpc_add_deferred_pointer(dce, pdu, (dcerpc_coder)coder, ptr);
+                if (dcerpc_add_deferred_pointer(dce, pdu, (dcerpc_coder)coder, ptr)) {
+                        return -1;
+                }
                 break;
         case PTR_UNIQUE:
                 if (ndr_uint3264_coder("ReferentId", dce, pdu, iov, offset, &p)) {
@@ -1955,7 +1968,9 @@ ndr_decode_ptr(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                         }
                         pdu->top_level = top_level;
                 } else {
-                        dcerpc_add_deferred_pointer(dce, pdu, (dcerpc_coder)coder, ptr);
+                        if (dcerpc_add_deferred_pointer(dce, pdu, (dcerpc_coder)coder, ptr)) {
+                                return -1;
+                        }
                 }
                 break;
         case PTR_FULL:
