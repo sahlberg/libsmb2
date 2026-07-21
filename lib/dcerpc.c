@@ -276,7 +276,7 @@ struct dcerpc_pdu {
         int is_conformance_run;
         int max_alignment;
 
-        int size_is;   /* Passing size_is() value through a pointer */
+        uint32_t size_is; /* Passing size_is() value through a pointer */
         int switch_is; /* Passing switch_is() value through a pointer */
 
         /* YAML */
@@ -311,7 +311,7 @@ static int ndr_decode_ptr(char *name, struct dcerpc_context *dce, struct dcerpc_
                           enum ptr_type type, dcerpc_coder coder);
 int ndr_carray_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                      struct smb2_iovec *iov, int *offset,
-                     int num, void *ptr, int elem_size, dcerpc_coder coder);
+                     uint32_t num, void *ptr, int elem_size, dcerpc_coder coder);
 int ndr_union_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                     struct smb2_iovec *iov, int *offset,
                     uint32_t *switch_is, void *ptr, dcerpc_coder coder);
@@ -343,7 +343,7 @@ static int yaml_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcer
 static int yaml_carray_coder(char *name, struct dcerpc_context *ctx,
                       struct dcerpc_pdu *pdu,
                       struct smb2_iovec *iov, int *offset,
-                      int num, void *ptr, int elem_size, dcerpc_coder coder);
+                      uint32_t num, void *ptr, int elem_size, dcerpc_coder coder);
 static int yaml_union_coder(char *name, struct dcerpc_context *ctx,
                      struct dcerpc_pdu *pdu,
                      struct smb2_iovec *iov, int *offset,
@@ -724,7 +724,7 @@ int
 dcerpc_carray_coder(char *name, struct dcerpc_context *ctx,
                  struct dcerpc_pdu *pdu,
                  struct smb2_iovec *iov, int *offset,
-                 int num, void *ptr, int elem_size, dcerpc_coder coder)
+                 uint32_t num, void *ptr, int elem_size, dcerpc_coder coder)
 {
         switch(pdu->encoding) {
         case ENCODING_NDR:
@@ -1665,12 +1665,12 @@ int dcerpc_get_cr(struct dcerpc_pdu *pdu)
         return pdu->is_conformance_run;
 }
 
-void dcerpc_set_size_is(struct dcerpc_pdu *pdu, int size_is)
+void dcerpc_set_size_is(struct dcerpc_pdu *pdu, uint32_t size_is)
 {
         pdu->size_is = size_is;
 }
 
-int dcerpc_get_size_is(struct dcerpc_pdu *pdu)
+uint32_t dcerpc_get_size_is(struct dcerpc_pdu *pdu)
 {
         return pdu->size_is;
 }
@@ -2052,7 +2052,7 @@ int
 ndr_carray_coder(char *name, struct dcerpc_context *ctx,
                  struct dcerpc_pdu *pdu,
                  struct smb2_iovec *iov, int *offset,
-                 int num, void *ptr, int elem_size, dcerpc_coder coder)
+                 uint32_t num, void *ptr, int elem_size, dcerpc_coder coder)
 {
         int i;
         uint64_t p;
@@ -2459,7 +2459,7 @@ static int
 yaml_carray_coder(char *name, struct dcerpc_context *ctx,
                   struct dcerpc_pdu *pdu,
                   struct smb2_iovec *iov, int *offset,
-                  int num, void *ptr, int elem_size, dcerpc_coder coder)
+                  uint32_t num, void *ptr, int elem_size, dcerpc_coder coder)
 {
         int i;
         uint8_t *data = ptr;

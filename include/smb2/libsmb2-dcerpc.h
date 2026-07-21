@@ -135,8 +135,8 @@ struct dcerpc_pdu *dcerpc_allocate_pdu(struct dcerpc_context *dce,
                                        int direction, int payload_size);
 void dcerpc_free_pdu(struct dcerpc_context *dce, struct dcerpc_pdu *pdu);
 
-void dcerpc_set_size_is(struct dcerpc_pdu *pdu, int size_is);
-int dcerpc_get_size_is(struct dcerpc_pdu *pdu);
+void dcerpc_set_size_is(struct dcerpc_pdu *pdu, uint32_t size_is);
+uint32_t dcerpc_get_size_is(struct dcerpc_pdu *pdu);
 void dcerpc_set_switch_is(struct dcerpc_pdu *pdu, int switch_is);
 int dcerpc_get_switch_is(struct dcerpc_pdu *pdu);
 void dcerpc_set_request(struct dcerpc_pdu *pdu, void *request);
@@ -148,7 +148,7 @@ int ndr_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu
 int ndr_carray_coder(char *name, struct dcerpc_context *ctx,
                      struct dcerpc_pdu *pdu,
                      struct smb2_iovec *iov, int *offset,
-                     int num, void *ptr, int elem_size, dcerpc_coder coder);
+                     uint32_t num, void *ptr, int elem_size, dcerpc_coder coder);
 int ndr_context_handle_coder(char *name, struct dcerpc_context *dce,
                              struct dcerpc_pdu *pdu,
                              struct smb2_iovec *iov, int *offset,
@@ -186,7 +186,7 @@ int dcerpc_utf16z_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pd
 int dcerpc_carray_coder(char *name, struct dcerpc_context *ctx,
                         struct dcerpc_pdu *pdu,
                         struct smb2_iovec *iov, int *offset,
-                        int num, void *ptr, int elem_size, dcerpc_coder coder);
+                        uint32_t num, void *ptr, int elem_size, dcerpc_coder coder);
 int dcerpc_union_coder(char *name, struct dcerpc_context *ctx,
                        struct dcerpc_pdu *pdu,
                        struct smb2_iovec *iov, int *offset,
