@@ -882,6 +882,200 @@ srvsvc_SERVER_INFO_502_STRUCT_coder(char *name, struct dcerpc_context *dce,
 }
 
 /*
+ * typedef struct _SERVER_INFO_503 {
+ *   DWORD sv503_sessopens;
+ *   DWORD sv503_sessvcs;
+ *   DWORD sv503_opensearch;
+ *   DWORD sv503_sizreqbuf;
+ *   DWORD sv503_initworkitems;
+ *   DWORD sv503_maxworkitems;
+ *   DWORD sv503_rawworkitems;
+ *   DWORD sv503_irpstacksize;
+ *   DWORD sv503_maxrawbuflen;
+ *   DWORD sv503_sessusers;
+ *   DWORD sv503_sessconns;
+ *   DWORD sv503_maxpagedmemoryusage;
+ *   DWORD sv503_maxnonpagedmemoryusage;
+ *   int sv503_enablesoftcompat;
+ *   int sv503_enableforcedlogoff;
+ *   int sv503_timesource;
+ *   int sv503_acceptdownlevelapis;
+ *   int sv503_lmannounce;
+ *   [string] wchar_t* sv503_domain;
+ *   DWORD sv503_maxcopyreadlen;
+ *   DWORD sv503_maxcopywritelen;
+ *   DWORD sv503_minkeepsearch;
+ *   DWORD sv503_maxkeepsearch;
+ *   DWORD sv503_minkeepcomplsearch;
+ *   DWORD sv503_maxkeepcomplsearch;
+ *   DWORD sv503_threadcountadd;
+ *   DWORD sv503_numblockthreads;
+ *   DWORD sv503_scavtimeout;
+ *   DWORD sv503_minrcvqueue;
+ *   DWORD sv503_minfreeworkitems;
+ *   DWORD sv503_xactmemsize;
+ *   DWORD sv503_threadpriority;
+ *   DWORD sv503_maxmpxct;
+ *   DWORD sv503_oplockbreakwait;
+ *   DWORD sv503_oplockbreakresponsewait;
+ *   int sv503_enableoplocks;
+ *   int sv503_enableoplockforceclose;
+ *   int sv503_enablefcbopens;
+ *   int sv503_enableraw;
+ *   int sv503_enablesharednetdrives;
+ *   DWORD sv503_minfreeconnections;
+ *   DWORD sv503_maxfreeconnections;
+ * } SERVER_INFO_503, *PSERVER_INFO_503, *LPSERVER_INFO_503;
+ */
+int
+srvsvc_SERVER_INFO_503_coder(char *name, struct dcerpc_context *dce,
+                             struct dcerpc_pdu *pdu,
+                             struct smb2_iovec *iov, int *offset,
+                             void *ptr)
+{
+        struct srvsvc_SERVER_INFO_503 *si503 = ptr;
+
+        if (dcerpc_uint32_coder("sessopens", dce, pdu, iov, offset, &si503->sessopens)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("sessvcs", dce, pdu, iov, offset, &si503->sessvcs)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("opensearch", dce, pdu, iov, offset, &si503->opensearch)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("sizreqbuf", dce, pdu, iov, offset, &si503->sizreqbuf)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("initworkitems", dce, pdu, iov, offset, &si503->initworkitems)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("maxworkitems", dce, pdu, iov, offset, &si503->maxworkitems)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("rawworkitems", dce, pdu, iov, offset, &si503->rawworkitems)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("irpstacksize", dce, pdu, iov, offset, &si503->irpstacksize)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("maxrawbuflen", dce, pdu, iov, offset, &si503->maxrawbuflen)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("sessusers", dce, pdu, iov, offset, &si503->sessusers)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("sessconns", dce, pdu, iov, offset, &si503->sessconns)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("maxpagedmemoryusage", dce, pdu, iov, offset, &si503->maxpagedmemoryusage)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("maxnonpagedmemoryusage", dce, pdu, iov, offset, &si503->maxnonpagedmemoryusage)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("enablesoftcompat", dce, pdu, iov, offset, &si503->enablesoftcompat)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("enableforcedlogoff", dce, pdu, iov, offset, &si503->enableforcedlogoff)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("timesource", dce, pdu, iov, offset, &si503->timesource)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("acceptdownlevelapis", dce, pdu, iov, offset, &si503->acceptdownlevelapis)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("lmannounce", dce, pdu, iov, offset, &si503->lmannounce)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("domain", dce, pdu, iov, offset, &si503->domain,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("maxcopyreadlen", dce, pdu, iov, offset, &si503->maxcopyreadlen)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("maxcopywritelen", dce, pdu, iov, offset, &si503->maxcopywritelen)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("minkeepsearch", dce, pdu, iov, offset, &si503->minkeepsearch)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("maxkeepsearch", dce, pdu, iov, offset, &si503->maxkeepsearch)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("minkeepcomplsearch", dce, pdu, iov, offset, &si503->minkeepcomplsearch)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("maxkeepcomplsearch", dce, pdu, iov, offset, &si503->maxkeepcomplsearch)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("threadcountadd", dce, pdu, iov, offset, &si503->threadcountadd)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("numblockthreads", dce, pdu, iov, offset, &si503->numblockthreads)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("scavtimeout", dce, pdu, iov, offset, &si503->scavtimeout)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("minrcvqueue", dce, pdu, iov, offset, &si503->minrcvqueue)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("minfreeworkitems", dce, pdu, iov, offset, &si503->minfreeworkitems)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("xactmemsize", dce, pdu, iov, offset, &si503->xactmemsize)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("threadpriority", dce, pdu, iov, offset, &si503->threadpriority)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("maxmpxct", dce, pdu, iov, offset, &si503->maxmpxct)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("oplockbreakwait", dce, pdu, iov, offset, &si503->oplockbreakwait)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("oplockbreakresponsewait", dce, pdu, iov, offset, &si503->oplockbreakresponsewait)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("enableoplocks", dce, pdu, iov, offset, &si503->enableoplocks)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("enableoplockforceclose", dce, pdu, iov, offset, &si503->enableoplockforceclose)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("enablefcbopens", dce, pdu, iov, offset, &si503->enablefcbopens)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("enableraw", dce, pdu, iov, offset, &si503->enableraw)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("enablesharednetdrives", dce, pdu, iov, offset, &si503->enablesharednetdrives)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("minfreeconnections", dce, pdu, iov, offset, &si503->minfreeconnections)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("maxfreeconnections", dce, pdu, iov, offset, &si503->maxfreeconnections)) {
+                return -1;
+        }
+        return 0;
+}
+
+int
+srvsvc_SERVER_INFO_503_STRUCT_coder(char *name, struct dcerpc_context *dce,
+                                    struct dcerpc_pdu *pdu,
+                                    struct smb2_iovec *iov, int *offset,
+                                    void *ptr)
+{
+        return  dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                    srvsvc_SERVER_INFO_503_coder);
+}
+
+/*
  * typedef [switch_type(unsigned long)] union _SERVER_INFO {
  *   [case(100)]  LPSERVER_INFO_100 ServerInfo100;
  *   [case(101)]  LPSERVER_INFO_101 ServerInfo101;
@@ -972,6 +1166,12 @@ srvsvc_SERVER_INFO_coder(char *name, struct dcerpc_context *dce,
         case 502:
                 if (dcerpc_ptr_coder("ServerInfo502", dce, pdu, iov, offset, &info->ServerInfo502,
                                      PTR_UNIQUE, srvsvc_SERVER_INFO_502_STRUCT_coder)) {
+                        return -1;
+                }
+                break;
+        case 503:
+                if (dcerpc_ptr_coder("ServerInfo503", dce, pdu, iov, offset, &info->ServerInfo503,
+                                     PTR_UNIQUE, srvsvc_SERVER_INFO_503_STRUCT_coder)) {
                         return -1;
                 }
                 break;

@@ -195,6 +195,51 @@ struct srvsvc_SERVER_INFO_502 {
         uint32_t acceptdownlevelapis;
         uint32_t lmannounce;
 };
+
+struct srvsvc_SERVER_INFO_503 {
+        uint32_t sessopens;
+        uint32_t sessvcs;
+        uint32_t opensearch;
+        uint32_t sizreqbuf;
+        uint32_t initworkitems;
+        uint32_t maxworkitems;
+        uint32_t rawworkitems;
+        uint32_t irpstacksize;
+        uint32_t maxrawbuflen;
+        uint32_t sessusers;
+        uint32_t sessconns;
+        uint32_t maxpagedmemoryusage;
+        uint32_t maxnonpagedmemoryusage;
+        uint32_t enablesoftcompat;
+        uint32_t enableforcedlogoff;
+        uint32_t timesource;
+        uint32_t acceptdownlevelapis;
+        uint32_t lmannounce;
+        char *domain;
+        uint32_t maxcopyreadlen;
+        uint32_t maxcopywritelen;
+        uint32_t minkeepsearch;
+        uint32_t maxkeepsearch;
+        uint32_t minkeepcomplsearch;
+        uint32_t maxkeepcomplsearch;
+        uint32_t threadcountadd;
+        uint32_t numblockthreads;
+        uint32_t scavtimeout;
+        uint32_t minrcvqueue;
+        uint32_t minfreeworkitems;
+        uint32_t xactmemsize;
+        uint32_t threadpriority;
+        uint32_t maxmpxct;
+        uint32_t oplockbreakwait;
+        uint32_t oplockbreakresponsewait;
+        uint32_t enableoplocks;
+        uint32_t enableoplockforceclose;
+        uint32_t enablefcbopens;
+        uint32_t enableraw;
+        uint32_t enablesharednetdrives;
+        uint32_t minfreeconnections;
+        uint32_t maxfreeconnections;
+};
         
 union srvsvc_SERVER_INFO {
         struct srvsvc_SERVER_INFO_100 ServerInfo100;
@@ -202,6 +247,7 @@ union srvsvc_SERVER_INFO {
         struct srvsvc_SERVER_INFO_102 ServerInfo102;
         struct srvsvc_SERVER_INFO_103 ServerInfo103;
         struct srvsvc_SERVER_INFO_502 ServerInfo502;
+        struct srvsvc_SERVER_INFO_503 ServerInfo503;
 };
         
 struct srvsvc_NetrShareAdd_req {
