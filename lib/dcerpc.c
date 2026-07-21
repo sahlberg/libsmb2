@@ -1081,7 +1081,7 @@ dcerpc_pdu_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         return 0;
 }
 
-static void
+static int
 dce_unfragment_ioctl(struct dcerpc_context *dce,  struct dcerpc_pdu *pdu,
                      struct smb2_iovec *iov)
 {
@@ -1093,15 +1093,25 @@ dce_unfragment_ioctl(struct dcerpc_context *dce,  struct dcerpc_pdu *pdu,
 
         o = 0;
         if (dcerpc_header_coder(dce, pdu, iov, &o, &hdr)) {
-                return;
+                return -1;
         }
         if (hdr.rpc_vers != 5 || hdr.rpc_vers_minor != 0 ||
             hdr.PTYPE != PDU_TYPE_RESPONSE) {
-                return;
+                return 0;
         }
 
         if (hdr.pfc_flags & PFC_LAST_FRAG) {
-                return;
+                return 0;
+        }
+
+        /* frag_length covers the full fragment including the 24-byte
+         * DCERPC + response fixed header. Reject short or out-of-bounds
+         * lengths before any memmove.
+         */
+        if (hdr.frag_length < 24 || hdr.frag_length > iov->len) {
+                smb2_set_error(dce->smb2, "DCERPC fragment length out of "
+                               "bounds");
+                return -1;
         }
 
         offset += hdr.frag_length;
@@ -1110,15 +1120,25 @@ dce_unfragment_ioctl(struct dcerpc_context *dce,  struct dcerpc_pdu *pdu,
                 /* We must have at least a DCERPC header plus a
                  * RESPONSE header
                  */
-                if (iov->len - offset < 24) {
-                        return;
+                if (offset < 0 || (size_t)offset > iov->len ||
+                    iov->len - (size_t)offset < 24) {
+                        smb2_set_error(dce->smb2, "DCERPC truncated multi-"
+                                       "fragment response");
+                        return -1;
                 }
 
                 tmpiov.buf = iov->buf + offset;
                 tmpiov.len = iov->len - offset;
                 o = 0;
                 if (dcerpc_header_coder(dce, pdu, &tmpiov, &o, &next_hdr)) {
-                        return;
+                        return -1;
+                }
+
+                if (next_hdr.frag_length < 24 ||
+                    (size_t)offset + next_hdr.frag_length > iov->len) {
+                        smb2_set_error(dce->smb2, "DCERPC next fragment "
+                                       "length out of bounds");
+                        return -1;
                 }
 
                 memmove(iov->buf + unfragment_len, iov->buf + offset + 24,
@@ -1132,10 +1152,11 @@ dce_unfragment_ioctl(struct dcerpc_context *dce,  struct dcerpc_pdu *pdu,
                 }
                 o = 0;
                 if (dcerpc_header_coder(dce, pdu, iov, &o, &hdr)) {
-                        return;
+                        return -1;
                 }
         } while (!(next_hdr.pfc_flags & PFC_LAST_FRAG));
         iov->len = unfragment_len;
+        return 0;
 }
 
 static void
@@ -1180,7 +1201,11 @@ dcerpc_call_cb(struct smb2_context *smb2, int status,
         iov.len = rep->output_count;
         iov.free = NULL;
 
-        dce_unfragment_ioctl(dce, pdu, &iov);
+        if (dce_unfragment_ioctl(dce, pdu, &iov)) {
+                smb2_free_data(dce->smb2, rep->output);
+                dcerpc_send_pdu_cb_and_free(dce, pdu, -EINVAL, NULL);
+                return;
+        }
 
         if (dcerpc_pdu_coder(dce, pdu, &iov, &offset)) {
                 smb2_free_data(dce->smb2, rep->output);
