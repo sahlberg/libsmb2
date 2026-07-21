@@ -2163,13 +2163,17 @@ ndr_decode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         }
         
         /* Data part */
-        if (*offset + s->actual_count * 2 > iov->len) {
+        if (s->actual_count > s->max_count) {
+                return -1;
+        }
+        if (*offset < 0 ||
+            (uint64_t)*offset + (uint64_t)s->actual_count * 2u > iov->len) {
                 return -1;
         }
         if (!(pdu->hdr.packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN)) {
                 int i, o;
                 uint16_t v;
-                for (i = 0; i < s->actual_count; i++) {
+                for (i = 0; i < (int)s->actual_count; i++) {
                         o = *offset + i *2;
                         if (dcerpc_get_uint16(ctx, pdu, iov, &o, &v)) {
                                 return -1;
@@ -2178,6 +2182,9 @@ ndr_decode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 }
         }
         tmp = smb2_utf16_to_utf8((uint16_t *)(void *)(&iov->buf[*offset]), (size_t)s->actual_count);
+        if (tmp == NULL) {
+                return -1;
+        }
         *offset += (int)s->actual_count * 2;
 
         str = smb2_alloc_data(ctx->smb2, pdu->payload, strlen(tmp) + 1);
