@@ -521,7 +521,7 @@ dcerpc_uint64_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         if (pdu->direction == DCERPC_DECODE) {
                 return dcerpc_get_uint64(ctx, pdu, iov, offset, ptr);
         } else {
-                return dcerpc_set_uint64(ctx, pdu, iov, offset, *(uint32_t *)ptr);
+                return dcerpc_set_uint64(ctx, pdu, iov, offset, *(uint64_t *)ptr);
         }
 }
 
