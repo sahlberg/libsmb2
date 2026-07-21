@@ -2157,14 +2157,20 @@ ndr_encode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 
                 val = s->max_count;
                 if (ndr_conformance_coder(ctx, pdu, iov, offset, &val)) {
+                        free(s->utf16);
+                        s->utf16 = NULL;
                         return -1;
                 }
                 val = s->offset;
                 if (ndr_conformance_coder(ctx, pdu, iov, offset, &val)) {
+                        free(s->utf16);
+                        s->utf16 = NULL;
                         return -1;
                 }
                 val = s->actual_count;
                 if (ndr_conformance_coder(ctx, pdu, iov, offset, &val)) {
+                        free(s->utf16);
+                        s->utf16 = NULL;
                         return -1;
                 }
                 if (pdu->max_alignment < 2) {
@@ -2176,15 +2182,20 @@ ndr_encode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         /* Data part */
         for (i = 0; i < s->utf16->len; i++) {
                 if (ndr_uint16_coder("Utf16", ctx, pdu, iov, offset, &s->utf16->val[i])) {
+                        free(s->utf16);
+                        s->utf16 = NULL;
                         return -1;
                 }
         }
         if (nult) {
                 if (ndr_uint16_coder("Nult", ctx, pdu, iov, offset, &zero)) {
+                        free(s->utf16);
+                        s->utf16 = NULL;
                         return -1;
                 }
         }
         free(s->utf16);
+        s->utf16 = NULL;
         return 0;
 }
 
@@ -2286,14 +2297,24 @@ _ndr_utf16z_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu
         } else {
                 ret = ndr_encode_utf16(ctx, pdu, iov, offset, ptr, nult);
         }
-        
-        if (!pdu->is_conformance_run) {
-                /* swap the pointer back */
-                utf16 = *u;
-                str = utf16->utf8;
-                *s = str;
-                free(utf16);
+
+        if (pdu->is_conformance_run) {
+                if (ret) {
+                        /* Restore original char * and free temps on error */
+                        utf16 = *u;
+                        str = utf16->utf8;
+                        free(utf16->utf16);
+                        free(utf16);
+                        *s = str;
+                }
+                return ret;
         }
+
+        /* Data run: swap the pointer back */
+        utf16 = *u;
+        str = utf16->utf8;
+        *s = str;
+        free(utf16);
 
         return ret;
 }
