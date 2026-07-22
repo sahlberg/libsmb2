@@ -338,6 +338,8 @@ int ndr_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pd
  */
 static int yaml_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                       struct smb2_iovec *iov, int *offset, void *ptr);
+static int yaml_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                           struct smb2_iovec *iov, int *offset, dcerpc_uuid_t *uuid);
 static int yaml_carray_coder(char *name, struct dcerpc_context *ctx,
                       struct dcerpc_pdu *pdu,
                       struct smb2_iovec *iov, int *offset,
@@ -1718,8 +1720,14 @@ dcerpc_context_handle_coder(char *name, struct dcerpc_context *dce,
                 }
                 return 0;
         case ENCODING_YAML:
-                printf("NO YAML coder for context handles yet\n");
-                return -1;
+                if (yaml_uint32_coder("ContextHandleAttributes", dce, pdu, iov, offset, &handle->context_handle_attributes)) {
+                        return -1;
+                }
+                if (yaml_uuid_coder("UUID", dce, pdu, iov, offset,
+                                    &handle->context_handle_uuid)) {
+                        return -1;
+                }
+                return 0;
         }
         return 0;
 }
@@ -2476,6 +2484,57 @@ yaml_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu
                 yaml_print_preamble(ctx, pdu, iov, offset);
                 if (*offset + 256 < iov->len) {
                         *offset += snprintf((char *)&iov->buf[*offset], iov->len - *offset, "%s: %u\n", name, *(uint32_t *)ptr);
+                }
+                return 0;
+        }
+}
+
+static int
+yaml_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                struct smb2_iovec *iov, int *offset, dcerpc_uuid_t *uuid)
+{
+        int i;
+
+        if (pdu->direction == DCERPC_DECODE) {
+                unsigned int v1, v2, v3;
+                unsigned int b[8];
+
+                yaml_next_kv(pdu, iov, offset);
+                if (strcmp(pdu->yaml_key, name)) {
+                        printf("Wrong YAML key encountered for uuid. Expected %s but got %s\n",
+                               name, pdu->yaml_key);
+                        return -1;
+                }
+                pdu->yaml_key = NULL;
+                if (sscanf(pdu->yaml_val,
+                           "%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x",
+                           &v1, &v2, &v3,
+                           &b[0], &b[1], &b[2], &b[3],
+                           &b[4], &b[5], &b[6], &b[7]) != 11) {
+                        printf("Failed to parse UUID value for %s: %s\n",
+                               name, pdu->yaml_val);
+                        return -1;
+                }
+                uuid->v1 = v1;
+                uuid->v2 = v2;
+                uuid->v3 = v3;
+                for (i = 0; i < 8; i++) {
+                        uuid->v4[i] = b[i];
+                }
+                yaml_next_kv(pdu, iov, offset);
+                return 0;
+        } else {
+                yaml_print_preamble(ctx, pdu, iov, offset);
+                if (*offset + 256 < iov->len) {
+                        *offset += snprintf((char *)&iov->buf[*offset],
+                                           iov->len - *offset,
+                                           "%s: %08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x\n",
+                                           name,
+                                           uuid->v1, uuid->v2, uuid->v3,
+                                           uuid->v4[0], uuid->v4[1],
+                                           uuid->v4[2], uuid->v4[3],
+                                           uuid->v4[4], uuid->v4[5],
+                                           uuid->v4[6], uuid->v4[7]);
                 }
                 return 0;
         }
