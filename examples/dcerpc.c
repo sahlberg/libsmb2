@@ -35,10 +35,16 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 int is_finished;
 struct dcerpc_service *service;
-uint8_t buf[65536];
-struct smb2_iovec iov = {buf, sizeof(buf), NULL};
-int offset;
 
+
+int idx;
+struct opdata {
+        uint8_t buf[65536];
+        struct smb2_iovec iov;        
+        int offset;
+};
+#define MAXOPDATA 16
+struct opdata opdata[MAXOPDATA];
 
 struct rpc_cb_data {
         struct dcerpc_procedure *proc;
@@ -61,10 +67,9 @@ void si_cb(struct dcerpc_context *dce, int status,
                 void *command_data, void *cb_data)
 {
         struct rpc_cb_data *rpc_cb_data = cb_data;
-        int offset;
 
-        offset = 0;
-        memset(buf, 0, sizeof(buf));
+        opdata[idx].offset = 0;
+        memset(opdata[idx].iov.buf, 0, sizeof(opdata[idx].iov.len));
 
         if (command_data == NULL) {
                 printf("No Response pdu\n");
@@ -82,11 +87,13 @@ void si_cb(struct dcerpc_context *dce, int status,
         
         /* We might need to reference req from the reply */
         dcerpc_set_request(rpc_cb_data->rep_pdu, rpc_cb_data->req);
-        if (dcerpc_do_coder(rpc_cb_data->proc->name, dce, rpc_cb_data->rep_pdu, &iov, &offset, rpc_cb_data->rep, rpc_cb_data->proc->rep_coder)) {
+        if (dcerpc_do_coder(rpc_cb_data->proc->name, dce, rpc_cb_data->rep_pdu,
+                            &opdata[idx].iov, &opdata[idx].offset,
+                            rpc_cb_data->rep, rpc_cb_data->proc->rep_coder)) {
                 printf("Failed to encode REP as YAML\n");
                 exit(10);
         }
-        printf("%s\n", iov.buf);
+        printf("%s\n", opdata[idx].iov.buf);
 
         
         free(rpc_cb_data->req);
@@ -105,7 +112,7 @@ void co_cb(struct dcerpc_context *dce, int status,
         int i;
         char *name;
         struct rpc_cb_data *rpc_cb_data;
-
+        
         if (status != SMB2_STATUS_SUCCESS) {
                 printf("failed to connect to SRVSVC (%s) %s\n",
                        strerror(-status), dcerpc_get_error(dce));
@@ -119,17 +126,17 @@ void co_cb(struct dcerpc_context *dce, int status,
         }
         
         /* Find the name of the procedure */
-        name = (char *)&iov.buf[offset];
-        while (offset < iov.len && iov.buf[offset] != ':') {
-                offset++;
+        name = (char *)&opdata[idx].iov.buf[opdata[idx].offset];
+        while (opdata[idx].offset < opdata[idx].iov.len && opdata[idx].iov.buf[opdata[idx].offset] != ':') {
+                opdata[idx].offset++;
         }
         for (i = 0; service->procs[i].name; i++) {
-                if (!strncmp(name, service->procs[i].name, offset)) {
+                if (!strncmp(name, service->procs[i].name, opdata[idx].offset)) {
                         rpc_cb_data->proc = &service->procs[i];
                         break;
                 }
         }
-        offset = 0;
+        opdata[idx].offset = 0;
 
         if (rpc_cb_data->proc == NULL) {
                 printf("Could not find a procedure with the name %s\n", name);
@@ -147,7 +154,9 @@ void co_cb(struct dcerpc_context *dce, int status,
                 printf("Failed to allocate request PDU\n");
                 exit(9);
         }
-        if (dcerpc_do_coder(rpc_cb_data->proc->name, dce, rpc_cb_data->req_pdu, &iov, &offset, rpc_cb_data->req, rpc_cb_data->proc->req_coder)) {
+        if (dcerpc_do_coder(rpc_cb_data->proc->name, dce, rpc_cb_data->req_pdu,
+                            &opdata[idx].iov, &opdata[idx].offset,
+                            rpc_cb_data->req, rpc_cb_data->proc->req_coder)) {
                 printf("Failed to decode REQ from YAML\n");
                 exit(10);
         }
@@ -171,19 +180,24 @@ int main(int argc, char *argv[])
 	struct pollfd pfd;
         int i, fd;
 
+        for (i = 0; i < MAXOPDATA; i++) {
+                opdata[i].iov.buf = &opdata[i].buf[0];
+                opdata[i].iov.len = 65536;
+        }
+        
         if (argc < 2) {
                 usage();
         }
 
         if (argc < 3) {
-                read(0, iov.buf, iov.len);
+                read(0, opdata[0].iov.buf, opdata[0].iov.len);
         } else {
                 fd = open(argv[2], O_RDONLY);
                 if (fd == -1) {
                         printf("Failed to open yaml file : %s\n", argv[2]);
                         exit(9);
                 }
-                read(fd, iov.buf, iov.len);
+                read(fd, opdata[0].iov.buf, opdata[0].iov.len);
                 close(fd);
         }
 
