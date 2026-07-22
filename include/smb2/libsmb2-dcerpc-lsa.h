@@ -23,6 +23,8 @@
 extern "C" {
 #endif
 
+#include <smb2/libsmb2-dcerpc.h>
+
 #define LSA_CLOSE          0x00
 #define LSA_OPENPOLICY2    0x2c
 #define LSA_LOOKUPSIDS2    0x39
@@ -164,6 +166,8 @@ int lsa_RPC_SID_coder(char *name, struct dcerpc_context *dce,
                       struct dcerpc_pdu *pdu,
                       struct smb2_iovec *iov, int *offset,
                       void *ptr);
+
+extern struct dcerpc_procedure lsa_procs[];
 
 #ifdef __cplusplus
 }

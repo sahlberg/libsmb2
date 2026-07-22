@@ -340,41 +340,54 @@ lsa_TRANSLATED_NAMES_EX_coder(char *name, struct dcerpc_context *dce,
  *      PLSAPR_SECURITY_DESCRIPTOR SecurityDescriptor = NULL;
  *      PSECURITY_QUALITY_OF_SERVICE SecurityQualityOfService = NULL;
  * } LSAPR_OBJECT_ATTRIBUTES, *PLSAPR_OBJECT_ATTRIBUTES;
+ *
+ * For OpenPolicy2, RootDirectory MUST be NULL and everything else is
+ * ignored. Encode a fixed empty object on the wire.
  */
-
 static int
 lsa_ObjectAttributes_coder(char *name, struct dcerpc_context *dce,
                            struct dcerpc_pdu *pdu,
                            struct smb2_iovec *iov, int *offset,
                            void *ptr)
 {
-        uint32_t len;
-        uint64_t val;
+        uint32_t len = 24;
+        uint32_t attr = 0;
 
-        /* just encode a fake empty object for OpenPolicy2 */
-        len = 24;
-        if (ndr_uint32_coder("Length", dce, pdu, iov, offset, &len)) {
+        if (dcerpc_uint32_coder("Length", dce, pdu, iov, offset, &len)) {
                 return -1;
         }
-        val = 0;
-        if (ndr_uint3264_coder("", dce, pdu, iov, offset, &val)) {
+        /* Always NULL for OpenPolicy2 */
+        if (dcerpc_ptr_coder("RootDirectory", dce, pdu, iov, offset, NULL,
+                             PTR_UNIQUE, dcerpc_uint32_coder)) {
                 return -1;
         }
-        if (ndr_uint3264_coder("", dce, pdu, iov, offset, &val)) {
+        if (dcerpc_ptr_coder("ObjectName", dce, pdu, iov, offset, NULL,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        len = 0;
-        if (ndr_uint32_coder("", dce, pdu, iov, offset, &len)) {
+        if (dcerpc_uint32_coder("Attributes", dce, pdu, iov, offset, &attr)) {
                 return -1;
         }
-        if (ndr_uint3264_coder("", dce, pdu, iov, offset, &val)) {
+        if (dcerpc_ptr_coder("SecurityDescriptor", dce, pdu, iov, offset, NULL,
+                             PTR_UNIQUE, dcerpc_uint32_coder)) {
                 return -1;
         }
-        if (ndr_uint3264_coder("", dce, pdu, iov, offset, &val)) {
+        if (dcerpc_ptr_coder("SecurityQualityOfService", dce, pdu, iov, offset, NULL,
+                             PTR_UNIQUE, dcerpc_uint32_coder)) {
                 return -1;
         }
 
         return 0;
+}
+
+static int
+lsa_ObjectAttributes_STRUCT_coder(char *name, struct dcerpc_context *dce,
+                                  struct dcerpc_pdu *pdu,
+                                  struct smb2_iovec *iov, int *offset,
+                                  void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   lsa_ObjectAttributes_coder);
 }
 
 /**********************
@@ -435,15 +448,15 @@ lsa_OpenPolicy2_req_coder(char *name, struct dcerpc_context *dce,
 {
         struct lsa_openpolicy2_req *req = ptr;
 
-        if (ndr_ptr_coder("SystemName", dce, pdu, iov, offset, &req->SystemName,
-                              PTR_UNIQUE, ndr_utf16z_coder)) {
+        if (dcerpc_ptr_coder("SystemName", dce, pdu, iov, offset, &req->SystemName,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (ndr_ptr_coder("ObjectAttributes", dce, pdu, iov, offset, &req->ObjectAttributes,
-                              PTR_REF, lsa_ObjectAttributes_coder)) {
+        if (dcerpc_ptr_coder("ObjectAttributes", dce, pdu, iov, offset, &req->ObjectAttributes,
+                             PTR_REF, lsa_ObjectAttributes_STRUCT_coder)) {
                 return -1;
         }
-        if (ndr_uint32_coder("DesiredAccess", dce, pdu, iov, offset, &req->DesiredAccess)) {
+        if (dcerpc_uint32_coder("DesiredAccess", dce, pdu, iov, offset, &req->DesiredAccess)) {
                 return -1;
         }
         return 0;
@@ -457,11 +470,11 @@ lsa_OpenPolicy2_rep_coder(char *name, struct dcerpc_context *dce,
 {
         struct lsa_openpolicy2_rep *rep = ptr;
 
-        if (ndr_ptr_coder("PolicyHandle", dce, pdu, iov, offset, &rep->PolicyHandle,
-                              PTR_REF, dcerpc_context_handle_coder)) {
+        if (dcerpc_ptr_coder("PolicyHandle", dce, pdu, iov, offset, &rep->PolicyHandle,
+                             PTR_REF, dcerpc_context_handle_coder)) {
                 return -1;
         }
-        if (ndr_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
+        if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
                 return -1;
         }
 
@@ -639,3 +652,11 @@ lsa_LookupSids2_rep_coder(char *name, struct dcerpc_context *dce,
 
         return 0;
 }
+
+struct dcerpc_procedure lsa_procs[] = {
+        {LSA_OPENPOLICY2, "OpenPolicy2",
+         lsa_OpenPolicy2_req_coder, sizeof(struct lsa_openpolicy2_req),
+         lsa_OpenPolicy2_rep_coder, sizeof(struct lsa_openpolicy2_rep),
+        },
+        {-1, NULL, NULL, 0, NULL, 0}
+};
