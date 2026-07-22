@@ -38,6 +38,7 @@ struct dcerpc_service *service;
 
 
 int idx;
+int num_ops;
 struct opdata {
         uint8_t buf[65536];
         struct smb2_iovec iov;        
@@ -63,13 +64,15 @@ int usage(void)
         exit(1);
 }
 
+void do_request(struct dcerpc_context *dce);
+
 void si_cb(struct dcerpc_context *dce, int status,
                 void *command_data, void *cb_data)
 {
         struct rpc_cb_data *rpc_cb_data = cb_data;
 
         opdata[idx].offset = 0;
-        memset(opdata[idx].iov.buf, 0, sizeof(opdata[idx].iov.len));
+        memset(opdata[idx].iov.buf, 0, opdata[idx].iov.len);
 
         if (command_data == NULL) {
                 printf("No Response pdu\n");
@@ -103,21 +106,19 @@ void si_cb(struct dcerpc_context *dce, int status,
         
         free(rpc_cb_data);
 
-        is_finished = 1;
+        idx++;
+        if (idx < num_ops) {
+                do_request(dce);
+        } else {
+                is_finished = 1;
+        }
 }
 
-void co_cb(struct dcerpc_context *dce, int status,
-           void *command_data, void *cb_data)
+void do_request(struct dcerpc_context *dce)
 {
         int i;
         char *name;
         struct rpc_cb_data *rpc_cb_data;
-        
-        if (status != SMB2_STATUS_SUCCESS) {
-                printf("failed to connect to SRVSVC (%s) %s\n",
-                       strerror(-status), dcerpc_get_error(dce));
-                exit(10);
-        }
 
         rpc_cb_data = calloc(1, sizeof(*rpc_cb_data));
         if (rpc_cb_data == NULL) {
@@ -172,13 +173,28 @@ void co_cb(struct dcerpc_context *dce, int status,
         }
 }
 
+void co_cb(struct dcerpc_context *dce, int status,
+           void *command_data, void *cb_data)
+{
+        if (status != SMB2_STATUS_SUCCESS) {
+                printf("failed to connect to SRVSVC (%s) %s\n",
+                       strerror(-status), dcerpc_get_error(dce));
+                exit(10);
+        }
+
+        do_request(dce);
+}
+
 int main(int argc, char *argv[])
 {
         struct smb2_context *smb2;
         struct dcerpc_context *dce;
         struct smb2_url *url;
 	struct pollfd pfd;
-        int i, fd;
+        int i, fd, count;
+        uint8_t tmp[65536];
+        ssize_t n;
+        char *start, *p, *sep;
 
         for (i = 0; i < MAXOPDATA; i++) {
                 opdata[i].iov.buf = &opdata[i].buf[0];
@@ -189,17 +205,90 @@ int main(int argc, char *argv[])
                 usage();
         }
 
+        memset(tmp, 0, sizeof(tmp));
         if (argc < 3) {
-                read(0, opdata[0].iov.buf, opdata[0].iov.len);
+                n = read(0, tmp, sizeof(tmp) - 1);
         } else {
                 fd = open(argv[2], O_RDONLY);
                 if (fd == -1) {
                         printf("Failed to open yaml file : %s\n", argv[2]);
                         exit(9);
                 }
-                read(fd, opdata[0].iov.buf, opdata[0].iov.len);
+                n = read(fd, tmp, sizeof(tmp) - 1);
                 close(fd);
         }
+        if (n < 0) {
+                printf("Failed to read yaml\n");
+                exit(9);
+        }
+        tmp[n] = '\0';
+
+        /*
+         * Split the yaml into one buffer per request.
+         * Requests are separated by a line consisting of just "---".
+         */
+        count = 0;
+        start = (char *)tmp;
+        p = start;
+        while (1) {
+                size_t len;
+
+                sep = NULL;
+                for (; *p; p++) {
+                        if ((p == (char *)tmp || p[-1] == '\n') &&
+                            p[0] == '-' && p[1] == '-' && p[2] == '-' &&
+                            (p[3] == '\n' || p[3] == '\0' ||
+                             (p[3] == '\r' && (p[4] == '\n' || p[4] == '\0')))) {
+                                sep = p;
+                                break;
+                        }
+                }
+
+                len = (sep ? sep : (char *)tmp + n) - start;
+                while (len > 0 && (start[len - 1] == '\n' ||
+                                   start[len - 1] == '\r')) {
+                        len--;
+                }
+                while (len > 0 && (*start == '\n' || *start == '\r')) {
+                        start++;
+                        len--;
+                }
+
+                if (len > 0) {
+                        if (count >= MAXOPDATA) {
+                                printf("Too many yaml requests (max %d)\n",
+                                       MAXOPDATA);
+                                exit(9);
+                        }
+                        if (len >= sizeof(opdata[count].buf)) {
+                                printf("Yaml request too large\n");
+                                exit(9);
+                        }
+                        memcpy(opdata[count].buf, start, len);
+                        opdata[count].buf[len] = '\0';
+                        count++;
+                }
+
+                if (!sep) {
+                        break;
+                }
+
+                /* Skip past the "---" line */
+                p = sep + 3;
+                if (*p == '\r') {
+                        p++;
+                }
+                if (*p == '\n') {
+                        p++;
+                }
+                start = p;
+        }
+
+        if (count == 0) {
+                printf("No yaml requests found\n");
+                exit(9);
+        }
+        num_ops = count;
 
 	smb2 = smb2_init_context();
         if (smb2 == NULL) {
