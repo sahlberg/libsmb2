@@ -65,7 +65,7 @@ int usage(void)
 }
 
 /*
- * Look up a scalar YAML field "name: value" in the previous response.
+ * Look up a scalar YAML field "name: value" in a response.
  * Returns a newly allocated string with the value, or NULL if not found.
  * Nested keys with an empty value after the colon are skipped.
  */
@@ -137,11 +137,85 @@ yaml_lookup_field(const char *yaml, const char *name)
 }
 
 /*
- * Replace @name@ placeholders in the request YAML with the corresponding
- * scalar values from the previous response YAML.
+ * Parse a placeholder body as either "name" or "name:-N".
+ * @name@        -> field name, 1 step back (previous reply)
+ * @name:-N@     -> field name, N steps back (N >= 1)
+ *
+ * Returns 0 on success, -1 if the body is not a valid placeholder form.
  */
 static int
-apply_response_substitutions(struct opdata *req, const char *prev_yaml)
+parse_placeholder(const char *body, size_t body_len,
+                  char *name, size_t name_size, int *steps_back)
+{
+        size_t i, j, name_len;
+        int n;
+        int all_digits;
+
+        if (body_len == 0 || body_len >= name_size) {
+                return -1;
+        }
+
+        /* Default: previous reply */
+        *steps_back = 1;
+        name_len = body_len;
+
+        /*
+         * Optional relative form: name:-N  (N is a positive decimal integer).
+         * Find ":-" followed only by digits through the end of the body.
+         */
+        for (i = 0; i + 2 < body_len; i++) {
+                if (body[i] != ':' || body[i + 1] != '-') {
+                        continue;
+                }
+                if (i == 0) {
+                        /* empty field name before ":-" */
+                        return -1;
+                }
+                all_digits = 1;
+                for (j = i + 2; j < body_len; j++) {
+                        if (body[j] < '0' || body[j] > '9') {
+                                all_digits = 0;
+                                break;
+                        }
+                }
+                if (!all_digits || i + 2 >= body_len) {
+                        /*
+                         * Not the relative-index form (e.g. a name that
+                         * happens to contain ":-"); keep scanning.
+                         */
+                        continue;
+                }
+                name_len = i;
+                n = 0;
+                for (j = i + 2; j < body_len; j++) {
+                        n = n * 10 + (body[j] - '0');
+                        if (n > MAXOPDATA) {
+                                return -1;
+                        }
+                }
+                if (n < 1) {
+                        return -1;
+                }
+                *steps_back = n;
+                break;
+        }
+
+        memcpy(name, body, name_len);
+        name[name_len] = '\0';
+        return 0;
+}
+
+/*
+ * Replace placeholders in the request YAML with scalar values from earlier
+ * response YAMLs:
+ *   @name@      - value of "name" from the previous reply (idx - 1)
+ *   @name:-n@   - value of "name" from the reply n steps back (idx - n)
+ *
+ * cur_idx is the index of the request being prepared; responses for
+ * completed ops 0 .. cur_idx-1 live in opdata[].buf.
+ */
+static int
+apply_response_substitutions(struct opdata *req, int cur_idx)
 {
         uint8_t tmp[sizeof(req->buf)];
         size_t out_len = 0;
@@ -149,18 +223,21 @@ apply_response_substitutions(struct opdata *req, const char *prev_yaml)
         const char *at1, *at2;
 
         while ((at1 = strchr(src, '@')) != NULL) {
-                size_t name_len, value_len, chunk;
+                size_t body_len, value_len, chunk;
                 char name[256];
                 char *value;
+                int steps_back;
+                int src_idx;
+                const char *yaml;
 
                 at2 = strchr(at1 + 1, '@');
                 if (at2 == NULL) {
                         break;
                 }
 
-                name_len = (size_t)(at2 - (at1 + 1));
-                if (name_len == 0 || name_len >= sizeof(name) ||
-                    memchr(at1 + 1, '\n', name_len) != NULL) {
+                body_len = (size_t)(at2 - (at1 + 1));
+                if (body_len == 0 || body_len >= sizeof(name) ||
+                    memchr(at1 + 1, '\n', body_len) != NULL) {
                         /* Not a valid placeholder; copy through first '@' */
                         chunk = (size_t)(at1 - src) + 1;
                         if (out_len + chunk >= sizeof(tmp)) {
@@ -172,6 +249,12 @@ apply_response_substitutions(struct opdata *req, const char *prev_yaml)
                         src = at1 + 1;
                         continue;
                 }
+                if (parse_placeholder(at1 + 1, body_len, name, sizeof(name),
+                                       &steps_back)) {
+                        printf("Invalid placeholder @%.*s@\n",
+                               (int)body_len, at1 + 1);
+                        return -1;
+                }
 
                 chunk = (size_t)(at1 - src);
                 if (out_len + chunk >= sizeof(tmp)) {
@@ -181,13 +264,26 @@ apply_response_substitutions(struct opdata *req, const char *prev_yaml)
                 memcpy(tmp + out_len, src, chunk);
                 out_len += chunk;
 
-                memcpy(name, at1 + 1, name_len);
-                name[name_len] = '\0';
+                if (steps_back > cur_idx) {
+                        printf("No response %d steps back for @%s@ "
+                               "(only %d previous response%s)\n",
+                               steps_back, name, cur_idx,
+                               cur_idx == 1 ? "" : "s");
+                        return -1;
+                }
+                src_idx = cur_idx - steps_back;
+                yaml = (const char *)opdata[src_idx].buf;
 
-                value = yaml_lookup_field(prev_yaml, name);
+                value = yaml_lookup_field(yaml, name);
                 if (value == NULL) {
-                        printf("No value for @%s@ in previous response YAML\n",
-                               name);
+                        if (steps_back == 1) {
+                                printf("No value for @%s@ in previous "
+                                       "response YAML\n", name);
+                        } else {
+                                printf("No value for @%s:-%d@ in response "
+                                       "%d steps back\n",
+                                       name, steps_back, steps_back);
+                        }
                         return -1;
                 }
                 value_len = strlen(value);
@@ -277,12 +373,12 @@ void do_request(struct dcerpc_context *dce)
 
         /*
          * If this is not the first request in the chain, replace any
-         * @field@ placeholders with values from the previous response YAML
-         * (still held in opdata[idx - 1] after si_cb encoded it).
+         * @field@ / @field:-n@ placeholders with values from earlier
+         * response YAMLs (still held in opdata[0 .. idx-1] after si_cb
+         * encoded them).
          */
         if (idx > 0) {
-                if (apply_response_substitutions(&opdata[idx],
-                                                 (const char *)opdata[idx - 1].buf)) {
+                if (apply_response_substitutions(&opdata[idx], idx)) {
                         exit(9);
                 }
         }
