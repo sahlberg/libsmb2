@@ -1,0 +1,8 @@
+NetrConnectionEnum: Request
+  ServerName: \\WIN16-1
+  Qualifier: IPC$
+  InfoStruct:
+    Level: 1
+    ConnectInfo:
+  PreferedMaximumLength: 0xffffffff
+  ResumeHandle: 0

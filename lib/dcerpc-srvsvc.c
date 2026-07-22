@@ -1197,6 +1197,349 @@ srvsvc_SERVER_INFO_STRUCT_coder(char *name, struct dcerpc_context *dce, struct d
         return 0;
 }
 
+/*
+ * typedef struct _CONNECTION_INFO_0 {
+ *       DWORD coni0_id;
+ * } CONNECTION_INFO_0, *PCONNECTION_INFO_0, *LPCONNECTION_INFO_0;
+ */
+int
+srvsvc_CONNECTION_INFO_0_coder(char *name, struct dcerpc_context *dce,
+                               struct dcerpc_pdu *pdu,
+                               struct smb2_iovec *iov, int *offset,
+                               void *ptr)
+{
+        struct srvsvc_CONNECTION_INFO_0 *ci = ptr;
+
+        if (dcerpc_uint32_coder("Id", dce, pdu, iov, offset, &ci->id)) {
+                return -1;
+        }
+        return 0;
+}
+
+int
+srvsvc_CONNECTION_INFO_0_STRUCT_coder(char *name, struct dcerpc_context *dce,
+                                      struct dcerpc_pdu *pdu,
+                                      struct smb2_iovec *iov, int *offset,
+                                      void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_CONNECTION_INFO_0_coder);
+}
+
+/*
+ *       [size_is(EntriesRead)] LPCONNECTION_INFO_0 Buffer;
+ */
+static int
+srvsvc_CONNECTION_INFO_0_carray_coder(char *name, struct dcerpc_context *dce,
+                                      struct dcerpc_pdu *pdu,
+                                      struct smb2_iovec *iov, int *offset,
+                                      void *ptr)
+{
+        return dcerpc_carray_coder("ConnectionInfo0", dce, pdu, iov, offset,
+                                   dcerpc_get_size_is(pdu), ptr,
+                                   sizeof(struct srvsvc_CONNECTION_INFO_0),
+                                   srvsvc_CONNECTION_INFO_0_coder);
+}
+
+/*
+ * typedef struct _CONNECT_INFO_0_CONTAINER {
+ *       DWORD EntriesRead;
+ *       [size_is(EntriesRead)] LPCONNECTION_INFO_0 Buffer;
+ * } CONNECT_INFO_0_CONTAINER;
+ */
+int
+srvsvc_CONNECT_INFO_0_CONTAINER_coder(char *name, struct dcerpc_context *dce,
+                                      struct dcerpc_pdu *pdu,
+                                      struct smb2_iovec *iov, int *offset,
+                                      void *ptr)
+{
+        struct srvsvc_CONNECT_INFO_0_CONTAINER *ctr = ptr;
+
+        if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &ctr->EntriesRead)) {
+                return -1;
+        }
+        if (ctr->EntriesRead) {
+                dcerpc_set_size_is(pdu, ctr->EntriesRead);
+        }
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && ctr->EntriesRead) {
+                if (ctr->connection_info_0 == NULL) {
+                        size_t esize = sizeof(struct srvsvc_CONNECTION_INFO_0);
+
+                        if (ctr->EntriesRead > SIZE_MAX / esize) {
+                                return -1;
+                        }
+                        ctr->connection_info_0 = smb2_alloc_data(
+                                dcerpc_get_smb2_context(dce),
+                                dcerpc_get_pdu_payload(pdu),
+                                (size_t)ctr->EntriesRead * esize);
+                        if (ctr->connection_info_0 == NULL) {
+                                return -1;
+                        }
+                }
+        }
+        if (dcerpc_ptr_coder("ConnectionInfo0", dce, pdu, iov, offset, ctr->connection_info_0,
+                             PTR_UNIQUE, srvsvc_CONNECTION_INFO_0_carray_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+/*
+ * typedef struct _CONNECTION_INFO_1 {
+ *       DWORD coni1_id;
+ *       DWORD coni1_type;
+ *       DWORD coni1_num_opens;
+ *       DWORD coni1_num_users;
+ *       DWORD coni1_time;
+ *       [string] wchar_t *coni1_username;
+ *       [string] wchar_t *coni1_netname;
+ * } CONNECTION_INFO_1, *PCONNECTION_INFO_1, *LPCONNECTION_INFO_1;
+ */
+int
+srvsvc_CONNECTION_INFO_1_coder(char *name, struct dcerpc_context *dce,
+                               struct dcerpc_pdu *pdu,
+                               struct smb2_iovec *iov, int *offset,
+                               void *ptr)
+{
+        struct srvsvc_CONNECTION_INFO_1 *ci = ptr;
+
+        if (dcerpc_uint32_coder("Id", dce, pdu, iov, offset, &ci->id)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Type", dce, pdu, iov, offset, &ci->type)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("NumOpens", dce, pdu, iov, offset, &ci->num_opens)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("NumUsers", dce, pdu, iov, offset, &ci->num_users)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Time", dce, pdu, iov, offset, &ci->time)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("UserName", dce, pdu, iov, offset, &ci->username,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("NetName", dce, pdu, iov, offset, &ci->netname,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        return 0;
+}
+
+int
+srvsvc_CONNECTION_INFO_1_STRUCT_coder(char *name, struct dcerpc_context *dce,
+                                      struct dcerpc_pdu *pdu,
+                                      struct smb2_iovec *iov, int *offset,
+                                      void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_CONNECTION_INFO_1_coder);
+}
+
+/*
+ *       [size_is(EntriesRead)] LPCONNECTION_INFO_1 Buffer;
+ */
+static int
+srvsvc_CONNECTION_INFO_1_carray_coder(char *name, struct dcerpc_context *dce,
+                                      struct dcerpc_pdu *pdu,
+                                      struct smb2_iovec *iov, int *offset,
+                                      void *ptr)
+{
+        return dcerpc_carray_coder("ConnectionInfo1", dce, pdu, iov, offset,
+                                   dcerpc_get_size_is(pdu), ptr,
+                                   sizeof(struct srvsvc_CONNECTION_INFO_1),
+                                   srvsvc_CONNECTION_INFO_1_STRUCT_coder);
+}
+
+/*
+ * typedef struct _CONNECT_INFO_1_CONTAINER {
+ *       DWORD EntriesRead;
+ *       [size_is(EntriesRead)] LPCONNECTION_INFO_1 Buffer;
+ * } CONNECT_INFO_1_CONTAINER;
+ */
+int
+srvsvc_CONNECT_INFO_1_CONTAINER_coder(char *name, struct dcerpc_context *dce,
+                                      struct dcerpc_pdu *pdu,
+                                      struct smb2_iovec *iov, int *offset,
+                                      void *ptr)
+{
+        struct srvsvc_CONNECT_INFO_1_CONTAINER *ctr = ptr;
+
+        if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &ctr->EntriesRead)) {
+                return -1;
+        }
+        if (ctr->EntriesRead) {
+                dcerpc_set_size_is(pdu, ctr->EntriesRead);
+        }
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && ctr->EntriesRead) {
+                if (ctr->connection_info_1 == NULL) {
+                        size_t esize = sizeof(struct srvsvc_CONNECTION_INFO_1);
+
+                        if (ctr->EntriesRead > SIZE_MAX / esize) {
+                                return -1;
+                        }
+                        ctr->connection_info_1 = smb2_alloc_data(
+                                dcerpc_get_smb2_context(dce),
+                                dcerpc_get_pdu_payload(pdu),
+                                (size_t)ctr->EntriesRead * esize);
+                        if (ctr->connection_info_1 == NULL) {
+                                return -1;
+                        }
+                }
+        }
+        if (dcerpc_ptr_coder("ConnectionInfo1", dce, pdu, iov, offset, ctr->connection_info_1,
+                             PTR_UNIQUE, srvsvc_CONNECTION_INFO_1_carray_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+/*
+ * typedef [switch_type(DWORD)] union _CONNECT_ENUM_UNION {
+ * [case(0)] CONNECT_INFO_0_CONTAINER* Level0;
+ * [case(1)] CONNECT_INFO_1_CONTAINER* Level1;
+ * } CONNECT_ENUM_UNION;
+ */
+static int
+srvsvc_CONNECT_ENUM_UNION_coder(char *name, struct dcerpc_context *dce,
+                                struct dcerpc_pdu *pdu,
+                                struct smb2_iovec *iov, int *offset,
+                                void *ptr)
+{
+        union srvsvc_CONNECT_ENUM_UNION *info = ptr;
+
+        switch (dcerpc_get_switch_is(pdu)) {
+        case 0:
+                if (dcerpc_ptr_coder("ConnectInfo0Container", dce, pdu, iov, offset, &info->Level0,
+                                     PTR_UNIQUE, srvsvc_CONNECT_INFO_0_CONTAINER_coder)) {
+                        return -1;
+                }
+                break;
+        case 1:
+                if (dcerpc_ptr_coder("ConnectInfo1Container", dce, pdu, iov, offset, &info->Level1,
+                                     PTR_UNIQUE, srvsvc_CONNECT_INFO_1_CONTAINER_coder)) {
+                        return -1;
+                }
+                break;
+        default:
+                return -1;
+        };
+
+        return 0;
+}
+
+/*
+ * typedef struct _CONNECT_ENUM_STRUCT {
+ *       DWORD Level;
+ *       [switch_is(Level)] CONNECT_ENUM_UNION ConnectInfo;
+ * } CONNECT_ENUM_STRUCT, *PCONNECT_ENUM_STRUCT, *LPCONNECT_ENUM_STRUCT;
+ */
+int
+srvsvc_CONNECT_ENUM_STRUCT_coder(char *name, struct dcerpc_context *dce,
+                                 struct dcerpc_pdu *pdu,
+                                 struct smb2_iovec *iov, int *offset,
+                                 void *ptr)
+{
+        struct srvsvc_CONNECT_ENUM_STRUCT *ces = ptr;
+
+        if (dcerpc_uint32_coder("Level", dce, pdu, iov, offset, &ces->Level)) {
+                return -1;
+        }
+
+        if (dcerpc_union_coder("ConnectInfo", dce, pdu, iov, offset,
+                               &ces->Level, &ces->ConnectEnum,
+                               srvsvc_CONNECT_ENUM_UNION_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_CONNECT_ENUM_STRUCT_struct_coder(char *name, struct dcerpc_context *dce,
+                                        struct dcerpc_pdu *pdu,
+                                        struct smb2_iovec *iov, int *offset,
+                                        void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_CONNECT_ENUM_STRUCT_coder);
+}
+
+/*****************
+ * Function: 0x08
+ * NET_API_STATUS NetrConnectionEnum (
+ *   [in,string,unique] SRVSVC_HANDLE ServerName,
+ *   [in,string,unique] WCHAR * Qualifier,
+ *   [in,out] LPCONNECT_ENUM_STRUCT InfoStruct,
+ *   [in] DWORD PreferedMaximumLength,
+ *   [out] DWORD * TotalEntries,
+ *   [in,out,unique] DWORD * ResumeHandle
+ * );
+ */
+int
+srvsvc_NetrConnectionEnum_req_coder(char *name, struct dcerpc_context *dce,
+                                    struct dcerpc_pdu *pdu,
+                                    struct smb2_iovec *iov, int *offset,
+                                    void *ptr)
+{
+        struct srvsvc_NetrConnectionEnum_req *req = ptr;
+
+        if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("Qualifier", dce, pdu, iov, offset, &req->Qualifier,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("InfoStruct", dce, pdu, iov, offset, &req->ces,
+                             PTR_REF, srvsvc_CONNECT_ENUM_STRUCT_struct_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("PreferedMaximumLength", dce, pdu, iov, offset, &req->PreferedMaximumLength,
+                             PTR_REF, dcerpc_uint32_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("ResumeHandle", dce, pdu, iov, offset, &req->ResumeHandle,
+                             PTR_UNIQUE, dcerpc_uint32_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_NetrConnectionEnum_rep_coder(char *name, struct dcerpc_context *dce,
+                                    struct dcerpc_pdu *pdu,
+                                    struct smb2_iovec *iov, int *offset,
+                                    void *ptr)
+{
+        struct srvsvc_NetrConnectionEnum_rep *rep = ptr;
+
+        if (dcerpc_ptr_coder("InfoStruct", dce, pdu, iov, offset, &rep->ces,
+                             PTR_REF, srvsvc_CONNECT_ENUM_STRUCT_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("TotalEntries", dce, pdu, iov, offset, &rep->total_entries,
+                             PTR_REF, dcerpc_uint32_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("ResumeHandle", dce, pdu, iov, offset, &rep->resume_handle,
+                             PTR_UNIQUE, dcerpc_uint32_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
+                return -1;
+        }
+
+        return 0;
+}
+
 /*****************
  * Function: 0x0e
  * NET_API_STATUS NetrShareAdd (
@@ -1582,6 +1925,10 @@ int srvsvc_NetrServerGetInfo_rep_coder(char *name, struct dcerpc_context *dce,
 
 
 struct dcerpc_procedure srvsvc_procs[] = {
+        {SRVSVC_NETRCONNECTIONENUM, "NetrConnectionEnum",
+         srvsvc_NetrConnectionEnum_req_coder, sizeof(struct srvsvc_NetrConnectionEnum_req),
+         srvsvc_NetrConnectionEnum_rep_coder, sizeof(struct srvsvc_NetrConnectionEnum_rep),
+        },
         {SRVSVC_NETRSHAREADD, "NetrShareAdd",
          srvsvc_NetrShareAdd_req_coder, sizeof(struct srvsvc_NetrShareAdd_req),
          srvsvc_NetrShareAdd_rep_coder, sizeof(struct srvsvc_NetrShareAdd_rep),

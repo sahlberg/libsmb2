@@ -25,6 +25,7 @@ extern "C" {
 
 #include <smb2/libsmb2-dcerpc.h>
 
+#define SRVSVC_NETRCONNECTIONENUM 0x08
 #define SRVSVC_NETRSHAREADD       0x0e
 #define SRVSVC_NETRSHAREENUM      0x0f
 #define SRVSVC_NETRSHAREGETINFO   0x10
@@ -250,6 +251,72 @@ union srvsvc_SERVER_INFO {
         struct srvsvc_SERVER_INFO_503 ServerInfo503;
 };
         
+/*
+ * CONNECTION_INFO / CONNECT_ENUM (NetrConnectionEnum)
+ */
+enum CONNECTION_INFO_enum {
+        CONNECTION_INFO_0 = 0,
+        CONNECTION_INFO_1 = 1,
+};
+
+struct srvsvc_CONNECTION_INFO_0 {
+        uint32_t id;
+};
+int srvsvc_CONNECTION_INFO_0_coder(char *name, struct dcerpc_context *ctx,
+                                   struct dcerpc_pdu *pdu,
+                                   struct smb2_iovec *iov, int *offset,
+                                   void *ptr);
+
+struct srvsvc_CONNECT_INFO_0_CONTAINER {
+        uint32_t EntriesRead;
+        struct srvsvc_CONNECTION_INFO_0 *connection_info_0;
+};
+
+struct srvsvc_CONNECTION_INFO_1 {
+        uint32_t id;
+        uint32_t type;
+        uint32_t num_opens;
+        uint32_t num_users;
+        uint32_t time;
+        char *username;
+        char *netname;
+};
+int srvsvc_CONNECTION_INFO_1_coder(char *name, struct dcerpc_context *ctx,
+                                   struct dcerpc_pdu *pdu,
+                                   struct smb2_iovec *iov, int *offset,
+                                   void *ptr);
+
+struct srvsvc_CONNECT_INFO_1_CONTAINER {
+        uint32_t EntriesRead;
+        struct srvsvc_CONNECTION_INFO_1 *connection_info_1;
+};
+
+union srvsvc_CONNECT_ENUM_UNION {
+        struct srvsvc_CONNECT_INFO_0_CONTAINER Level0;
+        struct srvsvc_CONNECT_INFO_1_CONTAINER Level1;
+};
+
+struct srvsvc_CONNECT_ENUM_STRUCT {
+        uint32_t Level;
+        union srvsvc_CONNECT_ENUM_UNION ConnectEnum;
+};
+
+struct srvsvc_NetrConnectionEnum_req {
+        char *ServerName;
+        char *Qualifier;
+        struct srvsvc_CONNECT_ENUM_STRUCT ces;
+        uint32_t PreferedMaximumLength;
+        uint32_t ResumeHandle;
+};
+
+struct srvsvc_NetrConnectionEnum_rep {
+        struct srvsvc_CONNECT_ENUM_STRUCT ces;
+        uint32_t total_entries;
+        uint32_t resume_handle;
+
+        uint32_t status;
+};
+
 struct srvsvc_NetrShareAdd_req {
         char *ServerName;
         uint32_t Level;
@@ -368,6 +435,14 @@ struct srvsvc_NetrShareEnum_rep *
 smb2_share_enum_sync(struct smb2_context *smb2, enum SHARE_INFO_enum level);
 
 
+int srvsvc_NetrConnectionEnum_rep_coder(char *name, struct dcerpc_context *dce,
+                                         struct dcerpc_pdu *pdu,
+                                         struct smb2_iovec *iov, int *offset,
+                                         void *ptr);
+int srvsvc_NetrConnectionEnum_req_coder(char *name, struct dcerpc_context *ctx,
+                                         struct dcerpc_pdu *pdu,
+                                         struct smb2_iovec *iov, int *offset,
+                                         void *ptr);
 int srvsvc_NetrShareEnum_rep_coder(char *name, struct dcerpc_context *dce,
                                    struct dcerpc_pdu *pdu,
                                    struct smb2_iovec *iov, int *offset,
