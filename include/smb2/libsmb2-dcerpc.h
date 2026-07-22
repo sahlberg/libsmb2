@@ -68,7 +68,7 @@ struct ndr_transfer_syntax {
         uint16_t vers;
 };
 
-struct ndr_context_handle {
+struct dcerpc_context_handle {
         uint32_t context_handle_attributes;
         dcerpc_uuid_t context_handle_uuid;
 };
@@ -149,10 +149,6 @@ int ndr_carray_coder(char *name, struct dcerpc_context *ctx,
                      struct dcerpc_pdu *pdu,
                      struct smb2_iovec *iov, int *offset,
                      uint32_t num, void *ptr, int elem_size, dcerpc_coder coder);
-int ndr_context_handle_coder(char *name, struct dcerpc_context *dce,
-                             struct dcerpc_pdu *pdu,
-                             struct smb2_iovec *iov, int *offset,
-                             void *ptr);
 int ndr_uint8_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                     struct smb2_iovec *iov, int *offset, void *ptr);
 int ndr_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
@@ -195,6 +191,10 @@ int dcerpc_struct_coder(char *name, struct dcerpc_context *ctx,
                         struct dcerpc_pdu *pdu,
                         struct smb2_iovec *iov, int *offset,
                         void *ptr, dcerpc_coder coder);
+int dcerpc_context_handle_coder(char *name, struct dcerpc_context *dce,
+                                struct dcerpc_pdu *pdu,
+                                struct smb2_iovec *iov, int *offset,
+                                void *ptr);
         
 #ifdef __cplusplus
 }

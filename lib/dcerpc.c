@@ -332,8 +332,6 @@ int ndr_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *p
                     struct smb2_iovec *iov, int *offset, void *ptr);
 int ndr_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                    struct smb2_iovec *iov, int *offset, dcerpc_uuid_t *uuid);
-int ndr_context_handle_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
-                             struct smb2_iovec *iov, int *offset, void *ptr);
 
 /*
  * YAML
@@ -1695,6 +1693,38 @@ void *dcerpc_get_request(struct dcerpc_pdu *pdu)
         return pdu->request;
 }
 
+/**********************
+ * typedef struct dcerpc_context_handle {
+ *    unsigned32 context_handle_attributes;
+ *    dcerpc_uuid_t context_handle_uuid;
+ * } dcerpc_context_handle;
+ **********************/
+int
+dcerpc_context_handle_coder(char *name, struct dcerpc_context *dce,
+                            struct dcerpc_pdu *pdu,
+                            struct smb2_iovec *iov, int *offset,
+                            void *ptr)
+{
+        struct dcerpc_context_handle *handle = ptr;
+
+        switch(pdu->encoding) {
+        case ENCODING_NDR:
+                if (ndr_uint32_coder("ContextHandleAttributes", dce, pdu, iov, offset, &handle->context_handle_attributes)) {
+                        return -1;
+                }
+                if (ndr_uuid_coder("UUID", dce, pdu, iov, offset,
+                                   &handle->context_handle_uuid)) {
+                        return -1;
+                }
+                return 0;
+        case ENCODING_YAML:
+                printf("NO YAML coder for context handles yet\n");
+                return -1;
+        }
+        return 0;
+}
+
+
 /*
  * NDR
  */
@@ -2363,31 +2393,6 @@ ndr_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 
         return 0;
 }        
-
-/**********************
- * typedef struct ndr_context_handle {
- *    unsigned32 context_handle_attributes;
- *    dcerpc_uuid_t context_handle_uuid;
- * } ndr_context_handle;
- **********************/
-int
-ndr_context_handle_coder(char *name, struct dcerpc_context *dce,
-                         struct dcerpc_pdu *pdu,
-                         struct smb2_iovec *iov, int *offset,
-                         void *ptr)
-{
-        struct ndr_context_handle *handle = ptr;
-
-        if (ndr_uint32_coder("ContextHandleAttributes", dce, pdu, iov, offset, &handle->context_handle_attributes)) {
-                return -1;
-        }
-        if (ndr_uuid_coder("UUID", dce, pdu, iov, offset,
-                           &handle->context_handle_uuid)) {
-                return -1;
-        }
-
-        return 0;
-}
 
 /*
  * YAML

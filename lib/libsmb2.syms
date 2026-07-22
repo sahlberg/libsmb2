@@ -16,7 +16,6 @@ dcerpc_set_request
 dcerpc_get_smb2_context
 dcerpc_services
 ndr_carray_coder
-ndr_context_handle_coder
 ndr_ptr_coder
 ndr_set_endian
 ndr_set_tctx

@@ -380,7 +380,7 @@ lsa_ObjectAttributes_coder(char *name, struct dcerpc_context *dce,
 /**********************
  * Function: 0x00
  *	NTSTATUS lsa_Close (
- *		[in,out]     ndr_context_handle handle
+ *		[in,out]     dcerpc_context_handle handle
  *		);
  **********************/
 int
@@ -392,7 +392,7 @@ lsa_Close_req_coder(char *name, struct dcerpc_context *dce,
         struct lsa_close_req *req = ptr;
 
         if (ndr_ptr_coder("Handle", dce, pdu, iov, offset, &req->PolicyHandle,
-                          PTR_REF, ndr_context_handle_coder)) {
+                          PTR_REF, dcerpc_context_handle_coder)) {
                 return -1;
         }
 
@@ -408,7 +408,7 @@ lsa_Close_rep_coder(char *name, struct dcerpc_context *dce,
         struct lsa_close_rep *rep = ptr;
 
         if (ndr_ptr_coder("Handle", dce, pdu, iov, offset, &rep->PolicyHandle,
-                              PTR_REF, ndr_context_handle_coder)) {
+                              PTR_REF, dcerpc_context_handle_coder)) {
                 return -1;
         }
         if (ndr_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
@@ -424,7 +424,7 @@ lsa_Close_rep_coder(char *name, struct dcerpc_context *dce,
  *              [in,unique,string] wchar_t* SystemName,
  *              [in] PLSAPR_OBJECT_ATTRIBUTES ObjectAttributes,
  *              [in] uint32_t DesiredAccess,
- *		[out] ndr_context_handle PolicyHandle
+ *		[out] dcerpc_context_handle PolicyHandle
  *              );
  **********************/
 int
@@ -458,7 +458,7 @@ lsa_OpenPolicy2_rep_coder(char *name, struct dcerpc_context *dce,
         struct lsa_openpolicy2_rep *rep = ptr;
 
         if (ndr_ptr_coder("PolicyHandle", dce, pdu, iov, offset, &rep->PolicyHandle,
-                              PTR_REF, ndr_context_handle_coder)) {
+                              PTR_REF, dcerpc_context_handle_coder)) {
                 return -1;
         }
         if (ndr_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
@@ -562,7 +562,7 @@ lsa_REFERENCED_DOMAIN_LIST_coder(char *name, struct dcerpc_context *dce,
 /**********************
  * Function:     0x39
  * NTSTATUS LsarLookupSids2(
- *       [in] ndr_context_handle PolicyHandle,
+ *       [in] dcerpc_context_handle PolicyHandle,
  *       [in] PLSAPR_SID_ENUM_BUFFER SidEnumBuffer,
  *       [out] PLSAPR_REFERENCED_DOMAIN_LIST* ReferencedDomains,
  *       [in, out] PLSAPR_TRANSLATED_NAMES_EX TranslatedNames,
@@ -582,7 +582,7 @@ lsa_LookupSids2_req_coder(char *name, struct dcerpc_context *dce,
         uint32_t val;
 
         if (ndr_ptr_coder("PolicyHandle", dce, pdu, iov, offset, &req->PolicyHandle,
-                              PTR_REF, ndr_context_handle_coder)) {
+                              PTR_REF, dcerpc_context_handle_coder)) {
                 return -1;
         }
         if (ndr_ptr_coder("SIDS", dce, pdu, iov, offset, &req->SidEnumBuffer,

@@ -32,7 +32,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #endif
 
 int is_finished;
-struct ndr_context_handle PolicyHandle;
+struct dcerpc_context_handle PolicyHandle;
 
 int usage(void)
 {
@@ -103,7 +103,7 @@ void ls_cb(struct dcerpc_context *dce, int status,
         }
 
         memcpy(&cl_req.PolicyHandle, &PolicyHandle,
-               sizeof(struct ndr_context_handle));
+               sizeof(struct dcerpc_context_handle));
         dcerpc_free_data(dce, rep);
         if (dcerpc_call_async(dce,
                               LSA_CLOSE,
@@ -134,9 +134,9 @@ void op_cb(struct dcerpc_context *dce, int status,
         }
 
         memcpy(&PolicyHandle, &rep->PolicyHandle,
-               sizeof(struct ndr_context_handle));
+               sizeof(struct dcerpc_context_handle));
         memcpy(&ls_req.PolicyHandle, &PolicyHandle,
-               sizeof(struct ndr_context_handle));
+               sizeof(struct dcerpc_context_handle));
 
         sid = malloc(sizeof(*sid) + 2 * sizeof(uint32_t));
         if (sid == NULL) {

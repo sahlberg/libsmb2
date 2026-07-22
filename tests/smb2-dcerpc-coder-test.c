@@ -36,7 +36,7 @@ void ndr_set_tctx(struct dcerpc_context *ctx, int tctx);
 void ndr_set_endian(struct dcerpc_pdu *pdu, int little_endian);
  
 int is_finished;
-struct ndr_context_handle PolicyHandle;
+struct dcerpc_context_handle PolicyHandle;
 
 int usage(void)
 {

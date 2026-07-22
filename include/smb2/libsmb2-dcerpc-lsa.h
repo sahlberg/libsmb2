@@ -100,13 +100,13 @@ typedef struct _LSAPR_OBJECT_ATTRIBUTES {
 } LSAPR_OBJECT_ATTRIBUTES, *PLSAPR_OBJECT_ATTRIBUTES;
 
 struct lsa_close_req {
-        struct ndr_context_handle PolicyHandle;
+        struct dcerpc_context_handle PolicyHandle;
 };
 
 struct lsa_close_rep {
         uint32_t status;
 
-        struct ndr_context_handle PolicyHandle;
+        struct dcerpc_context_handle PolicyHandle;
 };
 
 struct lsa_openpolicy2_req {
@@ -118,11 +118,11 @@ struct lsa_openpolicy2_req {
 struct lsa_openpolicy2_rep {
         uint32_t status;
 
-        struct ndr_context_handle PolicyHandle;
+        struct dcerpc_context_handle PolicyHandle;
 };
 
 struct lsa_lookupsids2_req {
-        struct ndr_context_handle PolicyHandle;
+        struct dcerpc_context_handle PolicyHandle;
         LSAPR_SID_ENUM_BUFFER SidEnumBuffer;
         LSAPR_TRANSLATED_NAMES_EX TranslatedNames;
         LSAP_LOOKUP_LEVEL LookupLevel;
