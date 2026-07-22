@@ -64,6 +64,161 @@ int usage(void)
         exit(1);
 }
 
+/*
+ * Look up a scalar YAML field "name: value" in the previous response.
+ * Returns a newly allocated string with the value, or NULL if not found.
+ * Nested keys with an empty value after the colon are skipped.
+ */
+static char *
+yaml_lookup_field(const char *yaml, const char *name)
+{
+        const char *p = yaml;
+        size_t name_len = strlen(name);
+
+        while (*p) {
+                const char *line = p;
+                const char *eol;
+                const char *colon;
+                const char *key;
+                const char *val;
+                size_t key_len, val_len;
+
+                eol = strchr(p, '\n');
+                if (eol == NULL) {
+                        eol = p + strlen(p);
+                }
+
+                while (line < eol && *line == ' ') {
+                        line++;
+                }
+                /* optional YAML list prefix */
+                if (line + 1 < eol && line[0] == '-' && line[1] == ' ') {
+                        line += 2;
+                        while (line < eol && *line == ' ') {
+                                line++;
+                        }
+                }
+
+                colon = memchr(line, ':', eol - line);
+                if (colon && colon > line) {
+                        key = line;
+                        key_len = colon - line;
+                        if (key_len == name_len && !memcmp(key, name, key_len)) {
+                                val = colon + 1;
+                                while (val < eol && *val == ' ') {
+                                        val++;
+                                }
+                                val_len = (size_t)(eol - val);
+                                while (val_len > 0 &&
+                                       (val[val_len - 1] == '\r' ||
+                                        val[val_len - 1] == ' ')) {
+                                        val_len--;
+                                }
+                                if (val_len > 0) {
+                                        char *ret = malloc(val_len + 1);
+
+                                        if (ret == NULL) {
+                                                return NULL;
+                                        }
+                                        memcpy(ret, val, val_len);
+                                        ret[val_len] = '\0';
+                                        return ret;
+                                }
+                        }
+                }
+
+                if (*eol == '\0') {
+                        break;
+                }
+                p = eol + 1;
+        }
+
+        return NULL;
+}
+
+/*
+ * Replace @name@ placeholders in the request YAML with the corresponding
+ * scalar values from the previous response YAML.
+ */
+static int
+apply_response_substitutions(struct opdata *req, const char *prev_yaml)
+{
+        uint8_t tmp[sizeof(req->buf)];
+        size_t out_len = 0;
+        const char *src = (const char *)req->buf;
+        const char *at1, *at2;
+
+        while ((at1 = strchr(src, '@')) != NULL) {
+                size_t name_len, value_len, chunk;
+                char name[256];
+                char *value;
+
+                at2 = strchr(at1 + 1, '@');
+                if (at2 == NULL) {
+                        break;
+                }
+
+                name_len = (size_t)(at2 - (at1 + 1));
+                if (name_len == 0 || name_len >= sizeof(name) ||
+                    memchr(at1 + 1, '\n', name_len) != NULL) {
+                        /* Not a valid placeholder; copy through first '@' */
+                        chunk = (size_t)(at1 - src) + 1;
+                        if (out_len + chunk >= sizeof(tmp)) {
+                                printf("YAML too large after substitution\n");
+                                return -1;
+                        }
+                        memcpy(tmp + out_len, src, chunk);
+                        out_len += chunk;
+                        src = at1 + 1;
+                        continue;
+                }
+
+                chunk = (size_t)(at1 - src);
+                if (out_len + chunk >= sizeof(tmp)) {
+                        printf("YAML too large after substitution\n");
+                        return -1;
+                }
+                memcpy(tmp + out_len, src, chunk);
+                out_len += chunk;
+
+                memcpy(name, at1 + 1, name_len);
+                name[name_len] = '\0';
+
+                value = yaml_lookup_field(prev_yaml, name);
+                if (value == NULL) {
+                        printf("No value for @%s@ in previous response YAML\n",
+                               name);
+                        return -1;
+                }
+                value_len = strlen(value);
+                if (out_len + value_len >= sizeof(tmp)) {
+                        free(value);
+                        printf("YAML too large after substitution\n");
+                        return -1;
+                }
+                memcpy(tmp + out_len, value, value_len);
+                out_len += value_len;
+                free(value);
+
+                src = at2 + 1;
+        }
+
+        {
+                size_t chunk = strlen(src);
+
+                if (out_len + chunk >= sizeof(tmp)) {
+                        printf("YAML too large after substitution\n");
+                        return -1;
+                }
+                memcpy(tmp + out_len, src, chunk);
+                out_len += chunk;
+        }
+        tmp[out_len] = '\0';
+
+        memcpy(req->buf, tmp, out_len + 1);
+        return 0;
+}
+
 void do_request(struct dcerpc_context *dce);
 
 void si_cb(struct dcerpc_context *dce, int status,
@@ -119,6 +274,18 @@ void do_request(struct dcerpc_context *dce)
         int i;
         char *name;
         struct rpc_cb_data *rpc_cb_data;
+
+        /*
+         * If this is not the first request in the chain, replace any
+         * @field@ placeholders with values from the previous response YAML
+         * (still held in opdata[idx - 1] after si_cb encoded it).
+         */
+        if (idx > 0) {
+                if (apply_response_substitutions(&opdata[idx],
+                                                 (const char *)opdata[idx - 1].buf)) {
+                        exit(9);
+                }
+        }
 
         rpc_cb_data = calloc(1, sizeof(*rpc_cb_data));
         if (rpc_cb_data == NULL) {
