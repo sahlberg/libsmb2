@@ -390,10 +390,20 @@ lsa_ObjectAttributes_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                    lsa_ObjectAttributes_coder);
 }
 
+static int
+lsa_PolicyHandle_STRUCT_coder(char *name, struct dcerpc_context *dce,
+                              struct dcerpc_pdu *pdu,
+                              struct smb2_iovec *iov, int *offset,
+                              void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   dcerpc_context_handle_coder);
+}
+
 /**********************
  * Function: 0x00
- *	NTSTATUS lsa_Close (
- *		[in,out]     dcerpc_context_handle handle
+ *	NTSTATUS LsarClose (
+ *		[in,out] dcerpc_context_handle PolicyHandle
  *		);
  **********************/
 int
@@ -404,8 +414,8 @@ lsa_Close_req_coder(char *name, struct dcerpc_context *dce,
 {
         struct lsa_close_req *req = ptr;
 
-        if (ndr_ptr_coder("Handle", dce, pdu, iov, offset, &req->PolicyHandle,
-                          PTR_REF, dcerpc_context_handle_coder)) {
+        if (dcerpc_ptr_coder("PolicyHandle", dce, pdu, iov, offset, &req->PolicyHandle,
+                             PTR_REF, lsa_PolicyHandle_STRUCT_coder)) {
                 return -1;
         }
 
@@ -420,11 +430,11 @@ lsa_Close_rep_coder(char *name, struct dcerpc_context *dce,
 {
         struct lsa_close_rep *rep = ptr;
 
-        if (ndr_ptr_coder("Handle", dce, pdu, iov, offset, &rep->PolicyHandle,
-                              PTR_REF, dcerpc_context_handle_coder)) {
+        if (dcerpc_ptr_coder("PolicyHandle", dce, pdu, iov, offset, &rep->PolicyHandle,
+                             PTR_REF, lsa_PolicyHandle_STRUCT_coder)) {
                 return -1;
         }
-        if (ndr_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
+        if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
                 return -1;
         }
 
@@ -471,7 +481,7 @@ lsa_OpenPolicy2_rep_coder(char *name, struct dcerpc_context *dce,
         struct lsa_openpolicy2_rep *rep = ptr;
 
         if (dcerpc_ptr_coder("PolicyHandle", dce, pdu, iov, offset, &rep->PolicyHandle,
-                             PTR_REF, dcerpc_context_handle_coder)) {
+                             PTR_REF, lsa_PolicyHandle_STRUCT_coder)) {
                 return -1;
         }
         if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
@@ -654,6 +664,10 @@ lsa_LookupSids2_rep_coder(char *name, struct dcerpc_context *dce,
 }
 
 struct dcerpc_procedure lsa_procs[] = {
+        {LSA_CLOSE, "Close",
+         lsa_Close_req_coder, sizeof(struct lsa_close_req),
+         lsa_Close_rep_coder, sizeof(struct lsa_close_rep),
+        },
         {LSA_OPENPOLICY2, "OpenPolicy2",
          lsa_OpenPolicy2_req_coder, sizeof(struct lsa_openpolicy2_req),
          lsa_OpenPolicy2_rep_coder, sizeof(struct lsa_openpolicy2_rep),
