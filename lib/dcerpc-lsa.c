@@ -92,7 +92,7 @@ lsa_PRPC_SID_array_coder(char *name, struct dcerpc_context *dce,
 {
         PLSAPR_SID_ENUM_BUFFER seb = ptr;
 
-        return dcerpc_carray_coder("ShareInfo0", dce, pdu, iov, offset,
+        return dcerpc_carray_coder("SIDS", dce, pdu, iov, offset,
                                    dcerpc_get_size_is(pdu), &seb->SidInfo[0],
                                    sizeof(RPC_SID),
                                    lsa_PRPC_SID_ptr_coder);
@@ -154,6 +154,15 @@ lsa_RPC_UNICODE_STRING_coder(char *name, struct dcerpc_context *dce,
 {
         uint16_t len, maxlen;
 
+        /*
+         * YAML only needs the string value. NDR alignment and Length/
+         * MaxLength must not run for YAML: align would skip past the
+         * current NUL in the YAML buffer and truncate the visible output.
+         */
+        if (dcerpc_pdu_encoding(pdu) == ENCODING_YAML) {
+                return dcerpc_utf16_coder(name, dce, pdu, iov, offset, ptr);
+        }
+
 /* TODO conformance split
  * during the conformance run we need to do the alignment in all the
   coders, even for the coders that do  not have any conformance data.
@@ -166,7 +175,11 @@ lsa_RPC_UNICODE_STRING_coder(char *name, struct dcerpc_context *dce,
         *offset = dcerpc_align_3264(dce, *offset);
 
         if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
-                len = (uint16_t)strlen(*(char **)ptr) * 2;
+                if (*(char **)ptr) {
+                        len = (uint16_t)strlen(*(char **)ptr) * 2;
+                } else {
+                        len = 0;
+                }
                 maxlen = (len & 0x02) ? len + 2 : len;
         }
         if (dcerpc_uint16_coder("Length", dce, pdu, iov, offset, &len)) {
@@ -234,8 +247,6 @@ TRANSLATED_NAME_EX_array_coder(char *name, struct dcerpc_context *dce,
                                    dcerpc_get_size_is(pdu), &tn->Names[0],
                                    sizeof(LSAPR_TRANSLATED_NAME_EX),
                                    lsa_TRANSLATED_NAME_EX_coder);
-
-        return 0;
 }
 
 static int
@@ -263,7 +274,7 @@ lsa_TRANSLATED_NAMES_EX_coder(char *name, struct dcerpc_context *dce,
                 }
         }
 
-        if (dcerpc_ptr_coder("TranslatedNames", dce, pdu, iov, offset, ptr,
+        if (dcerpc_ptr_coder("TranslatedNameEx", dce, pdu, iov, offset, ptr,
                              PTR_UNIQUE, TRANSLATED_NAME_EX_array_coder)) {
                 return -1;
         }
@@ -602,6 +613,10 @@ struct dcerpc_procedure lsa_procs[] = {
         {LSA_OPENPOLICY2, "OpenPolicy2",
          lsa_OpenPolicy2_req_coder, sizeof(struct lsa_openpolicy2_req),
          lsa_OpenPolicy2_rep_coder, sizeof(struct lsa_openpolicy2_rep),
+        },
+        {LSA_LOOKUPSIDS2, "LookupSids2",
+         lsa_LookupSids2_req_coder, sizeof(struct lsa_lookupsids2_req),
+         lsa_LookupSids2_rep_coder, sizeof(struct lsa_lookupsids2_rep),
         },
         {-1, NULL, NULL, 0, NULL, 0}
 };

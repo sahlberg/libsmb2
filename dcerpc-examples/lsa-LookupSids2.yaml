@@ -1,0 +1,25 @@
+OpenPolicy2: Request
+  SystemName: \\10.10.10.11
+  ObjectAttributes:
+    Length: 24
+    Attributes: 0
+  DesiredAccess: 0x801
+---
+LookupSids2: Request
+  ContextHandleAttributes: 0
+  UUID: @UUID:-1@
+  Entries: 2
+  SIDS:
+    - SID: S-1-5-32-544
+    - SID: S-1-5-32-544
+  Entries: 0
+  TranslatedNameEx:
+  LookupLevel: 1
+  MappedCount: 0
+  LookupOptions: 0
+  ClientRevision: 2
+---
+Close: Request
+  PolicyHandle:
+    ContextHandleAttributes: 0
+    UUID: @UUID:-2@

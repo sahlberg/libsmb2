@@ -284,6 +284,7 @@ struct dcerpc_pdu {
         /* YAML */
         int yaml_indentation;
         int yaml_array_prefix;
+        int yaml_array_item; /* 1 while encoding fields of a list item after "- " */
         char *yaml_key;
         char *yaml_val;
 };
@@ -1651,6 +1652,12 @@ dcerpc_pdu_direction(struct dcerpc_pdu *pdu)
         return pdu->direction;
 }
 
+enum dcerpc_encoding
+dcerpc_pdu_encoding(struct dcerpc_pdu *pdu)
+{
+        return pdu->encoding;
+}
+
 int
 dcerpc_align_3264(struct dcerpc_context *ctx, int offset)
 {
@@ -2506,11 +2513,24 @@ yaml_print_preamble(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 }
         }
         if (pdu->yaml_array_prefix) {
+                /* First field of a list item: "  - key: value" */
                 if (*offset + 3 < iov->len) {
                         strncat((char *)&iov->buf[*offset], "- ", iov->len - *offset);
                         *offset += 2;
                 }
                 pdu->yaml_array_prefix = 0;
+                pdu->yaml_array_item = 1;
+        } else if (pdu->yaml_array_item) {
+                /*
+                 * Later fields of the same list item: align under the key
+                 * after "- " so multi-field elements form one YAML mapping:
+                 *   - Name: BUILTIN
+                 *     SID: S-1-5-32
+                 */
+                if (*offset + 3 < iov->len) {
+                        strncat((char *)&iov->buf[*offset], "  ", iov->len - *offset);
+                        *offset += 2;
+                }
         }
 }
 
@@ -2537,7 +2557,11 @@ yaml_next_kv(struct dcerpc_pdu *pdu, struct smb2_iovec *iov, int *offset)
                 str++;
                 pdu->yaml_indentation++;
         }
-        
+        /* YAML list items: "  - key: value" */
+        if (str[0] == '-' && str[1] == ' ') {
+                str += 2;
+        }
+
         pdu->yaml_key = str;
         str = strchr(str, ':');
         if (str == NULL) {
@@ -2805,8 +2829,20 @@ yaml_carray_coder(char *name, struct dcerpc_context *ctx,
         uint8_t *data = ptr;
 
         if (pdu->direction == DCERPC_DECODE) {
-                printf("yaml carray not supported for %s\n", name);
-                return -1;
+                yaml_next_kv(pdu, iov, offset);
+                if (strcmp(pdu->yaml_key, name)) {
+                        printf("Wrong YAML key encountered for carray. Expected %s but got %s\n",
+                               name, pdu->yaml_key);
+                        return -1;
+                }
+                pdu->yaml_key = NULL;
+                yaml_next_kv(pdu, iov, offset);
+                for (i = 0; i < (int)num; i++) {
+                        if (coder(name, ctx, pdu, iov, offset, &data[i * elem_size])) {
+                                return -1;
+                        }
+                }
+                return 0;
         } else {
                 yaml_print_preamble(ctx, pdu, iov, offset);
                 if (*offset + 256 < iov->len) {
@@ -2814,11 +2850,12 @@ yaml_carray_coder(char *name, struct dcerpc_context *ctx,
                 }
 
                 pdu->yaml_indentation++;
-                for (i = 0; i < num; i++) {
+                for (i = 0; i < (int)num; i++) {
                         pdu->yaml_array_prefix = 1;
                         if (coder(name, ctx, pdu, iov, offset, &data[i * elem_size])) {
                                 return -1;
                         }
+                        pdu->yaml_array_item = 0;
                 }
                 pdu->yaml_indentation--;
         }
@@ -2867,13 +2904,16 @@ yaml_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
         }
         if (pdu->direction == DCERPC_DECODE) {
                 yaml_next_kv(pdu, iov, offset);
-                if (strcmp(pdu->yaml_key,  name)) {
+                if (strcmp(pdu->yaml_key, name)) {
+                        /*
+                         * UNIQUE pointers are optional in YAML: missing key
+                         * means a NULL referent. REF pointers always present
+                         * the referent; the nested coder validates keys
+                         * (either a struct wrapper name or the first field).
+                         */
                         if (type == PTR_UNIQUE) {
                                 return 0;
                         }
-                        printf("Wrong YAML key encountered for ptr. Expected %s but got %s\n",
-                               name, pdu->yaml_key);
-                        return -1;
                 }
                 return coder(name, dce, pdu, iov, offset, ptr);
         } else {
@@ -2898,9 +2938,13 @@ yaml_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 yaml_next_kv(pdu, iov, offset);
                 return 0;
         } else {
+                const char *s = *(char **)ptr;
+
                 yaml_print_preamble(ctx, pdu, iov, offset);
                 if (*offset + 256 < iov->len) {
-                        *offset += snprintf((char *)&iov->buf[*offset], iov->len - *offset, "%s: %s\n", name, *(char **)ptr);
+                        *offset += snprintf((char *)&iov->buf[*offset],
+                                           iov->len - *offset, "%s: %s\n",
+                                           name, s ? s : "");
                 }
                 return 0;
         }
@@ -2929,6 +2973,12 @@ yaml_struct_coder(char *name, struct dcerpc_context *ctx,
                 yaml_print_preamble(ctx, pdu, iov, offset);
                 *offset += snprintf((char *)&iov->buf[*offset], iov->len - *offset, "%s: %s\n", name, pdu->yaml_val);
                 pdu->yaml_val = "";
+                /*
+                 * Nested fields use yaml_indentation, not the list-item
+                 * "  " padding from yaml_array_item (that is for bare
+                 * multi-field array elements without a struct wrapper).
+                 */
+                pdu->yaml_array_item = 0;
 
                 pdu->yaml_indentation++;
                 ret = coder(name, ctx, pdu, iov, offset, ptr);
