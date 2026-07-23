@@ -164,7 +164,6 @@ lsa_LookupSids2_rep_coder
 lsa_LookupSids2_req_coder
 lsa_OpenPolicy2_rep_coder
 lsa_OpenPolicy2_req_coder
-lsa_RPC_SID_coder
 smb2_cmd_change_notify_async
 smb2_get_uint32
 smb2_utf16_to_utf8

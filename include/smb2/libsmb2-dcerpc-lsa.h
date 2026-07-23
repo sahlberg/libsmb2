@@ -164,10 +164,6 @@ int lsa_OpenPolicy2_req_coder(char *name, struct dcerpc_context *dce,
                               struct dcerpc_pdu *pdu,
                               struct smb2_iovec *iov, int *offset,
                               void *ptr);
-int lsa_RPC_SID_coder(char *name, struct dcerpc_context *dce,
-                      struct dcerpc_pdu *pdu,
-                      struct smb2_iovec *iov, int *offset,
-                      void *ptr);
 
 extern struct dcerpc_procedure lsa_procs[];
 

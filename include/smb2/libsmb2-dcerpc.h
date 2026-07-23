@@ -82,7 +82,7 @@ struct dcerpc_utf16 {
         
         const char *utf8;
 };
-
+        
 extern p_syntax_id_t lsa_interface;
 extern p_syntax_id_t srvsvc_interface;
         
