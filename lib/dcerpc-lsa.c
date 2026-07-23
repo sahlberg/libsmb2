@@ -105,7 +105,7 @@ lsa_PRPC_SID_array_coder(char *name, struct dcerpc_context *dce,
  * } LSAPR_SID_ENUM_BUFFER, *PLSAPR_SID_ENUM_BUFFER;
  */
 static int
-lsa_SID_ENUM_BUFFER_coder(char *name, struct dcerpc_context *dce,
+_lsa_SID_ENUM_BUFFER_coder(char *name, struct dcerpc_context *dce,
                           struct dcerpc_pdu *pdu,
                           struct smb2_iovec *iov, int *offset,
                           void *ptr)
@@ -136,6 +136,16 @@ lsa_SID_ENUM_BUFFER_coder(char *name, struct dcerpc_context *dce,
         }
 
         return 0;
+}
+
+static int
+lsa_SID_ENUM_BUFFER_coder(char *name, struct dcerpc_context *dce,
+                          struct dcerpc_pdu *pdu,
+                          struct smb2_iovec *iov, int *offset,
+                          void *ptr)
+{
+        return dcerpc_struct_coder("SIDS", dce, pdu, iov, offset, ptr,
+                                   _lsa_SID_ENUM_BUFFER_coder);
 }
 
 /*

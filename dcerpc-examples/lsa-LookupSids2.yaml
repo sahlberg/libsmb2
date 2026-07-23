@@ -8,10 +8,11 @@ OpenPolicy2: Request
 LookupSids2: Request
   ContextHandleAttributes: 0
   UUID: @UUID:-1@
-  Entries: 2
   SIDS:
-    - SID: S-1-5-32-544
-    - SID: S-1-5-32-544
+    Entries: 2
+    SIDS:
+      - SID: S-1-5-32-544
+      - SID: S-1-5-32-544
   Entries: 0
   TranslatedNameEx:
   LookupLevel: 1
