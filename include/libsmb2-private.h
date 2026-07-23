@@ -686,6 +686,7 @@ int dcerpc_set_uint8(struct dcerpc_context *ctx, struct smb2_iovec *iov,
 struct dcerpc_pdu;
 int dcerpc_pdu_direction(struct dcerpc_pdu *pdu);
 enum dcerpc_encoding dcerpc_pdu_encoding(struct dcerpc_pdu *pdu);
+int dcerpc_get_cr(struct dcerpc_pdu *pdu);
 
 int dcerpc_align_3264(struct dcerpc_context *ctx, int offset);
 

@@ -1540,6 +1540,369 @@ srvsvc_NetrConnectionEnum_rep_coder(char *name, struct dcerpc_context *dce,
         return 0;
 }
 
+/*
+ * typedef struct _FILE_INFO_2 {
+ *       DWORD fi2_id;
+ * } FILE_INFO_2, *PFILE_INFO_2, *LPFILE_INFO_2;
+ */
+int
+srvsvc_FILE_INFO_2_coder(char *name, struct dcerpc_context *dce,
+                         struct dcerpc_pdu *pdu,
+                         struct smb2_iovec *iov, int *offset,
+                         void *ptr)
+{
+        struct srvsvc_FILE_INFO_2 *fi = ptr;
+
+        if (dcerpc_uint32_coder("Id", dce, pdu, iov, offset, &fi->id)) {
+                return -1;
+        }
+        return 0;
+}
+
+int
+srvsvc_FILE_INFO_2_STRUCT_coder(char *name, struct dcerpc_context *dce,
+                                struct dcerpc_pdu *pdu,
+                                struct smb2_iovec *iov, int *offset,
+                                void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_FILE_INFO_2_coder);
+}
+
+/*
+ *       [size_is(EntriesRead)] LPFILE_INFO_2 Buffer;
+ */
+static int
+srvsvc_FILE_INFO_2_carray_coder(char *name, struct dcerpc_context *dce,
+                                struct dcerpc_pdu *pdu,
+                                struct smb2_iovec *iov, int *offset,
+                                void *ptr)
+{
+        return dcerpc_carray_coder("FileInfo2", dce, pdu, iov, offset,
+                                   dcerpc_get_size_is(pdu), ptr,
+                                   sizeof(struct srvsvc_FILE_INFO_2),
+                                   srvsvc_FILE_INFO_2_coder);
+}
+
+/*
+ * typedef struct _FILE_INFO_2_CONTAINER {
+ *       DWORD EntriesRead;
+ *       [size_is(EntriesRead)] LPFILE_INFO_2 Buffer;
+ * } FILE_INFO_2_CONTAINER;
+ */
+int
+srvsvc_FILE_INFO_2_CONTAINER_coder(char *name, struct dcerpc_context *dce,
+                                   struct dcerpc_pdu *pdu,
+                                   struct smb2_iovec *iov, int *offset,
+                                   void *ptr)
+{
+        struct srvsvc_FILE_INFO_2_CONTAINER *ctr = ptr;
+
+        if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &ctr->EntriesRead)) {
+                return -1;
+        }
+        if (ctr->EntriesRead) {
+                dcerpc_set_size_is(pdu, ctr->EntriesRead);
+        }
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && ctr->EntriesRead) {
+                if (ctr->file_info_2 == NULL) {
+                        size_t esize = sizeof(struct srvsvc_FILE_INFO_2);
+
+                        if (ctr->EntriesRead > SIZE_MAX / esize) {
+                                return -1;
+                        }
+                        ctr->file_info_2 = smb2_alloc_data(
+                                dcerpc_get_smb2_context(dce),
+                                dcerpc_get_pdu_payload(pdu),
+                                (size_t)ctr->EntriesRead * esize);
+                        if (ctr->file_info_2 == NULL) {
+                                return -1;
+                        }
+                }
+        }
+        if (dcerpc_ptr_coder("FileInfo2", dce, pdu, iov, offset, ctr->file_info_2,
+                             PTR_UNIQUE, srvsvc_FILE_INFO_2_carray_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+/*
+ * typedef struct _FILE_INFO_3 {
+ *       DWORD fi3_id;
+ *       DWORD fi3_permissions;
+ *       DWORD fi3_num_locks;
+ *       [string] wchar_t *fi3_pathname;
+ *       [string] wchar_t *fi3_username;
+ * } FILE_INFO_3, *PFILE_INFO_3, *LPFILE_INFO_3;
+ */
+int
+srvsvc_FILE_INFO_3_coder(char *name, struct dcerpc_context *dce,
+                         struct dcerpc_pdu *pdu,
+                         struct smb2_iovec *iov, int *offset,
+                         void *ptr)
+{
+        struct srvsvc_FILE_INFO_3 *fi = ptr;
+
+        if (dcerpc_uint32_coder("Id", dce, pdu, iov, offset, &fi->id)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Permissions", dce, pdu, iov, offset, &fi->permissions)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("NumLocks", dce, pdu, iov, offset, &fi->num_locks)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("PathName", dce, pdu, iov, offset, &fi->pathname,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("UserName", dce, pdu, iov, offset, &fi->username,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        return 0;
+}
+
+int
+srvsvc_FILE_INFO_3_STRUCT_coder(char *name, struct dcerpc_context *dce,
+                                struct dcerpc_pdu *pdu,
+                                struct smb2_iovec *iov, int *offset,
+                                void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_FILE_INFO_3_coder);
+}
+
+/*
+ *       [size_is(EntriesRead)] LPFILE_INFO_3 Buffer;
+ */
+static int
+srvsvc_FILE_INFO_3_carray_coder(char *name, struct dcerpc_context *dce,
+                                struct dcerpc_pdu *pdu,
+                                struct smb2_iovec *iov, int *offset,
+                                void *ptr)
+{
+        return dcerpc_carray_coder("FileInfo3", dce, pdu, iov, offset,
+                                   dcerpc_get_size_is(pdu), ptr,
+                                   sizeof(struct srvsvc_FILE_INFO_3),
+                                   srvsvc_FILE_INFO_3_STRUCT_coder);
+}
+
+/*
+ * typedef struct _FILE_INFO_3_CONTAINER {
+ *       DWORD EntriesRead;
+ *       [size_is(EntriesRead)] LPFILE_INFO_3 Buffer;
+ * } FILE_INFO_3_CONTAINER;
+ */
+int
+srvsvc_FILE_INFO_3_CONTAINER_coder(char *name, struct dcerpc_context *dce,
+                                   struct dcerpc_pdu *pdu,
+                                   struct smb2_iovec *iov, int *offset,
+                                   void *ptr)
+{
+        struct srvsvc_FILE_INFO_3_CONTAINER *ctr = ptr;
+
+        if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &ctr->EntriesRead)) {
+                return -1;
+        }
+        if (ctr->EntriesRead) {
+                dcerpc_set_size_is(pdu, ctr->EntriesRead);
+        }
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && ctr->EntriesRead) {
+                if (ctr->file_info_3 == NULL) {
+                        size_t esize = sizeof(struct srvsvc_FILE_INFO_3);
+
+                        if (ctr->EntriesRead > SIZE_MAX / esize) {
+                                return -1;
+                        }
+                        ctr->file_info_3 = smb2_alloc_data(
+                                dcerpc_get_smb2_context(dce),
+                                dcerpc_get_pdu_payload(pdu),
+                                (size_t)ctr->EntriesRead * esize);
+                        if (ctr->file_info_3 == NULL) {
+                                return -1;
+                        }
+                }
+        }
+        if (dcerpc_ptr_coder("FileInfo3", dce, pdu, iov, offset, ctr->file_info_3,
+                             PTR_UNIQUE, srvsvc_FILE_INFO_3_carray_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+/*
+ * typedef [switch_type(DWORD)] union _FILE_ENUM_UNION {
+ * [case(2)] FILE_INFO_2_CONTAINER* Level2;
+ * [case(3)] FILE_INFO_3_CONTAINER* Level3;
+ * } FILE_ENUM_UNION;
+ */
+static int
+srvsvc_FILE_ENUM_UNION_coder(char *name, struct dcerpc_context *dce,
+                             struct dcerpc_pdu *pdu,
+                             struct smb2_iovec *iov, int *offset,
+                             void *ptr)
+{
+        union srvsvc_FILE_ENUM_UNION *info = ptr;
+
+        switch (dcerpc_get_switch_is(pdu)) {
+        case 2:
+                if (dcerpc_ptr_coder("FileInfo2Container", dce, pdu, iov, offset, &info->Level2,
+                                     PTR_UNIQUE, srvsvc_FILE_INFO_2_CONTAINER_coder)) {
+                        return -1;
+                }
+                break;
+        case 3:
+                if (dcerpc_ptr_coder("FileInfo3Container", dce, pdu, iov, offset, &info->Level3,
+                                     PTR_UNIQUE, srvsvc_FILE_INFO_3_CONTAINER_coder)) {
+                        return -1;
+                }
+                break;
+        default:
+                /*
+                 * During the NDR conformance pass the discriminant is not
+                 * read yet (switch_is stays 0). Levels for this union are
+                 * only 2 and 3, so tolerate unknown switch on the CR pass.
+                 */
+                if (dcerpc_get_cr(pdu)) {
+                        return 0;
+                }
+                return -1;
+        };
+
+        return 0;
+}
+
+/*
+ * typedef struct _FILE_ENUM_STRUCT {
+ *       DWORD Level;
+ *       [switch_is(Level)] FILE_ENUM_UNION FileInfo;
+ * } FILE_ENUM_STRUCT, *PFILE_ENUM_STRUCT, *LPFILE_ENUM_STRUCT;
+ */
+int
+srvsvc_FILE_ENUM_STRUCT_coder(char *name, struct dcerpc_context *dce,
+                              struct dcerpc_pdu *pdu,
+                              struct smb2_iovec *iov, int *offset,
+                              void *ptr)
+{
+        struct srvsvc_FILE_ENUM_STRUCT *fes = ptr;
+
+        if (dcerpc_uint32_coder("Level", dce, pdu, iov, offset, &fes->Level)) {
+                return -1;
+        }
+
+        if (dcerpc_union_coder("FileInfo", dce, pdu, iov, offset,
+                               &fes->Level, &fes->FileInfo,
+                               srvsvc_FILE_ENUM_UNION_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_FILE_ENUM_STRUCT_struct_coder(char *name, struct dcerpc_context *dce,
+                                     struct dcerpc_pdu *pdu,
+                                     struct smb2_iovec *iov, int *offset,
+                                     void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_FILE_ENUM_STRUCT_coder);
+}
+
+/*****************
+ * Function: 0x09
+ * NET_API_STATUS NetrFileEnum (
+ *   [in,string,unique] SRVSVC_HANDLE ServerName,
+ *   [in,string,unique] WCHAR * BasePath,
+ *   [in,string,unique] WCHAR * UserName,
+ *   [in,out] PFILE_ENUM_STRUCT InfoStruct,
+ *   [in] DWORD PreferedMaximumLength,
+ *   [out] DWORD * TotalEntries,
+ *   [in,out,unique] DWORD * ResumeHandle
+ * );
+ */
+int
+srvsvc_NetrFileEnum_req_coder(char *name, struct dcerpc_context *dce,
+                              struct dcerpc_pdu *pdu,
+                              struct smb2_iovec *iov, int *offset,
+                              void *ptr)
+{
+        struct srvsvc_NetrFileEnum_req *req = ptr;
+        void *basepath_ptr = &req->BasePath;
+        void *username_ptr = &req->UserName;
+
+        if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        /*
+         * BasePath/UserName are [unique]. On encode, a NULL char* must be
+         * sent as a null referent (not an empty string). On decode, always
+         * pass the address of the char* so a non-null referent can be stored.
+         */
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
+                if (req->BasePath == NULL) {
+                        basepath_ptr = NULL;
+                }
+                if (req->UserName == NULL) {
+                        username_ptr = NULL;
+                }
+        }
+        if (dcerpc_ptr_coder("BasePath", dce, pdu, iov, offset, basepath_ptr,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("UserName", dce, pdu, iov, offset, username_ptr,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("InfoStruct", dce, pdu, iov, offset, &req->fes,
+                             PTR_REF, srvsvc_FILE_ENUM_STRUCT_struct_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("PreferedMaximumLength", dce, pdu, iov, offset, &req->PreferedMaximumLength,
+                             PTR_REF, dcerpc_uint32_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("ResumeHandle", dce, pdu, iov, offset, &req->ResumeHandle,
+                             PTR_UNIQUE, dcerpc_uint32_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_NetrFileEnum_rep_coder(char *name, struct dcerpc_context *dce,
+                              struct dcerpc_pdu *pdu,
+                              struct smb2_iovec *iov, int *offset,
+                              void *ptr)
+{
+        struct srvsvc_NetrFileEnum_rep *rep = ptr;
+
+        if (dcerpc_ptr_coder("InfoStruct", dce, pdu, iov, offset, &rep->fes,
+                             PTR_REF, srvsvc_FILE_ENUM_STRUCT_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("TotalEntries", dce, pdu, iov, offset, &rep->total_entries,
+                             PTR_REF, dcerpc_uint32_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("ResumeHandle", dce, pdu, iov, offset, &rep->resume_handle,
+                             PTR_UNIQUE, dcerpc_uint32_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
+                return -1;
+        }
+
+        return 0;
+}
+
 /*****************
  * Function: 0x0e
  * NET_API_STATUS NetrShareAdd (
@@ -1928,6 +2291,10 @@ struct dcerpc_procedure srvsvc_procs[] = {
         {SRVSVC_NETRCONNECTIONENUM, "NetrConnectionEnum",
          srvsvc_NetrConnectionEnum_req_coder, sizeof(struct srvsvc_NetrConnectionEnum_req),
          srvsvc_NetrConnectionEnum_rep_coder, sizeof(struct srvsvc_NetrConnectionEnum_rep),
+        },
+        {SRVSVC_NETRFILEENUM, "NetrFileEnum",
+         srvsvc_NetrFileEnum_req_coder, sizeof(struct srvsvc_NetrFileEnum_req),
+         srvsvc_NetrFileEnum_rep_coder, sizeof(struct srvsvc_NetrFileEnum_rep),
         },
         {SRVSVC_NETRSHAREADD, "NetrShareAdd",
          srvsvc_NetrShareAdd_req_coder, sizeof(struct srvsvc_NetrShareAdd_req),

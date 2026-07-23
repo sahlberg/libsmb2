@@ -2878,6 +2878,12 @@ yaml_union_coder(char *name, struct dcerpc_context *ctx,
                 }
                 pdu->yaml_key = NULL;
                 yaml_next_kv(pdu, iov, offset);
+                /*
+                 * Level was already decoded into *switch_is; publish it so
+                 * the case coder's dcerpc_get_switch_is() sees the right arm
+                 * (NDR does this when it reads the discriminant from the wire).
+                 */
+                dcerpc_set_switch_is(pdu, *switch_is);
                 name = pdu->yaml_key;
                 ret = coder(name, ctx, pdu, iov, offset, ptr);
         } else {

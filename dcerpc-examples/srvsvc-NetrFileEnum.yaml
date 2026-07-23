@@ -1,0 +1,7 @@
+NetrFileEnum: Request
+  ServerName: \\WIN16-1
+  InfoStruct:
+    Level: 3
+    FileInfo:
+  PreferedMaximumLength: 0xffffffff
+  ResumeHandle: 0
