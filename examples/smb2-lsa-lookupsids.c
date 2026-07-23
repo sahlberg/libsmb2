@@ -122,9 +122,8 @@ void op_cb(struct dcerpc_context *dce, int status,
 {
         struct lsa_openpolicy2_rep *rep = command_data;
         struct lsa_lookupsids2_req ls_req;
-        PRPC_SID sid, *sids;
+        RPC_SID *sid, *sids;
         int num_sids;
-        uint32_t sa[2];
 
         if (status) {
                 dcerpc_free_data(dce, rep);
@@ -138,7 +137,7 @@ void op_cb(struct dcerpc_context *dce, int status,
         memcpy(&ls_req.PolicyHandle, &PolicyHandle,
                sizeof(struct dcerpc_context_handle));
 
-        sid = malloc(sizeof(*sid) + 2 * sizeof(uint32_t));
+        sid = malloc(sizeof(struct RPC_SID));
         if (sid == NULL) {
                 printf("failed to allocate SID\n");
                 exit(10);
@@ -146,20 +145,19 @@ void op_cb(struct dcerpc_context *dce, int status,
         sid->Revision = 1;
         sid->SubAuthorityCount = 2;
         memcpy(sid->IdentifierAuthority, NT_SID_AUTHORITY, 6);
-        sid->SubAuthority = &sa[0];
         sid->SubAuthority[0] = 32;
         sid->SubAuthority[1] = 544;
 
         num_sids = 2;
-        sids = malloc(num_sids * sizeof(PRPC_SID));
+        sids = malloc(num_sids * sizeof(RPC_SID));
         if (sids == NULL) {
                 printf("failed to allocate SIDs\n");
                 exit(10);
         }
         ls_req.SidEnumBuffer.Entries = num_sids;
         ls_req.SidEnumBuffer.SidInfo = sids;
-        ls_req.SidEnumBuffer.SidInfo[0] = sid;
-        ls_req.SidEnumBuffer.SidInfo[1] = sid;
+        ls_req.SidEnumBuffer.SidInfo[0] = *sid;
+        ls_req.SidEnumBuffer.SidInfo[1] = *sid;
 
         ls_req.TranslatedNames.Entries = 0;
         ls_req.TranslatedNames.Names = NULL;

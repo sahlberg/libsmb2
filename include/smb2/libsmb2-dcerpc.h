@@ -173,6 +173,8 @@ int ndr_uuid_coder(char *name, struct dcerpc_context *dce,
 int dcerpc_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                      struct smb2_iovec *iov, int *offset, void *ptr,
                      enum ptr_type type, dcerpc_coder coder);
+int dcerpc_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                        struct smb2_iovec *iov, int *offset, void *ptr);
 int dcerpc_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                         struct smb2_iovec *iov, int *offset, void *ptr);
 int dcerpc_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,

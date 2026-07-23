@@ -340,6 +340,8 @@ int ndr_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pd
 /*
  * YAML
  */
+static int yaml_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                      struct smb2_iovec *iov, int *offset, void *ptr);
 static int yaml_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                       struct smb2_iovec *iov, int *offset, void *ptr);
 static int yaml_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
@@ -722,6 +724,19 @@ dcerpc_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *p
                 return ndr_uint32_coder(name, ctx, pdu, iov, offset, ptr);
         case ENCODING_YAML:
                 return yaml_uint32_coder(name, ctx, pdu, iov, offset, ptr);
+        }
+        return -1;
+}
+
+int
+dcerpc_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                 struct smb2_iovec *iov, int *offset, void *ptr)
+{
+        switch(pdu->encoding) {
+        case ENCODING_NDR:
+                return ndr_uint16_coder(name, ctx, pdu, iov, offset, ptr);
+        case ENCODING_YAML:
+                return yaml_uint16_coder(name, ctx, pdu, iov, offset, ptr);
         }
         return -1;
 }
@@ -1788,6 +1803,7 @@ ndr_sid_coder(char *name, struct dcerpc_context *dce,
         if (ndr_uint3264_coder("", dce, pdu, iov, offset, &count)) {
                 return -1;
         }
+
         if (ndr_uint8_coder("Revision", dce, pdu, iov, offset, &sid->Revision)) {
                 return -1;
         }
@@ -1799,16 +1815,6 @@ ndr_sid_coder(char *name, struct dcerpc_context *dce,
                         return -1;
                 }
         }
-
-        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {
-                sid->SubAuthority = smb2_alloc_data(dcerpc_get_smb2_context(dce),
-                                                    dcerpc_get_pdu_payload(pdu),
-                                                    (size_t)count * sizeof(uint32_t));
-                if (sid->SubAuthority == NULL) {
-                        return -1;
-                }
-        }
-
         for (i = 0; i < count; i++) {
                 if (ndr_uint32_coder("Subauthority", dce, pdu, iov, offset, &sid->SubAuthority[i])) {
                         return -1;
@@ -2572,6 +2578,30 @@ yaml_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu
 }
 
 static int
+yaml_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                  struct smb2_iovec *iov, int *offset, void *ptr)
+{
+        if (pdu->direction == DCERPC_DECODE) {
+                yaml_next_kv(pdu, iov, offset);
+                if (strcmp(pdu->yaml_key,  name)) {
+                        printf("Wrong YAML key encountered for uint16. Expected %s but got %s\n",
+                               name, pdu->yaml_key);
+                        return -1;
+                }
+                pdu->yaml_key = NULL;
+                *(uint16_t *)ptr = strtol(pdu->yaml_val, NULL, 0);
+                yaml_next_kv(pdu, iov, offset);
+                return 0;
+        } else {
+                yaml_print_preamble(ctx, pdu, iov, offset);
+                if (*offset + 256 < iov->len) {
+                        *offset += snprintf((char *)&iov->buf[*offset], iov->len - *offset, "%s: %u\n", name, *(uint16_t *)ptr);
+                }
+                return 0;
+        }
+}
+
+static int
 yaml_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 struct smb2_iovec *iov, int *offset, dcerpc_uuid_t *uuid)
 {
@@ -2712,19 +2742,8 @@ yaml_sid_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                         sid->IdentifierAuthority[i] =
                                 (uint8_t)((ia >> (8 * (5 - i))) & 0xff);
                 }
-                if (count > 0) {
-                        sid->SubAuthority = smb2_alloc_data(
-                                dcerpc_get_smb2_context(dce),
-                                dcerpc_get_pdu_payload(pdu),
-                                (size_t)count * sizeof(uint32_t));
-                        if (sid->SubAuthority == NULL) {
-                                return -1;
-                        }
-                        for (i = 0; i < count; i++) {
-                                sid->SubAuthority[i] = sub[i];
-                        }
-                } else {
-                        sid->SubAuthority = NULL;
+                for (i = 0; i < count; i++) {
+                        sid->SubAuthority[i] = sub[i];
                 }
 
                 yaml_next_kv(pdu, iov, offset);
@@ -2756,12 +2775,6 @@ yaml_sid_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                 for (i = 0; i < sid->SubAuthorityCount; i++) {
                         int n;
 
-                        if (sid->SubAuthority == NULL) {
-                                printf("SID %s has SubAuthorityCount %u but "
-                                       "NULL SubAuthority\n",
-                                       name, sid->SubAuthorityCount);
-                                return -1;
-                        }
                         n = snprintf(sidstr + len, sizeof(sidstr) - (size_t)len,
                                      "-%u", sid->SubAuthority[i]);
                         if (n < 0 ||

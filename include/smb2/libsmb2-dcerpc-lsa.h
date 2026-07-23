@@ -46,13 +46,20 @@ extern "C" {
 
 extern unsigned char NT_SID_AUTHORITY[6];
 
+#define MAXSUBAUTH 10
 typedef struct RPC_SID {
         uint8_t Revision;
         uint8_t SubAuthorityCount;
         uint8_t IdentifierAuthority[6];
-        uint32_t *SubAuthority;
+        uint32_t SubAuthority[MAXSUBAUTH];
 } RPC_SID, *PRPC_SID;
 
+typedef struct _SID_ENUM_BUFFER {
+        uint32_t Entries;
+        RPC_SID *SidInfo;
+} LSAPR_SID_ENUM_BUFFER, *PLSAPR_SID_ENUM_BUFFER;
+
+        
 typedef struct _LSAPR_TRANSLATED_NAME_EX {
         uint32_t Use;
         char *Name;
@@ -64,11 +71,6 @@ typedef struct _LSAPR_TRANSLATED_NAMES_EX {
         uint32_t Entries;
         LSAPR_TRANSLATED_NAME_EX  *Names;
 } LSAPR_TRANSLATED_NAMES_EX, *PLSAPR_TRANSLATED_NAMES_EX;
-
-typedef struct _SID_ENUM_BUFFER {
-        uint32_t Entries;
-        PRPC_SID *SidInfo;
-} LSAPR_SID_ENUM_BUFFER, *PLSAPR_SID_ENUM_BUFFER;
 
 typedef enum _LSAP_LOOKUP_LEVEL {
         LsapLookupWksta = 1,
@@ -127,7 +129,7 @@ struct lsa_lookupsids2_req {
         struct dcerpc_context_handle PolicyHandle;
         LSAPR_SID_ENUM_BUFFER SidEnumBuffer;
         LSAPR_TRANSLATED_NAMES_EX TranslatedNames;
-        LSAP_LOOKUP_LEVEL LookupLevel;
+        uint32_t LookupLevel;
 };
 
 struct lsa_lookupsids2_rep {

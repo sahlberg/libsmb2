@@ -74,45 +74,28 @@ p_syntax_id_t lsa_interface = {
 };
 
 static int
+lsa_PRPC_SID_ptr_coder(char *name, struct dcerpc_context *dce,
+                       struct dcerpc_pdu *pdu,
+                       struct smb2_iovec *iov, int *offset,
+                       void *ptr)
+{
+        return dcerpc_ptr_coder("SID", dce, pdu, iov, offset,
+                                ptr,
+                                PTR_UNIQUE, dcerpc_sid_coder);
+}
+
+static int
 lsa_PRPC_SID_array_coder(char *name, struct dcerpc_context *dce,
                          struct dcerpc_pdu *pdu,
                          struct smb2_iovec *iov, int *offset,
                          void *ptr)
 {
         PLSAPR_SID_ENUM_BUFFER seb = ptr;
-        uint64_t val;
-        int i;
 
-        val = seb->Entries;
-        if (ndr_uint32_coder("Entries", dce, pdu, iov, offset, &val)) {
-                return -1;
-        }
-        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {
-                seb->SidInfo = smb2_alloc_data(dcerpc_get_smb2_context(dce),
-                                               dcerpc_get_pdu_payload(pdu),
-                                               (size_t)val * sizeof(PRPC_SID));
-                if (seb->SidInfo == NULL) {
-                        return -1;
-                }
-                for (i = 0; i < val; i++) {
-                        seb->SidInfo[i] = smb2_alloc_data(dcerpc_get_smb2_context(dce),
-                                               dcerpc_get_pdu_payload(pdu),
-                                               sizeof(RPC_SID));
-                        if (seb->SidInfo[i] == NULL) {
-                                return -1;
-                        }
-                }
-        }
-
-        for (i = 0; i < val; i++) {
-                if (ndr_ptr_coder("SID", dce, pdu, iov, offset,
-                                  seb->SidInfo[i],
-                                  PTR_UNIQUE, dcerpc_sid_coder)) {
-                        return -1;
-                }
-        }
-
-        return 0;
+        return dcerpc_carray_coder("ShareInfo0", dce, pdu, iov, offset,
+                                   dcerpc_get_size_is(pdu), &seb->SidInfo[0],
+                                   sizeof(RPC_SID),
+                                   lsa_PRPC_SID_ptr_coder);
 }
 
 /*
@@ -131,13 +114,24 @@ lsa_SID_ENUM_BUFFER_coder(char *name, struct dcerpc_context *dce,
         uint32_t val;
 
         val = seb->Entries;
-        if (ndr_uint32_coder("Entries", dce, pdu, iov, offset, &val)) {
+        if (dcerpc_uint32_coder("Entries", dce, pdu, iov, offset, &val)) {
                 return -1;
         }
         seb->Entries = val;
+        dcerpc_set_size_is(pdu, seb->Entries);
 
-        if (ndr_ptr_coder("SIDS", dce, pdu, iov, offset, seb,
-                          PTR_UNIQUE, lsa_PRPC_SID_array_coder)) {
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && seb->Entries) {
+
+                seb->SidInfo = smb2_alloc_data(dcerpc_get_smb2_context(dce),
+                                               dcerpc_get_pdu_payload(pdu),
+                                               (size_t)val * sizeof(RPC_SID));
+                if (seb->SidInfo == NULL) {
+                        return -1;
+                }
+        }
+
+        if (dcerpc_ptr_coder("SIDS", dce, pdu, iov, offset, seb,
+                             PTR_UNIQUE, lsa_PRPC_SID_array_coder)) {
                 return -1;
         }
 
@@ -166,6 +160,8 @@ lsa_RPC_UNICODE_STRING_coder(char *name, struct dcerpc_context *dce,
 
   that will eliminate the need to manually set the alignment like
   we do here
+
+  It needs to become a proper type in dcerpc.c
 */
         *offset = dcerpc_align_3264(dce, *offset);
 
@@ -173,14 +169,14 @@ lsa_RPC_UNICODE_STRING_coder(char *name, struct dcerpc_context *dce,
                 len = (uint16_t)strlen(*(char **)ptr) * 2;
                 maxlen = (len & 0x02) ? len + 2 : len;
         }
-        if (ndr_uint16_coder("Length", dce, pdu, iov, offset, &len)) {
+        if (dcerpc_uint16_coder("Length", dce, pdu, iov, offset, &len)) {
                 return -1;
         }
-        if (ndr_uint16_coder("MaxLength", dce, pdu, iov, offset, &maxlen)) {
+        if (dcerpc_uint16_coder("MaxLength", dce, pdu, iov, offset, &maxlen)) {
                 return -1;
         }
-        if (ndr_ptr_coder("Utf16", dce, pdu, iov, offset, ptr,
-                              PTR_UNIQUE, ndr_utf16_coder)) {
+        if (dcerpc_ptr_coder("Utf16", dce, pdu, iov, offset, ptr,
+                              PTR_UNIQUE, dcerpc_utf16_coder)) {
                 return -1;
         }
 
@@ -203,17 +199,17 @@ lsa_TRANSLATED_NAME_EX_coder(char *name, struct dcerpc_context *dce,
 {
         LSAPR_TRANSLATED_NAME_EX *tn = ptr;
 
-        if (ndr_uint32_coder("Use", dce, pdu, iov, offset, &tn->Use)) {
+        if (dcerpc_uint32_coder("Use", dce, pdu, iov, offset, &tn->Use)) {
                 return -1;
         }
         if (lsa_RPC_UNICODE_STRING_coder("Name", dce, pdu, iov, offset,
                                          &tn->Name)) {
                 return -1;
         }
-        if (ndr_uint32_coder("DomainIndex", dce, pdu, iov, offset, &tn->DomainIndex)) {
+        if (dcerpc_uint32_coder("DomainIndex", dce, pdu, iov, offset, &tn->DomainIndex)) {
                 return -1;
         }
-        if (ndr_uint32_coder("Flags", dce, pdu, iov, offset, &tn->Flags)) {
+        if (dcerpc_uint32_coder("Flags", dce, pdu, iov, offset, &tn->Flags)) {
                 return -1;
         }
 
@@ -227,33 +223,17 @@ lsa_TRANSLATED_NAME_EX_coder(char *name, struct dcerpc_context *dce,
  * } LSAPR_TRANSLATED_NAMES_EX, *PLSAPR_TRANSLATED_NAMES_EX;
  */
 static int
-TN_array_coder(char *name, struct dcerpc_context *dce,
-               struct dcerpc_pdu *pdu,
-               struct smb2_iovec *iov, int *offset,
-               void *ptr)
+TRANSLATED_NAME_EX_array_coder(char *name, struct dcerpc_context *dce,
+                               struct dcerpc_pdu *pdu,
+                               struct smb2_iovec *iov, int *offset,
+                               void *ptr)
 {
         LSAPR_TRANSLATED_NAMES_EX *tn = ptr;
-        uint64_t count;
-        int i;
 
-        count = tn->Entries;
-        if (ndr_uint3264_coder("", dce, pdu, iov, offset, &count)) {
-                return -1;
-        }
-        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {
-                tn->Names = smb2_alloc_data(dcerpc_get_smb2_context(dce),
-                                            dcerpc_get_pdu_payload(pdu),
-                                            (size_t)count * sizeof(LSAPR_TRANSLATED_NAME_EX));
-                if (tn->Names == NULL) {
-                        return -1;
-                }
-        }
-        for (i = 0; i < count; i++) {
-                if (lsa_TRANSLATED_NAME_EX_coder("TranslatedNameEx", dce, pdu, iov, offset,
-                                                  &tn->Names[i])) {
-                        return -1;
-                }
-        }
+        return dcerpc_carray_coder("TranslatedNameEx", dce, pdu, iov, offset,
+                                   dcerpc_get_size_is(pdu), &tn->Names[0],
+                                   sizeof(LSAPR_TRANSLATED_NAME_EX),
+                                   lsa_TRANSLATED_NAME_EX_coder);
 
         return 0;
 }
@@ -265,12 +245,26 @@ lsa_TRANSLATED_NAMES_EX_coder(char *name, struct dcerpc_context *dce,
                               void *ptr)
 {
         LSAPR_TRANSLATED_NAMES_EX *tn = ptr;
+        uint32_t val;
 
-        if (ndr_uint32_coder("Entries", dce, pdu, iov, offset, &tn->Entries)) {
+        val = tn->Entries;
+        if (dcerpc_uint32_coder("Entries", dce, pdu, iov, offset, &val)) {
                 return -1;
         }
-        if (ndr_ptr_coder("TranslatedNames", dce, pdu, iov, offset, ptr,
-                              PTR_UNIQUE, TN_array_coder)) {
+        tn->Entries = val;
+        dcerpc_set_size_is(pdu, tn->Entries);
+
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && tn->Entries) {
+                tn->Names = smb2_alloc_data(dcerpc_get_smb2_context(dce),
+                                            dcerpc_get_pdu_payload(pdu),
+                                            tn->Entries * sizeof(LSAPR_TRANSLATED_NAME_EX));
+                if (tn->Names == NULL) {
+                        return -1;
+                }
+        }
+
+        if (dcerpc_ptr_coder("TranslatedNames", dce, pdu, iov, offset, ptr,
+                             PTR_UNIQUE, TRANSLATED_NAME_EX_array_coder)) {
                 return -1;
         }
 
@@ -455,8 +449,8 @@ lsa_TRUST_INFORMATION_coder(char *name, struct dcerpc_context *dce,
                                           &ti->Name)) {
                 return -1;
         }
-        if (ndr_ptr_coder("SID", dce, pdu, iov, offset, &ti->Sid,
-                              PTR_UNIQUE, dcerpc_sid_coder)) {
+        if (dcerpc_ptr_coder("SID", dce, pdu, iov, offset, &ti->Sid,
+                             PTR_UNIQUE, dcerpc_sid_coder)) {
                 return -1;
         }
 
@@ -470,32 +464,11 @@ RDL_DOMAINS_array_coder(char *name, struct dcerpc_context *dce,
                         void *ptr)
 {
         LSAPR_REFERENCED_DOMAIN_LIST *rdl = ptr;
-        uint64_t entries;
-        int i;
 
-        entries = rdl->Entries;
-        if (ndr_uint3264_coder("", dce, pdu, iov, offset, &entries)) {
-                return -1;
-        }
-        rdl->Entries = (uint32_t)entries;
-
-        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {
-                rdl->Domains = smb2_alloc_data(dcerpc_get_smb2_context(dce),
-                                               dcerpc_get_pdu_payload(pdu),
-                                               rdl->Entries * sizeof(LSAPR_TRUST_INFORMATION));
-                if (rdl->Domains == NULL) {
-                        return -1;
-                }
-        }
-
-        for (i = 0; i < entries; i++) {
-                if (lsa_TRUST_INFORMATION_coder("Domain", dce, pdu, iov, offset,
-                                                 &rdl->Domains[i])) {
-                        return -1;
-                }
-        }
-
-        return 0;
+        return dcerpc_carray_coder("Domain", dce, pdu, iov, offset,
+                                   dcerpc_get_size_is(pdu), &rdl->Domains[0],
+                                   sizeof(LSAPR_TRUST_INFORMATION),
+                                   lsa_TRUST_INFORMATION_coder);
 }
 
 
@@ -513,15 +486,29 @@ lsa_REFERENCED_DOMAIN_LIST_coder(char *name, struct dcerpc_context *dce,
                                  void *ptr)
 {
         LSAPR_REFERENCED_DOMAIN_LIST *rdl = ptr;
+        uint32_t val;
 
-        if (ndr_uint32_coder("Entries", dce, pdu, iov, offset, &rdl->Entries)) {
+        val = rdl->Entries;
+        if (dcerpc_uint32_coder("Entries", dce, pdu, iov, offset, &val)) {
                 return -1;
         }
-        if (ndr_ptr_coder("RDLDomains", dce, pdu, iov, offset, ptr,
-                              PTR_UNIQUE, RDL_DOMAINS_array_coder)) {
+        rdl->Entries = val;
+        dcerpc_set_size_is(pdu, rdl->Entries);
+
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && rdl->Entries) {
+                rdl->Domains = smb2_alloc_data(dcerpc_get_smb2_context(dce),
+                                               dcerpc_get_pdu_payload(pdu),
+                                               rdl->Entries * sizeof(LSAPR_TRUST_INFORMATION));
+                if (rdl->Domains == NULL) {
+                        return -1;
+                }
+        }
+
+        if (dcerpc_ptr_coder("RDLDomains", dce, pdu, iov, offset, ptr,
+                             PTR_UNIQUE, RDL_DOMAINS_array_coder)) {
                 return -1;
         }
-        if (ndr_uint32_coder("MaxEntries", dce, pdu, iov, offset, &rdl->MaxEntries)) {
+        if (dcerpc_uint32_coder("MaxEntries", dce, pdu, iov, offset, &rdl->MaxEntries)) {
                 return -1;
         }
 
@@ -550,33 +537,31 @@ lsa_LookupSids2_req_coder(char *name, struct dcerpc_context *dce,
         struct lsa_lookupsids2_req *req = (struct lsa_lookupsids2_req*) ptr;
         uint32_t val;
 
-        if (ndr_ptr_coder("PolicyHandle", dce, pdu, iov, offset, &req->PolicyHandle,
-                              PTR_REF, dcerpc_context_handle_coder)) {
+        if (dcerpc_ptr_coder("PolicyHandle", dce, pdu, iov, offset, &req->PolicyHandle,
+                             PTR_REF, dcerpc_context_handle_coder)) {
                 return -1;
         }
-        if (ndr_ptr_coder("SIDS", dce, pdu, iov, offset, &req->SidEnumBuffer,
-                              PTR_REF, lsa_SID_ENUM_BUFFER_coder)) {
+        if (dcerpc_ptr_coder("SidEnumBuffer", dce, pdu, iov, offset, &req->SidEnumBuffer,
+                             PTR_REF, lsa_SID_ENUM_BUFFER_coder)) {
                 return -1;
         }
-        if (ndr_ptr_coder("TranslatedNamesEx", dce, pdu, iov, offset, &req->TranslatedNames,
-                              PTR_REF, lsa_TRANSLATED_NAMES_EX_coder)) {
+        if (dcerpc_ptr_coder("TranslatedNames", dce, pdu, iov, offset, &req->TranslatedNames,
+                             PTR_REF, lsa_TRANSLATED_NAMES_EX_coder)) {
                 return -1;
         }
-        val = req->LookupLevel;
-        if (ndr_uint32_coder("LookupLevel", dce, pdu, iov, offset, &val)) {
+        if (dcerpc_uint32_coder("LookupLevel", dce, pdu, iov, offset, &req->LookupLevel)) {
                 return -1;
         }
-        req->LookupLevel = (LSAP_LOOKUP_LEVEL)val;
 
         val = 0;
-        if (ndr_uint32_coder("MappedCount", dce, pdu, iov, offset, &val)) {
+        if (dcerpc_uint32_coder("MappedCount", dce, pdu, iov, offset, &val)) {
                 return -1;
         }
-        if (ndr_uint32_coder("LookupOptions", dce, pdu, iov, offset, &val)) {
+        if (dcerpc_uint32_coder("LookupOptions", dce, pdu, iov, offset, &val)) {
                 return -1;
         }
         val = 2;
-        if (ndr_uint32_coder("ClientRevision", dce, pdu, iov, offset, &val)) {
+        if (dcerpc_uint32_coder("ClientRevision", dce, pdu, iov, offset, &val)) {
                 return -1;
         }
 
@@ -591,18 +576,18 @@ lsa_LookupSids2_rep_coder(char *name, struct dcerpc_context *dce,
 {
         struct lsa_lookupsids2_rep *rep = ptr;
 
-        if (ndr_ptr_coder("ReferencedDomainList", dce, pdu, iov, offset, &rep->ReferencedDomains,
-                              PTR_UNIQUE, lsa_REFERENCED_DOMAIN_LIST_coder)) {
+        if (dcerpc_ptr_coder("ReferencedDomainList", dce, pdu, iov, offset, &rep->ReferencedDomains,
+                             PTR_UNIQUE, lsa_REFERENCED_DOMAIN_LIST_coder)) {
                 return -1;
         }
-        if (ndr_ptr_coder("TranslatedNamesEx", dce, pdu, iov, offset, &rep->TranslatedNames,
-                              PTR_REF, lsa_TRANSLATED_NAMES_EX_coder)) {
+        if (dcerpc_ptr_coder("TranslatedNames", dce, pdu, iov, offset, &rep->TranslatedNames,
+                             PTR_REF, lsa_TRANSLATED_NAMES_EX_coder)) {
                 return -1;
         }
-        if (ndr_uint32_coder("MappedCount", dce, pdu, iov, offset, &rep->MappedCount)) {
+        if (dcerpc_uint32_coder("MappedCount", dce, pdu, iov, offset, &rep->MappedCount)) {
                 return -1;
         }
-        if (ndr_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
+        if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
                 return -1;
         }
 
