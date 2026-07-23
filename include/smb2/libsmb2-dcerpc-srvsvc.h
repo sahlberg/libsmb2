@@ -27,6 +27,7 @@ extern "C" {
 
 #define SRVSVC_NETRCONNECTIONENUM 0x08
 #define SRVSVC_NETRFILEENUM       0x09
+#define SRVSVC_NETRFILEGETINFO    0x0a
 #define SRVSVC_NETRSHAREADD       0x0e
 #define SRVSVC_NETRSHAREENUM      0x0f
 #define SRVSVC_NETRSHAREGETINFO   0x10
@@ -383,6 +384,30 @@ struct srvsvc_NetrFileEnum_rep {
         uint32_t status;
 };
 
+/*
+ * FILE_INFO union used by NetrFileGetInfo
+ * typedef [switch_type(unsigned long)] union _FILE_INFO {
+ *   [case(2)] LPFILE_INFO_2 FileInfo2;
+ *   [case(3)] LPFILE_INFO_3 FileInfo3;
+ * } FILE_INFO, *PFILE_INFO, *LPFILE_INFO;
+ */
+union srvsvc_FILE_INFO {
+        struct srvsvc_FILE_INFO_2 FileInfo2;
+        struct srvsvc_FILE_INFO_3 FileInfo3;
+};
+
+struct srvsvc_NetrFileGetInfo_req {
+        char *ServerName;
+        uint32_t FileId;
+        uint32_t Level;
+};
+
+struct srvsvc_NetrFileGetInfo_rep {
+        union srvsvc_FILE_INFO InfoStruct;
+
+        uint32_t status;
+};
+
 struct srvsvc_NetrShareAdd_req {
         char *ServerName;
         uint32_t Level;
@@ -517,6 +542,14 @@ int srvsvc_NetrFileEnum_req_coder(char *name, struct dcerpc_context *ctx,
                                    struct dcerpc_pdu *pdu,
                                    struct smb2_iovec *iov, int *offset,
                                    void *ptr);
+int srvsvc_NetrFileGetInfo_rep_coder(char *name, struct dcerpc_context *dce,
+                                      struct dcerpc_pdu *pdu,
+                                      struct smb2_iovec *iov, int *offset,
+                                      void *ptr);
+int srvsvc_NetrFileGetInfo_req_coder(char *name, struct dcerpc_context *ctx,
+                                      struct dcerpc_pdu *pdu,
+                                      struct smb2_iovec *iov, int *offset,
+                                      void *ptr);
 int srvsvc_NetrShareEnum_rep_coder(char *name, struct dcerpc_context *dce,
                                    struct dcerpc_pdu *pdu,
                                    struct smb2_iovec *iov, int *offset,

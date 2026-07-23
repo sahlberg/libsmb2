@@ -1903,6 +1903,115 @@ srvsvc_NetrFileEnum_rep_coder(char *name, struct dcerpc_context *dce,
         return 0;
 }
 
+/*
+ * typedef [switch_type(unsigned long)] union _FILE_INFO {
+ *   [case(2)] LPFILE_INFO_2 FileInfo2;
+ *   [case(3)] LPFILE_INFO_3 FileInfo3;
+ * } FILE_INFO, *PFILE_INFO, *LPFILE_INFO;
+ */
+static int
+srvsvc_FILE_INFO_coder(char *name, struct dcerpc_context *dce,
+                       struct dcerpc_pdu *pdu,
+                       struct smb2_iovec *iov, int *offset,
+                       void *ptr)
+{
+        union srvsvc_FILE_INFO *info = ptr;
+
+        switch (dcerpc_get_switch_is(pdu)) {
+        case 2:
+                if (dcerpc_ptr_coder("FileInfo2", dce, pdu, iov, offset, &info->FileInfo2,
+                                     PTR_UNIQUE, srvsvc_FILE_INFO_2_STRUCT_coder)) {
+                        return -1;
+                }
+                break;
+        case 3:
+                if (dcerpc_ptr_coder("FileInfo3", dce, pdu, iov, offset, &info->FileInfo3,
+                                     PTR_UNIQUE, srvsvc_FILE_INFO_3_STRUCT_coder)) {
+                        return -1;
+                }
+                break;
+        default:
+                if (dcerpc_get_cr(pdu)) {
+                        return 0;
+                }
+                return -1;
+        };
+
+        return 0;
+}
+
+static int
+srvsvc_FILE_INFO_STRUCT_coder(char *name, struct dcerpc_context *dce,
+                              struct dcerpc_pdu *pdu,
+                              struct smb2_iovec *iov, int *offset,
+                              void *ptr)
+{
+        uint32_t Level = dcerpc_get_switch_is(pdu);
+
+        if (dcerpc_union_coder("InfoStruct", dce, pdu, iov, offset,
+                               &Level, ptr,
+                               srvsvc_FILE_INFO_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+/*****************
+ * Function: 0x0a
+ * NET_API_STATUS NetrFileGetInfo (
+ *   [in,string,unique] SRVSVC_HANDLE ServerName,
+ *   [in] DWORD FileId,
+ *   [in] DWORD Level,
+ *   [out, switch_is(Level)] LPFILE_INFO InfoStruct
+ * );
+ */
+int
+srvsvc_NetrFileGetInfo_req_coder(char *name, struct dcerpc_context *dce,
+                                 struct dcerpc_pdu *pdu,
+                                 struct smb2_iovec *iov, int *offset,
+                                 void *ptr)
+{
+        struct srvsvc_NetrFileGetInfo_req *req = ptr;
+
+        if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("FileId", dce, pdu, iov, offset, &req->FileId)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Level", dce, pdu, iov, offset, &req->Level)) {
+                return -1;
+        }
+        dcerpc_set_switch_is(pdu, req->Level);
+
+        return 0;
+}
+
+int
+srvsvc_NetrFileGetInfo_rep_coder(char *name, struct dcerpc_context *dce,
+                                 struct dcerpc_pdu *pdu,
+                                 struct smb2_iovec *iov, int *offset,
+                                 void *ptr)
+{
+        struct srvsvc_NetrFileGetInfo_rep *rep = ptr;
+        /* There is no Level in the reply so we must reference it from the request */
+        struct srvsvc_NetrFileGetInfo_req *req = dcerpc_get_request(pdu);
+
+        dcerpc_set_switch_is(pdu, req->Level);
+
+        if (dcerpc_ptr_coder("InfoStruct", dce, pdu, iov, offset, &rep->InfoStruct,
+                             PTR_REF, srvsvc_FILE_INFO_STRUCT_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
+                return -1;
+        }
+
+        return 0;
+}
+
 /*****************
  * Function: 0x0e
  * NET_API_STATUS NetrShareAdd (
@@ -2295,6 +2404,10 @@ struct dcerpc_procedure srvsvc_procs[] = {
         {SRVSVC_NETRFILEENUM, "NetrFileEnum",
          srvsvc_NetrFileEnum_req_coder, sizeof(struct srvsvc_NetrFileEnum_req),
          srvsvc_NetrFileEnum_rep_coder, sizeof(struct srvsvc_NetrFileEnum_rep),
+        },
+        {SRVSVC_NETRFILEGETINFO, "NetrFileGetInfo",
+         srvsvc_NetrFileGetInfo_req_coder, sizeof(struct srvsvc_NetrFileGetInfo_req),
+         srvsvc_NetrFileGetInfo_rep_coder, sizeof(struct srvsvc_NetrFileGetInfo_rep),
         },
         {SRVSVC_NETRSHAREADD, "NetrShareAdd",
          srvsvc_NetrShareAdd_req_coder, sizeof(struct srvsvc_NetrShareAdd_req),
