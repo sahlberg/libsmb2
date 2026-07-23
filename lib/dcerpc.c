@@ -293,6 +293,8 @@ struct dcerpc_pdu {
  */
 #define RPTR 0x5270747272747052
 #define UPTR 0x5570747272747055
+static int ndr_sid_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+                         struct smb2_iovec *iov, int *offset, void *ptr);
 static int ndr_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                         struct smb2_iovec *iov, int *offset, void *ptr, dcerpc_coder coder);
 int ndr_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
@@ -342,6 +344,8 @@ static int yaml_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcer
                       struct smb2_iovec *iov, int *offset, void *ptr);
 static int yaml_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                            struct smb2_iovec *iov, int *offset, dcerpc_uuid_t *uuid);
+static int yaml_sid_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+                          struct smb2_iovec *iov, int *offset, void *ptr);
 static int yaml_carray_coder(char *name, struct dcerpc_context *ctx,
                       struct dcerpc_pdu *pdu,
                       struct smb2_iovec *iov, int *offset,
@@ -1735,9 +1739,85 @@ dcerpc_context_handle_coder(char *name, struct dcerpc_context *dce,
 }
 
 
+unsigned char NT_SID_AUTHORITY[6] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x05 };
+
+/*
+ * typedef struct _RPC_SID {
+ *      unsigned char Revision;
+ *      unsigned char SubAuthorityCount;
+ *      byte IdentifierAuthority[6];
+ *      [size_is(SubAuthorityCount)] uint32_t SubAuthority[];
+ * } RPC_SID, *PRPC_SID, *PSID;
+ */
+int
+dcerpc_sid_coder(char *name, struct dcerpc_context *dce,
+                 struct dcerpc_pdu *pdu,
+                 struct smb2_iovec *iov, int *offset,
+                 void *ptr)
+{
+        switch(pdu->encoding) {
+        case ENCODING_NDR:
+                if (ndr_sid_coder(name, dce, pdu, iov, offset, ptr)) {
+                        return -1;
+                }
+                return 0;
+        case ENCODING_YAML:
+                if (yaml_sid_coder(name, dce, pdu, iov, offset, ptr)) {
+                        return -1;
+                }
+                return 0;
+        }
+        return 0;
+}
+
+
 /*
  * NDR
  */
+static int
+ndr_sid_coder(char *name, struct dcerpc_context *dce,
+              struct dcerpc_pdu *pdu,
+              struct smb2_iovec *iov, int *offset,
+              void *ptr)
+{
+        RPC_SID *sid = ptr;
+        uint64_t count;
+        int i;
+
+        count = sid->SubAuthorityCount;
+        if (ndr_uint3264_coder("", dce, pdu, iov, offset, &count)) {
+                return -1;
+        }
+        if (ndr_uint8_coder("Revision", dce, pdu, iov, offset, &sid->Revision)) {
+                return -1;
+        }
+        if (ndr_uint8_coder("SubAuthorityCount", dce, pdu, iov, offset, &sid->SubAuthorityCount)) {
+                return -1;
+        }
+        for (i = 0; i < 6; i++) {
+                if (ndr_uint8_coder("IdentifierAuthority", dce, pdu, iov, offset, &sid->IdentifierAuthority[i])) {
+                        return -1;
+                }
+        }
+
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {
+                sid->SubAuthority = smb2_alloc_data(dcerpc_get_smb2_context(dce),
+                                                    dcerpc_get_pdu_payload(pdu),
+                                                    (size_t)count * sizeof(uint32_t));
+                if (sid->SubAuthority == NULL) {
+                        return -1;
+                }
+        }
+
+        for (i = 0; i < count; i++) {
+                if (ndr_uint32_coder("Subauthority", dce, pdu, iov, offset, &sid->SubAuthority[i])) {
+                        return -1;
+                }
+        }
+
+        return 0;
+}
+
 static int
 ndr_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
              struct smb2_iovec *iov,
@@ -2537,6 +2617,166 @@ yaml_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                                            uuid->v4[2], uuid->v4[3],
                                            uuid->v4[4], uuid->v4[5],
                                            uuid->v4[6], uuid->v4[7]);
+                }
+                return 0;
+        }
+}
+
+/*
+ * YAML representation of an RPC_SID is the standard SID string form:
+ *   S-<revision>-<identifier-authority>-<subauth0>-<subauth1>-...
+ * e.g. S-1-5-32-544
+ *
+ * Identifier authority is a big-endian 48-bit value. If it fits in 32 bits
+ * it is written in decimal; otherwise as a 0x-prefixed hex value (Windows
+ * ConvertSidToStringSid rules).
+ */
+static int
+yaml_sid_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+               struct smb2_iovec *iov, int *offset, void *ptr)
+{
+        RPC_SID *sid = ptr;
+        int i;
+
+        if (pdu->direction == DCERPC_DECODE) {
+                const char *p;
+                char *end;
+                unsigned long rev;
+                unsigned long long ia;
+                uint32_t sub[15];
+                int count = 0;
+
+                yaml_next_kv(pdu, iov, offset);
+                if (strcmp(pdu->yaml_key, name)) {
+                        printf("Wrong YAML key encountered for sid. Expected %s but got %s\n",
+                               name, pdu->yaml_key);
+                        return -1;
+                }
+                pdu->yaml_key = NULL;
+
+                p = pdu->yaml_val;
+                if (p == NULL || (p[0] != 'S' && p[0] != 's') || p[1] != '-') {
+                        printf("Failed to parse SID value for %s: %s\n",
+                               name, pdu->yaml_val ? pdu->yaml_val : "(null)");
+                        return -1;
+                }
+                p += 2;
+
+                rev = strtoul(p, &end, 10);
+                if (end == p || *end != '-' || rev > 255) {
+                        printf("Failed to parse SID revision for %s: %s\n",
+                               name, pdu->yaml_val);
+                        return -1;
+                }
+                p = end + 1;
+
+                if (p[0] == '0' && (p[1] == 'x' || p[1] == 'X')) {
+                        ia = strtoull(p, &end, 16);
+                } else {
+                        ia = strtoull(p, &end, 10);
+                }
+                if (end == p) {
+                        printf("Failed to parse SID authority for %s: %s\n",
+                               name, pdu->yaml_val);
+                        return -1;
+                }
+                p = end;
+
+                while (*p == '-') {
+                        unsigned long sa;
+
+                        p++;
+                        if (count >= 15) {
+                                printf("Too many SID subauthorities for %s: %s\n",
+                                       name, pdu->yaml_val);
+                                return -1;
+                        }
+                        sa = strtoul(p, &end, 10);
+                        if (end == p) {
+                                printf("Failed to parse SID subauthority for %s: %s\n",
+                                       name, pdu->yaml_val);
+                                return -1;
+                        }
+                        sub[count++] = (uint32_t)sa;
+                        p = end;
+                }
+                if (*p != '\0') {
+                        printf("Failed to parse SID value for %s: %s\n",
+                               name, pdu->yaml_val);
+                        return -1;
+                }
+
+                sid->Revision = (uint8_t)rev;
+                sid->SubAuthorityCount = (uint8_t)count;
+                for (i = 0; i < 6; i++) {
+                        sid->IdentifierAuthority[i] =
+                                (uint8_t)((ia >> (8 * (5 - i))) & 0xff);
+                }
+                if (count > 0) {
+                        sid->SubAuthority = smb2_alloc_data(
+                                dcerpc_get_smb2_context(dce),
+                                dcerpc_get_pdu_payload(pdu),
+                                (size_t)count * sizeof(uint32_t));
+                        if (sid->SubAuthority == NULL) {
+                                return -1;
+                        }
+                        for (i = 0; i < count; i++) {
+                                sid->SubAuthority[i] = sub[i];
+                        }
+                } else {
+                        sid->SubAuthority = NULL;
+                }
+
+                yaml_next_kv(pdu, iov, offset);
+                return 0;
+        } else {
+                uint64_t ia = 0;
+                char sidstr[256];
+                int len;
+
+                for (i = 0; i < 6; i++) {
+                        ia = (ia << 8) | sid->IdentifierAuthority[i];
+                }
+
+                if (ia <= 0xffffffffULL) {
+                        len = snprintf(sidstr, sizeof(sidstr),
+                                       "S-%u-%llu",
+                                       sid->Revision,
+                                       (unsigned long long)ia);
+                } else {
+                        len = snprintf(sidstr, sizeof(sidstr),
+                                       "S-%u-0x%llx",
+                                       sid->Revision,
+                                       (unsigned long long)ia);
+                }
+                if (len < 0 || (size_t)len >= sizeof(sidstr)) {
+                        printf("Failed to format SID for %s\n", name);
+                        return -1;
+                }
+                for (i = 0; i < sid->SubAuthorityCount; i++) {
+                        int n;
+
+                        if (sid->SubAuthority == NULL) {
+                                printf("SID %s has SubAuthorityCount %u but "
+                                       "NULL SubAuthority\n",
+                                       name, sid->SubAuthorityCount);
+                                return -1;
+                        }
+                        n = snprintf(sidstr + len, sizeof(sidstr) - (size_t)len,
+                                     "-%u", sid->SubAuthority[i]);
+                        if (n < 0 ||
+                            (size_t)len + (size_t)n >= sizeof(sidstr)) {
+                                printf("Failed to format SID for %s\n", name);
+                                return -1;
+                        }
+                        len += n;
+                }
+
+                yaml_print_preamble(dce, pdu, iov, offset);
+                if (*offset + 256 < iov->len) {
+                        *offset += snprintf((char *)&iov->buf[*offset],
+                                           iov->len - *offset,
+                                           "%s: %s\n", name, sidstr);
                 }
                 return 0;
         }

@@ -195,6 +195,10 @@ int dcerpc_context_handle_coder(char *name, struct dcerpc_context *dce,
                                 struct dcerpc_pdu *pdu,
                                 struct smb2_iovec *iov, int *offset,
                                 void *ptr);
+int dcerpc_sid_coder(char *name, struct dcerpc_context *dce,
+                     struct dcerpc_pdu *pdu,
+                     struct smb2_iovec *iov, int *offset,
+                     void *ptr);
         
 #ifdef __cplusplus
 }

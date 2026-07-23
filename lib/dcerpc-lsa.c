@@ -73,60 +73,6 @@ p_syntax_id_t lsa_interface = {
         {LSA_UUID}, 0, 0
 };
 
-unsigned char NT_SID_AUTHORITY[6] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x05 };
-
-/*
- * typedef struct _RPC_SID {
- *      unsigned char Revision;
- *      unsigned char SubAuthorityCount;
- *      byte IdentifierAuthority[6];
- *      [size_is(SubAuthorityCount)] uint32_t SubAuthority[];
- * } RPC_SID, *PRPC_SID, *PSID;
- */
-int
-lsa_RPC_SID_coder(char *name, struct dcerpc_context *dce,
-                  struct dcerpc_pdu *pdu,
-                  struct smb2_iovec *iov, int *offset,
-                  void *ptr)
-{
-        RPC_SID *sid = ptr;
-        uint64_t count;
-        int i;
-
-        count = sid->SubAuthorityCount;
-        if (ndr_uint3264_coder("", dce, pdu, iov, offset, &count)) {
-                return -1;
-        }
-        if (ndr_uint8_coder("Revision", dce, pdu, iov, offset, &sid->Revision)) {
-                return -1;
-        }
-        if (ndr_uint8_coder("SubAuthorityCount", dce, pdu, iov, offset, &sid->SubAuthorityCount)) {
-                return -1;
-        }
-        for (i = 0; i < 6; i++) {
-                if (ndr_uint8_coder("IdentifierAuthority", dce, pdu, iov, offset, &sid->IdentifierAuthority[i])) {
-                        return -1;
-                }
-        }
-
-        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {
-                sid->SubAuthority = smb2_alloc_data(dcerpc_get_smb2_context(dce),
-                                                    dcerpc_get_pdu_payload(pdu),
-                                                    (size_t)count * sizeof(uint32_t));
-                if (sid->SubAuthority == NULL) {
-                        return -1;
-                }
-        }
-
-        for (i = 0; i < count; i++) {
-                if (ndr_uint32_coder("Subauthority", dce, pdu, iov, offset, &sid->SubAuthority[i])) {
-                        return -1;
-                }
-        }
-
-        return 0;
-}
-
 static int
 lsa_PRPC_SID_array_coder(char *name, struct dcerpc_context *dce,
                          struct dcerpc_pdu *pdu,
@@ -161,7 +107,7 @@ lsa_PRPC_SID_array_coder(char *name, struct dcerpc_context *dce,
         for (i = 0; i < val; i++) {
                 if (ndr_ptr_coder("SID", dce, pdu, iov, offset,
                                   seb->SidInfo[i],
-                                  PTR_UNIQUE, lsa_RPC_SID_coder)) {
+                                  PTR_UNIQUE, dcerpc_sid_coder)) {
                         return -1;
                 }
         }
@@ -510,7 +456,7 @@ lsa_TRUST_INFORMATION_coder(char *name, struct dcerpc_context *dce,
                 return -1;
         }
         if (ndr_ptr_coder("SID", dce, pdu, iov, offset, &ti->Sid,
-                              PTR_UNIQUE, lsa_RPC_SID_coder)) {
+                              PTR_UNIQUE, dcerpc_sid_coder)) {
                 return -1;
         }
 
