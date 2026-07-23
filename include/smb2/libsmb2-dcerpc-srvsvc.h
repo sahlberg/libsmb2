@@ -28,6 +28,7 @@ extern "C" {
 #define SRVSVC_NETRCONNECTIONENUM 0x08
 #define SRVSVC_NETRFILEENUM       0x09
 #define SRVSVC_NETRFILEGETINFO    0x0a
+#define SRVSVC_NETRFILECLOSE      0x0b
 #define SRVSVC_NETRSHAREADD       0x0e
 #define SRVSVC_NETRSHAREENUM      0x0f
 #define SRVSVC_NETRSHAREGETINFO   0x10
@@ -408,6 +409,15 @@ struct srvsvc_NetrFileGetInfo_rep {
         uint32_t status;
 };
 
+struct srvsvc_NetrFileClose_req {
+        char *ServerName;
+        uint32_t FileId;
+};
+
+struct srvsvc_NetrFileClose_rep {
+        uint32_t status;
+};
+
 struct srvsvc_NetrShareAdd_req {
         char *ServerName;
         uint32_t Level;
@@ -550,6 +560,14 @@ int srvsvc_NetrFileGetInfo_req_coder(char *name, struct dcerpc_context *ctx,
                                       struct dcerpc_pdu *pdu,
                                       struct smb2_iovec *iov, int *offset,
                                       void *ptr);
+int srvsvc_NetrFileClose_rep_coder(char *name, struct dcerpc_context *dce,
+                                    struct dcerpc_pdu *pdu,
+                                    struct smb2_iovec *iov, int *offset,
+                                    void *ptr);
+int srvsvc_NetrFileClose_req_coder(char *name, struct dcerpc_context *ctx,
+                                    struct dcerpc_pdu *pdu,
+                                    struct smb2_iovec *iov, int *offset,
+                                    void *ptr);
 int srvsvc_NetrShareEnum_rep_coder(char *name, struct dcerpc_context *dce,
                                    struct dcerpc_pdu *pdu,
                                    struct smb2_iovec *iov, int *offset,

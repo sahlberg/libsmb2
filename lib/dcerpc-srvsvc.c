@@ -2013,6 +2013,47 @@ srvsvc_NetrFileGetInfo_rep_coder(char *name, struct dcerpc_context *dce,
 }
 
 /*****************
+ * Function: 0x0b
+ * NET_API_STATUS NetrFileClose (
+ *   [in,string,unique] SRVSVC_HANDLE ServerName,
+ *   [in] DWORD FileId
+ * );
+ */
+int
+srvsvc_NetrFileClose_req_coder(char *name, struct dcerpc_context *dce,
+                               struct dcerpc_pdu *pdu,
+                               struct smb2_iovec *iov, int *offset,
+                               void *ptr)
+{
+        struct srvsvc_NetrFileClose_req *req = ptr;
+
+        if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("FileId", dce, pdu, iov, offset, &req->FileId)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_NetrFileClose_rep_coder(char *name, struct dcerpc_context *dce,
+                               struct dcerpc_pdu *pdu,
+                               struct smb2_iovec *iov, int *offset,
+                               void *ptr)
+{
+        struct srvsvc_NetrFileClose_rep *rep = ptr;
+
+        if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+/*****************
  * Function: 0x0e
  * NET_API_STATUS NetrShareAdd (
  * [in,string,unique] SRVSVC_HANDLE ServerName,
@@ -2408,6 +2449,10 @@ struct dcerpc_procedure srvsvc_procs[] = {
         {SRVSVC_NETRFILEGETINFO, "NetrFileGetInfo",
          srvsvc_NetrFileGetInfo_req_coder, sizeof(struct srvsvc_NetrFileGetInfo_req),
          srvsvc_NetrFileGetInfo_rep_coder, sizeof(struct srvsvc_NetrFileGetInfo_rep),
+        },
+        {SRVSVC_NETRFILECLOSE, "NetrFileClose",
+         srvsvc_NetrFileClose_req_coder, sizeof(struct srvsvc_NetrFileClose_req),
+         srvsvc_NetrFileClose_rep_coder, sizeof(struct srvsvc_NetrFileClose_rep),
         },
         {SRVSVC_NETRSHAREADD, "NetrShareAdd",
          srvsvc_NetrShareAdd_req_coder, sizeof(struct srvsvc_NetrShareAdd_req),
