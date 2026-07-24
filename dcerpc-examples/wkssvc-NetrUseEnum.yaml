@@ -1,0 +1,7 @@
+NetrUseEnum: Request
+  ServerName: \\WIN16-1
+  InfoStruct:
+    Level: 1
+    UseInfo:
+  PreferedMaximumLength: 0xffffffff
+  ResumeHandle: 0

@@ -348,7 +348,8 @@ void si_cb(struct dcerpc_context *dce, int status,
         memset(opdata[idx].iov.buf, 0, opdata[idx].iov.len);
 
         if (command_data == NULL) {
-                printf("No Response pdu\n");
+                printf("No Response pdu (status=%d) %s\n",
+                       status, dcerpc_get_error(dce));
                 exit(10);
         }
         

@@ -1,0 +1,41 @@
+NetrWkstaSetInfo: Request
+  ServerName: \\WIN16-1
+  Level: 502
+  WkstaInfo:
+    WkstaInfo502:
+      CharWait: 3600
+      CollectionTime: 250
+      MaximumCollectionCount: 16
+      KeepConn: 600
+      MaxCmds: 50
+      SessTimeout: 60
+      SizCharBuf: 512
+      MaxThreads: 17
+      LockQuota: 0
+      LockIncrement: 10
+      LockMaximum: 500
+      PipeIncrement: 10
+      PipeMaximum: 500
+      CacheFileTimeout: 40
+      DormantFileLimit: 45
+      ReadAheadThroughput: 0xffffffff
+      NumMailslotBuffers: 0xffffffff
+      NumSrvAnnounceBuffers: 0xffffffff
+      MaxIllegalDatagramEvents: 5
+      IllegalDatagramEventResetFrequency: 60
+      LogElectionPackets: 0
+      UseOpportunisticLocking: 1
+      UseUnlockBehind: 1
+      UseCloseBehind: 1
+      BufNamedPipes: 1
+      UseLockReadUnlock: 1
+      UtilizeNtCaching: 1
+      UseRawRead: 1
+      UseRawWrite: 1
+      UseWriteRawData: 1
+      UseEncryption: 1
+      BufFilesDenyWrite: 1
+      BufReadOnlyFiles: 1
+      ForceCoreCreateMode: 1
+      Use512ByteMaxTransfer: 0
+  ErrorParameter: 0

@@ -26,7 +26,11 @@ extern "C" {
 #include <smb2/libsmb2-dcerpc.h>
 
 /* MS-WKST opnums */
-#define WKSSVC_NETRWKSTAGETINFO 0x00
+#define WKSSVC_NETRWKSTAGETINFO              0x00
+#define WKSSVC_NETRWKSTASETINFO              0x01
+#define WKSSVC_NETRWKSTAUSERENUM             0x02
+#define WKSSVC_NETRUSEENUM                   0x0b
+#define WKSSVC_NETRWORKSTATIONSTATISTICSGET  0x0d
 
 struct dcerpc_context;
 struct dcerpc_pdu;
@@ -191,6 +195,315 @@ struct wkssvc_NetrWkstaGetInfo_rep {
         uint32_t status;
 };
 
+/*
+ * unsigned long NetrWkstaSetInfo(
+ *   [in, string, unique] WKSSVC_IDENTIFY_HANDLE ServerName,
+ *   [in] unsigned long Level,
+ *   [in, switch_is(Level)] LPWKSTA_INFO WkstaInfo,
+ *   [in, out, unique] unsigned long *ErrorParameter
+ * );
+ */
+struct wkssvc_NetrWkstaSetInfo_req {
+        char *ServerName;
+        uint32_t Level;
+        union wkssvc_WKSTA_INFO WkstaInfo;
+        uint32_t ErrorParameter;
+};
+
+struct wkssvc_NetrWkstaSetInfo_rep {
+        uint32_t ErrorParameter;
+
+        uint32_t status;
+};
+
+/*
+ * WKSTA_USER_INFO / WKSTA_USER_ENUM (NetrWkstaUserEnum)
+ */
+enum WKSTA_USER_INFO_enum {
+        WKSTA_USER_INFO_0 = 0,
+        WKSTA_USER_INFO_1 = 1,
+};
+
+struct wkssvc_WKSTA_USER_INFO_0 {
+        char *username;
+};
+int wkssvc_WKSTA_USER_INFO_0_coder(char *name, struct dcerpc_context *ctx,
+                                   struct dcerpc_pdu *pdu,
+                                   struct smb2_iovec *iov, int *offset,
+                                   void *ptr);
+
+struct wkssvc_WKSTA_USER_INFO_0_CONTAINER {
+        uint32_t EntriesRead;
+        struct wkssvc_WKSTA_USER_INFO_0 *Buffer;
+};
+
+struct wkssvc_WKSTA_USER_INFO_1 {
+        char *username;
+        char *logon_domain;
+        char *oth_domains;
+        char *logon_server;
+};
+int wkssvc_WKSTA_USER_INFO_1_coder(char *name, struct dcerpc_context *ctx,
+                                   struct dcerpc_pdu *pdu,
+                                   struct smb2_iovec *iov, int *offset,
+                                   void *ptr);
+
+struct wkssvc_WKSTA_USER_INFO_1_CONTAINER {
+        uint32_t EntriesRead;
+        struct wkssvc_WKSTA_USER_INFO_1 *Buffer;
+};
+
+union wkssvc_WKSTA_USER_ENUM_UNION {
+        struct wkssvc_WKSTA_USER_INFO_0_CONTAINER Level0;
+        struct wkssvc_WKSTA_USER_INFO_1_CONTAINER Level1;
+};
+
+struct wkssvc_WKSTA_USER_ENUM_STRUCT {
+        uint32_t Level;
+        union wkssvc_WKSTA_USER_ENUM_UNION WkstaUserInfo;
+};
+
+/*
+ * unsigned long NetrWkstaUserEnum(
+ *   [in, string, unique] WKSSVC_IDENTIFY_HANDLE ServerName,
+ *   [in, out] LPWKSTA_USER_ENUM_STRUCT UserInfo,
+ *   [in] unsigned long PreferredMaximumLength,
+ *   [out] unsigned long *TotalEntries,
+ *   [in, out, unique] unsigned long *ResumeHandle
+ * );
+ */
+struct wkssvc_NetrWkstaUserEnum_req {
+        char *ServerName;
+        struct wkssvc_WKSTA_USER_ENUM_STRUCT UserInfo;
+        uint32_t PreferredMaximumLength;
+        uint32_t ResumeHandle;
+};
+
+struct wkssvc_NetrWkstaUserEnum_rep {
+        struct wkssvc_WKSTA_USER_ENUM_STRUCT UserInfo;
+        uint32_t total_entries;
+        uint32_t resume_handle;
+
+        uint32_t status;
+};
+
+/*
+ * USE_INFO / USE_ENUM (NetrUseEnum)
+ */
+enum USE_INFO_enum {
+        USE_INFO_0 = 0,
+        USE_INFO_1 = 1,
+        USE_INFO_2 = 2,
+};
+
+/*
+ * typedef struct _USE_INFO_0 {
+ *   [string] wchar_t *ui0_local;
+ *   [string] wchar_t *ui0_remote;
+ * } USE_INFO_0;
+ */
+struct wkssvc_USE_INFO_0 {
+        char *local;
+        char *remote;
+};
+int wkssvc_USE_INFO_0_coder(char *name, struct dcerpc_context *ctx,
+                            struct dcerpc_pdu *pdu,
+                            struct smb2_iovec *iov, int *offset,
+                            void *ptr);
+
+struct wkssvc_USE_INFO_0_CONTAINER {
+        uint32_t EntriesRead;
+        struct wkssvc_USE_INFO_0 *Buffer;
+};
+
+/*
+ * typedef struct _USE_INFO_1 {
+ *   [string] wchar_t *ui1_local;
+ *   [string] wchar_t *ui1_remote;
+ *   [string] wchar_t *ui1_password;
+ *   unsigned long ui1_status;
+ *   unsigned long ui1_asg_type;
+ *   unsigned long ui1_refcount;
+ *   unsigned long ui1_usecount;
+ * } USE_INFO_1;
+ */
+struct wkssvc_USE_INFO_1 {
+        char *local;
+        char *remote;
+        char *password;
+        uint32_t status;
+        uint32_t asg_type;
+        uint32_t refcount;
+        uint32_t usecount;
+};
+int wkssvc_USE_INFO_1_coder(char *name, struct dcerpc_context *ctx,
+                            struct dcerpc_pdu *pdu,
+                            struct smb2_iovec *iov, int *offset,
+                            void *ptr);
+
+struct wkssvc_USE_INFO_1_CONTAINER {
+        uint32_t EntriesRead;
+        struct wkssvc_USE_INFO_1 *Buffer;
+};
+
+/*
+ * typedef struct _USE_INFO_2 {
+ *   [string] wchar_t *ui2_local;
+ *   [string] wchar_t *ui2_remote;
+ *   [string] wchar_t *ui2_password;
+ *   unsigned long ui2_status;
+ *   unsigned long ui2_asg_type;
+ *   unsigned long ui2_refcount;
+ *   unsigned long ui2_usecount;
+ *   [string] wchar_t *ui2_username;
+ *   [string] wchar_t *ui2_domainname;
+ * } USE_INFO_2;
+ */
+struct wkssvc_USE_INFO_2 {
+        char *local;
+        char *remote;
+        char *password;
+        uint32_t status;
+        uint32_t asg_type;
+        uint32_t refcount;
+        uint32_t usecount;
+        char *username;
+        char *domainname;
+};
+int wkssvc_USE_INFO_2_coder(char *name, struct dcerpc_context *ctx,
+                            struct dcerpc_pdu *pdu,
+                            struct smb2_iovec *iov, int *offset,
+                            void *ptr);
+
+struct wkssvc_USE_INFO_2_CONTAINER {
+        uint32_t EntriesRead;
+        struct wkssvc_USE_INFO_2 *Buffer;
+};
+
+/*
+ * typedef [switch_type(unsigned long)] union _USE_ENUM_UNION {
+ *   [case(0)] LPUSE_INFO_0_CONTAINER Level0;
+ *   [case(1)] LPUSE_INFO_1_CONTAINER Level1;
+ *   [case(2)] LPUSE_INFO_2_CONTAINER Level2;
+ * } USE_ENUM_UNION;
+ */
+union wkssvc_USE_ENUM_UNION {
+        struct wkssvc_USE_INFO_0_CONTAINER Level0;
+        struct wkssvc_USE_INFO_1_CONTAINER Level1;
+        struct wkssvc_USE_INFO_2_CONTAINER Level2;
+};
+
+/*
+ * typedef struct _USE_ENUM_STRUCT {
+ *   unsigned long Level;
+ *   [switch_is(Level)] USE_ENUM_UNION UseInfo;
+ * } USE_ENUM_STRUCT;
+ */
+struct wkssvc_USE_ENUM_STRUCT {
+        uint32_t Level;
+        union wkssvc_USE_ENUM_UNION UseInfo;
+};
+
+/*
+ * unsigned long NetrUseEnum(
+ *   [in, string, unique] WKSSVC_IMPERSONATE_HANDLE ServerName,
+ *   [in, out] LPUSE_ENUM_STRUCT InfoStruct,
+ *   [in] unsigned long PreferedMaximumLength,
+ *   [out] unsigned long *TotalEntries,
+ *   [in, out, unique] unsigned long *ResumeHandle
+ * );
+ */
+struct wkssvc_NetrUseEnum_req {
+        char *ServerName;
+        struct wkssvc_USE_ENUM_STRUCT InfoStruct;
+        uint32_t PreferedMaximumLength;
+        uint32_t ResumeHandle;
+};
+
+struct wkssvc_NetrUseEnum_rep {
+        struct wkssvc_USE_ENUM_STRUCT InfoStruct;
+        uint32_t total_entries;
+        uint32_t resume_handle;
+
+        uint32_t status;
+};
+
+/*
+ * typedef struct _STAT_WORKSTATION_0 {
+ *   LARGE_INTEGER StatisticsStartTime;
+ *   LARGE_INTEGER BytesReceived;
+ *   ... (see MS-WKST 2.2.5.11)
+ * } STAT_WORKSTATION_0;
+ */
+struct wkssvc_STAT_WORKSTATION_0 {
+        uint64_t StatisticsStartTime;
+        uint64_t BytesReceived;
+        uint64_t SmbsReceived;
+        uint64_t PagingReadBytesRequested;
+        uint64_t NonPagingReadBytesRequested;
+        uint64_t CacheReadBytesRequested;
+        uint64_t NetworkReadBytesRequested;
+        uint64_t BytesTransmitted;
+        uint64_t SmbsTransmitted;
+        uint64_t PagingWriteBytesRequested;
+        uint64_t NonPagingWriteBytesRequested;
+        uint64_t CacheWriteBytesRequested;
+        uint64_t NetworkWriteBytesRequested;
+        uint32_t InitiallyFailedOperations;
+        uint32_t FailedCompletionOperations;
+        uint32_t ReadOperations;
+        uint32_t RandomReadOperations;
+        uint32_t ReadSmbs;
+        uint32_t LargeReadSmbs;
+        uint32_t SmallReadSmbs;
+        uint32_t WriteOperations;
+        uint32_t RandomWriteOperations;
+        uint32_t WriteSmbs;
+        uint32_t LargeWriteSmbs;
+        uint32_t SmallWriteSmbs;
+        uint32_t RawReadsDenied;
+        uint32_t RawWritesDenied;
+        uint32_t NetworkErrors;
+        uint32_t Sessions;
+        uint32_t FailedSessions;
+        uint32_t Reconnects;
+        uint32_t CoreConnects;
+        uint32_t Lanman20Connects;
+        uint32_t Lanman21Connects;
+        uint32_t LanmanNtConnects;
+        uint32_t ServerDisconnects;
+        uint32_t HungSessions;
+        uint32_t UseCount;
+        uint32_t FailedUseCount;
+        uint32_t CurrentCommands;
+};
+int wkssvc_STAT_WORKSTATION_0_coder(char *name, struct dcerpc_context *ctx,
+                                    struct dcerpc_pdu *pdu,
+                                    struct smb2_iovec *iov, int *offset,
+                                    void *ptr);
+
+/*
+ * unsigned long NetrWorkstationStatisticsGet(
+ *   [in, string, unique] WKSSVC_IDENTIFY_HANDLE ServerName,
+ *   [in, string, unique] wchar_t *ServiceName,
+ *   [in] unsigned long Level,
+ *   [in] unsigned long Options,
+ *   [out] LPSTAT_WORKSTATION_0 *Buffer
+ * );
+ */
+struct wkssvc_NetrWorkstationStatisticsGet_req {
+        char *ServerName;
+        char *ServiceName;
+        uint32_t Level;
+        uint32_t Options;
+};
+
+struct wkssvc_NetrWorkstationStatisticsGet_rep {
+        struct wkssvc_STAT_WORKSTATION_0 Buffer;
+
+        uint32_t status;
+};
+
 int wkssvc_NetrWkstaGetInfo_req_coder(char *name, struct dcerpc_context *ctx,
                                       struct dcerpc_pdu *pdu,
                                       struct smb2_iovec *iov, int *offset,
@@ -199,6 +512,38 @@ int wkssvc_NetrWkstaGetInfo_rep_coder(char *name, struct dcerpc_context *ctx,
                                       struct dcerpc_pdu *pdu,
                                       struct smb2_iovec *iov, int *offset,
                                       void *ptr);
+int wkssvc_NetrWkstaSetInfo_req_coder(char *name, struct dcerpc_context *ctx,
+                                      struct dcerpc_pdu *pdu,
+                                      struct smb2_iovec *iov, int *offset,
+                                      void *ptr);
+int wkssvc_NetrWkstaSetInfo_rep_coder(char *name, struct dcerpc_context *ctx,
+                                      struct dcerpc_pdu *pdu,
+                                      struct smb2_iovec *iov, int *offset,
+                                      void *ptr);
+int wkssvc_NetrWkstaUserEnum_req_coder(char *name, struct dcerpc_context *ctx,
+                                       struct dcerpc_pdu *pdu,
+                                       struct smb2_iovec *iov, int *offset,
+                                       void *ptr);
+int wkssvc_NetrWkstaUserEnum_rep_coder(char *name, struct dcerpc_context *ctx,
+                                       struct dcerpc_pdu *pdu,
+                                       struct smb2_iovec *iov, int *offset,
+                                       void *ptr);
+int wkssvc_NetrUseEnum_req_coder(char *name, struct dcerpc_context *ctx,
+                                 struct dcerpc_pdu *pdu,
+                                 struct smb2_iovec *iov, int *offset,
+                                 void *ptr);
+int wkssvc_NetrUseEnum_rep_coder(char *name, struct dcerpc_context *ctx,
+                                 struct dcerpc_pdu *pdu,
+                                 struct smb2_iovec *iov, int *offset,
+                                 void *ptr);
+int wkssvc_NetrWorkstationStatisticsGet_req_coder(char *name, struct dcerpc_context *ctx,
+                                                   struct dcerpc_pdu *pdu,
+                                                   struct smb2_iovec *iov, int *offset,
+                                                   void *ptr);
+int wkssvc_NetrWorkstationStatisticsGet_rep_coder(char *name, struct dcerpc_context *ctx,
+                                                   struct dcerpc_pdu *pdu,
+                                                   struct smb2_iovec *iov, int *offset,
+                                                   void *ptr);
 
 extern struct dcerpc_procedure wkssvc_procs[];
 

@@ -179,6 +179,8 @@ int dcerpc_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pd
                         struct smb2_iovec *iov, int *offset, void *ptr);
 int dcerpc_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                         struct smb2_iovec *iov, int *offset, void *ptr);
+int dcerpc_uint64_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                        struct smb2_iovec *iov, int *offset, void *ptr);
 int dcerpc_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                        struct smb2_iovec *iov, int *offset, void *ptr);
 int dcerpc_utf16z_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,

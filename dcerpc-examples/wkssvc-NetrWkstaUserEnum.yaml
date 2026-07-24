@@ -1,0 +1,7 @@
+NetrWkstaUserEnum: Request
+  ServerName: \\WIN16-1
+  UserInfo:
+    Level: 1
+    WkstaUserInfo:
+  PreferredMaximumLength: 0xffffffff
+  ResumeHandle: 0

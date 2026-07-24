@@ -1,0 +1,4 @@
+NetrWorkstationStatisticsGet: Request
+  ServerName: \\WIN16-1
+  Level: 0
+  Options: 0

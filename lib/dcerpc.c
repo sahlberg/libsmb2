@@ -57,6 +57,7 @@
 
 #include "portable-endian.h"
 #include <errno.h>
+#include <inttypes.h>
 
 #include "compat.h"
 
@@ -353,6 +354,8 @@ static int yaml_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcer
                       struct smb2_iovec *iov, int *offset, void *ptr);
 static int yaml_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                       struct smb2_iovec *iov, int *offset, void *ptr);
+static int yaml_uint64_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                      struct smb2_iovec *iov, int *offset, void *ptr);
 static int yaml_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                            struct smb2_iovec *iov, int *offset, dcerpc_uuid_t *uuid);
 static int yaml_sid_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
@@ -386,6 +389,8 @@ static int yaml_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_p
 static int json_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                              struct smb2_iovec *iov, int *offset, void *ptr);
 static int json_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                             struct smb2_iovec *iov, int *offset, void *ptr);
+static int json_uint64_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                              struct smb2_iovec *iov, int *offset, void *ptr);
 static int json_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                            struct smb2_iovec *iov, int *offset, dcerpc_uuid_t *uuid);
@@ -558,9 +563,9 @@ dcerpc_get_uint64(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         return 0;
 }
 
-int
-dcerpc_uint64_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                    struct smb2_iovec *iov, int *offset, void *ptr)
+static int
+ndr_uint64_coder(char *name _U_, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                 struct smb2_iovec *iov, int *offset, void *ptr)
 {
         if (pdu->is_conformance_run) {
                 if (pdu->max_alignment < 8) {
@@ -771,6 +776,21 @@ dcerpc_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *p
                 return yaml_uint32_coder(name, ctx, pdu, iov, offset, ptr);
         case ENCODING_JSON:
                 return json_uint32_coder(name, ctx, pdu, iov, offset, ptr);
+        }
+        return -1;
+}
+
+int
+dcerpc_uint64_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                    struct smb2_iovec *iov, int *offset, void *ptr)
+{
+        switch(pdu->encoding) {
+        case ENCODING_NDR:
+                return ndr_uint64_coder(name, ctx, pdu, iov, offset, ptr);
+        case ENCODING_YAML:
+                return yaml_uint64_coder(name, ctx, pdu, iov, offset, ptr);
+        case ENCODING_JSON:
+                return json_uint64_coder(name, ctx, pdu, iov, offset, ptr);
         }
         return -1;
 }
@@ -1341,6 +1361,31 @@ dcerpc_call_cb(struct smb2_context *smb2, int status,
         if (dce_unfragment_ioctl(dce, pdu, &iov)) {
                 smb2_free_data(dce->smb2, rep->output);
                 dcerpc_send_pdu_cb_and_free(dce, pdu, -EINVAL, NULL);
+                return;
+        }
+
+        /*
+         * FAULT PDUs are not handled by dcerpc_pdu_coder. Extract the
+         * fault status so callers get a useful error instead of
+         * "No decoder for PDU type 3".
+         */
+        if (iov.len >= 3 && iov.buf[2] == PDU_TYPE_FAULT) {
+                uint32_t fault_status = 0;
+                int fo = 24; /* skip common header */
+
+                if (iov.len >= 28) {
+                        /*
+                         * After 16-byte common hdr: alloc_hint(4) p_cont_id(2)
+                         * cancel_count(1) reserved(1) status(4) at offset 24.
+                         */
+                        fo = 24;
+                        if (dcerpc_get_uint32(dce, pdu, &iov, &fo, &fault_status)) {
+                                fault_status = 0;
+                        }
+                }
+                smb2_set_error(dce->smb2, "DCERPC FAULT status=0x%08x", fault_status);
+                smb2_free_data(dce->smb2, rep->output);
+                dcerpc_send_pdu_cb_and_free(dce, pdu, -EACCES, NULL);
                 return;
         }
 
@@ -2680,6 +2725,33 @@ yaml_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu
 }
 
 static int
+yaml_uint64_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                  struct smb2_iovec *iov, int *offset, void *ptr)
+{
+        if (pdu->direction == DCERPC_DECODE) {
+                yaml_next_kv(pdu, iov, offset);
+                if (strcmp(pdu->yaml_key, name)) {
+                        printf("Wrong YAML key encountered for uint64. Expected %s but got %s\n",
+                               name, pdu->yaml_key);
+                        return -1;
+                }
+                pdu->yaml_key = NULL;
+                *(uint64_t *)ptr = strtoull(pdu->yaml_val, NULL, 0);
+                yaml_next_kv(pdu, iov, offset);
+                return 0;
+        } else {
+                yaml_print_preamble(ctx, pdu, iov, offset);
+                if (*offset + 256 < iov->len) {
+                        *offset += snprintf((char *)&iov->buf[*offset],
+                                           iov->len - *offset,
+                                           "%s: %" PRIu64 "\n",
+                                           name, *(uint64_t *)ptr);
+                }
+                return 0;
+        }
+}
+
+static int
 yaml_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                   struct smb2_iovec *iov, int *offset, void *ptr)
 {
@@ -3431,6 +3503,38 @@ json_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu
                         *offset += snprintf((char *)&iov->buf[*offset],
                                            iov->len - *offset,
                                            ": %u", *(uint32_t *)ptr);
+                }
+                return 0;
+        }
+}
+
+static int
+json_uint64_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                  struct smb2_iovec *iov, int *offset, void *ptr)
+{
+        if (pdu->direction == DCERPC_DECODE) {
+                unsigned long v;
+
+                if (json_expect_key(pdu, iov, offset, name) < 0) {
+                        return -1;
+                }
+                if (json_parse_ulong(iov, offset, &v) < 0) {
+                        return -1;
+                }
+                *(uint64_t *)ptr = (uint64_t)v;
+                return 0;
+        } else {
+                if (*offset + 64 >= (int)iov->len) {
+                        return 0;
+                }
+                json_sep(pdu, iov, offset);
+                if (json_append_quoted(iov, offset, name) < 0) {
+                        return -1;
+                }
+                if (*offset + 48 < (int)iov->len) {
+                        *offset += snprintf((char *)&iov->buf[*offset],
+                                           iov->len - *offset,
+                                           ": %" PRIu64, *(uint64_t *)ptr);
                 }
                 return 0;
         }
