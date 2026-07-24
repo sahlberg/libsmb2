@@ -1,0 +1,4 @@
+NetrSessionDel: Request
+  ServerName: \\WIN16-1
+  ClientName: \\CLIENT1
+  UserName: alice

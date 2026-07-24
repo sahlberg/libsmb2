@@ -29,6 +29,8 @@ extern "C" {
 #define SRVSVC_NETRFILEENUM       0x09
 #define SRVSVC_NETRFILEGETINFO    0x0a
 #define SRVSVC_NETRFILECLOSE      0x0b
+#define SRVSVC_NETRSESSIONENUM    0x0c
+#define SRVSVC_NETRSESSIONDEL     0x0d
 #define SRVSVC_NETRSHAREADD       0x0e
 #define SRVSVC_NETRSHAREENUM      0x0f
 #define SRVSVC_NETRSHAREGETINFO   0x10
@@ -418,6 +420,143 @@ struct srvsvc_NetrFileClose_rep {
         uint32_t status;
 };
 
+/*
+ * SESSION_INFO / SESSION_ENUM (NetrSessionEnum)
+ */
+enum SESSION_INFO_enum {
+        SESSION_INFO_0 = 0,
+        SESSION_INFO_1 = 1,
+        SESSION_INFO_2 = 2,
+        SESSION_INFO_10 = 10,
+        SESSION_INFO_502 = 502,
+};
+
+struct srvsvc_SESSION_INFO_0 {
+        char *cname;
+};
+int srvsvc_SESSION_INFO_0_coder(char *name, struct dcerpc_context *ctx,
+                                struct dcerpc_pdu *pdu,
+                                struct smb2_iovec *iov, int *offset,
+                                void *ptr);
+
+struct srvsvc_SESSION_INFO_0_CONTAINER {
+        uint32_t EntriesRead;
+        struct srvsvc_SESSION_INFO_0 *session_info_0;
+};
+
+struct srvsvc_SESSION_INFO_1 {
+        char *cname;
+        char *username;
+        uint32_t num_opens;
+        uint32_t time;
+        uint32_t idle_time;
+        uint32_t user_flags;
+};
+int srvsvc_SESSION_INFO_1_coder(char *name, struct dcerpc_context *ctx,
+                                struct dcerpc_pdu *pdu,
+                                struct smb2_iovec *iov, int *offset,
+                                void *ptr);
+
+struct srvsvc_SESSION_INFO_1_CONTAINER {
+        uint32_t EntriesRead;
+        struct srvsvc_SESSION_INFO_1 *session_info_1;
+};
+
+struct srvsvc_SESSION_INFO_2 {
+        char *cname;
+        char *username;
+        uint32_t num_opens;
+        uint32_t time;
+        uint32_t idle_time;
+        uint32_t user_flags;
+        char *cltype_name;
+};
+int srvsvc_SESSION_INFO_2_coder(char *name, struct dcerpc_context *ctx,
+                                struct dcerpc_pdu *pdu,
+                                struct smb2_iovec *iov, int *offset,
+                                void *ptr);
+
+struct srvsvc_SESSION_INFO_2_CONTAINER {
+        uint32_t EntriesRead;
+        struct srvsvc_SESSION_INFO_2 *session_info_2;
+};
+
+struct srvsvc_SESSION_INFO_10 {
+        char *cname;
+        char *username;
+        uint32_t time;
+        uint32_t idle_time;
+};
+int srvsvc_SESSION_INFO_10_coder(char *name, struct dcerpc_context *ctx,
+                                 struct dcerpc_pdu *pdu,
+                                 struct smb2_iovec *iov, int *offset,
+                                 void *ptr);
+
+struct srvsvc_SESSION_INFO_10_CONTAINER {
+        uint32_t EntriesRead;
+        struct srvsvc_SESSION_INFO_10 *session_info_10;
+};
+
+struct srvsvc_SESSION_INFO_502 {
+        char *cname;
+        char *username;
+        uint32_t num_opens;
+        uint32_t time;
+        uint32_t idle_time;
+        uint32_t user_flags;
+        char *cltype_name;
+        char *transport;
+};
+int srvsvc_SESSION_INFO_502_coder(char *name, struct dcerpc_context *ctx,
+                                  struct dcerpc_pdu *pdu,
+                                  struct smb2_iovec *iov, int *offset,
+                                  void *ptr);
+
+struct srvsvc_SESSION_INFO_502_CONTAINER {
+        uint32_t EntriesRead;
+        struct srvsvc_SESSION_INFO_502 *session_info_502;
+};
+
+union srvsvc_SESSION_ENUM_UNION {
+        struct srvsvc_SESSION_INFO_0_CONTAINER Level0;
+        struct srvsvc_SESSION_INFO_1_CONTAINER Level1;
+        struct srvsvc_SESSION_INFO_2_CONTAINER Level2;
+        struct srvsvc_SESSION_INFO_10_CONTAINER Level10;
+        struct srvsvc_SESSION_INFO_502_CONTAINER Level502;
+};
+
+struct srvsvc_SESSION_ENUM_STRUCT {
+        uint32_t Level;
+        union srvsvc_SESSION_ENUM_UNION SessionInfo;
+};
+
+struct srvsvc_NetrSessionEnum_req {
+        char *ServerName;
+        char *ClientName;
+        char *UserName;
+        struct srvsvc_SESSION_ENUM_STRUCT ses;
+        uint32_t PreferedMaximumLength;
+        uint32_t ResumeHandle;
+};
+
+struct srvsvc_NetrSessionEnum_rep {
+        struct srvsvc_SESSION_ENUM_STRUCT ses;
+        uint32_t total_entries;
+        uint32_t resume_handle;
+
+        uint32_t status;
+};
+
+struct srvsvc_NetrSessionDel_req {
+        char *ServerName;
+        char *ClientName;
+        char *UserName;
+};
+
+struct srvsvc_NetrSessionDel_rep {
+        uint32_t status;
+};
+
 struct srvsvc_NetrShareAdd_req {
         char *ServerName;
         uint32_t Level;
@@ -568,6 +707,22 @@ int srvsvc_NetrFileClose_req_coder(char *name, struct dcerpc_context *ctx,
                                     struct dcerpc_pdu *pdu,
                                     struct smb2_iovec *iov, int *offset,
                                     void *ptr);
+int srvsvc_NetrSessionEnum_rep_coder(char *name, struct dcerpc_context *dce,
+                                      struct dcerpc_pdu *pdu,
+                                      struct smb2_iovec *iov, int *offset,
+                                      void *ptr);
+int srvsvc_NetrSessionEnum_req_coder(char *name, struct dcerpc_context *ctx,
+                                      struct dcerpc_pdu *pdu,
+                                      struct smb2_iovec *iov, int *offset,
+                                      void *ptr);
+int srvsvc_NetrSessionDel_rep_coder(char *name, struct dcerpc_context *dce,
+                                     struct dcerpc_pdu *pdu,
+                                     struct smb2_iovec *iov, int *offset,
+                                     void *ptr);
+int srvsvc_NetrSessionDel_req_coder(char *name, struct dcerpc_context *ctx,
+                                     struct dcerpc_pdu *pdu,
+                                     struct smb2_iovec *iov, int *offset,
+                                     void *ptr);
 int srvsvc_NetrShareEnum_rep_coder(char *name, struct dcerpc_context *dce,
                                    struct dcerpc_pdu *pdu,
                                    struct smb2_iovec *iov, int *offset,

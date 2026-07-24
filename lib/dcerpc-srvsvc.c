@@ -2053,6 +2053,794 @@ srvsvc_NetrFileClose_rep_coder(char *name, struct dcerpc_context *dce,
         return 0;
 }
 
+/*
+ * typedef struct _SESSION_INFO_0 {
+ *       [string] wchar_t *sesi0_cname;
+ * } SESSION_INFO_0, *PSESSION_INFO_0, *LPSESSION_INFO_0;
+ */
+int
+srvsvc_SESSION_INFO_0_coder(char *name, struct dcerpc_context *dce,
+                            struct dcerpc_pdu *pdu,
+                            struct smb2_iovec *iov, int *offset,
+                            void *ptr)
+{
+        struct srvsvc_SESSION_INFO_0 *si = ptr;
+
+        if (dcerpc_ptr_coder("CName", dce, pdu, iov, offset, &si->cname,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        return 0;
+}
+
+int
+srvsvc_SESSION_INFO_0_STRUCT_coder(char *name, struct dcerpc_context *dce,
+                                   struct dcerpc_pdu *pdu,
+                                   struct smb2_iovec *iov, int *offset,
+                                   void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_SESSION_INFO_0_coder);
+}
+
+/*
+ *       [size_is(EntriesRead)] LPSESSION_INFO_0 Buffer;
+ */
+static int
+srvsvc_SESSION_INFO_0_carray_coder(char *name, struct dcerpc_context *dce,
+                                   struct dcerpc_pdu *pdu,
+                                   struct smb2_iovec *iov, int *offset,
+                                   void *ptr)
+{
+        return dcerpc_carray_coder("SessionInfo0", dce, pdu, iov, offset,
+                                   dcerpc_get_size_is(pdu), ptr,
+                                   sizeof(struct srvsvc_SESSION_INFO_0),
+                                   srvsvc_SESSION_INFO_0_STRUCT_coder);
+}
+
+/*
+ * typedef struct _SESSION_INFO_0_CONTAINER {
+ *       DWORD EntriesRead;
+ *       [size_is(EntriesRead)] LPSESSION_INFO_0 Buffer;
+ * } SESSION_INFO_0_CONTAINER;
+ */
+int
+srvsvc_SESSION_INFO_0_CONTAINER_coder(char *name, struct dcerpc_context *dce,
+                                      struct dcerpc_pdu *pdu,
+                                      struct smb2_iovec *iov, int *offset,
+                                      void *ptr)
+{
+        struct srvsvc_SESSION_INFO_0_CONTAINER *ctr = ptr;
+
+        if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &ctr->EntriesRead)) {
+                return -1;
+        }
+        if (ctr->EntriesRead) {
+                dcerpc_set_size_is(pdu, ctr->EntriesRead);
+        }
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && ctr->EntriesRead) {
+                if (ctr->session_info_0 == NULL) {
+                        size_t esize = sizeof(struct srvsvc_SESSION_INFO_0);
+
+                        if (ctr->EntriesRead > SIZE_MAX / esize) {
+                                return -1;
+                        }
+                        ctr->session_info_0 = smb2_alloc_data(
+                                dcerpc_get_smb2_context(dce),
+                                dcerpc_get_pdu_payload(pdu),
+                                (size_t)ctr->EntriesRead * esize);
+                        if (ctr->session_info_0 == NULL) {
+                                return -1;
+                        }
+                }
+        }
+        if (dcerpc_ptr_coder("SessionInfo0", dce, pdu, iov, offset, ctr->session_info_0,
+                             PTR_UNIQUE, srvsvc_SESSION_INFO_0_carray_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+/*
+ * typedef struct _SESSION_INFO_1 {
+ *       [string] wchar_t *sesi1_cname;
+ *       [string] wchar_t *sesi1_username;
+ *       DWORD sesi1_num_opens;
+ *       DWORD sesi1_time;
+ *       DWORD sesi1_idle_time;
+ *       DWORD sesi1_user_flags;
+ * } SESSION_INFO_1, *PSESSION_INFO_1, *LPSESSION_INFO_1;
+ */
+int
+srvsvc_SESSION_INFO_1_coder(char *name, struct dcerpc_context *dce,
+                            struct dcerpc_pdu *pdu,
+                            struct smb2_iovec *iov, int *offset,
+                            void *ptr)
+{
+        struct srvsvc_SESSION_INFO_1 *si = ptr;
+
+        if (dcerpc_ptr_coder("CName", dce, pdu, iov, offset, &si->cname,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("UserName", dce, pdu, iov, offset, &si->username,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("NumOpens", dce, pdu, iov, offset, &si->num_opens)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Time", dce, pdu, iov, offset, &si->time)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("IdleTime", dce, pdu, iov, offset, &si->idle_time)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("UserFlags", dce, pdu, iov, offset, &si->user_flags)) {
+                return -1;
+        }
+        return 0;
+}
+
+int
+srvsvc_SESSION_INFO_1_STRUCT_coder(char *name, struct dcerpc_context *dce,
+                                   struct dcerpc_pdu *pdu,
+                                   struct smb2_iovec *iov, int *offset,
+                                   void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_SESSION_INFO_1_coder);
+}
+
+/*
+ *       [size_is(EntriesRead)] LPSESSION_INFO_1 Buffer;
+ */
+static int
+srvsvc_SESSION_INFO_1_carray_coder(char *name, struct dcerpc_context *dce,
+                                   struct dcerpc_pdu *pdu,
+                                   struct smb2_iovec *iov, int *offset,
+                                   void *ptr)
+{
+        return dcerpc_carray_coder("SessionInfo1", dce, pdu, iov, offset,
+                                   dcerpc_get_size_is(pdu), ptr,
+                                   sizeof(struct srvsvc_SESSION_INFO_1),
+                                   srvsvc_SESSION_INFO_1_STRUCT_coder);
+}
+
+/*
+ * typedef struct _SESSION_INFO_1_CONTAINER {
+ *       DWORD EntriesRead;
+ *       [size_is(EntriesRead)] LPSESSION_INFO_1 Buffer;
+ * } SESSION_INFO_1_CONTAINER;
+ */
+int
+srvsvc_SESSION_INFO_1_CONTAINER_coder(char *name, struct dcerpc_context *dce,
+                                      struct dcerpc_pdu *pdu,
+                                      struct smb2_iovec *iov, int *offset,
+                                      void *ptr)
+{
+        struct srvsvc_SESSION_INFO_1_CONTAINER *ctr = ptr;
+
+        if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &ctr->EntriesRead)) {
+                return -1;
+        }
+        if (ctr->EntriesRead) {
+                dcerpc_set_size_is(pdu, ctr->EntriesRead);
+        }
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && ctr->EntriesRead) {
+                if (ctr->session_info_1 == NULL) {
+                        size_t esize = sizeof(struct srvsvc_SESSION_INFO_1);
+
+                        if (ctr->EntriesRead > SIZE_MAX / esize) {
+                                return -1;
+                        }
+                        ctr->session_info_1 = smb2_alloc_data(
+                                dcerpc_get_smb2_context(dce),
+                                dcerpc_get_pdu_payload(pdu),
+                                (size_t)ctr->EntriesRead * esize);
+                        if (ctr->session_info_1 == NULL) {
+                                return -1;
+                        }
+                }
+        }
+        if (dcerpc_ptr_coder("SessionInfo1", dce, pdu, iov, offset, ctr->session_info_1,
+                             PTR_UNIQUE, srvsvc_SESSION_INFO_1_carray_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+/*
+ * typedef struct _SESSION_INFO_2 {
+ *       [string] wchar_t *sesi2_cname;
+ *       [string] wchar_t *sesi2_username;
+ *       DWORD sesi2_num_opens;
+ *       DWORD sesi2_time;
+ *       DWORD sesi2_idle_time;
+ *       DWORD sesi2_user_flags;
+ *       [string] wchar_t *sesi2_cltype_name;
+ * } SESSION_INFO_2, *PSESSION_INFO_2, *LPSESSION_INFO_2;
+ */
+int
+srvsvc_SESSION_INFO_2_coder(char *name, struct dcerpc_context *dce,
+                            struct dcerpc_pdu *pdu,
+                            struct smb2_iovec *iov, int *offset,
+                            void *ptr)
+{
+        struct srvsvc_SESSION_INFO_2 *si = ptr;
+
+        if (dcerpc_ptr_coder("CName", dce, pdu, iov, offset, &si->cname,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("UserName", dce, pdu, iov, offset, &si->username,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("NumOpens", dce, pdu, iov, offset, &si->num_opens)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Time", dce, pdu, iov, offset, &si->time)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("IdleTime", dce, pdu, iov, offset, &si->idle_time)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("UserFlags", dce, pdu, iov, offset, &si->user_flags)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("ClTypeName", dce, pdu, iov, offset, &si->cltype_name,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        return 0;
+}
+
+int
+srvsvc_SESSION_INFO_2_STRUCT_coder(char *name, struct dcerpc_context *dce,
+                                   struct dcerpc_pdu *pdu,
+                                   struct smb2_iovec *iov, int *offset,
+                                   void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_SESSION_INFO_2_coder);
+}
+
+/*
+ *       [size_is(EntriesRead)] LPSESSION_INFO_2 Buffer;
+ */
+static int
+srvsvc_SESSION_INFO_2_carray_coder(char *name, struct dcerpc_context *dce,
+                                   struct dcerpc_pdu *pdu,
+                                   struct smb2_iovec *iov, int *offset,
+                                   void *ptr)
+{
+        return dcerpc_carray_coder("SessionInfo2", dce, pdu, iov, offset,
+                                   dcerpc_get_size_is(pdu), ptr,
+                                   sizeof(struct srvsvc_SESSION_INFO_2),
+                                   srvsvc_SESSION_INFO_2_STRUCT_coder);
+}
+
+/*
+ * typedef struct _SESSION_INFO_2_CONTAINER {
+ *       DWORD EntriesRead;
+ *       [size_is(EntriesRead)] LPSESSION_INFO_2 Buffer;
+ * } SESSION_INFO_2_CONTAINER;
+ */
+int
+srvsvc_SESSION_INFO_2_CONTAINER_coder(char *name, struct dcerpc_context *dce,
+                                      struct dcerpc_pdu *pdu,
+                                      struct smb2_iovec *iov, int *offset,
+                                      void *ptr)
+{
+        struct srvsvc_SESSION_INFO_2_CONTAINER *ctr = ptr;
+
+        if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &ctr->EntriesRead)) {
+                return -1;
+        }
+        if (ctr->EntriesRead) {
+                dcerpc_set_size_is(pdu, ctr->EntriesRead);
+        }
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && ctr->EntriesRead) {
+                if (ctr->session_info_2 == NULL) {
+                        size_t esize = sizeof(struct srvsvc_SESSION_INFO_2);
+
+                        if (ctr->EntriesRead > SIZE_MAX / esize) {
+                                return -1;
+                        }
+                        ctr->session_info_2 = smb2_alloc_data(
+                                dcerpc_get_smb2_context(dce),
+                                dcerpc_get_pdu_payload(pdu),
+                                (size_t)ctr->EntriesRead * esize);
+                        if (ctr->session_info_2 == NULL) {
+                                return -1;
+                        }
+                }
+        }
+        if (dcerpc_ptr_coder("SessionInfo2", dce, pdu, iov, offset, ctr->session_info_2,
+                             PTR_UNIQUE, srvsvc_SESSION_INFO_2_carray_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+/*
+ * typedef struct _SESSION_INFO_10 {
+ *       [string] wchar_t *sesi10_cname;
+ *       [string] wchar_t *sesi10_username;
+ *       DWORD sesi10_time;
+ *       DWORD sesi10_idle_time;
+ * } SESSION_INFO_10, *PSESSION_INFO_10, *LPSESSION_INFO_10;
+ */
+int
+srvsvc_SESSION_INFO_10_coder(char *name, struct dcerpc_context *dce,
+                             struct dcerpc_pdu *pdu,
+                             struct smb2_iovec *iov, int *offset,
+                             void *ptr)
+{
+        struct srvsvc_SESSION_INFO_10 *si = ptr;
+
+        if (dcerpc_ptr_coder("CName", dce, pdu, iov, offset, &si->cname,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("UserName", dce, pdu, iov, offset, &si->username,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Time", dce, pdu, iov, offset, &si->time)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("IdleTime", dce, pdu, iov, offset, &si->idle_time)) {
+                return -1;
+        }
+        return 0;
+}
+
+int
+srvsvc_SESSION_INFO_10_STRUCT_coder(char *name, struct dcerpc_context *dce,
+                                    struct dcerpc_pdu *pdu,
+                                    struct smb2_iovec *iov, int *offset,
+                                    void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_SESSION_INFO_10_coder);
+}
+
+/*
+ *       [size_is(EntriesRead)] LPSESSION_INFO_10 Buffer;
+ */
+static int
+srvsvc_SESSION_INFO_10_carray_coder(char *name, struct dcerpc_context *dce,
+                                    struct dcerpc_pdu *pdu,
+                                    struct smb2_iovec *iov, int *offset,
+                                    void *ptr)
+{
+        return dcerpc_carray_coder("SessionInfo10", dce, pdu, iov, offset,
+                                   dcerpc_get_size_is(pdu), ptr,
+                                   sizeof(struct srvsvc_SESSION_INFO_10),
+                                   srvsvc_SESSION_INFO_10_STRUCT_coder);
+}
+
+/*
+ * typedef struct _SESSION_INFO_10_CONTAINER {
+ *       DWORD EntriesRead;
+ *       [size_is(EntriesRead)] LPSESSION_INFO_10 Buffer;
+ * } SESSION_INFO_10_CONTAINER;
+ */
+int
+srvsvc_SESSION_INFO_10_CONTAINER_coder(char *name, struct dcerpc_context *dce,
+                                       struct dcerpc_pdu *pdu,
+                                       struct smb2_iovec *iov, int *offset,
+                                       void *ptr)
+{
+        struct srvsvc_SESSION_INFO_10_CONTAINER *ctr = ptr;
+
+        if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &ctr->EntriesRead)) {
+                return -1;
+        }
+        if (ctr->EntriesRead) {
+                dcerpc_set_size_is(pdu, ctr->EntriesRead);
+        }
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && ctr->EntriesRead) {
+                if (ctr->session_info_10 == NULL) {
+                        size_t esize = sizeof(struct srvsvc_SESSION_INFO_10);
+
+                        if (ctr->EntriesRead > SIZE_MAX / esize) {
+                                return -1;
+                        }
+                        ctr->session_info_10 = smb2_alloc_data(
+                                dcerpc_get_smb2_context(dce),
+                                dcerpc_get_pdu_payload(pdu),
+                                (size_t)ctr->EntriesRead * esize);
+                        if (ctr->session_info_10 == NULL) {
+                                return -1;
+                        }
+                }
+        }
+        if (dcerpc_ptr_coder("SessionInfo10", dce, pdu, iov, offset, ctr->session_info_10,
+                             PTR_UNIQUE, srvsvc_SESSION_INFO_10_carray_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+/*
+ * typedef struct _SESSION_INFO_502 {
+ *       [string] wchar_t *sesi502_cname;
+ *       [string] wchar_t *sesi502_username;
+ *       DWORD sesi502_num_opens;
+ *       DWORD sesi502_time;
+ *       DWORD sesi502_idle_time;
+ *       DWORD sesi502_user_flags;
+ *       [string] wchar_t *sesi502_cltype_name;
+ *       [string] wchar_t *sesi502_transport;
+ * } SESSION_INFO_502, *PSESSION_INFO_502, *LPSESSION_INFO_502;
+ */
+int
+srvsvc_SESSION_INFO_502_coder(char *name, struct dcerpc_context *dce,
+                              struct dcerpc_pdu *pdu,
+                              struct smb2_iovec *iov, int *offset,
+                              void *ptr)
+{
+        struct srvsvc_SESSION_INFO_502 *si = ptr;
+
+        if (dcerpc_ptr_coder("CName", dce, pdu, iov, offset, &si->cname,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("UserName", dce, pdu, iov, offset, &si->username,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("NumOpens", dce, pdu, iov, offset, &si->num_opens)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Time", dce, pdu, iov, offset, &si->time)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("IdleTime", dce, pdu, iov, offset, &si->idle_time)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("UserFlags", dce, pdu, iov, offset, &si->user_flags)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("ClTypeName", dce, pdu, iov, offset, &si->cltype_name,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("Transport", dce, pdu, iov, offset, &si->transport,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        return 0;
+}
+
+int
+srvsvc_SESSION_INFO_502_STRUCT_coder(char *name, struct dcerpc_context *dce,
+                                     struct dcerpc_pdu *pdu,
+                                     struct smb2_iovec *iov, int *offset,
+                                     void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_SESSION_INFO_502_coder);
+}
+
+/*
+ *       [size_is(EntriesRead)] LPSESSION_INFO_502 Buffer;
+ */
+static int
+srvsvc_SESSION_INFO_502_carray_coder(char *name, struct dcerpc_context *dce,
+                                     struct dcerpc_pdu *pdu,
+                                     struct smb2_iovec *iov, int *offset,
+                                     void *ptr)
+{
+        return dcerpc_carray_coder("SessionInfo502", dce, pdu, iov, offset,
+                                   dcerpc_get_size_is(pdu), ptr,
+                                   sizeof(struct srvsvc_SESSION_INFO_502),
+                                   srvsvc_SESSION_INFO_502_STRUCT_coder);
+}
+
+/*
+ * typedef struct _SESSION_INFO_502_CONTAINER {
+ *       DWORD EntriesRead;
+ *       [size_is(EntriesRead)] LPSESSION_INFO_502 Buffer;
+ * } SESSION_INFO_502_CONTAINER;
+ */
+int
+srvsvc_SESSION_INFO_502_CONTAINER_coder(char *name, struct dcerpc_context *dce,
+                                        struct dcerpc_pdu *pdu,
+                                        struct smb2_iovec *iov, int *offset,
+                                        void *ptr)
+{
+        struct srvsvc_SESSION_INFO_502_CONTAINER *ctr = ptr;
+
+        if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &ctr->EntriesRead)) {
+                return -1;
+        }
+        if (ctr->EntriesRead) {
+                dcerpc_set_size_is(pdu, ctr->EntriesRead);
+        }
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && ctr->EntriesRead) {
+                if (ctr->session_info_502 == NULL) {
+                        size_t esize = sizeof(struct srvsvc_SESSION_INFO_502);
+
+                        if (ctr->EntriesRead > SIZE_MAX / esize) {
+                                return -1;
+                        }
+                        ctr->session_info_502 = smb2_alloc_data(
+                                dcerpc_get_smb2_context(dce),
+                                dcerpc_get_pdu_payload(pdu),
+                                (size_t)ctr->EntriesRead * esize);
+                        if (ctr->session_info_502 == NULL) {
+                                return -1;
+                        }
+                }
+        }
+        if (dcerpc_ptr_coder("SessionInfo502", dce, pdu, iov, offset, ctr->session_info_502,
+                             PTR_UNIQUE, srvsvc_SESSION_INFO_502_carray_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+/*
+ * typedef [switch_type(DWORD)] union _SESSION_ENUM_UNION {
+ * [case(0)] SESSION_INFO_0_CONTAINER* Level0;
+ * [case(1)] SESSION_INFO_1_CONTAINER* Level1;
+ * [case(2)] SESSION_INFO_2_CONTAINER* Level2;
+ * [case(10)] SESSION_INFO_10_CONTAINER* Level10;
+ * [case(502)] SESSION_INFO_502_CONTAINER* Level502;
+ * } SESSION_ENUM_UNION;
+ */
+static int
+srvsvc_SESSION_ENUM_UNION_coder(char *name, struct dcerpc_context *dce,
+                                struct dcerpc_pdu *pdu,
+                                struct smb2_iovec *iov, int *offset,
+                                void *ptr)
+{
+        union srvsvc_SESSION_ENUM_UNION *info = ptr;
+
+        switch (dcerpc_get_switch_is(pdu)) {
+        case 0:
+                if (dcerpc_ptr_coder("SessionInfo0Container", dce, pdu, iov, offset, &info->Level0,
+                                     PTR_UNIQUE, srvsvc_SESSION_INFO_0_CONTAINER_coder)) {
+                        return -1;
+                }
+                break;
+        case 1:
+                if (dcerpc_ptr_coder("SessionInfo1Container", dce, pdu, iov, offset, &info->Level1,
+                                     PTR_UNIQUE, srvsvc_SESSION_INFO_1_CONTAINER_coder)) {
+                        return -1;
+                }
+                break;
+        case 2:
+                if (dcerpc_ptr_coder("SessionInfo2Container", dce, pdu, iov, offset, &info->Level2,
+                                     PTR_UNIQUE, srvsvc_SESSION_INFO_2_CONTAINER_coder)) {
+                        return -1;
+                }
+                break;
+        case 10:
+                if (dcerpc_ptr_coder("SessionInfo10Container", dce, pdu, iov, offset, &info->Level10,
+                                     PTR_UNIQUE, srvsvc_SESSION_INFO_10_CONTAINER_coder)) {
+                        return -1;
+                }
+                break;
+        case 502:
+                if (dcerpc_ptr_coder("SessionInfo502Container", dce, pdu, iov, offset, &info->Level502,
+                                     PTR_UNIQUE, srvsvc_SESSION_INFO_502_CONTAINER_coder)) {
+                        return -1;
+                }
+                break;
+        default:
+                /*
+                 * During the NDR conformance pass the discriminant is not
+                 * read yet (switch_is stays 0). Levels include non-zero
+                 * values (10, 502), so tolerate unknown switch on the CR pass.
+                 */
+                if (dcerpc_get_cr(pdu)) {
+                        return 0;
+                }
+                return -1;
+        };
+
+        return 0;
+}
+
+/*
+ * typedef struct _SESSION_ENUM_STRUCT {
+ *       DWORD Level;
+ *       [switch_is(Level)] SESSION_ENUM_UNION SessionInfo;
+ * } SESSION_ENUM_STRUCT, *PSESSION_ENUM_STRUCT, *LPSESSION_ENUM_STRUCT;
+ */
+int
+srvsvc_SESSION_ENUM_STRUCT_coder(char *name, struct dcerpc_context *dce,
+                                 struct dcerpc_pdu *pdu,
+                                 struct smb2_iovec *iov, int *offset,
+                                 void *ptr)
+{
+        struct srvsvc_SESSION_ENUM_STRUCT *ses = ptr;
+
+        if (dcerpc_uint32_coder("Level", dce, pdu, iov, offset, &ses->Level)) {
+                return -1;
+        }
+
+        if (dcerpc_union_coder("SessionInfo", dce, pdu, iov, offset,
+                               &ses->Level, &ses->SessionInfo,
+                               srvsvc_SESSION_ENUM_UNION_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_SESSION_ENUM_STRUCT_struct_coder(char *name, struct dcerpc_context *dce,
+                                        struct dcerpc_pdu *pdu,
+                                        struct smb2_iovec *iov, int *offset,
+                                        void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_SESSION_ENUM_STRUCT_coder);
+}
+
+/*****************
+ * Function: 0x0c
+ * NET_API_STATUS NetrSessionEnum (
+ *   [in,string,unique] SRVSVC_HANDLE ServerName,
+ *   [in,string,unique] WCHAR * ClientName,
+ *   [in,string,unique] WCHAR * UserName,
+ *   [in,out] PSESSION_ENUM_STRUCT InfoStruct,
+ *   [in] DWORD PreferedMaximumLength,
+ *   [out] DWORD * TotalEntries,
+ *   [in,out,unique] DWORD * ResumeHandle
+ * );
+ */
+int
+srvsvc_NetrSessionEnum_req_coder(char *name, struct dcerpc_context *dce,
+                                 struct dcerpc_pdu *pdu,
+                                 struct smb2_iovec *iov, int *offset,
+                                 void *ptr)
+{
+        struct srvsvc_NetrSessionEnum_req *req = ptr;
+        void *clientname_ptr = &req->ClientName;
+        void *username_ptr = &req->UserName;
+
+        if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        /*
+         * ClientName/UserName are [unique]. On encode, a NULL char* must be
+         * sent as a null referent (not an empty string). On decode, always
+         * pass the address of the char* so a non-null referent can be stored.
+         */
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
+                if (req->ClientName == NULL) {
+                        clientname_ptr = NULL;
+                }
+                if (req->UserName == NULL) {
+                        username_ptr = NULL;
+                }
+        }
+        if (dcerpc_ptr_coder("ClientName", dce, pdu, iov, offset, clientname_ptr,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("UserName", dce, pdu, iov, offset, username_ptr,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("InfoStruct", dce, pdu, iov, offset, &req->ses,
+                             PTR_REF, srvsvc_SESSION_ENUM_STRUCT_struct_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("PreferedMaximumLength", dce, pdu, iov, offset, &req->PreferedMaximumLength,
+                             PTR_REF, dcerpc_uint32_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("ResumeHandle", dce, pdu, iov, offset, &req->ResumeHandle,
+                             PTR_UNIQUE, dcerpc_uint32_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_NetrSessionEnum_rep_coder(char *name, struct dcerpc_context *dce,
+                                 struct dcerpc_pdu *pdu,
+                                 struct smb2_iovec *iov, int *offset,
+                                 void *ptr)
+{
+        struct srvsvc_NetrSessionEnum_rep *rep = ptr;
+
+        if (dcerpc_ptr_coder("InfoStruct", dce, pdu, iov, offset, &rep->ses,
+                             PTR_REF, srvsvc_SESSION_ENUM_STRUCT_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("TotalEntries", dce, pdu, iov, offset, &rep->total_entries,
+                             PTR_REF, dcerpc_uint32_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("ResumeHandle", dce, pdu, iov, offset, &rep->resume_handle,
+                             PTR_UNIQUE, dcerpc_uint32_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+/*****************
+ * Function: 0x0d
+ * NET_API_STATUS NetrSessionDel (
+ *   [in,string,unique] SRVSVC_HANDLE ServerName,
+ *   [in,string,unique] WCHAR * ClientName,
+ *   [in,string,unique] WCHAR * UserName
+ * );
+ */
+int
+srvsvc_NetrSessionDel_req_coder(char *name, struct dcerpc_context *dce,
+                                struct dcerpc_pdu *pdu,
+                                struct smb2_iovec *iov, int *offset,
+                                void *ptr)
+{
+        struct srvsvc_NetrSessionDel_req *req = ptr;
+        void *clientname_ptr = &req->ClientName;
+        void *username_ptr = &req->UserName;
+
+        if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        /*
+         * ClientName/UserName are [unique]. On encode, a NULL char* must be
+         * sent as a null referent (not an empty string). On decode, always
+         * pass the address of the char* so a non-null referent can be stored.
+         */
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
+                if (req->ClientName == NULL) {
+                        clientname_ptr = NULL;
+                }
+                if (req->UserName == NULL) {
+                        username_ptr = NULL;
+                }
+        }
+        if (dcerpc_ptr_coder("ClientName", dce, pdu, iov, offset, clientname_ptr,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("UserName", dce, pdu, iov, offset, username_ptr,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_NetrSessionDel_rep_coder(char *name, struct dcerpc_context *dce,
+                                struct dcerpc_pdu *pdu,
+                                struct smb2_iovec *iov, int *offset,
+                                void *ptr)
+{
+        struct srvsvc_NetrSessionDel_rep *rep = ptr;
+
+        if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
+                return -1;
+        }
+
+        return 0;
+}
+
 /*****************
  * Function: 0x0e
  * NET_API_STATUS NetrShareAdd (
@@ -2453,6 +3241,14 @@ struct dcerpc_procedure srvsvc_procs[] = {
         {SRVSVC_NETRFILECLOSE, "NetrFileClose",
          srvsvc_NetrFileClose_req_coder, sizeof(struct srvsvc_NetrFileClose_req),
          srvsvc_NetrFileClose_rep_coder, sizeof(struct srvsvc_NetrFileClose_rep),
+        },
+        {SRVSVC_NETRSESSIONENUM, "NetrSessionEnum",
+         srvsvc_NetrSessionEnum_req_coder, sizeof(struct srvsvc_NetrSessionEnum_req),
+         srvsvc_NetrSessionEnum_rep_coder, sizeof(struct srvsvc_NetrSessionEnum_rep),
+        },
+        {SRVSVC_NETRSESSIONDEL, "NetrSessionDel",
+         srvsvc_NetrSessionDel_req_coder, sizeof(struct srvsvc_NetrSessionDel_req),
+         srvsvc_NetrSessionDel_rep_coder, sizeof(struct srvsvc_NetrSessionDel_rep),
         },
         {SRVSVC_NETRSHAREADD, "NetrShareAdd",
          srvsvc_NetrShareAdd_req_coder, sizeof(struct srvsvc_NetrShareAdd_req),
