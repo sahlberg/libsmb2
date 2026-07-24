@@ -616,6 +616,234 @@ lsa_LookupSids2_rep_coder(char *name, struct dcerpc_context *dce,
         return 0;
 }
 
+/*
+ * typedef struct _LSAPR_TRANSLATED_SID_EX {
+ *   SID_NAME_USE Use;
+ *   unsigned long RelativeId;
+ *   long DomainIndex;
+ *   unsigned long Flags;
+ * } LSAPR_TRANSLATED_SID_EX;
+ */
+static int
+lsa_TRANSLATED_SID_EX_coder(char *name, struct dcerpc_context *dce,
+                            struct dcerpc_pdu *pdu,
+                            struct smb2_iovec *iov, int *offset,
+                            void *ptr)
+{
+        LSAPR_TRANSLATED_SID_EX *ts = ptr;
+
+        if (dcerpc_uint32_coder("Use", dce, pdu, iov, offset, &ts->Use)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("RelativeId", dce, pdu, iov, offset, &ts->RelativeId)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("DomainIndex", dce, pdu, iov, offset, &ts->DomainIndex)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Flags", dce, pdu, iov, offset, &ts->Flags)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+static int
+TRANSLATED_SID_EX_array_coder(char *name, struct dcerpc_context *dce,
+                              struct dcerpc_pdu *pdu,
+                              struct smb2_iovec *iov, int *offset,
+                              void *ptr)
+{
+        LSAPR_TRANSLATED_SIDS_EX *ts = ptr;
+
+        return dcerpc_carray_coder("TranslatedSidEx", dce, pdu, iov, offset,
+                                   dcerpc_get_size_is(pdu), &ts->Sids[0],
+                                   sizeof(LSAPR_TRANSLATED_SID_EX),
+                                   lsa_TRANSLATED_SID_EX_coder);
+}
+
+/*
+ * typedef struct _LSAPR_TRANSLATED_SIDS_EX {
+ *   [range(0,1000)] unsigned long Entries;
+ *   [size_is(Entries)] PLSAPR_TRANSLATED_SID_EX Sids;
+ * } LSAPR_TRANSLATED_SIDS_EX;
+ */
+static int
+lsa_TRANSLATED_SIDS_EX_coder(char *name, struct dcerpc_context *dce,
+                             struct dcerpc_pdu *pdu,
+                             struct smb2_iovec *iov, int *offset,
+                             void *ptr)
+{
+        LSAPR_TRANSLATED_SIDS_EX *ts = ptr;
+        uint32_t val;
+
+        val = ts->Entries;
+        if (dcerpc_uint32_coder("Entries", dce, pdu, iov, offset, &val)) {
+                return -1;
+        }
+        ts->Entries = val;
+        dcerpc_set_size_is(pdu, ts->Entries);
+
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && ts->Entries) {
+                ts->Sids = smb2_alloc_data(dcerpc_get_smb2_context(dce),
+                                           dcerpc_get_pdu_payload(pdu),
+                                           ts->Entries * sizeof(LSAPR_TRANSLATED_SID_EX));
+                if (ts->Sids == NULL) {
+                        return -1;
+                }
+        }
+
+        /* Field name matches carray name (same pattern as TranslatedNameEx). */
+        if (dcerpc_ptr_coder("TranslatedSidEx", dce, pdu, iov, offset, ptr,
+                             PTR_UNIQUE, TRANSLATED_SID_EX_array_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+/*
+ * Array element: RPC_UNICODE_STRING viewed as char *.
+ * ptr is &Names[i] (char **).
+ */
+static int
+lsa_NAME_STRING_coder(char *name, struct dcerpc_context *dce,
+                      struct dcerpc_pdu *pdu,
+                      struct smb2_iovec *iov, int *offset,
+                      void *ptr)
+{
+        return lsa_RPC_UNICODE_STRING_coder("Name", dce, pdu, iov, offset, ptr);
+}
+
+/*
+ * Top-level [size_is(Count)] array of RPC_UNICODE_STRING.
+ * Encoded via PTR_REF so unique string buffers are deferred correctly
+ * (top_level forced to 0 for the array body, then pointees flushed).
+ */
+static int
+lsa_NAMES_array_coder(char *name, struct dcerpc_context *dce,
+                      struct dcerpc_pdu *pdu,
+                      struct smb2_iovec *iov, int *offset,
+                      void *ptr)
+{
+        return dcerpc_carray_coder("Names", dce, pdu, iov, offset,
+                                   dcerpc_get_size_is(pdu), ptr,
+                                   sizeof(char *),
+                                   lsa_NAME_STRING_coder);
+}
+
+/**********************
+ * Function:     0x3a
+ * NTSTATUS LsarLookupNames2(
+ *       [in] dcerpc_context_handle PolicyHandle,
+ *       [in, range(0,1000)] unsigned long Count,
+ *       [in, size_is(Count)] PRPC_UNICODE_STRING Names,
+ *       [out] PLSAPR_REFERENCED_DOMAIN_LIST* ReferencedDomains,
+ *       [in, out] PLSAPR_TRANSLATED_SIDS_EX TranslatedSids,
+ *       [in] LSAP_LOOKUP_LEVEL LookupLevel,
+ *       [in, out] unsigned long* MappedCount,
+ *       [in] unsigned long LookupOptions,
+ *       [in] unsigned long ClientRevision
+ *       );
+ *******************/
+int
+lsa_LookupNames2_req_coder(char *name, struct dcerpc_context *dce,
+                           struct dcerpc_pdu *pdu,
+                           struct smb2_iovec *iov, int *offset,
+                           void *ptr)
+{
+        struct lsa_lookupnames2_req *req = (struct lsa_lookupnames2_req *)ptr;
+        uint32_t val;
+        void *names_ptr;
+
+        if (dcerpc_ptr_coder("PolicyHandle", dce, pdu, iov, offset, &req->PolicyHandle,
+                             PTR_REF, dcerpc_context_handle_coder)) {
+                return -1;
+        }
+
+        val = req->Count;
+        if (dcerpc_uint32_coder("Count", dce, pdu, iov, offset, &val)) {
+                return -1;
+        }
+        req->Count = val;
+        dcerpc_set_size_is(pdu, req->Count);
+
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && req->Count) {
+                if (req->Names == NULL) {
+                        req->Names = smb2_alloc_data(
+                                dcerpc_get_smb2_context(dce),
+                                dcerpc_get_pdu_payload(pdu),
+                                (size_t)req->Count * sizeof(char *));
+                        if (req->Names == NULL) {
+                                return -1;
+                        }
+                }
+        }
+
+        /*
+         * Top-level conformant array: use PTR_REF so pointees are deferred
+         * after the array fixed part (same as other top-level [in] arrays).
+         * When Count is 0, pass a non-NULL dummy base; carray does not
+         * dereference elements when size_is is 0.
+         */
+        names_ptr = req->Names;
+        if (names_ptr == NULL) {
+                names_ptr = &req->Names;
+        }
+        if (dcerpc_ptr_coder("Names", dce, pdu, iov, offset, names_ptr,
+                             PTR_REF, lsa_NAMES_array_coder)) {
+                return -1;
+        }
+
+        if (dcerpc_ptr_coder("TranslatedSids", dce, pdu, iov, offset, &req->TranslatedSids,
+                             PTR_REF, lsa_TRANSLATED_SIDS_EX_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("LookupLevel", dce, pdu, iov, offset, &req->LookupLevel)) {
+                return -1;
+        }
+
+        val = 0;
+        if (dcerpc_uint32_coder("MappedCount", dce, pdu, iov, offset, &val)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("LookupOptions", dce, pdu, iov, offset, &val)) {
+                return -1;
+        }
+        val = 2;
+        if (dcerpc_uint32_coder("ClientRevision", dce, pdu, iov, offset, &val)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+lsa_LookupNames2_rep_coder(char *name, struct dcerpc_context *dce,
+                           struct dcerpc_pdu *pdu,
+                           struct smb2_iovec *iov, int *offset,
+                           void *ptr)
+{
+        struct lsa_lookupnames2_rep *rep = ptr;
+
+        if (dcerpc_ptr_coder("ReferencedDomainList", dce, pdu, iov, offset, &rep->ReferencedDomains,
+                             PTR_UNIQUE, lsa_REFERENCED_DOMAIN_LIST_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("TranslatedSids", dce, pdu, iov, offset, &rep->TranslatedSids,
+                             PTR_REF, lsa_TRANSLATED_SIDS_EX_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("MappedCount", dce, pdu, iov, offset, &rep->MappedCount)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
+                return -1;
+        }
+
+        return 0;
+}
+
 struct dcerpc_procedure lsa_procs[] = {
         {LSA_CLOSE, "Close",
          lsa_Close_req_coder, sizeof(struct lsa_close_req),
@@ -628,6 +856,10 @@ struct dcerpc_procedure lsa_procs[] = {
         {LSA_LOOKUPSIDS2, "LookupSids2",
          lsa_LookupSids2_req_coder, sizeof(struct lsa_lookupsids2_req),
          lsa_LookupSids2_rep_coder, sizeof(struct lsa_lookupsids2_rep),
+        },
+        {LSA_LOOKUPNAMES2, "LookupNames2",
+         lsa_LookupNames2_req_coder, sizeof(struct lsa_lookupnames2_req),
+         lsa_LookupNames2_rep_coder, sizeof(struct lsa_lookupnames2_rep),
         },
         {-1, NULL, NULL, 0, NULL, 0}
 };

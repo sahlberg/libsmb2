@@ -28,6 +28,7 @@ extern "C" {
 #define LSA_CLOSE          0x00
 #define LSA_OPENPOLICY2    0x2c
 #define LSA_LOOKUPSIDS2    0x39
+#define LSA_LOOKUPNAMES2   0x3a
 
 /* Access Mask. LSA specific flags. */
 #define POLICY_VIEW_LOCAL_INFORMATION    0x00000001
@@ -140,6 +141,61 @@ struct lsa_lookupsids2_rep {
         uint32_t MappedCount;
 };
 
+/*
+ * typedef struct _LSAPR_TRANSLATED_SID_EX {
+ *   SID_NAME_USE Use;
+ *   unsigned long RelativeId;
+ *   long DomainIndex;
+ *   unsigned long Flags;
+ * } LSAPR_TRANSLATED_SID_EX;
+ */
+typedef struct _LSAPR_TRANSLATED_SID_EX {
+        uint32_t Use;
+        uint32_t RelativeId;
+        uint32_t DomainIndex;
+        uint32_t Flags;
+} LSAPR_TRANSLATED_SID_EX, *PLSAPR_TRANSLATED_SID_EX;
+
+/*
+ * typedef struct _LSAPR_TRANSLATED_SIDS_EX {
+ *   [range(0,1000)] unsigned long Entries;
+ *   [size_is(Entries)] PLSAPR_TRANSLATED_SID_EX Sids;
+ * } LSAPR_TRANSLATED_SIDS_EX;
+ */
+typedef struct _LSAPR_TRANSLATED_SIDS_EX {
+        uint32_t Entries;
+        LSAPR_TRANSLATED_SID_EX *Sids;
+} LSAPR_TRANSLATED_SIDS_EX, *PLSAPR_TRANSLATED_SIDS_EX;
+
+/*
+ * NTSTATUS LsarLookupNames2(
+ *   [in] LSAPR_HANDLE PolicyHandle,
+ *   [in, range(0,1000)] unsigned long Count,
+ *   [in, size_is(Count)] PRPC_UNICODE_STRING Names,
+ *   [out] PLSAPR_REFERENCED_DOMAIN_LIST* ReferencedDomains,
+ *   [in, out] PLSAPR_TRANSLATED_SIDS_EX TranslatedSids,
+ *   [in] LSAP_LOOKUP_LEVEL LookupLevel,
+ *   [in, out] unsigned long* MappedCount,
+ *   [in] unsigned long LookupOptions,
+ *   [in] unsigned long ClientRevision
+ * );
+ */
+struct lsa_lookupnames2_req {
+        struct dcerpc_context_handle PolicyHandle;
+        uint32_t Count;
+        char **Names;
+        LSAPR_TRANSLATED_SIDS_EX TranslatedSids;
+        uint32_t LookupLevel;
+};
+
+struct lsa_lookupnames2_rep {
+        uint32_t status;
+
+        LSAPR_REFERENCED_DOMAIN_LIST ReferencedDomains;
+        LSAPR_TRANSLATED_SIDS_EX TranslatedSids;
+        uint32_t MappedCount;
+};
+
 int lsa_Close_rep_coder(char *name, struct dcerpc_context *dce,
                         struct dcerpc_pdu *pdu,
                         struct smb2_iovec *iov, int *offset,
@@ -156,6 +212,14 @@ int lsa_LookupSids2_req_coder(char *name, struct dcerpc_context *dce,
                               struct dcerpc_pdu *pdu,
                               struct smb2_iovec *iov, int *offset,
                               void *ptr);
+int lsa_LookupNames2_rep_coder(char *name, struct dcerpc_context *dce,
+                               struct dcerpc_pdu *pdu,
+                               struct smb2_iovec *iov, int *offset,
+                               void *ptr);
+int lsa_LookupNames2_req_coder(char *name, struct dcerpc_context *dce,
+                               struct dcerpc_pdu *pdu,
+                               struct smb2_iovec *iov, int *offset,
+                               void *ptr);
 int lsa_OpenPolicy2_rep_coder(char *name, struct dcerpc_context *dce,
                               struct dcerpc_pdu *pdu,
                               struct smb2_iovec *iov, int *offset,
