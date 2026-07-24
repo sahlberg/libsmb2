@@ -13,6 +13,7 @@ if(ESP_PLATFORM)
     dcerpc.c
     dcerpc-lsa.c
     dcerpc-srvsvc.c
+    dcerpc-wkssvc.c
     errors.c
     init.c
     hmac.c
@@ -78,6 +79,7 @@ elseif(IOP AND BUILD_IRX)
             dcerpc.c
             dcerpc-lsa.c
             dcerpc-srvsvc.c
+            dcerpc-wkssvc.c
             errors.c
             hmac.c
             hmac-md5.c
@@ -137,6 +139,7 @@ else()
             dcerpc.c
             dcerpc-lsa.c
             dcerpc-srvsvc.c
+            dcerpc-wkssvc.c
             errors.c
             hmac.c
             hmac-md5.c
@@ -190,6 +193,7 @@ set(SMB2_INCLUDE "${INCLUDE_PATH}/smb2")
 set(HEADERS
     ${SMB2_INCLUDE}/libsmb2-dcerpc-lsa.h
     ${SMB2_INCLUDE}/libsmb2-dcerpc-srvsvc.h
+    ${SMB2_INCLUDE}/libsmb2-dcerpc-wkssvc.h
     ${SMB2_INCLUDE}/libsmb2-dcerpc.h
     ${SMB2_INCLUDE}/libsmb2-raw.h
     ${SMB2_INCLUDE}/libsmb2.h

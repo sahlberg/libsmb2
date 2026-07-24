@@ -65,12 +65,15 @@
 #include "libsmb2.h"
 #include "libsmb2-dcerpc.h"
 #include "libsmb2-dcerpc-lsa.h"
+#include "libsmb2-dcerpc-srvsvc.h"
+#include "libsmb2-dcerpc-wkssvc.h"
 #include "libsmb2-raw.h"
 #include "libsmb2-private.h"
 
 struct dcerpc_service dcerpc_services[] = {
         {"srvsvc", &srvsvc_interface, srvsvc_procs},
         {"lsarpc", &lsa_interface, lsa_procs},
+        {"wkssvc", &wkssvc_interface, wkssvc_procs},
         {NULL, NULL}
 };
 

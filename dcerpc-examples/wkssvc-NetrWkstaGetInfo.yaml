@@ -1,0 +1,3 @@
+NetrWkstaGetInfo: Request
+  ServerName: \\WIN16-1
+  Level: 102

@@ -158,6 +158,7 @@ srvsvc_SHARE_INFO_1_coder
 srvsvc_SHARE_INFO_1_CONTAINER_coder
 NT_SID_AUTHORITY
 lsa_interface
+wkssvc_interface
 lsa_Close_rep_coder
 lsa_Close_req_coder
 lsa_LookupSids2_rep_coder

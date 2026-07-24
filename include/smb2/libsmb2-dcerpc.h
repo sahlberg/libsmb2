@@ -86,6 +86,7 @@ struct dcerpc_utf16 {
         
 extern p_syntax_id_t lsa_interface;
 extern p_syntax_id_t srvsvc_interface;
+extern p_syntax_id_t wkssvc_interface;
         
 typedef void (*dcerpc_cb)(struct dcerpc_context *dce, int status,
                           void *command_data, void *cb_data);

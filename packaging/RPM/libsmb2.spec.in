@@ -87,6 +87,7 @@ development libraries for LibSMB2
 %{_includedir}/smb2/libsmb2-dcerpc.h
 %{_includedir}/smb2/libsmb2-dcerpc-lsa.h
 %{_includedir}/smb2/libsmb2-dcerpc-srvsvc.h
+%{_includedir}/smb2/libsmb2-dcerpc-wkssvc.h
 %{_includedir}/smb2/smb2.h
 %{_includedir}/smb2/smb2-errors.h
 %{_libdir}/libsmb2.a

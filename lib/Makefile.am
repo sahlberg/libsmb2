@@ -20,6 +20,7 @@ libsmb2_la_SOURCES = \
 	dcerpc.c \
 	dcerpc-lsa.c \
 	dcerpc-srvsvc.c \
+	dcerpc-wkssvc.c \
 	errors.c \
 	init.c \
 	hmac.c \

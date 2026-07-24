@@ -4,6 +4,7 @@ dist_smb2_HEADERS = \
 	smb2/libsmb2-dcerpc.h \
 	smb2/libsmb2-dcerpc-lsa.h \
 	smb2/libsmb2-dcerpc-srvsvc.h \
+	smb2/libsmb2-dcerpc-wkssvc.h \
 	smb2/libsmb2-raw.h \
 	smb2/smb2.h \
 	smb2/smb2-errors.h
