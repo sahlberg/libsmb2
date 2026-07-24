@@ -42,6 +42,7 @@ extern "C" {
 #define SRVSVC_NETRSERVERSETINFO  0x16
 #define SRVSVC_NETRSERVERDISKENUM     0x17
 #define SRVSVC_NETRSERVERSTATISTICSGET 0x18
+#define SRVSVC_NETRREMOTETOD           0x1c
 
 struct dcerpc_context;
 struct dcerpc_pdu;
@@ -740,6 +741,38 @@ struct srvsvc_NetrServerStatisticsGet_rep {
 };
 
 /*
+ * TIME_OF_DAY_INFO / NetrRemoteTOD
+ */
+struct srvsvc_TIME_OF_DAY_INFO {
+        uint32_t elapsedt;
+        uint32_t msecs;
+        uint32_t hours;
+        uint32_t mins;
+        uint32_t secs;
+        uint32_t hunds;
+        int32_t timezone;       /* minutes from UTC (signed) */
+        uint32_t tinterval;
+        uint32_t day;
+        uint32_t month;
+        uint32_t year;
+        uint32_t weekday;
+};
+int srvsvc_TIME_OF_DAY_INFO_coder(char *name, struct dcerpc_context *ctx,
+                                  struct dcerpc_pdu *pdu,
+                                  struct smb2_iovec *iov, int *offset,
+                                  void *ptr);
+
+struct srvsvc_NetrRemoteTOD_req {
+        char *ServerName;
+};
+
+struct srvsvc_NetrRemoteTOD_rep {
+        struct srvsvc_TIME_OF_DAY_INFO BufferPtr;
+
+        uint32_t status;
+};
+
+/*
  * Async share_enum()
  * This function only works when connected to the IPC$ share.
  *
@@ -880,6 +913,14 @@ int srvsvc_NetrServerStatisticsGet_rep_coder(char *name, struct dcerpc_context *
                                               struct dcerpc_pdu *pdu,
                                               struct smb2_iovec *iov, int *offset,
                                               void *ptr);
+int srvsvc_NetrRemoteTOD_req_coder(char *name, struct dcerpc_context *ctx,
+                                    struct dcerpc_pdu *pdu,
+                                    struct smb2_iovec *iov, int *offset,
+                                    void *ptr);
+int srvsvc_NetrRemoteTOD_rep_coder(char *name, struct dcerpc_context *ctx,
+                                    struct dcerpc_pdu *pdu,
+                                    struct smb2_iovec *iov, int *offset,
+                                    void *ptr);
 
 extern struct dcerpc_procedure srvsvc_procs[];
         

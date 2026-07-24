@@ -3750,6 +3750,128 @@ srvsvc_NetrServerStatisticsGet_rep_coder(char *name, struct dcerpc_context *dce,
         return 0;
 }
 
+/*
+ * typedef struct _TIME_OF_DAY_INFO {
+ *   DWORD tod_elapsedt;
+ *   DWORD tod_msecs;
+ *   DWORD tod_hours;
+ *   DWORD tod_mins;
+ *   DWORD tod_secs;
+ *   DWORD tod_hunds;
+ *   long  tod_timezone;
+ *   DWORD tod_tinterval;
+ *   DWORD tod_day;
+ *   DWORD tod_month;
+ *   DWORD tod_year;
+ *   DWORD tod_weekday;
+ * } TIME_OF_DAY_INFO, *PTIME_OF_DAY_INFO, *LPTIME_OF_DAY_INFO;
+ */
+int
+srvsvc_TIME_OF_DAY_INFO_coder(char *name, struct dcerpc_context *dce,
+                              struct dcerpc_pdu *pdu,
+                              struct smb2_iovec *iov, int *offset,
+                              void *ptr)
+{
+        struct srvsvc_TIME_OF_DAY_INFO *tod = ptr;
+        uint32_t timezone = 0;
+
+        if (dcerpc_uint32_coder("Elapsedt", dce, pdu, iov, offset, &tod->elapsedt)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Msecs", dce, pdu, iov, offset, &tod->msecs)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Hours", dce, pdu, iov, offset, &tod->hours)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Mins", dce, pdu, iov, offset, &tod->mins)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Secs", dce, pdu, iov, offset, &tod->secs)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Hunds", dce, pdu, iov, offset, &tod->hunds)) {
+                return -1;
+        }
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
+                timezone = (uint32_t)tod->timezone;
+        }
+        if (dcerpc_uint32_coder("Timezone", dce, pdu, iov, offset, &timezone)) {
+                return -1;
+        }
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && !dcerpc_get_cr(pdu)) {
+                tod->timezone = (int32_t)timezone;
+        }
+        if (dcerpc_uint32_coder("Tinterval", dce, pdu, iov, offset, &tod->tinterval)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Day", dce, pdu, iov, offset, &tod->day)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Month", dce, pdu, iov, offset, &tod->month)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Year", dce, pdu, iov, offset, &tod->year)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Weekday", dce, pdu, iov, offset, &tod->weekday)) {
+                return -1;
+        }
+        return 0;
+}
+
+int
+srvsvc_TIME_OF_DAY_INFO_STRUCT_coder(char *name, struct dcerpc_context *dce,
+                                     struct dcerpc_pdu *pdu,
+                                     struct smb2_iovec *iov, int *offset,
+                                     void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_TIME_OF_DAY_INFO_coder);
+}
+
+/*****************
+ * Function: 0x1c
+ * NET_API_STATUS NetrRemoteTOD (
+ *   [in,string,unique] SRVSVC_HANDLE ServerName,
+ *   [out] LPTIME_OF_DAY_INFO * BufferPtr
+ * );
+ */
+int
+srvsvc_NetrRemoteTOD_req_coder(char *name, struct dcerpc_context *dce,
+                               struct dcerpc_pdu *pdu,
+                               struct smb2_iovec *iov, int *offset,
+                               void *ptr)
+{
+        struct srvsvc_NetrRemoteTOD_req *req = ptr;
+
+        if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_NetrRemoteTOD_rep_coder(char *name, struct dcerpc_context *dce,
+                               struct dcerpc_pdu *pdu,
+                               struct smb2_iovec *iov, int *offset,
+                               void *ptr)
+{
+        struct srvsvc_NetrRemoteTOD_rep *rep = ptr;
+
+        if (dcerpc_ptr_coder("BufferPtr", dce, pdu, iov, offset, &rep->BufferPtr,
+                             PTR_UNIQUE, srvsvc_TIME_OF_DAY_INFO_STRUCT_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
+                return -1;
+        }
+
+        return 0;
+}
+
 
 struct dcerpc_procedure srvsvc_procs[] = {
         {SRVSVC_NETRCONNECTIONENUM, "NetrConnectionEnum",
@@ -3819,6 +3941,10 @@ struct dcerpc_procedure srvsvc_procs[] = {
         {SRVSVC_NETRSERVERSTATISTICSGET, "NetrServerStatisticsGet",
          srvsvc_NetrServerStatisticsGet_req_coder, sizeof(struct srvsvc_NetrServerStatisticsGet_req),
          srvsvc_NetrServerStatisticsGet_rep_coder, sizeof(struct srvsvc_NetrServerStatisticsGet_rep),
+        },
+        {SRVSVC_NETRREMOTETOD, "NetrRemoteTOD",
+         srvsvc_NetrRemoteTOD_req_coder, sizeof(struct srvsvc_NetrRemoteTOD_req),
+         srvsvc_NetrRemoteTOD_rep_coder, sizeof(struct srvsvc_NetrRemoteTOD_rep),
         },
         {-1, NULL, NULL, 0, NULL, 0}
 };
