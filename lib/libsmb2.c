@@ -1327,15 +1327,15 @@ smb2_open_async_pdu(struct smb2_context *smb2, const char *path, int flags,
                 SMB2_OPLOCK_LEVEL_NONE, 0, NULL,
                 cb, cb_data, free_cb, 1);
 }
-        
+
 int
 smb2_open_async_with_oplock_or_lease(struct smb2_context *smb2, const char *path, int flags,
                 uint8_t oplock_level, uint32_t lease_state, smb2_lease_key lease_key,
                 smb2_command_cb cb, void *cb_data)
-        
+
 {
         struct smb2_pdu *pdu;
-        
+
         pdu = _smb2_open_async_with_oplock_or_lease(smb2, path, flags,
                 oplock_level, lease_state, lease_key,
                 cb, cb_data, NULL, 0);
@@ -1347,7 +1347,7 @@ smb2_open_async(struct smb2_context *smb2, const char *path, int flags,
                 smb2_command_cb cb, void *cb_data)
 {
         struct smb2_pdu *pdu;
-        
+
         pdu = _smb2_open_async_with_oplock_or_lease(smb2, path, flags,
                 SMB2_OPLOCK_LEVEL_NONE, 0, NULL,
                 cb, cb_data, NULL, 0);
@@ -2320,87 +2320,91 @@ smb2_truncate_async(struct smb2_context *smb2, const char *path,
         return 0;
 }
 
-struct rename_cb_data {
+/* *new_name* is used for both renaming and creating hard links */
+struct new_name_cb_data {
         uint8_t *newpath;
         smb2_command_cb cb;
         void *cb_data;
         uint32_t status;
 };
 
-static void free_rename_data(struct rename_cb_data *rename_data)
+static void free_new_name_data(struct new_name_cb_data *new_name_data)
 {
-        free(rename_data->newpath);
-        free(rename_data);
+        free(new_name_data->newpath);
+        free(new_name_data);
 }
 
 static void
-rename_cb_3(struct smb2_context *smb2, int status,
+new_name_cb_3(struct smb2_context *smb2, int status,
            void *command_data _U_, void *private_data)
 {
-        struct rename_cb_data *rename_data = private_data;
+        struct new_name_cb_data *new_name_data = private_data;
 
-        if (rename_data->status == SMB2_STATUS_SUCCESS) {
-                rename_data->status = status;
+        if (new_name_data->status == SMB2_STATUS_SUCCESS) {
+                new_name_data->status = status;
         }
 
-        rename_data->cb(smb2, -nterror_to_errno(rename_data->status),
-                        NULL, rename_data->cb_data);
-        free_rename_data(rename_data);
+        new_name_data->cb(smb2, -nterror_to_errno(new_name_data->status),
+                        NULL, new_name_data->cb_data);
+        free_new_name_data(new_name_data);
 }
 
 static void
-rename_cb_2(struct smb2_context *smb2, int status,
+new_name_cb_2(struct smb2_context *smb2, int status,
            void *command_data _U_, void *private_data)
 {
-        struct rename_cb_data *rename_data = private_data;
+        struct new_name_cb_data *new_name_data = private_data;
 
-        if (rename_data->status == SMB2_STATUS_SUCCESS) {
-                rename_data->status = status;
+        if (new_name_data->status == SMB2_STATUS_SUCCESS) {
+                new_name_data->status = status;
         }
 }
 
 static void
-rename_cb_1(struct smb2_context *smb2, int status,
+new_name_cb_1(struct smb2_context *smb2, int status,
            void *command_data _U_, void *private_data)
 {
-        struct rename_cb_data *rename_data = private_data;
+        struct new_name_cb_data *new_name_data = private_data;
 
-        if (rename_data->status == SMB2_STATUS_SUCCESS) {
-                rename_data->status = status;
+        if (new_name_data->status == SMB2_STATUS_SUCCESS) {
+                new_name_data->status = status;
         }
 }
 
-int
-smb2_rename_async(struct smb2_context *smb2, const char *oldpath,
-                  const char *newpath, smb2_command_cb cb, void *cb_data)
+static int
+smb2_new_name_async(struct smb2_context *smb2, const char *oldpath,
+                    const char *newpath, uint8_t file_info_class,
+                    uint32_t desired_access,
+                    smb2_command_cb cb, void *cb_data)
 {
-        struct rename_cb_data *rename_data;
+        struct new_name_cb_data *new_name_data;
         struct smb2_create_request cr_req;
         struct smb2_set_info_request si_req;
         struct smb2_close_request cl_req;
         struct smb2_pdu *pdu, *next_pdu;
-        struct smb2_file_rename_info rn_info _U_;
+        struct smb2_file_rename_info rn_info;
+        struct smb2_file_link_info ln_info;
         uint8_t *ptr;
 
         if (smb2 == NULL) {
                 return -EINVAL;
         }
 
-        rename_data = calloc(1, sizeof(struct rename_cb_data));
-        if (rename_data == NULL) {
-                smb2_set_error(smb2, "Failed to allocate rename_data");
+        new_name_data = calloc(1, sizeof(struct new_name_cb_data));
+        if (new_name_data == NULL) {
+                smb2_set_error(smb2, "Failed to allocate new_name_data");
                 return -ENOMEM;
         }
 
-        rename_data->cb = cb;
-        rename_data->cb_data = cb_data;
-        rename_data->newpath = (uint8_t *)strdup(newpath);
-        if (rename_data->newpath == NULL) {
-                free_rename_data(rename_data);
-                smb2_set_error(smb2, "Failed to allocate rename_data->newpath");
+        new_name_data->cb = cb;
+        new_name_data->cb_data = cb_data;
+        new_name_data->newpath = (uint8_t *)strdup(newpath);
+        if (new_name_data->newpath == NULL) {
+                free_new_name_data(new_name_data);
+                smb2_set_error(smb2, "Failed to allocate new_name_data->newpath");
                 return -ENOMEM;
         }
-        for (ptr = rename_data->newpath; *ptr; ptr++) {
+        for (ptr = new_name_data->newpath; *ptr; ptr++) {
                 if (*ptr == '/') {
                         *ptr = '\\';
                 }
@@ -2410,37 +2414,42 @@ smb2_rename_async(struct smb2_context *smb2, const char *oldpath,
         memset(&cr_req, 0, sizeof(struct smb2_create_request));
         cr_req.requested_oplock_level = SMB2_OPLOCK_LEVEL_NONE;
         cr_req.impersonation_level = SMB2_IMPERSONATION_IMPERSONATION;
-        cr_req.desired_access = SMB2_GENERIC_READ  | SMB2_FILE_READ_ATTRIBUTES | SMB2_DELETE;
+        cr_req.desired_access = desired_access;
         cr_req.file_attributes = 0;
         cr_req.share_access = SMB2_FILE_SHARE_READ | SMB2_FILE_SHARE_WRITE | SMB2_FILE_SHARE_DELETE;
         cr_req.create_disposition = SMB2_FILE_OPEN;
         cr_req.create_options = 0;
         cr_req.name = oldpath;
 
-        pdu = smb2_cmd_create_async(smb2, &cr_req, rename_cb_1, rename_data);
+        pdu = smb2_cmd_create_async(smb2, &cr_req, new_name_cb_1, new_name_data);
         if (pdu == NULL) {
                 smb2_set_error(smb2, "Failed to create create command");
-                free_rename_data(rename_data);
+                free_new_name_data(new_name_data);
                 return -EINVAL;
         }
 
         /* SET INFO command */
-        rn_info.replace_if_exist = 0;
-        rn_info.file_name = rename_data->newpath;
-
         memset(&si_req, 0, sizeof(struct smb2_set_info_request));
         si_req.info_type = SMB2_0_INFO_FILE;
-        si_req.file_info_class = SMB2_FILE_RENAME_INFORMATION;
+        si_req.file_info_class = file_info_class;
         si_req.additional_information = 0;
         memcpy(si_req.file_id, compound_file_id, SMB2_FD_SIZE);
-        si_req.input_data = &rn_info;
+        if (file_info_class == SMB2_FILE_LINK_INFORMATION) {
+                ln_info.replace_if_exist = 0;
+                ln_info.file_name = new_name_data->newpath;
+                si_req.input_data = &ln_info;
+        } else {
+                rn_info.replace_if_exist = 0;
+                rn_info.file_name = new_name_data->newpath;
+                si_req.input_data = &rn_info;
+        }
 
         next_pdu = smb2_cmd_set_info_async(smb2, &si_req,
-                                           rename_cb_2, rename_data);
+                                           new_name_cb_2, new_name_data);
         if (next_pdu == NULL) {
                 smb2_set_error(smb2, "Failed to create set command. %s",
                                smb2_get_error(smb2));
-                free_rename_data(rename_data);
+                free_new_name_data(new_name_data);
                 smb2_free_pdu(smb2, pdu);
                 return -EINVAL;
         }
@@ -2451,10 +2460,10 @@ smb2_rename_async(struct smb2_context *smb2, const char *oldpath,
         cl_req.flags = SMB2_CLOSE_FLAG_POSTQUERY_ATTRIB;
         memcpy(cl_req.file_id, compound_file_id, SMB2_FD_SIZE);
 
-        next_pdu = smb2_cmd_close_async(smb2, &cl_req, rename_cb_3, rename_data);
+        next_pdu = smb2_cmd_close_async(smb2, &cl_req, new_name_cb_3, new_name_data);
         if (next_pdu == NULL) {
-                rename_data->cb(smb2, -ENOMEM, NULL, rename_data->cb_data);
-                free_rename_data(rename_data);
+                new_name_data->cb(smb2, -ENOMEM, NULL, new_name_data->cb_data);
+                free_new_name_data(new_name_data);
                 smb2_free_pdu(smb2, pdu);
                 return -EINVAL;
         }
@@ -2463,6 +2472,30 @@ smb2_rename_async(struct smb2_context *smb2, const char *oldpath,
         smb2_queue_pdu(smb2, pdu);
 
         return 0;
+}
+
+int
+smb2_rename_async(struct smb2_context *smb2, const char *oldpath,
+                  const char *newpath, smb2_command_cb cb, void *cb_data)
+{
+        return smb2_new_name_async(smb2, oldpath, newpath,
+                                   SMB2_FILE_RENAME_INFORMATION,
+                                   SMB2_GENERIC_READ |
+                                   SMB2_FILE_READ_ATTRIBUTES |
+                                   SMB2_DELETE,
+                                   cb, cb_data);
+}
+
+int
+smb2_link_async(struct smb2_context *smb2, const char *oldpath,
+                const char *newpath, smb2_command_cb cb, void *cb_data)
+{
+        /* Unlike rename, creating a hard link does not need SMB2_DELETE
+         * access to the source file. */
+        return smb2_new_name_async(smb2, oldpath, newpath,
+                                   SMB2_FILE_LINK_INFORMATION,
+                                   SMB2_FILE_READ_ATTRIBUTES,
+                                   cb, cb_data);
 }
 
 static void

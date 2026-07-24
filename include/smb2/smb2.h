@@ -724,6 +724,14 @@ struct smb2_file_rename_info {
 };
 
 /*
+ * SMB2_FILE_LINK_INFORMATION.
+ */
+struct smb2_file_link_info {
+        uint8_t replace_if_exist;
+        const uint8_t* file_name;
+};
+
+/*
  * FILE_NETWORK_OPEN_INFORMATION
  */
 struct smb2_file_network_open_info {
