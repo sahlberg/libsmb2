@@ -36,6 +36,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 int is_finished;
 struct dcerpc_service *service;
 
+/* Response encoding: YAML (default) or JSON via -j/--json */
+enum dcerpc_encoding output_encoding = ENCODING_YAML;
 
 int idx;
 int num_ops;
@@ -58,21 +60,26 @@ struct rpc_cb_data {
 int usage(void)
 {
         fprintf(stderr, "Usage:\n"
-                "dcerpc <smb2-url> request.yaml\n\n"
+                "dcerpc [-j|--json] <smb2-url> [request.yaml]\n\n"
+                "  -j, --json   Encode responses as JSON instead of YAML\n\n"
                 "URL format: "
-                "smb://[<domain;][<username>@]<host>[:<port>]/IPC$/<service-name>\n");
+                "smb://[<domain;][<username>@]<host>[:<port>]/IPC$/<service-name>\n"
+                "Request file is YAML (or stdin if omitted). Multiple requests\n"
+                "in one file are separated by a line consisting of only ---.\n");
         exit(1);
 }
 
 /*
- * Look up a scalar YAML field "name: value" in a response.
+ * Look up a scalar field "name" in a response encoded as YAML or JSON.
+ * YAML:  "name: value" (optional list prefix "- ")
+ * JSON:  "\"name\": value" or "\"name\": \"value\""
  * Returns a newly allocated string with the value, or NULL if not found.
  * Nested keys with an empty value after the colon are skipped.
  */
 static char *
-yaml_lookup_field(const char *yaml, const char *name)
+lookup_response_field(const char *text, const char *name)
 {
-        const char *p = yaml;
+        const char *p = text;
         size_t name_len = strlen(name);
 
         while (*p) {
@@ -88,7 +95,7 @@ yaml_lookup_field(const char *yaml, const char *name)
                         eol = p + strlen(p);
                 }
 
-                while (line < eol && *line == ' ') {
+                while (line < eol && (*line == ' ' || *line == '\t')) {
                         line++;
                 }
                 /* optional YAML list prefix */
@@ -98,11 +105,19 @@ yaml_lookup_field(const char *yaml, const char *name)
                                 line++;
                         }
                 }
+                /* optional trailing comma from JSON */
+                /* handled when trimming the value below */
 
                 colon = memchr(line, ':', eol - line);
                 if (colon && colon > line) {
                         key = line;
-                        key_len = colon - line;
+                        key_len = (size_t)(colon - line);
+                        /* JSON keys are quoted: "name" */
+                        if (key_len >= 2 && key[0] == '"' &&
+                            key[key_len - 1] == '"') {
+                                key++;
+                                key_len -= 2;
+                        }
                         if (key_len == name_len && !memcmp(key, name, key_len)) {
                                 val = colon + 1;
                                 while (val < eol && *val == ' ') {
@@ -111,8 +126,15 @@ yaml_lookup_field(const char *yaml, const char *name)
                                 val_len = (size_t)(eol - val);
                                 while (val_len > 0 &&
                                        (val[val_len - 1] == '\r' ||
-                                        val[val_len - 1] == ' ')) {
+                                        val[val_len - 1] == ' ' ||
+                                        val[val_len - 1] == ',')) {
                                         val_len--;
+                                }
+                                /* JSON string value: strip surrounding quotes */
+                                if (val_len >= 2 && val[0] == '"' &&
+                                    val[val_len - 1] == '"') {
+                                        val++;
+                                        val_len -= 2;
                                 }
                                 if (val_len > 0) {
                                         char *ret = malloc(val_len + 1);
@@ -274,11 +296,11 @@ apply_response_substitutions(struct opdata *req, int cur_idx)
                 src_idx = cur_idx - steps_back;
                 yaml = (const char *)opdata[src_idx].buf;
 
-                value = yaml_lookup_field(yaml, name);
+                value = lookup_response_field(yaml, name);
                 if (value == NULL) {
                         if (steps_back == 1) {
                                 printf("No value for @%s@ in previous "
-                                       "response YAML\n", name);
+                                       "response\n", name);
                         } else {
                                 printf("No value for @%s:-%d@ in response "
                                        "%d steps back\n",
@@ -330,10 +352,14 @@ void si_cb(struct dcerpc_context *dce, int status,
                 exit(10);
         }
         
-        printf("YAML:\n");
-        printf("---\n");
+        if (output_encoding == ENCODING_JSON) {
+                printf("JSON:\n");
+        } else {
+                printf("YAML:\n");
+                printf("---\n");
+        }
         rpc_cb_data->rep = command_data;
-        rpc_cb_data->rep_pdu = dcerpc_allocate_pdu(dce, ENCODING_YAML, DCERPC_ENCODE, rpc_cb_data->proc->rep_size);
+        rpc_cb_data->rep_pdu = dcerpc_allocate_pdu(dce, output_encoding, DCERPC_ENCODE, rpc_cb_data->proc->rep_size);
         if (rpc_cb_data->rep_pdu == NULL) {
                 printf("failed to allocate Response pdu\n");
                 exit(10);
@@ -344,7 +370,8 @@ void si_cb(struct dcerpc_context *dce, int status,
         if (dcerpc_do_coder(rpc_cb_data->proc->name, dce, rpc_cb_data->rep_pdu,
                             &opdata[idx].iov, &opdata[idx].offset,
                             rpc_cb_data->rep, rpc_cb_data->proc->rep_coder)) {
-                printf("Failed to encode REP as YAML\n");
+                printf("Failed to encode REP as %s\n",
+                       output_encoding == ENCODING_JSON ? "JSON" : "YAML");
                 exit(10);
         }
         printf("%s\n", opdata[idx].iov.buf);
@@ -454,27 +481,45 @@ int main(int argc, char *argv[])
         struct dcerpc_context *dce;
         struct smb2_url *url;
 	struct pollfd pfd;
-        int i, fd, count;
+        int i, fd, count, argi;
         uint8_t tmp[65536];
         ssize_t n;
         char *start, *p, *sep;
+        const char *smb_url;
+        const char *yaml_path;
 
         for (i = 0; i < MAXOPDATA; i++) {
                 opdata[i].iov.buf = &opdata[i].buf[0];
                 opdata[i].iov.len = 65536;
         }
-        
-        if (argc < 2) {
-                usage();
+
+        /* Parse optional flags before positional arguments */
+        argi = 1;
+        while (argi < argc && argv[argi][0] == '-') {
+                if (!strcmp(argv[argi], "-j") || !strcmp(argv[argi], "--json")) {
+                        output_encoding = ENCODING_JSON;
+                        argi++;
+                } else if (!strcmp(argv[argi], "-h") || !strcmp(argv[argi], "--help")) {
+                        usage();
+                } else {
+                        fprintf(stderr, "Unknown option: %s\n", argv[argi]);
+                        usage();
+                }
         }
 
+        if (argi >= argc) {
+                usage();
+        }
+        smb_url = argv[argi++];
+        yaml_path = (argi < argc) ? argv[argi] : NULL;
+
         memset(tmp, 0, sizeof(tmp));
-        if (argc < 3) {
+        if (yaml_path == NULL) {
                 n = read(0, tmp, sizeof(tmp) - 1);
         } else {
-                fd = open(argv[2], O_RDONLY);
+                fd = open(yaml_path, O_RDONLY);
                 if (fd == -1) {
-                        printf("Failed to open yaml file : %s\n", argv[2]);
+                        printf("Failed to open yaml file : %s\n", yaml_path);
                         exit(9);
                 }
                 n = read(fd, tmp, sizeof(tmp) - 1);
@@ -559,7 +604,7 @@ int main(int argc, char *argv[])
                 exit(0);
         }
 
-        url = smb2_parse_url(smb2, argv[1]);
+        url = smb2_parse_url(smb2, smb_url);
         if (url == NULL) {
                 fprintf(stderr, "Failed to parse url: %s\n",
                         smb2_get_error(smb2));

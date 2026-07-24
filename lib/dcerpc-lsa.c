@@ -165,11 +165,12 @@ lsa_RPC_UNICODE_STRING_coder(char *name, struct dcerpc_context *dce,
         uint16_t len, maxlen;
 
         /*
-         * YAML only needs the string value. NDR alignment and Length/
-         * MaxLength must not run for YAML: align would skip past the
-         * current NUL in the YAML buffer and truncate the visible output.
+         * YAML/JSON only need the string value. NDR alignment and Length/
+         * MaxLength must not run for text encodings: align would skip past
+         * the current NUL in the text buffer and truncate the visible output.
          */
-        if (dcerpc_pdu_encoding(pdu) == ENCODING_YAML) {
+        if (dcerpc_pdu_encoding(pdu) == ENCODING_YAML ||
+            dcerpc_pdu_encoding(pdu) == ENCODING_JSON) {
                 return dcerpc_utf16_coder(name, dce, pdu, iov, offset, ptr);
         }
 

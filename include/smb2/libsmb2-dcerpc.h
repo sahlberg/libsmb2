@@ -41,7 +41,8 @@ typedef int (*dcerpc_coder)(char *name, struct dcerpc_context *dce, struct dcerp
 
 enum dcerpc_encoding {
         ENCODING_NDR    = 0,
-        ENCODING_YAML   = 1
+        ENCODING_YAML   = 1,
+        ENCODING_JSON   = 2
 };
 
 enum ptr_type {

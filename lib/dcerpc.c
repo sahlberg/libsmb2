@@ -287,6 +287,11 @@ struct dcerpc_pdu {
         int yaml_array_item; /* 1 while encoding fields of a list item after "- " */
         char *yaml_key;
         char *yaml_val;
+
+        /* JSON */
+        int json_indentation;
+        int json_need_comma; /* 1 if a comma is required before the next value */
+        char *json_key;
 };
 
 /*
@@ -368,6 +373,40 @@ static int yaml_struct_coder(char *name, struct dcerpc_context *ctx,
                              struct smb2_iovec *iov, int *offset,
                              void *ptr, dcerpc_coder coder);
 static int yaml_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                         struct smb2_iovec *iov,
+                         int *offset, void *ptr,
+                         dcerpc_coder coder);
+
+/*
+ * JSON
+ */
+static int json_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                             struct smb2_iovec *iov, int *offset, void *ptr);
+static int json_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                             struct smb2_iovec *iov, int *offset, void *ptr);
+static int json_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                           struct smb2_iovec *iov, int *offset, dcerpc_uuid_t *uuid);
+static int json_sid_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+                          struct smb2_iovec *iov, int *offset, void *ptr);
+static int json_carray_coder(char *name, struct dcerpc_context *ctx,
+                             struct dcerpc_pdu *pdu,
+                             struct smb2_iovec *iov, int *offset,
+                             uint32_t num, void *ptr, int elem_size, dcerpc_coder coder);
+static int json_union_coder(char *name, struct dcerpc_context *ctx,
+                            struct dcerpc_pdu *pdu,
+                            struct smb2_iovec *iov, int *offset,
+                            uint32_t *switch_is, void *ptr, dcerpc_coder coder);
+static int json_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+                          struct smb2_iovec *iov, int *offset, void *ptr,
+                          enum ptr_type type, dcerpc_coder coder);
+static int json_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                            struct smb2_iovec *iov, int *offset,
+                            void *ptr);
+static int json_struct_coder(char *name, struct dcerpc_context *ctx,
+                             struct dcerpc_pdu *pdu,
+                             struct smb2_iovec *iov, int *offset,
+                             void *ptr, dcerpc_coder coder);
+static int json_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                          struct smb2_iovec *iov,
                          int *offset, void *ptr,
                          dcerpc_coder coder);
@@ -693,6 +732,8 @@ dcerpc_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 return ndr_do_coder(name, ctx, pdu, iov, offset, ptr, coder);
         case ENCODING_YAML:
                 return yaml_do_coder(name, ctx, pdu, iov, offset, ptr, coder);
+        case ENCODING_JSON:
+                return json_do_coder(name, ctx, pdu, iov, offset, ptr, coder);
         };
         return -1;
 }
@@ -725,6 +766,8 @@ dcerpc_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *p
                 return ndr_uint32_coder(name, ctx, pdu, iov, offset, ptr);
         case ENCODING_YAML:
                 return yaml_uint32_coder(name, ctx, pdu, iov, offset, ptr);
+        case ENCODING_JSON:
+                return json_uint32_coder(name, ctx, pdu, iov, offset, ptr);
         }
         return -1;
 }
@@ -738,6 +781,8 @@ dcerpc_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *p
                 return ndr_uint16_coder(name, ctx, pdu, iov, offset, ptr);
         case ENCODING_YAML:
                 return yaml_uint16_coder(name, ctx, pdu, iov, offset, ptr);
+        case ENCODING_JSON:
+                return json_uint16_coder(name, ctx, pdu, iov, offset, ptr);
         }
         return -1;
 }
@@ -755,6 +800,9 @@ dcerpc_carray_coder(char *name, struct dcerpc_context *ctx,
         case ENCODING_YAML:
                 return yaml_carray_coder(name, ctx, pdu, iov, offset,
                                          num, ptr, elem_size, coder);
+        case ENCODING_JSON:
+                return json_carray_coder(name, ctx, pdu, iov, offset,
+                                         num, ptr, elem_size, coder);
         }
         return -1;
 }
@@ -770,6 +818,9 @@ int dcerpc_union_coder(char *name, struct dcerpc_context *ctx,
                                        switch_is, ptr, coder);
         case ENCODING_YAML:
                 return yaml_union_coder(name, ctx, pdu, iov, offset,
+                                        switch_is, ptr, coder);
+        case ENCODING_JSON:
+                return json_union_coder(name, ctx, pdu, iov, offset,
                                         switch_is, ptr, coder);
         }
         return -1;
@@ -787,6 +838,9 @@ int dcerpc_struct_coder(char *name, struct dcerpc_context *ctx,
         case ENCODING_YAML:
                 return yaml_struct_coder(name, ctx, pdu, iov, offset,
                                          ptr, coder);
+        case ENCODING_JSON:
+                return json_struct_coder(name, ctx, pdu, iov, offset,
+                                         ptr, coder);
         }
         return -1;
 }
@@ -803,6 +857,9 @@ dcerpc_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
         case ENCODING_YAML:
                 return yaml_ptr_coder(name, dce, pdu, iov, offset, ptr,
                                       type, coder);
+        case ENCODING_JSON:
+                return json_ptr_coder(name, dce, pdu, iov, offset, ptr,
+                                      type, coder);
         }
         return -1;
 }
@@ -817,6 +874,8 @@ dcerpc_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pd
                 return ndr_utf16_coder(name, ctx, pdu, iov, offset, ptr);
         case ENCODING_YAML:
                 return yaml_utf16_coder(name, ctx, pdu, iov, offset, ptr);
+        case ENCODING_JSON:
+                return json_utf16_coder(name, ctx, pdu, iov, offset, ptr);
         }
         return -1;
 }
@@ -830,6 +889,8 @@ dcerpc_utf16z_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *p
                 return ndr_utf16z_coder(name, ctx, pdu, iov, offset, ptr);
         case ENCODING_YAML:
                 return yaml_utf16_coder(name, ctx, pdu, iov, offset, ptr);
+        case ENCODING_JSON:
+                return json_utf16_coder(name, ctx, pdu, iov, offset, ptr);
         }
         return -1;
 }
@@ -1756,6 +1817,15 @@ dcerpc_context_handle_coder(char *name, struct dcerpc_context *dce,
                         return -1;
                 }
                 return 0;
+        case ENCODING_JSON:
+                if (json_uint32_coder("ContextHandleAttributes", dce, pdu, iov, offset, &handle->context_handle_attributes)) {
+                        return -1;
+                }
+                if (json_uuid_coder("UUID", dce, pdu, iov, offset,
+                                    &handle->context_handle_uuid)) {
+                        return -1;
+                }
+                return 0;
         }
         return 0;
 }
@@ -1785,6 +1855,11 @@ dcerpc_sid_coder(char *name, struct dcerpc_context *dce,
                 return 0;
         case ENCODING_YAML:
                 if (yaml_sid_coder(name, dce, pdu, iov, offset, ptr)) {
+                        return -1;
+                }
+                return 0;
+        case ENCODING_JSON:
+                if (json_sid_coder(name, dce, pdu, iov, offset, ptr)) {
                         return -1;
                 }
                 return 0;
@@ -3010,6 +3085,890 @@ yaml_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         } else {
                 pdu->yaml_val = dcerpc_get_request(pdu) ? "Response" : "Request";
                 return yaml_struct_coder(name,ctx, pdu, iov, offset, ptr, coder);
+        }
+}
+
+/*
+ * JSON
+ *
+ * Text encoding parallel to YAML. Objects map to JSON objects, conformant
+ * arrays to JSON arrays of objects, and scalars/strings/uuids/sids to
+ * JSON numbers and strings. Example:
+ *
+ *   {
+ *     "NetrShareEnum": {
+ *       "Level": 2,
+ *       "ShareInfo": {
+ *         "EntriesRead": 1,
+ *         "ShareInfo0": [
+ *           {
+ *             "NetName": "IPC$"
+ *           }
+ *         ]
+ *       }
+ *     }
+ *   }
+ */
+
+static void
+json_write_indent(struct dcerpc_pdu *pdu, struct smb2_iovec *iov, int *offset)
+{
+        int i;
+
+        for (i = 0; i < pdu->json_indentation; i++) {
+                if (*offset + 3 < (int)iov->len) {
+                        iov->buf[(*offset)++] = ' ';
+                        iov->buf[(*offset)++] = ' ';
+                        iov->buf[*offset] = '\0';
+                }
+        }
+}
+
+/*
+ * Emit a separator before the next value in the current object/array:
+ * optional comma, newline, then indentation. Marks that a subsequent
+ * sibling will need a leading comma.
+ */
+static void
+json_sep(struct dcerpc_pdu *pdu, struct smb2_iovec *iov, int *offset)
+{
+        if (pdu->json_need_comma) {
+                if (*offset + 2 < (int)iov->len) {
+                        iov->buf[(*offset)++] = ',';
+                        iov->buf[*offset] = '\0';
+                }
+        }
+        if (*offset + 2 < (int)iov->len) {
+                iov->buf[(*offset)++] = '\n';
+                iov->buf[*offset] = '\0';
+        }
+        json_write_indent(pdu, iov, offset);
+        pdu->json_need_comma = 1;
+}
+
+/* Append a NUL-terminated string if it fits. */
+static int
+json_append(struct smb2_iovec *iov, int *offset, const char *s)
+{
+        size_t n = strlen(s);
+
+        if (*offset + (int)n + 1 >= (int)iov->len) {
+                return -1;
+        }
+        memcpy(&iov->buf[*offset], s, n + 1);
+        *offset += (int)n;
+        return 0;
+}
+
+/*
+ * Write a JSON string value (including surrounding quotes), escaping
+ * characters as required by RFC 8259.
+ */
+static int
+json_append_quoted(struct smb2_iovec *iov, int *offset, const char *s)
+{
+        const unsigned char *p;
+
+        if (s == NULL) {
+                s = "";
+        }
+        if (json_append(iov, offset, "\"") < 0) {
+                return -1;
+        }
+        for (p = (const unsigned char *)s; *p; p++) {
+                char esc[8];
+                const char *out;
+                size_t n;
+
+                switch (*p) {
+                case '"':  out = "\\\""; n = 2; break;
+                case '\\': out = "\\\\"; n = 2; break;
+                case '\b': out = "\\b";  n = 2; break;
+                case '\f': out = "\\f";  n = 2; break;
+                case '\n': out = "\\n";  n = 2; break;
+                case '\r': out = "\\r";  n = 2; break;
+                case '\t': out = "\\t";  n = 2; break;
+                default:
+                        if (*p < 0x20) {
+                                snprintf(esc, sizeof(esc), "\\u%04x", *p);
+                                out = esc;
+                                n = 6;
+                        } else {
+                                esc[0] = (char)*p;
+                                out = esc;
+                                n = 1;
+                        }
+                        break;
+                }
+                if (*offset + (int)n + 1 >= (int)iov->len) {
+                        return -1;
+                }
+                memcpy(&iov->buf[*offset], out, n);
+                *offset += (int)n;
+                iov->buf[*offset] = '\0';
+        }
+        if (json_append(iov, offset, "\"") < 0) {
+                return -1;
+        }
+        return 0;
+}
+
+static int
+json_skip_ws(struct smb2_iovec *iov, int *offset)
+{
+        while (*offset < (int)iov->len && iov->buf[*offset] != '\0') {
+                char c = (char)iov->buf[*offset];
+
+                if (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
+                        (*offset)++;
+                        continue;
+                }
+                break;
+        }
+        return 0;
+}
+
+static int
+json_expect_char(struct smb2_iovec *iov, int *offset, char expect)
+{
+        json_skip_ws(iov, offset);
+        if (*offset >= (int)iov->len || iov->buf[*offset] != (uint8_t)expect) {
+                printf("JSON parse error: expected '%c'\n", expect);
+                return -1;
+        }
+        (*offset)++;
+        return 0;
+}
+
+/*
+ * Parse a JSON string at *offset into the buffer in-place (unescaped).
+ * Sets *start to the unescaped string (NUL-terminated in iov buffer).
+ */
+static int
+json_parse_string(struct smb2_iovec *iov, int *offset, char **start)
+{
+        char *dst;
+        char *src;
+
+        json_skip_ws(iov, offset);
+        if (*offset >= (int)iov->len || iov->buf[*offset] != '"') {
+                printf("JSON parse error: expected string\n");
+                return -1;
+        }
+        (*offset)++;
+        src = (char *)&iov->buf[*offset];
+        dst = src;
+        *start = dst;
+
+        while (*offset < (int)iov->len && iov->buf[*offset] != '\0') {
+                unsigned char c = iov->buf[*offset];
+
+                if (c == '"') {
+                        *dst = '\0';
+                        (*offset)++;
+                        return 0;
+                }
+                if (c == '\\') {
+                        (*offset)++;
+                        if (*offset >= (int)iov->len) {
+                                printf("JSON parse error: truncated escape\n");
+                                return -1;
+                        }
+                        c = iov->buf[*offset];
+                        switch (c) {
+                        case '"':
+                        case '\\':
+                        case '/':
+                                *dst++ = (char)c;
+                                break;
+                        case 'b': *dst++ = '\b'; break;
+                        case 'f': *dst++ = '\f'; break;
+                        case 'n': *dst++ = '\n'; break;
+                        case 'r': *dst++ = '\r'; break;
+                        case 't': *dst++ = '\t'; break;
+                        case 'u': {
+                                unsigned int cp = 0;
+                                int i;
+
+                                for (i = 0; i < 4; i++) {
+                                        (*offset)++;
+                                        if (*offset >= (int)iov->len) {
+                                                printf("JSON parse error: bad \\u escape\n");
+                                                return -1;
+                                        }
+                                        c = iov->buf[*offset];
+                                        cp <<= 4;
+                                        if (c >= '0' && c <= '9') {
+                                                cp |= c - '0';
+                                        } else if (c >= 'a' && c <= 'f') {
+                                                cp |= c - 'a' + 10;
+                                        } else if (c >= 'A' && c <= 'F') {
+                                                cp |= c - 'A' + 10;
+                                        } else {
+                                                printf("JSON parse error: bad \\u escape\n");
+                                                return -1;
+                                        }
+                                }
+                                /* BMP only; emit as ISO-8859-1 if < 256 else '?' */
+                                *dst++ = (cp < 256) ? (char)cp : '?';
+                                break;
+                        }
+                        default:
+                                printf("JSON parse error: unknown escape \\%c\n", c);
+                                return -1;
+                        }
+                        (*offset)++;
+                        continue;
+                }
+                *dst++ = (char)c;
+                (*offset)++;
+        }
+        printf("JSON parse error: unterminated string\n");
+        return -1;
+}
+
+/*
+ * Read the next object member key into pdu->json_key. If the next non-ws
+ * character is '}', leaves it and returns 1 (end of object). Returns 0 on
+ * key read, -1 on error.
+ */
+static int
+json_next_key(struct dcerpc_pdu *pdu, struct smb2_iovec *iov, int *offset)
+{
+        char *key;
+
+        if (pdu->json_key) {
+                return 0;
+        }
+
+        json_skip_ws(iov, offset);
+        if (*offset < (int)iov->len && iov->buf[*offset] == '}') {
+                return 1;
+        }
+        /* optional comma between members */
+        if (*offset < (int)iov->len && iov->buf[*offset] == ',') {
+                (*offset)++;
+                json_skip_ws(iov, offset);
+        }
+        if (json_parse_string(iov, offset, &key) < 0) {
+                return -1;
+        }
+        if (json_expect_char(iov, offset, ':') < 0) {
+                return -1;
+        }
+        pdu->json_key = key;
+        return 0;
+}
+
+static int
+json_expect_key(struct dcerpc_pdu *pdu, struct smb2_iovec *iov, int *offset,
+                const char *name)
+{
+        int rc;
+
+        rc = json_next_key(pdu, iov, offset);
+        if (rc != 0) {
+                if (rc > 0) {
+                        printf("Wrong JSON key: expected %s but got end of object\n",
+                               name);
+                }
+                return -1;
+        }
+        if (strcmp(pdu->json_key, name)) {
+                printf("Wrong JSON key: expected %s but got %s\n",
+                       name, pdu->json_key);
+                return -1;
+        }
+        pdu->json_key = NULL;
+        return 0;
+}
+
+/* Parse a JSON number (integer) into an unsigned long. */
+static int
+json_parse_ulong(struct smb2_iovec *iov, int *offset, unsigned long *out)
+{
+        char *start;
+        char *end;
+
+        json_skip_ws(iov, offset);
+        start = (char *)&iov->buf[*offset];
+        *out = strtoul(start, &end, 0);
+        if (end == start) {
+                printf("JSON parse error: expected number\n");
+                return -1;
+        }
+        *offset += (int)(end - start);
+        return 0;
+}
+
+static int
+json_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                  struct smb2_iovec *iov, int *offset, void *ptr)
+{
+        if (pdu->direction == DCERPC_DECODE) {
+                unsigned long v;
+
+                if (json_expect_key(pdu, iov, offset, name) < 0) {
+                        return -1;
+                }
+                if (json_parse_ulong(iov, offset, &v) < 0) {
+                        return -1;
+                }
+                *(uint32_t *)ptr = (uint32_t)v;
+                return 0;
+        } else {
+                if (*offset + 64 >= (int)iov->len) {
+                        return 0;
+                }
+                json_sep(pdu, iov, offset);
+                if (json_append_quoted(iov, offset, name) < 0) {
+                        return -1;
+                }
+                if (*offset + 32 < (int)iov->len) {
+                        *offset += snprintf((char *)&iov->buf[*offset],
+                                           iov->len - *offset,
+                                           ": %u", *(uint32_t *)ptr);
+                }
+                return 0;
+        }
+}
+
+static int
+json_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                  struct smb2_iovec *iov, int *offset, void *ptr)
+{
+        if (pdu->direction == DCERPC_DECODE) {
+                unsigned long v;
+
+                if (json_expect_key(pdu, iov, offset, name) < 0) {
+                        return -1;
+                }
+                if (json_parse_ulong(iov, offset, &v) < 0) {
+                        return -1;
+                }
+                *(uint16_t *)ptr = (uint16_t)v;
+                return 0;
+        } else {
+                if (*offset + 64 >= (int)iov->len) {
+                        return 0;
+                }
+                json_sep(pdu, iov, offset);
+                if (json_append_quoted(iov, offset, name) < 0) {
+                        return -1;
+                }
+                if (*offset + 32 < (int)iov->len) {
+                        *offset += snprintf((char *)&iov->buf[*offset],
+                                           iov->len - *offset,
+                                           ": %u", *(uint16_t *)ptr);
+                }
+                return 0;
+        }
+}
+
+static int
+json_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                struct smb2_iovec *iov, int *offset, dcerpc_uuid_t *uuid)
+{
+        int i;
+
+        if (pdu->direction == DCERPC_DECODE) {
+                char *val;
+                unsigned int v1, v2, v3;
+                unsigned int b[8];
+
+                if (json_expect_key(pdu, iov, offset, name) < 0) {
+                        return -1;
+                }
+                if (json_parse_string(iov, offset, &val) < 0) {
+                        return -1;
+                }
+                if (sscanf(val,
+                           "%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x",
+                           &v1, &v2, &v3,
+                           &b[0], &b[1], &b[2], &b[3],
+                           &b[4], &b[5], &b[6], &b[7]) != 11) {
+                        printf("Failed to parse UUID value for %s: %s\n",
+                               name, val);
+                        return -1;
+                }
+                uuid->v1 = v1;
+                uuid->v2 = v2;
+                uuid->v3 = v3;
+                for (i = 0; i < 8; i++) {
+                        uuid->v4[i] = b[i];
+                }
+                return 0;
+        } else {
+                char uuidstr[64];
+
+                snprintf(uuidstr, sizeof(uuidstr),
+                         "%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x",
+                         uuid->v1, uuid->v2, uuid->v3,
+                         uuid->v4[0], uuid->v4[1],
+                         uuid->v4[2], uuid->v4[3],
+                         uuid->v4[4], uuid->v4[5],
+                         uuid->v4[6], uuid->v4[7]);
+                json_sep(pdu, iov, offset);
+                if (json_append_quoted(iov, offset, name) < 0) {
+                        return -1;
+                }
+                if (json_append(iov, offset, ": ") < 0) {
+                        return -1;
+                }
+                if (json_append_quoted(iov, offset, uuidstr) < 0) {
+                        return -1;
+                }
+                return 0;
+        }
+}
+
+/*
+ * JSON representation of an RPC_SID is the standard SID string form,
+ * same as YAML: S-<revision>-<authority>-<subauth>...
+ */
+static int
+json_sid_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+               struct smb2_iovec *iov, int *offset, void *ptr)
+{
+        RPC_SID *sid = ptr;
+        int i;
+
+        if (pdu->direction == DCERPC_DECODE) {
+                const char *p;
+                char *end;
+                char *val;
+                unsigned long rev;
+                unsigned long long ia;
+                uint32_t sub[15];
+                int count = 0;
+
+                if (json_expect_key(pdu, iov, offset, name) < 0) {
+                        return -1;
+                }
+                if (json_parse_string(iov, offset, &val) < 0) {
+                        return -1;
+                }
+
+                p = val;
+                if (p == NULL || (p[0] != 'S' && p[0] != 's') || p[1] != '-') {
+                        printf("Failed to parse SID value for %s: %s\n",
+                               name, val ? val : "(null)");
+                        return -1;
+                }
+                p += 2;
+
+                rev = strtoul(p, &end, 10);
+                if (end == p || *end != '-' || rev > 255) {
+                        printf("Failed to parse SID revision for %s: %s\n",
+                               name, val);
+                        return -1;
+                }
+                p = end + 1;
+
+                if (p[0] == '0' && (p[1] == 'x' || p[1] == 'X')) {
+                        ia = strtoull(p, &end, 16);
+                } else {
+                        ia = strtoull(p, &end, 10);
+                }
+                if (end == p) {
+                        printf("Failed to parse SID authority for %s: %s\n",
+                               name, val);
+                        return -1;
+                }
+                p = end;
+
+                while (*p == '-') {
+                        unsigned long sa;
+
+                        p++;
+                        if (count >= 15) {
+                                printf("Too many SID subauthorities for %s: %s\n",
+                                       name, val);
+                                return -1;
+                        }
+                        sa = strtoul(p, &end, 10);
+                        if (end == p) {
+                                printf("Failed to parse SID subauthority for %s: %s\n",
+                                       name, val);
+                                return -1;
+                        }
+                        sub[count++] = (uint32_t)sa;
+                        p = end;
+                }
+                if (*p != '\0') {
+                        printf("Failed to parse SID value for %s: %s\n",
+                               name, val);
+                        return -1;
+                }
+
+                sid->Revision = (uint8_t)rev;
+                sid->SubAuthorityCount = (uint8_t)count;
+                for (i = 0; i < 6; i++) {
+                        sid->IdentifierAuthority[i] =
+                                (uint8_t)((ia >> (8 * (5 - i))) & 0xff);
+                }
+                for (i = 0; i < count; i++) {
+                        sid->SubAuthority[i] = sub[i];
+                }
+                return 0;
+        } else {
+                uint64_t ia = 0;
+                char sidstr[256];
+                int len;
+
+                for (i = 0; i < 6; i++) {
+                        ia = (ia << 8) | sid->IdentifierAuthority[i];
+                }
+
+                if (ia <= 0xffffffffULL) {
+                        len = snprintf(sidstr, sizeof(sidstr),
+                                       "S-%u-%llu",
+                                       sid->Revision,
+                                       (unsigned long long)ia);
+                } else {
+                        len = snprintf(sidstr, sizeof(sidstr),
+                                       "S-%u-0x%llx",
+                                       sid->Revision,
+                                       (unsigned long long)ia);
+                }
+                if (len < 0 || (size_t)len >= sizeof(sidstr)) {
+                        printf("Failed to format SID for %s\n", name);
+                        return -1;
+                }
+                for (i = 0; i < sid->SubAuthorityCount; i++) {
+                        int n;
+
+                        n = snprintf(sidstr + len, sizeof(sidstr) - (size_t)len,
+                                     "-%u", sid->SubAuthority[i]);
+                        if (n < 0 ||
+                            (size_t)len + (size_t)n >= sizeof(sidstr)) {
+                                printf("Failed to format SID for %s\n", name);
+                                return -1;
+                        }
+                        len += n;
+                }
+
+                json_sep(pdu, iov, offset);
+                if (json_append_quoted(iov, offset, name) < 0) {
+                        return -1;
+                }
+                if (json_append(iov, offset, ": ") < 0) {
+                        return -1;
+                }
+                if (json_append_quoted(iov, offset, sidstr) < 0) {
+                        return -1;
+                }
+                return 0;
+        }
+}
+
+static int
+json_carray_coder(char *name, struct dcerpc_context *ctx,
+                  struct dcerpc_pdu *pdu,
+                  struct smb2_iovec *iov, int *offset,
+                  uint32_t num, void *ptr, int elem_size, dcerpc_coder coder)
+{
+        int i;
+        uint8_t *data = ptr;
+
+        if (pdu->direction == DCERPC_DECODE) {
+                if (json_expect_key(pdu, iov, offset, name) < 0) {
+                        return -1;
+                }
+                if (json_expect_char(iov, offset, '[') < 0) {
+                        return -1;
+                }
+                for (i = 0; i < (int)num; i++) {
+                        json_skip_ws(iov, offset);
+                        if (i > 0) {
+                                if (json_expect_char(iov, offset, ',') < 0) {
+                                        return -1;
+                                }
+                        }
+                        /* Each element is a JSON object of its fields */
+                        if (json_expect_char(iov, offset, '{') < 0) {
+                                return -1;
+                        }
+                        pdu->json_key = NULL;
+                        if (coder(name, ctx, pdu, iov, offset,
+                                  &data[i * elem_size])) {
+                                return -1;
+                        }
+                        if (json_expect_char(iov, offset, '}') < 0) {
+                                return -1;
+                        }
+                }
+                if (json_expect_char(iov, offset, ']') < 0) {
+                        return -1;
+                }
+                return 0;
+        } else {
+                json_sep(pdu, iov, offset);
+                if (json_append_quoted(iov, offset, name) < 0) {
+                        return -1;
+                }
+                if (json_append(iov, offset, ": [") < 0) {
+                        return -1;
+                }
+                if (num == 0) {
+                        if (json_append(iov, offset, "]") < 0) {
+                                return -1;
+                        }
+                        return 0;
+                }
+
+                pdu->json_indentation++;
+                for (i = 0; i < (int)num; i++) {
+                        /* Array element separator */
+                        pdu->json_need_comma = (i > 0);
+                        json_sep(pdu, iov, offset);
+                        if (json_append(iov, offset, "{") < 0) {
+                                return -1;
+                        }
+                        pdu->json_need_comma = 0;
+                        pdu->json_indentation++;
+                        if (coder(name, ctx, pdu, iov, offset,
+                                  &data[i * elem_size])) {
+                                return -1;
+                        }
+                        pdu->json_indentation--;
+                        if (*offset + 2 < (int)iov->len) {
+                                iov->buf[(*offset)++] = '\n';
+                                iov->buf[*offset] = '\0';
+                        }
+                        json_write_indent(pdu, iov, offset);
+                        if (json_append(iov, offset, "}") < 0) {
+                                return -1;
+                        }
+                }
+                pdu->json_indentation--;
+                if (*offset + 2 < (int)iov->len) {
+                        iov->buf[(*offset)++] = '\n';
+                        iov->buf[*offset] = '\0';
+                }
+                json_write_indent(pdu, iov, offset);
+                if (json_append(iov, offset, "]") < 0) {
+                        return -1;
+                }
+                pdu->json_need_comma = 1;
+                return 0;
+        }
+}
+
+static int
+json_union_coder(char *name, struct dcerpc_context *ctx,
+                 struct dcerpc_pdu *pdu,
+                 struct smb2_iovec *iov, int *offset,
+                 uint32_t *switch_is, void *ptr, dcerpc_coder coder)
+{
+        int ret;
+
+        if (pdu->direction == DCERPC_DECODE) {
+                if (json_expect_key(pdu, iov, offset, name) < 0) {
+                        return -1;
+                }
+                if (json_expect_char(iov, offset, '{') < 0) {
+                        return -1;
+                }
+                dcerpc_set_switch_is(pdu, *switch_is);
+                pdu->json_key = NULL;
+                /*
+                 * Peek at the next key so the case coder receives the arm
+                 * field name (mirrors yaml_union_coder).
+                 */
+                if (json_next_key(pdu, iov, offset) < 0) {
+                        return -1;
+                }
+                name = pdu->json_key;
+                ret = coder(name, ctx, pdu, iov, offset, ptr);
+                if (ret) {
+                        return ret;
+                }
+                if (json_expect_char(iov, offset, '}') < 0) {
+                        return -1;
+                }
+                return 0;
+        } else {
+                json_sep(pdu, iov, offset);
+                if (json_append_quoted(iov, offset, name) < 0) {
+                        return -1;
+                }
+                if (json_append(iov, offset, ": {") < 0) {
+                        return -1;
+                }
+                pdu->json_need_comma = 0;
+                pdu->json_indentation++;
+                dcerpc_set_switch_is(pdu, *switch_is);
+                ret = coder(name, ctx, pdu, iov, offset, ptr);
+                pdu->json_indentation--;
+                if (*offset + 2 < (int)iov->len) {
+                        iov->buf[(*offset)++] = '\n';
+                        iov->buf[*offset] = '\0';
+                }
+                json_write_indent(pdu, iov, offset);
+                if (json_append(iov, offset, "}") < 0) {
+                        return -1;
+                }
+                pdu->json_need_comma = 1;
+                return ret;
+        }
+}
+
+static int
+json_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+               struct smb2_iovec *iov, int *offset, void *ptr,
+               enum ptr_type type, dcerpc_coder coder)
+{
+        if (ptr == NULL) {
+                return 0;
+        }
+        if (pdu->direction == DCERPC_DECODE) {
+                int rc;
+
+                rc = json_next_key(pdu, iov, offset);
+                if (rc < 0) {
+                        return -1;
+                }
+                if (rc > 0 || strcmp(pdu->json_key, name)) {
+                        /*
+                         * UNIQUE pointers are optional: missing key means a
+                         * NULL referent. Leave json_key set if present so the
+                         * next field can consume it.
+                         */
+                        if (type == PTR_UNIQUE) {
+                                return 0;
+                        }
+                        if (rc > 0) {
+                                printf("Wrong JSON key: expected %s but got end of object\n",
+                                       name);
+                                return -1;
+                        }
+                }
+                return coder(name, dce, pdu, iov, offset, ptr);
+        } else {
+                return coder(name, dce, pdu, iov, offset, ptr);
+        }
+}
+
+static int
+json_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                 struct smb2_iovec *iov, int *offset,
+                 void *ptr)
+{
+        if (pdu->direction == DCERPC_DECODE) {
+                char *val;
+
+                if (json_expect_key(pdu, iov, offset, name) < 0) {
+                        return -1;
+                }
+                if (json_parse_string(iov, offset, &val) < 0) {
+                        return -1;
+                }
+                *(char **)ptr = val;
+                return 0;
+        } else {
+                const char *s = *(char **)ptr;
+
+                json_sep(pdu, iov, offset);
+                if (json_append_quoted(iov, offset, name) < 0) {
+                        return -1;
+                }
+                if (json_append(iov, offset, ": ") < 0) {
+                        return -1;
+                }
+                if (json_append_quoted(iov, offset, s ? s : "") < 0) {
+                        return -1;
+                }
+                return 0;
+        }
+}
+
+static int
+json_struct_coder(char *name, struct dcerpc_context *ctx,
+                  struct dcerpc_pdu *pdu,
+                  struct smb2_iovec *iov, int *offset,
+                  void *ptr, dcerpc_coder coder)
+{
+        int ret;
+
+        if (pdu->direction == DCERPC_DECODE) {
+                if (json_expect_key(pdu, iov, offset, name) < 0) {
+                        return -1;
+                }
+                if (json_expect_char(iov, offset, '{') < 0) {
+                        return -1;
+                }
+                pdu->json_key = NULL;
+                ret = coder(name, ctx, pdu, iov, offset, ptr);
+                if (ret) {
+                        return ret;
+                }
+                if (json_expect_char(iov, offset, '}') < 0) {
+                        return -1;
+                }
+                return 0;
+        } else {
+                json_sep(pdu, iov, offset);
+                if (json_append_quoted(iov, offset, name) < 0) {
+                        return -1;
+                }
+                if (json_append(iov, offset, ": {") < 0) {
+                        return -1;
+                }
+                pdu->json_need_comma = 0;
+                pdu->json_indentation++;
+
+                ret = coder(name, ctx, pdu, iov, offset, ptr);
+                pdu->json_indentation--;
+                if (*offset + 2 < (int)iov->len) {
+                        iov->buf[(*offset)++] = '\n';
+                        iov->buf[*offset] = '\0';
+                }
+                json_write_indent(pdu, iov, offset);
+                if (json_append(iov, offset, "}") < 0) {
+                        return -1;
+                }
+                pdu->json_need_comma = 1;
+                return ret;
+        }
+}
+
+static int
+json_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+              struct smb2_iovec *iov,
+              int *offset, void *ptr,
+              dcerpc_coder coder)
+{
+        int ret;
+
+        if (pdu->direction == DCERPC_DECODE) {
+                if (json_expect_char(iov, offset, '{') < 0) {
+                        return -1;
+                }
+                pdu->json_key = NULL;
+                ret = json_struct_coder(name, ctx, pdu, iov, offset, ptr, coder);
+                if (ret) {
+                        return ret;
+                }
+                if (json_expect_char(iov, offset, '}') < 0) {
+                        return -1;
+                }
+                return 0;
+        } else {
+                if (json_append(iov, offset, "{") < 0) {
+                        return -1;
+                }
+                pdu->json_need_comma = 0;
+                pdu->json_indentation = 1;
+                ret = json_struct_coder(name, ctx, pdu, iov, offset, ptr, coder);
+                pdu->json_indentation = 0;
+                if (*offset + 3 < (int)iov->len) {
+                        iov->buf[(*offset)++] = '\n';
+                        iov->buf[(*offset)++] = '}';
+                        iov->buf[(*offset)++] = '\n';
+                        iov->buf[*offset] = '\0';
+                }
+                return ret;
         }
 }
 
