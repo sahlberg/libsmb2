@@ -1,0 +1,7 @@
+NetrServerDiskEnum: Request
+  ServerName: \\WIN16-1
+  Level: 0
+  DiskInfoStruct:
+    EntriesRead: 0
+  PreferedMaximumLength: 0xffffffff
+  ResumeHandle: 0

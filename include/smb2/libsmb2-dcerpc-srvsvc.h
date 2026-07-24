@@ -39,6 +39,9 @@ extern "C" {
 #define SRVSVC_NETRSHAREDELSTICKY 0x13
 #define SRVSVC_NETRSHARECHECK     0x14
 #define SRVSVC_NETRSERVERGETINFO  0x15
+#define SRVSVC_NETRSERVERSETINFO  0x16
+#define SRVSVC_NETRSERVERDISKENUM     0x17
+#define SRVSVC_NETRSERVERSTATISTICSGET 0x18
 
 struct dcerpc_context;
 struct dcerpc_pdu;
@@ -643,8 +646,98 @@ struct srvsvc_NetrServerGetInfo_rep {
 
         uint32_t status;
 };
-        
 
+struct srvsvc_NetrServerSetInfo_req {
+        char *ServerName;
+        uint32_t Level;
+        union srvsvc_SERVER_INFO InfoStruct;
+        uint32_t ParmErr;
+};
+
+struct srvsvc_NetrServerSetInfo_rep {
+        uint32_t ParmErr;
+
+        uint32_t status;
+};
+
+/*
+ * DISK_INFO / DISK_ENUM (NetrServerDiskEnum)
+ *
+ * typedef struct _DISK_INFO {
+ *   [string] WCHAR Disk[3];
+ * } DISK_INFO;
+ *
+ * MIDL encodes Disk as a varying UTF-16 string (offset + actual_count +
+ * data), not a conformant-varying string.
+ */
+struct srvsvc_DISK_INFO {
+        char *disk;
+};
+int srvsvc_DISK_INFO_coder(char *name, struct dcerpc_context *ctx,
+                           struct dcerpc_pdu *pdu,
+                           struct smb2_iovec *iov, int *offset,
+                           void *ptr);
+
+struct srvsvc_DISK_ENUM_CONTAINER {
+        uint32_t EntriesRead;
+        struct srvsvc_DISK_INFO *disk_info;
+};
+
+struct srvsvc_NetrServerDiskEnum_req {
+        char *ServerName;
+        uint32_t Level;
+        struct srvsvc_DISK_ENUM_CONTAINER DiskInfoStruct;
+        uint32_t PreferedMaximumLength;
+        uint32_t ResumeHandle;
+};
+
+struct srvsvc_NetrServerDiskEnum_rep {
+        struct srvsvc_DISK_ENUM_CONTAINER DiskInfoStruct;
+        uint32_t total_entries;
+        uint32_t resume_handle;
+
+        uint32_t status;
+};
+
+/*
+ * STAT_SERVER_0 / NetrServerStatisticsGet
+ */
+struct srvsvc_STAT_SERVER_0 {
+        uint32_t start;
+        uint32_t fopens;
+        uint32_t devopens;
+        uint32_t jobsqueued;
+        uint32_t sopens;
+        uint32_t stimedout;
+        uint32_t serrorout;
+        uint32_t pwerrors;
+        uint32_t permerrors;
+        uint32_t syserrors;
+        uint32_t bytessent_low;
+        uint32_t bytessent_high;
+        uint32_t bytesrcvd_low;
+        uint32_t bytesrcvd_high;
+        uint32_t avresponse;
+        uint32_t reqbufneed;
+        uint32_t bigbufneed;
+};
+int srvsvc_STAT_SERVER_0_coder(char *name, struct dcerpc_context *ctx,
+                               struct dcerpc_pdu *pdu,
+                               struct smb2_iovec *iov, int *offset,
+                               void *ptr);
+
+struct srvsvc_NetrServerStatisticsGet_req {
+        char *ServerName;
+        char *Service;
+        uint32_t Level;
+        uint32_t Options;
+};
+
+struct srvsvc_NetrServerStatisticsGet_rep {
+        struct srvsvc_STAT_SERVER_0 InfoStruct;
+
+        uint32_t status;
+};
 
 /*
  * Async share_enum()
@@ -763,6 +856,30 @@ int srvsvc_NetrServerGetInfo_rep_coder(char *name, struct dcerpc_context *ctx,
                                        struct dcerpc_pdu *pdu,
                                        struct smb2_iovec *iov, int *offset,
                                        void *ptr);
+int srvsvc_NetrServerSetInfo_req_coder(char *name, struct dcerpc_context *ctx,
+                                        struct dcerpc_pdu *pdu,
+                                        struct smb2_iovec *iov, int *offset,
+                                        void *ptr);
+int srvsvc_NetrServerSetInfo_rep_coder(char *name, struct dcerpc_context *ctx,
+                                        struct dcerpc_pdu *pdu,
+                                        struct smb2_iovec *iov, int *offset,
+                                        void *ptr);
+int srvsvc_NetrServerDiskEnum_req_coder(char *name, struct dcerpc_context *ctx,
+                                         struct dcerpc_pdu *pdu,
+                                         struct smb2_iovec *iov, int *offset,
+                                         void *ptr);
+int srvsvc_NetrServerDiskEnum_rep_coder(char *name, struct dcerpc_context *ctx,
+                                         struct dcerpc_pdu *pdu,
+                                         struct smb2_iovec *iov, int *offset,
+                                         void *ptr);
+int srvsvc_NetrServerStatisticsGet_req_coder(char *name, struct dcerpc_context *ctx,
+                                              struct dcerpc_pdu *pdu,
+                                              struct smb2_iovec *iov, int *offset,
+                                              void *ptr);
+int srvsvc_NetrServerStatisticsGet_rep_coder(char *name, struct dcerpc_context *ctx,
+                                              struct dcerpc_pdu *pdu,
+                                              struct smb2_iovec *iov, int *offset,
+                                              void *ptr);
 
 extern struct dcerpc_procedure srvsvc_procs[];
         

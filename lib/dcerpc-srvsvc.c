@@ -3224,6 +3224,532 @@ int srvsvc_NetrServerGetInfo_rep_coder(char *name, struct dcerpc_context *dce,
         return 0;
 }
 
+/*****************
+ * Function: 0x16
+ * NET_API_STATUS NetrServerSetInfo (
+ *   [in,string,unique] SRVSVC_HANDLE ServerName,
+ *   [in] DWORD Level,
+ *   [in, switch_is(Level)] LPSERVER_INFO ServerInfo,
+ *   [in,out,unique] DWORD * ParmError
+ * );
+ */
+int
+srvsvc_NetrServerSetInfo_req_coder(char *name, struct dcerpc_context *dce,
+                                   struct dcerpc_pdu *pdu,
+                                   struct smb2_iovec *iov, int *offset,
+                                   void *ptr)
+{
+        struct srvsvc_NetrServerSetInfo_req *req = ptr;
+
+        if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Level", dce, pdu, iov, offset, &req->Level)) {
+                return -1;
+        }
+        dcerpc_set_switch_is(pdu, req->Level);
+
+        if (dcerpc_ptr_coder("InfoStruct", dce, pdu, iov, offset, &req->InfoStruct,
+                             PTR_REF, srvsvc_SERVER_INFO_STRUCT_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("ParmErr", dce, pdu, iov, offset, &req->ParmErr,
+                             PTR_UNIQUE, dcerpc_uint32_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_NetrServerSetInfo_rep_coder(char *name, struct dcerpc_context *dce,
+                                   struct dcerpc_pdu *pdu,
+                                   struct smb2_iovec *iov, int *offset,
+                                   void *ptr)
+{
+        struct srvsvc_NetrServerSetInfo_rep *rep = ptr;
+
+        if (dcerpc_ptr_coder("ParmErr", dce, pdu, iov, offset, &rep->ParmErr,
+                             PTR_UNIQUE, dcerpc_uint32_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+/*
+ * [string] WCHAR Disk[3] is encoded by MIDL as a varying UTF-16 string:
+ *   offset, actual_count, data[actual_count]
+ * (no max_count on the wire; the IDL bound of 3 is not transmitted).
+ *
+ * Encode/decode the full varying string during the data pass only so that
+ * an array of DISK_INFO keeps each entry self-contained
+ * (offset/actual/data before the next entry).
+ */
+static int
+srvsvc_DISK_varying_string_coder(char *name, struct dcerpc_context *dce,
+                                 struct dcerpc_pdu *pdu,
+                                 struct smb2_iovec *iov, int *offset,
+                                 void *ptr)
+{
+        char **str = ptr;
+        uint32_t off = 0;
+        uint32_t actual;
+        uint32_t i;
+        struct smb2_utf16 *utf16;
+        const char *tmp;
+        char *out;
+        uint16_t zero = 0;
+        uint16_t ch;
+
+        if (dcerpc_pdu_encoding(pdu) != ENCODING_NDR) {
+                /* YAML/JSON: plain string field */
+                return dcerpc_utf16z_coder(name, dce, pdu, iov, offset, str);
+        }
+
+        /* NDR: nothing during the conformance run */
+        if (dcerpc_get_cr(pdu)) {
+                return 0;
+        }
+
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
+                if (*str) {
+                        utf16 = smb2_utf8_to_utf16(*str);
+                } else {
+                        utf16 = smb2_utf8_to_utf16("");
+                }
+                if (utf16 == NULL) {
+                        return -1;
+                }
+                actual = (uint32_t)utf16->len + 1; /* include NUL */
+                if (dcerpc_uint32_coder("Offset", dce, pdu, iov, offset, &off)) {
+                        free(utf16);
+                        return -1;
+                }
+                if (dcerpc_uint32_coder("ActualCount", dce, pdu, iov, offset, &actual)) {
+                        free(utf16);
+                        return -1;
+                }
+                for (i = 0; i < utf16->len; i++) {
+                        ch = utf16->val[i];
+                        if (dcerpc_uint16_coder("Disk", dce, pdu, iov, offset, &ch)) {
+                                free(utf16);
+                                return -1;
+                        }
+                }
+                if (dcerpc_uint16_coder("Nult", dce, pdu, iov, offset, &zero)) {
+                        free(utf16);
+                        return -1;
+                }
+                free(utf16);
+                return 0;
+        }
+
+        /* DECODE */
+        if (dcerpc_uint32_coder("Offset", dce, pdu, iov, offset, &off)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("ActualCount", dce, pdu, iov, offset, &actual)) {
+                return -1;
+        }
+        if (actual == 0) {
+                *str = NULL;
+                return 0;
+        }
+        if (*offset < 0 ||
+            (uint64_t)*offset + (uint64_t)actual * 2u > iov->len) {
+                return -1;
+        }
+        tmp = smb2_utf16_to_utf8((uint16_t *)(void *)(&iov->buf[*offset]),
+                                 (size_t)actual);
+        if (tmp == NULL) {
+                return -1;
+        }
+        *offset += (int)actual * 2;
+        out = smb2_alloc_data(dcerpc_get_smb2_context(dce),
+                              dcerpc_get_pdu_payload(pdu),
+                              strlen(tmp) + 1);
+        if (out == NULL) {
+                free(discard_const(tmp));
+                return -1;
+        }
+        memcpy(out, tmp, strlen(tmp) + 1);
+        free(discard_const(tmp));
+        *str = out;
+        return 0;
+}
+
+/*
+ * typedef struct _DISK_INFO {
+ *       [string] WCHAR Disk[3];
+ * } DISK_INFO, *PDISK_INFO, *LPDISK_INFO;
+ */
+int
+srvsvc_DISK_INFO_coder(char *name, struct dcerpc_context *dce,
+                       struct dcerpc_pdu *pdu,
+                       struct smb2_iovec *iov, int *offset,
+                       void *ptr)
+{
+        struct srvsvc_DISK_INFO *di = ptr;
+
+        if (srvsvc_DISK_varying_string_coder("Disk", dce, pdu, iov, offset,
+                                             &di->disk)) {
+                return -1;
+        }
+        return 0;
+}
+
+int
+srvsvc_DISK_INFO_STRUCT_coder(char *name, struct dcerpc_context *dce,
+                              struct dcerpc_pdu *pdu,
+                              struct smb2_iovec *iov, int *offset,
+                              void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_DISK_INFO_coder);
+}
+
+/*
+ * Buffer is [size_is(EntriesRead), length_is(EntriesRead)] LPDISK_INFO
+ * i.e. a conformant-varying array: max_count, offset, actual_count, then
+ * EntriesRead elements. Write the full headers during the data pass so
+ * each DISK_INFO can keep its varying string self-contained.
+ */
+static int
+srvsvc_DISK_INFO_carray_coder(char *name, struct dcerpc_context *dce,
+                              struct dcerpc_pdu *pdu,
+                              struct smb2_iovec *iov, int *offset,
+                              void *ptr)
+{
+        uint32_t num = dcerpc_get_size_is(pdu);
+        uint32_t max_count = num;
+        uint32_t arr_offset = 0;
+        uint32_t actual = num;
+        uint32_t i;
+        uint8_t *data = ptr;
+
+        if (dcerpc_pdu_encoding(pdu) != ENCODING_NDR) {
+                return dcerpc_carray_coder("DiskInfo", dce, pdu, iov, offset,
+                                           num, ptr,
+                                           sizeof(struct srvsvc_DISK_INFO),
+                                           srvsvc_DISK_INFO_STRUCT_coder);
+        }
+
+        if (dcerpc_get_cr(pdu)) {
+                return 0;
+        }
+
+        if (dcerpc_uint32_coder("MaxCount", dce, pdu, iov, offset, &max_count)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Offset", dce, pdu, iov, offset, &arr_offset)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("ActualCount", dce, pdu, iov, offset, &actual)) {
+                return -1;
+        }
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {
+                if (actual > max_count || actual > num) {
+                        return -1;
+                }
+                /* Prefer the wire actual_count (size_is came from EntriesRead). */
+                num = actual;
+        }
+        for (i = 0; i < num; i++) {
+                if (srvsvc_DISK_INFO_STRUCT_coder("DiskInfo", dce, pdu, iov,
+                                                  offset,
+                                                  &data[i * sizeof(struct srvsvc_DISK_INFO)])) {
+                        return -1;
+                }
+        }
+        return 0;
+}
+
+/*
+ * typedef struct _DISK_ENUM_CONTAINER {
+ *       DWORD EntriesRead;
+ *       [size_is(EntriesRead), length_is(EntriesRead)] LPDISK_INFO Buffer;
+ * } DISK_ENUM_CONTAINER;
+ */
+int
+srvsvc_DISK_ENUM_CONTAINER_coder(char *name, struct dcerpc_context *dce,
+                                 struct dcerpc_pdu *pdu,
+                                 struct smb2_iovec *iov, int *offset,
+                                 void *ptr)
+{
+        struct srvsvc_DISK_ENUM_CONTAINER *ctr = ptr;
+
+        if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &ctr->EntriesRead)) {
+                return -1;
+        }
+        if (ctr->EntriesRead) {
+                dcerpc_set_size_is(pdu, ctr->EntriesRead);
+        }
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && ctr->EntriesRead) {
+                if (ctr->disk_info == NULL) {
+                        size_t esize = sizeof(struct srvsvc_DISK_INFO);
+
+                        if (ctr->EntriesRead > SIZE_MAX / esize) {
+                                return -1;
+                        }
+                        ctr->disk_info = smb2_alloc_data(
+                                dcerpc_get_smb2_context(dce),
+                                dcerpc_get_pdu_payload(pdu),
+                                (size_t)ctr->EntriesRead * esize);
+                        if (ctr->disk_info == NULL) {
+                                return -1;
+                        }
+                }
+        }
+        if (dcerpc_ptr_coder("DiskInfo", dce, pdu, iov, offset, ctr->disk_info,
+                             PTR_UNIQUE, srvsvc_DISK_INFO_carray_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_DISK_ENUM_CONTAINER_struct_coder(char *name, struct dcerpc_context *dce,
+                                        struct dcerpc_pdu *pdu,
+                                        struct smb2_iovec *iov, int *offset,
+                                        void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_DISK_ENUM_CONTAINER_coder);
+}
+
+/*****************
+ * Function: 0x17
+ * NET_API_STATUS NetrServerDiskEnum (
+ *   [in,string,unique] SRVSVC_HANDLE ServerName,
+ *   [in] DWORD Level,
+ *   [in,out] DISK_ENUM_CONTAINER * DiskInfoStruct,
+ *   [in] DWORD PreferedMaximumLength,
+ *   [out] DWORD * TotalEntries,
+ *   [in,out,unique] DWORD * ResumeHandle
+ * );
+ */
+int
+srvsvc_NetrServerDiskEnum_req_coder(char *name, struct dcerpc_context *dce,
+                                    struct dcerpc_pdu *pdu,
+                                    struct smb2_iovec *iov, int *offset,
+                                    void *ptr)
+{
+        struct srvsvc_NetrServerDiskEnum_req *req = ptr;
+
+        if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Level", dce, pdu, iov, offset, &req->Level)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("DiskInfoStruct", dce, pdu, iov, offset, &req->DiskInfoStruct,
+                             PTR_REF, srvsvc_DISK_ENUM_CONTAINER_struct_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("PreferedMaximumLength", dce, pdu, iov, offset, &req->PreferedMaximumLength,
+                             PTR_REF, dcerpc_uint32_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("ResumeHandle", dce, pdu, iov, offset, &req->ResumeHandle,
+                             PTR_UNIQUE, dcerpc_uint32_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_NetrServerDiskEnum_rep_coder(char *name, struct dcerpc_context *dce,
+                                    struct dcerpc_pdu *pdu,
+                                    struct smb2_iovec *iov, int *offset,
+                                    void *ptr)
+{
+        struct srvsvc_NetrServerDiskEnum_rep *rep = ptr;
+
+        if (dcerpc_ptr_coder("DiskInfoStruct", dce, pdu, iov, offset, &rep->DiskInfoStruct,
+                             PTR_REF, srvsvc_DISK_ENUM_CONTAINER_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("TotalEntries", dce, pdu, iov, offset, &rep->total_entries,
+                             PTR_REF, dcerpc_uint32_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("ResumeHandle", dce, pdu, iov, offset, &rep->resume_handle,
+                             PTR_UNIQUE, dcerpc_uint32_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+/*
+ * typedef struct _STAT_SERVER_0 {
+ *   DWORD sts0_start;
+ *   DWORD sts0_fopens;
+ *   DWORD sts0_devopens;
+ *   DWORD sts0_jobsqueued;
+ *   DWORD sts0_sopens;
+ *   DWORD sts0_stimedout;
+ *   DWORD sts0_serrorout;
+ *   DWORD sts0_pwerrors;
+ *   DWORD sts0_permerrors;
+ *   DWORD sts0_syserrors;
+ *   DWORD sts0_bytessent_low;
+ *   DWORD sts0_bytessent_high;
+ *   DWORD sts0_bytesrcvd_low;
+ *   DWORD sts0_bytesrcvd_high;
+ *   DWORD sts0_avresponse;
+ *   DWORD sts0_reqbufneed;
+ *   DWORD sts0_bigbufneed;
+ * } STAT_SERVER_0, *PSTAT_SERVER_0, *LPSTAT_SERVER_0;
+ */
+int
+srvsvc_STAT_SERVER_0_coder(char *name, struct dcerpc_context *dce,
+                           struct dcerpc_pdu *pdu,
+                           struct smb2_iovec *iov, int *offset,
+                           void *ptr)
+{
+        struct srvsvc_STAT_SERVER_0 *st = ptr;
+
+        if (dcerpc_uint32_coder("Start", dce, pdu, iov, offset, &st->start)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Fopens", dce, pdu, iov, offset, &st->fopens)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Devopens", dce, pdu, iov, offset, &st->devopens)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Jobsqueued", dce, pdu, iov, offset, &st->jobsqueued)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Sopens", dce, pdu, iov, offset, &st->sopens)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Stimedout", dce, pdu, iov, offset, &st->stimedout)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Serrorout", dce, pdu, iov, offset, &st->serrorout)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Pwerrors", dce, pdu, iov, offset, &st->pwerrors)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Permerrors", dce, pdu, iov, offset, &st->permerrors)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Syserrors", dce, pdu, iov, offset, &st->syserrors)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("BytessentLow", dce, pdu, iov, offset, &st->bytessent_low)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("BytessentHigh", dce, pdu, iov, offset, &st->bytessent_high)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("BytesrcvdLow", dce, pdu, iov, offset, &st->bytesrcvd_low)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("BytesrcvdHigh", dce, pdu, iov, offset, &st->bytesrcvd_high)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Avresponse", dce, pdu, iov, offset, &st->avresponse)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Reqbufneed", dce, pdu, iov, offset, &st->reqbufneed)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Bigbufneed", dce, pdu, iov, offset, &st->bigbufneed)) {
+                return -1;
+        }
+        return 0;
+}
+
+int
+srvsvc_STAT_SERVER_0_STRUCT_coder(char *name, struct dcerpc_context *dce,
+                                  struct dcerpc_pdu *pdu,
+                                  struct smb2_iovec *iov, int *offset,
+                                  void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_STAT_SERVER_0_coder);
+}
+
+/*****************
+ * Function: 0x18
+ * NET_API_STATUS NetrServerStatisticsGet (
+ *   [in,string,unique] SRVSVC_HANDLE ServerName,
+ *   [in,string,unique] WCHAR * Service,
+ *   [in] DWORD Level,
+ *   [in] DWORD Options,
+ *   [out] LPSTAT_SERVER_0 * InfoStruct
+ * );
+ */
+int
+srvsvc_NetrServerStatisticsGet_req_coder(char *name, struct dcerpc_context *dce,
+                                         struct dcerpc_pdu *pdu,
+                                         struct smb2_iovec *iov, int *offset,
+                                         void *ptr)
+{
+        struct srvsvc_NetrServerStatisticsGet_req *req = ptr;
+        void *service_ptr = &req->Service;
+
+        if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        /*
+         * Service is [unique]. On encode, a NULL char* must be sent as a
+         * null referent. On decode, always pass the address of the char*.
+         */
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
+                if (req->Service == NULL) {
+                        service_ptr = NULL;
+                }
+        }
+        if (dcerpc_ptr_coder("Service", dce, pdu, iov, offset, service_ptr,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Level", dce, pdu, iov, offset, &req->Level)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Options", dce, pdu, iov, offset, &req->Options)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_NetrServerStatisticsGet_rep_coder(char *name, struct dcerpc_context *dce,
+                                         struct dcerpc_pdu *pdu,
+                                         struct smb2_iovec *iov, int *offset,
+                                         void *ptr)
+{
+        struct srvsvc_NetrServerStatisticsGet_rep *rep = ptr;
+
+        if (dcerpc_ptr_coder("InfoStruct", dce, pdu, iov, offset, &rep->InfoStruct,
+                             PTR_UNIQUE, srvsvc_STAT_SERVER_0_STRUCT_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
+                return -1;
+        }
+
+        return 0;
+}
+
 
 struct dcerpc_procedure srvsvc_procs[] = {
         {SRVSVC_NETRCONNECTIONENUM, "NetrConnectionEnum",
@@ -3281,6 +3807,18 @@ struct dcerpc_procedure srvsvc_procs[] = {
         {SRVSVC_NETRSERVERGETINFO, "NetrServerGetInfo",
          srvsvc_NetrServerGetInfo_req_coder, sizeof(struct srvsvc_NetrServerGetInfo_req),
          srvsvc_NetrServerGetInfo_rep_coder, sizeof(struct srvsvc_NetrServerGetInfo_rep),
+        },
+        {SRVSVC_NETRSERVERSETINFO, "NetrServerSetInfo",
+         srvsvc_NetrServerSetInfo_req_coder, sizeof(struct srvsvc_NetrServerSetInfo_req),
+         srvsvc_NetrServerSetInfo_rep_coder, sizeof(struct srvsvc_NetrServerSetInfo_rep),
+        },
+        {SRVSVC_NETRSERVERDISKENUM, "NetrServerDiskEnum",
+         srvsvc_NetrServerDiskEnum_req_coder, sizeof(struct srvsvc_NetrServerDiskEnum_req),
+         srvsvc_NetrServerDiskEnum_rep_coder, sizeof(struct srvsvc_NetrServerDiskEnum_rep),
+        },
+        {SRVSVC_NETRSERVERSTATISTICSGET, "NetrServerStatisticsGet",
+         srvsvc_NetrServerStatisticsGet_req_coder, sizeof(struct srvsvc_NetrServerStatisticsGet_req),
+         srvsvc_NetrServerStatisticsGet_rep_coder, sizeof(struct srvsvc_NetrServerStatisticsGet_rep),
         },
         {-1, NULL, NULL, 0, NULL, 0}
 };
