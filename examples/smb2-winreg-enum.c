@@ -12,19 +12,21 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 */
 
 /*
- * Recursively enumerate registry keys and values under HKLM via MS-RRP.
+ * Recursively enumerate registry keys and values under predefined hives
+ * via MS-RRP (winreg on IPC$):
+ *   HKCR  HKEY_CLASSES_ROOT   (OpenClassesRoot)
+ *   HKLM  HKEY_LOCAL_MACHINE  (OpenLocalMachine)
  *
- * Connects to IPC$/winreg, OpenLocalMachine, then walks the tree with
- * BaseRegEnumValue / BaseRegEnumKey / BaseRegOpenKey / BaseRegCloseKey.
- * Prints one entry per line, indented two spaces per depth level.
- * Values are shown as:  name (TYPE) = data
+ * Walks each hive with BaseRegEnumValue / BaseRegEnumKey / BaseRegOpenKey
+ * / BaseRegCloseKey. Prints one entry per line, indented two spaces per
+ * depth level. Values are shown as:  name (TYPE) = data
  *
  * Usage:
  *   smb2-winreg-enum smb://[<domain;][<user>@]<host>/
  *
  * Share path in the URL is ignored; the tool always uses IPC$.
  * Access-denied keys are skipped with a message on stderr.
- * Full HKLM walks can be large and slow.
+ * Full walks can be large and slow.
  */
 
 #define _GNU_SOURCE
@@ -62,6 +64,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 static int is_finished;
 static struct dcerpc_context *g_dce;
+/* Which predefined hive to open next after the current root walk ends. */
+static int g_next_hive; /* 0=HKCR, 1=HKLM, 2=done */
 
 /*
  * One open key in the recursive walk. parent is the key we will continue
@@ -83,6 +87,7 @@ static void walk_close(struct walk *w);
 static void walk_open_child(struct walk *parent, const char *name);
 static void walk_enum_values(struct walk *w);
 static void walk_enum_keys(struct walk *w);
+static void open_next_hive(void);
 
 static int
 usage(void)
@@ -91,7 +96,8 @@ usage(void)
                 "smb2-winreg-enum <smb2-url>\n\n"
                 "URL format: "
                 "smb://[<domain;][<username>@]<host>[:<port>]/\n"
-                "Connects to IPC$/winreg and dumps HKLM subkeys recursively.\n");
+                "Connects to IPC$/winreg and dumps HKCR then HKLM "
+                "recursively.\n");
         exit(1);
 }
 
@@ -322,7 +328,8 @@ cl_cb(struct dcerpc_context *dce, int status,
         walk_free(w);
 
         if (parent == NULL) {
-                is_finished = 1;
+                /* Finished one hive root; open the next predefined key. */
+                open_next_hive();
                 return;
         }
         /* Continue enumerating the parent after finishing this child. */
@@ -588,54 +595,87 @@ walk_continue(struct walk *w)
 }
 
 static void
-olm_cb(struct dcerpc_context *dce, int status,
-       void *command_data, void *cb_data)
+open_root_cb(struct dcerpc_context *dce, int status,
+             void *command_data, void *cb_data)
 {
-        struct winreg_OpenLocalMachine_rep *rep = command_data;
+        struct winreg_OpenRootKey_rep *rep = command_data;
+        const char *label = cb_data;
         struct walk *root;
 
         if (status) {
                 dcerpc_free_data(dce, rep);
-                fail_rpc(dce, "OpenLocalMachine", status);
+                fail_rpc(dce, label, status);
         }
         if (rep->status != ERROR_SUCCESS) {
-                fprintf(stderr, "OpenLocalMachine status 0x%x\n", rep->status);
+                fprintf(stderr, "%s status 0x%x\n", label, rep->status);
                 dcerpc_free_data(dce, rep);
-                exit(10);
+                /* Skip this hive and try the next */
+                open_next_hive();
+                return;
         }
 
-        print_key(0, "HKLM");
+        print_key(0, label);
         root = walk_new(&rep->phKey, 1, NULL);
         dcerpc_free_data(dce, rep);
         walk_continue(root);
 }
 
 static void
+open_next_hive(void)
+{
+        struct winreg_OpenRootKey_req req;
+        int opnum;
+        dcerpc_coder req_coder, rep_coder;
+        int rep_size;
+        const char *label;
+
+        memset(&req, 0, sizeof(req));
+        req.ServerName = NULL;
+        req.samDesired = WINREG_WALK_ACCESS;
+
+        switch (g_next_hive) {
+        case 0:
+                label = "HKCR";
+                opnum = WINREG_OPENCLASSESROOT;
+                req_coder = winreg_OpenClassesRoot_req_coder;
+                rep_coder = winreg_OpenClassesRoot_rep_coder;
+                rep_size = sizeof(struct winreg_OpenClassesRoot_rep);
+                g_next_hive = 1;
+                break;
+        case 1:
+                label = "HKLM";
+                opnum = WINREG_OPENLOCALMACHINE;
+                req_coder = winreg_OpenLocalMachine_req_coder;
+                rep_coder = winreg_OpenLocalMachine_rep_coder;
+                rep_size = sizeof(struct winreg_OpenLocalMachine_rep);
+                g_next_hive = 2;
+                break;
+        default:
+                is_finished = 1;
+                return;
+        }
+
+        if (dcerpc_call_async(g_dce, opnum, req_coder, &req, rep_coder,
+                              rep_size, open_root_cb,
+                              discard_const(label)) != 0) {
+                fprintf(stderr, "dcerpc_call_async %s: %s\n",
+                        label, dcerpc_get_error(g_dce));
+                exit(10);
+        }
+}
+
+static void
 co_cb(struct dcerpc_context *dce, int status,
       void *command_data, void *cb_data)
 {
-        struct winreg_OpenLocalMachine_req req;
-
         if (status != SMB2_STATUS_SUCCESS) {
                 fprintf(stderr, "failed to connect to winreg (%s) %s\n",
                         strerror(-status), dcerpc_get_error(dce));
                 exit(10);
         }
 
-        memset(&req, 0, sizeof(req));
-        req.ServerName = NULL;
-        req.samDesired = WINREG_WALK_ACCESS;
-
-        if (dcerpc_call_async(dce,
-                              WINREG_OPENLOCALMACHINE,
-                              winreg_OpenLocalMachine_req_coder, &req,
-                              winreg_OpenLocalMachine_rep_coder,
-                              sizeof(struct winreg_OpenLocalMachine_rep),
-                              olm_cb, NULL) != 0) {
-                fprintf(stderr, "dcerpc_call_async OpenLocalMachine: %s\n",
-                        dcerpc_get_error(dce));
-                exit(10);
-        }
+        g_next_hive = 0;
+        open_next_hive();
 }
 
 int

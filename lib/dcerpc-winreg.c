@@ -110,44 +110,37 @@ winreg_ServerName_coder(char *name, struct dcerpc_context *dce,
         return -1;
 }
 
-/**********************
- * Function: 0x02
- *      error_status_t OpenLocalMachine(
- *              [in, unique] PREGISTRY_SERVER_NAME ServerName,
- *              [in] REGSAM samDesired,
- *              [out] PRPC_HKEY phKey
- *              );
- *
- * ServerName SHOULD be sent as NULL and MUST be ignored on receipt.
- * Pass req->ServerName (the pointer value) so a NULL unique encodes/
- * decodes without invoking the referent coder; any non-NULL referent
- * fails in winreg_ServerName_coder.
- **********************/
-int
-winreg_OpenLocalMachine_req_coder(char *name, struct dcerpc_context *dce,
-                                  struct dcerpc_pdu *pdu,
-                                  struct smb2_iovec *iov, int *offset,
-                                  void *ptr)
+/*
+ * Shared Open* root-key layout (OpenClassesRoot, OpenLocalMachine, ...):
+ * ServerName SHOULD be NULL; pass the pointer value so a NULL unique
+ * encodes without invoking the referent coder.
+ */
+static int
+winreg_OpenRootKey_req_coder(char *name, struct dcerpc_context *dce,
+                             struct dcerpc_pdu *pdu,
+                             struct smb2_iovec *iov, int *offset,
+                             void *ptr)
 {
-        struct winreg_OpenLocalMachine_req *req = ptr;
+        struct winreg_OpenRootKey_req *req = ptr;
 
         if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, req->ServerName,
                              PTR_UNIQUE, winreg_ServerName_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("samDesired", dce, pdu, iov, offset, &req->samDesired)) {
+        if (dcerpc_uint32_coder("samDesired", dce, pdu, iov, offset,
+                                &req->samDesired)) {
                 return -1;
         }
         return 0;
 }
 
-int
-winreg_OpenLocalMachine_rep_coder(char *name, struct dcerpc_context *dce,
-                                  struct dcerpc_pdu *pdu,
-                                  struct smb2_iovec *iov, int *offset,
-                                  void *ptr)
+static int
+winreg_OpenRootKey_rep_coder(char *name, struct dcerpc_context *dce,
+                             struct dcerpc_pdu *pdu,
+                             struct smb2_iovec *iov, int *offset,
+                             void *ptr)
 {
-        struct winreg_OpenLocalMachine_rep *rep = ptr;
+        struct winreg_OpenRootKey_rep *rep = ptr;
 
         if (dcerpc_ptr_coder("phKey", dce, pdu, iov, offset, &rep->phKey,
                              PTR_REF, winreg_RPC_HKEY_STRUCT_coder)) {
@@ -158,6 +151,46 @@ winreg_OpenLocalMachine_rep_coder(char *name, struct dcerpc_context *dce,
         }
 
         return 0;
+}
+
+/**********************
+ * Function: 0x00  OpenClassesRoot  -> HKEY_CLASSES_ROOT
+ * Function: 0x02  OpenLocalMachine -> HKEY_LOCAL_MACHINE
+ **********************/
+int
+winreg_OpenClassesRoot_req_coder(char *name, struct dcerpc_context *dce,
+                                 struct dcerpc_pdu *pdu,
+                                 struct smb2_iovec *iov, int *offset,
+                                 void *ptr)
+{
+        return winreg_OpenRootKey_req_coder(name, dce, pdu, iov, offset, ptr);
+}
+
+int
+winreg_OpenClassesRoot_rep_coder(char *name, struct dcerpc_context *dce,
+                                 struct dcerpc_pdu *pdu,
+                                 struct smb2_iovec *iov, int *offset,
+                                 void *ptr)
+{
+        return winreg_OpenRootKey_rep_coder(name, dce, pdu, iov, offset, ptr);
+}
+
+int
+winreg_OpenLocalMachine_req_coder(char *name, struct dcerpc_context *dce,
+                                  struct dcerpc_pdu *pdu,
+                                  struct smb2_iovec *iov, int *offset,
+                                  void *ptr)
+{
+        return winreg_OpenRootKey_req_coder(name, dce, pdu, iov, offset, ptr);
+}
+
+int
+winreg_OpenLocalMachine_rep_coder(char *name, struct dcerpc_context *dce,
+                                  struct dcerpc_pdu *pdu,
+                                  struct smb2_iovec *iov, int *offset,
+                                  void *ptr)
+{
+        return winreg_OpenRootKey_rep_coder(name, dce, pdu, iov, offset, ptr);
 }
 
 /**********************
@@ -679,6 +712,10 @@ winreg_BaseRegEnumValue_rep_coder(char *name, struct dcerpc_context *dce,
 }
 
 struct dcerpc_procedure winreg_procs[] = {
+        {WINREG_OPENCLASSESROOT, "OpenClassesRoot",
+         winreg_OpenClassesRoot_req_coder, sizeof(struct winreg_OpenClassesRoot_req),
+         winreg_OpenClassesRoot_rep_coder, sizeof(struct winreg_OpenClassesRoot_rep),
+        },
         {WINREG_OPENLOCALMACHINE, "OpenLocalMachine",
          winreg_OpenLocalMachine_req_coder, sizeof(struct winreg_OpenLocalMachine_req),
          winreg_OpenLocalMachine_rep_coder, sizeof(struct winreg_OpenLocalMachine_rep),

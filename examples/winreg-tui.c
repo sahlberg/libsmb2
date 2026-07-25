@@ -12,14 +12,17 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 */
 
 /*
- * ncurses TUI for browsing HKLM via MS-RRP (winreg on IPC$).
+ * ncurses TUI for browsing predefined registry hives via MS-RRP
+ * (winreg on IPC$):
+ *   HKCR  HKEY_CLASSES_ROOT
+ *   HKLM  HKEY_LOCAL_MACHINE
  *
  * Usage:
  *   winreg-tui smb://[<domain;][<user>@]<host>/
  *
  * Keys:
  *   Up / Down   move selection
- *   Space       expand / collapse (subkeys loaded on first expand)
+ *   Space       expand / collapse (subkeys/values loaded on first expand)
  *   q           quit
  *
  * Lines with children show '>' when collapsed and '<' when expanded.
@@ -78,7 +81,8 @@ struct node {
 
 static struct smb2_context *g_smb2;
 static struct dcerpc_context *g_dce;
-static struct node *g_root;
+static struct node *g_roots[2];  /* HKCR, HKLM */
+static int g_nroots;
 static struct node *g_visible[MAX_VISIBLE];
 static int g_nvisible;
 static int g_sel;                /* index into g_visible */
@@ -690,8 +694,10 @@ rebuild_visible(void)
         int i;
 
         g_nvisible = 0;
-        if (g_root) {
-                visible_add(g_root);
+        for (i = 0; i < g_nroots; i++) {
+                if (g_roots[i]) {
+                        visible_add(g_roots[i]);
+                }
         }
         g_sel = 0;
         if (sel) {
@@ -806,12 +812,48 @@ connect_cb(struct dcerpc_context *dce, int status,
 }
 
 static int
+open_hive_root(int opnum, dcerpc_coder req_coder, dcerpc_coder rep_coder,
+               int rep_size, const char *label, struct node **out)
+{
+        struct winreg_OpenRootKey_req req;
+        struct winreg_OpenRootKey_rep *rep;
+        struct node *n;
+
+        memset(&req, 0, sizeof(req));
+        req.ServerName = NULL;
+        req.samDesired = WINREG_WALK_ACCESS;
+        if (rpc_call(opnum, req_coder, &req, rep_coder, rep_size,
+                     (void **)&rep) != 0) {
+                fprintf(stderr, "%s failed\n", label);
+                return -1;
+        }
+        if (rep->status != ERROR_SUCCESS) {
+                fprintf(stderr, "%s status 0x%x\n", label, rep->status);
+                dcerpc_free_data(g_dce, rep);
+                return -1;
+        }
+        n = node_new(label, 0, NULL);
+        if (n == NULL) {
+                dcerpc_free_data(g_dce, rep);
+                fprintf(stderr, "out of memory\n");
+                return -1;
+        }
+        memcpy(&n->hKey, &rep->phKey, sizeof(n->hKey));
+        n->has_handle = 1;
+        n->expanded = 0;
+        n->loaded = 0;
+        n->has_children = 1;
+        dcerpc_free_data(g_dce, rep);
+        *out = n;
+        return 0;
+}
+
+static int
 connect_winreg(const char *url_str)
 {
         struct smb2_url *url;
-        struct winreg_OpenLocalMachine_req olm_req;
-        struct winreg_OpenLocalMachine_rep *olm_rep;
         struct pollfd pfd;
+        struct node *n;
 
         g_smb2 = smb2_init_context();
         if (g_smb2 == NULL) {
@@ -872,53 +914,46 @@ connect_winreg(const char *url_str)
                 return -1;
         }
 
-        memset(&olm_req, 0, sizeof(olm_req));
-        olm_req.ServerName = NULL;
-        olm_req.samDesired = WINREG_WALK_ACCESS;
-        if (rpc_call(WINREG_OPENLOCALMACHINE,
-                     winreg_OpenLocalMachine_req_coder, &olm_req,
-                     winreg_OpenLocalMachine_rep_coder,
-                     sizeof(*olm_rep), (void **)&olm_rep) != 0) {
-                fprintf(stderr, "OpenLocalMachine failed\n");
+        g_nroots = 0;
+        if (open_hive_root(WINREG_OPENCLASSESROOT,
+                           winreg_OpenClassesRoot_req_coder,
+                           winreg_OpenClassesRoot_rep_coder,
+                           sizeof(struct winreg_OpenClassesRoot_rep),
+                           "HKCR", &n) == 0) {
+                g_roots[g_nroots++] = n;
+        }
+        if (open_hive_root(WINREG_OPENLOCALMACHINE,
+                           winreg_OpenLocalMachine_req_coder,
+                           winreg_OpenLocalMachine_rep_coder,
+                           sizeof(struct winreg_OpenLocalMachine_rep),
+                           "HKLM", &n) == 0) {
+                g_roots[g_nroots++] = n;
+        }
+        if (g_nroots == 0) {
+                fprintf(stderr, "Failed to open any registry hive\n");
                 return -1;
         }
-        if (olm_rep->status != ERROR_SUCCESS) {
-                fprintf(stderr, "OpenLocalMachine status 0x%x\n",
-                        olm_rep->status);
-                dcerpc_free_data(g_dce, olm_rep);
-                return -1;
-        }
-
-        g_root = node_new("HKLM", 0, NULL);
-        if (g_root == NULL) {
-                dcerpc_free_data(g_dce, olm_rep);
-                fprintf(stderr, "out of memory\n");
-                return -1;
-        }
-        memcpy(&g_root->hKey, &olm_rep->phKey, sizeof(g_root->hKey));
-        g_root->has_handle = 1;
-        g_root->expanded = 0;
-        g_root->loaded = 0;
-        g_root->has_children = 1;
-        dcerpc_free_data(g_dce, olm_rep);
 
         rebuild_visible();
         g_sel = 0;
-        set_status("Connected. Space expands HKLM.");
+        set_status("Connected. Space expands a hive (HKCR / HKLM).");
         return 0;
 }
 
 static void
 cleanup(void)
 {
+        int i;
+
         if (g_ui_active) {
                 endwin();
                 g_ui_active = 0;
         }
-        if (g_root) {
-                node_free(g_root);
-                g_root = NULL;
+        for (i = 0; i < g_nroots; i++) {
+                node_free(g_roots[i]);
+                g_roots[i] = NULL;
         }
+        g_nroots = 0;
         if (g_dce) {
                 dcerpc_destroy_context(g_dce);
                 g_dce = NULL;
@@ -936,7 +971,7 @@ usage(void)
         fprintf(stderr, "Usage:\n"
                 "winreg-tui <smb2-url>\n\n"
                 "URL format: smb://[<domain;][<username>@]<host>[:<port>]/\n"
-                "Browse HKLM on IPC$/winreg (ncurses).\n");
+                "Browse HKCR and HKLM on IPC$/winreg (ncurses).\n");
         return 1;
 }
 

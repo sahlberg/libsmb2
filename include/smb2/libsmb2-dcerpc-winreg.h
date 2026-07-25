@@ -74,15 +74,37 @@ struct dcerpc_context;
 struct dcerpc_pdu;
 
 /*
- * error_status_t OpenLocalMachine(
- *   [in, unique] PREGISTRY_SERVER_NAME ServerName,
- *   [in] REGSAM samDesired,
- *   [out] PRPC_HKEY phKey
- * );
+ * Open* root keys share the same request/reply shape (MS-RRP):
+ *   error_status_t OpenXxx(
+ *     [in, unique] PREGISTRY_SERVER_NAME ServerName,
+ *     [in] REGSAM samDesired,
+ *     [out] PRPC_HKEY phKey
+ *   );
  *
  * ServerName is [unique] PWCHAR and MUST be NULL (MS-RRP). Non-NULL is
  * rejected by the coder. It is not a conformant/varying NDR string.
  */
+struct winreg_OpenRootKey_req {
+        char *ServerName; /* must be NULL */
+        uint32_t samDesired;
+};
+
+struct winreg_OpenRootKey_rep {
+        uint32_t status;
+
+        struct dcerpc_context_handle phKey;
+};
+
+/* Aliases for the predefined keys we open */
+struct winreg_OpenClassesRoot_req {
+        char *ServerName;
+        uint32_t samDesired;
+};
+struct winreg_OpenClassesRoot_rep {
+        uint32_t status;
+        struct dcerpc_context_handle phKey;
+};
+
 struct winreg_OpenLocalMachine_req {
         char *ServerName; /* must be NULL */
         uint32_t samDesired;
@@ -258,6 +280,14 @@ struct winreg_BaseRegEnumValue_rep {
         uint32_t cbLen;
 };
 
+int winreg_OpenClassesRoot_rep_coder(char *name, struct dcerpc_context *dce,
+                                     struct dcerpc_pdu *pdu,
+                                     struct smb2_iovec *iov, int *offset,
+                                     void *ptr);
+int winreg_OpenClassesRoot_req_coder(char *name, struct dcerpc_context *dce,
+                                     struct dcerpc_pdu *pdu,
+                                     struct smb2_iovec *iov, int *offset,
+                                     void *ptr);
 int winreg_OpenLocalMachine_rep_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
                                       struct smb2_iovec *iov, int *offset,
