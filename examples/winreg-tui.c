@@ -15,7 +15,10 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
  * ncurses TUI for browsing predefined registry hives via MS-RRP
  * (winreg on IPC$):
  *   HKCR  HKEY_CLASSES_ROOT
+ *   HKCU  HKEY_CURRENT_USER
  *   HKLM  HKEY_LOCAL_MACHINE
+ *   HKU   HKEY_USERS
+ *   HKCC  HKEY_CURRENT_CONFIG
  *
  * Usage:
  *   winreg-tui smb://[<domain;][<user>@]<host>/
@@ -81,7 +84,7 @@ struct node {
 
 static struct smb2_context *g_smb2;
 static struct dcerpc_context *g_dce;
-static struct node *g_roots[2];  /* HKCR, HKLM */
+static struct node *g_roots[5];  /* HKCR, HKCU, HKLM, HKU, HKCC */
 static int g_nroots;
 static struct node *g_visible[MAX_VISIBLE];
 static int g_nvisible;
@@ -922,11 +925,32 @@ connect_winreg(const char *url_str)
                            "HKCR", &n) == 0) {
                 g_roots[g_nroots++] = n;
         }
+        if (open_hive_root(WINREG_OPENCURRENTUSER,
+                           winreg_OpenCurrentUser_req_coder,
+                           winreg_OpenCurrentUser_rep_coder,
+                           sizeof(struct winreg_OpenCurrentUser_rep),
+                           "HKCU", &n) == 0) {
+                g_roots[g_nroots++] = n;
+        }
         if (open_hive_root(WINREG_OPENLOCALMACHINE,
                            winreg_OpenLocalMachine_req_coder,
                            winreg_OpenLocalMachine_rep_coder,
                            sizeof(struct winreg_OpenLocalMachine_rep),
                            "HKLM", &n) == 0) {
+                g_roots[g_nroots++] = n;
+        }
+        if (open_hive_root(WINREG_OPENUSERS,
+                           winreg_OpenUsers_req_coder,
+                           winreg_OpenUsers_rep_coder,
+                           sizeof(struct winreg_OpenUsers_rep),
+                           "HKU", &n) == 0) {
+                g_roots[g_nroots++] = n;
+        }
+        if (open_hive_root(WINREG_OPENCURRENTCONFIG,
+                           winreg_OpenCurrentConfig_req_coder,
+                           winreg_OpenCurrentConfig_rep_coder,
+                           sizeof(struct winreg_OpenCurrentConfig_rep),
+                           "HKCC", &n) == 0) {
                 g_roots[g_nroots++] = n;
         }
         if (g_nroots == 0) {
@@ -936,7 +960,8 @@ connect_winreg(const char *url_str)
 
         rebuild_visible();
         g_sel = 0;
-        set_status("Connected. Space expands a hive (HKCR / HKLM).");
+        set_status("Connected. Space expands a hive "
+                   "(HKCR / HKCU / HKLM / HKU / HKCC).");
         return 0;
 }
 
@@ -971,7 +996,8 @@ usage(void)
         fprintf(stderr, "Usage:\n"
                 "winreg-tui <smb2-url>\n\n"
                 "URL format: smb://[<domain;][<username>@]<host>[:<port>]/\n"
-                "Browse HKCR and HKLM on IPC$/winreg (ncurses).\n");
+                "Browse HKCR, HKCU, HKLM, HKU, and HKCC on IPC$/winreg "
+                "(ncurses).\n");
         return 1;
 }
 

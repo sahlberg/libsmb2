@@ -154,8 +154,11 @@ winreg_OpenRootKey_rep_coder(char *name, struct dcerpc_context *dce,
 }
 
 /**********************
- * Function: 0x00  OpenClassesRoot  -> HKEY_CLASSES_ROOT
- * Function: 0x02  OpenLocalMachine -> HKEY_LOCAL_MACHINE
+ * Function: 0x00  OpenClassesRoot   -> HKEY_CLASSES_ROOT
+ * Function: 0x01  OpenCurrentUser   -> HKEY_CURRENT_USER
+ * Function: 0x02  OpenLocalMachine  -> HKEY_LOCAL_MACHINE
+ * Function: 0x04  OpenUsers         -> HKEY_USERS
+ * Function: 0x1b  OpenCurrentConfig -> HKEY_CURRENT_CONFIG
  **********************/
 int
 winreg_OpenClassesRoot_req_coder(char *name, struct dcerpc_context *dce,
@@ -168,6 +171,24 @@ winreg_OpenClassesRoot_req_coder(char *name, struct dcerpc_context *dce,
 
 int
 winreg_OpenClassesRoot_rep_coder(char *name, struct dcerpc_context *dce,
+                                 struct dcerpc_pdu *pdu,
+                                 struct smb2_iovec *iov, int *offset,
+                                 void *ptr)
+{
+        return winreg_OpenRootKey_rep_coder(name, dce, pdu, iov, offset, ptr);
+}
+
+int
+winreg_OpenCurrentUser_req_coder(char *name, struct dcerpc_context *dce,
+                                 struct dcerpc_pdu *pdu,
+                                 struct smb2_iovec *iov, int *offset,
+                                 void *ptr)
+{
+        return winreg_OpenRootKey_req_coder(name, dce, pdu, iov, offset, ptr);
+}
+
+int
+winreg_OpenCurrentUser_rep_coder(char *name, struct dcerpc_context *dce,
                                  struct dcerpc_pdu *pdu,
                                  struct smb2_iovec *iov, int *offset,
                                  void *ptr)
@@ -189,6 +210,42 @@ winreg_OpenLocalMachine_rep_coder(char *name, struct dcerpc_context *dce,
                                   struct dcerpc_pdu *pdu,
                                   struct smb2_iovec *iov, int *offset,
                                   void *ptr)
+{
+        return winreg_OpenRootKey_rep_coder(name, dce, pdu, iov, offset, ptr);
+}
+
+int
+winreg_OpenUsers_req_coder(char *name, struct dcerpc_context *dce,
+                           struct dcerpc_pdu *pdu,
+                           struct smb2_iovec *iov, int *offset,
+                           void *ptr)
+{
+        return winreg_OpenRootKey_req_coder(name, dce, pdu, iov, offset, ptr);
+}
+
+int
+winreg_OpenUsers_rep_coder(char *name, struct dcerpc_context *dce,
+                           struct dcerpc_pdu *pdu,
+                           struct smb2_iovec *iov, int *offset,
+                           void *ptr)
+{
+        return winreg_OpenRootKey_rep_coder(name, dce, pdu, iov, offset, ptr);
+}
+
+int
+winreg_OpenCurrentConfig_req_coder(char *name, struct dcerpc_context *dce,
+                                   struct dcerpc_pdu *pdu,
+                                   struct smb2_iovec *iov, int *offset,
+                                   void *ptr)
+{
+        return winreg_OpenRootKey_req_coder(name, dce, pdu, iov, offset, ptr);
+}
+
+int
+winreg_OpenCurrentConfig_rep_coder(char *name, struct dcerpc_context *dce,
+                                   struct dcerpc_pdu *pdu,
+                                   struct smb2_iovec *iov, int *offset,
+                                   void *ptr)
 {
         return winreg_OpenRootKey_rep_coder(name, dce, pdu, iov, offset, ptr);
 }
@@ -716,9 +773,23 @@ struct dcerpc_procedure winreg_procs[] = {
          winreg_OpenClassesRoot_req_coder, sizeof(struct winreg_OpenClassesRoot_req),
          winreg_OpenClassesRoot_rep_coder, sizeof(struct winreg_OpenClassesRoot_rep),
         },
+        {WINREG_OPENCURRENTUSER, "OpenCurrentUser",
+         winreg_OpenCurrentUser_req_coder, sizeof(struct winreg_OpenCurrentUser_req),
+         winreg_OpenCurrentUser_rep_coder, sizeof(struct winreg_OpenCurrentUser_rep),
+        },
         {WINREG_OPENLOCALMACHINE, "OpenLocalMachine",
          winreg_OpenLocalMachine_req_coder, sizeof(struct winreg_OpenLocalMachine_req),
          winreg_OpenLocalMachine_rep_coder, sizeof(struct winreg_OpenLocalMachine_rep),
+        },
+        {WINREG_OPENUSERS, "OpenUsers",
+         winreg_OpenUsers_req_coder, sizeof(struct winreg_OpenUsers_req),
+         winreg_OpenUsers_rep_coder, sizeof(struct winreg_OpenUsers_rep),
+        },
+        {WINREG_OPENCURRENTCONFIG, "OpenCurrentConfig",
+         winreg_OpenCurrentConfig_req_coder,
+         sizeof(struct winreg_OpenCurrentConfig_req),
+         winreg_OpenCurrentConfig_rep_coder,
+         sizeof(struct winreg_OpenCurrentConfig_rep),
         },
         {WINREG_BASEREGCLOSEKEY, "BaseRegCloseKey",
          winreg_BaseRegCloseKey_req_coder, sizeof(struct winreg_BaseRegCloseKey_req),

@@ -36,6 +36,7 @@ extern "C" {
 #define WINREG_BASEREGENUMVALUE      0x0a
 #define WINREG_BASEREGOPENKEY        0x0f
 #define WINREG_BASEREGQUERYINFOKEY   0x10
+#define WINREG_OPENCURRENTCONFIG     0x1b
 
 /* REG_VALUE_TYPE (MS-RRP 3.1.1.5) */
 #define REG_NONE                       0
@@ -95,12 +96,21 @@ struct winreg_OpenRootKey_rep {
         struct dcerpc_context_handle phKey;
 };
 
-/* Aliases for the predefined keys we open */
+/* Predefined keys we open (same layout as winreg_OpenRootKey_*) */
 struct winreg_OpenClassesRoot_req {
         char *ServerName;
         uint32_t samDesired;
 };
 struct winreg_OpenClassesRoot_rep {
+        uint32_t status;
+        struct dcerpc_context_handle phKey;
+};
+
+struct winreg_OpenCurrentUser_req {
+        char *ServerName;
+        uint32_t samDesired;
+};
+struct winreg_OpenCurrentUser_rep {
         uint32_t status;
         struct dcerpc_context_handle phKey;
 };
@@ -113,6 +123,24 @@ struct winreg_OpenLocalMachine_req {
 struct winreg_OpenLocalMachine_rep {
         uint32_t status;
 
+        struct dcerpc_context_handle phKey;
+};
+
+struct winreg_OpenUsers_req {
+        char *ServerName;
+        uint32_t samDesired;
+};
+struct winreg_OpenUsers_rep {
+        uint32_t status;
+        struct dcerpc_context_handle phKey;
+};
+
+struct winreg_OpenCurrentConfig_req {
+        char *ServerName;
+        uint32_t samDesired;
+};
+struct winreg_OpenCurrentConfig_rep {
+        uint32_t status;
         struct dcerpc_context_handle phKey;
 };
 
@@ -288,6 +316,14 @@ int winreg_OpenClassesRoot_req_coder(char *name, struct dcerpc_context *dce,
                                      struct dcerpc_pdu *pdu,
                                      struct smb2_iovec *iov, int *offset,
                                      void *ptr);
+int winreg_OpenCurrentUser_rep_coder(char *name, struct dcerpc_context *dce,
+                                     struct dcerpc_pdu *pdu,
+                                     struct smb2_iovec *iov, int *offset,
+                                     void *ptr);
+int winreg_OpenCurrentUser_req_coder(char *name, struct dcerpc_context *dce,
+                                     struct dcerpc_pdu *pdu,
+                                     struct smb2_iovec *iov, int *offset,
+                                     void *ptr);
 int winreg_OpenLocalMachine_rep_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
                                       struct smb2_iovec *iov, int *offset,
@@ -296,6 +332,22 @@ int winreg_OpenLocalMachine_req_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
                                       struct smb2_iovec *iov, int *offset,
                                       void *ptr);
+int winreg_OpenUsers_rep_coder(char *name, struct dcerpc_context *dce,
+                               struct dcerpc_pdu *pdu,
+                               struct smb2_iovec *iov, int *offset,
+                               void *ptr);
+int winreg_OpenUsers_req_coder(char *name, struct dcerpc_context *dce,
+                               struct dcerpc_pdu *pdu,
+                               struct smb2_iovec *iov, int *offset,
+                               void *ptr);
+int winreg_OpenCurrentConfig_rep_coder(char *name, struct dcerpc_context *dce,
+                                       struct dcerpc_pdu *pdu,
+                                       struct smb2_iovec *iov, int *offset,
+                                       void *ptr);
+int winreg_OpenCurrentConfig_req_coder(char *name, struct dcerpc_context *dce,
+                                       struct dcerpc_pdu *pdu,
+                                       struct smb2_iovec *iov, int *offset,
+                                       void *ptr);
 int winreg_BaseRegCloseKey_rep_coder(char *name, struct dcerpc_context *dce,
                                      struct dcerpc_pdu *pdu,
                                      struct smb2_iovec *iov, int *offset,

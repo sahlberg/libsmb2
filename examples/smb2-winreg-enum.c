@@ -14,8 +14,11 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 /*
  * Recursively enumerate registry keys and values under predefined hives
  * via MS-RRP (winreg on IPC$):
- *   HKCR  HKEY_CLASSES_ROOT   (OpenClassesRoot)
- *   HKLM  HKEY_LOCAL_MACHINE  (OpenLocalMachine)
+ *   HKCR  HKEY_CLASSES_ROOT    (OpenClassesRoot)
+ *   HKCU  HKEY_CURRENT_USER    (OpenCurrentUser)
+ *   HKLM  HKEY_LOCAL_MACHINE   (OpenLocalMachine)
+ *   HKU   HKEY_USERS           (OpenUsers)
+ *   HKCC  HKEY_CURRENT_CONFIG  (OpenCurrentConfig)
  *
  * Walks each hive with BaseRegEnumValue / BaseRegEnumKey / BaseRegOpenKey
  * / BaseRegCloseKey. Prints one entry per line, indented two spaces per
@@ -65,7 +68,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 static int is_finished;
 static struct dcerpc_context *g_dce;
 /* Which predefined hive to open next after the current root walk ends. */
-static int g_next_hive; /* 0=HKCR, 1=HKLM, 2=done */
+/* 0=HKCR, 1=HKCU, 2=HKLM, 3=HKU, 4=HKCC, 5=done */
+static int g_next_hive;
 
 /*
  * One open key in the recursive walk. parent is the key we will continue
@@ -96,8 +100,8 @@ usage(void)
                 "smb2-winreg-enum <smb2-url>\n\n"
                 "URL format: "
                 "smb://[<domain;][<username>@]<host>[:<port>]/\n"
-                "Connects to IPC$/winreg and dumps HKCR then HKLM "
-                "recursively.\n");
+                "Connects to IPC$/winreg and dumps HKCR, HKCU, HKLM, HKU, "
+                "then HKCC recursively.\n");
         exit(1);
 }
 
@@ -643,12 +647,36 @@ open_next_hive(void)
                 g_next_hive = 1;
                 break;
         case 1:
+                label = "HKCU";
+                opnum = WINREG_OPENCURRENTUSER;
+                req_coder = winreg_OpenCurrentUser_req_coder;
+                rep_coder = winreg_OpenCurrentUser_rep_coder;
+                rep_size = sizeof(struct winreg_OpenCurrentUser_rep);
+                g_next_hive = 2;
+                break;
+        case 2:
                 label = "HKLM";
                 opnum = WINREG_OPENLOCALMACHINE;
                 req_coder = winreg_OpenLocalMachine_req_coder;
                 rep_coder = winreg_OpenLocalMachine_rep_coder;
                 rep_size = sizeof(struct winreg_OpenLocalMachine_rep);
-                g_next_hive = 2;
+                g_next_hive = 3;
+                break;
+        case 3:
+                label = "HKU";
+                opnum = WINREG_OPENUSERS;
+                req_coder = winreg_OpenUsers_req_coder;
+                rep_coder = winreg_OpenUsers_rep_coder;
+                rep_size = sizeof(struct winreg_OpenUsers_rep);
+                g_next_hive = 4;
+                break;
+        case 4:
+                label = "HKCC";
+                opnum = WINREG_OPENCURRENTCONFIG;
+                req_coder = winreg_OpenCurrentConfig_req_coder;
+                rep_coder = winreg_OpenCurrentConfig_rep_coder;
+                rep_size = sizeof(struct winreg_OpenCurrentConfig_rep);
+                g_next_hive = 5;
                 break;
         default:
                 is_finished = 1;
