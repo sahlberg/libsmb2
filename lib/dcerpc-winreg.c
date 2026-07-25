@@ -67,6 +67,13 @@
 #include "libsmb2-raw.h"
 #include "libsmb2-private.h"
 
+/*
+ * MS-RRP RRP_UNICODE_STRING is the same type as dcerpc's
+ * RPC_UNICODE_STRINGz (NUL-terminated Buffer). Use
+ * dcerpc_RRP_UNICODE_STRING_coder / dcerpc_RPC_UNICODE_STRINGz_coder —
+ * they are the same coder (macro alias).
+ */
+
 /* MS-RRP: uuid(338cd001-2244-31f1-aaaa-900038001003), version(1.0) */
 #define WINREG_UUID    0x338cd001, 0x2244, 0x31f1, {0xaa, 0xaa, 0x90, 0x00, 0x38, 0x00, 0x10, 0x03}
 
@@ -312,6 +319,102 @@ winreg_BaseRegQueryInfoKey_rep_coder(char *name, struct dcerpc_context *dce,
         return 0;
 }
 
+/**********************
+ * Function: 0x09
+ *      error_status_t BaseRegEnumKey(
+ *              [in] RPC_HKEY hKey,
+ *              [in] DWORD dwIndex,
+ *              [in] PRRP_UNICODE_STRING lpNameIn,
+ *              [out] PRRP_UNICODE_STRING lpNameOut,
+ *              [in, unique] PRRP_UNICODE_STRING lpClassIn,
+ *              [out] PRPC_UNICODE_STRING *lplpClassOut,
+ *              [in, out, unique] PFILETIME lpftLastWriteTime
+ *              );
+ *
+ * IDL names these RRP_UNICODE_STRING, but the EnumKey text requires
+ * lpNameIn.Length MUST be 0 (content ignored; only MaximumLength matters).
+ * Use plain RPC_UNICODE_STRING so an empty input encodes Length=0 without
+ * a forced NUL wchar. lpClassIn / lpftLastWriteTime may be unique NULL.
+ * Client buffer size is set via dcerpc_set_unicode_max_length.
+ **********************/
+/* Defaults match common clients (e.g. impacket hBaseRegEnumKey). */
+#define WINREG_ENUMKEY_NAME_MAX_LENGTH  1024
+#define WINREG_ENUMKEY_CLASS_MAX_LENGTH 128
+
+int
+winreg_BaseRegEnumKey_req_coder(char *name, struct dcerpc_context *dce,
+                                struct dcerpc_pdu *pdu,
+                                struct smb2_iovec *iov, int *offset,
+                                void *ptr)
+{
+        struct winreg_BaseRegEnumKey_req *req = ptr;
+        uint16_t name_ml, class_ml;
+
+        if (dcerpc_ptr_coder("hKey", dce, pdu, iov, offset, &req->hKey,
+                             PTR_REF, winreg_RPC_HKEY_STRUCT_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("dwIndex", dce, pdu, iov, offset, &req->dwIndex)) {
+                return -1;
+        }
+        /*
+         * lpNameIn: content ignored; MaximumLength is the client name
+         * buffer. Setter no-ops for non-NDR / non-encode PDUs.
+         */
+        name_ml = req->lpName_max_length ?
+                req->lpName_max_length : WINREG_ENUMKEY_NAME_MAX_LENGTH;
+        dcerpc_set_unicode_max_length(pdu, name_ml);
+        if (dcerpc_ptr_coder("lpName", dce, pdu, iov, offset, &req->lpName,
+                             PTR_REF, dcerpc_RPC_UNICODE_STRING_coder)) {
+                return -1;
+        }
+        /*
+         * [in, unique] lpClassIn: pass &req->lpClass so the coder gets
+         * a char **. YAML may omit the key (unique NULL / empty).
+         */
+        class_ml = req->lpClass_max_length ?
+                req->lpClass_max_length : WINREG_ENUMKEY_CLASS_MAX_LENGTH;
+        dcerpc_set_unicode_max_length(pdu, class_ml);
+        if (dcerpc_ptr_coder("lpClass", dce, pdu, iov, offset, &req->lpClass,
+                             PTR_UNIQUE, dcerpc_RPC_UNICODE_STRING_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("lpftLastWriteTime", dce, pdu, iov, offset,
+                             req->lpftLastWriteTime,
+                             PTR_UNIQUE, winreg_FILETIME_STRUCT_coder)) {
+                return -1;
+        }
+        return 0;
+}
+
+int
+winreg_BaseRegEnumKey_rep_coder(char *name, struct dcerpc_context *dce,
+                                struct dcerpc_pdu *pdu,
+                                struct smb2_iovec *iov, int *offset,
+                                void *ptr)
+{
+        struct winreg_BaseRegEnumKey_rep *rep = ptr;
+
+        if (dcerpc_ptr_coder("lpName", dce, pdu, iov, offset, &rep->lpName,
+                             PTR_REF, dcerpc_RPC_UNICODE_STRING_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("lpClass", dce, pdu, iov, offset, &rep->lpClass,
+                             PTR_UNIQUE, dcerpc_RPC_UNICODE_STRING_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("lpftLastWriteTime", dce, pdu, iov, offset,
+                             &rep->lpftLastWriteTime,
+                             PTR_UNIQUE, winreg_FILETIME_STRUCT_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
+                return -1;
+        }
+
+        return 0;
+}
+
 struct dcerpc_procedure winreg_procs[] = {
         {WINREG_OPENLOCALMACHINE, "OpenLocalMachine",
          winreg_OpenLocalMachine_req_coder, sizeof(struct winreg_OpenLocalMachine_req),
@@ -320,6 +423,12 @@ struct dcerpc_procedure winreg_procs[] = {
         {WINREG_BASEREGCLOSEKEY, "BaseRegCloseKey",
          winreg_BaseRegCloseKey_req_coder, sizeof(struct winreg_BaseRegCloseKey_req),
          winreg_BaseRegCloseKey_rep_coder, sizeof(struct winreg_BaseRegCloseKey_rep),
+        },
+        {WINREG_BASEREGENUMKEY, "BaseRegEnumKey",
+         winreg_BaseRegEnumKey_req_coder,
+         sizeof(struct winreg_BaseRegEnumKey_req),
+         winreg_BaseRegEnumKey_rep_coder,
+         sizeof(struct winreg_BaseRegEnumKey_rep),
         },
         {WINREG_BASEREGQUERYINFOKEY, "BaseRegQueryInfoKey",
          winreg_BaseRegQueryInfoKey_req_coder,

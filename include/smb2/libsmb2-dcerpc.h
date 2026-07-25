@@ -142,6 +142,16 @@ void dcerpc_set_size_is(struct dcerpc_pdu *pdu, uint32_t size_is);
 uint32_t dcerpc_get_size_is(struct dcerpc_pdu *pdu);
 void dcerpc_set_switch_is(struct dcerpc_pdu *pdu, int switch_is);
 int dcerpc_get_switch_is(struct dcerpc_pdu *pdu);
+/*
+ * Override MaximumLength (bytes) for the next RPC_UNICODE_STRING /
+ * RPC_UNICODE_STRINGz encode. 0 means derive MaximumLength from content.
+ * Used when the client must advertise a receive buffer larger than the
+ * current string (e.g. MS-RRP BaseRegEnumKey lpNameIn). No-ops unless
+ * the PDU is NDR encode. Cleared after the matching Buffer array is
+ * encoded. Should be even (UTF-16 byte count).
+ */
+void dcerpc_set_unicode_max_length(struct dcerpc_pdu *pdu, uint16_t max_length);
+uint16_t dcerpc_get_unicode_max_length(struct dcerpc_pdu *pdu);
 void dcerpc_set_request(struct dcerpc_pdu *pdu, void *request);
 void *dcerpc_get_request(struct dcerpc_pdu *pdu);
 
@@ -213,6 +223,10 @@ int dcerpc_sid_coder(char *name, struct dcerpc_context *dce,
  * RPC_UNICODE_STRINGz is the same layout with a NUL-terminated Buffer —
  * this is RRP_UNICODE_STRING in MS-RRP. Same nult pattern as
  * ndr_utf16_coder / ndr_utf16z_coder.
+ *
+ * To advertise a MaximumLength larger than the current content (e.g. MS-RRP
+ * EnumKey / EnumValue / QueryInfoKey buffer parameters), call
+ * dcerpc_set_unicode_max_length() immediately before encoding the string.
  */
 int dcerpc_RPC_UNICODE_STRING_coder(char *name, struct dcerpc_context *dce,
                                     struct dcerpc_pdu *pdu,

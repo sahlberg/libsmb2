@@ -286,6 +286,12 @@ struct dcerpc_pdu {
 
         uint32_t size_is; /* Passing size_is() value through a pointer */
         int switch_is; /* Passing switch_is() value through a pointer */
+        /*
+         * Override for RPC_UNICODE_STRING MaximumLength (bytes) and the
+         * Buffer max_count (size_is(MaximumLength/2)). 0 = derive from
+         * content. Cleared after the Buffer utf16 encode consumes it.
+         */
+        uint16_t unicode_max_length;
 
         /* YAML */
         int yaml_indentation;
@@ -1824,6 +1830,25 @@ int dcerpc_get_switch_is(struct dcerpc_pdu *pdu)
         return pdu->switch_is;
 }
 
+void dcerpc_set_unicode_max_length(struct dcerpc_pdu *pdu, uint16_t max_length)
+{
+        /*
+         * MaximumLength only exists on the NDR wire form of
+         * RPC_UNICODE_STRING. Ignore for YAML/JSON and for decode so
+         * procedure coders need not branch on encoding/direction.
+         */
+        if (dcerpc_pdu_direction(pdu) != DCERPC_ENCODE ||
+            dcerpc_pdu_encoding(pdu) != ENCODING_NDR) {
+                return;
+        }
+        pdu->unicode_max_length = max_length;
+}
+
+uint16_t dcerpc_get_unicode_max_length(struct dcerpc_pdu *pdu)
+{
+        return pdu->unicode_max_length;
+}
+
 void dcerpc_set_request(struct dcerpc_pdu *pdu, void *request)
 {
         pdu->request = request;
@@ -1962,6 +1987,7 @@ _dcerpc_RPC_UNICODE_STRING_coder(char *name, struct dcerpc_context *dce,
 
         if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
                 char *s = *(char **)ptr;
+                uint16_t override = dcerpc_get_unicode_max_length(pdu);
 
                 if (s && s[0] != '\0') {
                         len = (uint16_t)(strlen(s) * 2);
@@ -1972,6 +1998,9 @@ _dcerpc_RPC_UNICODE_STRING_coder(char *name, struct dcerpc_context *dce,
                         /*
                          * Empty/NULL still encode a single NUL wchar via
                          * utf16z (actual_count=1); Length must match.
+                         * MS-RRP EnumKey-style buffer ads still use this
+                         * when content is empty; only MaximumLength is
+                         * significant for the server-side allocation.
                          */
                         len = 2;
                 } else {
@@ -1982,11 +2011,17 @@ _dcerpc_RPC_UNICODE_STRING_coder(char *name, struct dcerpc_context *dce,
                  * the Buffer coder emits (size_is(MaximumLength/2)).
                  * Non-nult utf16 rounds odd wchar counts up by one; nult
                  * utf16z uses content+NUL with no odd-count padding.
+                 *
+                 * dcerpc_set_unicode_max_length() can raise MaximumLength
+                 * above the content size (client receive buffer size).
                  */
                 if (nult) {
                         maxlen = len;
                 } else {
                         maxlen = (len & 0x02) ? len + 2 : len;
+                }
+                if (override > maxlen) {
+                        maxlen = override;
                 }
         }
         if (dcerpc_uint16_coder("Length", dce, pdu, iov, offset, &len)) {
@@ -2532,6 +2567,20 @@ ndr_encode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 s->max_count = (uint32_t)val;
                 s->offset    = 0;
 
+                /*
+                 * Honor dcerpc_set_unicode_max_length() so Buffer
+                 * max_count matches RPC_UNICODE_STRING.MaximumLength/2.
+                 * Override is in bytes; max_count is in wchar units.
+                 * Cleared here so the next string starts clean.
+                 */
+                if (pdu->unicode_max_length) {
+                        uint32_t ovr = (uint32_t)(pdu->unicode_max_length / 2);
+
+                        if (ovr > s->max_count) {
+                                s->max_count = ovr;
+                        }
+                        pdu->unicode_max_length = 0;
+                }
                 val = s->max_count;
                 if (ndr_conformance_coder(ctx, pdu, iov, offset, &val)) {
                         free(s->utf16);

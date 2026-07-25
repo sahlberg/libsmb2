@@ -1,0 +1,14 @@
+OpenLocalMachine: Request
+  samDesired: 0x20019
+---
+BaseRegEnumKey: Request
+  hKey:
+    ContextHandleAttributes: 0
+    UUID: @UUID@
+  dwIndex: 0
+  lpName:
+---
+BaseRegCloseKey: Request
+  hKey:
+    ContextHandleAttributes: 0
+    UUID: @UUID:-2@

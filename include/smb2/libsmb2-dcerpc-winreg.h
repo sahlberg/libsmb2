@@ -32,6 +32,7 @@ extern "C" {
 #define WINREG_OPENPERFORMANCEDATA   0x03
 #define WINREG_OPENUSERS             0x04
 #define WINREG_BASEREGCLOSEKEY       0x05
+#define WINREG_BASEREGENUMKEY        0x09
 #define WINREG_BASEREGQUERYINFOKEY   0x10
 
 /*
@@ -138,6 +139,43 @@ struct winreg_BaseRegQueryInfoKey_rep {
         struct winreg_FILETIME lpftLastWriteTime;
 };
 
+/*
+ * error_status_t BaseRegEnumKey(
+ *   [in] RPC_HKEY hKey,
+ *   [in] DWORD dwIndex,
+ *   [in] PRRP_UNICODE_STRING lpNameIn,
+ *   [out] PRRP_UNICODE_STRING lpNameOut,
+ *   [in, unique] PRRP_UNICODE_STRING lpClassIn,
+ *   [out] PRPC_UNICODE_STRING *lplpClassOut,
+ *   [in, out, unique] PFILETIME lpftLastWriteTime
+ * );
+ *
+ * IDL types these as RRP_UNICODE_STRING, but EnumKey requires
+ * lpNameIn.Length == 0, so we encode them as plain RPC_UNICODE_STRING
+ * (dcerpc_RPC_UNICODE_STRING_coder): empty content => Length 0, no forced
+ * NUL. Content of the in-strings is ignored; only MaximumLength (client
+ * buffer size in bytes) is significant. Set lpName_max_length /
+ * lpClass_max_length (0 = default 1024 / 128). lpClass and
+ * lpftLastWriteTime are optional unique (NULL is fine).
+ */
+struct winreg_BaseRegEnumKey_req {
+        struct dcerpc_context_handle hKey;
+        uint32_t dwIndex;
+        char *lpName;
+        uint16_t lpName_max_length;  /* not on wire; MaximumLength override */
+        char *lpClass; /* unique; NULL ok */
+        uint16_t lpClass_max_length; /* not on wire; MaximumLength override */
+        struct winreg_FILETIME *lpftLastWriteTime; /* unique; NULL ok */
+};
+
+struct winreg_BaseRegEnumKey_rep {
+        uint32_t status;
+
+        char *lpName;
+        char *lpClass; /* unique */
+        struct winreg_FILETIME lpftLastWriteTime; /* unique on wire */
+};
+
 int winreg_OpenLocalMachine_rep_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
                                       struct smb2_iovec *iov, int *offset,
@@ -162,6 +200,14 @@ int winreg_BaseRegQueryInfoKey_req_coder(char *name, struct dcerpc_context *dce,
                                          struct dcerpc_pdu *pdu,
                                          struct smb2_iovec *iov, int *offset,
                                          void *ptr);
+int winreg_BaseRegEnumKey_rep_coder(char *name, struct dcerpc_context *dce,
+                                    struct dcerpc_pdu *pdu,
+                                    struct smb2_iovec *iov, int *offset,
+                                    void *ptr);
+int winreg_BaseRegEnumKey_req_coder(char *name, struct dcerpc_context *dce,
+                                    struct dcerpc_pdu *pdu,
+                                    struct smb2_iovec *iov, int *offset,
+                                    void *ptr);
 
 extern struct dcerpc_procedure winreg_procs[];
 
