@@ -742,8 +742,8 @@ draw_ui(void)
 
         erase();
 
-        mvprintw(0, 0, "winreg-tui  [?]=help  [Space] expand  "
-                 "[k] key  [v] val  [d] del  [q] quit");
+        mvprintw(0, 0, "winreg-tui  [?]=help  [Space]  "
+                 "[k]key [v]val [e]edit [d]del [q]quit");
         if (cols > 2) {
                 mvhline(1, 0, ACS_HLINE, cols);
         }
@@ -1159,6 +1159,8 @@ show_help(void)
                 "  v / V           Create or replace a value under the selected",
                 "                  key. Prompts: name, type (s=string, d=DWORD),",
                 "                  and data. Empty name is the (Default) value.",
+                "  e / E           Edit the selected value (same type). Prompts",
+                "                  for new data; shows the current value first.",
                 "  d / D           Delete selection:",
                 "                    · value  — delete that registry value",
                 "                    · key    — delete the key (must have no",
@@ -1323,6 +1325,80 @@ ui_add_or_update_value(struct node *parent, const char *name,
         }
 }
 
+/*
+ * Encode databuf for type into data and data_len.
+ * REG_SZ allocates *data (caller frees); REG_DWORD uses dword_buf.
+ * Returns 0 on success.
+ */
+static int
+encode_value_data(uint32_t type, const char *databuf,
+                  uint8_t **data, uint32_t *data_len, uint8_t dword_buf[4])
+{
+        if (type == REG_DWORD) {
+                uint32_t v;
+
+                if (parse_dword(databuf, &v) != 0) {
+                        set_status("Invalid DWORD (use decimal or 0xhex)");
+                        return -1;
+                }
+                dword_buf[0] = (uint8_t)(v & 0xff);
+                dword_buf[1] = (uint8_t)((v >> 8) & 0xff);
+                dword_buf[2] = (uint8_t)((v >> 16) & 0xff);
+                dword_buf[3] = (uint8_t)((v >> 24) & 0xff);
+                *data = dword_buf;
+                *data_len = 4;
+                return 0;
+        }
+        if (type == REG_SZ || type == REG_EXPAND_SZ) {
+                if (utf8_to_reg_sz(databuf, data, data_len) != 0) {
+                        set_status("Failed to encode string");
+                        return -1;
+                }
+                return 0;
+        }
+        set_status("Unsupported type for edit (use SZ or DWORD)");
+        return -1;
+}
+
+static int
+do_set_value(struct node *parent, char *name, uint32_t type,
+             uint8_t *data, uint32_t data_len)
+{
+        struct winreg_BaseRegSetValue_req req;
+        struct winreg_BaseRegSetValue_rep *rep;
+
+        if (node_ensure_handle(parent) != 0) {
+                return -1;
+        }
+
+        memset(&req, 0, sizeof(req));
+        memcpy(&req.hKey, &parent->hKey, sizeof(req.hKey));
+        req.lpValueName = name ? name : "";
+        req.dwType = type;
+        req.lpData = data;
+        req.cbData = data_len;
+
+        set_status("Setting value under %s ...", parent->name);
+        draw_ui();
+        if (rpc_call(WINREG_BASEREGSETVALUE,
+                     winreg_BaseRegSetValue_req_coder, &req,
+                     winreg_BaseRegSetValue_rep_coder,
+                     sizeof(*rep), (void **)&rep) != 0) {
+                return -1;
+        }
+        if (rep->status != ERROR_SUCCESS) {
+                set_status("SetValue failed 0x%x", rep->status);
+                dcerpc_free_data(g_dce, rep);
+                return -1;
+        }
+        dcerpc_free_data(g_dce, rep);
+
+        ui_add_or_update_value(parent, name, type, data, data_len);
+        rebuild_visible();
+        set_status("Set value under %s", parent->name);
+        return 0;
+}
+
 static void
 action_create_value(void)
 {
@@ -1334,9 +1410,6 @@ action_create_value(void)
         uint8_t *data = NULL;
         uint32_t data_len = 0;
         uint8_t dword_buf[4];
-        struct winreg_BaseRegSetValue_req req;
-        struct winreg_BaseRegSetValue_rep *rep;
-        char *name_ptr;
 
         if (g_nvisible == 0) {
                 set_status("Nothing selected");
@@ -1399,68 +1472,149 @@ action_create_value(void)
                 }
         }
 
-        if (type == REG_DWORD) {
-                uint32_t v;
-
-                if (parse_dword(databuf, &v) != 0) {
-                        set_status("Invalid DWORD (use decimal or 0xhex)");
-                        return;
-                }
-                dword_buf[0] = (uint8_t)(v & 0xff);
-                dword_buf[1] = (uint8_t)((v >> 8) & 0xff);
-                dword_buf[2] = (uint8_t)((v >> 16) & 0xff);
-                dword_buf[3] = (uint8_t)((v >> 24) & 0xff);
-                data = dword_buf;
-                data_len = 4;
-        } else {
-                if (utf8_to_reg_sz(databuf, &data, &data_len) != 0) {
-                        set_status("Failed to encode string");
-                        return;
-                }
+        if (encode_value_data(type, databuf, &data, &data_len, dword_buf) != 0) {
+                return;
         }
-
-        if (node_ensure_handle(parent) != 0) {
-                if (type == REG_SZ) {
+        if (do_set_value(parent, name, type, data, data_len) != 0) {
+                if (type == REG_SZ || type == REG_EXPAND_SZ) {
                         free(data);
                 }
                 return;
         }
-
-        name_ptr = name; /* may be empty */
-        memset(&req, 0, sizeof(req));
-        memcpy(&req.hKey, &parent->hKey, sizeof(req.hKey));
-        req.lpValueName = name_ptr;
-        req.dwType = type;
-        req.lpData = data;
-        req.cbData = data_len;
-
-        set_status("Setting value under %s ...", parent->name);
-        draw_ui();
-        if (rpc_call(WINREG_BASEREGSETVALUE,
-                     winreg_BaseRegSetValue_req_coder, &req,
-                     winreg_BaseRegSetValue_rep_coder,
-                     sizeof(*rep), (void **)&rep) != 0) {
-                if (type == REG_SZ) {
-                        free(data);
-                }
-                return;
-        }
-        if (rep->status != ERROR_SUCCESS) {
-                set_status("SetValue failed 0x%x", rep->status);
-                dcerpc_free_data(g_dce, rep);
-                if (type == REG_SZ) {
-                        free(data);
-                }
-                return;
-        }
-        dcerpc_free_data(g_dce, rep);
-
-        ui_add_or_update_value(parent, name, type, data, data_len);
-        if (type == REG_SZ) {
+        if (type == REG_SZ || type == REG_EXPAND_SZ) {
                 free(data);
         }
-        rebuild_visible();
-        set_status("Set value under %s", parent->name);
+}
+
+/*
+ * Extract a user-editable form of the current value for the prompt hint.
+ * For REG_SZ, strip surrounding quotes from value_text when present.
+ * For REG_DWORD, use the 0x... form if present.
+ */
+static void
+current_value_hint(struct node *val, char *buf, size_t buflen)
+{
+        const char *vt = val->value_text ? val->value_text : "";
+        size_t len;
+
+        buf[0] = '\0';
+        if (val->reg_type == REG_SZ || val->reg_type == REG_EXPAND_SZ) {
+                if (vt[0] == '"' && strlen(vt) >= 2) {
+                        len = strlen(vt);
+                        if (vt[len - 1] == '"') {
+                                if (len - 2 >= buflen) {
+                                        len = buflen + 1; /* force truncate path */
+                                }
+                                if (len >= 2 && len - 2 < buflen) {
+                                        memcpy(buf, vt + 1, len - 2);
+                                        buf[len - 2] = '\0';
+                                        return;
+                                }
+                        }
+                }
+                snprintf(buf, buflen, "%s", vt);
+                return;
+        }
+        if (val->reg_type == REG_DWORD ||
+            val->reg_type == REG_DWORD_BIG_ENDIAN) {
+                /* value_text like "0x00000001 (1)" — take first token */
+                size_t i;
+
+                for (i = 0; vt[i] && vt[i] != ' ' && i + 1 < buflen; i++) {
+                        buf[i] = vt[i];
+                }
+                buf[i] = '\0';
+                return;
+        }
+        snprintf(buf, buflen, "%s", vt);
+}
+
+static void
+action_edit_value(void)
+{
+        struct node *sel, *parent;
+        char databuf[512];
+        char hint[256];
+        char prompt[STATUS_LEN];
+        uint32_t type;
+        uint8_t *data = NULL;
+        uint32_t data_len = 0;
+        uint8_t dword_buf[4];
+        char wire_name[256];
+        char empty_name[] = "";
+        char *name_ptr;
+
+        if (g_nvisible == 0) {
+                set_status("Nothing selected");
+                return;
+        }
+        sel = g_visible[g_sel];
+        if (!sel->is_value) {
+                set_status("Select a value to edit (use v to create)");
+                return;
+        }
+        parent = sel->parent;
+        if (parent == NULL) {
+                set_status("Cannot edit value (no parent key)");
+                return;
+        }
+
+        type = sel->reg_type;
+        if (type != REG_SZ && type != REG_EXPAND_SZ &&
+            type != REG_DWORD && type != REG_DWORD_BIG_ENDIAN) {
+                set_status("Edit supports REG_SZ and REG_DWORD only");
+                return;
+        }
+        /* Treat big-endian DWORD as little-endian on rewrite */
+        if (type == REG_DWORD_BIG_ENDIAN) {
+                type = REG_DWORD;
+        }
+        if (type == REG_EXPAND_SZ) {
+                type = REG_SZ;
+        }
+
+        if (strcmp(sel->name, "(Default)") == 0) {
+                wire_name[0] = '\0';
+                name_ptr = empty_name;
+        } else {
+                snprintf(wire_name, sizeof(wire_name), "%s", sel->name);
+                name_ptr = wire_name;
+        }
+
+        current_value_hint(sel, hint, sizeof(hint));
+        set_status("Edit %s (%s) currently %s",
+                   sel->name, reg_type_name(sel->reg_type),
+                   sel->value_text ? sel->value_text : "");
+        draw_ui();
+
+        if (type == REG_DWORD) {
+                snprintf(prompt, sizeof(prompt),
+                         "New DWORD [%s]: ", hint[0] ? hint : "0");
+        } else {
+                snprintf(prompt, sizeof(prompt),
+                         "New string [%s]: ", hint);
+        }
+        if (prompt_string(prompt, databuf, sizeof(databuf)) != 0) {
+                /* empty input: for SZ keep empty; for DWORD cancel */
+                if (type == REG_DWORD) {
+                        set_status("Edit cancelled");
+                        return;
+                }
+                databuf[0] = '\0';
+        }
+
+        if (encode_value_data(type, databuf, &data, &data_len, dword_buf) != 0) {
+                return;
+        }
+        if (do_set_value(parent, name_ptr, type, data, data_len) != 0) {
+                if (type == REG_SZ || type == REG_EXPAND_SZ) {
+                        free(data);
+                }
+                return;
+        }
+        if (type == REG_SZ || type == REG_EXPAND_SZ) {
+                free(data);
+        }
 }
 
 /*
@@ -1730,6 +1884,10 @@ main(int argc, char *argv[])
                 case 'v':
                 case 'V':
                         action_create_value();
+                        break;
+                case 'e':
+                case 'E':
+                        action_edit_value();
                         break;
                 case 'd':
                 case 'D':
