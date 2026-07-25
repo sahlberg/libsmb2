@@ -206,7 +206,15 @@ int dcerpc_sid_coder(char *name, struct dcerpc_context *dce,
                      struct dcerpc_pdu *pdu,
                      struct smb2_iovec *iov, int *offset,
                      void *ptr);
-        
+/*
+ * RPC_UNICODE_STRING (MS-DTYP). RRP_UNICODE_STRING is the same type with
+ * a NULL-terminated buffer (MS-RRP). ptr is char **.
+ */
+int dcerpc_RPC_UNICODE_STRING_coder(char *name, struct dcerpc_context *dce,
+                                    struct dcerpc_pdu *pdu,
+                                    struct smb2_iovec *iov, int *offset,
+                                    void *ptr);
+
 #ifdef __cplusplus
 }
 #endif

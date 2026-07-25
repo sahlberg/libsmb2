@@ -32,6 +32,7 @@ extern "C" {
 #define WINREG_OPENPERFORMANCEDATA   0x03
 #define WINREG_OPENUSERS             0x04
 #define WINREG_BASEREGCLOSEKEY       0x05
+#define WINREG_BASEREGQUERYINFOKEY   0x10
 
 /*
  * REGSAM access rights (MS-RRP 2.2.3 and Win32 registry key rights).
@@ -89,6 +90,54 @@ struct winreg_BaseRegCloseKey_rep {
         struct dcerpc_context_handle hKey;
 };
 
+/*
+ * typedef struct _FILETIME {
+ *   DWORD dwLowDateTime;
+ *   DWORD dwHighDateTime;
+ * } FILETIME, *PFILETIME;
+ */
+struct winreg_FILETIME {
+        uint32_t dwLowDateTime;
+        uint32_t dwHighDateTime;
+};
+
+/*
+ * error_status_t BaseRegQueryInfoKey(
+ *   [in] RPC_HKEY hKey,
+ *   [in] PRRP_UNICODE_STRING lpClassIn,
+ *   [out] PRPC_UNICODE_STRING lpClassOut,
+ *   [out] LPDWORD lpcSubKeys,
+ *   [out] LPDWORD lpcbMaxSubKeyLen,
+ *   [out] LPDWORD lpcbMaxClassLen,
+ *   [out] LPDWORD lpcValues,
+ *   [out] LPDWORD lpcbMaxValueNameLen,
+ *   [out] LPDWORD lpcbMaxValueLen,
+ *   [out] LPDWORD lpcbSecurityDescriptor,
+ *   [out] PFILETIME lpftLastWriteTime
+ * );
+ *
+ * lpClass is RRP_UNICODE_STRING (NULL-terminated RPC_UNICODE_STRING),
+ * represented here as a UTF-8 C string (empty/NULL on request is typical).
+ */
+struct winreg_BaseRegQueryInfoKey_req {
+        struct dcerpc_context_handle hKey;
+        char *lpClass;
+};
+
+struct winreg_BaseRegQueryInfoKey_rep {
+        uint32_t status;
+
+        char *lpClass;
+        uint32_t lpcSubKeys;
+        uint32_t lpcbMaxSubKeyLen;
+        uint32_t lpcbMaxClassLen;
+        uint32_t lpcValues;
+        uint32_t lpcbMaxValueNameLen;
+        uint32_t lpcbMaxValueLen;
+        uint32_t lpcbSecurityDescriptor;
+        struct winreg_FILETIME lpftLastWriteTime;
+};
+
 int winreg_OpenLocalMachine_rep_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
                                       struct smb2_iovec *iov, int *offset,
@@ -105,6 +154,14 @@ int winreg_BaseRegCloseKey_req_coder(char *name, struct dcerpc_context *dce,
                                      struct dcerpc_pdu *pdu,
                                      struct smb2_iovec *iov, int *offset,
                                      void *ptr);
+int winreg_BaseRegQueryInfoKey_rep_coder(char *name, struct dcerpc_context *dce,
+                                         struct dcerpc_pdu *pdu,
+                                         struct smb2_iovec *iov, int *offset,
+                                         void *ptr);
+int winreg_BaseRegQueryInfoKey_req_coder(char *name, struct dcerpc_context *dce,
+                                         struct dcerpc_pdu *pdu,
+                                         struct smb2_iovec *iov, int *offset,
+                                         void *ptr);
 
 extern struct dcerpc_procedure winreg_procs[];
 

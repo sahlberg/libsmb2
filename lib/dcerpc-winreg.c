@@ -194,6 +194,123 @@ winreg_BaseRegCloseKey_rep_coder(char *name, struct dcerpc_context *dce,
         return 0;
 }
 
+static int
+winreg_FILETIME_coder(char *name, struct dcerpc_context *dce,
+                      struct dcerpc_pdu *pdu,
+                      struct smb2_iovec *iov, int *offset,
+                      void *ptr)
+{
+        struct winreg_FILETIME *ft = ptr;
+
+        if (dcerpc_uint32_coder("dwLowDateTime", dce, pdu, iov, offset,
+                                &ft->dwLowDateTime)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("dwHighDateTime", dce, pdu, iov, offset,
+                                &ft->dwHighDateTime)) {
+                return -1;
+        }
+        return 0;
+}
+
+static int
+winreg_FILETIME_STRUCT_coder(char *name, struct dcerpc_context *dce,
+                             struct dcerpc_pdu *pdu,
+                             struct smb2_iovec *iov, int *offset,
+                             void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   winreg_FILETIME_coder);
+}
+
+/**********************
+ * Function: 0x10
+ *      error_status_t BaseRegQueryInfoKey(
+ *              [in] RPC_HKEY hKey,
+ *              [in] PRRP_UNICODE_STRING lpClassIn,
+ *              [out] PRPC_UNICODE_STRING lpClassOut,
+ *              [out] LPDWORD lpcSubKeys,
+ *              [out] LPDWORD lpcbMaxSubKeyLen,
+ *              [out] LPDWORD lpcbMaxClassLen,
+ *              [out] LPDWORD lpcValues,
+ *              [out] LPDWORD lpcbMaxValueNameLen,
+ *              [out] LPDWORD lpcbMaxValueLen,
+ *              [out] LPDWORD lpcbSecurityDescriptor,
+ *              [out] PFILETIME lpftLastWriteTime
+ *              );
+ **********************/
+int
+winreg_BaseRegQueryInfoKey_req_coder(char *name, struct dcerpc_context *dce,
+                                     struct dcerpc_pdu *pdu,
+                                     struct smb2_iovec *iov, int *offset,
+                                     void *ptr)
+{
+        struct winreg_BaseRegQueryInfoKey_req *req = ptr;
+
+        if (dcerpc_ptr_coder("hKey", dce, pdu, iov, offset, &req->hKey,
+                             PTR_REF, winreg_RPC_HKEY_STRUCT_coder)) {
+                return -1;
+        }
+        /* Top-level [in] PRRP_UNICODE_STRING: REF to the string structure */
+        if (dcerpc_ptr_coder("lpClass", dce, pdu, iov, offset, &req->lpClass,
+                             PTR_REF, dcerpc_RPC_UNICODE_STRING_coder)) {
+                return -1;
+        }
+        return 0;
+}
+
+int
+winreg_BaseRegQueryInfoKey_rep_coder(char *name, struct dcerpc_context *dce,
+                                     struct dcerpc_pdu *pdu,
+                                     struct smb2_iovec *iov, int *offset,
+                                     void *ptr)
+{
+        struct winreg_BaseRegQueryInfoKey_rep *rep = ptr;
+
+        if (dcerpc_ptr_coder("lpClass", dce, pdu, iov, offset, &rep->lpClass,
+                             PTR_REF, dcerpc_RPC_UNICODE_STRING_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("lpcSubKeys", dce, pdu, iov, offset,
+                                &rep->lpcSubKeys)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("lpcbMaxSubKeyLen", dce, pdu, iov, offset,
+                                &rep->lpcbMaxSubKeyLen)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("lpcbMaxClassLen", dce, pdu, iov, offset,
+                                &rep->lpcbMaxClassLen)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("lpcValues", dce, pdu, iov, offset,
+                                &rep->lpcValues)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("lpcbMaxValueNameLen", dce, pdu, iov, offset,
+                                &rep->lpcbMaxValueNameLen)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("lpcbMaxValueLen", dce, pdu, iov, offset,
+                                &rep->lpcbMaxValueLen)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("lpcbSecurityDescriptor", dce, pdu, iov, offset,
+                                &rep->lpcbSecurityDescriptor)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("lpftLastWriteTime", dce, pdu, iov, offset,
+                             &rep->lpftLastWriteTime,
+                             PTR_REF, winreg_FILETIME_STRUCT_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
+                return -1;
+        }
+
+        return 0;
+}
+
 struct dcerpc_procedure winreg_procs[] = {
         {WINREG_OPENLOCALMACHINE, "OpenLocalMachine",
          winreg_OpenLocalMachine_req_coder, sizeof(struct winreg_OpenLocalMachine_req),
@@ -202,6 +319,12 @@ struct dcerpc_procedure winreg_procs[] = {
         {WINREG_BASEREGCLOSEKEY, "BaseRegCloseKey",
          winreg_BaseRegCloseKey_req_coder, sizeof(struct winreg_BaseRegCloseKey_req),
          winreg_BaseRegCloseKey_rep_coder, sizeof(struct winreg_BaseRegCloseKey_rep),
+        },
+        {WINREG_BASEREGQUERYINFOKEY, "BaseRegQueryInfoKey",
+         winreg_BaseRegQueryInfoKey_req_coder,
+         sizeof(struct winreg_BaseRegQueryInfoKey_req),
+         winreg_BaseRegQueryInfoKey_rep_coder,
+         sizeof(struct winreg_BaseRegQueryInfoKey_rep),
         },
         {-1, NULL, NULL, 0, NULL, 0}
 };

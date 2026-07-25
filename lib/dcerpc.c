@@ -1917,6 +1917,86 @@ dcerpc_sid_coder(char *name, struct dcerpc_context *dce,
         return 0;
 }
 
+/*
+ * typedef struct _RPC_UNICODE_STRING {
+ *       uint16_t Length;
+ *       uint16_t MaximumLength;
+ *       [size_is(MaximumLength/2), length_is(Length/2)] WCHAR* Buffer;
+ * } RPC_UNICODE_STRING, *PRPC_UNICODE_STRING;
+ *
+ * Same wire layout as RRP_UNICODE_STRING (MS-RRP), which additionally
+ * requires a NULL-terminated buffer when non-empty.
+ *
+ * Represented in C as char * (UTF-8). ptr is char **.
+ */
+int
+dcerpc_RPC_UNICODE_STRING_coder(char *name, struct dcerpc_context *dce,
+                                struct dcerpc_pdu *pdu,
+                                struct smb2_iovec *iov, int *offset,
+                                void *ptr)
+{
+        uint16_t len, maxlen;
+
+        /*
+         * YAML/JSON only need the string value. NDR alignment and Length/
+         * MaxLength must not run for text encodings: align would skip past
+         * the current NUL in the text buffer and truncate the visible output.
+         */
+        if (dcerpc_pdu_encoding(pdu) == ENCODING_YAML ||
+            dcerpc_pdu_encoding(pdu) == ENCODING_JSON) {
+                return dcerpc_utf16_coder(name, dce, pdu, iov, offset, ptr);
+        }
+
+/* TODO conformance split
+ * during the conformance run we need to do the alignment in all the
+  coders, even for the coders that do  not have any conformance data.
+
+  that will eliminate the need to manually set the alignment like
+  we do here
+
+  It needs to become a proper type in dcerpc.c
+*/
+        *offset = dcerpc_align_3264(dce, *offset);
+
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
+                char *s = *(char **)ptr;
+
+                if (s && s[0] != '\0') {
+                        len = (uint16_t)(strlen(s) * 2);
+                } else {
+                        len = 0;
+                }
+                /*
+                 * MaxLength must agree with the UTF-16 array max_count that
+                 * dcerpc_utf16_coder emits (size_is(MaximumLength/2)).
+                 * That coder rounds odd wchar counts up by one; match it
+                 * here so Length/MaxLength stay consistent with the buffer
+                 * conformance (required by Windows NDR unmarshalling).
+                 */
+                maxlen = (len & 0x02) ? len + 2 : len;
+        }
+        if (dcerpc_uint16_coder("Length", dce, pdu, iov, offset, &len)) {
+                return -1;
+        }
+        if (dcerpc_uint16_coder("MaxLength", dce, pdu, iov, offset, &maxlen)) {
+                return -1;
+        }
+        /*
+         * Unique Buffer: always pass the caller's stable char ** (ptr).
+         * Never a stack temporary — Buffer is often deferred (e.g.
+         * LookupNames2 name arrays) and must still be valid when flushed.
+         * Empty/NULL *ptr still uses ptr so the unique header is present
+         * and the utf16 coder encodes an empty array (historical LSA
+         * wire shape).
+         */
+        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset, ptr,
+                             PTR_UNIQUE, dcerpc_utf16_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
 
 /*
  * NDR

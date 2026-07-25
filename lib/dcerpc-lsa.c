@@ -149,65 +149,6 @@ lsa_SID_ENUM_BUFFER_coder(char *name, struct dcerpc_context *dce,
 }
 
 /*
- * typedef struct _RPC_UNICODE_STRING {
- *       uint16_t Length;
- *       uint16_t MaximumLength;
- *       char *Buffer;
- * } RPC_UNICODE_STRING, *PRPC_UNICODE_STRING;
- */
-/* ptr is char ** */
-int
-lsa_RPC_UNICODE_STRING_coder(char *name, struct dcerpc_context *dce,
-                             struct dcerpc_pdu *pdu,
-                             struct smb2_iovec *iov, int *offset,
-                             void *ptr)
-{
-        uint16_t len, maxlen;
-
-        /*
-         * YAML/JSON only need the string value. NDR alignment and Length/
-         * MaxLength must not run for text encodings: align would skip past
-         * the current NUL in the text buffer and truncate the visible output.
-         */
-        if (dcerpc_pdu_encoding(pdu) == ENCODING_YAML ||
-            dcerpc_pdu_encoding(pdu) == ENCODING_JSON) {
-                return dcerpc_utf16_coder(name, dce, pdu, iov, offset, ptr);
-        }
-
-/* TODO conformance split
- * during the conformance run we need to do the alignment in all the
-  coders, even for the coders that do  not have any conformance data.
-
-  that will eliminate the need to manually set the alignment like
-  we do here
-
-  It needs to become a proper type in dcerpc.c
-*/
-        *offset = dcerpc_align_3264(dce, *offset);
-
-        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
-                if (*(char **)ptr) {
-                        len = (uint16_t)strlen(*(char **)ptr) * 2;
-                } else {
-                        len = 0;
-                }
-                maxlen = (len & 0x02) ? len + 2 : len;
-        }
-        if (dcerpc_uint16_coder("Length", dce, pdu, iov, offset, &len)) {
-                return -1;
-        }
-        if (dcerpc_uint16_coder("MaxLength", dce, pdu, iov, offset, &maxlen)) {
-                return -1;
-        }
-        if (dcerpc_ptr_coder("Utf16", dce, pdu, iov, offset, ptr,
-                              PTR_UNIQUE, dcerpc_utf16_coder)) {
-                return -1;
-        }
-
-        return 0;
-}
-
-/*
  * typedef struct _LSAPR_TRANSLATED_NAME_EX {
  *      SID_NAME_USE Use;
  *      RPC_UNICODE_STRING Name;
@@ -226,7 +167,7 @@ lsa_TRANSLATED_NAME_EX_coder(char *name, struct dcerpc_context *dce,
         if (dcerpc_uint32_coder("Use", dce, pdu, iov, offset, &tn->Use)) {
                 return -1;
         }
-        if (lsa_RPC_UNICODE_STRING_coder("Name", dce, pdu, iov, offset,
+        if (dcerpc_RPC_UNICODE_STRING_coder("Name", dce, pdu, iov, offset,
                                          &tn->Name)) {
                 return -1;
         }
@@ -467,7 +408,7 @@ lsa_TRUST_INFORMATION_coder(char *name, struct dcerpc_context *dce,
 {
         LSAPR_TRUST_INFORMATION *ti = ptr;
 
-        if (lsa_RPC_UNICODE_STRING_coder("Name", dce, pdu, iov, offset,
+        if (dcerpc_RPC_UNICODE_STRING_coder("Name", dce, pdu, iov, offset,
                                           &ti->Name)) {
                 return -1;
         }
@@ -712,7 +653,7 @@ lsa_NAME_STRING_coder(char *name, struct dcerpc_context *dce,
                       struct smb2_iovec *iov, int *offset,
                       void *ptr)
 {
-        return lsa_RPC_UNICODE_STRING_coder("Name", dce, pdu, iov, offset, ptr);
+        return dcerpc_RPC_UNICODE_STRING_coder("Name", dce, pdu, iov, offset, ptr);
 }
 
 /*
