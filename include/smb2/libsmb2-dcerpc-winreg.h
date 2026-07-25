@@ -33,8 +33,25 @@ extern "C" {
 #define WINREG_OPENUSERS             0x04
 #define WINREG_BASEREGCLOSEKEY       0x05
 #define WINREG_BASEREGENUMKEY        0x09
+#define WINREG_BASEREGENUMVALUE      0x0a
 #define WINREG_BASEREGOPENKEY        0x0f
 #define WINREG_BASEREGQUERYINFOKEY   0x10
+
+/* REG_VALUE_TYPE (MS-RRP 3.1.1.5) */
+#define REG_NONE                       0
+#define REG_SZ                         1
+#define REG_EXPAND_SZ                  2
+#define REG_BINARY                     3
+#define REG_DWORD                      4
+#define REG_DWORD_LITTLE_ENDIAN        4
+#define REG_DWORD_BIG_ENDIAN           5
+#define REG_LINK                       6
+#define REG_MULTI_SZ                   7
+#define REG_RESOURCE_LIST              8
+#define REG_FULL_RESOURCE_DESCRIPTOR   9
+#define REG_RESOURCE_REQUIREMENTS_LIST 10
+#define REG_QWORD                      11
+#define REG_QWORD_LITTLE_ENDIAN        11
 
 /*
  * REGSAM access rights (MS-RRP 2.2.3 and Win32 registry key rights).
@@ -201,6 +218,46 @@ struct winreg_BaseRegOpenKey_rep {
         struct dcerpc_context_handle phkResult;
 };
 
+/*
+ * error_status_t BaseRegEnumValue(
+ *   [in] RPC_HKEY hKey,
+ *   [in] DWORD dwIndex,
+ *   [in] PRRP_UNICODE_STRING lpValueNameIn,
+ *   [out] PRPC_UNICODE_STRING lpValueNameOut,
+ *   [in, out, unique] LPDWORD lpType,
+ *   [in, out, unique, size_is(lpcbData?*lpcbData:0),
+ *                     length_is(lpcbLen?*lpcbLen:0)] LPBYTE lpData,
+ *   [in, out, unique] LPDWORD lpcbData,
+ *   [in, out, unique] LPDWORD lpcbLen
+ * );
+ *
+ * lpValueNameIn: content ignored; MaximumLength is the name buffer size
+ * (same EnumKey pattern — use plain RPC_UNICODE_STRING + max_length).
+ * On request set cbData to the client data buffer capacity and point
+ * lpData at a buffer of that size (may be zero-filled). cbLen is the
+ * number of bytes transmitted (0 on request is fine).
+ */
+struct winreg_BaseRegEnumValue_req {
+        struct dcerpc_context_handle hKey;
+        uint32_t dwIndex;
+        char *lpValueName;
+        uint16_t lpValueName_max_length; /* not on wire; MaximumLength */
+        uint32_t type;
+        uint8_t *lpData;
+        uint32_t cbData; /* size of lpData buffer */
+        uint32_t cbLen;  /* length_is: bytes to send / sent */
+};
+
+struct winreg_BaseRegEnumValue_rep {
+        uint32_t status;
+
+        char *lpValueName;
+        uint32_t type;
+        uint8_t *lpData;
+        uint32_t cbData;
+        uint32_t cbLen;
+};
+
 int winreg_OpenLocalMachine_rep_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
                                       struct smb2_iovec *iov, int *offset,
@@ -241,6 +298,14 @@ int winreg_BaseRegOpenKey_req_coder(char *name, struct dcerpc_context *dce,
                                     struct dcerpc_pdu *pdu,
                                     struct smb2_iovec *iov, int *offset,
                                     void *ptr);
+int winreg_BaseRegEnumValue_rep_coder(char *name, struct dcerpc_context *dce,
+                                      struct dcerpc_pdu *pdu,
+                                      struct smb2_iovec *iov, int *offset,
+                                      void *ptr);
+int winreg_BaseRegEnumValue_req_coder(char *name, struct dcerpc_context *dce,
+                                      struct dcerpc_pdu *pdu,
+                                      struct smb2_iovec *iov, int *offset,
+                                      void *ptr);
 
 extern struct dcerpc_procedure winreg_procs[];
 

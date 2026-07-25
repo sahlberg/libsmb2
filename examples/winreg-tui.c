@@ -29,6 +29,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #define _GNU_SOURCE
 
 #include <errno.h>
+#include <inttypes.h>
 #include <ncurses.h>
 #include <poll.h>
 #include <stdarg.h>
@@ -49,12 +50,14 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 #define ERROR_SUCCESS           0x00000000
 #define ERROR_ACCESS_DENIED     0x00000005
+#define ERROR_MORE_DATA         0x000000ea
 #define ERROR_NO_MORE_ITEMS     0x00000103
 
 #define WINREG_WALK_ACCESS      (KEY_READ)
 
 #define MAX_VISIBLE  8192
 #define STATUS_LEN   256
+#define VALUE_DATA_BUF 65536
 
 struct node {
         char *name;
@@ -62,6 +65,9 @@ struct node {
         int expanded;
         int loaded;              /* children enumerated */
         int has_children;        /* known after load; 1 before load (assume) */
+        int is_value;            /* registry value (leaf), not a subkey */
+        uint32_t reg_type;
+        char *value_text;        /* formatted value for display */
         int has_handle;
         struct dcerpc_context_handle hKey;
         struct node *parent;
@@ -165,6 +171,170 @@ rpc_call(int opnum,
 
 /* ---- tree nodes ---- */
 
+static const char *
+reg_type_name(uint32_t type)
+{
+        switch (type) {
+        case REG_NONE:       return "REG_NONE";
+        case REG_SZ:         return "REG_SZ";
+        case REG_EXPAND_SZ:  return "REG_EXPAND_SZ";
+        case REG_BINARY:     return "REG_BINARY";
+        case REG_DWORD:      return "REG_DWORD";
+        case REG_DWORD_BIG_ENDIAN: return "REG_DWORD_BE";
+        case REG_LINK:       return "REG_LINK";
+        case REG_MULTI_SZ:   return "REG_MULTI_SZ";
+        case REG_QWORD:      return "REG_QWORD";
+        default:             return "REG_UNKNOWN";
+        }
+}
+
+static char *
+utf16le_to_utf8(const uint8_t *data, uint32_t len)
+{
+        uint32_t nchars = len / 2;
+        uint16_t *tmp;
+        const char *u8;
+        char *out;
+        uint32_t i;
+
+        if (data == NULL || nchars == 0) {
+                return strdup("");
+        }
+        tmp = malloc((size_t)nchars * sizeof(uint16_t));
+        if (tmp == NULL) {
+                return NULL;
+        }
+        for (i = 0; i < nchars; i++) {
+                tmp[i] = (uint16_t)data[i * 2] |
+                        ((uint16_t)data[i * 2 + 1] << 8);
+        }
+        if (nchars > 0 && tmp[nchars - 1] == 0) {
+                nchars--;
+        }
+        u8 = smb2_utf16_to_utf8(tmp, nchars);
+        free(tmp);
+        if (u8 == NULL) {
+                return NULL;
+        }
+        out = strdup(u8);
+        free(discard_const(u8));
+        return out;
+}
+
+static char *
+format_reg_value(uint32_t type, const uint8_t *data, uint32_t len)
+{
+        char buf[512];
+
+        switch (type) {
+        case REG_SZ:
+        case REG_EXPAND_SZ: {
+                char *s = utf16le_to_utf8(data, len);
+                char *out;
+
+                if (s == NULL) {
+                        return strdup("\"\"");
+                }
+                if (asprintf(&out, "\"%s\"", s) < 0) {
+                        free(s);
+                        return NULL;
+                }
+                free(s);
+                return out;
+        }
+        case REG_DWORD:
+                if (len >= 4 && data) {
+                        uint32_t v = (uint32_t)data[0] |
+                                ((uint32_t)data[1] << 8) |
+                                ((uint32_t)data[2] << 16) |
+                                ((uint32_t)data[3] << 24);
+                        snprintf(buf, sizeof(buf), "0x%08x (%u)", v, v);
+                        return strdup(buf);
+                }
+                return strdup("(short)");
+        case REG_DWORD_BIG_ENDIAN:
+                if (len >= 4 && data) {
+                        uint32_t v = ((uint32_t)data[0] << 24) |
+                                ((uint32_t)data[1] << 16) |
+                                ((uint32_t)data[2] << 8) |
+                                (uint32_t)data[3];
+                        snprintf(buf, sizeof(buf), "0x%08x (%u)", v, v);
+                        return strdup(buf);
+                }
+                return strdup("(short)");
+        case REG_QWORD:
+                if (len >= 8 && data) {
+                        uint64_t v = 0;
+                        int i;
+                        for (i = 7; i >= 0; i--) {
+                                v = (v << 8) | data[i];
+                        }
+                        snprintf(buf, sizeof(buf), "0x%016" PRIx64, v);
+                        return strdup(buf);
+                }
+                return strdup("(short)");
+        case REG_MULTI_SZ: {
+                uint32_t off = 0;
+                char *acc = strdup("{");
+                int first = 1;
+
+                if (acc == NULL) {
+                        return NULL;
+                }
+                while (off + 2 <= len) {
+                        uint32_t start = off;
+                        char *s, *nacc;
+
+                        while (off + 2 <= len) {
+                                if (data[off] == 0 && data[off + 1] == 0) {
+                                        break;
+                                }
+                                off += 2;
+                        }
+                        if (off == start) {
+                                break;
+                        }
+                        s = utf16le_to_utf8(data + start, off - start);
+                        if (asprintf(&nacc, "%s%s\"%s\"", acc,
+                                     first ? "" : ", ", s ? s : "") < 0) {
+                                free(s);
+                                free(acc);
+                                return NULL;
+                        }
+                        free(s);
+                        free(acc);
+                        acc = nacc;
+                        first = 0;
+                        off += 2;
+                }
+                {
+                        char *nacc;
+                        if (asprintf(&nacc, "%s}", acc) < 0) {
+                                free(acc);
+                                return NULL;
+                        }
+                        free(acc);
+                        return nacc;
+                }
+        }
+        default: {
+                uint32_t i, n = len < 24 ? len : 24;
+                size_t pos = 0;
+
+                pos = (size_t)snprintf(buf, sizeof(buf), "hex:");
+                for (i = 0; i < n && pos + 3 < sizeof(buf); i++) {
+                        pos += (size_t)snprintf(buf + pos, sizeof(buf) - pos,
+                                                "%02x", data ? data[i] : 0);
+                }
+                if (len > n && pos + 16 < sizeof(buf)) {
+                        snprintf(buf + pos, sizeof(buf) - pos,
+                                 "...(%u)", len);
+                }
+                return strdup(buf);
+        }
+        }
+}
+
 static struct node *
 node_new(const char *name, int depth, struct node *parent)
 {
@@ -182,6 +352,25 @@ node_new(const char *name, int depth, struct node *parent)
         n->depth = depth;
         n->parent = parent;
         n->has_children = 1; /* assume until loaded empty */
+        return n;
+}
+
+static struct node *
+node_new_value(const char *name, int depth, struct node *parent,
+               uint32_t type, const uint8_t *data, uint32_t len)
+{
+        struct node *n;
+        const char *nm = (name && name[0]) ? name : "(Default)";
+
+        n = node_new(nm, depth, parent);
+        if (n == NULL) {
+                return NULL;
+        }
+        n->is_value = 1;
+        n->has_children = 0;
+        n->loaded = 1;
+        n->reg_type = type;
+        n->value_text = format_reg_value(type, data, len);
         return n;
 }
 
@@ -220,6 +409,7 @@ node_free(struct node *n)
         free(n->children);
         node_close_handle(n);
         free(n->name);
+        free(n->value_text);
         free(n);
 }
 
@@ -307,11 +497,19 @@ node_ensure_handle(struct node *n)
 static int
 node_load_children(struct node *n)
 {
-        struct winreg_BaseRegEnumKey_req req;
-        struct winreg_BaseRegEnumKey_rep *rep;
-        uint32_t index = 0;
+        struct winreg_BaseRegEnumKey_req kreq;
+        struct winreg_BaseRegEnumKey_rep *krep;
+        struct winreg_BaseRegEnumValue_req vreq;
+        struct winreg_BaseRegEnumValue_rep *vrep;
+        uint8_t *valbuf;
+        uint32_t index;
+        int nvalues = 0;
+        int nkeys = 0;
 
         if (n->loaded) {
+                return 0;
+        }
+        if (n->is_value) {
                 return 0;
         }
         if (node_ensure_handle(n) != 0) {
@@ -319,65 +517,118 @@ node_load_children(struct node *n)
         }
 
         set_status("Loading %s ...", n->name);
-        if (g_ui_active) {
-                /* status is redrawn by caller */
+
+        valbuf = malloc(VALUE_DATA_BUF);
+        if (valbuf == NULL) {
+                set_status("Out of memory");
+                return -1;
         }
 
-        for (;;) {
-                memset(&req, 0, sizeof(req));
-                memcpy(&req.hKey, &n->hKey, sizeof(req.hKey));
-                req.dwIndex = index;
-                req.lpName = NULL;
-                req.lpName_max_length = 0;
-                req.lpClass = NULL;
-                req.lpClass_max_length = 0;
-                req.lpftLastWriteTime = NULL;
+        /* Values first */
+        for (index = 0; ; index++) {
+                uint32_t data_len;
+                struct node *c;
 
-                if (rpc_call(WINREG_BASEREGENUMKEY,
-                             winreg_BaseRegEnumKey_req_coder, &req,
-                             winreg_BaseRegEnumKey_rep_coder,
-                             sizeof(*rep), (void **)&rep) != 0) {
+                memset(&vreq, 0, sizeof(vreq));
+                memcpy(&vreq.hKey, &n->hKey, sizeof(vreq.hKey));
+                vreq.dwIndex = index;
+                vreq.lpValueName = NULL;
+                vreq.lpValueName_max_length = 0;
+                vreq.type = 0;
+                vreq.lpData = valbuf;
+                vreq.cbData = VALUE_DATA_BUF;
+                vreq.cbLen = 0;
+
+                if (rpc_call(WINREG_BASEREGENUMVALUE,
+                             winreg_BaseRegEnumValue_req_coder, &vreq,
+                             winreg_BaseRegEnumValue_rep_coder,
+                             sizeof(*vrep), (void **)&vrep) != 0) {
+                        free(valbuf);
                         node_free_children(n);
                         return -1;
                 }
-                if (rep->status == ERROR_NO_MORE_ITEMS) {
-                        dcerpc_free_data(g_dce, rep);
+                if (vrep->status == ERROR_NO_MORE_ITEMS) {
+                        dcerpc_free_data(g_dce, vrep);
                         break;
                 }
-                if (rep->status == ERROR_ACCESS_DENIED) {
-                        set_status("Enumerate access denied: %s", n->name);
-                        dcerpc_free_data(g_dce, rep);
-                        n->loaded = 1;
-                        n->has_children = n->nchildren > 0;
-                        return 0;
+                if (vrep->status == ERROR_MORE_DATA) {
+                        dcerpc_free_data(g_dce, vrep);
+                        continue; /* skip oversized */
                 }
-                if (rep->status != ERROR_SUCCESS) {
-                        set_status("EnumKey 0x%x at %u under %s",
-                                   rep->status, index, n->name);
-                        dcerpc_free_data(g_dce, rep);
-                        n->loaded = 1;
-                        n->has_children = n->nchildren > 0;
-                        return 0;
+                if (vrep->status == ERROR_ACCESS_DENIED) {
+                        dcerpc_free_data(g_dce, vrep);
+                        break;
                 }
-                {
-                        struct node *c;
-                        const char *nm = rep->lpName ? rep->lpName : "";
+                if (vrep->status != ERROR_SUCCESS) {
+                        dcerpc_free_data(g_dce, vrep);
+                        break;
+                }
+                data_len = vrep->cbLen ? vrep->cbLen : vrep->cbData;
+                c = node_new_value(vrep->lpValueName, n->depth + 1, n,
+                                   vrep->type, vrep->lpData, data_len);
+                dcerpc_free_data(g_dce, vrep);
+                if (c == NULL || node_add_child(n, c) != 0) {
+                        node_free(c);
+                        free(valbuf);
+                        set_status("Out of memory");
+                        return -1;
+                }
+                nvalues++;
+        }
+        free(valbuf);
 
-                        c = node_new(nm, n->depth + 1, n);
-                        dcerpc_free_data(g_dce, rep);
-                        if (c == NULL || node_add_child(n, c) != 0) {
-                                node_free(c);
-                                set_status("Out of memory");
-                                return -1;
-                        }
+        /* Then subkeys */
+        for (index = 0; ; index++) {
+                struct node *c;
+                const char *nm;
+
+                memset(&kreq, 0, sizeof(kreq));
+                memcpy(&kreq.hKey, &n->hKey, sizeof(kreq.hKey));
+                kreq.dwIndex = index;
+                kreq.lpName = NULL;
+                kreq.lpName_max_length = 0;
+                kreq.lpClass = NULL;
+                kreq.lpClass_max_length = 0;
+                kreq.lpftLastWriteTime = NULL;
+
+                if (rpc_call(WINREG_BASEREGENUMKEY,
+                             winreg_BaseRegEnumKey_req_coder, &kreq,
+                             winreg_BaseRegEnumKey_rep_coder,
+                             sizeof(*krep), (void **)&krep) != 0) {
+                        node_free_children(n);
+                        return -1;
                 }
-                index++;
+                if (krep->status == ERROR_NO_MORE_ITEMS) {
+                        dcerpc_free_data(g_dce, krep);
+                        break;
+                }
+                if (krep->status == ERROR_ACCESS_DENIED) {
+                        set_status("Enumerate access denied: %s", n->name);
+                        dcerpc_free_data(g_dce, krep);
+                        break;
+                }
+                if (krep->status != ERROR_SUCCESS) {
+                        set_status("EnumKey 0x%x at %u under %s",
+                                   krep->status, index, n->name);
+                        dcerpc_free_data(g_dce, krep);
+                        break;
+                }
+                nm = krep->lpName ? krep->lpName : "";
+                c = node_new(nm, n->depth + 1, n);
+                dcerpc_free_data(g_dce, krep);
+                if (c == NULL || node_add_child(n, c) != 0) {
+                        node_free(c);
+                        set_status("Out of memory");
+                        return -1;
+                }
+                nkeys++;
         }
 
         n->loaded = 1;
         n->has_children = n->nchildren > 0;
-        set_status("%s: %d subkey%s", n->name, n->nchildren,
-                   n->nchildren == 1 ? "" : "s");
+        set_status("%s: %d value%s, %d subkey%s", n->name,
+                   nvalues, nvalues == 1 ? "" : "s",
+                   nkeys, nkeys == 1 ? "" : "s");
         return 0;
 }
 
@@ -396,6 +647,9 @@ node_collapse(struct node *n)
 static int
 node_expand(struct node *n)
 {
+        if (n->is_value) {
+                return 0;
+        }
         if (n->expanded) {
                 return 0;
         }
@@ -453,7 +707,7 @@ rebuild_visible(void)
 static char
 node_marker(struct node *n)
 {
-        if (!n->has_children) {
+        if (n->is_value || !n->has_children) {
                 return ' ';
         }
         return n->expanded ? '<' : '>';
@@ -503,10 +757,19 @@ draw_ui(void)
                 }
                 attron(attr);
                 /* marker, then depth*2 spaces, then name — same indent as enum */
-                mvprintw(row, 0, "%c %*s%s",
-                         marker,
-                         n->depth * 2, "",
-                         n->name);
+                if (n->is_value) {
+                        mvprintw(row, 0, "%c %*s%s (%s) = %s",
+                                 marker,
+                                 n->depth * 2, "",
+                                 n->name,
+                                 reg_type_name(n->reg_type),
+                                 n->value_text ? n->value_text : "");
+                } else {
+                        mvprintw(row, 0, "%c %*s%s",
+                                 marker,
+                                 n->depth * 2, "",
+                                 n->name);
+                }
                 attroff(attr);
                 /* clear rest of line for reverse video cleanliness */
                 if (cols > 0) {
@@ -742,6 +1005,12 @@ main(int argc, char *argv[])
                                 break;
                         }
                         n = g_visible[g_sel];
+                        if (n->is_value) {
+                                set_status("%s (%s) = %s", n->name,
+                                           reg_type_name(n->reg_type),
+                                           n->value_text ? n->value_text : "");
+                                break;
+                        }
                         if (n->expanded) {
                                 node_collapse(n);
                                 set_status("Collapsed %s", n->name);
