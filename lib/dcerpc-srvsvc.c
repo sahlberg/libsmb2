@@ -75,6 +75,15 @@ p_syntax_id_t srvsvc_interface = {
 
 static struct dcerpc_uint32_pretty_printer share_type_pp = {
         .fmt = "0x%08x",
+        .bitfields = {
+                { "DISKTREE",  0x00000003, 0x00000000 },
+                { "PRINTQ",    0x00000003, 0x00000001 },
+                { "DEVICE",    0x00000003, 0x00000002 },
+                { "IPC",       0x00000003, 0x00000003 },
+                { "TEMPORARY", 0x40000000, 0x40000000 },
+                { "SPECIAL",   0x80000000, 0x80000000 },
+                { NULL, 0, 0},
+        },
 };
 
 /*

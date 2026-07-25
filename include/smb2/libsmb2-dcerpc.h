@@ -84,8 +84,15 @@ struct dcerpc_utf16 {
         const char *utf8;
 };
 
+struct dcerpc_uint32_pretty_printer_bitfield {
+        char *name;
+        uint32_t mask;
+        uint32_t value;
+};
+
 struct dcerpc_uint32_pretty_printer {
         char *fmt;
+        struct dcerpc_uint32_pretty_printer_bitfield bitfields[];
 };
 
 extern p_syntax_id_t lsa_interface;

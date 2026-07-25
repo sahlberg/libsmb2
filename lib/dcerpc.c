@@ -2909,11 +2909,21 @@ _yaml_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pd
                 return 0;
         } else {
                 char *fmt = pp ? pp->fmt : "%u";
-
+                int i;
+                
                 yaml_print_preamble(ctx, pdu, iov, offset);
                 if (*offset + 256 < iov->len) {
                         *offset += snprintf((char *)&iov->buf[*offset], iov->len - *offset, "%s: ", name);
                         *offset += snprintf((char *)&iov->buf[*offset], iov->len - *offset, fmt, *(uint32_t *)ptr);
+                        if (pp && pp->bitfields[0].name) {
+                                *offset += snprintf((char *)&iov->buf[*offset], iov->len - *offset, " #");
+                                for (i = 0; pp->bitfields[i].name; i++) {
+                                        if ((*(uint32_t *)ptr & pp->bitfields[i].mask) == pp->bitfields[i].value) {
+                                                *offset += snprintf((char *)&iov->buf[*offset], iov->len - *offset, " %s",
+                                                                    pp->bitfields[i].name);
+                                        }
+                                }
+                        }
                         *offset += snprintf((char *)&iov->buf[*offset], iov->len - *offset, "\n");
                 }
                 return 0;
