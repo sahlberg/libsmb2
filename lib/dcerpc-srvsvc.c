@@ -123,6 +123,66 @@ static struct dcerpc_uint32_pretty_printer server_type_pp = {
         },
 };
 
+/* PLATFORM_ID_* (SERVER_INFO_*.platform_id) — enum, exact match */
+static struct dcerpc_uint32_pretty_printer platform_id_pp = {
+        .fmt = "%u",
+        .bitfields = {
+                { "PLATFORM_ID_DOS", 0xffffffff, 300 },
+                { "PLATFORM_ID_OS2", 0xffffffff, 400 },
+                { "PLATFORM_ID_NT",  0xffffffff, 500 },
+                { "PLATFORM_ID_OSF", 0xffffffff, 600 },
+                { "PLATFORM_ID_VMS", 0xffffffff, 700 },
+                { NULL, 0, 0},
+        },
+};
+
+/* Legacy share access bits (SHARE_INFO_2.permissions / ACCESS_*) */
+static struct dcerpc_uint32_pretty_printer share_access_pp = {
+        .fmt = "0x%08x",
+        .bitfields = {
+                { "ACCESS_READ",   0x00000001, 0x00000001 },
+                { "ACCESS_WRITE",  0x00000002, 0x00000002 },
+                { "ACCESS_CREATE", 0x00000004, 0x00000004 },
+                { "ACCESS_EXEC",   0x00000008, 0x00000008 },
+                { "ACCESS_DELETE", 0x00000010, 0x00000010 },
+                { "ACCESS_ATRIB",  0x00000020, 0x00000020 },
+                { "ACCESS_PERM",   0x00000040, 0x00000040 },
+                { "ACCESS_ALL",    0x0000007f, 0x0000007f },
+                { NULL, 0, 0},
+        },
+};
+
+/* Open file permissions (FILE_INFO_3.permissions / PERM_FILE_*) */
+static struct dcerpc_uint32_pretty_printer file_perm_pp = {
+        .fmt = "0x%08x",
+        .bitfields = {
+                { "PERM_FILE_READ",   0x00000001, 0x00000001 },
+                { "PERM_FILE_WRITE",  0x00000002, 0x00000002 },
+                { "PERM_FILE_CREATE", 0x00000004, 0x00000004 },
+                { NULL, 0, 0},
+        },
+};
+
+/* MS-SRVS Session User Flags (SESSION_INFO_*.user_flags) */
+static struct dcerpc_uint32_pretty_printer sess_user_flags_pp = {
+        .fmt = "0x%08x",
+        .bitfields = {
+                { "SESS_GUEST",        0x00000001, 0x00000001 },
+                { "SESS_NOENCRYPTION", 0x00000002, 0x00000002 },
+                { NULL, 0, 0},
+        },
+};
+
+/* For [out] DWORD *Type via ptr_coder (NetrShareCheck) */
+static int
+share_type_uint32_coder(char *name, struct dcerpc_context *dce,
+                        struct dcerpc_pdu *pdu, struct smb2_iovec *iov,
+                        int *offset, void *ptr)
+{
+        return dcerpc_uint32_coder_pp(name, dce, pdu, iov, offset, ptr,
+                                      &share_type_pp);
+}
+
 /*
  * SRVSVC BEGIN:  DEFINITIONS FROM SRVSVC.IDL
  * [MS-SRVS].pdf
@@ -347,7 +407,8 @@ srvsvc_SHARE_INFO_2_coder(char *name, struct dcerpc_context *dce,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Permissions", dce, pdu, iov, offset, &nsi2->permissions)) {
+        if (dcerpc_uint32_coder_pp("Permissions", dce, pdu, iov, offset,
+                                   &nsi2->permissions, &share_access_pp)) {
                 return -1;
         }
         if (dcerpc_uint32_coder("MaxUsers", dce, pdu, iov, offset, &nsi2->max_users)) {
@@ -598,7 +659,8 @@ srvsvc_SERVER_INFO_100_coder(char *name, struct dcerpc_context *dce,
 {
         struct srvsvc_SERVER_INFO_100 *si100 = ptr;
 
-        if (dcerpc_uint32_coder("Platform_Id", dce, pdu, iov, offset, &si100->platform_id)) {
+        if (dcerpc_uint32_coder_pp("Platform_Id", dce, pdu, iov, offset,
+                                   &si100->platform_id, &platform_id_pp)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("Name", dce, pdu, iov, offset, &si100->name,
@@ -637,7 +699,8 @@ srvsvc_SERVER_INFO_101_coder(char *name, struct dcerpc_context *dce,
 {
         struct srvsvc_SERVER_INFO_101 *si101 = ptr;
 
-        if (dcerpc_uint32_coder("Platform_Id", dce, pdu, iov, offset, &si101->platform_id)) {
+        if (dcerpc_uint32_coder_pp("Platform_Id", dce, pdu, iov, offset,
+                                   &si101->platform_id, &platform_id_pp)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("Name", dce, pdu, iov, offset, &si101->name,
@@ -696,7 +759,8 @@ srvsvc_SERVER_INFO_102_coder(char *name, struct dcerpc_context *dce,
 {
         struct srvsvc_SERVER_INFO_102 *si102 = ptr;
 
-        if (dcerpc_uint32_coder("Platform_Id", dce, pdu, iov, offset, &si102->platform_id)) {
+        if (dcerpc_uint32_coder_pp("Platform_Id", dce, pdu, iov, offset,
+                                   &si102->platform_id, &platform_id_pp)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("Name", dce, pdu, iov, offset, &si102->name,
@@ -778,7 +842,8 @@ srvsvc_SERVER_INFO_103_coder(char *name, struct dcerpc_context *dce,
 {
         struct srvsvc_SERVER_INFO_103 *si103 = ptr;
 
-        if (dcerpc_uint32_coder("Platform_Id", dce, pdu, iov, offset, &si103->platform_id)) {
+        if (dcerpc_uint32_coder_pp("Platform_Id", dce, pdu, iov, offset,
+                                   &si103->platform_id, &platform_id_pp)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("Name", dce, pdu, iov, offset, &si103->name,
@@ -1360,7 +1425,8 @@ srvsvc_CONNECTION_INFO_1_coder(char *name, struct dcerpc_context *dce,
         if (dcerpc_uint32_coder("Id", dce, pdu, iov, offset, &ci->id)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Type", dce, pdu, iov, offset, &ci->type)) {
+        if (dcerpc_uint32_coder_pp("Type", dce, pdu, iov, offset, &ci->type,
+                                   &share_type_pp)) {
                 return -1;
         }
         if (dcerpc_uint32_coder("NumOpens", dce, pdu, iov, offset, &ci->num_opens)) {
@@ -1701,7 +1767,8 @@ srvsvc_FILE_INFO_3_coder(char *name, struct dcerpc_context *dce,
         if (dcerpc_uint32_coder("Id", dce, pdu, iov, offset, &fi->id)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Permissions", dce, pdu, iov, offset, &fi->permissions)) {
+        if (dcerpc_uint32_coder_pp("Permissions", dce, pdu, iov, offset,
+                                   &fi->permissions, &file_perm_pp)) {
                 return -1;
         }
         if (dcerpc_uint32_coder("NumLocks", dce, pdu, iov, offset, &fi->num_locks)) {
@@ -2230,7 +2297,8 @@ srvsvc_SESSION_INFO_1_coder(char *name, struct dcerpc_context *dce,
         if (dcerpc_uint32_coder("IdleTime", dce, pdu, iov, offset, &si->idle_time)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("UserFlags", dce, pdu, iov, offset, &si->user_flags)) {
+        if (dcerpc_uint32_coder_pp("UserFlags", dce, pdu, iov, offset,
+                                   &si->user_flags, &sess_user_flags_pp)) {
                 return -1;
         }
         return 0;
@@ -2341,7 +2409,8 @@ srvsvc_SESSION_INFO_2_coder(char *name, struct dcerpc_context *dce,
         if (dcerpc_uint32_coder("IdleTime", dce, pdu, iov, offset, &si->idle_time)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("UserFlags", dce, pdu, iov, offset, &si->user_flags)) {
+        if (dcerpc_uint32_coder_pp("UserFlags", dce, pdu, iov, offset,
+                                   &si->user_flags, &sess_user_flags_pp)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("ClTypeName", dce, pdu, iov, offset, &si->cltype_name,
@@ -2559,7 +2628,8 @@ srvsvc_SESSION_INFO_502_coder(char *name, struct dcerpc_context *dce,
         if (dcerpc_uint32_coder("IdleTime", dce, pdu, iov, offset, &si->idle_time)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("UserFlags", dce, pdu, iov, offset, &si->user_flags)) {
+        if (dcerpc_uint32_coder_pp("UserFlags", dce, pdu, iov, offset,
+                                   &si->user_flags, &sess_user_flags_pp)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("ClTypeName", dce, pdu, iov, offset, &si->cltype_name,
@@ -3218,7 +3288,7 @@ srvsvc_NetrShareCheck_rep_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_NetrShareCheck_rep *rep = ptr;
 
         if (dcerpc_ptr_coder("Type", dce, pdu, iov, offset, &rep->Type,
-                             PTR_REF, dcerpc_uint32_coder)) {
+                             PTR_REF, share_type_uint32_coder)) {
                 return -1;
         }
 
