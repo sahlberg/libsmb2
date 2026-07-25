@@ -33,6 +33,7 @@ extern "C" {
 #define WINREG_OPENUSERS             0x04
 #define WINREG_BASEREGCLOSEKEY       0x05
 #define WINREG_BASEREGENUMKEY        0x09
+#define WINREG_BASEREGOPENKEY        0x0f
 #define WINREG_BASEREGQUERYINFOKEY   0x10
 
 /*
@@ -176,6 +177,30 @@ struct winreg_BaseRegEnumKey_rep {
         struct winreg_FILETIME lpftLastWriteTime; /* unique on wire */
 };
 
+/*
+ * error_status_t BaseRegOpenKey(
+ *   [in] RPC_HKEY hKey,
+ *   [in] PRRP_UNICODE_STRING lpSubKey,
+ *   [in] DWORD dwOptions,
+ *   [in] REGSAM samDesired,
+ *   [out] PRPC_HKEY phkResult
+ * );
+ *
+ * lpSubKey is a real key name (RRP_UNICODE_STRING / NUL-terminated).
+ */
+struct winreg_BaseRegOpenKey_req {
+        struct dcerpc_context_handle hKey;
+        char *lpSubKey;
+        uint32_t dwOptions;
+        uint32_t samDesired;
+};
+
+struct winreg_BaseRegOpenKey_rep {
+        uint32_t status;
+
+        struct dcerpc_context_handle phkResult;
+};
+
 int winreg_OpenLocalMachine_rep_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
                                       struct smb2_iovec *iov, int *offset,
@@ -205,6 +230,14 @@ int winreg_BaseRegEnumKey_rep_coder(char *name, struct dcerpc_context *dce,
                                     struct smb2_iovec *iov, int *offset,
                                     void *ptr);
 int winreg_BaseRegEnumKey_req_coder(char *name, struct dcerpc_context *dce,
+                                    struct dcerpc_pdu *pdu,
+                                    struct smb2_iovec *iov, int *offset,
+                                    void *ptr);
+int winreg_BaseRegOpenKey_rep_coder(char *name, struct dcerpc_context *dce,
+                                    struct dcerpc_pdu *pdu,
+                                    struct smb2_iovec *iov, int *offset,
+                                    void *ptr);
+int winreg_BaseRegOpenKey_req_coder(char *name, struct dcerpc_context *dce,
                                     struct dcerpc_pdu *pdu,
                                     struct smb2_iovec *iov, int *offset,
                                     void *ptr);

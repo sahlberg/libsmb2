@@ -1,0 +1,767 @@
+/* -*-  mode:c; tab-width:8; c-basic-offset:8; indent-tabs-mode:nil;  -*- */
+/*
+   Copyright (C) 2026 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
+/*
+ * ncurses TUI for browsing HKLM via MS-RRP (winreg on IPC$).
+ *
+ * Usage:
+ *   winreg-tui smb://[<domain;][<user>@]<host>/
+ *
+ * Keys:
+ *   Up / Down   move selection
+ *   Space       expand / collapse (subkeys loaded on first expand)
+ *   q           quit
+ *
+ * Lines with children show '>' when collapsed and '<' when expanded.
+ * Indentation is two spaces per depth level (same as smb2-winreg-enum).
+ */
+
+#define _GNU_SOURCE
+
+#include <errno.h>
+#include <ncurses.h>
+#include <poll.h>
+#include <stdarg.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "smb2.h"
+#include "libsmb2.h"
+#include "libsmb2-raw.h"
+#include "libsmb2-dcerpc.h"
+#include "libsmb2-dcerpc-winreg.h"
+
+#ifndef discard_const
+#define discard_const(ptr) ((void *)((intptr_t)(ptr)))
+#endif
+
+#define ERROR_SUCCESS           0x00000000
+#define ERROR_ACCESS_DENIED     0x00000005
+#define ERROR_NO_MORE_ITEMS     0x00000103
+
+#define WINREG_WALK_ACCESS      (KEY_READ)
+
+#define MAX_VISIBLE  8192
+#define STATUS_LEN   256
+
+struct node {
+        char *name;
+        int depth;
+        int expanded;
+        int loaded;              /* children enumerated */
+        int has_children;        /* known after load; 1 before load (assume) */
+        int has_handle;
+        struct dcerpc_context_handle hKey;
+        struct node *parent;
+        struct node **children;
+        int nchildren;
+        int achildren;
+};
+
+static struct smb2_context *g_smb2;
+static struct dcerpc_context *g_dce;
+static struct node *g_root;
+static struct node *g_visible[MAX_VISIBLE];
+static int g_nvisible;
+static int g_sel;                /* index into g_visible */
+static int g_top;                /* first visible row in window */
+static char g_status[STATUS_LEN];
+static int g_ui_active;
+
+/* ---- single-flight RPC wait ---- */
+static int rpc_done;
+static int rpc_transport_status;
+static uint32_t rpc_win_status;
+static void *rpc_rep;
+
+static void
+set_status(const char *fmt, ...)
+{
+        va_list ap;
+
+        va_start(ap, fmt);
+        vsnprintf(g_status, sizeof(g_status), fmt, ap);
+        va_end(ap);
+}
+
+static void
+rpc_pump(void)
+{
+        struct pollfd pfd;
+
+        while (!rpc_done) {
+                pfd.fd = smb2_get_fd(g_smb2);
+                pfd.events = smb2_which_events(g_smb2);
+                if (poll(&pfd, 1, 1000) < 0) {
+                        if (errno == EINTR) {
+                                continue;
+                        }
+                        rpc_transport_status = -errno;
+                        rpc_done = 1;
+                        return;
+                }
+                if (pfd.revents == 0) {
+                        continue;
+                }
+                if (smb2_service(g_smb2, pfd.revents) < 0) {
+                        rpc_transport_status = -EIO;
+                        rpc_done = 1;
+                        return;
+                }
+        }
+}
+
+static void
+rpc_generic_cb(struct dcerpc_context *dce, int status,
+               void *command_data, void *cb_data)
+{
+        rpc_transport_status = status;
+        rpc_rep = command_data;
+        rpc_done = 1;
+}
+
+static int
+rpc_call(int opnum,
+         dcerpc_coder req_coder, void *req,
+         dcerpc_coder rep_coder, int rep_size,
+         void **repp)
+{
+        rpc_done = 0;
+        rpc_transport_status = 0;
+        rpc_win_status = 0;
+        rpc_rep = NULL;
+
+        if (dcerpc_call_async(g_dce, opnum, req_coder, req,
+                              rep_coder, rep_size,
+                              rpc_generic_cb, NULL) != 0) {
+                set_status("RPC submit failed: %s", dcerpc_get_error(g_dce));
+                return -1;
+        }
+        rpc_pump();
+        if (rpc_transport_status) {
+                set_status("RPC transport error: %s",
+                           dcerpc_get_error(g_dce));
+                if (rpc_rep) {
+                        dcerpc_free_data(g_dce, rpc_rep);
+                        rpc_rep = NULL;
+                }
+                return -1;
+        }
+        *repp = rpc_rep;
+        return 0;
+}
+
+/* ---- tree nodes ---- */
+
+static struct node *
+node_new(const char *name, int depth, struct node *parent)
+{
+        struct node *n;
+
+        n = calloc(1, sizeof(*n));
+        if (n == NULL) {
+                return NULL;
+        }
+        n->name = strdup(name ? name : "");
+        if (n->name == NULL) {
+                free(n);
+                return NULL;
+        }
+        n->depth = depth;
+        n->parent = parent;
+        n->has_children = 1; /* assume until loaded empty */
+        return n;
+}
+
+static void
+node_close_handle(struct node *n)
+{
+        struct winreg_BaseRegCloseKey_req req;
+        struct winreg_BaseRegCloseKey_rep *rep;
+
+        if (!n->has_handle) {
+                return;
+        }
+        memset(&req, 0, sizeof(req));
+        memcpy(&req.hKey, &n->hKey, sizeof(req.hKey));
+        if (rpc_call(WINREG_BASEREGCLOSEKEY,
+                     winreg_BaseRegCloseKey_req_coder, &req,
+                     winreg_BaseRegCloseKey_rep_coder,
+                     sizeof(*rep), (void **)&rep) == 0) {
+                dcerpc_free_data(g_dce, rep);
+        }
+        n->has_handle = 0;
+        memset(&n->hKey, 0, sizeof(n->hKey));
+}
+
+static void
+node_free(struct node *n)
+{
+        int i;
+
+        if (n == NULL) {
+                return;
+        }
+        for (i = 0; i < n->nchildren; i++) {
+                node_free(n->children[i]);
+        }
+        free(n->children);
+        node_close_handle(n);
+        free(n->name);
+        free(n);
+}
+
+static int
+node_add_child(struct node *parent, struct node *child)
+{
+        struct node **p;
+
+        if (parent->nchildren >= parent->achildren) {
+                int na = parent->achildren ? parent->achildren * 2 : 8;
+
+                p = realloc(parent->children, (size_t)na * sizeof(*p));
+                if (p == NULL) {
+                        return -1;
+                }
+                parent->children = p;
+                parent->achildren = na;
+        }
+        parent->children[parent->nchildren++] = child;
+        return 0;
+}
+
+static void
+node_free_children(struct node *n)
+{
+        int i;
+
+        for (i = 0; i < n->nchildren; i++) {
+                node_free(n->children[i]);
+        }
+        free(n->children);
+        n->children = NULL;
+        n->nchildren = 0;
+        n->achildren = 0;
+        n->loaded = 0;
+        n->has_children = 1;
+}
+
+static int
+node_ensure_handle(struct node *n)
+{
+        struct winreg_BaseRegOpenKey_req req;
+        struct winreg_BaseRegOpenKey_rep *rep;
+
+        if (n->has_handle) {
+                return 0;
+        }
+        if (n->parent == NULL || !n->parent->has_handle) {
+                set_status("No parent handle for %s", n->name);
+                return -1;
+        }
+
+        memset(&req, 0, sizeof(req));
+        memcpy(&req.hKey, &n->parent->hKey, sizeof(req.hKey));
+        req.lpSubKey = n->name;
+        req.dwOptions = 0;
+        req.samDesired = WINREG_WALK_ACCESS;
+
+        if (rpc_call(WINREG_BASEREGOPENKEY,
+                     winreg_BaseRegOpenKey_req_coder, &req,
+                     winreg_BaseRegOpenKey_rep_coder,
+                     sizeof(*rep), (void **)&rep) != 0) {
+                return -1;
+        }
+        if (rep->status == ERROR_ACCESS_DENIED) {
+                set_status("Access denied: %s", n->name);
+                dcerpc_free_data(g_dce, rep);
+                n->has_children = 0;
+                n->loaded = 1;
+                return -1;
+        }
+        if (rep->status != ERROR_SUCCESS) {
+                set_status("OpenKey 0x%x: %s", rep->status, n->name);
+                dcerpc_free_data(g_dce, rep);
+                n->has_children = 0;
+                n->loaded = 1;
+                return -1;
+        }
+        memcpy(&n->hKey, &rep->phkResult, sizeof(n->hKey));
+        n->has_handle = 1;
+        dcerpc_free_data(g_dce, rep);
+        return 0;
+}
+
+static int
+node_load_children(struct node *n)
+{
+        struct winreg_BaseRegEnumKey_req req;
+        struct winreg_BaseRegEnumKey_rep *rep;
+        uint32_t index = 0;
+
+        if (n->loaded) {
+                return 0;
+        }
+        if (node_ensure_handle(n) != 0) {
+                return -1;
+        }
+
+        set_status("Loading %s ...", n->name);
+        if (g_ui_active) {
+                /* status is redrawn by caller */
+        }
+
+        for (;;) {
+                memset(&req, 0, sizeof(req));
+                memcpy(&req.hKey, &n->hKey, sizeof(req.hKey));
+                req.dwIndex = index;
+                req.lpName = NULL;
+                req.lpName_max_length = 0;
+                req.lpClass = NULL;
+                req.lpClass_max_length = 0;
+                req.lpftLastWriteTime = NULL;
+
+                if (rpc_call(WINREG_BASEREGENUMKEY,
+                             winreg_BaseRegEnumKey_req_coder, &req,
+                             winreg_BaseRegEnumKey_rep_coder,
+                             sizeof(*rep), (void **)&rep) != 0) {
+                        node_free_children(n);
+                        return -1;
+                }
+                if (rep->status == ERROR_NO_MORE_ITEMS) {
+                        dcerpc_free_data(g_dce, rep);
+                        break;
+                }
+                if (rep->status == ERROR_ACCESS_DENIED) {
+                        set_status("Enumerate access denied: %s", n->name);
+                        dcerpc_free_data(g_dce, rep);
+                        n->loaded = 1;
+                        n->has_children = n->nchildren > 0;
+                        return 0;
+                }
+                if (rep->status != ERROR_SUCCESS) {
+                        set_status("EnumKey 0x%x at %u under %s",
+                                   rep->status, index, n->name);
+                        dcerpc_free_data(g_dce, rep);
+                        n->loaded = 1;
+                        n->has_children = n->nchildren > 0;
+                        return 0;
+                }
+                {
+                        struct node *c;
+                        const char *nm = rep->lpName ? rep->lpName : "";
+
+                        c = node_new(nm, n->depth + 1, n);
+                        dcerpc_free_data(g_dce, rep);
+                        if (c == NULL || node_add_child(n, c) != 0) {
+                                node_free(c);
+                                set_status("Out of memory");
+                                return -1;
+                        }
+                }
+                index++;
+        }
+
+        n->loaded = 1;
+        n->has_children = n->nchildren > 0;
+        set_status("%s: %d subkey%s", n->name, n->nchildren,
+                   n->nchildren == 1 ? "" : "s");
+        return 0;
+}
+
+static void
+node_collapse(struct node *n)
+{
+        if (!n->expanded) {
+                return;
+        }
+        /* node_free closes any open child handles recursively */
+        node_free_children(n);
+        n->expanded = 0;
+        /* keep n's own handle so re-expand only re-enums, no re-open */
+}
+
+static int
+node_expand(struct node *n)
+{
+        if (n->expanded) {
+                return 0;
+        }
+        if (node_load_children(n) != 0) {
+                return -1;
+        }
+        if (!n->has_children) {
+                n->expanded = 0;
+                return 0;
+        }
+        n->expanded = 1;
+        return 0;
+}
+
+/* ---- visible list / draw ---- */
+
+static void
+visible_add(struct node *n)
+{
+        int i;
+
+        if (g_nvisible >= MAX_VISIBLE) {
+                return;
+        }
+        g_visible[g_nvisible++] = n;
+        if (n->expanded) {
+                for (i = 0; i < n->nchildren; i++) {
+                        visible_add(n->children[i]);
+                }
+        }
+}
+
+static void
+rebuild_visible(void)
+{
+        struct node *sel = (g_sel >= 0 && g_sel < g_nvisible) ?
+                g_visible[g_sel] : NULL;
+        int i;
+
+        g_nvisible = 0;
+        if (g_root) {
+                visible_add(g_root);
+        }
+        g_sel = 0;
+        if (sel) {
+                for (i = 0; i < g_nvisible; i++) {
+                        if (g_visible[i] == sel) {
+                                g_sel = i;
+                                break;
+                        }
+                }
+        }
+}
+
+static char
+node_marker(struct node *n)
+{
+        if (!n->has_children) {
+                return ' ';
+        }
+        return n->expanded ? '<' : '>';
+}
+
+static void
+draw_ui(void)
+{
+        int rows, cols;
+        int list_rows;
+        int i, row;
+
+        getmaxyx(stdscr, rows, cols);
+        list_rows = rows > 2 ? rows - 2 : 1;
+
+        if (g_sel < g_top) {
+                g_top = g_sel;
+        }
+        if (g_sel >= g_top + list_rows) {
+                g_top = g_sel - list_rows + 1;
+        }
+        if (g_top < 0) {
+                g_top = 0;
+        }
+
+        erase();
+
+        mvprintw(0, 0, "winreg-tui  [Up/Down] move  [Space] expand/collapse  [q] quit");
+        if (cols > 2) {
+                mvhline(1, 0, ACS_HLINE, cols);
+        }
+
+        for (i = 0; i < list_rows; i++) {
+                int vi = g_top + i;
+                struct node *n;
+                char marker;
+                int attr = 0;
+
+                row = i + 2;
+                if (vi >= g_nvisible) {
+                        break;
+                }
+                n = g_visible[vi];
+                marker = node_marker(n);
+                if (vi == g_sel) {
+                        attr = A_REVERSE;
+                }
+                attron(attr);
+                /* marker, then depth*2 spaces, then name — same indent as enum */
+                mvprintw(row, 0, "%c %*s%s",
+                         marker,
+                         n->depth * 2, "",
+                         n->name);
+                attroff(attr);
+                /* clear rest of line for reverse video cleanliness */
+                if (cols > 0) {
+                        int y, x;
+
+                        getyx(stdscr, y, x);
+                        (void)y;
+                        if (x < cols) {
+                                printw("%*s", cols - x, "");
+                        }
+                }
+        }
+
+        if (rows > 0) {
+                mvprintw(rows - 1, 0, "%.*s", cols > 0 ? cols - 1 : 0, g_status);
+        }
+        refresh();
+}
+
+/* ---- connection ---- */
+
+static int g_connect_done;
+static int g_connect_status;
+
+static void
+connect_cb(struct dcerpc_context *dce, int status,
+           void *command_data, void *cb_data)
+{
+        (void)dce;
+        (void)command_data;
+        (void)cb_data;
+        g_connect_status = status;
+        g_connect_done = 1;
+}
+
+static int
+connect_winreg(const char *url_str)
+{
+        struct smb2_url *url;
+        struct winreg_OpenLocalMachine_req olm_req;
+        struct winreg_OpenLocalMachine_rep *olm_rep;
+        struct pollfd pfd;
+
+        g_smb2 = smb2_init_context();
+        if (g_smb2 == NULL) {
+                fprintf(stderr, "Failed to init smb2 context\n");
+                return -1;
+        }
+        url = smb2_parse_url(g_smb2, url_str);
+        if (url == NULL) {
+                fprintf(stderr, "Failed to parse url: %s\n",
+                        smb2_get_error(g_smb2));
+                return -1;
+        }
+        if (url->user) {
+                smb2_set_user(g_smb2, url->user);
+        }
+        if (url->domain) {
+                smb2_set_domain(g_smb2, url->domain);
+        }
+        smb2_set_security_mode(g_smb2, SMB2_NEGOTIATE_SIGNING_ENABLED);
+
+        if (smb2_connect_share(g_smb2, url->server, "IPC$", NULL) < 0) {
+                fprintf(stderr, "IPC$ connect failed: %s\n",
+                        smb2_get_error(g_smb2));
+                smb2_destroy_url(url);
+                return -1;
+        }
+        smb2_destroy_url(url);
+
+        g_dce = dcerpc_create_context(g_smb2);
+        if (g_dce == NULL) {
+                fprintf(stderr, "dcerpc_create_context failed: %s\n",
+                        smb2_get_error(g_smb2));
+                return -1;
+        }
+
+        g_connect_done = 0;
+        g_connect_status = 0;
+        if (dcerpc_connect_context_async(g_dce, "winreg", &winreg_interface,
+                                         connect_cb, NULL) != 0) {
+                fprintf(stderr, "winreg connect failed: %s\n",
+                        smb2_get_error(g_smb2));
+                return -1;
+        }
+        while (!g_connect_done) {
+                pfd.fd = smb2_get_fd(g_smb2);
+                pfd.events = smb2_which_events(g_smb2);
+                if (poll(&pfd, 1, 1000) < 0) {
+                        continue;
+                }
+                if (pfd.revents && smb2_service(g_smb2, pfd.revents) < 0) {
+                        fprintf(stderr, "smb2_service: %s\n",
+                                smb2_get_error(g_smb2));
+                        return -1;
+                }
+        }
+        if (g_connect_status != SMB2_STATUS_SUCCESS) {
+                fprintf(stderr, "winreg bind failed (%d)\n", g_connect_status);
+                return -1;
+        }
+
+        memset(&olm_req, 0, sizeof(olm_req));
+        olm_req.ServerName = NULL;
+        olm_req.samDesired = WINREG_WALK_ACCESS;
+        if (rpc_call(WINREG_OPENLOCALMACHINE,
+                     winreg_OpenLocalMachine_req_coder, &olm_req,
+                     winreg_OpenLocalMachine_rep_coder,
+                     sizeof(*olm_rep), (void **)&olm_rep) != 0) {
+                fprintf(stderr, "OpenLocalMachine failed\n");
+                return -1;
+        }
+        if (olm_rep->status != ERROR_SUCCESS) {
+                fprintf(stderr, "OpenLocalMachine status 0x%x\n",
+                        olm_rep->status);
+                dcerpc_free_data(g_dce, olm_rep);
+                return -1;
+        }
+
+        g_root = node_new("HKLM", 0, NULL);
+        if (g_root == NULL) {
+                dcerpc_free_data(g_dce, olm_rep);
+                fprintf(stderr, "out of memory\n");
+                return -1;
+        }
+        memcpy(&g_root->hKey, &olm_rep->phKey, sizeof(g_root->hKey));
+        g_root->has_handle = 1;
+        g_root->expanded = 0;
+        g_root->loaded = 0;
+        g_root->has_children = 1;
+        dcerpc_free_data(g_dce, olm_rep);
+
+        rebuild_visible();
+        g_sel = 0;
+        set_status("Connected. Space expands HKLM.");
+        return 0;
+}
+
+static void
+cleanup(void)
+{
+        if (g_ui_active) {
+                endwin();
+                g_ui_active = 0;
+        }
+        if (g_root) {
+                node_free(g_root);
+                g_root = NULL;
+        }
+        if (g_dce) {
+                dcerpc_destroy_context(g_dce);
+                g_dce = NULL;
+        }
+        if (g_smb2) {
+                smb2_disconnect_share(g_smb2);
+                smb2_destroy_context(g_smb2);
+                g_smb2 = NULL;
+        }
+}
+
+static int
+usage(void)
+{
+        fprintf(stderr, "Usage:\n"
+                "winreg-tui <smb2-url>\n\n"
+                "URL format: smb://[<domain;][<username>@]<host>[:<port>]/\n"
+                "Browse HKLM on IPC$/winreg (ncurses).\n");
+        return 1;
+}
+
+int
+main(int argc, char *argv[])
+{
+        int ch;
+        struct node *n;
+
+        if (argc < 2) {
+                return usage();
+        }
+
+        if (connect_winreg(argv[1]) != 0) {
+                cleanup();
+                return 1;
+        }
+
+        initscr();
+        g_ui_active = 1;
+        cbreak();
+        noecho();
+        keypad(stdscr, TRUE);
+        curs_set(0);
+
+        draw_ui();
+
+        while ((ch = getch()) != 'q' && ch != 'Q') {
+                switch (ch) {
+                case KEY_UP:
+                        if (g_sel > 0) {
+                                g_sel--;
+                        }
+                        break;
+                case KEY_DOWN:
+                        if (g_sel + 1 < g_nvisible) {
+                                g_sel++;
+                        }
+                        break;
+                case KEY_PPAGE: {
+                        int rows, cols, page;
+
+                        getmaxyx(stdscr, rows, cols);
+                        (void)cols;
+                        page = rows > 3 ? rows - 3 : 1;
+                        g_sel -= page;
+                        if (g_sel < 0) {
+                                g_sel = 0;
+                        }
+                        break;
+                }
+                case KEY_NPAGE: {
+                        int rows, cols, page;
+
+                        getmaxyx(stdscr, rows, cols);
+                        (void)cols;
+                        page = rows > 3 ? rows - 3 : 1;
+                        g_sel += page;
+                        if (g_sel >= g_nvisible) {
+                                g_sel = g_nvisible ? g_nvisible - 1 : 0;
+                        }
+                        break;
+                }
+                case ' ':
+                        if (g_nvisible == 0) {
+                                break;
+                        }
+                        n = g_visible[g_sel];
+                        if (n->expanded) {
+                                node_collapse(n);
+                                set_status("Collapsed %s", n->name);
+                                rebuild_visible();
+                        } else {
+                                set_status("Expanding %s ...", n->name);
+                                draw_ui();
+                                if (node_expand(n) == 0) {
+                                        rebuild_visible();
+                                }
+                        }
+                        break;
+                case KEY_RESIZE:
+                        break;
+                default:
+                        break;
+                }
+                draw_ui();
+        }
+
+        cleanup();
+        return 0;
+}

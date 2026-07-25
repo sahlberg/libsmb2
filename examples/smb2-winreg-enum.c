@@ -1,0 +1,447 @@
+/* -*-  mode:c; tab-width:8; c-basic-offset:8; indent-tabs-mode:nil;  -*- */
+/*
+   Copyright (C) 2026 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
+/*
+ * Recursively enumerate registry keys under HKLM via MS-RRP (winreg).
+ *
+ * Connects to IPC$/winreg, OpenLocalMachine, then walks the key tree with
+ * BaseRegEnumKey / BaseRegOpenKey / BaseRegCloseKey. Prints one key name
+ * per line, indented two spaces per depth level.
+ *
+ * Usage:
+ *   smb2-winreg-enum smb://[<domain;][<user>@]<host>/
+ *
+ * Share path in the URL is ignored; the tool always uses IPC$.
+ *
+ * Note: only subkey names are dumped (values need BaseRegEnumValue, not
+ * yet implemented). Access-denied keys are skipped with a message on
+ * stderr. Full HKLM walks can be large and slow.
+ */
+
+#define _GNU_SOURCE
+
+#include <inttypes.h>
+#include <poll.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "smb2.h"
+#include "libsmb2.h"
+#include "libsmb2-raw.h"
+#include "libsmb2-dcerpc.h"
+#include "libsmb2-dcerpc-winreg.h"
+
+#ifndef discard_const
+#define discard_const(ptr) ((void *)((intptr_t)(ptr)))
+#endif
+
+/* Win32 / MS-ERREF */
+#define ERROR_SUCCESS           0x00000000
+#define ERROR_ACCESS_DENIED     0x00000005
+#define ERROR_NO_MORE_ITEMS     0x00000103
+
+/* SamDesired for walking: read + enumerate */
+#define WINREG_WALK_ACCESS      (KEY_READ)
+
+static int is_finished;
+static struct dcerpc_context *g_dce;
+
+/*
+ * One open key in the recursive walk. parent is the key we will continue
+ * enumerating after this one is fully processed and closed.
+ */
+struct walk {
+        struct dcerpc_context_handle hKey;
+        uint32_t index;   /* next BaseRegEnumKey index for this key */
+        int depth;        /* indent level for children of this key */
+        char *pending;    /* subkey name waiting for BaseRegOpenKey */
+        struct walk *parent;
+};
+
+static void walk_enum(struct walk *w);
+static void walk_close(struct walk *w);
+static void walk_open_child(struct walk *parent, const char *name);
+
+static int
+usage(void)
+{
+        fprintf(stderr, "Usage:\n"
+                "smb2-winreg-enum <smb2-url>\n\n"
+                "URL format: "
+                "smb://[<domain;][<username>@]<host>[:<port>]/\n"
+                "Connects to IPC$/winreg and dumps HKLM subkeys recursively.\n");
+        exit(1);
+}
+
+static void
+print_key(int depth, const char *name)
+{
+        int i;
+
+        for (i = 0; i < depth; i++) {
+                printf("  ");
+        }
+        printf("%s\n", name ? name : "");
+}
+
+static struct walk *
+walk_new(struct dcerpc_context_handle *hKey, int depth, struct walk *parent)
+{
+        struct walk *w;
+
+        w = calloc(1, sizeof(*w));
+        if (w == NULL) {
+                fprintf(stderr, "out of memory\n");
+                exit(10);
+        }
+        memcpy(&w->hKey, hKey, sizeof(w->hKey));
+        w->index = 0;
+        w->depth = depth;
+        w->parent = parent;
+        return w;
+}
+
+static void
+walk_free(struct walk *w)
+{
+        if (w == NULL) {
+                return;
+        }
+        free(w->pending);
+        free(w);
+}
+
+static void
+fail_rpc(struct dcerpc_context *dce, const char *what, int status)
+{
+        fprintf(stderr, "%s failed (%s) %s\n",
+                what, strerror(-status), dcerpc_get_error(dce));
+        exit(10);
+}
+
+static void
+cl_cb(struct dcerpc_context *dce, int status,
+      void *command_data, void *cb_data)
+{
+        struct winreg_BaseRegCloseKey_rep *rep = command_data;
+        struct walk *w = cb_data;
+        struct walk *parent;
+
+        if (status) {
+                dcerpc_free_data(dce, rep);
+                fail_rpc(dce, "BaseRegCloseKey", status);
+        }
+        dcerpc_free_data(dce, rep);
+
+        parent = w->parent;
+        walk_free(w);
+
+        if (parent == NULL) {
+                is_finished = 1;
+                return;
+        }
+        /* Continue enumerating the parent after finishing this child. */
+        walk_enum(parent);
+}
+
+static void
+walk_close(struct walk *w)
+{
+        struct winreg_BaseRegCloseKey_req req;
+
+        memset(&req, 0, sizeof(req));
+        memcpy(&req.hKey, &w->hKey, sizeof(req.hKey));
+        if (dcerpc_call_async(g_dce,
+                              WINREG_BASEREGCLOSEKEY,
+                              winreg_BaseRegCloseKey_req_coder, &req,
+                              winreg_BaseRegCloseKey_rep_coder,
+                              sizeof(struct winreg_BaseRegCloseKey_rep),
+                              cl_cb, w) != 0) {
+                fprintf(stderr, "dcerpc_call_async CloseKey: %s\n",
+                        dcerpc_get_error(g_dce));
+                exit(10);
+        }
+}
+
+static void
+op_cb(struct dcerpc_context *dce, int status,
+      void *command_data, void *cb_data)
+{
+        struct winreg_BaseRegOpenKey_rep *rep = command_data;
+        struct walk *parent = cb_data;
+        struct walk *child;
+        char *name;
+
+        if (status) {
+                dcerpc_free_data(dce, rep);
+                fail_rpc(dce, "BaseRegOpenKey", status);
+        }
+
+        name = parent->pending;
+        parent->pending = NULL;
+
+        if (rep->status == ERROR_ACCESS_DENIED) {
+                fprintf(stderr, "%*s# access denied: %s\n",
+                        parent->depth * 2, "", name ? name : "");
+                dcerpc_free_data(dce, rep);
+                free(name);
+                walk_enum(parent);
+                return;
+        }
+        if (rep->status != ERROR_SUCCESS) {
+                fprintf(stderr, "%*s# open failed 0x%x: %s\n",
+                        parent->depth * 2, "", rep->status,
+                        name ? name : "");
+                dcerpc_free_data(dce, rep);
+                free(name);
+                walk_enum(parent);
+                return;
+        }
+
+        print_key(parent->depth, name);
+        free(name);
+
+        child = walk_new(&rep->phkResult, parent->depth + 1, parent);
+        dcerpc_free_data(dce, rep);
+        walk_enum(child);
+}
+
+static void
+walk_open_child(struct walk *parent, const char *name)
+{
+        struct winreg_BaseRegOpenKey_req req;
+
+        free(parent->pending);
+        parent->pending = strdup(name);
+        if (parent->pending == NULL) {
+                fprintf(stderr, "out of memory\n");
+                exit(10);
+        }
+
+        memset(&req, 0, sizeof(req));
+        memcpy(&req.hKey, &parent->hKey, sizeof(req.hKey));
+        req.lpSubKey = parent->pending;
+        req.dwOptions = 0;
+        req.samDesired = WINREG_WALK_ACCESS;
+
+        if (dcerpc_call_async(g_dce,
+                              WINREG_BASEREGOPENKEY,
+                              winreg_BaseRegOpenKey_req_coder, &req,
+                              winreg_BaseRegOpenKey_rep_coder,
+                              sizeof(struct winreg_BaseRegOpenKey_rep),
+                              op_cb, parent) != 0) {
+                fprintf(stderr, "dcerpc_call_async OpenKey: %s\n",
+                        dcerpc_get_error(g_dce));
+                exit(10);
+        }
+}
+
+static void
+en_cb(struct dcerpc_context *dce, int status,
+      void *command_data, void *cb_data)
+{
+        struct winreg_BaseRegEnumKey_rep *rep = command_data;
+        struct walk *w = cb_data;
+        char *name;
+
+        if (status) {
+                dcerpc_free_data(dce, rep);
+                fail_rpc(dce, "BaseRegEnumKey", status);
+        }
+
+        if (rep->status == ERROR_NO_MORE_ITEMS) {
+                dcerpc_free_data(dce, rep);
+                walk_close(w);
+                return;
+        }
+        if (rep->status == ERROR_ACCESS_DENIED) {
+                fprintf(stderr, "%*s# enumerate access denied\n",
+                        (w->depth > 0 ? w->depth - 1 : 0) * 2, "");
+                dcerpc_free_data(dce, rep);
+                walk_close(w);
+                return;
+        }
+        if (rep->status != ERROR_SUCCESS) {
+                fprintf(stderr, "BaseRegEnumKey status 0x%x at index %u\n",
+                        rep->status, w->index);
+                dcerpc_free_data(dce, rep);
+                walk_close(w);
+                return;
+        }
+
+        name = rep->lpName ? rep->lpName : "";
+        /*
+         * Advance index before open so when we resume this walk after the
+         * child closes we request the next sibling.
+         */
+        w->index++;
+        walk_open_child(w, name);
+        dcerpc_free_data(dce, rep);
+}
+
+static void
+walk_enum(struct walk *w)
+{
+        struct winreg_BaseRegEnumKey_req req;
+
+        memset(&req, 0, sizeof(req));
+        memcpy(&req.hKey, &w->hKey, sizeof(req.hKey));
+        req.dwIndex = w->index;
+        req.lpName = NULL;
+        req.lpName_max_length = 0; /* coder default 1024 */
+        req.lpClass = NULL;
+        req.lpClass_max_length = 0;
+        req.lpftLastWriteTime = NULL;
+
+        if (dcerpc_call_async(g_dce,
+                              WINREG_BASEREGENUMKEY,
+                              winreg_BaseRegEnumKey_req_coder, &req,
+                              winreg_BaseRegEnumKey_rep_coder,
+                              sizeof(struct winreg_BaseRegEnumKey_rep),
+                              en_cb, w) != 0) {
+                fprintf(stderr, "dcerpc_call_async EnumKey: %s\n",
+                        dcerpc_get_error(g_dce));
+                exit(10);
+        }
+}
+
+static void
+olm_cb(struct dcerpc_context *dce, int status,
+       void *command_data, void *cb_data)
+{
+        struct winreg_OpenLocalMachine_rep *rep = command_data;
+        struct walk *root;
+
+        if (status) {
+                dcerpc_free_data(dce, rep);
+                fail_rpc(dce, "OpenLocalMachine", status);
+        }
+        if (rep->status != ERROR_SUCCESS) {
+                fprintf(stderr, "OpenLocalMachine status 0x%x\n", rep->status);
+                dcerpc_free_data(dce, rep);
+                exit(10);
+        }
+
+        print_key(0, "HKLM");
+        root = walk_new(&rep->phKey, 1, NULL);
+        dcerpc_free_data(dce, rep);
+        walk_enum(root);
+}
+
+static void
+co_cb(struct dcerpc_context *dce, int status,
+      void *command_data, void *cb_data)
+{
+        struct winreg_OpenLocalMachine_req req;
+
+        if (status != SMB2_STATUS_SUCCESS) {
+                fprintf(stderr, "failed to connect to winreg (%s) %s\n",
+                        strerror(-status), dcerpc_get_error(dce));
+                exit(10);
+        }
+
+        memset(&req, 0, sizeof(req));
+        req.ServerName = NULL;
+        req.samDesired = WINREG_WALK_ACCESS;
+
+        if (dcerpc_call_async(dce,
+                              WINREG_OPENLOCALMACHINE,
+                              winreg_OpenLocalMachine_req_coder, &req,
+                              winreg_OpenLocalMachine_rep_coder,
+                              sizeof(struct winreg_OpenLocalMachine_rep),
+                              olm_cb, NULL) != 0) {
+                fprintf(stderr, "dcerpc_call_async OpenLocalMachine: %s\n",
+                        dcerpc_get_error(dce));
+                exit(10);
+        }
+}
+
+int
+main(int argc, char *argv[])
+{
+        struct smb2_context *smb2;
+        struct smb2_url *url;
+        struct pollfd pfd;
+
+        if (argc < 2) {
+                usage();
+        }
+
+        smb2 = smb2_init_context();
+        if (smb2 == NULL) {
+                fprintf(stderr, "Failed to init context\n");
+                exit(1);
+        }
+
+        url = smb2_parse_url(smb2, argv[1]);
+        if (url == NULL) {
+                fprintf(stderr, "Failed to parse url: %s\n",
+                        smb2_get_error(smb2));
+                exit(1);
+        }
+        if (url->user) {
+                smb2_set_user(smb2, url->user);
+        }
+        if (url->domain) {
+                smb2_set_domain(smb2, url->domain);
+        }
+
+        smb2_set_security_mode(smb2, SMB2_NEGOTIATE_SIGNING_ENABLED);
+
+        if (smb2_connect_share(smb2, url->server, "IPC$", NULL) < 0) {
+                fprintf(stderr, "Failed to connect to IPC$. %s\n",
+                        smb2_get_error(smb2));
+                exit(10);
+        }
+
+        g_dce = dcerpc_create_context(smb2);
+        if (g_dce == NULL) {
+                fprintf(stderr, "Failed to create dce context. %s\n",
+                        smb2_get_error(smb2));
+                exit(10);
+        }
+
+        if (dcerpc_connect_context_async(g_dce, "winreg", &winreg_interface,
+                                         co_cb, NULL) != 0) {
+                fprintf(stderr, "Failed to connect dce context. %s\n",
+                        smb2_get_error(smb2));
+                exit(10);
+        }
+
+        while (!is_finished) {
+                pfd.fd = smb2_get_fd(smb2);
+                pfd.events = smb2_which_events(smb2);
+
+                if (poll(&pfd, 1, 1000) < 0) {
+                        fprintf(stderr, "Poll failed\n");
+                        exit(10);
+                }
+                if (pfd.revents == 0) {
+                        continue;
+                }
+                if (smb2_service(smb2, pfd.revents) < 0) {
+                        fprintf(stderr, "smb2_service failed with : %s\n",
+                                smb2_get_error(smb2));
+                        break;
+                }
+        }
+
+        dcerpc_destroy_context(g_dce);
+        smb2_disconnect_share(smb2);
+        smb2_destroy_url(url);
+        smb2_destroy_context(smb2);
+
+        return 0;
+}

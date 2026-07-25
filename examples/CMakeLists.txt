@@ -20,7 +20,9 @@ set(SOURCES smb2-cat-async
             smb2-server-sync
             smb2-notify
             smb2-set-security-info
-            smb2-link-sync)
+            smb2-link-sync
+            smb2-winreg-enum
+            winreg-tui)
 
 foreach(TARGET ${SOURCES})
   add_executable(${TARGET} ${TARGET}.c)
@@ -32,6 +34,12 @@ foreach(TARGET ${SOURCES})
               $<TARGET_FILE:smb2> $<TARGET_FILE_DIR:${TARGET}>)
   endif()
 endforeach()
+
+find_package(Curses)
+if(CURSES_FOUND)
+  target_link_libraries(winreg-tui ${CURSES_LIBRARIES})
+  target_include_directories(winreg-tui PRIVATE ${CURSES_INCLUDE_DIRS})
+endif()
 
 if(NOT MSVC)
   add_definitions(-Werror "-D_U_=__attribute__((unused))")

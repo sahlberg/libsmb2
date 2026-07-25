@@ -415,6 +415,62 @@ winreg_BaseRegEnumKey_rep_coder(char *name, struct dcerpc_context *dce,
         return 0;
 }
 
+/**********************
+ * Function: 0x0f
+ *      error_status_t BaseRegOpenKey(
+ *              [in] RPC_HKEY hKey,
+ *              [in] PRRP_UNICODE_STRING lpSubKey,
+ *              [in] DWORD dwOptions,
+ *              [in] REGSAM samDesired,
+ *              [out] PRPC_HKEY phkResult
+ *              );
+ **********************/
+int
+winreg_BaseRegOpenKey_req_coder(char *name, struct dcerpc_context *dce,
+                                struct dcerpc_pdu *pdu,
+                                struct smb2_iovec *iov, int *offset,
+                                void *ptr)
+{
+        struct winreg_BaseRegOpenKey_req *req = ptr;
+
+        if (dcerpc_ptr_coder("hKey", dce, pdu, iov, offset, &req->hKey,
+                             PTR_REF, winreg_RPC_HKEY_STRUCT_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("lpSubKey", dce, pdu, iov, offset, &req->lpSubKey,
+                             PTR_REF, dcerpc_RRP_UNICODE_STRING_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("dwOptions", dce, pdu, iov, offset,
+                                &req->dwOptions)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("samDesired", dce, pdu, iov, offset,
+                                &req->samDesired)) {
+                return -1;
+        }
+        return 0;
+}
+
+int
+winreg_BaseRegOpenKey_rep_coder(char *name, struct dcerpc_context *dce,
+                                struct dcerpc_pdu *pdu,
+                                struct smb2_iovec *iov, int *offset,
+                                void *ptr)
+{
+        struct winreg_BaseRegOpenKey_rep *rep = ptr;
+
+        if (dcerpc_ptr_coder("phkResult", dce, pdu, iov, offset, &rep->phkResult,
+                             PTR_REF, winreg_RPC_HKEY_STRUCT_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
+                return -1;
+        }
+
+        return 0;
+}
+
 struct dcerpc_procedure winreg_procs[] = {
         {WINREG_OPENLOCALMACHINE, "OpenLocalMachine",
          winreg_OpenLocalMachine_req_coder, sizeof(struct winreg_OpenLocalMachine_req),
@@ -429,6 +485,12 @@ struct dcerpc_procedure winreg_procs[] = {
          sizeof(struct winreg_BaseRegEnumKey_req),
          winreg_BaseRegEnumKey_rep_coder,
          sizeof(struct winreg_BaseRegEnumKey_rep),
+        },
+        {WINREG_BASEREGOPENKEY, "BaseRegOpenKey",
+         winreg_BaseRegOpenKey_req_coder,
+         sizeof(struct winreg_BaseRegOpenKey_req),
+         winreg_BaseRegOpenKey_rep_coder,
+         sizeof(struct winreg_BaseRegOpenKey_rep),
         },
         {WINREG_BASEREGQUERYINFOKEY, "BaseRegQueryInfoKey",
          winreg_BaseRegQueryInfoKey_req_coder,
