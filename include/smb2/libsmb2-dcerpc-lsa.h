@@ -30,20 +30,42 @@ extern "C" {
 #define LSA_LOOKUPSIDS2    0x39
 #define LSA_LOOKUPNAMES2   0x3a
 
-/* Access Mask. LSA specific flags. */
-#define POLICY_VIEW_LOCAL_INFORMATION    0x00000001
-#define POLICY_VIEW_AUDIT_INFORMATION    0x00000002
-#define POLICY_GET_PRIVATE_INFORMATION   0x00000004
-#define POLICY_TRUST_ADMIN               0x00000008
-#define POLICY_CREATE_ACCOUNT            0x00000010
-#define POLICY_CREATE_SECRET             0x00000020
-#define POLICY_CREATE_PRIVILEGE          0x00000040
-#define POLICY_SET_DEFAULT_QUOTA_LIMITS  0x00000080
-#define POLICY_SET_AUDIT_REQUIREMENTS    0x00000100
-#define POLICY_AUDIT_LOG_ADMIN           0x00000200
-#define POLICY_SERVER_ADMIN              0x00000400
-#define POLICY_LOOKUP_NAMES              0x00000800
-#define POLICY_NOTIFICATION              0x00001000
+/* Access Mask. LSA policy-specific flags (MS-LSAD). */
+#define LSA_POLICY_VIEW_LOCAL_INFORMATION    0x00000001
+#define LSA_POLICY_VIEW_AUDIT_INFORMATION    0x00000002
+#define LSA_POLICY_GET_PRIVATE_INFORMATION   0x00000004
+#define LSA_POLICY_TRUST_ADMIN               0x00000008
+#define LSA_POLICY_CREATE_ACCOUNT            0x00000010
+#define LSA_POLICY_CREATE_SECRET             0x00000020
+#define LSA_POLICY_CREATE_PRIVILEGE          0x00000040
+#define LSA_POLICY_SET_DEFAULT_QUOTA_LIMITS  0x00000080
+#define LSA_POLICY_SET_AUDIT_REQUIREMENTS    0x00000100
+#define LSA_POLICY_AUDIT_LOG_ADMIN           0x00000200
+#define LSA_POLICY_SERVER_ADMIN              0x00000400
+#define LSA_POLICY_LOOKUP_NAMES              0x00000800
+#define LSA_POLICY_NOTIFICATION              0x00001000
+
+/* SID_NAME_USE (translated name/sid Use field) */
+#define LSA_SID_TYPE_USER             1
+#define LSA_SID_TYPE_GROUP            2
+#define LSA_SID_TYPE_DOMAIN           3
+#define LSA_SID_TYPE_ALIAS            4
+#define LSA_SID_TYPE_WELL_KNOWN_GROUP 5
+#define LSA_SID_TYPE_DELETED_ACCOUNT  6
+#define LSA_SID_TYPE_INVALID          7
+#define LSA_SID_TYPE_UNKNOWN          8
+#define LSA_SID_TYPE_COMPUTER         9
+#define LSA_SID_TYPE_LABEL            10
+#define LSA_SID_TYPE_LOGON_SESSION    11
+
+/* LSAP_LOOKUP_LEVEL */
+#define LSA_LOOKUP_WKSTA                   1
+#define LSA_LOOKUP_PDC                     2
+#define LSA_LOOKUP_TDL                     3
+#define LSA_LOOKUP_GC                      4
+#define LSA_LOOKUP_XFOREST_REFERRAL        5
+#define LSA_LOOKUP_XFOREST_RESOLVE         6
+#define LSA_LOOKUP_RODC_REFERRAL_TO_FULL_DC 7
 
 extern unsigned char NT_SID_AUTHORITY[6];
 
@@ -74,13 +96,13 @@ typedef struct _LSAPR_TRANSLATED_NAMES_EX {
 } LSAPR_TRANSLATED_NAMES_EX, *PLSAPR_TRANSLATED_NAMES_EX;
 
 typedef enum _LSAP_LOOKUP_LEVEL {
-        LsapLookupWksta = 1,
-        LsapLookupPDC,
-        LsapLookupTDL,
-        LsapLookupGC,
-        LsapLookupXForestReferral,
-        LsapLookupXForestResolve,
-        LsapLookupRODCReferralToFullDC
+        LsapLookupWksta = LSA_LOOKUP_WKSTA,
+        LsapLookupPDC = LSA_LOOKUP_PDC,
+        LsapLookupTDL = LSA_LOOKUP_TDL,
+        LsapLookupGC = LSA_LOOKUP_GC,
+        LsapLookupXForestReferral = LSA_LOOKUP_XFOREST_REFERRAL,
+        LsapLookupXForestResolve = LSA_LOOKUP_XFOREST_RESOLVE,
+        LsapLookupRODCReferralToFullDC = LSA_LOOKUP_RODC_REFERRAL_TO_FULL_DC
 } LSAP_LOOKUP_LEVEL, *PLSAP_LOOKUP_LEVEL;
 
 typedef struct _LSAPR_TRUST_INFORMATION {

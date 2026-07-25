@@ -73,6 +73,85 @@ p_syntax_id_t lsa_interface = {
         {LSA_UUID}, 0, 0
 };
 
+/* Policy DesiredAccess (LSA_POLICY_*) */
+static struct dcerpc_uint32_pretty_printer policy_access_pp = {
+        .fmt = "0x%08x",
+        .bitfields = {
+                { "VIEW_LOCAL_INFORMATION",
+                  LSA_POLICY_VIEW_LOCAL_INFORMATION,
+                  LSA_POLICY_VIEW_LOCAL_INFORMATION },
+                { "VIEW_AUDIT_INFORMATION",
+                  LSA_POLICY_VIEW_AUDIT_INFORMATION,
+                  LSA_POLICY_VIEW_AUDIT_INFORMATION },
+                { "GET_PRIVATE_INFORMATION",
+                  LSA_POLICY_GET_PRIVATE_INFORMATION,
+                  LSA_POLICY_GET_PRIVATE_INFORMATION },
+                { "TRUST_ADMIN",
+                  LSA_POLICY_TRUST_ADMIN, LSA_POLICY_TRUST_ADMIN },
+                { "CREATE_ACCOUNT",
+                  LSA_POLICY_CREATE_ACCOUNT, LSA_POLICY_CREATE_ACCOUNT },
+                { "CREATE_SECRET",
+                  LSA_POLICY_CREATE_SECRET, LSA_POLICY_CREATE_SECRET },
+                { "CREATE_PRIVILEGE",
+                  LSA_POLICY_CREATE_PRIVILEGE, LSA_POLICY_CREATE_PRIVILEGE },
+                { "SET_DEFAULT_QUOTA_LIMITS",
+                  LSA_POLICY_SET_DEFAULT_QUOTA_LIMITS,
+                  LSA_POLICY_SET_DEFAULT_QUOTA_LIMITS },
+                { "SET_AUDIT_REQUIREMENTS",
+                  LSA_POLICY_SET_AUDIT_REQUIREMENTS,
+                  LSA_POLICY_SET_AUDIT_REQUIREMENTS },
+                { "AUDIT_LOG_ADMIN",
+                  LSA_POLICY_AUDIT_LOG_ADMIN, LSA_POLICY_AUDIT_LOG_ADMIN },
+                { "SERVER_ADMIN",
+                  LSA_POLICY_SERVER_ADMIN, LSA_POLICY_SERVER_ADMIN },
+                { "LOOKUP_NAMES",
+                  LSA_POLICY_LOOKUP_NAMES, LSA_POLICY_LOOKUP_NAMES },
+                { "NOTIFICATION",
+                  LSA_POLICY_NOTIFICATION, LSA_POLICY_NOTIFICATION },
+                { NULL, 0, 0},
+        },
+};
+
+/* SID_NAME_USE on translated names/SIDs */
+static struct dcerpc_uint32_pretty_printer sid_name_use_pp = {
+        .fmt = "%u",
+        .bitfields = {
+                { "SidTypeUser", 0xffffffff, LSA_SID_TYPE_USER },
+                { "SidTypeGroup", 0xffffffff, LSA_SID_TYPE_GROUP },
+                { "SidTypeDomain", 0xffffffff, LSA_SID_TYPE_DOMAIN },
+                { "SidTypeAlias", 0xffffffff, LSA_SID_TYPE_ALIAS },
+                { "SidTypeWellKnownGroup", 0xffffffff,
+                  LSA_SID_TYPE_WELL_KNOWN_GROUP },
+                { "SidTypeDeletedAccount", 0xffffffff,
+                  LSA_SID_TYPE_DELETED_ACCOUNT },
+                { "SidTypeInvalid", 0xffffffff, LSA_SID_TYPE_INVALID },
+                { "SidTypeUnknown", 0xffffffff, LSA_SID_TYPE_UNKNOWN },
+                { "SidTypeComputer", 0xffffffff, LSA_SID_TYPE_COMPUTER },
+                { "SidTypeLabel", 0xffffffff, LSA_SID_TYPE_LABEL },
+                { "SidTypeLogonSession", 0xffffffff,
+                  LSA_SID_TYPE_LOGON_SESSION },
+                { NULL, 0, 0},
+        },
+};
+
+/* LSAP_LOOKUP_LEVEL */
+static struct dcerpc_uint32_pretty_printer lookup_level_pp = {
+        .fmt = "%u",
+        .bitfields = {
+                { "LsapLookupWksta", 0xffffffff, LSA_LOOKUP_WKSTA },
+                { "LsapLookupPDC", 0xffffffff, LSA_LOOKUP_PDC },
+                { "LsapLookupTDL", 0xffffffff, LSA_LOOKUP_TDL },
+                { "LsapLookupGC", 0xffffffff, LSA_LOOKUP_GC },
+                { "LsapLookupXForestReferral", 0xffffffff,
+                  LSA_LOOKUP_XFOREST_REFERRAL },
+                { "LsapLookupXForestResolve", 0xffffffff,
+                  LSA_LOOKUP_XFOREST_RESOLVE },
+                { "LsapLookupRODCReferralToFullDC", 0xffffffff,
+                  LSA_LOOKUP_RODC_REFERRAL_TO_FULL_DC },
+                { NULL, 0, 0},
+        },
+};
+
 static int
 lsa_PRPC_SID_ptr_coder(char *name, struct dcerpc_context *dce,
                        struct dcerpc_pdu *pdu,
@@ -164,7 +243,8 @@ lsa_TRANSLATED_NAME_EX_coder(char *name, struct dcerpc_context *dce,
 {
         LSAPR_TRANSLATED_NAME_EX *tn = ptr;
 
-        if (dcerpc_uint32_coder("Use", dce, pdu, iov, offset, &tn->Use)) {
+        if (dcerpc_uint32_coder_pp("Use", dce, pdu, iov, offset, &tn->Use,
+                                   &sid_name_use_pp)) {
                 return -1;
         }
         if (dcerpc_RPC_UNICODE_STRING_coder("Name", dce, pdu, iov, offset,
@@ -369,7 +449,8 @@ lsa_OpenPolicy2_req_coder(char *name, struct dcerpc_context *dce,
                              PTR_REF, lsa_ObjectAttributes_STRUCT_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("DesiredAccess", dce, pdu, iov, offset, &req->DesiredAccess)) {
+        if (dcerpc_uint32_coder_pp("DesiredAccess", dce, pdu, iov, offset,
+                                   &req->DesiredAccess, &policy_access_pp)) {
                 return -1;
         }
         return 0;
@@ -512,7 +593,8 @@ lsa_LookupSids2_req_coder(char *name, struct dcerpc_context *dce,
                              PTR_REF, lsa_TRANSLATED_NAMES_EX_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("LookupLevel", dce, pdu, iov, offset, &req->LookupLevel)) {
+        if (dcerpc_uint32_coder_pp("LookupLevel", dce, pdu, iov, offset,
+                                   &req->LookupLevel, &lookup_level_pp)) {
                 return -1;
         }
 
@@ -573,7 +655,8 @@ lsa_TRANSLATED_SID_EX_coder(char *name, struct dcerpc_context *dce,
 {
         LSAPR_TRANSLATED_SID_EX *ts = ptr;
 
-        if (dcerpc_uint32_coder("Use", dce, pdu, iov, offset, &ts->Use)) {
+        if (dcerpc_uint32_coder_pp("Use", dce, pdu, iov, offset, &ts->Use,
+                                   &sid_name_use_pp)) {
                 return -1;
         }
         if (dcerpc_uint32_coder("RelativeId", dce, pdu, iov, offset, &ts->RelativeId)) {
@@ -740,7 +823,8 @@ lsa_LookupNames2_req_coder(char *name, struct dcerpc_context *dce,
                              PTR_REF, lsa_TRANSLATED_SIDS_EX_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("LookupLevel", dce, pdu, iov, offset, &req->LookupLevel)) {
+        if (dcerpc_uint32_coder_pp("LookupLevel", dce, pdu, iov, offset,
+                                   &req->LookupLevel, &lookup_level_pp)) {
                 return -1;
         }
 

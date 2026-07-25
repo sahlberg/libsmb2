@@ -81,6 +81,99 @@ p_syntax_id_t winreg_interface = {
         {WINREG_UUID}, 1, 0
 };
 
+/* REGSAM / samDesired (KEY_* + standard rights) */
+static struct dcerpc_uint32_pretty_printer regsam_pp = {
+        .fmt = "0x%08x",
+        .bitfields = {
+                { "KEY_QUERY_VALUE", KEY_QUERY_VALUE, KEY_QUERY_VALUE },
+                { "KEY_SET_VALUE", KEY_SET_VALUE, KEY_SET_VALUE },
+                { "KEY_CREATE_SUB_KEY", KEY_CREATE_SUB_KEY, KEY_CREATE_SUB_KEY },
+                { "KEY_ENUMERATE_SUB_KEYS", KEY_ENUMERATE_SUB_KEYS,
+                  KEY_ENUMERATE_SUB_KEYS },
+                { "KEY_NOTIFY", KEY_NOTIFY, KEY_NOTIFY },
+                { "KEY_CREATE_LINK", KEY_CREATE_LINK, KEY_CREATE_LINK },
+                { "KEY_WOW64_64KEY", KEY_WOW64_64KEY, KEY_WOW64_64KEY },
+                { "KEY_WOW64_32KEY", KEY_WOW64_32KEY, KEY_WOW64_32KEY },
+                { "DELETE", WINREG_DELETE, WINREG_DELETE },
+                { "READ_CONTROL", 0x00020000, 0x00020000 },
+                { "WRITE_DAC", 0x00040000, 0x00040000 },
+                { "WRITE_OWNER", 0x00080000, 0x00080000 },
+                { "SYNCHRONIZE", 0x00100000, 0x00100000 },
+                { "KEY_READ", KEY_READ, KEY_READ },
+                { "KEY_WRITE", KEY_WRITE, KEY_WRITE },
+                { "KEY_ALL_ACCESS", KEY_ALL_ACCESS, KEY_ALL_ACCESS },
+                { NULL, 0, 0},
+        },
+};
+
+/* BaseRegCreateKey / OpenKey dwOptions */
+static struct dcerpc_uint32_pretty_printer reg_option_pp = {
+        .fmt = "0x%08x",
+        .bitfields = {
+                { "REG_OPTION_NON_VOLATILE", 0xffffffff, REG_OPTION_NON_VOLATILE },
+                { "REG_OPTION_VOLATILE", REG_OPTION_VOLATILE, REG_OPTION_VOLATILE },
+                { "REG_OPTION_CREATE_LINK", REG_OPTION_CREATE_LINK,
+                  REG_OPTION_CREATE_LINK },
+                { "REG_OPTION_BACKUP_RESTORE", REG_OPTION_BACKUP_RESTORE,
+                  REG_OPTION_BACKUP_RESTORE },
+                { "REG_OPTION_OPEN_LINK", REG_OPTION_OPEN_LINK,
+                  REG_OPTION_OPEN_LINK },
+                { NULL, 0, 0},
+        },
+};
+
+/* BaseRegCreateKey disposition */
+static struct dcerpc_uint32_pretty_printer reg_disposition_pp = {
+        .fmt = "0x%08x",
+        .bitfields = {
+                { "REG_CREATED_NEW_KEY", 0xffffffff, REG_CREATED_NEW_KEY },
+                { "REG_OPENED_EXISTING_KEY", 0xffffffff,
+                  REG_OPENED_EXISTING_KEY },
+                { NULL, 0, 0},
+        },
+};
+
+/* REG_VALUE_TYPE (SetValue dwType / EnumValue type) */
+static struct dcerpc_uint32_pretty_printer reg_type_pp = {
+        .fmt = "%u",
+        .bitfields = {
+                { "REG_NONE", 0xffffffff, REG_NONE },
+                { "REG_SZ", 0xffffffff, REG_SZ },
+                { "REG_EXPAND_SZ", 0xffffffff, REG_EXPAND_SZ },
+                { "REG_BINARY", 0xffffffff, REG_BINARY },
+                { "REG_DWORD", 0xffffffff, REG_DWORD },
+                { "REG_DWORD_BIG_ENDIAN", 0xffffffff, REG_DWORD_BIG_ENDIAN },
+                { "REG_LINK", 0xffffffff, REG_LINK },
+                { "REG_MULTI_SZ", 0xffffffff, REG_MULTI_SZ },
+                { "REG_RESOURCE_LIST", 0xffffffff, REG_RESOURCE_LIST },
+                { "REG_FULL_RESOURCE_DESCRIPTOR", 0xffffffff,
+                  REG_FULL_RESOURCE_DESCRIPTOR },
+                { "REG_RESOURCE_REQUIREMENTS_LIST", 0xffffffff,
+                  REG_RESOURCE_REQUIREMENTS_LIST },
+                { "REG_QWORD", 0xffffffff, REG_QWORD },
+                { NULL, 0, 0},
+        },
+};
+
+/* For [unique] LPDWORD type/disposition via ptr_coder */
+static int
+reg_type_uint32_coder(char *name, struct dcerpc_context *dce,
+                      struct dcerpc_pdu *pdu, struct smb2_iovec *iov,
+                      int *offset, void *ptr)
+{
+        return dcerpc_uint32_coder_pp(name, dce, pdu, iov, offset, ptr,
+                                      &reg_type_pp);
+}
+
+static int
+reg_disposition_uint32_coder(char *name, struct dcerpc_context *dce,
+                             struct dcerpc_pdu *pdu, struct smb2_iovec *iov,
+                             int *offset, void *ptr)
+{
+        return dcerpc_uint32_coder_pp(name, dce, pdu, iov, offset, ptr,
+                                      &reg_disposition_pp);
+}
+
 static int
 winreg_RPC_HKEY_STRUCT_coder(char *name, struct dcerpc_context *dce,
                              struct dcerpc_pdu *pdu,
@@ -127,8 +220,8 @@ winreg_OpenRootKey_req_coder(char *name, struct dcerpc_context *dce,
                              PTR_UNIQUE, winreg_ServerName_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("samDesired", dce, pdu, iov, offset,
-                                &req->samDesired)) {
+        if (dcerpc_uint32_coder_pp("samDesired", dce, pdu, iov, offset,
+                                   &req->samDesired, &regsam_pp)) {
                 return -1;
         }
         return 0;
@@ -540,12 +633,12 @@ winreg_BaseRegCreateKey_req_coder(char *name, struct dcerpc_context *dce,
                              PTR_REF, dcerpc_RRP_UNICODE_STRING_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("dwOptions", dce, pdu, iov, offset,
-                                &req->dwOptions)) {
+        if (dcerpc_uint32_coder_pp("dwOptions", dce, pdu, iov, offset,
+                                   &req->dwOptions, &reg_option_pp)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("samDesired", dce, pdu, iov, offset,
-                                &req->samDesired)) {
+        if (dcerpc_uint32_coder_pp("samDesired", dce, pdu, iov, offset,
+                                   &req->samDesired, &regsam_pp)) {
                 return -1;
         }
         /* [in, unique] PRPC_SECURITY_ATTRIBUTES — always NULL */
@@ -556,7 +649,7 @@ winreg_BaseRegCreateKey_req_coder(char *name, struct dcerpc_context *dce,
         /* [in, out, unique] LPDWORD lpdwDisposition */
         if (dcerpc_ptr_coder("lpdwDisposition", dce, pdu, iov, offset,
                              &req->disposition,
-                             PTR_UNIQUE, dcerpc_uint32_coder)) {
+                             PTR_UNIQUE, reg_disposition_uint32_coder)) {
                 return -1;
         }
         return 0;
@@ -576,7 +669,7 @@ winreg_BaseRegCreateKey_rep_coder(char *name, struct dcerpc_context *dce,
         }
         if (dcerpc_ptr_coder("lpdwDisposition", dce, pdu, iov, offset,
                              &rep->disposition,
-                             PTR_UNIQUE, dcerpc_uint32_coder)) {
+                             PTR_UNIQUE, reg_disposition_uint32_coder)) {
                 return -1;
         }
         if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
@@ -769,7 +862,8 @@ winreg_BaseRegSetValue_req_coder(char *name, struct dcerpc_context *dce,
                              PTR_REF, dcerpc_RRP_UNICODE_STRING_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("dwType", dce, pdu, iov, offset, &req->dwType)) {
+        if (dcerpc_uint32_coder_pp("dwType", dce, pdu, iov, offset, &req->dwType,
+                                   &reg_type_pp)) {
                 return -1;
         }
         blob.data = req->lpData;
@@ -830,12 +924,12 @@ winreg_BaseRegOpenKey_req_coder(char *name, struct dcerpc_context *dce,
                              PTR_REF, dcerpc_RRP_UNICODE_STRING_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("dwOptions", dce, pdu, iov, offset,
-                                &req->dwOptions)) {
+        if (dcerpc_uint32_coder_pp("dwOptions", dce, pdu, iov, offset,
+                                   &req->dwOptions, &reg_option_pp)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("samDesired", dce, pdu, iov, offset,
-                                &req->samDesired)) {
+        if (dcerpc_uint32_coder_pp("samDesired", dce, pdu, iov, offset,
+                                   &req->samDesired, &regsam_pp)) {
                 return -1;
         }
         return 0;
@@ -987,7 +1081,7 @@ winreg_BaseRegEnumValue_req_coder(char *name, struct dcerpc_context *dce,
         }
         /* [in,out,unique] lpType */
         if (dcerpc_ptr_coder("lpType", dce, pdu, iov, offset, &req->type,
-                             PTR_UNIQUE, dcerpc_uint32_coder)) {
+                             PTR_UNIQUE, reg_type_uint32_coder)) {
                 return -1;
         }
         blob.data = req->lpData;
@@ -1030,7 +1124,7 @@ winreg_BaseRegEnumValue_rep_coder(char *name, struct dcerpc_context *dce,
                 return -1;
         }
         if (dcerpc_ptr_coder("lpType", dce, pdu, iov, offset, &rep->type,
-                             PTR_UNIQUE, dcerpc_uint32_coder)) {
+                             PTR_UNIQUE, reg_type_uint32_coder)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("lpData", dce, pdu, iov, offset, &blob,

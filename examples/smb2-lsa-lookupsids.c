@@ -198,8 +198,8 @@ void co_cb(struct dcerpc_context *dce, int status,
         sprintf(op_req.SystemName, "\\\\%s", url->server);
 
         op_req.ObjectAttributes.Length = 24;
-        op_req.DesiredAccess = POLICY_LOOKUP_NAMES |
-                POLICY_VIEW_LOCAL_INFORMATION;
+        op_req.DesiredAccess = LSA_POLICY_LOOKUP_NAMES |
+                LSA_POLICY_VIEW_LOCAL_INFORMATION;
 
         if (dcerpc_call_async(dce,
                               LSA_OPENPOLICY2,
