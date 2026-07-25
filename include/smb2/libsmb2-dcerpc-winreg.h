@@ -34,10 +34,12 @@ extern "C" {
 #define WINREG_BASEREGCLOSEKEY       0x05
 #define WINREG_BASEREGCREATEKEY      0x06
 #define WINREG_BASEREGDELETEKEY      0x07
+#define WINREG_BASEREGDELETEVALUE    0x08
 #define WINREG_BASEREGENUMKEY        0x09
 #define WINREG_BASEREGENUMVALUE      0x0a
 #define WINREG_BASEREGOPENKEY        0x0f
 #define WINREG_BASEREGQUERYINFOKEY   0x10
+#define WINREG_BASEREGSETVALUE       0x16
 #define WINREG_OPENCURRENTCONFIG     0x1b
 
 /* dwOptions for BaseRegCreateKey (key type + flags) */
@@ -334,6 +336,47 @@ struct winreg_BaseRegDeleteKey_rep {
 };
 
 /*
+ * error_status_t BaseRegDeleteValue(
+ *   [in] RPC_HKEY hKey,
+ *   [in] PRRP_UNICODE_STRING lpValueName
+ * );
+ *
+ * Empty lpValueName deletes the default value.
+ */
+struct winreg_BaseRegDeleteValue_req {
+        struct dcerpc_context_handle hKey;
+        char *lpValueName;
+};
+
+struct winreg_BaseRegDeleteValue_rep {
+        uint32_t status;
+};
+
+/*
+ * error_status_t BaseRegSetValue(
+ *   [in] RPC_HKEY hKey,
+ *   [in] PRRP_UNICODE_STRING lpValueName,
+ *   [in] DWORD dwType,
+ *   [in, size_is(cbData)] LPBYTE lpData,
+ *   [in] DWORD cbData
+ * );
+ *
+ * Creates or replaces a value. Empty lpValueName is the default value.
+ * lpData is a conformant array (size_is only).
+ */
+struct winreg_BaseRegSetValue_req {
+        struct dcerpc_context_handle hKey;
+        char *lpValueName;
+        uint32_t dwType;
+        uint8_t *lpData;
+        uint32_t cbData;
+};
+
+struct winreg_BaseRegSetValue_rep {
+        uint32_t status;
+};
+
+/*
  * error_status_t BaseRegEnumValue(
  *   [in] RPC_HKEY hKey,
  *   [in] DWORD dwIndex,
@@ -461,6 +504,22 @@ int winreg_BaseRegDeleteKey_req_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
                                       struct smb2_iovec *iov, int *offset,
                                       void *ptr);
+int winreg_BaseRegDeleteValue_rep_coder(char *name, struct dcerpc_context *dce,
+                                        struct dcerpc_pdu *pdu,
+                                        struct smb2_iovec *iov, int *offset,
+                                        void *ptr);
+int winreg_BaseRegDeleteValue_req_coder(char *name, struct dcerpc_context *dce,
+                                        struct dcerpc_pdu *pdu,
+                                        struct smb2_iovec *iov, int *offset,
+                                        void *ptr);
+int winreg_BaseRegSetValue_rep_coder(char *name, struct dcerpc_context *dce,
+                                     struct dcerpc_pdu *pdu,
+                                     struct smb2_iovec *iov, int *offset,
+                                     void *ptr);
+int winreg_BaseRegSetValue_req_coder(char *name, struct dcerpc_context *dce,
+                                     struct dcerpc_pdu *pdu,
+                                     struct smb2_iovec *iov, int *offset,
+                                     void *ptr);
 int winreg_BaseRegEnumValue_rep_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
                                       struct smb2_iovec *iov, int *offset,

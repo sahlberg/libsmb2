@@ -742,8 +742,8 @@ draw_ui(void)
 
         erase();
 
-        mvprintw(0, 0, "winreg-tui  [?]=help  [Up/Down]  [Space] expand  "
-                 "[k] new  [d] del  [q] quit");
+        mvprintw(0, 0, "winreg-tui  [?]=help  [Space] expand  "
+                 "[k] key  [v] val  [d] del  [q] quit");
         if (cols > 2) {
                 mvhline(1, 0, ACS_HLINE, cols);
         }
@@ -1156,9 +1156,14 @@ show_help(void)
                 "  k / K           Create a new subkey under the selected key",
                 "                  (if a value is selected, under its parent).",
                 "                  You will be prompted for the key name.",
-                "  d / D           Delete the selected key (not a value, not a",
-                "                  hive root). Confirms first. The key must be",
-                "                  empty of subkeys (values alone are OK).",
+                "  v / V           Create or replace a value under the selected",
+                "                  key. Prompts: name, type (s=string, d=DWORD),",
+                "                  and data. Empty name is the (Default) value.",
+                "  d / D           Delete selection:",
+                "                    · value  — delete that registry value",
+                "                    · key    — delete the key (must have no",
+                "                      subkeys; values alone are OK). Not for",
+                "                      hive roots. Confirms first.",
                 "",
                 "Display",
                 "  Top level       HKCR, HKCU, HKLM, HKU, HKCC",
@@ -1238,6 +1243,226 @@ action_create_key(void)
         }
 }
 
+/* Encode UTF-8 string as UTF-16LE with trailing NUL. Caller frees *out. */
+static int
+utf8_to_reg_sz(const char *utf8, uint8_t **out, uint32_t *out_len)
+{
+        struct smb2_utf16 *u16;
+        uint32_t n, i;
+
+        u16 = smb2_utf8_to_utf16(utf8 ? utf8 : "");
+        if (u16 == NULL) {
+                return -1;
+        }
+        n = (uint32_t)u16->len + 1; /* include NUL */
+        *out = malloc((size_t)n * 2);
+        if (*out == NULL) {
+                free(u16);
+                return -1;
+        }
+        for (i = 0; i < u16->len; i++) {
+                (*out)[i * 2] = (uint8_t)(u16->val[i] & 0xff);
+                (*out)[i * 2 + 1] = (uint8_t)((u16->val[i] >> 8) & 0xff);
+        }
+        (*out)[u16->len * 2] = 0;
+        (*out)[u16->len * 2 + 1] = 0;
+        *out_len = n * 2;
+        free(u16);
+        return 0;
+}
+
+static int
+parse_dword(const char *s, uint32_t *out)
+{
+        char *end = NULL;
+        unsigned long v;
+
+        if (s == NULL || !s[0]) {
+                return -1;
+        }
+        errno = 0;
+        if (s[0] == '0' && (s[1] == 'x' || s[1] == 'X')) {
+                v = strtoul(s, &end, 16);
+        } else {
+                v = strtoul(s, &end, 10);
+        }
+        if (errno || end == s || (end && *end != '\0')) {
+                return -1;
+        }
+        *out = (uint32_t)v;
+        return 0;
+}
+
+static void
+ui_add_or_update_value(struct node *parent, const char *name,
+                       uint32_t type, const uint8_t *data, uint32_t len)
+{
+        const char *nm = (name && name[0]) ? name : "(Default)";
+        struct node *child;
+        int i;
+
+        parent->has_children = 1;
+        if (!parent->expanded) {
+                parent->loaded = 0;
+                return;
+        }
+        for (i = 0; i < parent->nchildren; i++) {
+                if (parent->children[i]->is_value &&
+                    strcmp(parent->children[i]->name, nm) == 0) {
+                        free(parent->children[i]->value_text);
+                        parent->children[i]->reg_type = type;
+                        parent->children[i]->value_text =
+                                format_reg_value(type, data, len);
+                        return;
+                }
+        }
+        child = node_new_value(name, parent->depth + 1, parent, type, data, len);
+        if (child == NULL || node_add_child(parent, child) != 0) {
+                node_free(child);
+                set_status("SetValue ok, but out of memory for UI node");
+        }
+}
+
+static void
+action_create_value(void)
+{
+        struct node *sel, *parent;
+        char name[256];
+        char typebuf[32];
+        char databuf[512];
+        uint32_t type = REG_SZ;
+        uint8_t *data = NULL;
+        uint32_t data_len = 0;
+        uint8_t dword_buf[4];
+        struct winreg_BaseRegSetValue_req req;
+        struct winreg_BaseRegSetValue_rep *rep;
+        char *name_ptr;
+
+        if (g_nvisible == 0) {
+                set_status("Nothing selected");
+                return;
+        }
+        sel = g_visible[g_sel];
+        if (sel->is_value) {
+                parent = sel->parent;
+        } else {
+                parent = sel;
+        }
+        if (parent == NULL || parent->is_value) {
+                set_status("Cannot set value here");
+                return;
+        }
+
+        set_status("New value under %s", parent->name);
+        draw_ui();
+        /* Empty name is allowed (Default value) */
+        {
+                int rows, cols;
+
+                getmaxyx(stdscr, rows, cols);
+                (void)cols;
+                echo();
+                curs_set(1);
+                nocbreak();
+                mvprintw(rows - 1, 0, "Value name (empty=Default): ");
+                clrtoeol();
+                refresh();
+                name[0] = '\0';
+                getnstr(name, (int)sizeof(name) - 1);
+                noecho();
+                curs_set(0);
+                cbreak();
+        }
+
+        draw_ui();
+        if (prompt_string("Type [s=SZ / d=DWORD] (default s): ",
+                          typebuf, sizeof(typebuf)) != 0) {
+                typebuf[0] = 's';
+                typebuf[1] = '\0';
+        }
+        if (typebuf[0] == 'd' || typebuf[0] == 'D') {
+                type = REG_DWORD;
+        } else {
+                type = REG_SZ;
+        }
+
+        draw_ui();
+        if (prompt_string(type == REG_DWORD ?
+                          "DWORD value (dec or 0xhex): " :
+                          "String value: ",
+                          databuf, sizeof(databuf)) != 0) {
+                if (type == REG_SZ) {
+                        databuf[0] = '\0'; /* empty string OK */
+                } else {
+                        set_status("Value data required for DWORD");
+                        return;
+                }
+        }
+
+        if (type == REG_DWORD) {
+                uint32_t v;
+
+                if (parse_dword(databuf, &v) != 0) {
+                        set_status("Invalid DWORD (use decimal or 0xhex)");
+                        return;
+                }
+                dword_buf[0] = (uint8_t)(v & 0xff);
+                dword_buf[1] = (uint8_t)((v >> 8) & 0xff);
+                dword_buf[2] = (uint8_t)((v >> 16) & 0xff);
+                dword_buf[3] = (uint8_t)((v >> 24) & 0xff);
+                data = dword_buf;
+                data_len = 4;
+        } else {
+                if (utf8_to_reg_sz(databuf, &data, &data_len) != 0) {
+                        set_status("Failed to encode string");
+                        return;
+                }
+        }
+
+        if (node_ensure_handle(parent) != 0) {
+                if (type == REG_SZ) {
+                        free(data);
+                }
+                return;
+        }
+
+        name_ptr = name; /* may be empty */
+        memset(&req, 0, sizeof(req));
+        memcpy(&req.hKey, &parent->hKey, sizeof(req.hKey));
+        req.lpValueName = name_ptr;
+        req.dwType = type;
+        req.lpData = data;
+        req.cbData = data_len;
+
+        set_status("Setting value under %s ...", parent->name);
+        draw_ui();
+        if (rpc_call(WINREG_BASEREGSETVALUE,
+                     winreg_BaseRegSetValue_req_coder, &req,
+                     winreg_BaseRegSetValue_rep_coder,
+                     sizeof(*rep), (void **)&rep) != 0) {
+                if (type == REG_SZ) {
+                        free(data);
+                }
+                return;
+        }
+        if (rep->status != ERROR_SUCCESS) {
+                set_status("SetValue failed 0x%x", rep->status);
+                dcerpc_free_data(g_dce, rep);
+                if (type == REG_SZ) {
+                        free(data);
+                }
+                return;
+        }
+        dcerpc_free_data(g_dce, rep);
+
+        ui_add_or_update_value(parent, name, type, data, data_len);
+        if (type == REG_SZ) {
+                free(data);
+        }
+        rebuild_visible();
+        set_status("Set value under %s", parent->name);
+}
+
 /*
  * Remove child from parent's children array (does not free child).
  * Returns 0 if removed, -1 if not found.
@@ -1281,6 +1506,70 @@ confirm_yes_no(const char *prompt)
 }
 
 static void
+action_delete_value(struct node *sel)
+{
+        struct node *parent = sel->parent;
+        struct winreg_BaseRegDeleteValue_req req;
+        struct winreg_BaseRegDeleteValue_rep *rep;
+        char prompt[STATUS_LEN];
+        char empty_name[] = "";
+        char *wire_name;
+
+        if (parent == NULL) {
+                set_status("Cannot delete value (no parent key)");
+                return;
+        }
+
+        snprintf(prompt, sizeof(prompt), "Delete value \"%s\"", sel->name);
+        draw_ui();
+        if (!confirm_yes_no(prompt)) {
+                set_status("Delete cancelled");
+                return;
+        }
+
+        if (node_ensure_handle(parent) != 0) {
+                return;
+        }
+
+        /* UI uses "(Default)" for the empty value name */
+        if (strcmp(sel->name, "(Default)") == 0) {
+                wire_name = empty_name;
+        } else {
+                wire_name = sel->name;
+        }
+
+        memset(&req, 0, sizeof(req));
+        memcpy(&req.hKey, &parent->hKey, sizeof(req.hKey));
+        req.lpValueName = wire_name;
+
+        set_status("Deleting value %s ...", sel->name);
+        draw_ui();
+        if (rpc_call(WINREG_BASEREGDELETEVALUE,
+                     winreg_BaseRegDeleteValue_req_coder, &req,
+                     winreg_BaseRegDeleteValue_rep_coder,
+                     sizeof(*rep), (void **)&rep) != 0) {
+                return;
+        }
+        if (rep->status != ERROR_SUCCESS) {
+                set_status("DeleteValue failed 0x%x", rep->status);
+                dcerpc_free_data(g_dce, rep);
+                return;
+        }
+        dcerpc_free_data(g_dce, rep);
+
+        node_detach_child(parent, sel);
+        node_free(sel);
+        if (g_sel > 0) {
+                g_sel--;
+        }
+        rebuild_visible();
+        if (g_sel >= g_nvisible && g_nvisible > 0) {
+                g_sel = g_nvisible - 1;
+        }
+        set_status("Deleted value under %s", parent->name);
+}
+
+static void
 action_delete_key(void)
 {
         struct node *sel, *parent;
@@ -1294,7 +1583,7 @@ action_delete_key(void)
         }
         sel = g_visible[g_sel];
         if (sel->is_value) {
-                set_status("Select a key to delete (not a value)");
+                action_delete_value(sel);
                 return;
         }
         parent = sel->parent;
@@ -1437,6 +1726,10 @@ main(int argc, char *argv[])
                 case 'k':
                 case 'K':
                         action_create_key();
+                        break;
+                case 'v':
+                case 'V':
+                        action_create_value();
                         break;
                 case 'd':
                 case 'D':

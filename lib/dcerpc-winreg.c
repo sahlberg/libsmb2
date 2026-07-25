@@ -628,6 +628,183 @@ winreg_BaseRegDeleteKey_rep_coder(char *name, struct dcerpc_context *dce,
 }
 
 /**********************
+ * Function: 0x08
+ *      error_status_t BaseRegDeleteValue(
+ *              [in] RPC_HKEY hKey,
+ *              [in] PRRP_UNICODE_STRING lpValueName
+ *              );
+ **********************/
+int
+winreg_BaseRegDeleteValue_req_coder(char *name, struct dcerpc_context *dce,
+                                    struct dcerpc_pdu *pdu,
+                                    struct smb2_iovec *iov, int *offset,
+                                    void *ptr)
+{
+        struct winreg_BaseRegDeleteValue_req *req = ptr;
+
+        if (dcerpc_ptr_coder("hKey", dce, pdu, iov, offset, &req->hKey,
+                             PTR_REF, winreg_RPC_HKEY_STRUCT_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("lpValueName", dce, pdu, iov, offset,
+                             &req->lpValueName,
+                             PTR_REF, dcerpc_RRP_UNICODE_STRING_coder)) {
+                return -1;
+        }
+        return 0;
+}
+
+int
+winreg_BaseRegDeleteValue_rep_coder(char *name, struct dcerpc_context *dce,
+                                    struct dcerpc_pdu *pdu,
+                                    struct smb2_iovec *iov, int *offset,
+                                    void *ptr)
+{
+        struct winreg_BaseRegDeleteValue_rep *rep = ptr;
+
+        if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+/*
+ * Shared buffer descriptor for NDR byte arrays (SetValue / EnumValue).
+ */
+struct winreg_blob {
+        uint8_t *data;
+        uint32_t max_count;
+        uint32_t actual_count;
+};
+
+/*
+ * [size_is(cbData)] BYTE lpData[] — conformant array only (max_count + data).
+ * ptr is struct winreg_blob * (actual_count unused; max_count == length).
+ */
+static int
+winreg_conformant_bytes_coder(char *name, struct dcerpc_context *dce,
+                              struct dcerpc_pdu *pdu,
+                              struct smb2_iovec *iov, int *offset,
+                              void *ptr)
+{
+        struct winreg_blob *b = ptr;
+        uint32_t max_count;
+        uint32_t i;
+
+        if (dcerpc_pdu_encoding(pdu) != ENCODING_NDR) {
+                return 0;
+        }
+        if (dcerpc_get_cr(pdu)) {
+                return 0;
+        }
+
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
+                max_count = b->max_count;
+        } else {
+                max_count = 0;
+        }
+        if (dcerpc_uint32_coder("MaxCount", dce, pdu, iov, offset, &max_count)) {
+                return -1;
+        }
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {
+                if (max_count > 0x4000000) {
+                        return -1;
+                }
+                b->max_count = max_count;
+                b->actual_count = max_count;
+                if (max_count == 0) {
+                        b->data = NULL;
+                        return 0;
+                }
+                b->data = smb2_alloc_data(dcerpc_get_smb2_context(dce),
+                                          dcerpc_get_pdu_payload(pdu),
+                                          max_count);
+                if (b->data == NULL) {
+                        return -1;
+                }
+                for (i = 0; i < max_count; i++) {
+                        if (ndr_uint8_coder("Data", dce, pdu, iov, offset,
+                                            &b->data[i])) {
+                                return -1;
+                        }
+                }
+                return 0;
+        }
+        for (i = 0; i < max_count; i++) {
+                uint8_t byte = b->data ? b->data[i] : 0;
+
+                if (ndr_uint8_coder("Data", dce, pdu, iov, offset, &byte)) {
+                        return -1;
+                }
+        }
+        return 0;
+}
+
+/**********************
+ * Function: 0x16
+ *      error_status_t BaseRegSetValue(
+ *              [in] RPC_HKEY hKey,
+ *              [in] PRRP_UNICODE_STRING lpValueName,
+ *              [in] DWORD dwType,
+ *              [in, size_is(cbData)] LPBYTE lpData,
+ *              [in] DWORD cbData
+ *              );
+ **********************/
+int
+winreg_BaseRegSetValue_req_coder(char *name, struct dcerpc_context *dce,
+                                 struct dcerpc_pdu *pdu,
+                                 struct smb2_iovec *iov, int *offset,
+                                 void *ptr)
+{
+        struct winreg_BaseRegSetValue_req *req = ptr;
+        struct winreg_blob blob;
+
+        if (dcerpc_ptr_coder("hKey", dce, pdu, iov, offset, &req->hKey,
+                             PTR_REF, winreg_RPC_HKEY_STRUCT_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("lpValueName", dce, pdu, iov, offset,
+                             &req->lpValueName,
+                             PTR_REF, dcerpc_RRP_UNICODE_STRING_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("dwType", dce, pdu, iov, offset, &req->dwType)) {
+                return -1;
+        }
+        blob.data = req->lpData;
+        blob.max_count = req->cbData;
+        blob.actual_count = req->cbData;
+        /*
+         * Top-level [size_is] array: not unique. Encode max_count + bytes
+         * inline. Pass &blob as the array body pointer.
+         */
+        if (winreg_conformant_bytes_coder("lpData", dce, pdu, iov, offset,
+                                          &blob)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("cbData", dce, pdu, iov, offset, &req->cbData)) {
+                return -1;
+        }
+        return 0;
+}
+
+int
+winreg_BaseRegSetValue_rep_coder(char *name, struct dcerpc_context *dce,
+                                 struct dcerpc_pdu *pdu,
+                                 struct smb2_iovec *iov, int *offset,
+                                 void *ptr)
+{
+        struct winreg_BaseRegSetValue_rep *rep = ptr;
+
+        if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+/**********************
  * Function: 0x0f
  *      error_status_t BaseRegOpenKey(
  *              [in] RPC_HKEY hKey,
@@ -689,12 +866,6 @@ winreg_BaseRegOpenKey_rep_coder(char *name, struct dcerpc_context *dce,
  * Wire: max_count, offset, actual_count, then actual_count bytes.
  * ptr is struct winreg_blob *.
  */
-struct winreg_blob {
-        uint8_t *data;
-        uint32_t max_count;
-        uint32_t actual_count;
-};
-
 static int
 winreg_blob_coder(char *name, struct dcerpc_context *dce,
                   struct dcerpc_pdu *pdu,
@@ -929,6 +1100,12 @@ struct dcerpc_procedure winreg_procs[] = {
          winreg_BaseRegDeleteKey_rep_coder,
          sizeof(struct winreg_BaseRegDeleteKey_rep),
         },
+        {WINREG_BASEREGDELETEVALUE, "BaseRegDeleteValue",
+         winreg_BaseRegDeleteValue_req_coder,
+         sizeof(struct winreg_BaseRegDeleteValue_req),
+         winreg_BaseRegDeleteValue_rep_coder,
+         sizeof(struct winreg_BaseRegDeleteValue_rep),
+        },
         {WINREG_BASEREGENUMKEY, "BaseRegEnumKey",
          winreg_BaseRegEnumKey_req_coder,
          sizeof(struct winreg_BaseRegEnumKey_req),
@@ -946,6 +1123,12 @@ struct dcerpc_procedure winreg_procs[] = {
          sizeof(struct winreg_BaseRegOpenKey_req),
          winreg_BaseRegOpenKey_rep_coder,
          sizeof(struct winreg_BaseRegOpenKey_rep),
+        },
+        {WINREG_BASEREGSETVALUE, "BaseRegSetValue",
+         winreg_BaseRegSetValue_req_coder,
+         sizeof(struct winreg_BaseRegSetValue_req),
+         winreg_BaseRegSetValue_rep_coder,
+         sizeof(struct winreg_BaseRegSetValue_rep),
         },
         {WINREG_BASEREGQUERYINFOKEY, "BaseRegQueryInfoKey",
          winreg_BaseRegQueryInfoKey_req_coder,
