@@ -153,10 +153,55 @@ winreg_OpenLocalMachine_rep_coder(char *name, struct dcerpc_context *dce,
         return 0;
 }
 
+/**********************
+ * Function: 0x05
+ *      error_status_t BaseRegCloseKey(
+ *              [in, out] PRPC_HKEY hKey
+ *              );
+ **********************/
+int
+winreg_BaseRegCloseKey_req_coder(char *name, struct dcerpc_context *dce,
+                                 struct dcerpc_pdu *pdu,
+                                 struct smb2_iovec *iov, int *offset,
+                                 void *ptr)
+{
+        struct winreg_BaseRegCloseKey_req *req = ptr;
+
+        if (dcerpc_ptr_coder("hKey", dce, pdu, iov, offset, &req->hKey,
+                             PTR_REF, winreg_RPC_HKEY_STRUCT_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+winreg_BaseRegCloseKey_rep_coder(char *name, struct dcerpc_context *dce,
+                                 struct dcerpc_pdu *pdu,
+                                 struct smb2_iovec *iov, int *offset,
+                                 void *ptr)
+{
+        struct winreg_BaseRegCloseKey_rep *rep = ptr;
+
+        if (dcerpc_ptr_coder("hKey", dce, pdu, iov, offset, &rep->hKey,
+                             PTR_REF, winreg_RPC_HKEY_STRUCT_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
+                return -1;
+        }
+
+        return 0;
+}
+
 struct dcerpc_procedure winreg_procs[] = {
         {WINREG_OPENLOCALMACHINE, "OpenLocalMachine",
          winreg_OpenLocalMachine_req_coder, sizeof(struct winreg_OpenLocalMachine_req),
          winreg_OpenLocalMachine_rep_coder, sizeof(struct winreg_OpenLocalMachine_rep),
+        },
+        {WINREG_BASEREGCLOSEKEY, "BaseRegCloseKey",
+         winreg_BaseRegCloseKey_req_coder, sizeof(struct winreg_BaseRegCloseKey_req),
+         winreg_BaseRegCloseKey_rep_coder, sizeof(struct winreg_BaseRegCloseKey_rep),
         },
         {-1, NULL, NULL, 0, NULL, 0}
 };

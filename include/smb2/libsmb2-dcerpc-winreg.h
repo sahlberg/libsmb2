@@ -74,6 +74,21 @@ struct winreg_OpenLocalMachine_rep {
         struct dcerpc_context_handle phKey;
 };
 
+/*
+ * error_status_t BaseRegCloseKey(
+ *   [in, out] PRPC_HKEY hKey
+ * );
+ */
+struct winreg_BaseRegCloseKey_req {
+        struct dcerpc_context_handle hKey;
+};
+
+struct winreg_BaseRegCloseKey_rep {
+        uint32_t status;
+
+        struct dcerpc_context_handle hKey;
+};
+
 int winreg_OpenLocalMachine_rep_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
                                       struct smb2_iovec *iov, int *offset,
@@ -82,6 +97,14 @@ int winreg_OpenLocalMachine_req_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
                                       struct smb2_iovec *iov, int *offset,
                                       void *ptr);
+int winreg_BaseRegCloseKey_rep_coder(char *name, struct dcerpc_context *dce,
+                                     struct dcerpc_pdu *pdu,
+                                     struct smb2_iovec *iov, int *offset,
+                                     void *ptr);
+int winreg_BaseRegCloseKey_req_coder(char *name, struct dcerpc_context *dce,
+                                     struct dcerpc_pdu *pdu,
+                                     struct smb2_iovec *iov, int *offset,
+                                     void *ptr);
 
 extern struct dcerpc_procedure winreg_procs[];
 

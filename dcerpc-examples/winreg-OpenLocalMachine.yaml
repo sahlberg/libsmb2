@@ -1,2 +1,7 @@
 OpenLocalMachine: Request
   samDesired: 0x20019
+---
+BaseRegCloseKey: Request
+  hKey:
+    ContextHandleAttributes: 0
+    UUID: @UUID@
