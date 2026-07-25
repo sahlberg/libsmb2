@@ -83,7 +83,11 @@ struct dcerpc_utf16 {
         
         const char *utf8;
 };
-        
+
+struct dcerpc_uint32_pretty_printer {
+        char *fmt;
+};
+
 extern p_syntax_id_t lsa_interface;
 extern p_syntax_id_t srvsvc_interface;
 extern p_syntax_id_t wkssvc_interface;
@@ -190,6 +194,9 @@ int dcerpc_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pd
                         struct smb2_iovec *iov, int *offset, void *ptr);
 int dcerpc_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                         struct smb2_iovec *iov, int *offset, void *ptr);
+int dcerpc_uint32_coder_pp(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                           struct smb2_iovec *iov, int *offset, void *ptr,
+                           struct dcerpc_uint32_pretty_printer *pp);
 int dcerpc_uint64_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                         struct smb2_iovec *iov, int *offset, void *ptr);
 int dcerpc_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,

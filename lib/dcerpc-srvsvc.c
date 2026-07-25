@@ -73,6 +73,10 @@ p_syntax_id_t srvsvc_interface = {
         {SRVSVC_UUID}, 3, 0
 };
 
+static struct dcerpc_uint32_pretty_printer share_type_pp = {
+        .fmt = "0x%08x",
+};
+
 /*
  * SRVSVC BEGIN:  DEFINITIONS FROM SRVSVC.IDL
  * [MS-SRVS].pdf
@@ -186,7 +190,7 @@ srvsvc_SHARE_INFO_1_coder(char *name, struct dcerpc_context *dce,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Type", dce, pdu, iov, offset, &nsi1->type)) {
+        if (dcerpc_uint32_coder_pp("Type", dce, pdu, iov, offset, &nsi1->type, &share_type_pp)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("Remark", dce, pdu, iov, offset, &nsi1->remark,
@@ -290,7 +294,7 @@ srvsvc_SHARE_INFO_2_coder(char *name, struct dcerpc_context *dce,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Type", dce, pdu, iov, offset, &nsi2->type)) {
+        if (dcerpc_uint32_coder_pp("Type", dce, pdu, iov, offset, &nsi2->type, &share_type_pp)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("Remark", dce, pdu, iov, offset, &nsi2->remark,
