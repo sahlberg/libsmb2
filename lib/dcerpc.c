@@ -1924,18 +1924,20 @@ dcerpc_sid_coder(char *name, struct dcerpc_context *dce,
  *       [size_is(MaximumLength/2), length_is(Length/2)] WCHAR* Buffer;
  * } RPC_UNICODE_STRING, *PRPC_UNICODE_STRING;
  *
- * Same wire layout as RRP_UNICODE_STRING (MS-RRP), which additionally
- * requires a NULL-terminated buffer when non-empty.
+ * nult: 0 = plain RPC_UNICODE_STRING (MS-DTYP); 1 = NUL-terminated Buffer
+ * (RPC_UNICODE_STRINGz / RRP_UNICODE_STRING in MS-RRP). Same pattern as
+ * _ndr_utf16z_coder.
  *
  * Represented in C as char * (UTF-8). ptr is char **.
  */
-int
-dcerpc_RPC_UNICODE_STRING_coder(char *name, struct dcerpc_context *dce,
-                                struct dcerpc_pdu *pdu,
-                                struct smb2_iovec *iov, int *offset,
-                                void *ptr)
+static int
+_dcerpc_RPC_UNICODE_STRING_coder(char *name, struct dcerpc_context *dce,
+                                 struct dcerpc_pdu *pdu,
+                                 struct smb2_iovec *iov, int *offset,
+                                 void *ptr, int nult)
 {
         uint16_t len, maxlen;
+        dcerpc_coder buffer_coder;
 
         /*
          * YAML/JSON only need the string value. NDR alignment and Length/
@@ -1963,17 +1965,29 @@ dcerpc_RPC_UNICODE_STRING_coder(char *name, struct dcerpc_context *dce,
 
                 if (s && s[0] != '\0') {
                         len = (uint16_t)(strlen(s) * 2);
+                        if (nult) {
+                                len = (uint16_t)(len + 2);
+                        }
+                } else if (nult) {
+                        /*
+                         * Empty/NULL still encode a single NUL wchar via
+                         * utf16z (actual_count=1); Length must match.
+                         */
+                        len = 2;
                 } else {
                         len = 0;
                 }
                 /*
                  * MaxLength must agree with the UTF-16 array max_count that
-                 * dcerpc_utf16_coder emits (size_is(MaximumLength/2)).
-                 * That coder rounds odd wchar counts up by one; match it
-                 * here so Length/MaxLength stay consistent with the buffer
-                 * conformance (required by Windows NDR unmarshalling).
+                 * the Buffer coder emits (size_is(MaximumLength/2)).
+                 * Non-nult utf16 rounds odd wchar counts up by one; nult
+                 * utf16z uses content+NUL with no odd-count padding.
                  */
-                maxlen = (len & 0x02) ? len + 2 : len;
+                if (nult) {
+                        maxlen = len;
+                } else {
+                        maxlen = (len & 0x02) ? len + 2 : len;
+                }
         }
         if (dcerpc_uint16_coder("Length", dce, pdu, iov, offset, &len)) {
                 return -1;
@@ -1986,15 +2000,40 @@ dcerpc_RPC_UNICODE_STRING_coder(char *name, struct dcerpc_context *dce,
          * Never a stack temporary — Buffer is often deferred (e.g.
          * LookupNames2 name arrays) and must still be valid when flushed.
          * Empty/NULL *ptr still uses ptr so the unique header is present
-         * and the utf16 coder encodes an empty array (historical LSA
-         * wire shape).
+         * and the utf16 coder encodes an empty (or single-NUL) array.
          */
+        buffer_coder = nult ? dcerpc_utf16z_coder : dcerpc_utf16_coder;
         if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset, ptr,
-                             PTR_UNIQUE, dcerpc_utf16_coder)) {
+                             PTR_UNIQUE, buffer_coder)) {
                 return -1;
         }
 
         return 0;
+}
+
+/* RPC_UNICODE_STRING: Buffer not required to be NUL-terminated. */
+int
+dcerpc_RPC_UNICODE_STRING_coder(char *name, struct dcerpc_context *dce,
+                                struct dcerpc_pdu *pdu,
+                                struct smb2_iovec *iov, int *offset,
+                                void *ptr)
+{
+        return _dcerpc_RPC_UNICODE_STRING_coder(name, dce, pdu, iov, offset,
+                                                ptr, 0);
+}
+
+/*
+ * RPC_UNICODE_STRINGz: Buffer is NUL-terminated (MS-RRP RRP_UNICODE_STRING).
+ * Same relationship as ndr_utf16z_coder vs ndr_utf16_coder.
+ */
+int
+dcerpc_RPC_UNICODE_STRINGz_coder(char *name, struct dcerpc_context *dce,
+                                 struct dcerpc_pdu *pdu,
+                                 struct smb2_iovec *iov, int *offset,
+                                 void *ptr)
+{
+        return _dcerpc_RPC_UNICODE_STRING_coder(name, dce, pdu, iov, offset,
+                                                ptr, 1);
 }
 
 

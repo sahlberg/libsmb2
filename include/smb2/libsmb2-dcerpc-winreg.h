@@ -116,7 +116,7 @@ struct winreg_FILETIME {
  *   [out] PFILETIME lpftLastWriteTime
  * );
  *
- * lpClass is RRP_UNICODE_STRING (NULL-terminated RPC_UNICODE_STRING),
+ * lpClass is RRP_UNICODE_STRING (dcerpc_RPC_UNICODE_STRINGz_coder),
  * represented here as a UTF-8 C string (empty/NULL on request is typical).
  */
 struct winreg_BaseRegQueryInfoKey_req {

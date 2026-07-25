@@ -207,13 +207,23 @@ int dcerpc_sid_coder(char *name, struct dcerpc_context *dce,
                      struct smb2_iovec *iov, int *offset,
                      void *ptr);
 /*
- * RPC_UNICODE_STRING (MS-DTYP). RRP_UNICODE_STRING is the same type with
- * a NULL-terminated buffer (MS-RRP). ptr is char **.
+ * RPC_UNICODE_STRING (MS-DTYP). Buffer is not required to be NUL-terminated.
+ * ptr is char ** (UTF-8).
+ *
+ * RPC_UNICODE_STRINGz is the same layout with a NUL-terminated Buffer —
+ * this is RRP_UNICODE_STRING in MS-RRP. Same nult pattern as
+ * ndr_utf16_coder / ndr_utf16z_coder.
  */
 int dcerpc_RPC_UNICODE_STRING_coder(char *name, struct dcerpc_context *dce,
                                     struct dcerpc_pdu *pdu,
                                     struct smb2_iovec *iov, int *offset,
                                     void *ptr);
+int dcerpc_RPC_UNICODE_STRINGz_coder(char *name, struct dcerpc_context *dce,
+                                     struct dcerpc_pdu *pdu,
+                                     struct smb2_iovec *iov, int *offset,
+                                     void *ptr);
+/* MS-RRP name for the NUL-terminated form */
+#define dcerpc_RRP_UNICODE_STRING_coder dcerpc_RPC_UNICODE_STRINGz_coder
 
 #ifdef __cplusplus
 }

@@ -251,9 +251,9 @@ winreg_BaseRegQueryInfoKey_req_coder(char *name, struct dcerpc_context *dce,
                              PTR_REF, winreg_RPC_HKEY_STRUCT_coder)) {
                 return -1;
         }
-        /* Top-level [in] PRRP_UNICODE_STRING: REF to the string structure */
+        /* Top-level [in] PRRP_UNICODE_STRING: REF, NUL-terminated Buffer */
         if (dcerpc_ptr_coder("lpClass", dce, pdu, iov, offset, &req->lpClass,
-                             PTR_REF, dcerpc_RPC_UNICODE_STRING_coder)) {
+                             PTR_REF, dcerpc_RRP_UNICODE_STRING_coder)) {
                 return -1;
         }
         return 0;
@@ -267,8 +267,9 @@ winreg_BaseRegQueryInfoKey_rep_coder(char *name, struct dcerpc_context *dce,
 {
         struct winreg_BaseRegQueryInfoKey_rep *rep = ptr;
 
+        /* [out] class: RRP_UNICODE_STRING (NUL-terminated) */
         if (dcerpc_ptr_coder("lpClass", dce, pdu, iov, offset, &rep->lpClass,
-                             PTR_REF, dcerpc_RPC_UNICODE_STRING_coder)) {
+                             PTR_REF, dcerpc_RRP_UNICODE_STRING_coder)) {
                 return -1;
         }
         if (dcerpc_uint32_coder("lpcSubKeys", dce, pdu, iov, offset,
