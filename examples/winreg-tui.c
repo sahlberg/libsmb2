@@ -14,18 +14,18 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 /*
  * ncurses TUI for browsing predefined registry hives via MS-RRP
  * (winreg on IPC$):
- *   HKCR  HKEY_CLASSES_ROOT
- *   HKCU  HKEY_CURRENT_USER
- *   HKLM  HKEY_LOCAL_MACHINE
- *   HKU   HKEY_USERS
- *   HKCC  HKEY_CURRENT_CONFIG
+ *   HKEY_CLASSES_ROOT
+ *   HKEY_CURRENT_USER
+ *   HKEY_LOCAL_MACHINE
+ *   HKEY_USERS
+ *   HKEY_CURRENT_CONFIG
  *
  * Usage:
  *   winreg-tui smb://[<domain;][<user>@]<host>/
  *
  * Keys: press '?' in the UI for the full help screen.
  *
- * Lines with children show '>' when collapsed and '<' when expanded.
+ * Lines with children show '>' when collapsed and 'v' when expanded.
  * Indentation is two spaces per depth level (same as smb2-winreg-enum).
  */
 
@@ -82,7 +82,7 @@ struct node {
 
 static struct smb2_context *g_smb2;
 static struct dcerpc_context *g_dce;
-static struct node *g_roots[5];  /* HKCR, HKCU, HKLM, HKU, HKCC */
+static struct node *g_roots[5];  /* CLASSES_ROOT, CURRENT_USER, LOCAL_MACHINE, USERS, CURRENT_CONFIG */
 static int g_nroots;
 static struct node *g_visible[MAX_VISIBLE];
 static int g_nvisible;
@@ -717,7 +717,7 @@ node_marker(struct node *n)
         if (n->is_value || !n->has_children) {
                 return ' ';
         }
-        return n->expanded ? '<' : '>';
+        return n->expanded ? 'v' : '>';
 }
 
 static void
@@ -764,18 +764,18 @@ draw_ui(void)
                         attr = A_REVERSE;
                 }
                 attron(attr);
-                /* marker, then depth*2 spaces, then name — same indent as enum */
+                /* depth*2 spaces, then marker, then name */
                 if (n->is_value) {
-                        mvprintw(row, 0, "%c %*s%s (%s) = %s",
-                                 marker,
+                        mvprintw(row, 0, "%*s%c %s (%s) = %s",
                                  n->depth * 2, "",
+                                 marker,
                                  n->name,
                                  reg_type_name(n->reg_type),
                                  n->value_text ? n->value_text : "");
                 } else {
-                        mvprintw(row, 0, "%c %*s%s",
-                                 marker,
+                        mvprintw(row, 0, "%*s%c %s",
                                  n->depth * 2, "",
+                                 marker,
                                  n->name);
                 }
                 attroff(attr);
@@ -921,35 +921,35 @@ connect_winreg(const char *url_str)
                            winreg_OpenClassesRoot_req_coder,
                            winreg_OpenClassesRoot_rep_coder,
                            sizeof(struct winreg_OpenClassesRoot_rep),
-                           "HKCR", &n) == 0) {
+                           "HKEY_CLASSES_ROOT", &n) == 0) {
                 g_roots[g_nroots++] = n;
         }
         if (open_hive_root(WINREG_OPENCURRENTUSER,
                            winreg_OpenCurrentUser_req_coder,
                            winreg_OpenCurrentUser_rep_coder,
                            sizeof(struct winreg_OpenCurrentUser_rep),
-                           "HKCU", &n) == 0) {
+                           "HKEY_CURRENT_USER", &n) == 0) {
                 g_roots[g_nroots++] = n;
         }
         if (open_hive_root(WINREG_OPENLOCALMACHINE,
                            winreg_OpenLocalMachine_req_coder,
                            winreg_OpenLocalMachine_rep_coder,
                            sizeof(struct winreg_OpenLocalMachine_rep),
-                           "HKLM", &n) == 0) {
+                           "HKEY_LOCAL_MACHINE", &n) == 0) {
                 g_roots[g_nroots++] = n;
         }
         if (open_hive_root(WINREG_OPENUSERS,
                            winreg_OpenUsers_req_coder,
                            winreg_OpenUsers_rep_coder,
                            sizeof(struct winreg_OpenUsers_rep),
-                           "HKU", &n) == 0) {
+                           "HKEY_USERS", &n) == 0) {
                 g_roots[g_nroots++] = n;
         }
         if (open_hive_root(WINREG_OPENCURRENTCONFIG,
                            winreg_OpenCurrentConfig_req_coder,
                            winreg_OpenCurrentConfig_rep_coder,
                            sizeof(struct winreg_OpenCurrentConfig_rep),
-                           "HKCC", &n) == 0) {
+                           "HKEY_CURRENT_CONFIG", &n) == 0) {
                 g_roots[g_nroots++] = n;
         }
         if (g_nroots == 0) {
@@ -959,8 +959,7 @@ connect_winreg(const char *url_str)
 
         rebuild_visible();
         g_sel = 0;
-        set_status("Connected. Space expands a hive "
-                   "(HKCR / HKCU / HKLM / HKU / HKCC).");
+        set_status("Connected. Space expands a hive.");
         return 0;
 }
 
@@ -995,50 +994,76 @@ usage(void)
         fprintf(stderr, "Usage:\n"
                 "winreg-tui <smb2-url>\n\n"
                 "URL format: smb://[<domain;][<username>@]<host>[:<port>]/\n"
-                "Browse HKCR, HKCU, HKLM, HKU, and HKCC on IPC$/winreg "
-                "(ncurses).\n"
+                "Browse HKEY_CLASSES_ROOT, HKEY_CURRENT_USER,\n"
+                "HKEY_LOCAL_MACHINE, HKEY_USERS, and HKEY_CURRENT_CONFIG\n"
+                "on IPC$/winreg (ncurses).\n"
                 "Press '?' in the UI for key bindings.\n");
         return 1;
 }
 
 /*
- * Prompt on the status line. Returns 0 on success, -1 if cancelled/empty.
+ * Prompt on the status line.
+ * Returns 0 on Enter (buf may be empty after trim), -1 if cancelled with ESC.
  */
 static int
 prompt_string(const char *prompt, char *buf, size_t buflen)
 {
         int rows, cols;
-        int len;
+        int len = 0;
+        int prompt_len;
+        int ch;
 
         if (buflen < 2) {
                 return -1;
         }
         getmaxyx(stdscr, rows, cols);
-        (void)cols;
-        echo();
-        curs_set(1);
-        nocbreak();
-        mvprintw(rows - 1, 0, "%s", prompt);
-        clrtoeol();
-        refresh();
+        prompt_len = (int)strlen(prompt);
         buf[0] = '\0';
-        getnstr(buf, (int)buflen - 1);
         noecho();
-        curs_set(0);
+        curs_set(1);
         cbreak();
-        /* trim trailing CR if any */
-        len = (int)strlen(buf);
-        while (len > 0 && (buf[len - 1] == '\n' || buf[len - 1] == '\r' ||
-                           buf[len - 1] == ' ')) {
-                buf[--len] = '\0';
+        keypad(stdscr, TRUE);
+
+        for (;;) {
+                mvprintw(rows - 1, 0, "%s%.*s", prompt, (int)buflen - 1, buf);
+                clrtoeol();
+                if (prompt_len + len < cols) {
+                        move(rows - 1, prompt_len + len);
+                }
+                refresh();
+
+                ch = getch();
+                if (ch == 27) {
+                        /* ESC — abort without accepting input */
+                        buf[0] = '\0';
+                        curs_set(0);
+                        return -1;
+                }
+                if (ch == '\n' || ch == '\r' || ch == KEY_ENTER) {
+                        while (len > 0 && buf[len - 1] == ' ') {
+                                buf[--len] = '\0';
+                        }
+                        while (buf[0] == ' ') {
+                                memmove(buf, buf + 1, strlen(buf));
+                                len = (int)strlen(buf);
+                        }
+                        curs_set(0);
+                        return 0;
+                }
+                if (ch == KEY_BACKSPACE || ch == 127 || ch == '\b') {
+                        if (len > 0) {
+                                buf[--len] = '\0';
+                        }
+                        continue;
+                }
+                if (ch >= 32 && ch < 127 && (size_t)len + 1 < buflen) {
+                        if (cols > 0 && prompt_len + len + 1 >= cols) {
+                                continue;
+                        }
+                        buf[len++] = (char)ch;
+                        buf[len] = '\0';
+                }
         }
-        while (buf[0] == ' ') {
-                memmove(buf, buf + 1, strlen(buf));
-        }
-        if (buf[0] == '\0') {
-                return -1;
-        }
-        return 0;
 }
 
 static void
@@ -1149,7 +1174,7 @@ show_help(void)
                 "                  Subkeys and values are loaded only when",
                 "                  a key is first expanded (lazy load).",
                 "  >               Key has children and is collapsed",
-                "  <               Key has children and is expanded",
+                "  v               Key has children and is expanded",
                 "  (space)         Leaf: value, or key with no children",
                 "",
                 "Editing",
@@ -1161,6 +1186,8 @@ show_help(void)
                 "                  and data. Empty name is the (Default) value.",
                 "  e / E           Edit the selected value (same type). Prompts",
                 "                  for new data; shows the current value first.",
+                "                  Then a dialog shows old vs new; y confirms,",
+                "                  n or ESC cancels without writing.",
                 "  d / D           Delete selection:",
                 "                    · value  — delete that registry value",
                 "                    · key    — delete the key (must have no",
@@ -1168,7 +1195,9 @@ show_help(void)
                 "                      hive roots. Confirms first.",
                 "",
                 "Display",
-                "  Top level       HKCR, HKCU, HKLM, HKU, HKCC",
+                "  Top level       HKEY_CLASSES_ROOT, HKEY_CURRENT_USER,",
+                "                  HKEY_LOCAL_MACHINE, HKEY_USERS,",
+                "                  HKEY_CURRENT_CONFIG",
                 "  Indentation     Two spaces per depth level",
                 "  Values          name (TYPE) = data",
                 "",
@@ -1216,7 +1245,8 @@ action_create_key(void)
 
         set_status("New key under %s", parent->name);
         draw_ui();
-        if (prompt_string("New key name: ", name, sizeof(name)) != 0) {
+        if (prompt_string("New key name: ", name, sizeof(name)) != 0 ||
+            name[0] == '\0') {
                 set_status("Create cancelled");
                 return;
         }
@@ -1450,6 +1480,10 @@ action_create_value(void)
         draw_ui();
         if (prompt_string("Type [s=SZ / d=DWORD] (default s): ",
                           typebuf, sizeof(typebuf)) != 0) {
+                set_status("Create cancelled");
+                return;
+        }
+        if (typebuf[0] == '\0') {
                 typebuf[0] = 's';
                 typebuf[1] = '\0';
         }
@@ -1464,12 +1498,12 @@ action_create_value(void)
                           "DWORD value (dec or 0xhex): " :
                           "String value: ",
                           databuf, sizeof(databuf)) != 0) {
-                if (type == REG_SZ) {
-                        databuf[0] = '\0'; /* empty string OK */
-                } else {
-                        set_status("Value data required for DWORD");
-                        return;
-                }
+                set_status("Create cancelled");
+                return;
+        }
+        if (type == REG_DWORD && databuf[0] == '\0') {
+                set_status("Value data required for DWORD");
+                return;
         }
 
         if (encode_value_data(type, databuf, &data, &data_len, dword_buf) != 0) {
@@ -1529,6 +1563,77 @@ current_value_hint(struct node *val, char *buf, size_t buflen)
         snprintf(buf, buflen, "%s", vt);
 }
 
+/*
+ * Modal dialog showing old vs new value. Returns 1 if the user confirms
+ * with y/Y, 0 if cancelled (n/N/ESC or any other key).
+ */
+static int
+confirm_value_change(const char *name, const char *type_name,
+                     const char *old_val, const char *new_val)
+{
+        WINDOW *win;
+        int rows, cols;
+        int w, h, y, x;
+        int inner;
+        int ch;
+        const char *old_s = (old_val && old_val[0]) ? old_val : "(empty)";
+        const char *new_s = (new_val && new_val[0]) ? new_val : "(empty)";
+        const char *nm = (name && name[0]) ? name : "(Default)";
+        const char *tn = type_name ? type_name : "";
+
+        getmaxyx(stdscr, rows, cols);
+        w = cols > 60 ? 60 : (cols > 20 ? cols - 2 : cols);
+        if (w < 30 && cols >= 30) {
+                w = 30;
+        }
+        h = 11;
+        if (h > rows - 2) {
+                h = rows > 2 ? rows - 2 : rows;
+        }
+        y = (rows - h) / 2;
+        x = (cols - w) / 2;
+        if (y < 0) {
+                y = 0;
+        }
+        if (x < 0) {
+                x = 0;
+        }
+        inner = w > 4 ? w - 4 : 1;
+
+        win = newwin(h, w, y, x);
+        if (win == NULL) {
+                set_status("Could not open confirm dialog");
+                return 0;
+        }
+        keypad(win, TRUE);
+        box(win, 0, 0);
+        mvwprintw(win, 1, 2, "%.*s", inner, "Confirm value change");
+        mvwhline(win, 2, 1, ACS_HLINE, w > 2 ? w - 2 : 0);
+        mvwprintw(win, 3, 2, "Name: %.*s",
+                  inner > 6 ? inner - 6 : 1, nm);
+        mvwprintw(win, 4, 2, "Type: %.*s",
+                  inner > 6 ? inner - 6 : 1, tn);
+        mvwprintw(win, 5, 2, "Old:  %.*s",
+                  inner > 6 ? inner - 6 : 1, old_s);
+        mvwprintw(win, 6, 2, "New:  %.*s",
+                  inner > 6 ? inner - 6 : 1, new_s);
+        mvwhline(win, 7, 1, ACS_HLINE, w > 2 ? w - 2 : 0);
+        mvwprintw(win, 8, 2, "%.*s", inner,
+                  "Write this change? [y/N]");
+        if (h > 9) {
+                mvwprintw(win, 9, 2, "%.*s", inner,
+                          "y=yes  n/ESC=cancel");
+        }
+        wrefresh(win);
+
+        ch = wgetch(win);
+        delwin(win);
+        touchwin(stdscr);
+        refresh();
+
+        return (ch == 'y' || ch == 'Y');
+}
+
 static void
 action_edit_value(void)
 {
@@ -1543,6 +1648,7 @@ action_edit_value(void)
         char wire_name[256];
         char empty_name[] = "";
         char *name_ptr;
+        char *new_text = NULL;
 
         if (g_nvisible == 0) {
                 set_status("Nothing selected");
@@ -1595,17 +1701,32 @@ action_edit_value(void)
                          "New string [%s]: ", hint);
         }
         if (prompt_string(prompt, databuf, sizeof(databuf)) != 0) {
-                /* empty input: for SZ keep empty; for DWORD cancel */
-                if (type == REG_DWORD) {
-                        set_status("Edit cancelled");
-                        return;
-                }
-                databuf[0] = '\0';
+                set_status("Edit cancelled");
+                return;
+        }
+        if (type == REG_DWORD && databuf[0] == '\0') {
+                set_status("Edit cancelled");
+                return;
         }
 
         if (encode_value_data(type, databuf, &data, &data_len, dword_buf) != 0) {
                 return;
         }
+
+        new_text = format_reg_value(type, data, data_len);
+        if (!confirm_value_change(sel->name,
+                                  reg_type_name(sel->reg_type),
+                                  sel->value_text,
+                                  new_text ? new_text : databuf)) {
+                free(new_text);
+                if (type == REG_SZ || type == REG_EXPAND_SZ) {
+                        free(data);
+                }
+                set_status("Edit cancelled");
+                return;
+        }
+        free(new_text);
+
         if (do_set_value(parent, name_ptr, type, data, data_len) != 0) {
                 if (type == REG_SZ || type == REG_EXPAND_SZ) {
                         free(data);
