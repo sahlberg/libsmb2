@@ -23,10 +23,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
  * Usage:
  *   winreg-tui smb://[<domain;][<user>@]<host>/
  *
- * Keys:
- *   Up / Down   move selection
- *   Space       expand / collapse (subkeys/values loaded on first expand)
- *   q           quit
+ * Keys: press '?' in the UI for the full help screen.
  *
  * Lines with children show '>' when collapsed and '<' when expanded.
  * Indentation is two spaces per depth level (same as smb2-winreg-enum).
@@ -59,7 +56,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #define ERROR_MORE_DATA         0x000000ea
 #define ERROR_NO_MORE_ITEMS     0x00000103
 
-#define WINREG_WALK_ACCESS      (KEY_READ)
+/* Read + write + DELETE so CreateKey / DeleteKey work on opened handles */
+#define WINREG_WALK_ACCESS      (KEY_READ | KEY_WRITE | WINREG_DELETE)
 
 #define MAX_VISIBLE  8192
 #define STATUS_LEN   256
@@ -744,7 +742,8 @@ draw_ui(void)
 
         erase();
 
-        mvprintw(0, 0, "winreg-tui  [Up/Down] move  [Space] expand/collapse  [q] quit");
+        mvprintw(0, 0, "winreg-tui  [?]=help  [Up/Down]  [Space] expand  "
+                 "[k] new  [d] del  [q] quit");
         if (cols > 2) {
                 mvhline(1, 0, ACS_HLINE, cols);
         }
@@ -997,8 +996,359 @@ usage(void)
                 "winreg-tui <smb2-url>\n\n"
                 "URL format: smb://[<domain;][<username>@]<host>[:<port>]/\n"
                 "Browse HKCR, HKCU, HKLM, HKU, and HKCC on IPC$/winreg "
-                "(ncurses).\n");
+                "(ncurses).\n"
+                "Press '?' in the UI for key bindings.\n");
         return 1;
+}
+
+/*
+ * Prompt on the status line. Returns 0 on success, -1 if cancelled/empty.
+ */
+static int
+prompt_string(const char *prompt, char *buf, size_t buflen)
+{
+        int rows, cols;
+        int len;
+
+        if (buflen < 2) {
+                return -1;
+        }
+        getmaxyx(stdscr, rows, cols);
+        (void)cols;
+        echo();
+        curs_set(1);
+        nocbreak();
+        mvprintw(rows - 1, 0, "%s", prompt);
+        clrtoeol();
+        refresh();
+        buf[0] = '\0';
+        getnstr(buf, (int)buflen - 1);
+        noecho();
+        curs_set(0);
+        cbreak();
+        /* trim trailing CR if any */
+        len = (int)strlen(buf);
+        while (len > 0 && (buf[len - 1] == '\n' || buf[len - 1] == '\r' ||
+                           buf[len - 1] == ' ')) {
+                buf[--len] = '\0';
+        }
+        while (buf[0] == ' ') {
+                memmove(buf, buf + 1, strlen(buf));
+        }
+        if (buf[0] == '\0') {
+                return -1;
+        }
+        return 0;
+}
+
+static void
+close_handle_only(struct dcerpc_context_handle *h)
+{
+        struct winreg_BaseRegCloseKey_req req;
+        struct winreg_BaseRegCloseKey_rep *rep;
+
+        memset(&req, 0, sizeof(req));
+        memcpy(&req.hKey, h, sizeof(req.hKey));
+        if (rpc_call(WINREG_BASEREGCLOSEKEY,
+                     winreg_BaseRegCloseKey_req_coder, &req,
+                     winreg_BaseRegCloseKey_rep_coder,
+                     sizeof(*rep), (void **)&rep) == 0) {
+                dcerpc_free_data(g_dce, rep);
+        }
+}
+
+/*
+ * Create a subkey under parent (must be a key node). Returns 0 on success.
+ */
+static int
+create_subkey(struct node *parent, const char *name)
+{
+        struct winreg_BaseRegCreateKey_req req;
+        struct winreg_BaseRegCreateKey_rep *rep;
+        struct node *child;
+        char *empty_class = "";
+
+        if (parent == NULL || parent->is_value || name == NULL || !name[0]) {
+                return -1;
+        }
+        if (node_ensure_handle(parent) != 0) {
+                return -1;
+        }
+
+        memset(&req, 0, sizeof(req));
+        memcpy(&req.hKey, &parent->hKey, sizeof(req.hKey));
+        req.lpSubKey = (char *)name;
+        req.lpClass = empty_class;
+        req.dwOptions = REG_OPTION_NON_VOLATILE;
+        req.samDesired = WINREG_WALK_ACCESS;
+        req.disposition = 0;
+
+        if (rpc_call(WINREG_BASEREGCREATEKEY,
+                     winreg_BaseRegCreateKey_req_coder, &req,
+                     winreg_BaseRegCreateKey_rep_coder,
+                     sizeof(*rep), (void **)&rep) != 0) {
+                return -1;
+        }
+        if (rep->status != ERROR_SUCCESS) {
+                set_status("CreateKey failed 0x%x under %s",
+                           rep->status, parent->name);
+                dcerpc_free_data(g_dce, rep);
+                return -1;
+        }
+
+        /* We only needed the create; drop the new handle. */
+        close_handle_only(&rep->phkResult);
+
+        if (rep->disposition == REG_CREATED_NEW_KEY) {
+                set_status("Created key %s\\%s", parent->name, name);
+        } else {
+                set_status("Key already exists: %s\\%s", parent->name, name);
+        }
+        dcerpc_free_data(g_dce, rep);
+
+        parent->has_children = 1;
+        if (parent->expanded) {
+                int i;
+
+                for (i = 0; i < parent->nchildren; i++) {
+                        if (!parent->children[i]->is_value &&
+                            strcmp(parent->children[i]->name, name) == 0) {
+                                return 0;
+                        }
+                }
+                child = node_new(name, parent->depth + 1, parent);
+                if (child == NULL) {
+                        set_status("Created, but out of memory for UI node");
+                        return 0;
+                }
+                if (node_add_child(parent, child) != 0) {
+                        node_free(child);
+                        set_status("Created, but out of memory for UI node");
+                        return 0;
+                }
+        } else {
+                /* Will show up on next expand */
+                parent->loaded = 0;
+        }
+        return 0;
+}
+
+static void
+show_help(void)
+{
+        static const char *const lines[] = {
+                "winreg-tui — remote registry browser (MS-RRP / IPC$\\winreg)",
+                "",
+                "Navigation",
+                "  Up / Down       Move the selection one line",
+                "  Page Up / Down  Move by roughly one screen",
+                "  q / Q           Quit",
+                "",
+                "Tree",
+                "  Space           Expand or collapse the selected key",
+                "                  Subkeys and values are loaded only when",
+                "                  a key is first expanded (lazy load).",
+                "  >               Key has children and is collapsed",
+                "  <               Key has children and is expanded",
+                "  (space)         Leaf: value, or key with no children",
+                "",
+                "Editing",
+                "  k / K           Create a new subkey under the selected key",
+                "                  (if a value is selected, under its parent).",
+                "                  You will be prompted for the key name.",
+                "  d / D           Delete the selected key (not a value, not a",
+                "                  hive root). Confirms first. The key must be",
+                "                  empty of subkeys (values alone are OK).",
+                "",
+                "Display",
+                "  Top level       HKCR, HKCU, HKLM, HKU, HKCC",
+                "  Indentation     Two spaces per depth level",
+                "  Values          name (TYPE) = data",
+                "",
+                "Status line (bottom) shows messages and prompts.",
+                "",
+                "Press any key to return...",
+                NULL
+        };
+        int rows, cols;
+        int i, row;
+        int max_body;
+
+        getmaxyx(stdscr, rows, cols);
+        erase();
+        max_body = rows > 1 ? rows - 1 : 1;
+        for (i = 0, row = 0; lines[i] != NULL && row < max_body; i++, row++) {
+                if (cols > 1) {
+                        mvprintw(row, 0, "%.*s", cols - 1, lines[i]);
+                }
+        }
+        refresh();
+        (void)getch();
+}
+
+static void
+action_create_key(void)
+{
+        struct node *sel, *parent;
+        char name[256];
+
+        if (g_nvisible == 0) {
+                set_status("Nothing selected");
+                return;
+        }
+        sel = g_visible[g_sel];
+        if (sel->is_value) {
+                parent = sel->parent;
+        } else {
+                parent = sel;
+        }
+        if (parent == NULL) {
+                set_status("Cannot create key here");
+                return;
+        }
+
+        set_status("New key under %s", parent->name);
+        draw_ui();
+        if (prompt_string("New key name: ", name, sizeof(name)) != 0) {
+                set_status("Create cancelled");
+                return;
+        }
+        /* Disallow path separators in a single path component */
+        if (strchr(name, '\\') != NULL || strchr(name, '/') != NULL) {
+                set_status("Key name must not contain path separators");
+                return;
+        }
+
+        set_status("Creating %s\\%s ...", parent->name, name);
+        draw_ui();
+        if (create_subkey(parent, name) == 0) {
+                rebuild_visible();
+                /* select the new child if visible */
+                {
+                        int i;
+                        for (i = 0; i < g_nvisible; i++) {
+                                if (g_visible[i]->parent == parent &&
+                                    !g_visible[i]->is_value &&
+                                    strcmp(g_visible[i]->name, name) == 0) {
+                                        g_sel = i;
+                                        break;
+                                }
+                        }
+                }
+        }
+}
+
+/*
+ * Remove child from parent's children array (does not free child).
+ * Returns 0 if removed, -1 if not found.
+ */
+static int
+node_detach_child(struct node *parent, struct node *child)
+{
+        int i, j;
+
+        if (parent == NULL || child == NULL) {
+                return -1;
+        }
+        for (i = 0; i < parent->nchildren; i++) {
+                if (parent->children[i] == child) {
+                        for (j = i; j + 1 < parent->nchildren; j++) {
+                                parent->children[j] = parent->children[j + 1];
+                        }
+                        parent->nchildren--;
+                        if (parent->nchildren == 0) {
+                                parent->has_children = 0;
+                        }
+                        return 0;
+                }
+        }
+        return -1;
+}
+
+static int
+confirm_yes_no(const char *prompt)
+{
+        int rows, cols;
+        int ch;
+
+        getmaxyx(stdscr, rows, cols);
+        (void)cols;
+        mvprintw(rows - 1, 0, "%s [y/N]: ", prompt);
+        clrtoeol();
+        refresh();
+        ch = getch();
+        return (ch == 'y' || ch == 'Y');
+}
+
+static void
+action_delete_key(void)
+{
+        struct node *sel, *parent;
+        struct winreg_BaseRegDeleteKey_req req;
+        struct winreg_BaseRegDeleteKey_rep *rep;
+        char prompt[STATUS_LEN];
+
+        if (g_nvisible == 0) {
+                set_status("Nothing selected");
+                return;
+        }
+        sel = g_visible[g_sel];
+        if (sel->is_value) {
+                set_status("Select a key to delete (not a value)");
+                return;
+        }
+        parent = sel->parent;
+        if (parent == NULL) {
+                set_status("Cannot delete a hive root");
+                return;
+        }
+
+        snprintf(prompt, sizeof(prompt), "Delete key \"%s\"", sel->name);
+        draw_ui();
+        if (!confirm_yes_no(prompt)) {
+                set_status("Delete cancelled");
+                return;
+        }
+
+        if (node_ensure_handle(parent) != 0) {
+                return;
+        }
+
+        /* Close any open handle on the key being deleted */
+        if (sel->has_handle) {
+                node_close_handle(sel);
+        }
+
+        memset(&req, 0, sizeof(req));
+        memcpy(&req.hKey, &parent->hKey, sizeof(req.hKey));
+        req.lpSubKey = sel->name;
+
+        set_status("Deleting %s\\%s ...", parent->name, sel->name);
+        draw_ui();
+        if (rpc_call(WINREG_BASEREGDELETEKEY,
+                     winreg_BaseRegDeleteKey_req_coder, &req,
+                     winreg_BaseRegDeleteKey_rep_coder,
+                     sizeof(*rep), (void **)&rep) != 0) {
+                return;
+        }
+        if (rep->status != ERROR_SUCCESS) {
+                set_status("DeleteKey failed 0x%x (key not empty?)",
+                           rep->status);
+                dcerpc_free_data(g_dce, rep);
+                return;
+        }
+        dcerpc_free_data(g_dce, rep);
+
+        node_detach_child(parent, sel);
+        node_free(sel);
+        if (g_sel > 0) {
+                g_sel--;
+        }
+        rebuild_visible();
+        if (g_sel >= g_nvisible && g_nvisible > 0) {
+                g_sel = g_nvisible - 1;
+        }
+        set_status("Deleted key under %s", parent->name);
 }
 
 int
@@ -1083,6 +1433,17 @@ main(int argc, char *argv[])
                                         rebuild_visible();
                                 }
                         }
+                        break;
+                case 'k':
+                case 'K':
+                        action_create_key();
+                        break;
+                case 'd':
+                case 'D':
+                        action_delete_key();
+                        break;
+                case '?':
+                        show_help();
                         break;
                 case KEY_RESIZE:
                         break;

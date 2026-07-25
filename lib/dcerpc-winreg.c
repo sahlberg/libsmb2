@@ -506,6 +506,128 @@ winreg_BaseRegEnumKey_rep_coder(char *name, struct dcerpc_context *dce,
 }
 
 /**********************
+ * Function: 0x06
+ *      error_status_t BaseRegCreateKey(
+ *              [in] RPC_HKEY hKey,
+ *              [in] PRRP_UNICODE_STRING lpSubKey,
+ *              [in] PRRP_UNICODE_STRING lpClass,
+ *              [in] DWORD dwOptions,
+ *              [in] REGSAM samDesired,
+ *              [in, unique] PRPC_SECURITY_ATTRIBUTES lpSecurityAttributes,
+ *              [out] PRPC_HKEY phkResult,
+ *              [in, out, unique] LPDWORD lpdwDisposition
+ *              );
+ *
+ * Security attributes are always sent as unique NULL (default ACL).
+ **********************/
+int
+winreg_BaseRegCreateKey_req_coder(char *name, struct dcerpc_context *dce,
+                                  struct dcerpc_pdu *pdu,
+                                  struct smb2_iovec *iov, int *offset,
+                                  void *ptr)
+{
+        struct winreg_BaseRegCreateKey_req *req = ptr;
+
+        if (dcerpc_ptr_coder("hKey", dce, pdu, iov, offset, &req->hKey,
+                             PTR_REF, winreg_RPC_HKEY_STRUCT_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("lpSubKey", dce, pdu, iov, offset, &req->lpSubKey,
+                             PTR_REF, dcerpc_RRP_UNICODE_STRING_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("lpClass", dce, pdu, iov, offset, &req->lpClass,
+                             PTR_REF, dcerpc_RRP_UNICODE_STRING_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("dwOptions", dce, pdu, iov, offset,
+                                &req->dwOptions)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("samDesired", dce, pdu, iov, offset,
+                                &req->samDesired)) {
+                return -1;
+        }
+        /* [in, unique] PRPC_SECURITY_ATTRIBUTES — always NULL */
+        if (dcerpc_ptr_coder("lpSecurityAttributes", dce, pdu, iov, offset,
+                             NULL, PTR_UNIQUE, dcerpc_uint32_coder)) {
+                return -1;
+        }
+        /* [in, out, unique] LPDWORD lpdwDisposition */
+        if (dcerpc_ptr_coder("lpdwDisposition", dce, pdu, iov, offset,
+                             &req->disposition,
+                             PTR_UNIQUE, dcerpc_uint32_coder)) {
+                return -1;
+        }
+        return 0;
+}
+
+int
+winreg_BaseRegCreateKey_rep_coder(char *name, struct dcerpc_context *dce,
+                                  struct dcerpc_pdu *pdu,
+                                  struct smb2_iovec *iov, int *offset,
+                                  void *ptr)
+{
+        struct winreg_BaseRegCreateKey_rep *rep = ptr;
+
+        if (dcerpc_ptr_coder("phkResult", dce, pdu, iov, offset, &rep->phkResult,
+                             PTR_REF, winreg_RPC_HKEY_STRUCT_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("lpdwDisposition", dce, pdu, iov, offset,
+                             &rep->disposition,
+                             PTR_UNIQUE, dcerpc_uint32_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+/**********************
+ * Function: 0x07
+ *      error_status_t BaseRegDeleteKey(
+ *              [in] RPC_HKEY hKey,
+ *              [in] PRRP_UNICODE_STRING lpSubKey
+ *              );
+ **********************/
+int
+winreg_BaseRegDeleteKey_req_coder(char *name, struct dcerpc_context *dce,
+                                  struct dcerpc_pdu *pdu,
+                                  struct smb2_iovec *iov, int *offset,
+                                  void *ptr)
+{
+        struct winreg_BaseRegDeleteKey_req *req = ptr;
+
+        if (dcerpc_ptr_coder("hKey", dce, pdu, iov, offset, &req->hKey,
+                             PTR_REF, winreg_RPC_HKEY_STRUCT_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("lpSubKey", dce, pdu, iov, offset, &req->lpSubKey,
+                             PTR_REF, dcerpc_RRP_UNICODE_STRING_coder)) {
+                return -1;
+        }
+        return 0;
+}
+
+int
+winreg_BaseRegDeleteKey_rep_coder(char *name, struct dcerpc_context *dce,
+                                  struct dcerpc_pdu *pdu,
+                                  struct smb2_iovec *iov, int *offset,
+                                  void *ptr)
+{
+        struct winreg_BaseRegDeleteKey_rep *rep = ptr;
+
+        if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+/**********************
  * Function: 0x0f
  *      error_status_t BaseRegOpenKey(
  *              [in] RPC_HKEY hKey,
@@ -794,6 +916,18 @@ struct dcerpc_procedure winreg_procs[] = {
         {WINREG_BASEREGCLOSEKEY, "BaseRegCloseKey",
          winreg_BaseRegCloseKey_req_coder, sizeof(struct winreg_BaseRegCloseKey_req),
          winreg_BaseRegCloseKey_rep_coder, sizeof(struct winreg_BaseRegCloseKey_rep),
+        },
+        {WINREG_BASEREGCREATEKEY, "BaseRegCreateKey",
+         winreg_BaseRegCreateKey_req_coder,
+         sizeof(struct winreg_BaseRegCreateKey_req),
+         winreg_BaseRegCreateKey_rep_coder,
+         sizeof(struct winreg_BaseRegCreateKey_rep),
+        },
+        {WINREG_BASEREGDELETEKEY, "BaseRegDeleteKey",
+         winreg_BaseRegDeleteKey_req_coder,
+         sizeof(struct winreg_BaseRegDeleteKey_req),
+         winreg_BaseRegDeleteKey_rep_coder,
+         sizeof(struct winreg_BaseRegDeleteKey_rep),
         },
         {WINREG_BASEREGENUMKEY, "BaseRegEnumKey",
          winreg_BaseRegEnumKey_req_coder,

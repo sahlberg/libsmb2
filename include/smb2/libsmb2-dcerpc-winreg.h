@@ -32,11 +32,24 @@ extern "C" {
 #define WINREG_OPENPERFORMANCEDATA   0x03
 #define WINREG_OPENUSERS             0x04
 #define WINREG_BASEREGCLOSEKEY       0x05
+#define WINREG_BASEREGCREATEKEY      0x06
+#define WINREG_BASEREGDELETEKEY      0x07
 #define WINREG_BASEREGENUMKEY        0x09
 #define WINREG_BASEREGENUMVALUE      0x0a
 #define WINREG_BASEREGOPENKEY        0x0f
 #define WINREG_BASEREGQUERYINFOKEY   0x10
 #define WINREG_OPENCURRENTCONFIG     0x1b
+
+/* dwOptions for BaseRegCreateKey (key type + flags) */
+#define REG_OPTION_NON_VOLATILE      0x00000000
+#define REG_OPTION_VOLATILE          0x00000001
+#define REG_OPTION_CREATE_LINK       0x00000002
+#define REG_OPTION_BACKUP_RESTORE    0x00000004
+#define REG_OPTION_OPEN_LINK         0x00000008
+
+/* lpdwDisposition values from BaseRegCreateKey */
+#define REG_CREATED_NEW_KEY          0x00000001
+#define REG_OPENED_EXISTING_KEY      0x00000002
 
 /* REG_VALUE_TYPE (MS-RRP 3.1.1.5) */
 #define REG_NONE                       0
@@ -70,6 +83,8 @@ extern "C" {
 #define KEY_WRITE                    0x00020006
 #define KEY_EXECUTE                  0x00020019
 #define KEY_ALL_ACCESS               0x000F003F
+/* STANDARD_RIGHTS DELETE — needed for BaseRegDeleteKey */
+#define WINREG_DELETE                0x00010000
 
 struct dcerpc_context;
 struct dcerpc_pdu;
@@ -269,6 +284,56 @@ struct winreg_BaseRegOpenKey_rep {
 };
 
 /*
+ * error_status_t BaseRegCreateKey(
+ *   [in] RPC_HKEY hKey,
+ *   [in] PRRP_UNICODE_STRING lpSubKey,
+ *   [in] PRRP_UNICODE_STRING lpClass,
+ *   [in] DWORD dwOptions,
+ *   [in] REGSAM samDesired,
+ *   [in, unique] PRPC_SECURITY_ATTRIBUTES lpSecurityAttributes,
+ *   [out] PRPC_HKEY phkResult,
+ *   [in, out, unique] LPDWORD lpdwDisposition
+ * );
+ *
+ * lpSecurityAttributes may be NULL (default inherited ACL).
+ * lpClass may be empty. disposition is ignored on input.
+ */
+struct winreg_BaseRegCreateKey_req {
+        struct dcerpc_context_handle hKey;
+        char *lpSubKey;
+        char *lpClass;
+        uint32_t dwOptions;
+        uint32_t samDesired;
+        /* lpSecurityAttributes: always encoded as unique NULL for now */
+        uint32_t disposition; /* in/out via unique LPDWORD */
+};
+
+struct winreg_BaseRegCreateKey_rep {
+        uint32_t status;
+
+        struct dcerpc_context_handle phkResult;
+        uint32_t disposition;
+};
+
+/*
+ * error_status_t BaseRegDeleteKey(
+ *   [in] RPC_HKEY hKey,
+ *   [in] PRRP_UNICODE_STRING lpSubKey
+ * );
+ *
+ * Deletes the named subkey of hKey. The subkey must be empty
+ * (no subkeys); values alone are fine. Requires DELETE access.
+ */
+struct winreg_BaseRegDeleteKey_req {
+        struct dcerpc_context_handle hKey;
+        char *lpSubKey;
+};
+
+struct winreg_BaseRegDeleteKey_rep {
+        uint32_t status;
+};
+
+/*
  * error_status_t BaseRegEnumValue(
  *   [in] RPC_HKEY hKey,
  *   [in] DWORD dwIndex,
@@ -380,6 +445,22 @@ int winreg_BaseRegOpenKey_req_coder(char *name, struct dcerpc_context *dce,
                                     struct dcerpc_pdu *pdu,
                                     struct smb2_iovec *iov, int *offset,
                                     void *ptr);
+int winreg_BaseRegCreateKey_rep_coder(char *name, struct dcerpc_context *dce,
+                                      struct dcerpc_pdu *pdu,
+                                      struct smb2_iovec *iov, int *offset,
+                                      void *ptr);
+int winreg_BaseRegCreateKey_req_coder(char *name, struct dcerpc_context *dce,
+                                      struct dcerpc_pdu *pdu,
+                                      struct smb2_iovec *iov, int *offset,
+                                      void *ptr);
+int winreg_BaseRegDeleteKey_rep_coder(char *name, struct dcerpc_context *dce,
+                                      struct dcerpc_pdu *pdu,
+                                      struct smb2_iovec *iov, int *offset,
+                                      void *ptr);
+int winreg_BaseRegDeleteKey_req_coder(char *name, struct dcerpc_context *dce,
+                                      struct dcerpc_pdu *pdu,
+                                      struct smb2_iovec *iov, int *offset,
+                                      void *ptr);
 int winreg_BaseRegEnumValue_rep_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
                                       struct smb2_iovec *iov, int *offset,
