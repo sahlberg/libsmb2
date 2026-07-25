@@ -86,6 +86,43 @@ static struct dcerpc_uint32_pretty_printer share_type_pp = {
         },
 };
 
+/* MS-SRVS 2.2.2.7 Software Type Flags (SERVER_INFO_* .type / SV_TYPE_*) */
+static struct dcerpc_uint32_pretty_printer server_type_pp = {
+        .fmt = "0x%08x",
+        .bitfields = {
+                { "WORKSTATION",       0x00000001, 0x00000001 },
+                { "SERVER",            0x00000002, 0x00000002 },
+                { "SQLSERVER",         0x00000004, 0x00000004 },
+                { "DOMAIN_CTRL",       0x00000008, 0x00000008 },
+                { "DOMAIN_BAKCTRL",    0x00000010, 0x00000010 },
+                { "TIME_SOURCE",       0x00000020, 0x00000020 },
+                { "AFP",               0x00000040, 0x00000040 },
+                { "NOVELL",            0x00000080, 0x00000080 },
+                { "DOMAIN_MEMBER",     0x00000100, 0x00000100 },
+                { "PRINTQ_SERVER",     0x00000200, 0x00000200 },
+                { "DIALIN_SERVER",     0x00000400, 0x00000400 },
+                { "XENIX_SERVER",      0x00000800, 0x00000800 },
+                { "NT",                0x00001000, 0x00001000 },
+                { "WFW",               0x00002000, 0x00002000 },
+                { "SERVER_MFPN",       0x00004000, 0x00004000 },
+                { "SERVER_NT",         0x00008000, 0x00008000 },
+                { "POTENTIAL_BROWSER", 0x00010000, 0x00010000 },
+                { "BACKUP_BROWSER",    0x00020000, 0x00020000 },
+                { "MASTER_BROWSER",    0x00040000, 0x00040000 },
+                { "DOMAIN_MASTER",     0x00080000, 0x00080000 },
+                { "WINDOWS",           0x00400000, 0x00400000 },
+                { "DFS",               0x00800000, 0x00800000 },
+                { "CLUSTER_NT",        0x01000000, 0x01000000 },
+                { "TERMINALSERVER",    0x02000000, 0x02000000 },
+                { "CLUSTER_VS_NT",     0x04000000, 0x04000000 },
+                { "DCE",               0x10000000, 0x10000000 },
+                { "ALTERNATE_XPORT",   0x20000000, 0x20000000 },
+                { "LOCAL_LIST_ONLY",   0x40000000, 0x40000000 },
+                { "DOMAIN_ENUM",       0x80000000, 0x80000000 },
+                { NULL, 0, 0},
+        },
+};
+
 /*
  * SRVSVC BEGIN:  DEFINITIONS FROM SRVSVC.IDL
  * [MS-SRVS].pdf
@@ -613,7 +650,8 @@ srvsvc_SERVER_INFO_101_coder(char *name, struct dcerpc_context *dce,
         if (dcerpc_uint32_coder("Version_Minor", dce, pdu, iov, offset, &si101->version_minor)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Type", dce, pdu, iov, offset, &si101->type)) {
+        if (dcerpc_uint32_coder_pp("Type", dce, pdu, iov, offset, &si101->type,
+                                   &server_type_pp)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("Comment", dce, pdu, iov, offset, &si101->comment,
@@ -671,7 +709,8 @@ srvsvc_SERVER_INFO_102_coder(char *name, struct dcerpc_context *dce,
         if (dcerpc_uint32_coder("Version_Minor", dce, pdu, iov, offset, &si102->version_minor)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Type", dce, pdu, iov, offset, &si102->type)) {
+        if (dcerpc_uint32_coder_pp("Type", dce, pdu, iov, offset, &si102->type,
+                                   &server_type_pp)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("Comment", dce, pdu, iov, offset, &si102->comment,
@@ -752,7 +791,8 @@ srvsvc_SERVER_INFO_103_coder(char *name, struct dcerpc_context *dce,
         if (dcerpc_uint32_coder("Version_Minor", dce, pdu, iov, offset, &si103->version_minor)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Type", dce, pdu, iov, offset, &si103->type)) {
+        if (dcerpc_uint32_coder_pp("Type", dce, pdu, iov, offset, &si103->type,
+                                   &server_type_pp)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("Comment", dce, pdu, iov, offset, &si103->comment,

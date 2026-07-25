@@ -1,5 +1,5 @@
 NetrServerGetInfo: Request
   ServerName: \\10.10.10.11
-  Level: 100
+  Level: 101
 
 
