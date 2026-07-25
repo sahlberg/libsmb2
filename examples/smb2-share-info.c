@@ -58,22 +58,22 @@ void si_cb(struct dcerpc_context *dce, int status,
         }
         printf("%-20s %-20s", rep->InfoStruct.ShareInfo1.netname,
                rep->InfoStruct.ShareInfo1.remark);
-        if ((rep->InfoStruct.ShareInfo1.type & 3) == SHARE_TYPE_DISKTREE) {
+        if ((rep->InfoStruct.ShareInfo1.type & 3) == SRVSVC_SHARE_TYPE_DISKTREE) {
                         printf(" DISKTREE");
         }
-        if ((rep->InfoStruct.ShareInfo1.type & 3) == SHARE_TYPE_PRINTQ) {
+        if ((rep->InfoStruct.ShareInfo1.type & 3) == SRVSVC_SHARE_TYPE_PRINTQ) {
                 printf(" PRINTQ");
         }
-        if ((rep->InfoStruct.ShareInfo1.type & 3) == SHARE_TYPE_DEVICE) {
+        if ((rep->InfoStruct.ShareInfo1.type & 3) == SRVSVC_SHARE_TYPE_DEVICE) {
                 printf(" DEVICE");
         }
-        if ((rep->InfoStruct.ShareInfo1.type & 3) == SHARE_TYPE_IPC) {
+        if ((rep->InfoStruct.ShareInfo1.type & 3) == SRVSVC_SHARE_TYPE_IPC) {
                 printf(" IPC");
         }
-        if (rep->InfoStruct.ShareInfo1.type & SHARE_TYPE_TEMPORARY) {
+        if (rep->InfoStruct.ShareInfo1.type & SRVSVC_SHARE_TYPE_TEMPORARY) {
                 printf(" TEMPORARY");
         }
-        if (rep->InfoStruct.ShareInfo1.type & SHARE_TYPE_HIDDEN) {
+        if (rep->InfoStruct.ShareInfo1.type & SRVSVC_SHARE_TYPE_HIDDEN) {
                 printf(" HIDDEN");
         }
 

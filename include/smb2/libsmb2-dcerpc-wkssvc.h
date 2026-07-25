@@ -32,6 +32,21 @@ extern "C" {
 #define WKSSVC_NETRUSEENUM                   0x0b
 #define WKSSVC_NETRWORKSTATIONSTATISTICSGET  0x0d
 
+/* USE_INFO_* .status (connection status) */
+#define WKSSVC_USE_OK        0
+#define WKSSVC_USE_PAUSED    1
+#define WKSSVC_USE_SESSLOST  2
+#define WKSSVC_USE_NETERR    3
+#define WKSSVC_USE_CONN      4
+#define WKSSVC_USE_RECONN    5
+
+/* USE_INFO_* .asg_type (local device type) */
+#define WKSSVC_USE_WILDCARD  0xffffffff
+#define WKSSVC_USE_DISKDEV   0
+#define WKSSVC_USE_SPOOLDEV  1
+#define WKSSVC_USE_CHARDEV   2
+#define WKSSVC_USE_IPC       3
+
 struct dcerpc_context;
 struct dcerpc_pdu;
 

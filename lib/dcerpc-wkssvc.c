@@ -63,6 +63,7 @@
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-dcerpc.h"
+#include "libsmb2-dcerpc-srvsvc.h"
 #include "libsmb2-dcerpc-wkssvc.h"
 #include "libsmb2-raw.h"
 #include "libsmb2-private.h"
@@ -72,6 +73,46 @@
 
 p_syntax_id_t wkssvc_interface = {
         {WKSSVC_UUID}, 1, 0
+};
+
+/* PLATFORM_ID_* (WKSTA_INFO_*.platform_id) — same values as MS-SRVS */
+static struct dcerpc_uint32_pretty_printer platform_id_pp = {
+        .fmt = "%u",
+        .bitfields = {
+                { "PLATFORM_ID_DOS", 0xffffffff, SRVSVC_PLATFORM_ID_DOS },
+                { "PLATFORM_ID_OS2", 0xffffffff, SRVSVC_PLATFORM_ID_OS2 },
+                { "PLATFORM_ID_NT",  0xffffffff, SRVSVC_PLATFORM_ID_NT },
+                { "PLATFORM_ID_OSF", 0xffffffff, SRVSVC_PLATFORM_ID_OSF },
+                { "PLATFORM_ID_VMS", 0xffffffff, SRVSVC_PLATFORM_ID_VMS },
+                { NULL, 0, 0},
+        },
+};
+
+/* USE_INFO_* .status (connection status) */
+static struct dcerpc_uint32_pretty_printer use_status_pp = {
+        .fmt = "%u",
+        .bitfields = {
+                { "USE_OK",       0xffffffff, WKSSVC_USE_OK },
+                { "USE_PAUSED",   0xffffffff, WKSSVC_USE_PAUSED },
+                { "USE_SESSLOST", 0xffffffff, WKSSVC_USE_SESSLOST },
+                { "USE_NETERR",   0xffffffff, WKSSVC_USE_NETERR },
+                { "USE_CONN",     0xffffffff, WKSSVC_USE_CONN },
+                { "USE_RECONN",   0xffffffff, WKSSVC_USE_RECONN },
+                { NULL, 0, 0},
+        },
+};
+
+/* USE_INFO_* .asg_type (device type of the local device) */
+static struct dcerpc_uint32_pretty_printer use_asg_type_pp = {
+        .fmt = "0x%08x",
+        .bitfields = {
+                { "USE_DISKDEV",  0xffffffff, WKSSVC_USE_DISKDEV },
+                { "USE_SPOOLDEV", 0xffffffff, WKSSVC_USE_SPOOLDEV },
+                { "USE_CHARDEV",  0xffffffff, WKSSVC_USE_CHARDEV },
+                { "USE_IPC",      0xffffffff, WKSSVC_USE_IPC },
+                { "USE_WILDCARD", 0xffffffff, WKSSVC_USE_WILDCARD },
+                { NULL, 0, 0},
+        },
 };
 
 /*
@@ -95,7 +136,8 @@ wkssvc_WKSTA_INFO_100_coder(char *name, struct dcerpc_context *dce,
 {
         struct wkssvc_WKSTA_INFO_100 *wi = ptr;
 
-        if (dcerpc_uint32_coder("Platform_Id", dce, pdu, iov, offset, &wi->platform_id)) {
+        if (dcerpc_uint32_coder_pp("Platform_Id", dce, pdu, iov, offset,
+                                   &wi->platform_id, &platform_id_pp)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("ComputerName", dce, pdu, iov, offset, &wi->computername,
@@ -143,7 +185,8 @@ wkssvc_WKSTA_INFO_101_coder(char *name, struct dcerpc_context *dce,
 {
         struct wkssvc_WKSTA_INFO_101 *wi = ptr;
 
-        if (dcerpc_uint32_coder("Platform_Id", dce, pdu, iov, offset, &wi->platform_id)) {
+        if (dcerpc_uint32_coder_pp("Platform_Id", dce, pdu, iov, offset,
+                                   &wi->platform_id, &platform_id_pp)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("ComputerName", dce, pdu, iov, offset, &wi->computername,
@@ -196,7 +239,8 @@ wkssvc_WKSTA_INFO_102_coder(char *name, struct dcerpc_context *dce,
 {
         struct wkssvc_WKSTA_INFO_102 *wi = ptr;
 
-        if (dcerpc_uint32_coder("Platform_Id", dce, pdu, iov, offset, &wi->platform_id)) {
+        if (dcerpc_uint32_coder_pp("Platform_Id", dce, pdu, iov, offset,
+                                   &wi->platform_id, &platform_id_pp)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("ComputerName", dce, pdu, iov, offset, &wi->computername,
@@ -1016,10 +1060,12 @@ wkssvc_USE_INFO_1_coder(char *name, struct dcerpc_context *dce,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &ui->status)) {
+        if (dcerpc_uint32_coder_pp("Status", dce, pdu, iov, offset, &ui->status,
+                                   &use_status_pp)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("AsgType", dce, pdu, iov, offset, &ui->asg_type)) {
+        if (dcerpc_uint32_coder_pp("AsgType", dce, pdu, iov, offset, &ui->asg_type,
+                                   &use_asg_type_pp)) {
                 return -1;
         }
         if (dcerpc_uint32_coder("RefCount", dce, pdu, iov, offset, &ui->refcount)) {
@@ -1128,10 +1174,12 @@ wkssvc_USE_INFO_2_coder(char *name, struct dcerpc_context *dce,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &ui->status)) {
+        if (dcerpc_uint32_coder_pp("Status", dce, pdu, iov, offset, &ui->status,
+                                   &use_status_pp)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("AsgType", dce, pdu, iov, offset, &ui->asg_type)) {
+        if (dcerpc_uint32_coder_pp("AsgType", dce, pdu, iov, offset, &ui->asg_type,
+                                   &use_asg_type_pp)) {
                 return -1;
         }
         if (dcerpc_uint32_coder("RefCount", dce, pdu, iov, offset, &ui->refcount)) {
