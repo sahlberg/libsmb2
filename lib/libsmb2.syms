@@ -161,12 +161,15 @@ srvsvc_SHARE_INFO_1_CONTAINER_coder
 NT_SID_AUTHORITY
 lsa_interface
 wkssvc_interface
+winreg_interface
 lsa_Close_rep_coder
 lsa_Close_req_coder
 lsa_LookupSids2_rep_coder
 lsa_LookupSids2_req_coder
 lsa_OpenPolicy2_rep_coder
 lsa_OpenPolicy2_req_coder
+winreg_OpenLocalMachine_rep_coder
+winreg_OpenLocalMachine_req_coder
 smb2_cmd_change_notify_async
 smb2_get_uint32
 smb2_utf16_to_utf8
