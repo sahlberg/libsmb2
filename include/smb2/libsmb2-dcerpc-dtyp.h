@@ -123,19 +123,23 @@ int dcerpc_ACE_HEADER_coder(char *name, struct dcerpc_context *dce,
                             void *ptr);
 
 /*
- * MS-DTYP 2.4.4.2 ACCESS_ALLOWED_ACE / 2.4.4.4 ACCESS_DENIED_ACE
+ * MS-DTYP simple ACEs (Header + Mask + packet Sid):
+ *   2.4.4.2  ACCESS_ALLOWED_ACE              (AceType 0x00)
+ *   2.4.4.4  ACCESS_DENIED_ACE               (AceType 0x01)
+ *   2.4.4.10 SYSTEM_AUDIT_ACE                (AceType 0x02)
+ *   2.4.4.x  SYSTEM_ALARM_ACE                (AceType 0x03, reserved)
+ *   2.4.4.13 SYSTEM_MANDATORY_LABEL_ACE      (AceType 0x11)
+ *   2.4.4.16 SYSTEM_SCOPED_POLICY_ID_ACE     (AceType 0x13)
  *
- * Packet form (self-relative security descriptors):
+ * Packet form:
  *   Header (ACE_HEADER)
  *   Mask   (ACCESS_MASK)
  *   Sid    (packet SID, length a multiple of 4)
  *
- * Both types share the same wire layout; only AceType differs
- * (ACCESS_ALLOWED_ACE_TYPE vs ACCESS_DENIED_ACE_TYPE).
- *
- * C representation uses a full RPC_SID for Sid. On NDR the Sid is written
- * in packet form (no RPC size_is prefix); YAML/JSON use the S-R-I-S... string.
- * AceSize is wire-only (omitted from YAML/JSON; derived from Sid).
+ * All share the same wire layout; only AceType differs. C representation
+ * uses a full RPC_SID for Sid. On NDR the Sid is written in packet form
+ * (no RPC size_is prefix); YAML/JSON use the S-R-I-S... string. AceSize is
+ * wire-only (omitted from YAML/JSON; derived from Sid).
  */
 typedef struct _ACCESS_ALLOWED_ACE {
         ACE_HEADER Header;
@@ -149,6 +153,30 @@ typedef struct _ACCESS_DENIED_ACE {
         RPC_SID Sid;
 } ACCESS_DENIED_ACE, *PACCESS_DENIED_ACE;
 
+typedef struct _SYSTEM_AUDIT_ACE {
+        ACE_HEADER Header;
+        ACCESS_MASK Mask;
+        RPC_SID Sid;
+} SYSTEM_AUDIT_ACE, *PSYSTEM_AUDIT_ACE;
+
+typedef struct _SYSTEM_ALARM_ACE {
+        ACE_HEADER Header;
+        ACCESS_MASK Mask;
+        RPC_SID Sid;
+} SYSTEM_ALARM_ACE, *PSYSTEM_ALARM_ACE;
+
+typedef struct _SYSTEM_MANDATORY_LABEL_ACE {
+        ACE_HEADER Header;
+        ACCESS_MASK Mask;
+        RPC_SID Sid;
+} SYSTEM_MANDATORY_LABEL_ACE, *PSYSTEM_MANDATORY_LABEL_ACE;
+
+typedef struct _SYSTEM_SCOPED_POLICY_ID_ACE {
+        ACE_HEADER Header;
+        ACCESS_MASK Mask;
+        RPC_SID Sid;
+} SYSTEM_SCOPED_POLICY_ID_ACE, *PSYSTEM_SCOPED_POLICY_ID_ACE;
+
 int dcerpc_ACCESS_ALLOWED_ACE_coder(char *name, struct dcerpc_context *dce,
                                     struct dcerpc_pdu *pdu,
                                     struct smb2_iovec *iov, int *offset,
@@ -157,6 +185,24 @@ int dcerpc_ACCESS_DENIED_ACE_coder(char *name, struct dcerpc_context *dce,
                                    struct dcerpc_pdu *pdu,
                                    struct smb2_iovec *iov, int *offset,
                                    void *ptr);
+int dcerpc_SYSTEM_AUDIT_ACE_coder(char *name, struct dcerpc_context *dce,
+                                  struct dcerpc_pdu *pdu,
+                                  struct smb2_iovec *iov, int *offset,
+                                  void *ptr);
+int dcerpc_SYSTEM_ALARM_ACE_coder(char *name, struct dcerpc_context *dce,
+                                  struct dcerpc_pdu *pdu,
+                                  struct smb2_iovec *iov, int *offset,
+                                  void *ptr);
+int dcerpc_SYSTEM_MANDATORY_LABEL_ACE_coder(char *name,
+                                            struct dcerpc_context *dce,
+                                            struct dcerpc_pdu *pdu,
+                                            struct smb2_iovec *iov,
+                                            int *offset, void *ptr);
+int dcerpc_SYSTEM_SCOPED_POLICY_ID_ACE_coder(char *name,
+                                             struct dcerpc_context *dce,
+                                             struct dcerpc_pdu *pdu,
+                                             struct smb2_iovec *iov,
+                                             int *offset, void *ptr);
 
 /*
  * MS-DTYP 2.4.5 ACL

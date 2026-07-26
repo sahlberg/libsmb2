@@ -668,8 +668,8 @@ dcerpc_packet_sid_coder(char *name, struct dcerpc_context *dce,
 }
 
 /*
- * Shared layout for ACCESS_ALLOWED_ACE and ACCESS_DENIED_ACE
- * (and the same-shaped SYSTEM_AUDIT / SYSTEM_MANDATORY_LABEL / … types):
+ * Shared layout for simple Header+Mask+Sid ACEs (allow, deny, audit, alarm,
+ * mandatory label, scoped policy id):
  *   Header(4) + Mask(4) + SID(8 + 4*SubAuthorityCount)
  */
 struct ace_mask_sid {
@@ -722,11 +722,13 @@ ace_mask_sid_fields_coder(char *name, struct dcerpc_context *dce,
 }
 
 /*
- * MS-DTYP 2.4.4.2 ACCESS_ALLOWED_ACE
- * MS-DTYP 2.4.4.4 ACCESS_DENIED_ACE
- *
- * Same packet layout; AceType is ACCESS_ALLOWED_ACE_TYPE (0x00) or
- * ACCESS_DENIED_ACE_TYPE (0x01).
+ * MS-DTYP simple Header+Mask+Sid ACEs. Same packet layout; AceType only:
+ *   ACCESS_ALLOWED_ACE_TYPE (0x00)
+ *   ACCESS_DENIED_ACE_TYPE (0x01)
+ *   SYSTEM_AUDIT_ACE_TYPE (0x02)
+ *   SYSTEM_ALARM_ACE_TYPE (0x03)
+ *   SYSTEM_MANDATORY_LABEL_ACE_TYPE (0x11)
+ *   SYSTEM_SCOPED_POLICY_ID_ACE_TYPE (0x13)
  */
 int
 dcerpc_ACCESS_ALLOWED_ACE_coder(char *name, struct dcerpc_context *dce,
@@ -743,6 +745,46 @@ dcerpc_ACCESS_DENIED_ACE_coder(char *name, struct dcerpc_context *dce,
                                struct dcerpc_pdu *pdu,
                                struct smb2_iovec *iov, int *offset,
                                void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   ace_mask_sid_fields_coder);
+}
+
+int
+dcerpc_SYSTEM_AUDIT_ACE_coder(char *name, struct dcerpc_context *dce,
+                              struct dcerpc_pdu *pdu,
+                              struct smb2_iovec *iov, int *offset,
+                              void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   ace_mask_sid_fields_coder);
+}
+
+int
+dcerpc_SYSTEM_ALARM_ACE_coder(char *name, struct dcerpc_context *dce,
+                              struct dcerpc_pdu *pdu,
+                              struct smb2_iovec *iov, int *offset,
+                              void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   ace_mask_sid_fields_coder);
+}
+
+int
+dcerpc_SYSTEM_MANDATORY_LABEL_ACE_coder(char *name, struct dcerpc_context *dce,
+                                        struct dcerpc_pdu *pdu,
+                                        struct smb2_iovec *iov, int *offset,
+                                        void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   ace_mask_sid_fields_coder);
+}
+
+int
+dcerpc_SYSTEM_SCOPED_POLICY_ID_ACE_coder(char *name, struct dcerpc_context *dce,
+                                         struct dcerpc_pdu *pdu,
+                                         struct smb2_iovec *iov, int *offset,
+                                         void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
                                    ace_mask_sid_fields_coder);
