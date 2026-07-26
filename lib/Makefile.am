@@ -18,6 +18,7 @@ libsmb2_la_SOURCES = \
 	compat.c \
 	compat.h \
 	dcerpc.c \
+	dcerpc-dtyp.c \
 	dcerpc-lsa.c \
 	dcerpc-srvsvc.c \
 	dcerpc-wkssvc.c \

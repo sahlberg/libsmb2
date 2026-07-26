@@ -11,6 +11,7 @@ if(ESP_PLATFORM)
     asn1-ber.c
     compat.c
     dcerpc.c
+    dcerpc-dtyp.c
     dcerpc-lsa.c
     dcerpc-srvsvc.c
     dcerpc-wkssvc.c
@@ -78,6 +79,7 @@ elseif(IOP AND BUILD_IRX)
             asn1-ber.c
             compat.c
             dcerpc.c
+            dcerpc-dtyp.c
             dcerpc-lsa.c
             dcerpc-srvsvc.c
             dcerpc-wkssvc.c
@@ -139,6 +141,7 @@ else()
             asn1-ber.c
             compat.c
             dcerpc.c
+            dcerpc-dtyp.c
             dcerpc-lsa.c
             dcerpc-srvsvc.c
             dcerpc-wkssvc.c
