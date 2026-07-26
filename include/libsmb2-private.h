@@ -689,6 +689,11 @@ enum dcerpc_encoding dcerpc_pdu_encoding(struct dcerpc_pdu *pdu);
 char *dcerpc_pdu_yaml_key(struct dcerpc_pdu *pdu);
 char *dcerpc_pdu_yaml_val(struct dcerpc_pdu *pdu);
 void dcerpc_pdu_clear_yaml_key(struct dcerpc_pdu *pdu);
+char *dcerpc_pdu_json_key(struct dcerpc_pdu *pdu);
+int dcerpc_json_next_key(struct dcerpc_pdu *pdu, struct smb2_iovec *iov,
+                         int *offset);
+int dcerpc_pdu_is_conformance_run(struct dcerpc_pdu *pdu);
+void dcerpc_pdu_raise_max_alignment(struct dcerpc_pdu *pdu, int alignment);
 int dcerpc_get_cr(struct dcerpc_pdu *pdu);
 
 int dcerpc_align_3264(struct dcerpc_context *ctx, int offset);

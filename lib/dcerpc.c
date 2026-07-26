@@ -1808,6 +1808,26 @@ dcerpc_pdu_clear_yaml_key(struct dcerpc_pdu *pdu)
         pdu->yaml_key = NULL;
 }
 
+char *
+dcerpc_pdu_json_key(struct dcerpc_pdu *pdu)
+{
+        return pdu->json_key;
+}
+
+int
+dcerpc_pdu_is_conformance_run(struct dcerpc_pdu *pdu)
+{
+        return pdu->is_conformance_run;
+}
+
+void
+dcerpc_pdu_raise_max_alignment(struct dcerpc_pdu *pdu, int alignment)
+{
+        if (alignment > pdu->max_alignment) {
+                pdu->max_alignment = alignment;
+        }
+}
+
 int
 dcerpc_align_3264(struct dcerpc_context *ctx, int offset)
 {
@@ -3451,6 +3471,17 @@ json_next_key(struct dcerpc_pdu *pdu, struct smb2_iovec *iov, int *offset)
         }
         pdu->json_key = key;
         return 0;
+}
+
+/*
+ * Ensure pdu->json_key holds the next object member key.
+ * Returns 0 if a key is available, 1 at end of object, -1 on error.
+ */
+int
+dcerpc_json_next_key(struct dcerpc_pdu *pdu, struct smb2_iovec *iov,
+                     int *offset)
+{
+        return json_next_key(pdu, iov, offset);
 }
 
 int

@@ -927,3 +927,466 @@ dcerpc_ACL_coder(char *name, struct dcerpc_context *dce,
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
                                    acl_fields_coder);
 }
+
+/*
+ * MS-DTYP 2.4.6 SECURITY_DESCRIPTOR (self-relative packet form)
+ */
+
+static struct dcerpc_uint32_pretty_printer sd_control_pp = {
+        .fmt = "0x%04x",
+        .bitfields = {
+                { "SE_OWNER_DEFAULTED",
+                  SE_OWNER_DEFAULTED, SE_OWNER_DEFAULTED },
+                { "SE_GROUP_DEFAULTED",
+                  SE_GROUP_DEFAULTED, SE_GROUP_DEFAULTED },
+                { "SE_DACL_PRESENT",
+                  SE_DACL_PRESENT, SE_DACL_PRESENT },
+                { "SE_DACL_DEFAULTED",
+                  SE_DACL_DEFAULTED, SE_DACL_DEFAULTED },
+                { "SE_SACL_PRESENT",
+                  SE_SACL_PRESENT, SE_SACL_PRESENT },
+                { "SE_SACL_DEFAULTED",
+                  SE_SACL_DEFAULTED, SE_SACL_DEFAULTED },
+                { "SE_DACL_AUTO_INHERIT_REQ",
+                  SE_DACL_AUTO_INHERIT_REQ, SE_DACL_AUTO_INHERIT_REQ },
+                { "SE_SACL_AUTO_INHERIT_REQ",
+                  SE_SACL_AUTO_INHERIT_REQ, SE_SACL_AUTO_INHERIT_REQ },
+                { "SE_DACL_AUTO_INHERITED",
+                  SE_DACL_AUTO_INHERITED, SE_DACL_AUTO_INHERITED },
+                { "SE_SACL_AUTO_INHERITED",
+                  SE_SACL_AUTO_INHERITED, SE_SACL_AUTO_INHERITED },
+                { "SE_DACL_PROTECTED",
+                  SE_DACL_PROTECTED, SE_DACL_PROTECTED },
+                { "SE_SACL_PROTECTED",
+                  SE_SACL_PROTECTED, SE_SACL_PROTECTED },
+                { "SE_RM_CONTROL_VALID",
+                  SE_RM_CONTROL_VALID, SE_RM_CONTROL_VALID },
+                { "SE_SELF_RELATIVE",
+                  SE_SELF_RELATIVE, SE_SELF_RELATIVE },
+                { NULL, 0, 0 },
+        },
+};
+
+static int
+sd_write_u32_at(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+                struct smb2_iovec *iov, int pos, uint32_t val)
+{
+        int o = pos;
+
+        return ndr_uint32_coder("", dce, pdu, iov, &o, &val);
+}
+
+static int
+sd_read_u32_at(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+               struct smb2_iovec *iov, int pos, uint32_t *val)
+{
+        int o = pos;
+
+        return ndr_uint32_coder("", dce, pdu, iov, &o, val);
+}
+
+/*
+ * Optional Owner/Group SID for YAML/JSON: present key allocates on decode;
+ * missing key leaves *sidp as NULL. NDR path does not use this helper.
+ */
+static int
+sd_optional_sid_text(char *name, struct dcerpc_context *dce,
+                     struct dcerpc_pdu *pdu,
+                     struct smb2_iovec *iov, int *offset,
+                     RPC_SID **sidp)
+{
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
+                if (*sidp == NULL) {
+                        return 0;
+                }
+                return dcerpc_packet_sid_coder(name, dce, pdu, iov, offset,
+                                               *sidp);
+        }
+
+        /* DECODE */
+        if (dcerpc_pdu_encoding(pdu) == ENCODING_YAML) {
+                if (dcerpc_pdu_yaml_key(pdu) == NULL ||
+                    strcmp(dcerpc_pdu_yaml_key(pdu), name)) {
+                        return 0;
+                }
+        } else {
+                int rc;
+                char *jk;
+
+                rc = dcerpc_json_next_key(pdu, iov, offset);
+                if (rc != 0) {
+                        return rc < 0 ? -1 : 0;
+                }
+                jk = dcerpc_pdu_json_key(pdu);
+                if (jk == NULL || strcmp(jk, name)) {
+                        return 0;
+                }
+        }
+
+        *sidp = smb2_alloc_data(dcerpc_get_smb2_context(dce),
+                                dcerpc_get_pdu_payload(pdu),
+                                sizeof(RPC_SID));
+        if (*sidp == NULL) {
+                return -1;
+        }
+        return dcerpc_packet_sid_coder(name, dce, pdu, iov, offset, *sidp);
+}
+
+/*
+ * Optional Sacl/Dacl for YAML/JSON.
+ */
+static int
+sd_optional_acl_text(char *name, struct dcerpc_context *dce,
+                     struct dcerpc_pdu *pdu,
+                     struct smb2_iovec *iov, int *offset,
+                     ACL **aclp)
+{
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
+                if (*aclp == NULL) {
+                        return 0;
+                }
+                return dcerpc_ACL_coder(name, dce, pdu, iov, offset, *aclp);
+        }
+
+        if (dcerpc_pdu_encoding(pdu) == ENCODING_YAML) {
+                if (dcerpc_pdu_yaml_key(pdu) == NULL ||
+                    strcmp(dcerpc_pdu_yaml_key(pdu), name)) {
+                        return 0;
+                }
+        } else {
+                int rc;
+                char *jk;
+
+                rc = dcerpc_json_next_key(pdu, iov, offset);
+                if (rc != 0) {
+                        return rc < 0 ? -1 : 0;
+                }
+                jk = dcerpc_pdu_json_key(pdu);
+                if (jk == NULL || strcmp(jk, name)) {
+                        return 0;
+                }
+        }
+
+        *aclp = smb2_alloc_data(dcerpc_get_smb2_context(dce),
+                                dcerpc_get_pdu_payload(pdu),
+                                sizeof(ACL));
+        if (*aclp == NULL) {
+                return -1;
+        }
+        return dcerpc_ACL_coder(name, dce, pdu, iov, offset, *aclp);
+}
+
+static int
+sd_ndr_encode(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+              struct smb2_iovec *iov, int *offset, SECURITY_DESCRIPTOR *sd)
+{
+        int base;
+        int pos;
+        uint32_t off_owner = 0, off_group = 0, off_sacl = 0, off_dacl = 0;
+        uint16_t control;
+        uint8_t rev, sbz1;
+
+        base = *offset;
+        control = sd->Control | SE_SELF_RELATIVE;
+        if (sd->Dacl) {
+                control = (uint16_t)(control | SE_DACL_PRESENT);
+        }
+        if (sd->Sacl) {
+                control = (uint16_t)(control | SE_SACL_PRESENT);
+        }
+        sd->Control = control;
+        sd->Sbz1 = 0;
+
+        rev = sd->Revision ? sd->Revision : 1;
+        if (ndr_uint8_coder("Revision", dce, pdu, iov, offset, &rev)) {
+                return -1;
+        }
+        sbz1 = 0;
+        if (ndr_uint8_coder("Sbz1", dce, pdu, iov, offset, &sbz1)) {
+                return -1;
+        }
+        if (dcerpc_uint16_coder("Control", dce, pdu, iov, offset, &control)) {
+                return -1;
+        }
+
+        /* Placeholder offsets; patched after bodies are written. */
+        if (sd_write_u32_at(dce, pdu, iov, base + 4, 0) ||
+            sd_write_u32_at(dce, pdu, iov, base + 8, 0) ||
+            sd_write_u32_at(dce, pdu, iov, base + 12, 0) ||
+            sd_write_u32_at(dce, pdu, iov, base + 16, 0)) {
+                return -1;
+        }
+        *offset = base + 20;
+        pos = *offset;
+
+        if (sd->Owner) {
+                off_owner = (uint32_t)(pos - base);
+                *offset = pos;
+                if (ndr_packet_sid_coder("Owner", dce, pdu, iov, offset,
+                                         sd->Owner)) {
+                        return -1;
+                }
+                pos = *offset;
+        }
+        if (sd->Group) {
+                off_group = (uint32_t)(pos - base);
+                *offset = pos;
+                if (ndr_packet_sid_coder("Group", dce, pdu, iov, offset,
+                                         sd->Group)) {
+                        return -1;
+                }
+                pos = *offset;
+        }
+        if (sd->Sacl) {
+                off_sacl = (uint32_t)(pos - base);
+                *offset = pos;
+                if (acl_fields_coder("Sacl", dce, pdu, iov, offset, sd->Sacl)) {
+                        return -1;
+                }
+                pos = *offset;
+        }
+        if (sd->Dacl) {
+                off_dacl = (uint32_t)(pos - base);
+                *offset = pos;
+                if (acl_fields_coder("Dacl", dce, pdu, iov, offset, sd->Dacl)) {
+                        return -1;
+                }
+                pos = *offset;
+        }
+
+        if (sd_write_u32_at(dce, pdu, iov, base + 4, off_owner) ||
+            sd_write_u32_at(dce, pdu, iov, base + 8, off_group) ||
+            sd_write_u32_at(dce, pdu, iov, base + 12, off_sacl) ||
+            sd_write_u32_at(dce, pdu, iov, base + 16, off_dacl)) {
+                return -1;
+        }
+        *offset = pos;
+        return 0;
+}
+
+static int
+sd_ndr_decode(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+              struct smb2_iovec *iov, int *offset, SECURITY_DESCRIPTOR *sd)
+{
+        int base;
+        int end;
+        int o;
+        uint32_t off_owner, off_group, off_sacl, off_dacl;
+
+        base = *offset;
+        if (ndr_uint8_coder("Revision", dce, pdu, iov, offset, &sd->Revision)) {
+                return -1;
+        }
+        if (ndr_uint8_coder("Sbz1", dce, pdu, iov, offset, &sd->Sbz1)) {
+                return -1;
+        }
+        if (dcerpc_uint16_coder("Control", dce, pdu, iov, offset, &sd->Control)) {
+                return -1;
+        }
+        if (sd_read_u32_at(dce, pdu, iov, base + 4, &off_owner) ||
+            sd_read_u32_at(dce, pdu, iov, base + 8, &off_group) ||
+            sd_read_u32_at(dce, pdu, iov, base + 12, &off_sacl) ||
+            sd_read_u32_at(dce, pdu, iov, base + 16, &off_dacl)) {
+                return -1;
+        }
+        *offset = base + 20;
+        end = base + 20;
+
+        if (off_owner) {
+                o = base + (int)off_owner;
+                sd->Owner = smb2_alloc_data(dcerpc_get_smb2_context(dce),
+                                            dcerpc_get_pdu_payload(pdu),
+                                            sizeof(RPC_SID));
+                if (sd->Owner == NULL) {
+                        return -1;
+                }
+                if (ndr_packet_sid_coder("Owner", dce, pdu, iov, &o,
+                                         sd->Owner)) {
+                        return -1;
+                }
+                if (o > end) {
+                        end = o;
+                }
+        }
+        if (off_group) {
+                o = base + (int)off_group;
+                sd->Group = smb2_alloc_data(dcerpc_get_smb2_context(dce),
+                                            dcerpc_get_pdu_payload(pdu),
+                                            sizeof(RPC_SID));
+                if (sd->Group == NULL) {
+                        return -1;
+                }
+                if (ndr_packet_sid_coder("Group", dce, pdu, iov, &o,
+                                         sd->Group)) {
+                        return -1;
+                }
+                if (o > end) {
+                        end = o;
+                }
+        }
+        if (off_sacl) {
+                o = base + (int)off_sacl;
+                sd->Sacl = smb2_alloc_data(dcerpc_get_smb2_context(dce),
+                                           dcerpc_get_pdu_payload(pdu),
+                                           sizeof(ACL));
+                if (sd->Sacl == NULL) {
+                        return -1;
+                }
+                if (acl_fields_coder("Sacl", dce, pdu, iov, &o, sd->Sacl)) {
+                        return -1;
+                }
+                if (o > end) {
+                        end = o;
+                }
+        }
+        if (off_dacl) {
+                o = base + (int)off_dacl;
+                sd->Dacl = smb2_alloc_data(dcerpc_get_smb2_context(dce),
+                                           dcerpc_get_pdu_payload(pdu),
+                                           sizeof(ACL));
+                if (sd->Dacl == NULL) {
+                        return -1;
+                }
+                if (acl_fields_coder("Dacl", dce, pdu, iov, &o, sd->Dacl)) {
+                        return -1;
+                }
+                if (o > end) {
+                        end = o;
+                }
+        }
+
+        *offset = end;
+        return 0;
+}
+
+static struct dcerpc_uint32_pretty_printer sd_revision_pp = {
+        .fmt = "%u",
+        .bitfields = {
+                { "SECURITY_DESCRIPTOR_REVISION", 0xffffffff, 1 },
+                { NULL, 0, 0 },
+        },
+};
+
+static int
+security_descriptor_fields_coder(char *name, struct dcerpc_context *dce,
+                                 struct dcerpc_pdu *pdu,
+                                 struct smb2_iovec *iov, int *offset,
+                                 void *ptr)
+{
+        SECURITY_DESCRIPTOR *sd = ptr;
+        uint16_t control;
+        uint32_t control32 = 0;
+
+        if (dcerpc_pdu_encoding(pdu) == ENCODING_NDR) {
+                if (dcerpc_pdu_is_conformance_run(pdu)) {
+                        dcerpc_pdu_raise_max_alignment(pdu, 4);
+                        return 0;
+                }
+                if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
+                        return sd_ndr_encode(dce, pdu, iov, offset, sd);
+                }
+                return sd_ndr_decode(dce, pdu, iov, offset, sd);
+        }
+
+        /* YAML / JSON — logical absolute form (no offsets / Sbz1) */
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&
+            sd->Revision == 0) {
+                sd->Revision = 1;
+        }
+        if (dcerpc_uint8_pp_coder("Revision", dce, pdu, iov, offset,
+                                  &sd->Revision, &sd_revision_pp)) {
+                return -1;
+        }
+
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
+                control = sd->Control | SE_SELF_RELATIVE;
+                if (sd->Dacl) {
+                        control = (uint16_t)(control | SE_DACL_PRESENT);
+                }
+                if (sd->Sacl) {
+                        control = (uint16_t)(control | SE_SACL_PRESENT);
+                }
+                sd->Control = control;
+                control32 = control;
+        }
+        if (dcerpc_uint32_coder_pp("Control", dce, pdu, iov, offset,
+                                   &control32, &sd_control_pp)) {
+                return -1;
+        }
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {
+                sd->Control = (uint16_t)control32;
+        }
+
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
+                if (sd_optional_sid_text("Owner", dce, pdu, iov, offset,
+                                         &sd->Owner) ||
+                    sd_optional_sid_text("Group", dce, pdu, iov, offset,
+                                         &sd->Group) ||
+                    sd_optional_acl_text("Sacl", dce, pdu, iov, offset,
+                                         &sd->Sacl) ||
+                    sd_optional_acl_text("Dacl", dce, pdu, iov, offset,
+                                         &sd->Dacl)) {
+                        return -1;
+                }
+        } else {
+                /*
+                 * Accept Owner/Group/Sacl/Dacl in any order. Each helper
+                 * no-ops when the current key is not its own.
+                 */
+                int i;
+
+                for (i = 0; i < 4; i++) {
+                        char *key;
+
+                        if (dcerpc_pdu_encoding(pdu) == ENCODING_YAML) {
+                                key = dcerpc_pdu_yaml_key(pdu);
+                        } else {
+                                int rc;
+
+                                rc = dcerpc_json_next_key(pdu, iov, offset);
+                                if (rc != 0) {
+                                        break;
+                                }
+                                key = dcerpc_pdu_json_key(pdu);
+                        }
+                        if (key == NULL) {
+                                break;
+                        }
+                        if (!strcmp(key, "Owner")) {
+                                if (sd_optional_sid_text("Owner", dce, pdu, iov,
+                                                         offset, &sd->Owner)) {
+                                        return -1;
+                                }
+                        } else if (!strcmp(key, "Group")) {
+                                if (sd_optional_sid_text("Group", dce, pdu, iov,
+                                                         offset, &sd->Group)) {
+                                        return -1;
+                                }
+                        } else if (!strcmp(key, "Sacl")) {
+                                if (sd_optional_acl_text("Sacl", dce, pdu, iov,
+                                                         offset, &sd->Sacl)) {
+                                        return -1;
+                                }
+                        } else if (!strcmp(key, "Dacl")) {
+                                if (sd_optional_acl_text("Dacl", dce, pdu, iov,
+                                                         offset, &sd->Dacl)) {
+                                        return -1;
+                                }
+                        } else {
+                                break;
+                        }
+                }
+                sd->Sbz1 = 0;
+        }
+        return 0;
+}
+
+int
+dcerpc_SECURITY_DESCRIPTOR_coder(char *name, struct dcerpc_context *dce,
+                                 struct dcerpc_pdu *pdu,
+                                 struct smb2_iovec *iov, int *offset,
+                                 void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   security_descriptor_fields_coder);
+}

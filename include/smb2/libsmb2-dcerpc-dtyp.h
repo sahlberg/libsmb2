@@ -197,6 +197,49 @@ int dcerpc_ACL_coder(char *name, struct dcerpc_context *dce,
                      struct smb2_iovec *iov, int *offset,
                      void *ptr);
 
+/*
+ * MS-DTYP 2.4.6 SECURITY_DESCRIPTOR
+ *
+ * Self-relative (packet) form on the wire:
+ *   Revision (1) Sbz1 (1) Control (2)
+ *   OffsetOwner, OffsetGroup, OffsetSacl, OffsetDacl (4 each)
+ *   then OwnerSid / GroupSid / Sacl / Dacl at those offsets
+ *
+ * C / YAML / JSON use a logical absolute layout with optional pointers.
+ * Offsets and Sbz1 are wire-only. SE_SELF_RELATIVE is set on NDR encode.
+ * SE_DACL_PRESENT / SE_SACL_PRESENT are set when Dacl / Sacl are non-NULL.
+ */
+#define SE_OWNER_DEFAULTED              0x0001
+#define SE_GROUP_DEFAULTED              0x0002
+#define SE_DACL_PRESENT                 0x0004
+#define SE_DACL_DEFAULTED               0x0008
+#define SE_SACL_PRESENT                 0x0010
+#define SE_SACL_DEFAULTED               0x0020
+#define SE_DACL_AUTO_INHERIT_REQ        0x0100
+#define SE_SACL_AUTO_INHERIT_REQ        0x0200
+#define SE_DACL_AUTO_INHERITED          0x0400
+#define SE_SACL_AUTO_INHERITED          0x0800
+#define SE_DACL_PROTECTED               0x1000
+#define SE_SACL_PROTECTED               0x2000
+#define SE_RM_CONTROL_VALID             0x4000
+#define SE_SELF_RELATIVE                0x8000
+
+typedef struct _SECURITY_DESCRIPTOR {
+        uint8_t Revision;
+        /* Wire-only unless RM is set; omitted from YAML/JSON. */
+        uint8_t Sbz1;
+        uint16_t Control;
+        RPC_SID *Owner;
+        RPC_SID *Group;
+        ACL *Sacl;
+        ACL *Dacl;
+} SECURITY_DESCRIPTOR, *PSECURITY_DESCRIPTOR;
+
+int dcerpc_SECURITY_DESCRIPTOR_coder(char *name, struct dcerpc_context *dce,
+                                     struct dcerpc_pdu *pdu,
+                                     struct smb2_iovec *iov, int *offset,
+                                     void *ptr);
+
 #ifdef __cplusplus
 }
 #endif
