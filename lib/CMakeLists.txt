@@ -197,6 +197,7 @@ if(NOT ESP_PLATFORM)
 set(INCLUDE_PATH ../include)
 set(SMB2_INCLUDE "${INCLUDE_PATH}/smb2")
 set(HEADERS
+    ${SMB2_INCLUDE}/libsmb2-dcerpc-dtyp.h
     ${SMB2_INCLUDE}/libsmb2-dcerpc-lsa.h
     ${SMB2_INCLUDE}/libsmb2-dcerpc-srvsvc.h
     ${SMB2_INCLUDE}/libsmb2-dcerpc-wkssvc.h

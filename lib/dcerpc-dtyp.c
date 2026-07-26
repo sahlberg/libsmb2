@@ -54,7 +54,7 @@
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-dcerpc.h"
-#include "libsmb2-dcerpc-lsa.h"
+#include "libsmb2-dcerpc-dtyp.h"
 #include "libsmb2-raw.h"
 #include "libsmb2-private.h"
 
@@ -411,4 +411,339 @@ dcerpc_sid_coder(char *name, struct dcerpc_context *dce,
                 return 0;
         }
         return 0;
+}
+
+/*
+ * MS-DTYP 2.4.4.1 ACE_HEADER
+ *
+ * typedef struct _ACE_HEADER {
+ *     UCHAR AceType;
+ *     UCHAR AceFlags;
+ *     USHORT AceSize;
+ * } ACE_HEADER, *PACE_HEADER;
+ */
+
+/* AceType is an exclusive enum (mask 0xffffffff matches a single value). */
+static struct dcerpc_uint32_pretty_printer ace_type_pp = {
+        .fmt = "0x%02x",
+        .bitfields = {
+                { "ACCESS_ALLOWED_ACE_TYPE", 0xffffffff,
+                  ACCESS_ALLOWED_ACE_TYPE },
+                { "ACCESS_DENIED_ACE_TYPE", 0xffffffff,
+                  ACCESS_DENIED_ACE_TYPE },
+                { "SYSTEM_AUDIT_ACE_TYPE", 0xffffffff,
+                  SYSTEM_AUDIT_ACE_TYPE },
+                { "SYSTEM_ALARM_ACE_TYPE", 0xffffffff,
+                  SYSTEM_ALARM_ACE_TYPE },
+                { "ACCESS_ALLOWED_COMPOUND_ACE_TYPE", 0xffffffff,
+                  ACCESS_ALLOWED_COMPOUND_ACE_TYPE },
+                { "ACCESS_ALLOWED_OBJECT_ACE_TYPE", 0xffffffff,
+                  ACCESS_ALLOWED_OBJECT_ACE_TYPE },
+                { "ACCESS_DENIED_OBJECT_ACE_TYPE", 0xffffffff,
+                  ACCESS_DENIED_OBJECT_ACE_TYPE },
+                { "SYSTEM_AUDIT_OBJECT_ACE_TYPE", 0xffffffff,
+                  SYSTEM_AUDIT_OBJECT_ACE_TYPE },
+                { "SYSTEM_ALARM_OBJECT_ACE_TYPE", 0xffffffff,
+                  SYSTEM_ALARM_OBJECT_ACE_TYPE },
+                { "ACCESS_ALLOWED_CALLBACK_ACE_TYPE", 0xffffffff,
+                  ACCESS_ALLOWED_CALLBACK_ACE_TYPE },
+                { "ACCESS_DENIED_CALLBACK_ACE_TYPE", 0xffffffff,
+                  ACCESS_DENIED_CALLBACK_ACE_TYPE },
+                { "ACCESS_ALLOWED_CALLBACK_OBJECT_ACE_TYPE", 0xffffffff,
+                  ACCESS_ALLOWED_CALLBACK_OBJECT_ACE_TYPE },
+                { "ACCESS_DENIED_CALLBACK_OBJECT_ACE_TYPE", 0xffffffff,
+                  ACCESS_DENIED_CALLBACK_OBJECT_ACE_TYPE },
+                { "SYSTEM_AUDIT_CALLBACK_ACE_TYPE", 0xffffffff,
+                  SYSTEM_AUDIT_CALLBACK_ACE_TYPE },
+                { "SYSTEM_ALARM_CALLBACK_ACE_TYPE", 0xffffffff,
+                  SYSTEM_ALARM_CALLBACK_ACE_TYPE },
+                { "SYSTEM_AUDIT_CALLBACK_OBJECT_ACE_TYPE", 0xffffffff,
+                  SYSTEM_AUDIT_CALLBACK_OBJECT_ACE_TYPE },
+                { "SYSTEM_ALARM_CALLBACK_OBJECT_ACE_TYPE", 0xffffffff,
+                  SYSTEM_ALARM_CALLBACK_OBJECT_ACE_TYPE },
+                { "SYSTEM_MANDATORY_LABEL_ACE_TYPE", 0xffffffff,
+                  SYSTEM_MANDATORY_LABEL_ACE_TYPE },
+                { "SYSTEM_RESOURCE_ATTRIBUTE_ACE_TYPE", 0xffffffff,
+                  SYSTEM_RESOURCE_ATTRIBUTE_ACE_TYPE },
+                { "SYSTEM_SCOPED_POLICY_ID_ACE_TYPE", 0xffffffff,
+                  SYSTEM_SCOPED_POLICY_ID_ACE_TYPE },
+                { NULL, 0, 0 },
+        },
+};
+
+/* AceFlags is a bitfield; each flag is its own mask bit. */
+static struct dcerpc_uint32_pretty_printer ace_flags_pp = {
+        .fmt = "0x%02x",
+        .bitfields = {
+                { "OBJECT_INHERIT_ACE",
+                  OBJECT_INHERIT_ACE, OBJECT_INHERIT_ACE },
+                { "CONTAINER_INHERIT_ACE",
+                  CONTAINER_INHERIT_ACE, CONTAINER_INHERIT_ACE },
+                { "NO_PROPAGATE_INHERIT_ACE",
+                  NO_PROPAGATE_INHERIT_ACE, NO_PROPAGATE_INHERIT_ACE },
+                { "INHERIT_ONLY_ACE",
+                  INHERIT_ONLY_ACE, INHERIT_ONLY_ACE },
+                { "INHERITED_ACE",
+                  INHERITED_ACE, INHERITED_ACE },
+                { "SUCCESSFUL_ACCESS_ACE_FLAG",
+                  SUCCESSFUL_ACCESS_ACE_FLAG, SUCCESSFUL_ACCESS_ACE_FLAG },
+                { "FAILED_ACCESS_ACE_FLAG",
+                  FAILED_ACCESS_ACE_FLAG, FAILED_ACCESS_ACE_FLAG },
+                { NULL, 0, 0 },
+        },
+};
+
+/*
+ * Encode a uint8_t field. NDR uses the native 1-byte form; YAML/JSON promote
+ * to uint32 so the shared pretty-printer can name enum/flag values.
+ */
+static int
+dcerpc_uint8_pp_coder(char *name, struct dcerpc_context *dce,
+                      struct dcerpc_pdu *pdu,
+                      struct smb2_iovec *iov, int *offset,
+                      void *ptr,
+                      struct dcerpc_uint32_pretty_printer *pp)
+{
+        uint8_t *v = ptr;
+        uint32_t tmp = 0;
+
+        if (dcerpc_pdu_encoding(pdu) == ENCODING_NDR) {
+                return ndr_uint8_coder(name, dce, pdu, iov, offset, v);
+        }
+
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
+                tmp = *v;
+        }
+        if (dcerpc_uint32_coder_pp(name, dce, pdu, iov, offset, &tmp, pp)) {
+                return -1;
+        }
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {
+                if (tmp > 0xff) {
+                        return -1;
+                }
+                *v = (uint8_t)tmp;
+        }
+        return 0;
+}
+
+static int
+ace_header_fields_coder(char *name, struct dcerpc_context *dce,
+                        struct dcerpc_pdu *pdu,
+                        struct smb2_iovec *iov, int *offset,
+                        void *ptr)
+{
+        ACE_HEADER *hdr = ptr;
+
+        if (dcerpc_uint8_pp_coder("AceType", dce, pdu, iov, offset,
+                                  &hdr->AceType, &ace_type_pp)) {
+                return -1;
+        }
+        if (dcerpc_uint8_pp_coder("AceFlags", dce, pdu, iov, offset,
+                                  &hdr->AceFlags, &ace_flags_pp)) {
+                return -1;
+        }
+        /*
+         * AceSize is a wire-only field. It is not emitted or accepted in
+         * YAML/JSON; parent ACE coders derive it from the body (e.g. Sid).
+         * NDR still reads/writes it as required by MS-DTYP 2.4.4.1.
+         */
+        if (dcerpc_pdu_encoding(pdu) == ENCODING_NDR) {
+                if (dcerpc_uint16_coder("AceSize", dce, pdu, iov, offset,
+                                        &hdr->AceSize)) {
+                        return -1;
+                }
+        }
+        return 0;
+}
+
+int
+dcerpc_ACE_HEADER_coder(char *name, struct dcerpc_context *dce,
+                        struct dcerpc_pdu *pdu,
+                        struct smb2_iovec *iov, int *offset,
+                        void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   ace_header_fields_coder);
+}
+
+/*
+ * MS-DTYP 2.4.3 ACCESS_MASK — standard / generic rights bitfield.
+ * Object-specific bits in the low 16 bits are protocol-dependent and
+ * are left as raw values.
+ */
+static struct dcerpc_uint32_pretty_printer access_mask_pp = {
+        .fmt = "0x%08x",
+        .bitfields = {
+                { "GENERIC_READ",
+                  GENERIC_READ, GENERIC_READ },
+                { "GENERIC_WRITE",
+                  GENERIC_WRITE, GENERIC_WRITE },
+                { "GENERIC_EXECUTE",
+                  GENERIC_EXECUTE, GENERIC_EXECUTE },
+                { "GENERIC_ALL",
+                  GENERIC_ALL, GENERIC_ALL },
+                { "MAXIMUM_ALLOWED",
+                  MAXIMUM_ALLOWED, MAXIMUM_ALLOWED },
+                { "ACCESS_SYSTEM_SECURITY",
+                  ACCESS_SYSTEM_SECURITY, ACCESS_SYSTEM_SECURITY },
+                { "SYNCHRONIZE",
+                  SYNCHRONIZE, SYNCHRONIZE },
+                { "WRITE_OWNER",
+                  WRITE_OWNER, WRITE_OWNER },
+                { "WRITE_DACL",
+                  WRITE_DACL, WRITE_DACL },
+                { "READ_CONTROL",
+                  READ_CONTROL, READ_CONTROL },
+                { "DELETE",
+                  DELETE, DELETE },
+                { NULL, 0, 0 },
+        },
+};
+
+/*
+ * Packet SID (MS-DTYP 2.4.2.2) as used inside ACEs / ACLs / security
+ * descriptors. Unlike RPC_SID there is no leading size_is count.
+ */
+static int
+ndr_packet_sid_coder(char *name, struct dcerpc_context *dce,
+                     struct dcerpc_pdu *pdu,
+                     struct smb2_iovec *iov, int *offset,
+                     void *ptr)
+{
+        RPC_SID *sid = ptr;
+        uint8_t count;
+        int i;
+
+        if (ndr_uint8_coder("Revision", dce, pdu, iov, offset,
+                            &sid->Revision)) {
+                return -1;
+        }
+        if (ndr_uint8_coder("SubAuthorityCount", dce, pdu, iov, offset,
+                            &sid->SubAuthorityCount)) {
+                return -1;
+        }
+        for (i = 0; i < 6; i++) {
+                if (ndr_uint8_coder("IdentifierAuthority", dce, pdu, iov,
+                                    offset, &sid->IdentifierAuthority[i])) {
+                        return -1;
+                }
+        }
+
+        /*
+         * During the conformance run SubAuthorityCount is not updated on
+         * decode; use the in-memory count (encode) or 0 (fresh decode).
+         * Alignment is already raised by Mask (uint32) in the ACE.
+         */
+        count = sid->SubAuthorityCount;
+        if (count > MAXSUBAUTH) {
+                return -1;
+        }
+        for (i = 0; i < count; i++) {
+                if (ndr_uint32_coder("SubAuthority", dce, pdu, iov, offset,
+                                     &sid->SubAuthority[i])) {
+                        return -1;
+                }
+        }
+        return 0;
+}
+
+/*
+ * SID field for ACE packet types: NDR = packet form; YAML/JSON = S-R-I-...
+ */
+static int
+dcerpc_packet_sid_coder(char *name, struct dcerpc_context *dce,
+                        struct dcerpc_pdu *pdu,
+                        struct smb2_iovec *iov, int *offset,
+                        void *ptr)
+{
+        switch (dcerpc_pdu_encoding(pdu)) {
+        case ENCODING_NDR:
+                return ndr_packet_sid_coder(name, dce, pdu, iov, offset, ptr);
+        case ENCODING_YAML:
+                return yaml_sid_coder(name, dce, pdu, iov, offset, ptr);
+        case ENCODING_JSON:
+                return json_sid_coder(name, dce, pdu, iov, offset, ptr);
+        }
+        return 0;
+}
+
+/*
+ * Shared layout for ACCESS_ALLOWED_ACE and ACCESS_DENIED_ACE
+ * (and the same-shaped SYSTEM_AUDIT / SYSTEM_MANDATORY_LABEL / … types):
+ *   Header(4) + Mask(4) + SID(8 + 4*SubAuthorityCount)
+ */
+struct ace_mask_sid {
+        ACE_HEADER Header;
+        ACCESS_MASK Mask;
+        RPC_SID Sid;
+};
+
+static uint16_t
+ace_mask_sid_size(const struct ace_mask_sid *ace)
+{
+        return (uint16_t)(8 + 8 + 4 * ace->Sid.SubAuthorityCount);
+}
+
+static int
+ace_mask_sid_fields_coder(char *name, struct dcerpc_context *dce,
+                          struct dcerpc_pdu *pdu,
+                          struct smb2_iovec *iov, int *offset,
+                          void *ptr)
+{
+        struct ace_mask_sid *ace = ptr;
+
+        /*
+         * AceSize is not part of the YAML/JSON model. On NDR encode it must
+         * be filled before Header is written; on text decode it is derived
+         * after Sid is known.
+         */
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
+                ace->Header.AceSize = ace_mask_sid_size(ace);
+        }
+
+        if (dcerpc_ACE_HEADER_coder("Header", dce, pdu, iov, offset,
+                                    &ace->Header)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder_pp("Mask", dce, pdu, iov, offset,
+                                   &ace->Mask, &access_mask_pp)) {
+                return -1;
+        }
+        if (dcerpc_packet_sid_coder("Sid", dce, pdu, iov, offset,
+                                    &ace->Sid)) {
+                return -1;
+        }
+
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE &&
+            dcerpc_pdu_encoding(pdu) != ENCODING_NDR) {
+                ace->Header.AceSize = ace_mask_sid_size(ace);
+        }
+        return 0;
+}
+
+/*
+ * MS-DTYP 2.4.4.2 ACCESS_ALLOWED_ACE
+ * MS-DTYP 2.4.4.4 ACCESS_DENIED_ACE
+ *
+ * Same packet layout; AceType is ACCESS_ALLOWED_ACE_TYPE (0x00) or
+ * ACCESS_DENIED_ACE_TYPE (0x01).
+ */
+int
+dcerpc_ACCESS_ALLOWED_ACE_coder(char *name, struct dcerpc_context *dce,
+                                struct dcerpc_pdu *pdu,
+                                struct smb2_iovec *iov, int *offset,
+                                void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   ace_mask_sid_fields_coder);
+}
+
+int
+dcerpc_ACCESS_DENIED_ACE_coder(char *name, struct dcerpc_context *dce,
+                               struct dcerpc_pdu *pdu,
+                               struct smb2_iovec *iov, int *offset,
+                               void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   ace_mask_sid_fields_coder);
 }

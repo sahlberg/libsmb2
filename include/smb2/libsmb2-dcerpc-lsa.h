@@ -24,6 +24,7 @@ extern "C" {
 #endif
 
 #include <smb2/libsmb2-dcerpc.h>
+#include <smb2/libsmb2-dcerpc-dtyp.h>
 
 #define LSA_CLOSE          0x00
 #define LSA_OPENPOLICY2    0x2c
@@ -66,16 +67,6 @@ extern "C" {
 #define LSA_LOOKUP_XFOREST_REFERRAL        5
 #define LSA_LOOKUP_XFOREST_RESOLVE         6
 #define LSA_LOOKUP_RODC_REFERRAL_TO_FULL_DC 7
-
-extern unsigned char NT_SID_AUTHORITY[6];
-
-#define MAXSUBAUTH 10
-typedef struct RPC_SID {
-        uint8_t Revision;
-        uint8_t SubAuthorityCount;
-        uint8_t IdentifierAuthority[6];
-        uint32_t SubAuthority[MAXSUBAUTH];
-} RPC_SID, *PRPC_SID;
 
 typedef struct _SID_ENUM_BUFFER {
         uint32_t Entries;
