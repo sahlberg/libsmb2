@@ -87,6 +87,20 @@ You can force a build without Kerberos support by using the flag
 --without-libkrb5 to configure. In this case only NTLMSSP authentication
 will be available.
 
+DCE/RPC interfaces
+==================
+On full-size platforms (Linux, Windows, macOS, ...), libsmb2 builds the full
+DCE/RPC YAML/JSON interface set by default (srvsvc, lsarpc, winreg, wkssvc).
+
+To shrink the library to only NetrShareEnum levels 0/1/2 (used by
+smb2_share_enum_*):
+
+  configure:  ./configure --disable-dcerpc-full
+  cmake:      -DENABLE_DCERPC_FULL=OFF
+
+Embedded targets (ESP, Pico, consoles, PS2/PS3/PS4, Vita, ...) always build
+the minimal ShareEnum-only surface; the full set is not available there.
+
 MIT KERBEROS
 ============
 Authentication is implemented using MIT Kerberos and it supports both KRB5

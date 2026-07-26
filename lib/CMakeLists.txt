@@ -2,6 +2,20 @@ if(GSSAPI_FOUND OR LIBKRB5_FOUND)
   set(KRB5_SOURCE krb5-wrapper.c)
 endif()
 
+# Full DCE/RPC sources (lsa, winreg, wkssvc, dtyp). Minimal build keeps
+# only dcerpc.c + dcerpc-srvsvc.c (NetrShareEnum levels 0/1/2).
+# Embedded platforms leave ENABLE_DCERPC_FULL unset/OFF; full-size platforms
+# default ON via the top-level CMakeLists.txt option.
+set(DCERPC_FULL_SRCS
+    dcerpc-dtyp.c
+    dcerpc-lsa.c
+    dcerpc-wkssvc.c
+    dcerpc-winreg.c
+)
+if(NOT DEFINED ENABLE_DCERPC_FULL)
+  set(ENABLE_DCERPC_FULL OFF)
+endif()
+
 if(ESP_PLATFORM)
   set(COMPONENT_SRCS
     aes.c
@@ -11,11 +25,7 @@ if(ESP_PLATFORM)
     asn1-ber.c
     compat.c
     dcerpc.c
-    dcerpc-dtyp.c
-    dcerpc-lsa.c
     dcerpc-srvsvc.c
-    dcerpc-wkssvc.c
-    dcerpc-winreg.c
     errors.c
     init.c
     hmac.c
@@ -62,6 +72,9 @@ if(ESP_PLATFORM)
     unicode.c
     usha.c
   )
+  if(ENABLE_DCERPC_FULL)
+    list(APPEND COMPONENT_SRCS ${DCERPC_FULL_SRCS})
+  endif()
 
   set(COMPONENT_NAME ".")
 
@@ -79,11 +92,7 @@ elseif(IOP AND BUILD_IRX)
             asn1-ber.c
             compat.c
             dcerpc.c
-            dcerpc-dtyp.c
-            dcerpc-lsa.c
             dcerpc-srvsvc.c
-            dcerpc-wkssvc.c
-            dcerpc-winreg.c
             errors.c
             hmac.c
             hmac-md5.c
@@ -129,6 +138,9 @@ elseif(IOP AND BUILD_IRX)
             timestamps.c
             unicode.c
             usha.c)
+  if(ENABLE_DCERPC_FULL)
+    list(APPEND SOURCES ${DCERPC_FULL_SRCS})
+  endif()
 
 BUILD_IOP_IMPORTS(${CMAKE_CURRENT_SOURCE_DIR}/ps2/imports.c ${CMAKE_CURRENT_SOURCE_DIR}/ps2/imports.lst)
 
@@ -141,11 +153,7 @@ else()
             asn1-ber.c
             compat.c
             dcerpc.c
-            dcerpc-dtyp.c
-            dcerpc-lsa.c
             dcerpc-srvsvc.c
-            dcerpc-wkssvc.c
-            dcerpc-winreg.c
             errors.c
             hmac.c
             hmac-md5.c
@@ -191,6 +199,9 @@ else()
             timestamps.c
             unicode.c
             usha.c)
+  if(ENABLE_DCERPC_FULL)
+    list(APPEND SOURCES ${DCERPC_FULL_SRCS})
+  endif()
 endif()
 
 if(NOT ESP_PLATFORM)

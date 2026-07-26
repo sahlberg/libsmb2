@@ -18,11 +18,7 @@ libsmb2_la_SOURCES = \
 	compat.c \
 	compat.h \
 	dcerpc.c \
-	dcerpc-dtyp.c \
-	dcerpc-lsa.c \
 	dcerpc-srvsvc.c \
-	dcerpc-wkssvc.c \
-	dcerpc-winreg.c \
 	errors.c \
 	init.c \
 	hmac.c \
@@ -78,11 +74,34 @@ libsmb2_la_SOURCES = \
 	unicode.c \
 	usha.c
 
+# Full DCE/RPC interfaces (lsa, winreg, wkssvc, dtyp, all srvsvc ops).
+# Default build is minimal: NetrShareEnum levels 0/1/2 only.
+if HAVE_DCERPC_FULL
+libsmb2_la_SOURCES += \
+	dcerpc-dtyp.c \
+	dcerpc-lsa.c \
+	dcerpc-wkssvc.c \
+	dcerpc-winreg.c
+endif
+
 SOCURRENT=6
 SOREVISION=1
 SOAGE=0
+
+# Combine base and optional full DCE/RPC export symbols.
+# Depend on Makefile so reconfigure (minimal <-> full) regenerates the list.
+libsmb2.export.syms: $(srcdir)/libsmb2.syms $(srcdir)/libsmb2-dcerpc-full.syms Makefile
+if HAVE_DCERPC_FULL
+	cat $(srcdir)/libsmb2.syms $(srcdir)/libsmb2-dcerpc-full.syms > $@
+else
+	cp $(srcdir)/libsmb2.syms $@
+endif
+
+BUILT_SOURCES = libsmb2.export.syms
+CLEANFILES = libsmb2.export.syms
+
 libsmb2_la_LDFLAGS = \
 	-version-info $(SOCURRENT):$(SOREVISION):$(SOAGE) -bindir $(bindir) \
-	-no-undefined -export-symbols ${srcdir}/libsmb2.syms $(MAYBE_LIBKRB5)
+	-no-undefined -export-symbols libsmb2.export.syms $(MAYBE_LIBKRB5)
 
-dist_noinst_DATA = libsmb2.syms
+dist_noinst_DATA = libsmb2.syms libsmb2-dcerpc-full.syms

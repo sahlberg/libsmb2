@@ -63,7 +63,9 @@
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-dcerpc.h"
+#ifdef HAVE_DCERPC_FULL
 #include "libsmb2-dcerpc-dtyp.h"
+#endif
 #include "libsmb2-dcerpc-srvsvc.h"
 #include "libsmb2-raw.h"
 #include "libsmb2-private.h"
@@ -89,6 +91,7 @@ static struct dcerpc_uint32_pretty_printer share_type_pp = {
         },
 };
 
+#ifdef HAVE_DCERPC_FULL /* server/platform pretty printers */
 /* MS-SRVS 2.2.2.7 Software Type Flags (SERVER_INFO_* .type / SV_TYPE_*) */
 static struct dcerpc_uint32_pretty_printer server_type_pp = {
         .fmt = "0x%08x",
@@ -168,6 +171,7 @@ static struct dcerpc_uint32_pretty_printer platform_id_pp = {
         },
 };
 
+#endif /* HAVE_DCERPC_FULL: server/platform pretty printers */
 /* Legacy share access bits (SHARE_INFO_2.permissions / ACCESS_*) */
 static struct dcerpc_uint32_pretty_printer share_access_pp = {
         .fmt = "0x%08x",
@@ -184,6 +188,7 @@ static struct dcerpc_uint32_pretty_printer share_access_pp = {
         },
 };
 
+#ifdef HAVE_DCERPC_FULL /* file/session pretty printers and share_type_uint32 */
 /* Open file permissions (FILE_INFO_3.permissions / PERM_FILE_*) */
 static struct dcerpc_uint32_pretty_printer file_perm_pp = {
         .fmt = "0x%08x",
@@ -220,6 +225,7 @@ share_type_uint32_coder(char *name, struct dcerpc_context *dce,
                                       &share_type_pp);
 }
 
+#endif /* HAVE_DCERPC_FULL: file/session pretty printers and share_type_uint32 */
 /*
  * SRVSVC BEGIN:  DEFINITIONS FROM SRVSVC.IDL
  * [MS-SRVS].pdf
@@ -534,6 +540,7 @@ srvsvc_SHARE_INFO_2_CONTAINER_coder(char *name, struct dcerpc_context *dce,
         return 0;
 }
 
+#ifdef HAVE_DCERPC_FULL /* SHARE_INFO_502 */
 /*
  * SHARE_INFO_502: self-relative SD as [size_is(reserved)] unique byte array.
  * Blob lives on the PDU payload so deferred unique bodies stay valid.
@@ -920,6 +927,7 @@ srvsvc_SHARE_INFO_502_CONTAINER_coder(char *name, struct dcerpc_context *dce,
 }
 
 
+#endif /* HAVE_DCERPC_FULL: SHARE_INFO_502 */
 /*
  * typedef [switch_type(DWORD)] union _SHARE_ENUM_UNION {
  * [case(0)] SHARE_INFO_0_CONTAINER* Level0;
@@ -957,6 +965,7 @@ srvsvc_SHARE_ENUM_UNION_coder(char *name, struct dcerpc_context *dce,
                         return -1;
                 }
                 break;
+#ifdef HAVE_DCERPC_FULL /* SHARE_ENUM level 502 */
         case 502:
                 if (dcerpc_ptr_coder("ShareInfo502Container", dce, pdu, iov, offset,
                                      &info->Level502,
@@ -964,6 +973,7 @@ srvsvc_SHARE_ENUM_UNION_coder(char *name, struct dcerpc_context *dce,
                         return -1;
                 }
                 break;
+#endif /* HAVE_DCERPC_FULL: SHARE_ENUM level 502 */
         default:
                 return -1;
         };
@@ -1009,6 +1019,7 @@ srvsvc_SHARE_ENUM_STRUCT_struct_coder(char *name, struct dcerpc_context *dce,
 }
 
 
+#ifdef HAVE_DCERPC_FULL /* SHARE_INFO GetInfo/SetInfo and other srvsvc ops before NetrShareEnum */
 /*
  * typedef [switch_type(unsigned long)] union _SHARE_INFO {
  *   [case(0)] LPSHARE_INFO_0 ShareInfo0;
@@ -3457,6 +3468,7 @@ srvsvc_NetrShareAdd_rep_coder(char *name, struct dcerpc_context *dce,
         return 0;
 }
 
+#endif /* HAVE_DCERPC_FULL: SHARE_INFO GetInfo/SetInfo and other srvsvc ops before NetrShareEnum */
 /*****************
  * Function: 0x0f
  * NET_API_STATUS NetrShareEnum (
@@ -3522,6 +3534,7 @@ srvsvc_NetrShareEnum_rep_coder(char *name, struct dcerpc_context *dce,
         return 0;
 }
 
+#ifdef HAVE_DCERPC_FULL /* other Netr* ops after NetrShareEnum */
 /******************
  * Function: 0x10
  * NET_API_STATUS NetrShareGetInfo (
@@ -4432,7 +4445,9 @@ srvsvc_NetrRemoteTOD_rep_coder(char *name, struct dcerpc_context *dce,
 }
 
 
+#endif /* HAVE_DCERPC_FULL: other Netr* ops after NetrShareEnum */
 struct dcerpc_procedure srvsvc_procs[] = {
+#ifdef HAVE_DCERPC_FULL
         {SRVSVC_NETRCONNECTIONENUM, "NetrConnectionEnum",
          srvsvc_NetrConnectionEnum_req_coder, sizeof(struct srvsvc_NetrConnectionEnum_req),
          srvsvc_NetrConnectionEnum_rep_coder, sizeof(struct srvsvc_NetrConnectionEnum_rep),
@@ -4461,10 +4476,12 @@ struct dcerpc_procedure srvsvc_procs[] = {
          srvsvc_NetrShareAdd_req_coder, sizeof(struct srvsvc_NetrShareAdd_req),
          srvsvc_NetrShareAdd_rep_coder, sizeof(struct srvsvc_NetrShareAdd_rep),
         },
+#endif /* HAVE_DCERPC_FULL */
         {SRVSVC_NETRSHAREENUM, "NetrShareEnum",
          srvsvc_NetrShareEnum_req_coder, sizeof(struct srvsvc_NetrShareEnum_req),
          srvsvc_NetrShareEnum_rep_coder, sizeof(struct srvsvc_NetrShareEnum_rep),
         },
+#ifdef HAVE_DCERPC_FULL
         {SRVSVC_NETRSHAREGETINFO, "NetrShareGetInfo",
          srvsvc_NetrShareGetInfo_req_coder, sizeof(struct srvsvc_NetrShareGetInfo_req),
          srvsvc_NetrShareGetInfo_rep_coder, sizeof(struct srvsvc_NetrShareGetInfo_rep),
@@ -4505,6 +4522,7 @@ struct dcerpc_procedure srvsvc_procs[] = {
          srvsvc_NetrRemoteTOD_req_coder, sizeof(struct srvsvc_NetrRemoteTOD_req),
          srvsvc_NetrRemoteTOD_rep_coder, sizeof(struct srvsvc_NetrRemoteTOD_rep),
         },
+#endif /* HAVE_DCERPC_FULL */
         {-1, NULL, NULL, 0, NULL, 0}
 };
 

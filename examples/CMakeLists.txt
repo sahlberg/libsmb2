@@ -10,19 +10,24 @@ set(SOURCES smb2-cat-async
             smb2-raw-getsd-async
             smb2-readlink
             smb2-server-side-copy-sync
-            smb2-lsa-lookupsids
             smb2-lseek-sync
             smb2-share-enum
-            smb2-share-info
             smb2-stat-sync
             smb2-truncate-sync
             smb2-CMD-FIND
             smb2-server-sync
             smb2-notify
             smb2-set-security-info
-            smb2-link-sync
+            smb2-link-sync)
+
+# Examples that require the full DCE/RPC interface set
+if(ENABLE_DCERPC_FULL)
+  list(APPEND SOURCES
+            smb2-lsa-lookupsids
+            smb2-share-info
             smb2-winreg-enum
             winreg-tui)
+endif()
 
 foreach(TARGET ${SOURCES})
   add_executable(${TARGET} ${TARGET}.c)
@@ -35,10 +40,12 @@ foreach(TARGET ${SOURCES})
   endif()
 endforeach()
 
-find_package(Curses)
-if(CURSES_FOUND)
-  target_link_libraries(winreg-tui ${CURSES_LIBRARIES})
-  target_include_directories(winreg-tui PRIVATE ${CURSES_INCLUDE_DIRS})
+if(ENABLE_DCERPC_FULL)
+  find_package(Curses)
+  if(CURSES_FOUND)
+    target_link_libraries(winreg-tui ${CURSES_LIBRARIES})
+    target_include_directories(winreg-tui PRIVATE ${CURSES_INCLUDE_DIRS})
+  endif()
 endif()
 
 if(NOT MSVC)

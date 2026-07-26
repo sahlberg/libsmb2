@@ -18,6 +18,9 @@
 /* Whether we use gssapi_krb5 or not */
 #cmakedefine HAVE_LIBKRB5 "@HAVE_LIBKRB5@"
 
+/* Define to 1 to build the full DCE/RPC interface set */
+#cmakedefine HAVE_DCERPC_FULL 1
+
 /* Define to 1 if you have the <inttypes.h> header file. */
 #cmakedefine HAVE_INTTYPES_H "@HAVE_INTTYPES_H@"
 

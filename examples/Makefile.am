@@ -9,11 +9,9 @@ noinst_PROGRAMS = dcerpc smb2-cat-async smb2-cat-sync \
 	smb2-raw-stat-async \
 	smb2-readlink \
 	smb2-server-side-copy-sync \
-	smb2-lsa-lookupsids \
 	smb2-lseek-sync \
 	smb2-share-enum \
 	smb2-share-enum-sync \
-	smb2-share-info \
 	smb2-stat-sync \
 	smb2-statvfs-sync \
 	smb2-truncate-sync \
@@ -21,9 +19,16 @@ noinst_PROGRAMS = dcerpc smb2-cat-async smb2-cat-sync \
 	smb2-CMD-FIND	\
 	smb2-server-sync \
 	smb2-notify \
-	smb2-set-security-info \
+	smb2-set-security-info
+
+# Examples that need the full DCE/RPC interface set
+if HAVE_DCERPC_FULL
+noinst_PROGRAMS += \
+	smb2-lsa-lookupsids \
+	smb2-share-info \
 	smb2-winreg-enum \
 	winreg-tui
+endif
 
 AM_CPPFLAGS = \
 	-I$(abs_top_srcdir)/include \
