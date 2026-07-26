@@ -747,3 +747,183 @@ dcerpc_ACCESS_DENIED_ACE_coder(char *name, struct dcerpc_context *dce,
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
                                    ace_mask_sid_fields_coder);
 }
+
+/*
+ * MS-DTYP 2.4.5 ACL
+ *
+ * typedef struct _ACL {
+ *     unsigned char AclRevision;
+ *     unsigned char Sbz1;
+ *     unsigned short AclSize;
+ *     unsigned short AceCount;
+ *     unsigned short Sbz2;
+ * } ACL;
+ * followed by AceCount ACE records (packet form, no NDR size_is).
+ */
+
+static struct dcerpc_uint32_pretty_printer acl_revision_pp = {
+        .fmt = "0x%02x",
+        .bitfields = {
+                { "ACL_REVISION", 0xffffffff, ACL_REVISION },
+                { "ACL_REVISION_DS", 0xffffffff, ACL_REVISION_DS },
+                { NULL, 0, 0 },
+        },
+};
+
+static uint16_t
+acl_compute_size(const ACL *acl)
+{
+        uint16_t size = 8; /* header */
+        uint16_t i;
+
+        if (acl->Aces == NULL) {
+                return size;
+        }
+        for (i = 0; i < acl->AceCount; i++) {
+                size = (uint16_t)(size +
+                        ace_mask_sid_size((const struct ace_mask_sid *)
+                                          &acl->Aces[i]));
+        }
+        return size;
+}
+
+/*
+ * Encode/decode AceCount ACEs packed after the ACL header.
+ * NDR: sequential packet ACEs (no array conformance count).
+ * YAML/JSON: named array "Aces".
+ */
+static int
+acl_aces_coder(char *name, struct dcerpc_context *dce,
+               struct dcerpc_pdu *pdu,
+               struct smb2_iovec *iov, int *offset,
+               void *ptr)
+{
+        ACL *acl = ptr;
+        uint16_t i;
+
+        if (dcerpc_pdu_encoding(pdu) != ENCODING_NDR) {
+                if (acl->AceCount == 0) {
+                        return 0;
+                }
+                if (acl->Aces == NULL) {
+                        return -1;
+                }
+                return dcerpc_carray_coder("Aces", dce, pdu, iov, offset,
+                                           acl->AceCount, acl->Aces,
+                                           (int)sizeof(ACCESS_ALLOWED_ACE),
+                                           ace_mask_sid_fields_coder);
+        }
+
+        /* NDR packet form: ACEs back-to-back, no size_is prefix. */
+        for (i = 0; i < acl->AceCount; i++) {
+                if (ace_mask_sid_fields_coder("Ace", dce, pdu, iov, offset,
+                                              &acl->Aces[i])) {
+                        return -1;
+                }
+        }
+        return 0;
+}
+
+static int
+acl_fields_coder(char *name, struct dcerpc_context *dce,
+                 struct dcerpc_pdu *pdu,
+                 struct smb2_iovec *iov, int *offset,
+                 void *ptr)
+{
+        ACL *acl = ptr;
+        uint16_t ace_count;
+        uint8_t zero = 0;
+
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
+                acl->Sbz1 = 0;
+                acl->Sbz2 = 0;
+                acl->AclSize = acl_compute_size(acl);
+        }
+
+        if (dcerpc_uint8_pp_coder("AclRevision", dce, pdu, iov, offset,
+                                  &acl->AclRevision, &acl_revision_pp)) {
+                return -1;
+        }
+
+        /* Sbz1: wire-only reserved zero */
+        if (dcerpc_pdu_encoding(pdu) == ENCODING_NDR) {
+                if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
+                        zero = 0;
+                        if (ndr_uint8_coder("Sbz1", dce, pdu, iov, offset,
+                                            &zero)) {
+                                return -1;
+                        }
+                } else {
+                        if (ndr_uint8_coder("Sbz1", dce, pdu, iov, offset,
+                                            &acl->Sbz1)) {
+                                return -1;
+                        }
+                }
+                if (dcerpc_uint16_coder("AclSize", dce, pdu, iov, offset,
+                                        &acl->AclSize)) {
+                        return -1;
+                }
+        }
+
+        ace_count = acl->AceCount;
+        if (dcerpc_uint16_coder("AceCount", dce, pdu, iov, offset,
+                                &ace_count)) {
+                return -1;
+        }
+        acl->AceCount = ace_count;
+
+        /* Sbz2: wire-only reserved zero */
+        if (dcerpc_pdu_encoding(pdu) == ENCODING_NDR) {
+                if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
+                        zero = 0;
+                        /*
+                         * Sbz2 is USHORT; write via uint16 with a zero value.
+                         */
+                        {
+                                uint16_t z16 = 0;
+
+                                if (dcerpc_uint16_coder("Sbz2", dce, pdu, iov,
+                                                        offset, &z16)) {
+                                        return -1;
+                                }
+                        }
+                } else {
+                        if (dcerpc_uint16_coder("Sbz2", dce, pdu, iov, offset,
+                                                &acl->Sbz2)) {
+                                return -1;
+                        }
+                }
+        }
+
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && acl->AceCount) {
+                acl->Aces = smb2_alloc_data(dcerpc_get_smb2_context(dce),
+                                            dcerpc_get_pdu_payload(pdu),
+                                            (size_t)acl->AceCount *
+                                            sizeof(ACCESS_ALLOWED_ACE));
+                if (acl->Aces == NULL) {
+                        return -1;
+                }
+        }
+
+        if (acl_aces_coder("Aces", dce, pdu, iov, offset, acl)) {
+                return -1;
+        }
+
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE &&
+            dcerpc_pdu_encoding(pdu) != ENCODING_NDR) {
+                acl->Sbz1 = 0;
+                acl->Sbz2 = 0;
+                acl->AclSize = acl_compute_size(acl);
+        }
+        return 0;
+}
+
+int
+dcerpc_ACL_coder(char *name, struct dcerpc_context *dce,
+                 struct dcerpc_pdu *pdu,
+                 struct smb2_iovec *iov, int *offset,
+                 void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   acl_fields_coder);
+}

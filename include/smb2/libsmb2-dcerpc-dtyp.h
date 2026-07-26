@@ -158,6 +158,45 @@ int dcerpc_ACCESS_DENIED_ACE_coder(char *name, struct dcerpc_context *dce,
                                    struct smb2_iovec *iov, int *offset,
                                    void *ptr);
 
+/*
+ * MS-DTYP 2.4.5 ACL
+ *
+ * Packet form:
+ *   AclRevision (1) Sbz1 (1) AclSize (2)
+ *   AceCount (2) Sbz2 (2)
+ *   followed by AceCount ACE records
+ *
+ * Sbz1, Sbz2, and AclSize are wire-only (omitted from YAML/JSON; AclSize is
+ * derived from the ACE bodies). AceCount is present in text encodings so
+ * the Aces array can be allocated on decode.
+ *
+ * Aces holds Header+Mask+Sid ACEs (allow, deny, and other simple types);
+ * the concrete type is Header.AceType. Object ACEs are not represented yet.
+ */
+#define ACL_REVISION    0x02
+#define ACL_REVISION_DS 0x04
+
+typedef struct _ACL {
+        uint8_t AclRevision;
+        /* Wire-only; always 0. Not present in YAML/JSON. */
+        uint8_t Sbz1;
+        /* Wire-only; size of entire ACL including ACEs. Derived for text. */
+        uint16_t AclSize;
+        uint16_t AceCount;
+        /* Wire-only; always 0. Not present in YAML/JSON. */
+        uint16_t Sbz2;
+        /*
+         * AceCount elements of Header+Mask+Sid form. AceType selects allow
+         * vs deny (and later audit / mandatory label, etc.).
+         */
+        ACCESS_ALLOWED_ACE *Aces;
+} ACL, *PACL;
+
+int dcerpc_ACL_coder(char *name, struct dcerpc_context *dce,
+                     struct dcerpc_pdu *pdu,
+                     struct smb2_iovec *iov, int *offset,
+                     void *ptr);
+
 #ifdef __cplusplus
 }
 #endif
