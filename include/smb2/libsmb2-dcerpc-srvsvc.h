@@ -24,6 +24,7 @@ extern "C" {
 #endif
 
 #include <smb2/libsmb2-dcerpc.h>
+#include <smb2/libsmb2-dcerpc-dtyp.h>
 
 #define SRVSVC_NETRCONNECTIONENUM 0x08
 #define SRVSVC_NETRFILEENUM       0x09
@@ -117,6 +118,7 @@ enum SHARE_INFO_enum {
         SHARE_INFO_0 = 0,
         SHARE_INFO_1 = 1,
         SHARE_INFO_2 = 2,
+        SHARE_INFO_502 = 502,
 };
 
 struct srvsvc_SHARE_INFO_0 {
@@ -177,10 +179,45 @@ int srvsvc_SHARE_INFO_2_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                                         struct smb2_iovec *iov, int *offset,
                                         void *ptr);
 
+/*
+ * MS-SRVS SHARE_INFO_502_I
+ *
+ * Same fields as level 2, plus a self-relative SECURITY_DESCRIPTOR.
+ * On the wire the SD is [size_is(reserved)] unsigned char*; reserved is
+ * wire-only and derived from the SD on encode. YAML/JSON expose
+ * SecurityDescriptor as a nested structured object.
+ */
+struct srvsvc_SHARE_INFO_502 {
+        char *netname;
+        uint32_t type;
+        char *remark;
+        uint32_t permissions;
+        uint32_t max_users;
+        uint32_t current_users;
+        char *path;
+        char *passwd;
+        SECURITY_DESCRIPTOR *security_descriptor;
+};
+int srvsvc_SHARE_INFO_502_coder(char *name, struct dcerpc_context *ctx,
+                                struct dcerpc_pdu *pdu,
+                                struct smb2_iovec *iov, int *offset,
+                                void *ptr);
+
+struct srvsvc_SHARE_INFO_502_CONTAINER {
+        uint32_t EntriesRead;
+        struct srvsvc_SHARE_INFO_502 *share_info_502;
+};
+
+int srvsvc_SHARE_INFO_502_CONTAINER_coder(char *name, struct dcerpc_context *dce,
+                                          struct dcerpc_pdu *pdu,
+                                          struct smb2_iovec *iov, int *offset,
+                                          void *ptr);
+
 union srvsvc_SHARE_ENUM_UNION {
         struct srvsvc_SHARE_INFO_0_CONTAINER Level0;
         struct srvsvc_SHARE_INFO_1_CONTAINER Level1;
         struct srvsvc_SHARE_INFO_2_CONTAINER Level2;
+        struct srvsvc_SHARE_INFO_502_CONTAINER Level502;
 };
 
 struct srvsvc_SHARE_ENUM_STRUCT {
@@ -192,6 +229,7 @@ union srvsvc_SHARE_INFO {
         struct srvsvc_SHARE_INFO_0 ShareInfo0;
         struct srvsvc_SHARE_INFO_1 ShareInfo1;
         struct srvsvc_SHARE_INFO_2 ShareInfo2;
+        struct srvsvc_SHARE_INFO_502 ShareInfo502;
 };
 
 struct srvsvc_SERVER_INFO_100 {

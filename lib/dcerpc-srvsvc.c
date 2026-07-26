@@ -63,6 +63,7 @@
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-dcerpc.h"
+#include "libsmb2-dcerpc-dtyp.h"
 #include "libsmb2-dcerpc-srvsvc.h"
 #include "libsmb2-raw.h"
 #include "libsmb2-private.h"
@@ -533,6 +534,391 @@ srvsvc_SHARE_INFO_2_CONTAINER_coder(char *name, struct dcerpc_context *dce,
         return 0;
 }
 
+/*
+ * SHARE_INFO_502: self-relative SD as [size_is(reserved)] unique byte array.
+ * Blob lives on the PDU payload so deferred unique bodies stay valid.
+ */
+struct srvsvc_sd_blob {
+        uint32_t len;
+        uint8_t *data;
+        SECURITY_DESCRIPTOR **sd_out; /* decode: where to store parsed SD */
+};
+
+/*
+ * Deferred body for unique [size_is] byte array: max_count + bytes.
+ * On decode, parse the self-relative blob into a SECURITY_DESCRIPTOR.
+ */
+static int
+srvsvc_sd_blob_body_coder(char *name, struct dcerpc_context *dce,
+                          struct dcerpc_pdu *pdu,
+                          struct smb2_iovec *iov, int *offset,
+                          void *ptr)
+{
+        struct srvsvc_sd_blob *blob = ptr;
+        uint32_t max_count;
+        uint32_t i;
+
+        if (dcerpc_pdu_encoding(pdu) != ENCODING_NDR) {
+                return 0;
+        }
+        if (dcerpc_get_cr(pdu)) {
+                return 0;
+        }
+
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
+                max_count = blob->len;
+                if (dcerpc_uint32_coder("MaxCount", dce, pdu, iov, offset,
+                                        &max_count)) {
+                        return -1;
+                }
+                for (i = 0; i < max_count; i++) {
+                        uint8_t byte = blob->data ? blob->data[i] : 0;
+
+                        if (ndr_uint8_coder("Data", dce, pdu, iov, offset,
+                                            &byte)) {
+                                return -1;
+                        }
+                }
+                return 0;
+        }
+
+        /* DECODE */
+        max_count = 0;
+        if (dcerpc_uint32_coder("MaxCount", dce, pdu, iov, offset, &max_count)) {
+                return -1;
+        }
+        if (max_count > 0x100000) {
+                return -1;
+        }
+        blob->len = max_count;
+        if (max_count == 0) {
+                blob->data = NULL;
+                if (blob->sd_out) {
+                        *blob->sd_out = NULL;
+                }
+                return 0;
+        }
+        blob->data = smb2_alloc_data(dcerpc_get_smb2_context(dce),
+                                     dcerpc_get_pdu_payload(pdu),
+                                     max_count);
+        if (blob->data == NULL) {
+                return -1;
+        }
+        for (i = 0; i < max_count; i++) {
+                if (ndr_uint8_coder("Data", dce, pdu, iov, offset,
+                                    &blob->data[i])) {
+                        return -1;
+                }
+        }
+
+        if (blob->sd_out) {
+                struct smb2_iovec sd_iov;
+                int sd_off = 0;
+                SECURITY_DESCRIPTOR *sd;
+
+                sd = smb2_alloc_data(dcerpc_get_smb2_context(dce),
+                                     dcerpc_get_pdu_payload(pdu),
+                                     sizeof(SECURITY_DESCRIPTOR));
+                if (sd == NULL) {
+                        return -1;
+                }
+                sd_iov.buf = blob->data;
+                sd_iov.len = max_count;
+                if (dcerpc_SECURITY_DESCRIPTOR_coder("SecurityDescriptor", dce,
+                                                     pdu, &sd_iov, &sd_off,
+                                                     sd)) {
+                        return -1;
+                }
+                *blob->sd_out = sd;
+        }
+        return 0;
+}
+
+/*
+ * Serialize a SECURITY_DESCRIPTOR to a self-relative byte buffer on the
+ * parent PDU payload. Used so Reserved can be written before the unique
+ * pointer body is deferred.
+ */
+static int
+srvsvc_sd_to_bytes(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+                   SECURITY_DESCRIPTOR *sd, uint8_t **bytes, uint32_t *len)
+{
+        struct smb2_iovec iov;
+        uint8_t *buf;
+        int offset = 0;
+        const int cap = 65536;
+
+        buf = smb2_alloc_data(dcerpc_get_smb2_context(dce),
+                              dcerpc_get_pdu_payload(pdu), (size_t)cap);
+        if (buf == NULL) {
+                return -1;
+        }
+        memset(buf, 0, (size_t)cap);
+        iov.buf = buf;
+        iov.len = (size_t)cap;
+        if (dcerpc_SECURITY_DESCRIPTOR_coder("SecurityDescriptor", dce, pdu,
+                                             &iov, &offset, sd)) {
+                return -1;
+        }
+        *bytes = buf;
+        *len = (uint32_t)offset;
+        return 0;
+}
+
+/*
+ * typedef struct _SHARE_INFO_502_I {
+ *   [string] WCHAR* shi502_netname;
+ *   DWORD shi502_type;
+ *   [string] WCHAR* shi502_remark;
+ *   DWORD shi502_permissions;
+ *   DWORD shi502_max_uses;
+ *   DWORD shi502_current_uses;
+ *   [string] WCHAR* shi502_path;
+ *   [string] WCHAR* shi502_passwd;
+ *   DWORD shi502_reserved;
+ *   [size_is(shi502_reserved)] unsigned char* shi502_security_descriptor;
+ * } SHARE_INFO_502_I;
+ */
+int
+srvsvc_SHARE_INFO_502_coder(char *name, struct dcerpc_context *dce,
+                            struct dcerpc_pdu *pdu,
+                            struct smb2_iovec *iov, int *offset,
+                            void *ptr)
+{
+        struct srvsvc_SHARE_INFO_502 *nsi = ptr;
+        uint32_t reserved = 0;
+        struct srvsvc_sd_blob *blob = NULL;
+
+        if (dcerpc_ptr_coder("NetName", dce, pdu, iov, offset, &nsi->netname,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder_pp("Type", dce, pdu, iov, offset, &nsi->type,
+                                   &share_type_pp)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("Remark", dce, pdu, iov, offset, &nsi->remark,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder_pp("Permissions", dce, pdu, iov, offset,
+                                   &nsi->permissions, &share_access_pp)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("MaxUsers", dce, pdu, iov, offset,
+                                &nsi->max_users)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("CurrentUsers", dce, pdu, iov, offset,
+                                &nsi->current_users)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("Path", dce, pdu, iov, offset, &nsi->path,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("Passwd", dce, pdu, iov, offset, &nsi->passwd,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+
+        if (dcerpc_pdu_encoding(pdu) != ENCODING_NDR) {
+                /*
+                 * YAML/JSON: no Reserved; SecurityDescriptor is an optional
+                 * nested structured object.
+                 */
+                if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
+                        if (nsi->security_descriptor) {
+                                if (dcerpc_SECURITY_DESCRIPTOR_coder(
+                                            "SecurityDescriptor", dce, pdu, iov,
+                                            offset, nsi->security_descriptor)) {
+                                        return -1;
+                                }
+                        }
+                        return 0;
+                }
+                /* DECODE optional SecurityDescriptor */
+                if (dcerpc_pdu_encoding(pdu) == ENCODING_YAML) {
+                        if (dcerpc_pdu_yaml_key(pdu) &&
+                            !strcmp(dcerpc_pdu_yaml_key(pdu),
+                                    "SecurityDescriptor")) {
+                                nsi->security_descriptor = smb2_alloc_data(
+                                        dcerpc_get_smb2_context(dce),
+                                        dcerpc_get_pdu_payload(pdu),
+                                        sizeof(SECURITY_DESCRIPTOR));
+                                if (nsi->security_descriptor == NULL) {
+                                        return -1;
+                                }
+                                if (dcerpc_SECURITY_DESCRIPTOR_coder(
+                                            "SecurityDescriptor", dce, pdu, iov,
+                                            offset, nsi->security_descriptor)) {
+                                        return -1;
+                                }
+                        }
+                } else {
+                        int rc = dcerpc_json_next_key(pdu, iov, offset);
+                        char *jk;
+
+                        if (rc < 0) {
+                                return -1;
+                        }
+                        if (rc == 0) {
+                                jk = dcerpc_pdu_json_key(pdu);
+                                if (jk && !strcmp(jk, "SecurityDescriptor")) {
+                                        nsi->security_descriptor = smb2_alloc_data(
+                                                dcerpc_get_smb2_context(dce),
+                                                dcerpc_get_pdu_payload(pdu),
+                                                sizeof(SECURITY_DESCRIPTOR));
+                                        if (nsi->security_descriptor == NULL) {
+                                                return -1;
+                                        }
+                                        if (dcerpc_SECURITY_DESCRIPTOR_coder(
+                                                    "SecurityDescriptor", dce,
+                                                    pdu, iov, offset,
+                                                    nsi->security_descriptor)) {
+                                                return -1;
+                                        }
+                                }
+                        }
+                }
+                return 0;
+        }
+
+        /* NDR: Reserved + unique [size_is(Reserved)] SD bytes */
+        if (!dcerpc_get_cr(pdu) &&
+            dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&
+            nsi->security_descriptor) {
+                blob = smb2_alloc_data(dcerpc_get_smb2_context(dce),
+                                       dcerpc_get_pdu_payload(pdu),
+                                       sizeof(*blob));
+                if (blob == NULL) {
+                        return -1;
+                }
+                if (srvsvc_sd_to_bytes(dce, pdu, nsi->security_descriptor,
+                                       &blob->data, &blob->len)) {
+                        return -1;
+                }
+                reserved = blob->len;
+        }
+
+        if (dcerpc_uint32_coder("Reserved", dce, pdu, iov, offset, &reserved)) {
+                return -1;
+        }
+
+        if (dcerpc_get_cr(pdu)) {
+                return 0;
+        }
+
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {
+                blob = smb2_alloc_data(dcerpc_get_smb2_context(dce),
+                                       dcerpc_get_pdu_payload(pdu),
+                                       sizeof(*blob));
+                if (blob == NULL) {
+                        return -1;
+                }
+                blob->sd_out = &nsi->security_descriptor;
+                blob->len = reserved;
+                if (reserved == 0) {
+                        if (dcerpc_ptr_coder("SecurityDescriptor", dce, pdu, iov,
+                                             offset, NULL, PTR_UNIQUE,
+                                             srvsvc_sd_blob_body_coder)) {
+                                return -1;
+                        }
+                        nsi->security_descriptor = NULL;
+                        return 0;
+                }
+                if (dcerpc_ptr_coder("SecurityDescriptor", dce, pdu, iov, offset,
+                                     blob, PTR_UNIQUE,
+                                     srvsvc_sd_blob_body_coder)) {
+                        return -1;
+                }
+                return 0;
+        }
+
+        /* ENCODE */
+        if (reserved == 0 || blob == NULL) {
+                if (dcerpc_ptr_coder("SecurityDescriptor", dce, pdu, iov, offset,
+                                     NULL, PTR_UNIQUE,
+                                     srvsvc_sd_blob_body_coder)) {
+                        return -1;
+                }
+                return 0;
+        }
+        if (dcerpc_ptr_coder("SecurityDescriptor", dce, pdu, iov, offset,
+                             blob, PTR_UNIQUE, srvsvc_sd_blob_body_coder)) {
+                return -1;
+        }
+        return 0;
+}
+
+int
+srvsvc_SHARE_INFO_502_STRUCT_coder(char *name, struct dcerpc_context *dce,
+                                   struct dcerpc_pdu *pdu,
+                                   struct smb2_iovec *iov, int *offset,
+                                   void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_SHARE_INFO_502_coder);
+}
+
+static int
+srvsvc_SHARE_INFO_502_carray_coder(char *name, struct dcerpc_context *dce,
+                                   struct dcerpc_pdu *pdu,
+                                   struct smb2_iovec *iov, int *offset,
+                                   void *ptr)
+{
+        return dcerpc_carray_coder("ShareInfo502", dce, pdu, iov, offset,
+                                   dcerpc_get_size_is(pdu), ptr,
+                                   sizeof(struct srvsvc_SHARE_INFO_502),
+                                   srvsvc_SHARE_INFO_502_STRUCT_coder);
+}
+
+/*
+ * typedef struct _SHARE_INFO_502_CONTAINER {
+ *       DWORD EntriesRead;
+ *       [size_is(EntriesRead)] LPSHARE_INFO_502_I Buffer;
+ * } SHARE_INFO_502_CONTAINER;
+ */
+int
+srvsvc_SHARE_INFO_502_CONTAINER_coder(char *name, struct dcerpc_context *dce,
+                                      struct dcerpc_pdu *pdu,
+                                      struct smb2_iovec *iov, int *offset,
+                                      void *ptr)
+{
+        struct srvsvc_SHARE_INFO_502_CONTAINER *ctr = ptr;
+
+        if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset,
+                                &ctr->EntriesRead)) {
+                return -1;
+        }
+        if (ctr->EntriesRead) {
+                dcerpc_set_size_is(pdu, ctr->EntriesRead);
+        }
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && ctr->EntriesRead) {
+                if (ctr->share_info_502 == NULL) {
+                        size_t esize = sizeof(struct srvsvc_SHARE_INFO_502);
+
+                        if (ctr->EntriesRead > SIZE_MAX / esize) {
+                                return -1;
+                        }
+                        ctr->share_info_502 = smb2_alloc_data(
+                                dcerpc_get_smb2_context(dce),
+                                dcerpc_get_pdu_payload(pdu),
+                                (size_t)ctr->EntriesRead * esize);
+                        if (ctr->share_info_502 == NULL) {
+                                return -1;
+                        }
+                }
+        }
+        if (dcerpc_ptr_coder("ShareInfo502", dce, pdu, iov, offset,
+                             ctr->share_info_502,
+                             PTR_UNIQUE, srvsvc_SHARE_INFO_502_carray_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
 
 /*
  * typedef [switch_type(DWORD)] union _SHARE_ENUM_UNION {
@@ -568,6 +954,13 @@ srvsvc_SHARE_ENUM_UNION_coder(char *name, struct dcerpc_context *dce,
         case 2:
                 if (dcerpc_ptr_coder("ShareInfo2Container", dce, pdu, iov, offset, &info->Level2,
                                      PTR_UNIQUE, srvsvc_SHARE_INFO_2_CONTAINER_coder)) {
+                        return -1;
+                }
+                break;
+        case 502:
+                if (dcerpc_ptr_coder("ShareInfo502Container", dce, pdu, iov, offset,
+                                     &info->Level502,
+                                     PTR_UNIQUE, srvsvc_SHARE_INFO_502_CONTAINER_coder)) {
                         return -1;
                 }
                 break;
@@ -655,6 +1048,13 @@ srvsvc_SHARE_INFO_coder(char *name, struct dcerpc_context *dce,
         case 2:
                 if (dcerpc_ptr_coder("ShareInfo2", dce, pdu, iov, offset, &info->ShareInfo2,
                                      PTR_UNIQUE, srvsvc_SHARE_INFO_2_STRUCT_coder)) {
+                        return -1;
+                }
+                break;
+        case 502:
+                if (dcerpc_ptr_coder("ShareInfo502", dce, pdu, iov, offset,
+                                     &info->ShareInfo502,
+                                     PTR_UNIQUE, srvsvc_SHARE_INFO_502_STRUCT_coder)) {
                         return -1;
                 }
                 break;
