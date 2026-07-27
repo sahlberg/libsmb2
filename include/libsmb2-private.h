@@ -686,19 +686,20 @@ int dcerpc_set_uint8(struct dcerpc_context *ctx, struct smb2_iovec *iov,
 struct dcerpc_pdu;
 int dcerpc_pdu_direction(struct dcerpc_pdu *pdu);
 enum dcerpc_encoding dcerpc_pdu_encoding(struct dcerpc_pdu *pdu);
-char *dcerpc_pdu_yaml_key(struct dcerpc_pdu *pdu);
-char *dcerpc_pdu_yaml_val(struct dcerpc_pdu *pdu);
-void dcerpc_pdu_clear_yaml_key(struct dcerpc_pdu *pdu);
-char *dcerpc_pdu_json_key(struct dcerpc_pdu *pdu);
-int dcerpc_json_next_key(struct dcerpc_pdu *pdu, struct smb2_iovec *iov,
-                         int *offset);
 int dcerpc_pdu_is_conformance_run(struct dcerpc_pdu *pdu);
 void dcerpc_pdu_raise_max_alignment(struct dcerpc_pdu *pdu, int alignment);
 int dcerpc_get_cr(struct dcerpc_pdu *pdu);
 
 int dcerpc_align_3264(struct dcerpc_context *ctx, int offset);
 
-/* YAML/JSON helpers used by MS-DTYP and other coders outside dcerpc.c */
+/* YAML/JSON helpers — full libdcerpc only (not minimal libsmb2 share enum) */
+#ifdef HAVE_DCERPC_FULL
+char *dcerpc_pdu_yaml_key(struct dcerpc_pdu *pdu);
+char *dcerpc_pdu_yaml_val(struct dcerpc_pdu *pdu);
+void dcerpc_pdu_clear_yaml_key(struct dcerpc_pdu *pdu);
+char *dcerpc_pdu_json_key(struct dcerpc_pdu *pdu);
+int dcerpc_json_next_key(struct dcerpc_pdu *pdu, struct smb2_iovec *iov,
+                         int *offset);
 void yaml_print_preamble(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                          struct smb2_iovec *iov, int *offset);
 int yaml_next_kv(struct dcerpc_pdu *pdu, struct smb2_iovec *iov, int *offset);
@@ -708,6 +709,7 @@ int json_append_quoted(struct smb2_iovec *iov, int *offset, const char *s);
 int json_parse_string(struct smb2_iovec *iov, int *offset, char **start);
 int json_expect_key(struct dcerpc_pdu *pdu, struct smb2_iovec *iov, int *offset,
                     const char *name);
+#endif
 
 struct connect_data;                                           /* defined in libsmb2.c */
 void free_c_data(struct smb2_context*, struct connect_data*);  /* defined in libsmb2.c */

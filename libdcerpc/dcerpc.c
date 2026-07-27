@@ -304,17 +304,18 @@ struct dcerpc_pdu {
          */
         uint16_t unicode_max_length;
 
-        /* YAML */
+#ifdef HAVE_DCERPC_FULL
+        /* YAML/JSON text codecs — full libdcerpc only */
         int yaml_indentation;
         int yaml_array_prefix;
         int yaml_array_item; /* 1 while encoding fields of a list item after "- " */
         char *yaml_key;
         char *yaml_val;
 
-        /* JSON */
         int json_indentation;
         int json_need_comma; /* 1 if a comma is required before the next value */
         char *json_key;
+#endif
 };
 
 /*
@@ -364,6 +365,7 @@ int ndr_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *p
 int ndr_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                    struct smb2_iovec *iov, int *offset, dcerpc_uuid_t *uuid);
 
+#ifdef HAVE_DCERPC_FULL
 /*
  * YAML
  */
@@ -437,6 +439,7 @@ static int json_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_p
                          struct smb2_iovec *iov,
                          int *offset, void *ptr,
                          dcerpc_coder coder);
+#endif /* HAVE_DCERPC_FULL */
 
 
 int
@@ -712,6 +715,14 @@ dcerpc_allocate_pdu(struct dcerpc_context *dce, enum dcerpc_encoding encoding,
 {
         struct dcerpc_pdu *pdu;
 
+#ifndef HAVE_DCERPC_FULL
+        if (encoding == ENCODING_YAML || encoding == ENCODING_JSON) {
+                smb2_set_error(dce->smb2,
+                               "YAML/JSON DCE/RPC encodings require libdcerpc");
+                return NULL;
+        }
+#endif
+
         pdu = calloc(1, sizeof(struct dcerpc_pdu));
         if (pdu == NULL) {
                 smb2_set_error(dce->smb2, "Failed to allocate DCERPC PDU");
@@ -757,10 +768,14 @@ dcerpc_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         switch(pdu->encoding) {
         case ENCODING_NDR:
                 return ndr_do_coder(name, ctx, pdu, iov, offset, ptr, coder);
+#ifdef HAVE_DCERPC_FULL
         case ENCODING_YAML:
                 return yaml_do_coder(name, ctx, pdu, iov, offset, ptr, coder);
         case ENCODING_JSON:
                 return json_do_coder(name, ctx, pdu, iov, offset, ptr, coder);
+#endif
+        default:
+                return -1;
         };
         return -1;
 }
@@ -791,10 +806,14 @@ dcerpc_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *p
         switch(pdu->encoding) {
         case ENCODING_NDR:
                 return ndr_uint32_coder(name, ctx, pdu, iov, offset, ptr);
+#ifdef HAVE_DCERPC_FULL
         case ENCODING_YAML:
                 return yaml_uint32_coder(name, ctx, pdu, iov, offset, ptr);
         case ENCODING_JSON:
                 return json_uint32_coder(name, ctx, pdu, iov, offset, ptr);
+#endif
+        default:
+                return -1;
         }
         return -1;
 }
@@ -806,10 +825,14 @@ int dcerpc_uint32_coder_pp(char *name, struct dcerpc_context *ctx, struct dcerpc
         switch(pdu->encoding) {
         case ENCODING_NDR:
                 return ndr_uint32_coder(name, ctx, pdu, iov, offset, ptr);
+#ifdef HAVE_DCERPC_FULL
         case ENCODING_YAML:
                 return yaml_uint32_coder_pp(name, ctx, pdu, iov, offset, ptr, pp);
         case ENCODING_JSON:
                 return json_uint32_coder_pp(name, ctx, pdu, iov, offset, ptr, pp);
+#endif
+        default:
+                return -1;
         }
         return -1;
 }
@@ -821,10 +844,14 @@ dcerpc_uint64_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *p
         switch(pdu->encoding) {
         case ENCODING_NDR:
                 return ndr_uint64_coder(name, ctx, pdu, iov, offset, ptr);
+#ifdef HAVE_DCERPC_FULL
         case ENCODING_YAML:
                 return yaml_uint64_coder(name, ctx, pdu, iov, offset, ptr);
         case ENCODING_JSON:
                 return json_uint64_coder(name, ctx, pdu, iov, offset, ptr);
+#endif
+        default:
+                return -1;
         }
         return -1;
 }
@@ -836,10 +863,14 @@ dcerpc_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *p
         switch(pdu->encoding) {
         case ENCODING_NDR:
                 return ndr_uint16_coder(name, ctx, pdu, iov, offset, ptr);
+#ifdef HAVE_DCERPC_FULL
         case ENCODING_YAML:
                 return yaml_uint16_coder(name, ctx, pdu, iov, offset, ptr);
         case ENCODING_JSON:
                 return json_uint16_coder(name, ctx, pdu, iov, offset, ptr);
+#endif
+        default:
+                return -1;
         }
         return -1;
 }
@@ -854,12 +885,16 @@ dcerpc_carray_coder(char *name, struct dcerpc_context *ctx,
         case ENCODING_NDR:
                 return ndr_carray_coder(name, ctx, pdu, iov, offset,
                                         num, ptr, elem_size, coder);
+#ifdef HAVE_DCERPC_FULL
         case ENCODING_YAML:
                 return yaml_carray_coder(name, ctx, pdu, iov, offset,
                                          num, ptr, elem_size, coder);
         case ENCODING_JSON:
                 return json_carray_coder(name, ctx, pdu, iov, offset,
                                          num, ptr, elem_size, coder);
+#endif
+        default:
+                return -1;
         }
         return -1;
 }
@@ -873,12 +908,16 @@ int dcerpc_union_coder(char *name, struct dcerpc_context *ctx,
         case ENCODING_NDR:
                 return ndr_union_coder(name, ctx, pdu, iov, offset,
                                        switch_is, ptr, coder);
+#ifdef HAVE_DCERPC_FULL
         case ENCODING_YAML:
                 return yaml_union_coder(name, ctx, pdu, iov, offset,
                                         switch_is, ptr, coder);
         case ENCODING_JSON:
                 return json_union_coder(name, ctx, pdu, iov, offset,
                                         switch_is, ptr, coder);
+#endif
+        default:
+                return -1;
         }
         return -1;
 }
@@ -892,12 +931,16 @@ int dcerpc_struct_coder(char *name, struct dcerpc_context *ctx,
         case ENCODING_NDR:
                 return ndr_struct_coder(name, ctx, pdu, iov, offset,
                                         ptr, coder);
+#ifdef HAVE_DCERPC_FULL
         case ENCODING_YAML:
                 return yaml_struct_coder(name, ctx, pdu, iov, offset,
                                          ptr, coder);
         case ENCODING_JSON:
                 return json_struct_coder(name, ctx, pdu, iov, offset,
                                          ptr, coder);
+#endif
+        default:
+                return -1;
         }
         return -1;
 }
@@ -911,12 +954,16 @@ dcerpc_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
         case ENCODING_NDR:
                 return ndr_ptr_coder(name, dce, pdu, iov, offset, ptr,
                                      type, coder);
+#ifdef HAVE_DCERPC_FULL
         case ENCODING_YAML:
                 return yaml_ptr_coder(name, dce, pdu, iov, offset, ptr,
                                       type, coder);
         case ENCODING_JSON:
                 return json_ptr_coder(name, dce, pdu, iov, offset, ptr,
                                       type, coder);
+#endif
+        default:
+                return -1;
         }
         return -1;
 }
@@ -929,10 +976,14 @@ dcerpc_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pd
         switch(pdu->encoding) {
         case ENCODING_NDR:
                 return ndr_utf16_coder(name, ctx, pdu, iov, offset, ptr);
+#ifdef HAVE_DCERPC_FULL
         case ENCODING_YAML:
                 return yaml_utf16_coder(name, ctx, pdu, iov, offset, ptr);
         case ENCODING_JSON:
                 return json_utf16_coder(name, ctx, pdu, iov, offset, ptr);
+#endif
+        default:
+                return -1;
         }
         return -1;
 }
@@ -944,10 +995,14 @@ dcerpc_utf16z_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *p
         switch(pdu->encoding) {
         case ENCODING_NDR:
                 return ndr_utf16z_coder(name, ctx, pdu, iov, offset, ptr);
+#ifdef HAVE_DCERPC_FULL
         case ENCODING_YAML:
                 return yaml_utf16_coder(name, ctx, pdu, iov, offset, ptr);
         case ENCODING_JSON:
                 return json_utf16_coder(name, ctx, pdu, iov, offset, ptr);
+#endif
+        default:
+                return -1;
         }
         return -1;
 }
@@ -1801,6 +1856,7 @@ dcerpc_pdu_encoding(struct dcerpc_pdu *pdu)
         return pdu->encoding;
 }
 
+#ifdef HAVE_DCERPC_FULL
 char *
 dcerpc_pdu_yaml_key(struct dcerpc_pdu *pdu)
 {
@@ -1824,6 +1880,7 @@ dcerpc_pdu_json_key(struct dcerpc_pdu *pdu)
 {
         return pdu->json_key;
 }
+#endif /* HAVE_DCERPC_FULL */
 
 int
 dcerpc_pdu_is_conformance_run(struct dcerpc_pdu *pdu)
@@ -1947,6 +2004,7 @@ dcerpc_context_handle_coder(char *name, struct dcerpc_context *dce,
                         return -1;
                 }
                 return 0;
+#ifdef HAVE_DCERPC_FULL
         case ENCODING_YAML:
                 if (yaml_uint32_coder("ContextHandleAttributes", dce, pdu, iov, offset, &handle->context_handle_attributes)) {
                         return -1;
@@ -1965,6 +2023,9 @@ dcerpc_context_handle_coder(char *name, struct dcerpc_context *dce,
                         return -1;
                 }
                 return 0;
+#endif
+        default:
+                return -1;
         }
         return 0;
 }
@@ -1997,10 +2058,12 @@ _dcerpc_RPC_UNICODE_STRING_coder(char *name, struct dcerpc_context *dce,
          * MaxLength must not run for text encodings: align would skip past
          * the current NUL in the text buffer and truncate the visible output.
          */
+#ifdef HAVE_DCERPC_FULL
         if (dcerpc_pdu_encoding(pdu) == ENCODING_YAML ||
             dcerpc_pdu_encoding(pdu) == ENCODING_JSON) {
                 return dcerpc_utf16_coder(name, dce, pdu, iov, offset, ptr);
         }
+#endif
 
 /* TODO conformance split
  * during the conformance run we need to do the alignment in all the
@@ -2786,6 +2849,7 @@ ndr_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 /*
  * YAML
  */
+#ifdef HAVE_DCERPC_FULL
 void
 yaml_print_preamble(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                     struct smb2_iovec *iov, int *offset)
@@ -4020,4 +4084,4 @@ json_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 return ret;
         }
 }
-
+#endif /* HAVE_DCERPC_FULL: YAML/JSON text codecs */
