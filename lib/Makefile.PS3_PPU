@@ -64,7 +64,10 @@ export OFILES	:=	$(CFILES:.c=.o) \
 
 export BINFILES	:=	$(BINFILES:.bin=.bin.h)
 
+# -I$(CURDIR) so libsmb2-dcerpc*.c wrappers that #include ../libdcerpc/*.c
+# can still resolve private headers (compat.h, etc.) from lib/.
 export INCLUDES	=	$(foreach dir,$(INCLUDE),-I$(CURDIR)/$(dir)) \
+					-I$(CURDIR) \
 					-I$(CURDIR)/$(BUILD) -I$(PSL1GHT)/ppu/include -I$(PORTLIBS)/include
 
 .PHONY: $(BUILD) install clean shader
