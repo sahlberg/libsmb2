@@ -25,25 +25,9 @@ AC_ARG_ENABLE([examples],
 AM_CONDITIONAL([ENABLE_EXAMPLES],
                [test "$enable_examples" = "yes"])
 
-dnl  Full DCE/RPC interface set (lsa, winreg, wkssvc, all srvsvc ops).
-dnl  Default ON for full-size platforms (Linux, Windows, ...). Use
-dnl  --disable-dcerpc-full for a smaller build with only NetrShareEnum 0/1/2.
-dnl  Embedded platform toolchains use cmake and always stay minimal.
-AC_ARG_ENABLE([dcerpc-full],
-              [AS_HELP_STRING([--disable-dcerpc-full],
-                              [Build minimal DCE/RPC only (NetrShareEnum
-                               levels 0/1/2); default is the full interface set])],
-              [], [enable_dcerpc_full=yes])
-
-AS_IF([test "x$enable_dcerpc_full" = "xyes"], [
-    AC_DEFINE([HAVE_DCERPC_FULL], [1],
-              [Define to 1 to build the full DCE/RPC interface set])
-    AC_MSG_NOTICE([Build with full DCE/RPC interfaces])
-], [
-    AC_MSG_NOTICE([Build with minimal DCE/RPC (NetrShareEnum levels 0/1/2 only)])
-])
-AM_CONDITIONAL([HAVE_DCERPC_FULL],
-               [test "x$enable_dcerpc_full" = "xyes"])
+dnl  Full DCE/RPC is built as a separate library (libdcerpc) that depends on
+dnl  libsmb2 for transport. libsmb2 keeps only NetrShareEnum levels 0/1/2
+dnl  with libsmb2_-prefixed internal symbols.
 
 AC_ARG_WITH([libkrb5],
             [AS_HELP_STRING([--without-libkrb5],
@@ -196,9 +180,10 @@ AC_CONFIG_FILES([
     examples/Makefile
     include/Makefile
     lib/Makefile
+    libdcerpc/Makefile
     tests/Makefile
     utils/Makefile
 ])
 
-AC_CONFIG_FILES([libsmb2.pc])
+AC_CONFIG_FILES([libsmb2.pc libdcerpc.pc])
 AC_OUTPUT

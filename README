@@ -28,6 +28,22 @@ This is a low level API that provides direct access to the SMB2 PDUs
 and data structures.
 This API is described in libsmb2-raw.h
 
+DCE/RPC (libdcerpc)
+===================
+Full DCE/RPC support (named-pipe transport over SMB2, NDR/YAML/JSON coders,
+srvsvc/lsa/winreg/wkssvc) is provided by a separate library, **libdcerpc**
+(sources under `libdcerpc/`), which depends on libsmb2 for transport.
+
+  Link with:  -ldcerpc -lsmb2
+  pkg-config: libdcerpc
+
+libsmb2 still provides high-level share enumeration only
+(smb2_share_enum_async / smb2_share_enum_sync for NetrShareEnum levels 0/1/2).
+Internal DCE/RPC symbols used for that path are prefixed with libsmb2_ so
+applications can link both libraries without symbol conflicts.
+
+Public DCE/RPC headers remain under include/smb2/ (libsmb2-dcerpc*.h).
+
 Libsmb2 implements a synchronous API for running an SMB server. You could
 run an async server if you implement the main loop yourself however
 

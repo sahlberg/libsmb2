@@ -1,6 +1,7 @@
 smb2dir = $(includedir)/smb2
 dist_smb2_HEADERS = \
 	smb2/libsmb2.h \
+	smb2/libsmb2-share-enum.h \
 	smb2/libsmb2-dcerpc.h \
 	smb2/libsmb2-dcerpc-dtyp.h \
 	smb2/libsmb2-dcerpc-lsa.h \

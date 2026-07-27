@@ -1,0 +1,14 @@
+# libdcerpc pkg-config file
+
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+
+Name: libdcerpc
+Description: DCE/RPC client library (SMB2 named-pipe transport via libsmb2)
+Version: @VERSION@
+Requires: libsmb2
+Conflicts:
+Libs: -L${libdir} -ldcerpc
+Cflags: -I${includedir}

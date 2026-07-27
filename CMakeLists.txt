@@ -62,8 +62,8 @@ endif()
       list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
   endif()
 
-  # Embedded platforms always build minimal DCE/RPC (NetrShareEnum 0/1/2 only).
-  # Full-size platforms (Linux, Windows, macOS, ...) default to the full set.
+  # Embedded platforms: libsmb2 only (share-enum NetrShareEnum 0/1/2).
+  # Full DCE/RPC is a separate library (libdcerpc) on full-size platforms.
   set(_SMB2_EMBEDDED_DCERPC FALSE)
   if(ESP_PLATFORM OR PICO_BOARD OR IOP OR BUILD_IRX OR EE OR PS2 OR PS4 OR VITA)
     set(_SMB2_EMBEDDED_DCERPC TRUE)
@@ -72,18 +72,16 @@ endif()
   endif()
 
   if(_SMB2_EMBEDDED_DCERPC)
-    set(ENABLE_DCERPC_FULL OFF)
-    message(STATUS "Embedded platform: minimal DCE/RPC only (NetrShareEnum levels 0/1/2)")
+    set(ENABLE_LIBDCERPC OFF)
+    message(STATUS "Embedded platform: libsmb2 only (minimal DCE/RPC share enum)")
   else()
     if(NOT ESP_PLATFORM)
-      option(ENABLE_DCERPC_FULL "Enable full DCE/RPC interface set (OFF for smaller builds: NetrShareEnum 0/1/2 only)" ON)
+      option(ENABLE_LIBDCERPC "Build libdcerpc (full DCE/RPC; depends on libsmb2)" ON)
     endif()
-    if(ENABLE_DCERPC_FULL)
-      set(HAVE_DCERPC_FULL 1)
-      add_definitions(-DHAVE_DCERPC_FULL)
-      message(STATUS "Build with full DCE/RPC interfaces")
+    if(ENABLE_LIBDCERPC)
+      message(STATUS "Build libdcerpc (full DCE/RPC interfaces)")
     else()
-      message(STATUS "Build with minimal DCE/RPC (NetrShareEnum levels 0/1/2 only)")
+      message(STATUS "libdcerpc disabled; libsmb2 keeps NetrShareEnum 0/1/2 only")
     endif()
   endif()
 
@@ -139,13 +137,15 @@ endif()
       set(SYMS_FILE_PATH "${PROJECT_SOURCE_DIR}/lib/libsmb2.syms")
       set(DEF_FILE_PATH "${PROJECT_BINARY_DIR}/lib/libsmb2.def")
       file(READ ${SYMS_FILE_PATH} EXPORT_SYMBOLS)
-      if(ENABLE_DCERPC_FULL)
-        file(READ "${PROJECT_SOURCE_DIR}/lib/libsmb2-dcerpc-full.syms" EXPORT_SYMBOLS_FULL)
-        set(EXPORT_SYMBOLS "${EXPORT_SYMBOLS}\n${EXPORT_SYMBOLS_FULL}")
-      endif()
       file(WRITE ${DEF_FILE_PATH} "LIBRARY smb2\nEXPORTS\n\n${EXPORT_SYMBOLS}")
       # Pass def file to the linker
       set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /DEF:${DEF_FILE_PATH}")
+      if(ENABLE_LIBDCERPC)
+        set(DCERPC_SYMS_FILE_PATH "${PROJECT_SOURCE_DIR}/libdcerpc/libdcerpc.syms")
+        set(DCERPC_DEF_FILE_PATH "${PROJECT_BINARY_DIR}/libdcerpc/libdcerpc.def")
+        file(READ ${DCERPC_SYMS_FILE_PATH} DCERPC_EXPORT_SYMBOLS)
+        file(WRITE ${DCERPC_DEF_FILE_PATH} "LIBRARY dcerpc\nEXPORTS\n\n${DCERPC_EXPORT_SYMBOLS}")
+      endif()
     endif()
 
     if(CMAKE_SYSTEM_NAME MATCHES Windows)
@@ -205,11 +205,14 @@ endif()
     endif()
 
 
+    add_subdirectory(lib)
+    if(ENABLE_LIBDCERPC)
+      add_subdirectory(libdcerpc)
+    endif()
+
     if(ENABLE_EXAMPLES)
       add_subdirectory(examples)
     endif()
-
-    add_subdirectory(lib)
 
   if(NOT PICO_BOARD OR ESP_PLATFORM)
       include(CMakePackageConfigHelpers)
@@ -219,6 +222,10 @@ endif()
     if(NOT IOP AND NOT BUILD_IRX)
       configure_file(cmake/libsmb2.pc.cmake
                   ${CMAKE_CURRENT_BINARY_DIR}/libsmb2.pc @ONLY)
+      if(ENABLE_LIBDCERPC)
+        configure_file(cmake/libdcerpc.pc.cmake
+                    ${CMAKE_CURRENT_BINARY_DIR}/libdcerpc.pc @ONLY)
+      endif()
 
       install(DIRECTORY include/smb2
             DESTINATION ${INSTALL_INC_DIR})
@@ -229,6 +236,10 @@ endif()
 
       install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libsmb2.pc
             DESTINATION ${INSTALL_PKGCONFIG_DIR})
+      if(ENABLE_LIBDCERPC)
+        install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libdcerpc.pc
+              DESTINATION ${INSTALL_PKGCONFIG_DIR})
+      endif()
     endif()
   endif() 
 

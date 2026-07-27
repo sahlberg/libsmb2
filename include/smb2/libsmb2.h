@@ -1522,11 +1522,10 @@ int smb2_serve_port_async(const int fd, const int to_msecs, struct smb2_context 
 int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_client_connection cb, void *cb_data);
 
 /*
- * Some symbols have moved over to a different header file to allow better
- * separation between dcerpc and smb2, so we need to include this header
- * here to retain compatibility for apps that depend on those symbols.
+ * Share enum (NetrShareEnum levels 0/1/2) is provided by libsmb2.
+ * Full DCE/RPC lives in libdcerpc (libsmb2-dcerpc*.h).
  */
-#include <smb2/libsmb2-dcerpc-srvsvc.h>
+#include <smb2/libsmb2-share-enum.h>
 
 #ifdef __cplusplus
 }

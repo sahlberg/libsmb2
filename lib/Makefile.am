@@ -2,8 +2,11 @@ AM_CFLAGS=$(WARN_CFLAGS)
 
 lib_LTLIBRARIES = libsmb2.la
 
+# -I$(abs_top_srcdir)/libdcerpc so libsmb2-dcerpc*.c can #include "dcerpc.c"
+# via relative path; private headers stay under lib/.
 libsmb2_la_CPPFLAGS = -I$(abs_top_srcdir)/include \
 		      -I$(abs_top_srcdir)/include/smb2 \
+		      -I$(abs_top_srcdir)/libdcerpc \
 		      "-D_U_=__attribute__((unused))"
 
 libsmb2_la_SOURCES = \
@@ -17,8 +20,8 @@ libsmb2_la_SOURCES = \
 	asn1-ber.c \
 	compat.c \
 	compat.h \
-	dcerpc.c \
-	dcerpc-srvsvc.c \
+	libsmb2-dcerpc.c \
+	libsmb2-dcerpc-srvsvc.c \
 	errors.c \
 	init.c \
 	hmac.c \
@@ -49,7 +52,7 @@ libsmb2_la_SOURCES = \
 	smb2-cmd-logoff.c \
 	smb2-cmd-negotiate.c \
 	smb2-cmd-notify-change.c \
-    smb2-cmd-oplock-break.c \
+	smb2-cmd-oplock-break.c \
 	smb2-cmd-query-directory.c \
 	smb2-cmd-query-info.c \
 	smb2-cmd-read.c \
@@ -74,34 +77,15 @@ libsmb2_la_SOURCES = \
 	unicode.c \
 	usha.c
 
-# Full DCE/RPC interfaces (lsa, winreg, wkssvc, dtyp, all srvsvc ops).
-# Default build is minimal: NetrShareEnum levels 0/1/2 only.
-if HAVE_DCERPC_FULL
-libsmb2_la_SOURCES += \
-	dcerpc-dtyp.c \
-	dcerpc-lsa.c \
-	dcerpc-wkssvc.c \
-	dcerpc-winreg.c
-endif
-
 SOCURRENT=6
 SOREVISION=1
 SOAGE=0
 
-# Combine base and optional full DCE/RPC export symbols.
-# Depend on Makefile so reconfigure (minimal <-> full) regenerates the list.
-libsmb2.export.syms: $(srcdir)/libsmb2.syms $(srcdir)/libsmb2-dcerpc-full.syms Makefile
-if HAVE_DCERPC_FULL
-	cat $(srcdir)/libsmb2.syms $(srcdir)/libsmb2-dcerpc-full.syms > $@
-else
-	cp $(srcdir)/libsmb2.syms $@
-endif
-
-BUILT_SOURCES = libsmb2.export.syms
-CLEANFILES = libsmb2.export.syms
-
 libsmb2_la_LDFLAGS = \
 	-version-info $(SOCURRENT):$(SOREVISION):$(SOAGE) -bindir $(bindir) \
-	-no-undefined -export-symbols libsmb2.export.syms $(MAYBE_LIBKRB5)
+	-no-undefined -export-symbols $(srcdir)/libsmb2.syms $(MAYBE_LIBKRB5)
+libsmb2_la_DEPENDENCIES = $(srcdir)/libsmb2.syms
 
-dist_noinst_DATA = libsmb2.syms libsmb2-dcerpc-full.syms
+# dcerpc.c / dcerpc-srvsvc.c live in ../libdcerpc and are pulled in via
+# libsmb2-dcerpc*.c wrappers (with libsmb2_ symbol prefix).
+dist_noinst_DATA = libsmb2.syms libsmb2-dcerpc-prefix.h

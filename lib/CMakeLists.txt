@@ -2,34 +2,22 @@ if(GSSAPI_FOUND OR LIBKRB5_FOUND)
   set(KRB5_SOURCE krb5-wrapper.c)
 endif()
 
-# Full DCE/RPC sources (lsa, winreg, wkssvc, dtyp). Minimal build keeps
-# only dcerpc.c + dcerpc-srvsvc.c (NetrShareEnum levels 0/1/2).
-# Embedded platforms leave ENABLE_DCERPC_FULL unset/OFF; full-size platforms
-# default ON via the top-level CMakeLists.txt option.
-set(DCERPC_FULL_SRCS
-    dcerpc-dtyp.c
-    dcerpc-lsa.c
-    dcerpc-wkssvc.c
-    dcerpc-winreg.c
-)
-if(NOT DEFINED ENABLE_DCERPC_FULL)
-  set(ENABLE_DCERPC_FULL OFF)
-endif()
-
-if(ESP_PLATFORM)
-  set(COMPONENT_SRCS
+# Core SMB2 sources. Minimal DCE/RPC for share enum uses wrapper objects
+# that apply libsmb2_ symbol prefixes (see libsmb2-dcerpc*.c). Sources for
+# the full stack live in ../libdcerpc.
+set(SMB2_CORE_SOURCES
     aes.c
     aes_reference.c
     aes128ccm.c
     alloc.c
     asn1-ber.c
     compat.c
-    dcerpc.c
-    dcerpc-srvsvc.c
+    libsmb2-dcerpc.c
+    libsmb2-dcerpc-srvsvc.c
     errors.c
-    init.c
     hmac.c
     hmac-md5.c
+    init.c
     ${KRB5_SOURCE}
     libsmb2.c
     md4c.c
@@ -71,13 +59,15 @@ if(ESP_PLATFORM)
     timestamps.c
     unicode.c
     usha.c
-  )
-  if(ENABLE_DCERPC_FULL)
-    list(APPEND COMPONENT_SRCS ${DCERPC_FULL_SRCS})
-  endif()
+)
 
+if(NOT ESP_PLATFORM AND NOT (IOP AND BUILD_IRX))
+  list(APPEND SMB2_CORE_SOURCES aes_apple.c)
+endif()
+
+if(ESP_PLATFORM)
+  set(COMPONENT_SRCS ${SMB2_CORE_SOURCES})
   set(COMPONENT_NAME ".")
-
   register_component()
 
 elseif(IOP AND BUILD_IRX)
@@ -85,135 +75,19 @@ elseif(IOP AND BUILD_IRX)
             ps2/smb2_fio.c
             ps2/smb2man.c
             ps2/imports.c
-            aes.c
-	    aes_reference.c
-            aes128ccm.c
-            alloc.c
-            asn1-ber.c
-            compat.c
-            dcerpc.c
-            dcerpc-srvsvc.c
-            errors.c
-            hmac.c
-            hmac-md5.c
-            init.c
-            ${KRB5_SOURCE}
-            libsmb2.c
-            md4c.c
-            md5.c
-            ntlmssp.c
-            pdu.c
-            sha1.c
-            sha224-256.c
-            sha384-512.c
-            smb2-cmd-close.c
-            smb2-cmd-create.c
-            smb2-cmd-echo.c
-            smb2-cmd-error.c
-            smb2-cmd-flush.c
-            smb2-cmd-ioctl.c
-            smb2-cmd-lock.c
-            smb2-cmd-logoff.c
-            smb2-cmd-negotiate.c
-            smb2-cmd-notify-change.c
-            smb2-cmd-oplock-break.c
-            smb2-cmd-query-directory.c
-            smb2-cmd-query-info.c
-            smb2-cmd-read.c
-            smb2-cmd-session-setup.c
-            smb2-cmd-set-info.c
-            smb2-cmd-tree-connect.c
-            smb2-cmd-tree-disconnect.c
-            smb2-cmd-write.c
-            smb2-data-file-info.c
-            smb2-data-filesystem-info.c
-            smb2-data-security-descriptor.c
-            smb2-data-reparse-point.c
-            smb2-share-enum.c
-            smb3-seal.c
-            smb2-signing.c
-            socket.c
-            spnego-wrapper.c
-            sync.c
-            timestamps.c
-            unicode.c
-            usha.c)
-  if(ENABLE_DCERPC_FULL)
-    list(APPEND SOURCES ${DCERPC_FULL_SRCS})
-  endif()
+            ${SMB2_CORE_SOURCES})
 
-BUILD_IOP_IMPORTS(${CMAKE_CURRENT_SOURCE_DIR}/ps2/imports.c ${CMAKE_CURRENT_SOURCE_DIR}/ps2/imports.lst)
+  BUILD_IOP_IMPORTS(${CMAKE_CURRENT_SOURCE_DIR}/ps2/imports.c ${CMAKE_CURRENT_SOURCE_DIR}/ps2/imports.lst)
 
 else()
-  set(SOURCES aes.c
-	    aes_reference.c
-            aes_apple.c
-            aes128ccm.c
-            alloc.c
-            asn1-ber.c
-            compat.c
-            dcerpc.c
-            dcerpc-srvsvc.c
-            errors.c
-            hmac.c
-            hmac-md5.c
-            init.c
-            ${KRB5_SOURCE}
-            libsmb2.c
-            md4c.c
-            md5.c
-            ntlmssp.c
-            pdu.c
-            sha1.c
-            sha224-256.c
-            sha384-512.c
-            smb2-cmd-close.c
-            smb2-cmd-create.c
-            smb2-cmd-echo.c
-            smb2-cmd-error.c
-            smb2-cmd-flush.c
-            smb2-cmd-ioctl.c
-            smb2-cmd-lock.c
-            smb2-cmd-logoff.c
-            smb2-cmd-negotiate.c
-            smb2-cmd-notify-change.c
-            smb2-cmd-oplock-break.c
-            smb2-cmd-query-directory.c
-            smb2-cmd-query-info.c
-            smb2-cmd-read.c
-            smb2-cmd-session-setup.c
-            smb2-cmd-set-info.c
-            smb2-cmd-tree-connect.c
-            smb2-cmd-tree-disconnect.c
-            smb2-cmd-write.c
-            smb2-data-file-info.c
-            smb2-data-filesystem-info.c
-            smb2-data-security-descriptor.c
-            smb2-data-reparse-point.c
-            smb2-share-enum.c
-            smb3-seal.c
-            smb2-signing.c
-            socket.c
-            spnego-wrapper.c
-            sync.c
-            timestamps.c
-            unicode.c
-            usha.c)
-  if(ENABLE_DCERPC_FULL)
-    list(APPEND SOURCES ${DCERPC_FULL_SRCS})
-  endif()
+  set(SOURCES ${SMB2_CORE_SOURCES})
 endif()
 
 if(NOT ESP_PLATFORM)
 set(INCLUDE_PATH ../include)
 set(SMB2_INCLUDE "${INCLUDE_PATH}/smb2")
 set(HEADERS
-    ${SMB2_INCLUDE}/libsmb2-dcerpc-dtyp.h
-    ${SMB2_INCLUDE}/libsmb2-dcerpc-lsa.h
-    ${SMB2_INCLUDE}/libsmb2-dcerpc-srvsvc.h
-    ${SMB2_INCLUDE}/libsmb2-dcerpc-wkssvc.h
-    ${SMB2_INCLUDE}/libsmb2-dcerpc-winreg.h
-    ${SMB2_INCLUDE}/libsmb2-dcerpc.h
+    ${SMB2_INCLUDE}/libsmb2-share-enum.h
     ${SMB2_INCLUDE}/libsmb2-raw.h
     ${SMB2_INCLUDE}/libsmb2.h
     ${SMB2_INCLUDE}/smb2-errors.h
@@ -233,7 +107,7 @@ target_link_libraries(smb2man.irx
         gcc)
 set_target_properties(smb2man.irx PROPERTIES
         VERSION ${PROJECT_VERSION}
-        SOVERSION ${SOVERSION})        
+        SOVERSION ${SOVERSION})
 add_custom_command(TARGET smb2man.irx POST_BUILD COMMAND md5sum ARGS smb2man.irx)
 elseif(PICO_BOARD)
 add_library(libsmb2 STATIC ${SOURCES})

@@ -25,6 +25,8 @@ extern "C" {
 
 #include <smb2/libsmb2-dcerpc.h>
 #include <smb2/libsmb2-dcerpc-dtyp.h>
+/* SHARE_INFO 0/1/2, NetrShareEnum structs, smb2_share_enum_*, share type bits */
+#include <smb2/libsmb2-share-enum.h>
 
 #define SRVSVC_NETRCONNECTIONENUM 0x08
 #define SRVSVC_NETRFILEENUM       0x09
@@ -47,15 +49,6 @@ extern "C" {
 
 struct dcerpc_context;
 struct dcerpc_pdu;
-
-
-/* Low 2 bits describe the share type (STYPE_*) */
-#define SRVSVC_SHARE_TYPE_DISKTREE   0
-#define SRVSVC_SHARE_TYPE_PRINTQ     1
-#define SRVSVC_SHARE_TYPE_DEVICE     2
-#define SRVSVC_SHARE_TYPE_IPC        3
-#define SRVSVC_SHARE_TYPE_TEMPORARY  0x40000000
-#define SRVSVC_SHARE_TYPE_HIDDEN     0x80000000 /* STYPE_SPECIAL */
 
 /* PLATFORM_ID_* — SERVER_INFO / WKSTA_INFO platform_id */
 #define SRVSVC_PLATFORM_ID_DOS  300
@@ -114,66 +107,26 @@ struct dcerpc_pdu;
 #define SRVSVC_SV_TYPE_LOCAL_LIST_ONLY    0x40000000
 #define SRVSVC_SV_TYPE_DOMAIN_ENUM        0x80000000
 
-enum SHARE_INFO_enum {
-        SHARE_INFO_0 = 0,
-        SHARE_INFO_1 = 1,
-        SHARE_INFO_2 = 2,
-        SHARE_INFO_502 = 502,
-};
-
-struct srvsvc_SHARE_INFO_0 {
-        char *netname;
-};
 int srvsvc_SHARE_INFO_0_coder(char *name, struct dcerpc_context *ctx,
                               struct dcerpc_pdu *pdu,
                               struct smb2_iovec *iov, int *offset,
                               void *ptr);
 
-struct srvsvc_SHARE_INFO_0_CONTAINER {
-        uint32_t EntriesRead;
-        struct srvsvc_SHARE_INFO_0 *share_info_0;
-};
-
-struct srvsvc_SHARE_INFO_1 {
-        char *netname;
-        uint32_t type;
-        char *remark;
-};
 int srvsvc_SHARE_INFO_1_coder(char *name, struct dcerpc_context *ctx,
                               struct dcerpc_pdu *pdu,
                               struct smb2_iovec *iov, int *offset,
                               void *ptr);
 
-struct srvsvc_SHARE_INFO_1_CONTAINER {
-        uint32_t EntriesRead;
-        struct srvsvc_SHARE_INFO_1 *share_info_1;
-};
-        
 int srvsvc_SHARE_INFO_1_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                                         struct dcerpc_pdu *pdu,
                                         struct smb2_iovec *iov, int *offset,
                                         void *ptr);
 
-struct srvsvc_SHARE_INFO_2 {
-        char *netname;
-        uint32_t type;
-        char *remark;
-        uint32_t permissions;
-        uint32_t max_users;
-        uint32_t current_users;
-        char *path;
-        char *passwd;
-};
 int srvsvc_SHARE_INFO_2_coder(char *name, struct dcerpc_context *ctx,
                               struct dcerpc_pdu *pdu,
                               struct smb2_iovec *iov, int *offset,
                               void *ptr);
 
-struct srvsvc_SHARE_INFO_2_CONTAINER {
-        uint32_t EntriesRead;
-        struct srvsvc_SHARE_INFO_2 *share_info_2;
-};
-        
 int srvsvc_SHARE_INFO_2_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                                         struct dcerpc_pdu *pdu,
                                         struct smb2_iovec *iov, int *offset,
@@ -186,6 +139,7 @@ int srvsvc_SHARE_INFO_2_CONTAINER_coder(char *name, struct dcerpc_context *dce,
  * On the wire the SD is [size_is(reserved)] unsigned char*; reserved is
  * wire-only and derived from the SD on encode. YAML/JSON expose
  * SecurityDescriptor as a nested structured object.
+ * (struct srvsvc_SHARE_INFO_502 is incomplete in libsmb2-share-enum.h)
  */
 struct srvsvc_SHARE_INFO_502 {
         char *netname;
@@ -203,27 +157,10 @@ int srvsvc_SHARE_INFO_502_coder(char *name, struct dcerpc_context *ctx,
                                 struct smb2_iovec *iov, int *offset,
                                 void *ptr);
 
-struct srvsvc_SHARE_INFO_502_CONTAINER {
-        uint32_t EntriesRead;
-        struct srvsvc_SHARE_INFO_502 *share_info_502;
-};
-
 int srvsvc_SHARE_INFO_502_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                                           struct dcerpc_pdu *pdu,
                                           struct smb2_iovec *iov, int *offset,
                                           void *ptr);
-
-union srvsvc_SHARE_ENUM_UNION {
-        struct srvsvc_SHARE_INFO_0_CONTAINER Level0;
-        struct srvsvc_SHARE_INFO_1_CONTAINER Level1;
-        struct srvsvc_SHARE_INFO_2_CONTAINER Level2;
-        struct srvsvc_SHARE_INFO_502_CONTAINER Level502;
-};
-
-struct srvsvc_SHARE_ENUM_STRUCT {
-        uint32_t Level;
-        union srvsvc_SHARE_ENUM_UNION ShareEnum;
-};
 
 union srvsvc_SHARE_INFO {
         struct srvsvc_SHARE_INFO_0 ShareInfo0;
@@ -668,21 +605,6 @@ struct srvsvc_NetrShareAdd_rep {
         uint32_t status;
 };
         
-struct srvsvc_NetrShareEnum_req {
-        char *ServerName;
-        struct srvsvc_SHARE_ENUM_STRUCT ses;
-        uint32_t PreferedMaximumLength;
-        uint32_t ResumeHandle;
-};
-
-struct srvsvc_NetrShareEnum_rep {
-        struct srvsvc_SHARE_ENUM_STRUCT ses;
-        uint32_t total_entries;
-        uint32_t resume_handle;
-
-        uint32_t status;
-};
-
 struct srvsvc_NetrShareGetInfo_req {
         char *ServerName;
         char *NetName;
@@ -865,35 +787,6 @@ struct srvsvc_NetrRemoteTOD_rep {
 
         uint32_t status;
 };
-
-/*
- * Async share_enum()
- * This function only works when connected to the IPC$ share.
- *
- * Returns
- *  0     : The operation was initiated. Result of the operation will be
- *          reported through the callback function.
- * -errno : There was an error. The callback function will not be invoked.
- *
- * When the callback is invoked, status indicates the result:
- *      0 : Success. Command_data is struct srvsvc_NetrShareEnum_rep *
- *          This pointer must be freed using smb2_free_data().
- * -errno : An error occurred.
- */
-int smb2_share_enum_async(struct smb2_context *smb2, enum SHARE_INFO_enum level,
-                          smb2_command_cb cb, void *cb_data);
-/*
- * Sync share_enum()
- * This function only works when connected to the IPC$ share.
- *
- * Returns
- * NULL: Failure
- * !NULL: Success. The returned pointer is struct srvsvc_NetrShareEnum_rep *
- *        This pointer must be freed using smb2_free_data().
- */
-struct srvsvc_NetrShareEnum_rep *
-smb2_share_enum_sync(struct smb2_context *smb2, enum SHARE_INFO_enum level);
-
 
 int srvsvc_NetrConnectionEnum_rep_coder(char *name, struct dcerpc_context *dce,
                                          struct dcerpc_pdu *pdu,

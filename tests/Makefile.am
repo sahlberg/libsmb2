@@ -9,6 +9,8 @@ noinst_PROGRAMS = prog_ls prog_mkdir prog_rmdir prog_cat \
 	smb2-dcerpc-coder-test
 noinst_PROGRAMS += metastat-0202-censored
 
+smb2_dcerpc_coder_test_LDADD = ../libdcerpc/libdcerpc.la ../lib/libsmb2.la
+
 EXTRA_PROGRAMS = ld_sockerr
 CLEANFILES = ld_sockerr.o ld_sockerr.so
 

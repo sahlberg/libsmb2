@@ -19,16 +19,11 @@ noinst_PROGRAMS = dcerpc smb2-cat-async smb2-cat-sync \
 	smb2-CMD-FIND	\
 	smb2-server-sync \
 	smb2-notify \
-	smb2-set-security-info
-
-# Examples that need the full DCE/RPC interface set
-if HAVE_DCERPC_FULL
-noinst_PROGRAMS += \
+	smb2-set-security-info \
 	smb2-lsa-lookupsids \
 	smb2-share-info \
 	smb2-winreg-enum \
 	winreg-tui
-endif
 
 AM_CPPFLAGS = \
 	-I$(abs_top_srcdir)/include \
@@ -37,7 +32,9 @@ AM_CPPFLAGS = \
 	-Wall -Werror
 
 COMMON_LIBS = ../lib/libsmb2.la
-dcerpc_LDADD = $(COMMON_LIBS)
+DCERPC_LIBS = ../libdcerpc/libdcerpc.la ../lib/libsmb2.la
+
+dcerpc_LDADD = $(DCERPC_LIBS)
 smb2_cat_async_LDADD = $(COMMON_LIBS)
 smb2_cat_sync_LDADD = $(COMMON_LIBS)
 smb2_ftruncate_sync_LDADD = $(COMMON_LIBS)
@@ -50,11 +47,11 @@ smb2_raw_getsd_async_LDADD = $(COMMON_LIBS)
 smb2_raw_stat_async_LDADD = $(COMMON_LIBS)
 smb2_readlink_LDADD = $(COMMON_LIBS)
 smb2_server_side_copy_sync_LDADD = $(COMMON_LIBS)
-smb2_lsa_lookupsids_LDADD = $(COMMON_LIBS)
+smb2_lsa_lookupsids_LDADD = $(DCERPC_LIBS)
 smb2_lseek_sync_LDADD = $(COMMON_LIBS)
-smb2_share_enum_LDADD = $(COMMON_LIBS)
+smb2_share_enum_LDADD = $(DCERPC_LIBS)
 smb2_share_enum_sync_LDADD = $(COMMON_LIBS)
-smb2_share_info_LDADD = $(COMMON_LIBS)
+smb2_share_info_LDADD = $(DCERPC_LIBS)
 smb2_stat_sync_LDADD = $(COMMON_LIBS)
 smb2_statvfs_sync_LDADD = $(COMMON_LIBS)
 smb2_truncate_sync_LDADD = $(COMMON_LIBS)
@@ -63,5 +60,5 @@ smb2_CMD_FIND_LDADD = $(COMMON_LIBS)
 smb2_server_sync_LDADD = $(COMMON_LIBS)
 smb2_notify_LDADD = $(COMMON_LIBS)
 smb2_set_security_info_LDADD = $(COMMON_LIBS)
-smb2_winreg_enum_LDADD = $(COMMON_LIBS)
-winreg_tui_LDADD = $(COMMON_LIBS) -lncurses
+smb2_winreg_enum_LDADD = $(DCERPC_LIBS)
+winreg_tui_LDADD = $(DCERPC_LIBS) -lncurses

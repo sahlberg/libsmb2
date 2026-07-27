@@ -27,6 +27,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-raw.h"
+#include "libsmb2-dcerpc.h"
+#include "libsmb2-dcerpc-srvsvc.h"
 
 #if defined(__amigaos4__) || defined(__AMIGA__) || defined(__AROS__)
 struct pollfd {

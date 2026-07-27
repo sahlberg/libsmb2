@@ -72,26 +72,32 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-,root,root)
 
 %{_libdir}/libsmb2.so*
+%{_libdir}/libdcerpc.so*
 
 %package devel
 Summary: Development libraries for LibSMB2
 Group: Development
 
 %description devel
-development libraries for LibSMB2
+development libraries for LibSMB2 and libdcerpc
 
 %files devel
 %defattr(-,root,root)
 %{_includedir}/smb2/libsmb2.h
+%{_includedir}/smb2/libsmb2-share-enum.h
 %{_includedir}/smb2/libsmb2-raw.h
 %{_includedir}/smb2/libsmb2-dcerpc.h
+%{_includedir}/smb2/libsmb2-dcerpc-dtyp.h
 %{_includedir}/smb2/libsmb2-dcerpc-lsa.h
 %{_includedir}/smb2/libsmb2-dcerpc-srvsvc.h
 %{_includedir}/smb2/libsmb2-dcerpc-wkssvc.h
+%{_includedir}/smb2/libsmb2-dcerpc-winreg.h
 %{_includedir}/smb2/smb2.h
 %{_includedir}/smb2/smb2-errors.h
 %{_libdir}/libsmb2.a
+%{_libdir}/libdcerpc.a
 %{_libdir}/pkgconfig/libsmb2.pc
+%{_libdir}/pkgconfig/libdcerpc.pc
 
 %changelog
 * Mon Dec 16 2024 : Version 6.1.0
