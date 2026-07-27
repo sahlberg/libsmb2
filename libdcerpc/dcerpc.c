@@ -57,7 +57,14 @@
 
 #include "portable-endian.h"
 #include <errno.h>
+#ifdef HAVE_INTTYPES_H
 #include <inttypes.h>
+#else
+/* PS2 IOP and other minimal libc environments lack inttypes.h */
+#ifndef PRIu64
+#define PRIu64 "llu"
+#endif
+#endif
 
 #include "compat.h"
 
