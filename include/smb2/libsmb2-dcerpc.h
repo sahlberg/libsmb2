@@ -149,6 +149,13 @@ struct dcerpc_pdu *dcerpc_allocate_pdu(struct dcerpc_context *dce,
                                        int direction, int payload_size);
 void dcerpc_free_pdu(struct dcerpc_context *dce, struct dcerpc_pdu *pdu);
 
+/*
+ * Allocate size bytes associated with pdu. Freed automatically when the
+ * PDU is destroyed (dcerpc_free_pdu), or with dcerpc_free_data() if the
+ * primary payload was transferred out of the PDU (e.g. call reply root).
+ */
+void *dcerpc_alloc_data(struct dcerpc_pdu *pdu, size_t size);
+
 void dcerpc_set_size_is(struct dcerpc_pdu *pdu, uint32_t size_is);
 uint32_t dcerpc_get_size_is(struct dcerpc_pdu *pdu);
 void dcerpc_set_switch_is(struct dcerpc_pdu *pdu, int switch_is);

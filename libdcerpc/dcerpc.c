@@ -95,6 +95,68 @@ struct dcerpc_service dcerpc_services[] = {
         const typeof( ((type *)0)->member ) *__mptr = (ptr);    \
         (type *)(void *)( (char *)__mptr - offsetof(type,member) );})
 
+/*
+ * PDU-local memory allocator (no libsmb2 dependency).
+ *
+ * The primary buffer (pdu->payload) is a dcerpc_mem_header::buf.  Child
+ * allocations hang off that header.  free_pdu frees the whole tree.
+ * dcerpc_free_data() frees a transferred tree after steal (callback reply).
+ */
+struct dcerpc_alloc_entry {
+        struct dcerpc_alloc_entry *next;
+        char buf[0];
+};
+
+struct dcerpc_mem_header {
+        struct dcerpc_alloc_entry *mem;
+        char buf[0];
+};
+
+static void *
+dcerpc_mem_init(size_t size)
+{
+        struct dcerpc_mem_header *hdr;
+
+        size += offsetof(struct dcerpc_mem_header, buf);
+        hdr = calloc(1, size);
+        if (hdr == NULL) {
+                return NULL;
+        }
+        return &hdr->buf[0];
+}
+
+static struct dcerpc_mem_header *
+dcerpc_mem_hdr_from_ptr(void *ptr)
+{
+#ifndef _MSC_VER
+        return (struct dcerpc_mem_header *)(void *)
+                container_of(ptr, struct dcerpc_mem_header, buf);
+#else
+        {
+                const char *__mptr = ptr;
+                return (struct dcerpc_mem_header *)
+                        ((char *)__mptr - offsetof(struct dcerpc_mem_header, buf));
+        }
+#endif
+}
+
+static void
+dcerpc_mem_free(void *ptr)
+{
+        struct dcerpc_mem_header *hdr;
+        struct dcerpc_alloc_entry *ent;
+
+        if (ptr == NULL) {
+                return;
+        }
+        hdr = dcerpc_mem_hdr_from_ptr(ptr);
+        while ((ent = hdr->mem)) {
+                hdr->mem = ent->next;
+                free(ent);
+        }
+        free(hdr);
+}
+
 struct dcerpc_deferred_pointer {
         dcerpc_coder coder;
         void *ptr;
@@ -696,16 +758,41 @@ dcerpc_destroy_context(struct dcerpc_context *dce)
         free(dce);
 }
 
+void *
+dcerpc_alloc_data(struct dcerpc_pdu *pdu, size_t size)
+{
+        struct dcerpc_mem_header *hdr;
+        struct dcerpc_alloc_entry *ptr;
+
+        if (pdu == NULL || pdu->payload == NULL) {
+                return NULL;
+        }
+
+        size += offsetof(struct dcerpc_alloc_entry, buf);
+        ptr = calloc(1, size);
+        if (ptr == NULL) {
+                if (pdu->dce && pdu->dce->smb2) {
+                        smb2_set_error(pdu->dce->smb2,
+                                       "Failed to alloc %zu bytes", size);
+                }
+                return NULL;
+        }
+
+        hdr = dcerpc_mem_hdr_from_ptr(pdu->payload);
+        ptr->next = hdr->mem;
+        hdr->mem = ptr;
+
+        return &ptr->buf[0];
+}
+
 void
-dcerpc_free_pdu(struct dcerpc_context *dce, struct dcerpc_pdu *pdu)
+dcerpc_free_pdu(struct dcerpc_context *dce _U_, struct dcerpc_pdu *pdu)
 {
         if (pdu == NULL) {
                 return;
         }
 
-        if (pdu->payload) {
-                smb2_free_data(dce->smb2, pdu->payload);
-        }
+        dcerpc_mem_free(pdu->payload);
         free(pdu);
 }
 
@@ -734,7 +821,7 @@ dcerpc_allocate_pdu(struct dcerpc_context *dce, enum dcerpc_encoding encoding,
         pdu->encoding = encoding;
         pdu->direction = direction;
         pdu->top_level = 1;
-        pdu->payload = smb2_alloc_init(dce->smb2, payload_size);
+        pdu->payload = dcerpc_mem_init(payload_size);
         if (pdu->payload == NULL) {
                 smb2_set_error(dce->smb2, "Failed to allocate PDU Payload");
                 dcerpc_free_pdu(dce, pdu);
@@ -1434,10 +1521,10 @@ dcerpc_call_cb(struct smb2_context *smb2, int status,
                 return;
         }
 
-        smb2_free_data(dce->smb2, pdu->payload);
+        dcerpc_mem_free(pdu->payload);
         pdu->payload = NULL;
 
-        pdu->payload = smb2_alloc_init(dce->smb2, pdu->decode_size);
+        pdu->payload = dcerpc_mem_init(pdu->decode_size);
         if (pdu->payload == NULL) {
                 dcerpc_send_pdu_cb_and_free(dce, pdu, -ENOMEM, NULL);
                 return;
@@ -1690,7 +1777,7 @@ dcerpc_bind_async(struct dcerpc_context *dce, dcerpc_cb cb,
         pdu->bind.max_recv_frag = 32768;
         pdu->bind.assoc_group_id = 0;
         pdu->bind.n_context_elem = dce->smb2->ndr ? 1 : 2;
-        pdu->bind.p_cont_elem = smb2_alloc_data(dce->smb2, pdu->payload,
+        pdu->bind.p_cont_elem = dcerpc_alloc_data(pdu,
                      pdu->bind.n_context_elem * sizeof(struct p_cont_elem_t));
         if (pdu->bind.p_cont_elem == NULL) {
                 smb2_set_error(dce->smb2, "Failed to allocate p_cont_elem");
@@ -1702,8 +1789,7 @@ dcerpc_bind_async(struct dcerpc_context *dce, dcerpc_cb cb,
                 pce->p_cont_id = 0;
                 pce->n_transfer_syn = 1;
                 pce->abstract_syntax = dce->syntax;
-                pce->transfer_syntaxes = smb2_alloc_data(
-                     dce->smb2, pdu->payload,
+                pce->transfer_syntaxes = dcerpc_alloc_data(pdu,
                      pce->n_transfer_syn * sizeof(struct p_cont_elem_t *));
                 if (pce->transfer_syntaxes == NULL) {
                         smb2_set_error(dce->smb2, "Failed to allocate transfer_syntaxes");
@@ -1717,8 +1803,7 @@ dcerpc_bind_async(struct dcerpc_context *dce, dcerpc_cb cb,
                 pce->p_cont_id = 1;
                 pce->n_transfer_syn = 1;
                 pce->abstract_syntax = dce->syntax;
-                pce->transfer_syntaxes = smb2_alloc_data(
-                     dce->smb2, pdu->payload,
+                pce->transfer_syntaxes = dcerpc_alloc_data(pdu,
                      pce->n_transfer_syn * sizeof(struct p_cont_elem_t *));
                 if (pce->transfer_syntaxes == NULL) {
                         smb2_set_error(dce->smb2, "Failed to allocate transfer_syntaxes");
@@ -1839,9 +1924,10 @@ dcerpc_get_error(struct dcerpc_context *dce)
 }
 
 void
-dcerpc_free_data(struct dcerpc_context *dce, void *data)
+dcerpc_free_data(struct dcerpc_context *dce _U_, void *data)
 {
-        smb2_free_data(dcerpc_get_smb2_context(dce), data);
+        /* Frees a mem tree transferred out of a PDU (e.g. call reply root). */
+        dcerpc_mem_free(data);
 }
 
 int
@@ -2736,7 +2822,7 @@ ndr_decode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         }
         *offset += (int)s->actual_count * 2;
 
-        str = smb2_alloc_data(ctx->smb2, pdu->payload, strlen(tmp) + 1);
+        str = dcerpc_alloc_data(pdu, strlen(tmp) + 1);
         if (str == NULL) {
                 free(discard_const(tmp));
                 return -1;

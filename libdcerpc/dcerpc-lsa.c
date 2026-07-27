@@ -201,8 +201,7 @@ _lsa_SID_ENUM_BUFFER_coder(char *name, struct dcerpc_context *dce,
 
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && seb->Entries) {
 
-                seb->SidInfo = smb2_alloc_data(dcerpc_get_smb2_context(dce),
-                                               dcerpc_get_pdu_payload(pdu),
+                seb->SidInfo = dcerpc_alloc_data(pdu,
                                                (size_t)val * sizeof(RPC_SID));
                 if (seb->SidInfo == NULL) {
                         return -1;
@@ -298,8 +297,7 @@ lsa_TRANSLATED_NAMES_EX_coder(char *name, struct dcerpc_context *dce,
         dcerpc_set_size_is(pdu, tn->Entries);
 
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && tn->Entries) {
-                tn->Names = smb2_alloc_data(dcerpc_get_smb2_context(dce),
-                                            dcerpc_get_pdu_payload(pdu),
+                tn->Names = dcerpc_alloc_data(pdu,
                                             tn->Entries * sizeof(LSAPR_TRANSLATED_NAME_EX));
                 if (tn->Names == NULL) {
                         return -1;
@@ -540,8 +538,7 @@ lsa_REFERENCED_DOMAIN_LIST_coder(char *name, struct dcerpc_context *dce,
         dcerpc_set_size_is(pdu, rdl->Entries);
 
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && rdl->Entries) {
-                rdl->Domains = smb2_alloc_data(dcerpc_get_smb2_context(dce),
-                                               dcerpc_get_pdu_payload(pdu),
+                rdl->Domains = dcerpc_alloc_data(pdu,
                                                rdl->Entries * sizeof(LSAPR_TRUST_INFORMATION));
                 if (rdl->Domains == NULL) {
                         return -1;
@@ -709,8 +706,7 @@ lsa_TRANSLATED_SIDS_EX_coder(char *name, struct dcerpc_context *dce,
         dcerpc_set_size_is(pdu, ts->Entries);
 
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && ts->Entries) {
-                ts->Sids = smb2_alloc_data(dcerpc_get_smb2_context(dce),
-                                           dcerpc_get_pdu_payload(pdu),
+                ts->Sids = dcerpc_alloc_data(pdu,
                                            ts->Entries * sizeof(LSAPR_TRANSLATED_SID_EX));
                 if (ts->Sids == NULL) {
                         return -1;
@@ -794,9 +790,7 @@ lsa_LookupNames2_req_coder(char *name, struct dcerpc_context *dce,
 
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && req->Count) {
                 if (req->Names == NULL) {
-                        req->Names = smb2_alloc_data(
-                                dcerpc_get_smb2_context(dce),
-                                dcerpc_get_pdu_payload(pdu),
+                        req->Names = dcerpc_alloc_data(pdu,
                                 (size_t)req->Count * sizeof(char *));
                         if (req->Names == NULL) {
                                 return -1;

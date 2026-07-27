@@ -938,8 +938,7 @@ acl_fields_coder(char *name, struct dcerpc_context *dce,
         }
 
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && acl->AceCount) {
-                acl->Aces = smb2_alloc_data(dcerpc_get_smb2_context(dce),
-                                            dcerpc_get_pdu_payload(pdu),
+                acl->Aces = dcerpc_alloc_data(pdu,
                                             (size_t)acl->AceCount *
                                             sizeof(ACCESS_ALLOWED_ACE));
                 if (acl->Aces == NULL) {
@@ -1065,8 +1064,7 @@ sd_optional_sid_text(char *name, struct dcerpc_context *dce,
                 }
         }
 
-        *sidp = smb2_alloc_data(dcerpc_get_smb2_context(dce),
-                                dcerpc_get_pdu_payload(pdu),
+        *sidp = dcerpc_alloc_data(pdu,
                                 sizeof(RPC_SID));
         if (*sidp == NULL) {
                 return -1;
@@ -1109,8 +1107,7 @@ sd_optional_acl_text(char *name, struct dcerpc_context *dce,
                 }
         }
 
-        *aclp = smb2_alloc_data(dcerpc_get_smb2_context(dce),
-                                dcerpc_get_pdu_payload(pdu),
+        *aclp = dcerpc_alloc_data(pdu,
                                 sizeof(ACL));
         if (*aclp == NULL) {
                 return -1;
@@ -1236,8 +1233,7 @@ sd_ndr_decode(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
 
         if (off_owner) {
                 o = base + (int)off_owner;
-                sd->Owner = smb2_alloc_data(dcerpc_get_smb2_context(dce),
-                                            dcerpc_get_pdu_payload(pdu),
+                sd->Owner = dcerpc_alloc_data(pdu,
                                             sizeof(RPC_SID));
                 if (sd->Owner == NULL) {
                         return -1;
@@ -1252,8 +1248,7 @@ sd_ndr_decode(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
         }
         if (off_group) {
                 o = base + (int)off_group;
-                sd->Group = smb2_alloc_data(dcerpc_get_smb2_context(dce),
-                                            dcerpc_get_pdu_payload(pdu),
+                sd->Group = dcerpc_alloc_data(pdu,
                                             sizeof(RPC_SID));
                 if (sd->Group == NULL) {
                         return -1;
@@ -1268,8 +1263,7 @@ sd_ndr_decode(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
         }
         if (off_sacl) {
                 o = base + (int)off_sacl;
-                sd->Sacl = smb2_alloc_data(dcerpc_get_smb2_context(dce),
-                                           dcerpc_get_pdu_payload(pdu),
+                sd->Sacl = dcerpc_alloc_data(pdu,
                                            sizeof(ACL));
                 if (sd->Sacl == NULL) {
                         return -1;
@@ -1283,8 +1277,7 @@ sd_ndr_decode(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
         }
         if (off_dacl) {
                 o = base + (int)off_dacl;
-                sd->Dacl = smb2_alloc_data(dcerpc_get_smb2_context(dce),
-                                           dcerpc_get_pdu_payload(pdu),
+                sd->Dacl = dcerpc_alloc_data(pdu,
                                            sizeof(ACL));
                 if (sd->Dacl == NULL) {
                         return -1;

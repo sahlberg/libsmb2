@@ -303,9 +303,7 @@ srvsvc_SHARE_INFO_0_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                         if (ctr->EntriesRead > SIZE_MAX / esize) {
                                 return -1;
                         }
-                        ctr->share_info_0 = smb2_alloc_data(
-                                dcerpc_get_smb2_context(dce),
-                                dcerpc_get_pdu_payload(pdu),
+                        ctr->share_info_0 = dcerpc_alloc_data(pdu,
                                 (size_t)ctr->EntriesRead * esize);
                         if (ctr->share_info_0 == NULL) {
                                 return -1;
@@ -401,9 +399,7 @@ srvsvc_SHARE_INFO_1_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                         if (ctr->EntriesRead > SIZE_MAX / esize) {
                                 return -1;
                         }
-                        ctr->share_info_1 = smb2_alloc_data(
-                                dcerpc_get_smb2_context(dce),
-                                dcerpc_get_pdu_payload(pdu),
+                        ctr->share_info_1 = dcerpc_alloc_data(pdu,
                                 (size_t)ctr->EntriesRead * esize);
                         if (ctr->share_info_1 == NULL) {
                                 return -1;
@@ -523,9 +519,7 @@ srvsvc_SHARE_INFO_2_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                         if (ctr->EntriesRead > SIZE_MAX / esize) {
                                 return -1;
                         }
-                        ctr->share_info_2 = smb2_alloc_data(
-                                dcerpc_get_smb2_context(dce),
-                                dcerpc_get_pdu_payload(pdu),
+                        ctr->share_info_2 = dcerpc_alloc_data(pdu,
                                 (size_t)ctr->EntriesRead * esize);
                         if (ctr->share_info_2 == NULL) {
                                 return -1;
@@ -605,8 +599,7 @@ srvsvc_sd_blob_body_coder(char *name, struct dcerpc_context *dce,
                 }
                 return 0;
         }
-        blob->data = smb2_alloc_data(dcerpc_get_smb2_context(dce),
-                                     dcerpc_get_pdu_payload(pdu),
+        blob->data = dcerpc_alloc_data(pdu,
                                      max_count);
         if (blob->data == NULL) {
                 return -1;
@@ -623,8 +616,7 @@ srvsvc_sd_blob_body_coder(char *name, struct dcerpc_context *dce,
                 int sd_off = 0;
                 SECURITY_DESCRIPTOR *sd;
 
-                sd = smb2_alloc_data(dcerpc_get_smb2_context(dce),
-                                     dcerpc_get_pdu_payload(pdu),
+                sd = dcerpc_alloc_data(pdu,
                                      sizeof(SECURITY_DESCRIPTOR));
                 if (sd == NULL) {
                         return -1;
@@ -655,8 +647,7 @@ srvsvc_sd_to_bytes(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
         int offset = 0;
         const int cap = 65536;
 
-        buf = smb2_alloc_data(dcerpc_get_smb2_context(dce),
-                              dcerpc_get_pdu_payload(pdu), (size_t)cap);
+        buf = dcerpc_alloc_data(pdu, (size_t)cap);
         if (buf == NULL) {
                 return -1;
         }
@@ -749,9 +740,7 @@ srvsvc_SHARE_INFO_502_coder(char *name, struct dcerpc_context *dce,
                         if (dcerpc_pdu_yaml_key(pdu) &&
                             !strcmp(dcerpc_pdu_yaml_key(pdu),
                                     "SecurityDescriptor")) {
-                                nsi->security_descriptor = smb2_alloc_data(
-                                        dcerpc_get_smb2_context(dce),
-                                        dcerpc_get_pdu_payload(pdu),
+                                nsi->security_descriptor = dcerpc_alloc_data(pdu,
                                         sizeof(SECURITY_DESCRIPTOR));
                                 if (nsi->security_descriptor == NULL) {
                                         return -1;
@@ -772,9 +761,7 @@ srvsvc_SHARE_INFO_502_coder(char *name, struct dcerpc_context *dce,
                         if (rc == 0) {
                                 jk = dcerpc_pdu_json_key(pdu);
                                 if (jk && !strcmp(jk, "SecurityDescriptor")) {
-                                        nsi->security_descriptor = smb2_alloc_data(
-                                                dcerpc_get_smb2_context(dce),
-                                                dcerpc_get_pdu_payload(pdu),
+                                        nsi->security_descriptor = dcerpc_alloc_data(pdu,
                                                 sizeof(SECURITY_DESCRIPTOR));
                                         if (nsi->security_descriptor == NULL) {
                                                 return -1;
@@ -795,8 +782,7 @@ srvsvc_SHARE_INFO_502_coder(char *name, struct dcerpc_context *dce,
         if (!dcerpc_get_cr(pdu) &&
             dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&
             nsi->security_descriptor) {
-                blob = smb2_alloc_data(dcerpc_get_smb2_context(dce),
-                                       dcerpc_get_pdu_payload(pdu),
+                blob = dcerpc_alloc_data(pdu,
                                        sizeof(*blob));
                 if (blob == NULL) {
                         return -1;
@@ -817,8 +803,7 @@ srvsvc_SHARE_INFO_502_coder(char *name, struct dcerpc_context *dce,
         }
 
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {
-                blob = smb2_alloc_data(dcerpc_get_smb2_context(dce),
-                                       dcerpc_get_pdu_payload(pdu),
+                blob = dcerpc_alloc_data(pdu,
                                        sizeof(*blob));
                 if (blob == NULL) {
                         return -1;
@@ -908,9 +893,7 @@ srvsvc_SHARE_INFO_502_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                         if (ctr->EntriesRead > SIZE_MAX / esize) {
                                 return -1;
                         }
-                        ctr->share_info_502 = smb2_alloc_data(
-                                dcerpc_get_smb2_context(dce),
-                                dcerpc_get_pdu_payload(pdu),
+                        ctr->share_info_502 = dcerpc_alloc_data(pdu,
                                 (size_t)ctr->EntriesRead * esize);
                         if (ctr->share_info_502 == NULL) {
                                 return -1;
@@ -1833,9 +1816,7 @@ srvsvc_CONNECT_INFO_0_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                         if (ctr->EntriesRead > SIZE_MAX / esize) {
                                 return -1;
                         }
-                        ctr->connection_info_0 = smb2_alloc_data(
-                                dcerpc_get_smb2_context(dce),
-                                dcerpc_get_pdu_payload(pdu),
+                        ctr->connection_info_0 = dcerpc_alloc_data(pdu,
                                 (size_t)ctr->EntriesRead * esize);
                         if (ctr->connection_info_0 == NULL) {
                                 return -1;
@@ -1948,9 +1929,7 @@ srvsvc_CONNECT_INFO_1_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                         if (ctr->EntriesRead > SIZE_MAX / esize) {
                                 return -1;
                         }
-                        ctr->connection_info_1 = smb2_alloc_data(
-                                dcerpc_get_smb2_context(dce),
-                                dcerpc_get_pdu_payload(pdu),
+                        ctr->connection_info_1 = dcerpc_alloc_data(pdu,
                                 (size_t)ctr->EntriesRead * esize);
                         if (ctr->connection_info_1 == NULL) {
                                 return -1;
@@ -2177,9 +2156,7 @@ srvsvc_FILE_INFO_2_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                         if (ctr->EntriesRead > SIZE_MAX / esize) {
                                 return -1;
                         }
-                        ctr->file_info_2 = smb2_alloc_data(
-                                dcerpc_get_smb2_context(dce),
-                                dcerpc_get_pdu_payload(pdu),
+                        ctr->file_info_2 = dcerpc_alloc_data(pdu,
                                 (size_t)ctr->EntriesRead * esize);
                         if (ctr->file_info_2 == NULL) {
                                 return -1;
@@ -2284,9 +2261,7 @@ srvsvc_FILE_INFO_3_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                         if (ctr->EntriesRead > SIZE_MAX / esize) {
                                 return -1;
                         }
-                        ctr->file_info_3 = smb2_alloc_data(
-                                dcerpc_get_smb2_context(dce),
-                                dcerpc_get_pdu_payload(pdu),
+                        ctr->file_info_3 = dcerpc_alloc_data(pdu,
                                 (size_t)ctr->EntriesRead * esize);
                         if (ctr->file_info_3 == NULL) {
                                 return -1;
@@ -2692,9 +2667,7 @@ srvsvc_SESSION_INFO_0_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                         if (ctr->EntriesRead > SIZE_MAX / esize) {
                                 return -1;
                         }
-                        ctr->session_info_0 = smb2_alloc_data(
-                                dcerpc_get_smb2_context(dce),
-                                dcerpc_get_pdu_payload(pdu),
+                        ctr->session_info_0 = dcerpc_alloc_data(pdu,
                                 (size_t)ctr->EntriesRead * esize);
                         if (ctr->session_info_0 == NULL) {
                                 return -1;
@@ -2803,9 +2776,7 @@ srvsvc_SESSION_INFO_1_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                         if (ctr->EntriesRead > SIZE_MAX / esize) {
                                 return -1;
                         }
-                        ctr->session_info_1 = smb2_alloc_data(
-                                dcerpc_get_smb2_context(dce),
-                                dcerpc_get_pdu_payload(pdu),
+                        ctr->session_info_1 = dcerpc_alloc_data(pdu,
                                 (size_t)ctr->EntriesRead * esize);
                         if (ctr->session_info_1 == NULL) {
                                 return -1;
@@ -2919,9 +2890,7 @@ srvsvc_SESSION_INFO_2_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                         if (ctr->EntriesRead > SIZE_MAX / esize) {
                                 return -1;
                         }
-                        ctr->session_info_2 = smb2_alloc_data(
-                                dcerpc_get_smb2_context(dce),
-                                dcerpc_get_pdu_payload(pdu),
+                        ctr->session_info_2 = dcerpc_alloc_data(pdu,
                                 (size_t)ctr->EntriesRead * esize);
                         if (ctr->session_info_2 == NULL) {
                                 return -1;
@@ -3021,9 +2990,7 @@ srvsvc_SESSION_INFO_10_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                         if (ctr->EntriesRead > SIZE_MAX / esize) {
                                 return -1;
                         }
-                        ctr->session_info_10 = smb2_alloc_data(
-                                dcerpc_get_smb2_context(dce),
-                                dcerpc_get_pdu_payload(pdu),
+                        ctr->session_info_10 = dcerpc_alloc_data(pdu,
                                 (size_t)ctr->EntriesRead * esize);
                         if (ctr->session_info_10 == NULL) {
                                 return -1;
@@ -3142,9 +3109,7 @@ srvsvc_SESSION_INFO_502_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                         if (ctr->EntriesRead > SIZE_MAX / esize) {
                                 return -1;
                         }
-                        ctr->session_info_502 = smb2_alloc_data(
-                                dcerpc_get_smb2_context(dce),
-                                dcerpc_get_pdu_payload(pdu),
+                        ctr->session_info_502 = dcerpc_alloc_data(pdu,
                                 (size_t)ctr->EntriesRead * esize);
                         if (ctr->session_info_502 == NULL) {
                                 return -1;
@@ -3942,8 +3907,7 @@ srvsvc_DISK_varying_string_coder(char *name, struct dcerpc_context *dce,
                 return -1;
         }
         *offset += (int)actual * 2;
-        out = smb2_alloc_data(dcerpc_get_smb2_context(dce),
-                              dcerpc_get_pdu_payload(pdu),
+        out = dcerpc_alloc_data(pdu,
                               strlen(tmp) + 1);
         if (out == NULL) {
                 free(discard_const(tmp));
@@ -4068,9 +4032,7 @@ srvsvc_DISK_ENUM_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                         if (ctr->EntriesRead > SIZE_MAX / esize) {
                                 return -1;
                         }
-                        ctr->disk_info = smb2_alloc_data(
-                                dcerpc_get_smb2_context(dce),
-                                dcerpc_get_pdu_payload(pdu),
+                        ctr->disk_info = dcerpc_alloc_data(pdu,
                                 (size_t)ctr->EntriesRead * esize);
                         if (ctr->disk_info == NULL) {
                                 return -1;

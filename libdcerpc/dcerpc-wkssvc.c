@@ -684,9 +684,7 @@ wkssvc_WKSTA_USER_INFO_0_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                         if (ctr->EntriesRead > SIZE_MAX / esize) {
                                 return -1;
                         }
-                        ctr->Buffer = smb2_alloc_data(
-                                dcerpc_get_smb2_context(dce),
-                                dcerpc_get_pdu_payload(pdu),
+                        ctr->Buffer = dcerpc_alloc_data(pdu,
                                 (size_t)ctr->EntriesRead * esize);
                         if (ctr->Buffer == NULL) {
                                 return -1;
@@ -783,9 +781,7 @@ wkssvc_WKSTA_USER_INFO_1_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                         if (ctr->EntriesRead > SIZE_MAX / esize) {
                                 return -1;
                         }
-                        ctr->Buffer = smb2_alloc_data(
-                                dcerpc_get_smb2_context(dce),
-                                dcerpc_get_pdu_payload(pdu),
+                        ctr->Buffer = dcerpc_alloc_data(pdu,
                                 (size_t)ctr->EntriesRead * esize);
                         if (ctr->Buffer == NULL) {
                                 return -1;
@@ -1012,9 +1008,7 @@ wkssvc_USE_INFO_0_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                         if (ctr->EntriesRead > SIZE_MAX / esize) {
                                 return -1;
                         }
-                        ctr->Buffer = smb2_alloc_data(
-                                dcerpc_get_smb2_context(dce),
-                                dcerpc_get_pdu_payload(pdu),
+                        ctr->Buffer = dcerpc_alloc_data(pdu,
                                 (size_t)ctr->EntriesRead * esize);
                         if (ctr->Buffer == NULL) {
                                 return -1;
@@ -1124,9 +1118,7 @@ wkssvc_USE_INFO_1_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                         if (ctr->EntriesRead > SIZE_MAX / esize) {
                                 return -1;
                         }
-                        ctr->Buffer = smb2_alloc_data(
-                                dcerpc_get_smb2_context(dce),
-                                dcerpc_get_pdu_payload(pdu),
+                        ctr->Buffer = dcerpc_alloc_data(pdu,
                                 (size_t)ctr->EntriesRead * esize);
                         if (ctr->Buffer == NULL) {
                                 return -1;
@@ -1246,9 +1238,7 @@ wkssvc_USE_INFO_2_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                         if (ctr->EntriesRead > SIZE_MAX / esize) {
                                 return -1;
                         }
-                        ctr->Buffer = smb2_alloc_data(
-                                dcerpc_get_smb2_context(dce),
-                                dcerpc_get_pdu_payload(pdu),
+                        ctr->Buffer = dcerpc_alloc_data(pdu,
                                 (size_t)ctr->EntriesRead * esize);
                         if (ctr->Buffer == NULL) {
                                 return -1;

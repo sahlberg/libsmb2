@@ -810,8 +810,7 @@ winreg_conformant_bytes_coder(char *name, struct dcerpc_context *dce,
                         b->data = NULL;
                         return 0;
                 }
-                b->data = smb2_alloc_data(dcerpc_get_smb2_context(dce),
-                                          dcerpc_get_pdu_payload(pdu),
+                b->data = dcerpc_alloc_data(pdu,
                                           max_count);
                 if (b->data == NULL) {
                         return -1;
@@ -1012,8 +1011,7 @@ winreg_blob_coder(char *name, struct dcerpc_context *dce,
                         b->data = NULL;
                         return 0;
                 }
-                b->data = smb2_alloc_data(dcerpc_get_smb2_context(dce),
-                                          dcerpc_get_pdu_payload(pdu),
+                b->data = dcerpc_alloc_data(pdu,
                                           actual);
                 if (b->data == NULL) {
                         return -1;

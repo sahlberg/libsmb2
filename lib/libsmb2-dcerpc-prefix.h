@@ -7,6 +7,7 @@
 
 #define dcerpc_align_3264 libsmb2_dcerpc_align_3264
 #define dcerpc_allocate_pdu libsmb2_dcerpc_allocate_pdu
+#define dcerpc_alloc_data libsmb2_dcerpc_alloc_data
 #define dcerpc_call_async libsmb2_dcerpc_call_async
 #define dcerpc_carray_coder libsmb2_dcerpc_carray_coder
 #define dcerpc_connect_context_async libsmb2_dcerpc_connect_context_async
