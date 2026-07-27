@@ -93,10 +93,15 @@ set(HEADERS
     ${SMB2_INCLUDE}/smb2-errors.h
     ${SMB2_INCLUDE}/smb2.h)
 
+# libsmb2-dcerpc*.c #include "../libdcerpc/dcerpc*.c"; those files then
+# #include "compat.h" etc. from this directory, so add lib/ as a private -I.
+set(_SMB2_PRIVATE_INCLUDES ${CMAKE_CURRENT_SOURCE_DIR})
+
 if(EE AND PS2RPC)
 add_library(smb2_rpc ${SOURCES} ${HEADERS})
 target_link_libraries(smb2_rpc PUBLIC ${core_DEPENDS} ${CORE_LIBRARIES})
-target_include_directories(smb2_rpc PUBLIC ${INCLUDE_PATH})
+target_include_directories(smb2_rpc PUBLIC ${INCLUDE_PATH}
+                                   PRIVATE ${_SMB2_PRIVATE_INCLUDES})
 set_target_properties(smb2_rpc PROPERTIES
                            VERSION ${PROJECT_VERSION}
                            SOVERSION ${SOVERSION})
@@ -105,16 +110,19 @@ add_executable(smb2man.irx ${SOURCES})
 target_link_libraries(smb2man.irx
         PRIVATE
         gcc)
+target_include_directories(smb2man.irx PRIVATE ${_SMB2_PRIVATE_INCLUDES})
 set_target_properties(smb2man.irx PROPERTIES
         VERSION ${PROJECT_VERSION}
         SOVERSION ${SOVERSION})
 add_custom_command(TARGET smb2man.irx POST_BUILD COMMAND md5sum ARGS smb2man.irx)
 elseif(PICO_BOARD)
 add_library(libsmb2 STATIC ${SOURCES})
+target_include_directories(libsmb2 PRIVATE ${_SMB2_PRIVATE_INCLUDES})
 else()
 add_library(smb2 ${SOURCES} ${HEADERS})
 target_link_libraries(smb2 PUBLIC ${core_DEPENDS} ${CORE_LIBRARIES})
-target_include_directories(smb2 PUBLIC ${INCLUDE_PATH})
+target_include_directories(smb2 PUBLIC ${INCLUDE_PATH}
+                               PRIVATE ${_SMB2_PRIVATE_INCLUDES})
 set_target_properties(smb2 PROPERTIES
                            VERSION ${PROJECT_VERSION}
                            SOVERSION ${SOVERSION})
