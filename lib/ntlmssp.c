@@ -333,6 +333,10 @@ ntlm_decode_challenge_message(struct smb2_context *smb2, struct auth_data *auth_
                 struct smb2_utf16 *utf16_spn = NULL;
                 const uint32_t challenge_header_len = 56;
 
+                if (len < challenge_header_len) {
+                        return -1;
+                }
+
                 /* form destination SPN in case server is checking */
                 free(auth_data->target_info);
                 alloc_len = 32 + strlen(smb2->server);
@@ -351,6 +355,7 @@ ntlm_decode_challenge_message(struct smb2_context *smb2, struct auth_data *auth_
                 if (auth_data->ntlm_buf == NULL) {
                         return -1;
                 }
+
                 /* copy challenge message verbatim except payload */
                 memcpy(auth_data->ntlm_buf, buf, challenge_header_len);
 
@@ -367,7 +372,7 @@ ntlm_decode_challenge_message(struct smb2_context *smb2, struct auth_data *auth_
                 u32 = htole32(outoff);
                 memcpy(&auth_data->ntlm_buf[16], &u32, 4);
 
-                if (inlen > 0 && inlen < len && (outoff + inlen) < alloc_len) {
+                if (inlen > 0 && inoff < len && inlen <= len - inoff && (outoff + inlen) < alloc_len) {
                         auth_data->target_name = discard_const(smb2_utf16_to_utf8((const uint16_t *)(void *)&buf[inoff], inlen / 2));
                         memcpy(&auth_data->ntlm_buf[outoff], &buf[inoff], inlen);
                         outoff += inlen;
