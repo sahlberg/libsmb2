@@ -1,17 +1,27 @@
-Libsmb2 components fall under two separate licences
+Libsmb2 components fall under separate licences
 
 
-The lib and include directories
-===============================
-The smb2 client library itself, i.e. the lib and include directories,
-is licenced under GNU Lesser General Public License as published by
-the Free Software Foundation; either version 2.1 of the License, or
-(at your option) any later version.
+The lib and include directories (except DCE/RPC)
+===============================================
+The smb2 client library itself, i.e. the lib directory and non-DCE/RPC
+headers under include/, is licenced under GNU Lesser General Public
+License as published by the Free Software Foundation; either version 2.1
+of the License, or (at your option) any later version.
 
-A copy of LGPL 2.1 is included in the file LICENCE-LGPL-2.1.txt but can also be downloaded from http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
+A copy of LGPL 2.1 is included in the file LICENCE-LGPL-2.1.txt but can
+also be downloaded from
+http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
 
 This is the licence that applies to the libsmb2 library and its use.
 
+
+The libdcerpc directory and DCE/RPC headers
+===========================================
+The DCE/RPC library (libdcerpc/) and the DCE/RPC public headers
+(include/smb2/libsmb2-dcerpc*.h) are licenced under the 2-Clause BSD
+License.
+
+To avoid any confusion, every source file also contain a licence boilerplate.
 
 
 The examples directory
@@ -19,6 +29,7 @@ The examples directory
 The example applications using this library, i.e. the examples directory,
 is licenced under 2-Clause BSD License.
 
-These are executable applications that link with the libsmb2 library.
+These are executable applications that link with the libsmb2 library
+and/or libdcerpc.
 
 To avoid any confusion, every source file also contain a licence boilerplate.

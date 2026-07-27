@@ -3,7 +3,8 @@ SMB2/SMB3 shares on a network.
 It is high performance and fully async. It supports both zero-copy
 for SMB READ/WRITE commands as well as compounded commands.
 
-Libsmb2 is distributed under the LGPLv2.1 licence.
+Libsmb2 (the SMB2 client library) is distributed under the LGPLv2.1 licence.
+libdcerpc is distributed under the 2-Clause BSD licence. See COPYING.
 
 
 API
