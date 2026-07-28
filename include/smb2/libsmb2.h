@@ -1523,7 +1523,7 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
 
 /*
  * Share enum (NetrShareEnum levels 0/1/2) is provided by libsmb2.
- * Full DCE/RPC lives in libdcerpc (libsmb2-dcerpc*.h).
+ * Full DCE/RPC lives in libdcerpc (see the dcerpc/ headers).
  */
 #include <smb2/libsmb2-share-enum.h>
 

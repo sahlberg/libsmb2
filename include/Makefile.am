@@ -2,15 +2,18 @@ smb2dir = $(includedir)/smb2
 dist_smb2_HEADERS = \
 	smb2/libsmb2.h \
 	smb2/libsmb2-share-enum.h \
-	smb2/libsmb2-dcerpc.h \
-	smb2/libsmb2-dcerpc-dtyp.h \
-	smb2/libsmb2-dcerpc-lsa.h \
-	smb2/libsmb2-dcerpc-srvsvc.h \
-	smb2/libsmb2-dcerpc-wkssvc.h \
-	smb2/libsmb2-dcerpc-winreg.h \
 	smb2/libsmb2-raw.h \
 	smb2/smb2.h \
 	smb2/smb2-errors.h
+
+dcerpcdir = $(includedir)/dcerpc
+dist_dcerpc_HEADERS = \
+	dcerpc/dcerpc.h \
+	dcerpc/dcerpc-dtyp.h \
+	dcerpc/dcerpc-lsa.h \
+	dcerpc/dcerpc-srvsvc.h \
+	dcerpc/dcerpc-wkssvc.h \
+	dcerpc/dcerpc-winreg.h
 
 dist_noinst_HEADERS = \
 	asprintf.h \

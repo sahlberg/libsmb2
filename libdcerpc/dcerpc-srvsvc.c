@@ -57,11 +57,11 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 #include "smb2.h"
 #include "libsmb2.h"
-#include "libsmb2-dcerpc.h"
+#include <dcerpc/dcerpc.h>
 #ifdef HAVE_DCERPC_FULL
-#include "libsmb2-dcerpc-dtyp.h"
+#include <dcerpc/dcerpc-dtyp.h>
 #endif
-#include "libsmb2-dcerpc-srvsvc.h"
+#include <dcerpc/dcerpc-srvsvc.h>
 #include "libsmb2-raw.h"
 #include "libsmb2-private.h"
 

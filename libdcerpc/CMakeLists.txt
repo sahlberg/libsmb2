@@ -8,14 +8,14 @@ set(DCERPC_LIB_SOURCES
 )
 
 set(INCLUDE_PATH ../include)
-set(SMB2_INCLUDE "${INCLUDE_PATH}/smb2")
+set(DCERPC_INCLUDE "${INCLUDE_PATH}/dcerpc")
 set(DCERPC_HEADERS
-    ${SMB2_INCLUDE}/libsmb2-dcerpc-dtyp.h
-    ${SMB2_INCLUDE}/libsmb2-dcerpc-lsa.h
-    ${SMB2_INCLUDE}/libsmb2-dcerpc-srvsvc.h
-    ${SMB2_INCLUDE}/libsmb2-dcerpc-wkssvc.h
-    ${SMB2_INCLUDE}/libsmb2-dcerpc-winreg.h
-    ${SMB2_INCLUDE}/libsmb2-dcerpc.h
+    ${DCERPC_INCLUDE}/dcerpc-dtyp.h
+    ${DCERPC_INCLUDE}/dcerpc-lsa.h
+    ${DCERPC_INCLUDE}/dcerpc-srvsvc.h
+    ${DCERPC_INCLUDE}/dcerpc-wkssvc.h
+    ${DCERPC_INCLUDE}/dcerpc-winreg.h
+    ${DCERPC_INCLUDE}/dcerpc.h
 )
 
 if(NOT ESP_PLATFORM AND NOT PICO_BOARD AND NOT (IOP AND BUILD_IRX))

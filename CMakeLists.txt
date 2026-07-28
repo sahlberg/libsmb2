@@ -229,6 +229,10 @@ endif()
 
       install(DIRECTORY include/smb2
             DESTINATION ${INSTALL_INC_DIR})
+      if(ENABLE_LIBDCERPC)
+        install(DIRECTORY include/dcerpc
+              DESTINATION ${INSTALL_INC_DIR})
+      endif()
 
       install(FILES cmake/FindSMB2.cmake
                   ${CMAKE_CURRENT_BINARY_DIR}/libsmb2-config-version.cmake
