@@ -32,7 +32,7 @@ This API is described in libsmb2-raw.h
 DCE/RPC (libdcerpc)
 ===================
 Full DCE/RPC support (named-pipe transport over SMB2, NDR/YAML/JSON coders,
-srvsvc/lsa/winreg/wkssvc) is provided by a separate library, **libdcerpc**
+srvsvc/lsa/winreg/wkssvc/epm) is provided by a separate library, **libdcerpc**
 (sources under `libdcerpc/`), which depends on libsmb2 for transport.
 
   Link with:  -ldcerpc -lsmb2
@@ -43,7 +43,11 @@ libsmb2 still provides high-level share enumeration only
 Internal DCE/RPC symbols used for that path are prefixed with libsmb2_ so
 applications can link both libraries without symbol conflicts.
 
-Public DCE/RPC headers remain under include/smb2/ (libsmb2-dcerpc*.h).
+libdcerpc is not built on Windows (native or MinGW): its symbols collide with
+Microsoft's own RPC libraries. On Windows, only the minimal share-enum path
+in libsmb2 is available.
+
+Public DCE/RPC headers are under include/dcerpc/.
 
 Libsmb2 implements a synchronous API for running an SMB server. You could
 run an async server if you implement the main loop yourself however
@@ -106,17 +110,13 @@ will be available.
 
 DCE/RPC interfaces
 ==================
-On full-size platforms (Linux, Windows, macOS, ...), libsmb2 builds the full
-DCE/RPC YAML/JSON interface set by default (srvsvc, lsarpc, winreg, wkssvc).
+On full-size non-Windows platforms (Linux, macOS, ...), the full DCE/RPC
+interface set is built as libdcerpc by default (srvsvc, lsarpc, winreg,
+wkssvc, epm). Disable with cmake -DENABLE_LIBDCERPC=OFF.
 
-To shrink the library to only NetrShareEnum levels 0/1/2 (used by
-smb2_share_enum_*):
-
-  configure:  ./configure --disable-dcerpc-full
-  cmake:      -DENABLE_DCERPC_FULL=OFF
-
-Embedded targets (ESP, Pico, consoles, PS2/PS3/PS4, Vita, ...) always build
-the minimal ShareEnum-only surface; the full set is not available there.
+Windows and embedded targets (ESP, Pico, consoles, PS2/PS3/PS4, Vita, ...)
+always build only the minimal ShareEnum surface in libsmb2; libdcerpc is
+not available there (on Windows, due to symbol collisions with Microsoft RPC).
 
 MIT KERBEROS
 ============

@@ -5,11 +5,13 @@ AM_CFLAGS = $(WARN_CFLAGS)
 LDADD = ../lib/libsmb2.la
 
 noinst_PROGRAMS = prog_ls prog_mkdir prog_rmdir prog_cat \
-	prog_cat_cancel prog_setsd prog_ssc \
-	smb2-dcerpc-coder-test
+	prog_cat_cancel prog_setsd prog_ssc
 noinst_PROGRAMS += metastat-0202-censored
 
+if BUILD_LIBDCERPC
+noinst_PROGRAMS += smb2-dcerpc-coder-test
 smb2_dcerpc_coder_test_LDADD = ../libdcerpc/libdcerpc.la ../lib/libsmb2.la
+endif
 
 EXTRA_PROGRAMS = ld_sockerr
 CLEANFILES = ld_sockerr.o ld_sockerr.so

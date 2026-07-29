@@ -89,6 +89,13 @@ case $host in
     ;;
 esac
 AM_CONDITIONAL([HAVE_WIN32], [test "${SYS}" = "mingw32"])
+dnl  libdcerpc symbols collide with Microsoft RPC; never build it on Windows.
+AM_CONDITIONAL([BUILD_LIBDCERPC], [test "${SYS}" != "mingw32"])
+AS_IF([test "${SYS}" = "mingw32"], [
+    AC_MSG_NOTICE([Windows: libdcerpc disabled (symbol collisions with Microsoft RPC)])
+], [
+    AC_MSG_NOTICE([Build libdcerpc (full DCE/RPC interfaces)])
+])
 AC_SUBST([LIBSOCKET])
 
 AC_CHECK_LIB([dl], [dlsym], [], [AC_MSG_ERROR([dlsym not found, libdl is required])])

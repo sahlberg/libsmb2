@@ -64,6 +64,7 @@ endif()
 
   # Embedded platforms: libsmb2 only (share-enum NetrShareEnum 0/1/2).
   # Full DCE/RPC is a separate library (libdcerpc) on full-size platforms.
+  # Windows: never build libdcerpc — its symbols collide with Microsoft RPC.
   set(_SMB2_EMBEDDED_DCERPC FALSE)
   if(ESP_PLATFORM OR PICO_BOARD OR IOP OR BUILD_IRX OR EE OR PS2 OR PS4 OR VITA)
     set(_SMB2_EMBEDDED_DCERPC TRUE)
@@ -74,6 +75,9 @@ endif()
   if(_SMB2_EMBEDDED_DCERPC)
     set(ENABLE_LIBDCERPC OFF)
     message(STATUS "Embedded platform: libsmb2 only (minimal DCE/RPC share enum)")
+  elseif(WIN32 OR CMAKE_SYSTEM_NAME MATCHES "Windows")
+    set(ENABLE_LIBDCERPC OFF)
+    message(STATUS "Windows: libdcerpc disabled (symbol collisions with Microsoft RPC)")
   else()
     if(NOT ESP_PLATFORM)
       option(ENABLE_LIBDCERPC "Build libdcerpc (full DCE/RPC; depends on libsmb2)" ON)

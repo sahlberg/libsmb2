@@ -6,6 +6,7 @@ dist_smb2_HEADERS = \
 	smb2/smb2.h \
 	smb2/smb2-errors.h
 
+if BUILD_LIBDCERPC
 dcerpcdir = $(includedir)/dcerpc
 dist_dcerpc_HEADERS = \
 	dcerpc/dcerpc.h \
@@ -15,6 +16,7 @@ dist_dcerpc_HEADERS = \
 	dcerpc/dcerpc-wkssvc.h \
 	dcerpc/dcerpc-winreg.h \
 	dcerpc/dcerpc-epm.h
+endif
 
 dist_noinst_HEADERS = \
 	asprintf.h \
