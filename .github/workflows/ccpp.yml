@@ -215,10 +215,9 @@ jobs:
     runs-on: ubuntu-latest
     container: amigadev/crosstools:m68k-amigaos
     steps:
-    - name: Install dependencies
-      run: |
-        sudo apt update -y && sudo apt upgrade -y && sudo apt install -y ffmpeg gettext
-
+    # No apt install/upgrade: the image is Debian sid and apt upgrade
+    # fails non-interactively on a sudoers conffile prompt. The Amiga
+    # makefiles only need the toolchain already in the container.
     - name: git checkout
       uses: actions/checkout@v4
 
@@ -234,10 +233,7 @@ jobs:
     runs-on: ubuntu-latest
     container: amigadev/crosstools:ppc-amigaos
     steps:
-    - name: Install dependencies
-      run: |
-        sudo apt update -y && sudo apt upgrade -y && sudo apt install -y ffmpeg gettext
-
+    # No apt install/upgrade: same as Amiga OS3 (sid + sudoers prompt).
     - name: git checkout
       uses: actions/checkout@v4
 

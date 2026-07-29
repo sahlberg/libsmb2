@@ -5,7 +5,9 @@ STRIP  = ppc-amigaos-strip
 
 OPTIMIZE = -O2
 DEBUG    = -gstabs
-WARNINGS = -Wall -Werror -Wwrite-strings
+# -Wno-discarded-qualifiers: dcerpc coders take char *name but call sites
+# pass string literals; with -Wwrite-strings those are const (same as OS3).
+WARNINGS = -Wall -Werror -Wwrite-strings -Wno-discarded-qualifiers
 INCLUDES = -I. -I../include -I../include/smb2 -I../include/amiga_os
 DEFINES  = -DHAVE_CONFIG_H "-D_U_=__attribute__((unused))" -DHAVE_ADDRINFO -DNEED_POLL -DNEED_GETADDRINFO -DNEED_FREEADDRINFO -DNEED_GETLOGIN_R -DHAVE_LINGER
 
