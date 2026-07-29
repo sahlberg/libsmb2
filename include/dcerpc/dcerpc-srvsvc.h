@@ -19,7 +19,14 @@ extern "C" {
 #endif
 
 #include <dcerpc/dcerpc.h>
+/*
+ * MS-DTYP types (SECURITY_DESCRIPTOR, ACL, …) are only needed for full
+ * srvsvc (SHARE_INFO_502). Skip them for libsmb2's minimal NetrShareEnum
+ * path — those names collide with the Windows SDK.
+ */
+#ifndef LIBSMB2_DCERPC_MINIMAL
 #include <dcerpc/dcerpc-dtyp.h>
+#endif
 /* SHARE_INFO 0/1/2, NetrShareEnum structs, smb2_share_enum_*, share type bits */
 #include <smb2/libsmb2-share-enum.h>
 
@@ -134,8 +141,10 @@ int srvsvc_SHARE_INFO_2_CONTAINER_coder(char *name, struct dcerpc_context *dce,
  * On the wire the SD is [size_is(reserved)] unsigned char*; reserved is
  * wire-only and derived from the SD on encode. YAML/JSON expose
  * SecurityDescriptor as a nested structured object.
- * (struct srvsvc_SHARE_INFO_502 is incomplete in libsmb2-share-enum.h)
+ * (struct srvsvc_SHARE_INFO_502 is incomplete in libsmb2-share-enum.h;
+ *  full definition needs dcerpc-dtyp.h — not available in minimal builds.)
  */
+#ifndef LIBSMB2_DCERPC_MINIMAL
 struct srvsvc_SHARE_INFO_502 {
         char *netname;
         uint32_t type;
@@ -156,12 +165,15 @@ int srvsvc_SHARE_INFO_502_CONTAINER_coder(char *name, struct dcerpc_context *dce
                                           struct dcerpc_pdu *pdu,
                                           struct smb2_iovec *iov, int *offset,
                                           void *ptr);
+#endif /* !LIBSMB2_DCERPC_MINIMAL */
 
 union srvsvc_SHARE_INFO {
         struct srvsvc_SHARE_INFO_0 ShareInfo0;
         struct srvsvc_SHARE_INFO_1 ShareInfo1;
         struct srvsvc_SHARE_INFO_2 ShareInfo2;
+#ifndef LIBSMB2_DCERPC_MINIMAL
         struct srvsvc_SHARE_INFO_502 ShareInfo502;
+#endif
 };
 
 struct srvsvc_SERVER_INFO_100 {

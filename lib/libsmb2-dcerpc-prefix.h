@@ -5,6 +5,13 @@
 #ifndef _LIBSMB2_DCERPC_PREFIX_H_
 #define _LIBSMB2_DCERPC_PREFIX_H_
 
+/*
+ * Minimal NetrShareEnum path only: skip MS-DTYP types (SECURITY_DESCRIPTOR,
+ * ACL, ACE, …) in public dcerpc headers. Those names collide with the Windows
+ * SDK (winnt.h) when libsmb2 is built on Windows.
+ */
+#define LIBSMB2_DCERPC_MINIMAL 1
+
 #define dcerpc_align_3264 libsmb2_dcerpc_align_3264
 #define dcerpc_allocate_pdu libsmb2_dcerpc_allocate_pdu
 #define dcerpc_alloc_data libsmb2_dcerpc_alloc_data
