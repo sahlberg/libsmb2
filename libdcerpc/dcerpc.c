@@ -336,6 +336,11 @@ struct dcerpc_pdu {
         int decode_size;
         void *payload;
 
+        /* Multi-fragment response reassembly (named-pipe / IOCTL) */
+        uint8_t *reasm_buf;
+        size_t reasm_len;
+        size_t reasm_cap;
+
         int top_level;
         uint64_t ptr_id;
 
@@ -790,6 +795,7 @@ dcerpc_free_pdu(struct dcerpc_context *dce _U_, struct dcerpc_pdu *pdu)
         }
 
         dcerpc_mem_free(pdu->payload);
+        free(pdu->reasm_buf);
         free(pdu);
 }
 
@@ -1411,56 +1417,151 @@ dcerpc_pdu_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         return 0;
 }
 
+/*
+ * Multi-fragment RESPONSE reassembly over SMB named pipes.
+ *
+ * FSCTL_PIPE_TRANSCEIVE may return only the first fragment(s). Further
+ * fragments must be read from the pipe with SMB2 READ until PFC_LAST_FRAG.
+ *
+ * Return values for dce_frags_status():
+ *   0  complete (single fragment or full multi-fragment set in buffer)
+ *   1  need more data from the pipe
+ *  -1  hard error (corrupt headers / lengths)
+ */
+#define DCE_FRAG_DONE       0
+#define DCE_FRAG_NEED_MORE  1
+#define DCE_FRAG_ERROR     (-1)
+
+#define DCE_FRAG_READ_SIZE  65536
+
 static int
-dce_unfragment_ioctl(struct dcerpc_context *dce,  struct dcerpc_pdu *pdu,
-                     struct smb2_iovec *iov)
+dce_frags_status(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+                 const uint8_t *buf, size_t len)
+{
+        size_t offset = 0;
+        int saved_dir = pdu->direction;
+
+        pdu->direction = DCERPC_DECODE;
+
+        if (len < 16) {
+                pdu->direction = saved_dir;
+                return DCE_FRAG_NEED_MORE;
+        }
+
+        while (1) {
+                struct dcerpc_header hdr;
+                struct smb2_iovec tmpiov;
+                int o = 0;
+
+                if (len - offset < 16) {
+                        pdu->direction = saved_dir;
+                        return DCE_FRAG_NEED_MORE;
+                }
+
+                /* dcerpc_header_coder only reads when decoding */
+                tmpiov.buf = (uint8_t *)(void *)(buf + offset);
+                tmpiov.len = len - offset;
+                tmpiov.free = NULL;
+                if (dcerpc_header_coder(dce, pdu, &tmpiov, &o, &hdr)) {
+                        pdu->direction = saved_dir;
+                        return DCE_FRAG_ERROR;
+                }
+
+                if (hdr.rpc_vers != 5 || hdr.rpc_vers_minor != 0) {
+                        pdu->direction = saved_dir;
+                        return DCE_FRAG_ERROR;
+                }
+
+                /* Non-RESPONSE (FAULT, BIND_ACK, ...) is a single PDU */
+                if (hdr.PTYPE != PDU_TYPE_RESPONSE) {
+                        if (hdr.frag_length < 16) {
+                                pdu->direction = saved_dir;
+                                return DCE_FRAG_ERROR;
+                        }
+                        if (offset + hdr.frag_length > len) {
+                                pdu->direction = saved_dir;
+                                return DCE_FRAG_NEED_MORE;
+                        }
+                        pdu->direction = saved_dir;
+                        return DCE_FRAG_DONE;
+                }
+
+                /* RESPONSE fragments are at least common+response header */
+                if (hdr.frag_length < 24) {
+                        smb2_set_error(dce->smb2, "DCERPC fragment length out "
+                                       "of bounds");
+                        pdu->direction = saved_dir;
+                        return DCE_FRAG_ERROR;
+                }
+                if (offset + hdr.frag_length > len) {
+                        pdu->direction = saved_dir;
+                        return DCE_FRAG_NEED_MORE;
+                }
+                if (hdr.pfc_flags & PFC_LAST_FRAG) {
+                        pdu->direction = saved_dir;
+                        return DCE_FRAG_DONE;
+                }
+                offset += hdr.frag_length;
+        }
+}
+
+/*
+ * Collapse a complete multi-fragment RESPONSE in-place into a single
+ * fragment (first header + concatenated stubs). Call only after
+ * dce_frags_status() returned DCE_FRAG_DONE.
+ */
+static int
+dce_unfragment_iov(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+                   struct smb2_iovec *iov)
 {
         int offset = 0;
         int unfragment_len;
         struct dcerpc_header hdr, next_hdr;
-        struct smb2_iovec tmpiov _U_;
+        struct smb2_iovec tmpiov;
         int o;
+        int saved_dir = pdu->direction;
 
+        pdu->direction = DCERPC_DECODE;
         o = 0;
         if (dcerpc_header_coder(dce, pdu, iov, &o, &hdr)) {
+                pdu->direction = saved_dir;
                 return -1;
         }
         if (hdr.rpc_vers != 5 || hdr.rpc_vers_minor != 0 ||
             hdr.PTYPE != PDU_TYPE_RESPONSE) {
+                pdu->direction = saved_dir;
                 return 0;
         }
 
         if (hdr.pfc_flags & PFC_LAST_FRAG) {
+                pdu->direction = saved_dir;
                 return 0;
         }
 
-        /* frag_length covers the full fragment including the 24-byte
-         * DCERPC + response fixed header. Reject short or out-of-bounds
-         * lengths before any memmove.
-         */
-        if (hdr.frag_length < 24 || hdr.frag_length > iov->len) {
+        if (hdr.frag_length < 24 || (size_t)hdr.frag_length > iov->len) {
                 smb2_set_error(dce->smb2, "DCERPC fragment length out of "
                                "bounds");
+                pdu->direction = saved_dir;
                 return -1;
         }
 
         offset += hdr.frag_length;
         unfragment_len = hdr.frag_length;
         do {
-                /* We must have at least a DCERPC header plus a
-                 * RESPONSE header
-                 */
                 if (offset < 0 || (size_t)offset > iov->len ||
                     iov->len - (size_t)offset < 24) {
                         smb2_set_error(dce->smb2, "DCERPC truncated multi-"
                                        "fragment response");
+                        pdu->direction = saved_dir;
                         return -1;
                 }
 
                 tmpiov.buf = iov->buf + offset;
                 tmpiov.len = iov->len - offset;
+                tmpiov.free = NULL;
                 o = 0;
                 if (dcerpc_header_coder(dce, pdu, &tmpiov, &o, &next_hdr)) {
+                        pdu->direction = saved_dir;
                         return -1;
                 }
 
@@ -1468,6 +1569,7 @@ dce_unfragment_ioctl(struct dcerpc_context *dce,  struct dcerpc_pdu *pdu,
                     (size_t)offset + next_hdr.frag_length > iov->len) {
                         smb2_set_error(dce->smb2, "DCERPC next fragment "
                                        "length out of bounds");
+                        pdu->direction = saved_dir;
                         return -1;
                 }
 
@@ -1476,17 +1578,231 @@ dce_unfragment_ioctl(struct dcerpc_context *dce,  struct dcerpc_pdu *pdu,
                 unfragment_len += next_hdr.frag_length - 24;
                 offset += next_hdr.frag_length;
 
-                hdr.frag_length += next_hdr.frag_length;
+                /*
+                 * frag_length is 16-bit; combined stubs may exceed 64K.
+                 * The decoder uses alloc_hint / NDR layout, not frag_length,
+                 * once iov->len is set to the full reassembled size.
+                 */
+                if (unfragment_len <= 0xffff) {
+                        hdr.frag_length = (uint16_t)unfragment_len;
+                }
                 if (next_hdr.pfc_flags & PFC_LAST_FRAG) {
                         hdr.pfc_flags |= PFC_LAST_FRAG;
                 }
+                /* Write updated first-fragment header back */
+                pdu->direction = DCERPC_ENCODE;
                 o = 0;
                 if (dcerpc_header_coder(dce, pdu, iov, &o, &hdr)) {
+                        pdu->direction = saved_dir;
                         return -1;
                 }
+                pdu->direction = DCERPC_DECODE;
         } while (!(next_hdr.pfc_flags & PFC_LAST_FRAG));
-        iov->len = unfragment_len;
+
+        iov->len = (size_t)unfragment_len;
+        pdu->direction = saved_dir;
         return 0;
+}
+
+static int
+dcerpc_reasm_append(struct dcerpc_pdu *pdu, const uint8_t *data, size_t len)
+{
+        size_t need;
+
+        if (len == 0) {
+                return 0;
+        }
+        need = pdu->reasm_len + len;
+        if (need > pdu->reasm_cap) {
+                size_t new_cap = pdu->reasm_cap ? pdu->reasm_cap : 65536;
+                uint8_t *nbuf;
+
+                while (new_cap < need) {
+                        if (new_cap > 8 * 1024 * 1024) {
+                                return -ENOMEM;
+                        }
+                        new_cap *= 2;
+                }
+                if (new_cap > 16 * 1024 * 1024) {
+                        return -ENOMEM;
+                }
+                nbuf = realloc(pdu->reasm_buf, new_cap);
+                if (nbuf == NULL) {
+                        return -ENOMEM;
+                }
+                pdu->reasm_buf = nbuf;
+                pdu->reasm_cap = new_cap;
+        }
+        memcpy(pdu->reasm_buf + pdu->reasm_len, data, len);
+        pdu->reasm_len += len;
+        return 0;
+}
+
+struct dcerpc_frag_read {
+        struct dcerpc_pdu *pdu;
+        uint8_t *buf;
+};
+
+static void dcerpc_send_pdu_cb_and_free(struct dcerpc_context *dce,
+                                        struct dcerpc_pdu *pdu,
+                                        int status, void *command_data);
+static void dcerpc_finish_call_from_reasm(struct dcerpc_context *dce,
+                                          struct dcerpc_pdu *pdu);
+static int dcerpc_read_more_frags(struct dcerpc_context *dce,
+                                  struct dcerpc_pdu *pdu);
+static void
+dcerpc_frag_read_cb(struct smb2_context *smb2, int status,
+                    void *command_data, void *private_data)
+{
+        struct dcerpc_frag_read *fr = private_data;
+        struct dcerpc_pdu *pdu = fr->pdu;
+        struct dcerpc_context *dce = pdu->dce;
+        struct smb2_read_reply *rep = command_data;
+        uint32_t nread = 0;
+
+        if (status != SMB2_STATUS_SUCCESS) {
+                smb2_set_error(smb2, "DCERPC fragment READ failed "
+                               "(0x%08x) %s", status, nterror_to_str(status));
+                free(fr->buf);
+                free(fr);
+                dcerpc_send_pdu_cb_and_free(dce, pdu, -nterror_to_errno(status),
+                                           NULL);
+                return;
+        }
+
+        if (rep) {
+                nread = rep->data_length;
+        }
+        if (nread == 0) {
+                smb2_set_error(smb2, "DCERPC fragment READ returned 0 bytes "
+                               "before LAST_FRAG");
+                free(fr->buf);
+                free(fr);
+                dcerpc_send_pdu_cb_and_free(dce, pdu, -EIO, NULL);
+                return;
+        }
+
+        if (dcerpc_reasm_append(pdu, fr->buf, nread)) {
+                smb2_set_error(smb2, "DCERPC failed to grow reassembly buffer");
+                free(fr->buf);
+                free(fr);
+                dcerpc_send_pdu_cb_and_free(dce, pdu, -ENOMEM, NULL);
+                return;
+        }
+
+        free(fr->buf);
+        free(fr);
+
+        dcerpc_finish_call_from_reasm(dce, pdu);
+}
+
+static int
+dcerpc_read_more_frags(struct dcerpc_context *dce, struct dcerpc_pdu *pdu)
+{
+        struct dcerpc_frag_read *fr;
+        struct smb2_read_request req;
+        struct smb2_pdu *smb2_pdu;
+
+        fr = calloc(1, sizeof(*fr));
+        if (fr == NULL) {
+                return -ENOMEM;
+        }
+        fr->pdu = pdu;
+        fr->buf = malloc(DCE_FRAG_READ_SIZE);
+        if (fr->buf == NULL) {
+                free(fr);
+                return -ENOMEM;
+        }
+
+        memset(&req, 0, sizeof(req));
+        req.length = DCE_FRAG_READ_SIZE;
+        req.offset = 0;
+        req.buf = fr->buf;
+        memcpy(req.file_id, dce->file_id, SMB2_FD_SIZE);
+        req.minimum_count = 0;
+        req.channel = SMB2_CHANNEL_NONE;
+
+        smb2_pdu = smb2_cmd_read_async(dce->smb2, &req, dcerpc_frag_read_cb,
+                                       fr);
+        if (smb2_pdu == NULL) {
+                free(fr->buf);
+                free(fr);
+                return -ENOMEM;
+        }
+        smb2_queue_pdu(dce->smb2, smb2_pdu);
+        return 0;
+}
+
+/*
+ * Process reassembly buffer: read more if incomplete, else unfragment
+ * and deliver the decoded response.
+ */
+static void
+dcerpc_finish_call_from_reasm(struct dcerpc_context *dce,
+                              struct dcerpc_pdu *pdu)
+{
+        struct smb2_iovec iov;
+        void *payload;
+        int offset = 0;
+        int st;
+
+        st = dce_frags_status(dce, pdu, pdu->reasm_buf, pdu->reasm_len);
+        if (st == DCE_FRAG_NEED_MORE) {
+                if (dcerpc_read_more_frags(dce, pdu)) {
+                        dcerpc_send_pdu_cb_and_free(dce, pdu, -ENOMEM, NULL);
+                }
+                return;
+        }
+        if (st == DCE_FRAG_ERROR) {
+                dcerpc_send_pdu_cb_and_free(dce, pdu, -EINVAL, NULL);
+                return;
+        }
+
+        iov.buf = pdu->reasm_buf;
+        iov.len = pdu->reasm_len;
+        iov.free = NULL;
+
+        if (dce_unfragment_iov(dce, pdu, &iov)) {
+                dcerpc_send_pdu_cb_and_free(dce, pdu, -EINVAL, NULL);
+                return;
+        }
+
+        /*
+         * FAULT PDUs are not handled by dcerpc_pdu_coder. Extract the
+         * fault status so callers get a useful error instead of
+         * "No decoder for PDU type 3".
+         */
+        if (iov.len >= 3 && iov.buf[2] == PDU_TYPE_FAULT) {
+                uint32_t fault_status = 0;
+                int fo = 24;
+
+                if (iov.len >= 28) {
+                        fo = 24;
+                        if (dcerpc_get_uint32(dce, pdu, &iov, &fo,
+                                              &fault_status)) {
+                                fault_status = 0;
+                        }
+                }
+                smb2_set_error(dce->smb2, "DCERPC FAULT status=0x%08x",
+                               fault_status);
+                dcerpc_send_pdu_cb_and_free(dce, pdu, -EACCES, NULL);
+                return;
+        }
+
+        if (dcerpc_pdu_coder(dce, pdu, &iov, &offset)) {
+                dcerpc_send_pdu_cb_and_free(dce, pdu, -EINVAL, NULL);
+                return;
+        }
+
+        if (pdu->hdr.PTYPE != PDU_TYPE_RESPONSE) {
+                smb2_set_error(dce->smb2, "DCERPC response was not a RESPONSE");
+                dcerpc_send_pdu_cb_and_free(dce, pdu, -EINVAL, NULL);
+                return;
+        }
+
+        payload = pdu->payload;
+        pdu->payload = NULL;
+        dcerpc_send_pdu_cb_and_free(dce, pdu, 0, payload);
 }
 
 static void
@@ -1506,10 +1822,7 @@ dcerpc_call_cb(struct smb2_context *smb2, int status,
 {
         struct dcerpc_pdu *pdu = private_data;
         struct dcerpc_context *dce = pdu->dce;
-        struct smb2_iovec iov _U_;
         struct smb2_ioctl_reply *rep = command_data;
-        void *payload;
-        int offset = 0;
 
         pdu->direction = DCERPC_DECODE;
 
@@ -1523,61 +1836,27 @@ dcerpc_call_cb(struct smb2_context *smb2, int status,
 
         pdu->payload = dcerpc_mem_init(pdu->decode_size);
         if (pdu->payload == NULL) {
+                smb2_free_data(dce->smb2, rep->output);
                 dcerpc_send_pdu_cb_and_free(dce, pdu, -ENOMEM, NULL);
                 return;
         }
 
-        iov.buf = rep->output;
-        iov.len = rep->output_count;
-        iov.free = NULL;
+        /* Seed reassembly buffer from the PIPE_TRANSCEIVE output */
+        free(pdu->reasm_buf);
+        pdu->reasm_buf = NULL;
+        pdu->reasm_len = 0;
+        pdu->reasm_cap = 0;
 
-        if (dce_unfragment_ioctl(dce, pdu, &iov)) {
-                smb2_free_data(dce->smb2, rep->output);
-                dcerpc_send_pdu_cb_and_free(dce, pdu, -EINVAL, NULL);
-                return;
-        }
-
-        /*
-         * FAULT PDUs are not handled by dcerpc_pdu_coder. Extract the
-         * fault status so callers get a useful error instead of
-         * "No decoder for PDU type 3".
-         */
-        if (iov.len >= 3 && iov.buf[2] == PDU_TYPE_FAULT) {
-                uint32_t fault_status = 0;
-                int fo = 24; /* skip common header */
-
-                if (iov.len >= 28) {
-                        /*
-                         * After 16-byte common hdr: alloc_hint(4) p_cont_id(2)
-                         * cancel_count(1) reserved(1) status(4) at offset 24.
-                         */
-                        fo = 24;
-                        if (dcerpc_get_uint32(dce, pdu, &iov, &fo, &fault_status)) {
-                                fault_status = 0;
-                        }
+        if (rep->output_count && rep->output) {
+                if (dcerpc_reasm_append(pdu, rep->output, rep->output_count)) {
+                        smb2_free_data(dce->smb2, rep->output);
+                        dcerpc_send_pdu_cb_and_free(dce, pdu, -ENOMEM, NULL);
+                        return;
                 }
-                smb2_set_error(dce->smb2, "DCERPC FAULT status=0x%08x", fault_status);
-                smb2_free_data(dce->smb2, rep->output);
-                dcerpc_send_pdu_cb_and_free(dce, pdu, -EACCES, NULL);
-                return;
-        }
-
-        if (dcerpc_pdu_coder(dce, pdu, &iov, &offset)) {
-                smb2_free_data(dce->smb2, rep->output);
-                dcerpc_send_pdu_cb_and_free(dce, pdu, -EINVAL, NULL);
-                return;
         }
         smb2_free_data(dce->smb2, rep->output);
 
-        if (pdu->hdr.PTYPE != PDU_TYPE_RESPONSE) {
-                smb2_set_error(dce->smb2, "DCERPC response was not a RESPONSE");
-                dcerpc_send_pdu_cb_and_free(dce, pdu, -EINVAL, NULL);
-                return;
-        }
-
-        payload = pdu->payload;
-        pdu->payload = NULL;
-        dcerpc_send_pdu_cb_and_free(dce, pdu, 0, payload);
+        dcerpc_finish_call_from_reasm(dce, pdu);
 }
 
 int

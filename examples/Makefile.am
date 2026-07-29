@@ -27,7 +27,8 @@ noinst_PROGRAMS += dcerpc \
 	smb2-share-info \
 	smb2-winreg-enum \
 	winreg-tui \
-	epm-srvsvc
+	epm-srvsvc \
+	epm-enum
 endif
 
 AM_CPPFLAGS = \
@@ -47,6 +48,7 @@ smb2_share_info_LDADD = $(DCERPC_LIBS)
 smb2_winreg_enum_LDADD = $(DCERPC_LIBS)
 winreg_tui_LDADD = $(DCERPC_LIBS) -lncurses
 epm_srvsvc_LDADD = $(DCERPC_LIBS)
+epm_enum_LDADD = $(DCERPC_LIBS)
 endif
 smb2_cat_async_LDADD = $(COMMON_LIBS)
 smb2_cat_sync_LDADD = $(COMMON_LIBS)

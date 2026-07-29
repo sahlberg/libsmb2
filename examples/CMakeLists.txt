@@ -26,7 +26,8 @@ set(DCERPC_SOURCES smb2-share-enum
             smb2-share-info
             smb2-winreg-enum
             winreg-tui
-            epm-srvsvc)
+            epm-srvsvc
+            epm-enum)
 
 foreach(TARGET ${SOURCES})
   add_executable(${TARGET} ${TARGET}.c)

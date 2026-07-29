@@ -18,6 +18,7 @@ smb2_cmd_logoff_async
 smb2_cmd_negotiate_async
 smb2_cmd_query_directory_async
 smb2_cmd_query_info_async
+smb2_cmd_read_async
 smb2_cmd_session_setup_async
 smb2_cmd_set_info_async
 smb2_cmd_tree_connect_async
