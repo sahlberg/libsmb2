@@ -15,7 +15,8 @@ libdcerpc_la_SOURCES = \
 	dcerpc-dtyp.c \
 	dcerpc-lsa.c \
 	dcerpc-wkssvc.c \
-	dcerpc-winreg.c
+	dcerpc-winreg.c \
+	dcerpc-epm.c
 
 SOCURRENT=1
 SOREVISION=0

@@ -5,6 +5,7 @@ set(DCERPC_LIB_SOURCES
     dcerpc-lsa.c
     dcerpc-wkssvc.c
     dcerpc-winreg.c
+    dcerpc-epm.c
 )
 
 set(INCLUDE_PATH ../include)
@@ -15,6 +16,7 @@ set(DCERPC_HEADERS
     ${DCERPC_INCLUDE}/dcerpc-srvsvc.h
     ${DCERPC_INCLUDE}/dcerpc-wkssvc.h
     ${DCERPC_INCLUDE}/dcerpc-winreg.h
+    ${DCERPC_INCLUDE}/dcerpc-epm.h
     ${DCERPC_INCLUDE}/dcerpc.h
 )
 

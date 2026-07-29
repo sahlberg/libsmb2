@@ -1,0 +1,7 @@
+Lookup: Request
+  InquiryType: RPC_C_EP_ALL_ELTS
+  VersOption: RPC_C_VERS_ALL
+  MaxEnts: 20
+  EntryHandle:
+    ContextHandleAttributes: 0
+    UUID: 00000000-0000-0000-0000-000000000000

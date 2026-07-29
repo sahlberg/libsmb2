@@ -72,6 +72,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <dcerpc/dcerpc-lsa.h>
 #include <dcerpc/dcerpc-wkssvc.h>
 #include <dcerpc/dcerpc-winreg.h>
+#include <dcerpc/dcerpc-epm.h>
 #endif
 #include "libsmb2-raw.h"
 #include "libsmb2-private.h"
@@ -82,6 +83,7 @@ struct dcerpc_service dcerpc_services[] = {
         {"lsarpc", &lsa_interface, lsa_procs},
         {"wkssvc", &wkssvc_interface, wkssvc_procs},
         {"winreg", &winreg_interface, winreg_procs},
+        {"epmapper", &epm_interface, epm_procs},
 #endif
         {NULL, NULL}
 };

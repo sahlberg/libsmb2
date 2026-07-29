@@ -13,7 +13,8 @@ dist_dcerpc_HEADERS = \
 	dcerpc/dcerpc-lsa.h \
 	dcerpc/dcerpc-srvsvc.h \
 	dcerpc/dcerpc-wkssvc.h \
-	dcerpc/dcerpc-winreg.h
+	dcerpc/dcerpc-winreg.h \
+	dcerpc/dcerpc-epm.h
 
 dist_noinst_HEADERS = \
 	asprintf.h \
