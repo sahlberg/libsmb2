@@ -48,6 +48,7 @@ thbase_IMPORTS_end
 sysmem_IMPORTS_start
 I_AllocSysMemory
 I_FreeSysMemory
+I_QueryBlockSize
 sysmem_IMPORTS_end
 
 thsemap_IMPORTS_start

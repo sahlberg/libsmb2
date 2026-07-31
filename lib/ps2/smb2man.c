@@ -67,3 +67,28 @@ void *calloc(size_t nmemb, size_t size)
 
     return ptr;
 }
+
+void *realloc(void *ptr, size_t size)
+{
+    void *n;
+    size_t old;
+    size_t ncopy;
+
+    if (ptr == NULL) {
+        return malloc((int)size);
+    }
+    if (size == 0) {
+        free(ptr);
+        return NULL;
+    }
+
+    old = QueryBlockSize(ptr);
+    n = malloc((int)size);
+    if (n == NULL) {
+        return NULL;
+    }
+    ncopy = (old < size) ? old : size;
+    memcpy(n, ptr, ncopy);
+    free(ptr);
+    return n;
+}
