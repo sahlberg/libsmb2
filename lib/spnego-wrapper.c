@@ -158,8 +158,15 @@ smb2_spnego_create_negotiate_reply_blob(struct smb2_context *smb2, int allow_ntl
         /* for each negotiable mechanism */
 
 #ifdef HAVE_LIBKRB5
-        /* insert mechanism oids */
-        asn1ber_ber_from_oid(&asn_encoder, &oid_spnego_mech_krb5);
+        /*
+         * Advertise Kerberos only when the connection is not restricted to
+         * NTLMSSP. NTLM-only servers (e.g. guest/IPC$ daemons without a
+         * keytab) set SMB2_SEC_NTLMSSP so clients do not attempt KRB5 and
+         * abort after negotiate when no realm/creds are available.
+         */
+        if (smb2->sec != SMB2_SEC_NTLMSSP) {
+                asn1ber_ber_from_oid(&asn_encoder, &oid_spnego_mech_krb5);
+        }
 #endif
         if (allow_ntlmssp) {
                 /* insert mechanism oids */

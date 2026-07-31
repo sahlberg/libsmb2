@@ -944,9 +944,9 @@ negotiate_cb(struct smb2_context *smb2, int status,
         /* if there is a gssapi blob in the reply, parse it to determine which
          * mechanisms are supported if caller hasn't explicitly set security
          */
+        spnego_mechs = 0;
         if (smb2->sec == SMB2_SEC_UNDEFINED &&
                         rep->security_buffer && rep->security_buffer_length) {
-                spnego_mechs = 0;
                 smb2_spnego_unwrap_gssapi(smb2, rep->security_buffer,
                         rep->security_buffer_length, 1,
                         NULL, &spnego_mechs);
@@ -982,6 +982,23 @@ negotiate_cb(struct smb2_context *smb2, int status,
                                                          smb2->domain,
                                                          c_data->user,
                                                          smb2->password);
+                /*
+                 * If Kerberos cannot be initialized (no realm, no creds, …)
+                 * but the server also offered NTLMSSP, fall back so guest and
+                 * password auth still work. Without this the client closes
+                 * after negotiate and never sends SessionSetup.
+                 */
+                if (c_data->auth_data == NULL &&
+                    (spnego_mechs & SPNEGO_MECHANISM_NTLMSSP)) {
+                        smb2_set_error(smb2, "");
+                        smb2->sec = SMB2_SEC_NTLMSSP;
+                        c_data->auth_data = ntlmssp_init_context(
+                                                         smb2->user,
+                                                         smb2->password,
+                                                         smb2->domain,
+                                                         smb2->workstation,
+                                                         smb2->client_challenge);
+                }
         }
 #endif
         if (c_data->auth_data == NULL) {
