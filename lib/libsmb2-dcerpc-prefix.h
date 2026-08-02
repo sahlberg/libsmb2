@@ -46,6 +46,7 @@
 #define dcerpc_pdu_yaml_key libsmb2_dcerpc_pdu_yaml_key
 #define dcerpc_pdu_yaml_val libsmb2_dcerpc_pdu_yaml_val
 #define dcerpc_ptr_coder libsmb2_dcerpc_ptr_coder
+#define dcerpc_read_yaml_file libsmb2_dcerpc_read_yaml_file
 #define dcerpc_RPC_UNICODE_STRING_coder libsmb2_dcerpc_RPC_UNICODE_STRING_coder
 #define dcerpc_RPC_UNICODE_STRINGz_coder libsmb2_dcerpc_RPC_UNICODE_STRINGz_coder
 #define dcerpc_services libsmb2_dcerpc_services

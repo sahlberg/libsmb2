@@ -70,6 +70,11 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #ifdef HAVE_POLL_H
 #include <poll.h>
 #endif
+#ifdef HAVE_FCNTL_H
+#include <fcntl.h>
+#else
+#include <sys/fcntl.h>
+#endif
 #include "smb2.h"
 #include "libsmb2.h"
 #include <dcerpc/dcerpc.h>
@@ -2354,6 +2359,150 @@ dcerpc_free_data(struct dcerpc_context *dce _U_, void *data)
 {
         /* Frees a mem tree transferred out of a PDU (e.g. call reply root). */
         dcerpc_mem_free(data);
+}
+
+/*
+ * Read filename and decode it as YAML into a structure of decode_size bytes
+ * using coder.  The structure is a mem-tree root; the file content is loaded
+ * with dcerpc_alloc_data() so YAML string fields that point into that buffer
+ * share the same lifetime.  Free the result with dcerpc_free_data().
+ */
+void *
+dcerpc_read_yaml_file(struct dcerpc_context *dce,
+                      const char *filename,
+                      dcerpc_coder coder,
+                      int decode_size)
+{
+#ifndef HAVE_DCERPC_FULL
+        if (dce && dce->smb2) {
+                smb2_set_error(dce->smb2,
+                               "YAML decoding requires libdcerpc");
+        }
+        return NULL;
+#else
+        struct dcerpc_pdu *pdu;
+        struct dcerpc_iovec iov;
+        struct stat st;
+        void *payload;
+        char *filebuf;
+        char root_key[256];
+        const char *p;
+        const char *start;
+        size_t key_len;
+        int fd = -1;
+        int offset = 0;
+        ssize_t n;
+        size_t total = 0;
+        size_t file_size;
+
+        if (dce == NULL || filename == NULL || coder == NULL ||
+            decode_size <= 0) {
+                if (dce && dce->smb2) {
+                        smb2_set_error(dce->smb2,
+                                       "dcerpc_read_yaml_file: invalid "
+                                       "arguments");
+                }
+                return NULL;
+        }
+
+        fd = open(filename, O_RDONLY);
+        if (fd < 0) {
+                smb2_set_error(dce->smb2, "Failed to open %s: %s",
+                               filename, strerror(errno));
+                return NULL;
+        }
+        if (fstat(fd, &st) < 0) {
+                smb2_set_error(dce->smb2, "Failed to stat %s: %s",
+                               filename, strerror(errno));
+                close(fd);
+                return NULL;
+        }
+        if (st.st_size < 0) {
+                smb2_set_error(dce->smb2, "Invalid size for %s", filename);
+                close(fd);
+                return NULL;
+        }
+        file_size = (size_t)st.st_size;
+
+        pdu = dcerpc_allocate_pdu(dce, ENCODING_YAML, DCERPC_DECODE,
+                                  decode_size);
+        if (pdu == NULL) {
+                close(fd);
+                return NULL;
+        }
+
+        /*
+         * File bytes live on the same mem-tree as the decoded structure so
+         * YAML string pointers into this buffer remain valid until the
+         * caller frees the returned root with dcerpc_free_data().
+         */
+        filebuf = dcerpc_alloc_data(pdu, file_size + 1);
+        if (filebuf == NULL) {
+                close(fd);
+                dcerpc_free_pdu(dce, pdu);
+                return NULL;
+        }
+
+        while (total < file_size) {
+                n = read(fd, filebuf + total, file_size - total);
+                if (n < 0) {
+                        smb2_set_error(dce->smb2, "Failed to read %s: %s",
+                                       filename, strerror(errno));
+                        close(fd);
+                        dcerpc_free_pdu(dce, pdu);
+                        return NULL;
+                }
+                if (n == 0) {
+                        break;
+                }
+                total += (size_t)n;
+        }
+        close(fd);
+        filebuf[total] = '\0';
+
+        /* Peek first YAML mapping key (text before first ':'). */
+        p = filebuf;
+        while (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r') {
+                p++;
+        }
+        start = p;
+        while (*p && *p != ':' && *p != '\n' && *p != '\r') {
+                p++;
+        }
+        key_len = (size_t)(p - start);
+        if (*p != ':' || key_len == 0 || key_len >= sizeof(root_key)) {
+                smb2_set_error(dce->smb2, "No YAML root key in %s", filename);
+                dcerpc_free_pdu(dce, pdu);
+                return NULL;
+        }
+        memcpy(root_key, start, key_len);
+        root_key[key_len] = '\0';
+
+        memset(&iov, 0, sizeof(iov));
+        iov.buf = (uint8_t *)filebuf;
+        iov.len = total + 1;
+        iov.free = NULL;
+        offset = 0;
+
+        if (dcerpc_do_coder(root_key, dce, pdu, &iov, &offset,
+                            pdu->payload, coder)) {
+                /* Prefer any error the coder already set. */
+                if (smb2_get_error(dce->smb2) == NULL ||
+                    smb2_get_error(dce->smb2)[0] == '\0') {
+                        smb2_set_error(dce->smb2,
+                                       "Failed to decode YAML from %s",
+                                       filename);
+                }
+                dcerpc_free_pdu(dce, pdu);
+                return NULL;
+        }
+
+        /* Steal root (struct + filebuf + nested allocs); free PDU only. */
+        payload = pdu->payload;
+        pdu->payload = NULL;
+        dcerpc_free_pdu(dce, pdu);
+        return payload;
+#endif /* HAVE_DCERPC_FULL */
 }
 
 int

@@ -60,6 +60,7 @@ dcerpc_pdu_raise_max_alignment
 dcerpc_pdu_yaml_key
 dcerpc_pdu_yaml_val
 dcerpc_ptr_coder
+dcerpc_read_yaml_file
 dcerpc_RPC_UNICODE_STRING_coder
 dcerpc_RPC_UNICODE_STRINGz_coder
 dcerpc_SECURITY_DESCRIPTOR_coder

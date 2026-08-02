@@ -174,6 +174,23 @@ int dcerpc_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *p
                     struct dcerpc_iovec *iov,
                     int *offset, void *ptr,
                     dcerpc_coder coder);
+/*
+ * Read a YAML file and decode it with coder into a newly allocated structure
+ * of decode_size bytes.
+ *
+ * The returned pointer is a dcerpc mem-tree root (same model as a successful
+ * dcerpc_call_async reply). Nested decode allocations and the file buffer
+ * (loaded via dcerpc_alloc_data so YAML string pointers into the buffer stay
+ * valid) are owned by that root. Free with dcerpc_free_data().
+ *
+ * Returns NULL on error (see dcerpc_get_error()). Requires libdcerpc YAML
+ * support (HAVE_DCERPC_FULL). The top-level YAML key is taken from the file
+ * and must match what coder expects (e.g. "NetrShareEnum").
+ */
+void *dcerpc_read_yaml_file(struct dcerpc_context *dce,
+                            const char *filename,
+                            dcerpc_coder coder,
+                            int decode_size);
 #define DCERPC_DECODE 0
 #define DCERPC_ENCODE 1
 struct dcerpc_pdu *dcerpc_allocate_pdu(struct dcerpc_context *dce,
