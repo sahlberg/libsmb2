@@ -18,6 +18,7 @@
 #define dcerpc_call libsmb2_dcerpc_call
 #define dcerpc_call_async libsmb2_dcerpc_call_async
 #define dcerpc_carray_coder libsmb2_dcerpc_carray_coder
+#define dcerpc_connect_context libsmb2_dcerpc_connect_context
 #define dcerpc_connect_context_async libsmb2_dcerpc_connect_context_async
 #define dcerpc_context_handle_coder libsmb2_dcerpc_context_handle_coder
 #define dcerpc_create_context libsmb2_dcerpc_create_context

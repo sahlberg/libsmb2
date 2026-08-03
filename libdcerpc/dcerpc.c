@@ -2042,6 +2042,57 @@ dcerpc_call(struct dcerpc_context *dce,
         return rep;
 }
 
+/*
+ * Synchronous open+bind of a DCE/RPC named pipe (wraps
+ * dcerpc_connect_context_async + event wait).
+ *
+ * Returns 0 on success. On failure returns non-zero; check
+ * dcerpc_get_error() / smb2_get_error().
+ */
+int
+dcerpc_connect_context(struct dcerpc_context *dce, const char *path,
+                       p_syntax_id_t *syntax)
+{
+        struct smb2_context *smb2;
+        struct sync_cb_data *scb;
+        int rc;
+
+        if (dce == NULL) {
+                return -1;
+        }
+        smb2 = dcerpc_get_smb2_context(dce);
+        if (smb2 == NULL) {
+                return -1;
+        }
+
+        scb = calloc(1, sizeof(*scb));
+        if (scb == NULL) {
+                smb2_set_error(smb2, "Failed to allocate sync_cb_data");
+                return -ENOMEM;
+        }
+
+        rc = dcerpc_connect_context_async(dce, path, syntax,
+                                          dcerpc_call_sync_cb, scb);
+        if (rc != 0) {
+                free(scb);
+                return rc;
+        }
+
+        if (dcerpc_wait_for_reply(smb2, scb) < 0) {
+                free(scb);
+                return -1;
+        }
+
+        rc = scb->status;
+        free(scb);
+
+        if (rc != (int)SMB2_STATUS_SUCCESS) {
+                return rc ? rc : -1;
+        }
+
+        return 0;
+}
+
 static void
 dcerpc_bind_cb(struct dcerpc_context *dce, int status,
                void *command_data, void *cb_data)

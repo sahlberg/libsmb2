@@ -122,6 +122,15 @@ const char *dcerpc_get_error(struct dcerpc_context *dce);
 int dcerpc_connect_context_async(struct dcerpc_context *dce,
                                  const char *path, p_syntax_id_t *syntax,
                                  dcerpc_cb cb, void *cb_data);
+/*
+ * Synchronous open+bind of a DCE/RPC named pipe (wraps
+ * dcerpc_connect_context_async + event wait).
+ *
+ * Returns 0 on success. On failure returns non-zero; check
+ * dcerpc_get_error() / smb2_get_error().
+ */
+int dcerpc_connect_context(struct dcerpc_context *dce,
+                           const char *path, p_syntax_id_t *syntax);
 void dcerpc_destroy_context(struct dcerpc_context *dce);
 
 struct smb2_context *dcerpc_get_smb2_context(struct dcerpc_context *dce);
