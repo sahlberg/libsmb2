@@ -413,115 +413,115 @@ struct winreg_BaseRegEnumValue_rep {
 
 int winreg_OpenClassesRoot_rep_coder(char *name, struct dcerpc_context *dce,
                                      struct dcerpc_pdu *pdu,
-                                     struct smb2_iovec *iov, int *offset,
+                                     struct dcerpc_iovec *iov, int *offset,
                                      void *ptr);
 int winreg_OpenClassesRoot_req_coder(char *name, struct dcerpc_context *dce,
                                      struct dcerpc_pdu *pdu,
-                                     struct smb2_iovec *iov, int *offset,
+                                     struct dcerpc_iovec *iov, int *offset,
                                      void *ptr);
 int winreg_OpenCurrentUser_rep_coder(char *name, struct dcerpc_context *dce,
                                      struct dcerpc_pdu *pdu,
-                                     struct smb2_iovec *iov, int *offset,
+                                     struct dcerpc_iovec *iov, int *offset,
                                      void *ptr);
 int winreg_OpenCurrentUser_req_coder(char *name, struct dcerpc_context *dce,
                                      struct dcerpc_pdu *pdu,
-                                     struct smb2_iovec *iov, int *offset,
+                                     struct dcerpc_iovec *iov, int *offset,
                                      void *ptr);
 int winreg_OpenLocalMachine_rep_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
-                                      struct smb2_iovec *iov, int *offset,
+                                      struct dcerpc_iovec *iov, int *offset,
                                       void *ptr);
 int winreg_OpenLocalMachine_req_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
-                                      struct smb2_iovec *iov, int *offset,
+                                      struct dcerpc_iovec *iov, int *offset,
                                       void *ptr);
 int winreg_OpenUsers_rep_coder(char *name, struct dcerpc_context *dce,
                                struct dcerpc_pdu *pdu,
-                               struct smb2_iovec *iov, int *offset,
+                               struct dcerpc_iovec *iov, int *offset,
                                void *ptr);
 int winreg_OpenUsers_req_coder(char *name, struct dcerpc_context *dce,
                                struct dcerpc_pdu *pdu,
-                               struct smb2_iovec *iov, int *offset,
+                               struct dcerpc_iovec *iov, int *offset,
                                void *ptr);
 int winreg_OpenCurrentConfig_rep_coder(char *name, struct dcerpc_context *dce,
                                        struct dcerpc_pdu *pdu,
-                                       struct smb2_iovec *iov, int *offset,
+                                       struct dcerpc_iovec *iov, int *offset,
                                        void *ptr);
 int winreg_OpenCurrentConfig_req_coder(char *name, struct dcerpc_context *dce,
                                        struct dcerpc_pdu *pdu,
-                                       struct smb2_iovec *iov, int *offset,
+                                       struct dcerpc_iovec *iov, int *offset,
                                        void *ptr);
 int winreg_BaseRegCloseKey_rep_coder(char *name, struct dcerpc_context *dce,
                                      struct dcerpc_pdu *pdu,
-                                     struct smb2_iovec *iov, int *offset,
+                                     struct dcerpc_iovec *iov, int *offset,
                                      void *ptr);
 int winreg_BaseRegCloseKey_req_coder(char *name, struct dcerpc_context *dce,
                                      struct dcerpc_pdu *pdu,
-                                     struct smb2_iovec *iov, int *offset,
+                                     struct dcerpc_iovec *iov, int *offset,
                                      void *ptr);
 int winreg_BaseRegQueryInfoKey_rep_coder(char *name, struct dcerpc_context *dce,
                                          struct dcerpc_pdu *pdu,
-                                         struct smb2_iovec *iov, int *offset,
+                                         struct dcerpc_iovec *iov, int *offset,
                                          void *ptr);
 int winreg_BaseRegQueryInfoKey_req_coder(char *name, struct dcerpc_context *dce,
                                          struct dcerpc_pdu *pdu,
-                                         struct smb2_iovec *iov, int *offset,
+                                         struct dcerpc_iovec *iov, int *offset,
                                          void *ptr);
 int winreg_BaseRegEnumKey_rep_coder(char *name, struct dcerpc_context *dce,
                                     struct dcerpc_pdu *pdu,
-                                    struct smb2_iovec *iov, int *offset,
+                                    struct dcerpc_iovec *iov, int *offset,
                                     void *ptr);
 int winreg_BaseRegEnumKey_req_coder(char *name, struct dcerpc_context *dce,
                                     struct dcerpc_pdu *pdu,
-                                    struct smb2_iovec *iov, int *offset,
+                                    struct dcerpc_iovec *iov, int *offset,
                                     void *ptr);
 int winreg_BaseRegOpenKey_rep_coder(char *name, struct dcerpc_context *dce,
                                     struct dcerpc_pdu *pdu,
-                                    struct smb2_iovec *iov, int *offset,
+                                    struct dcerpc_iovec *iov, int *offset,
                                     void *ptr);
 int winreg_BaseRegOpenKey_req_coder(char *name, struct dcerpc_context *dce,
                                     struct dcerpc_pdu *pdu,
-                                    struct smb2_iovec *iov, int *offset,
+                                    struct dcerpc_iovec *iov, int *offset,
                                     void *ptr);
 int winreg_BaseRegCreateKey_rep_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
-                                      struct smb2_iovec *iov, int *offset,
+                                      struct dcerpc_iovec *iov, int *offset,
                                       void *ptr);
 int winreg_BaseRegCreateKey_req_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
-                                      struct smb2_iovec *iov, int *offset,
+                                      struct dcerpc_iovec *iov, int *offset,
                                       void *ptr);
 int winreg_BaseRegDeleteKey_rep_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
-                                      struct smb2_iovec *iov, int *offset,
+                                      struct dcerpc_iovec *iov, int *offset,
                                       void *ptr);
 int winreg_BaseRegDeleteKey_req_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
-                                      struct smb2_iovec *iov, int *offset,
+                                      struct dcerpc_iovec *iov, int *offset,
                                       void *ptr);
 int winreg_BaseRegDeleteValue_rep_coder(char *name, struct dcerpc_context *dce,
                                         struct dcerpc_pdu *pdu,
-                                        struct smb2_iovec *iov, int *offset,
+                                        struct dcerpc_iovec *iov, int *offset,
                                         void *ptr);
 int winreg_BaseRegDeleteValue_req_coder(char *name, struct dcerpc_context *dce,
                                         struct dcerpc_pdu *pdu,
-                                        struct smb2_iovec *iov, int *offset,
+                                        struct dcerpc_iovec *iov, int *offset,
                                         void *ptr);
 int winreg_BaseRegSetValue_rep_coder(char *name, struct dcerpc_context *dce,
                                      struct dcerpc_pdu *pdu,
-                                     struct smb2_iovec *iov, int *offset,
+                                     struct dcerpc_iovec *iov, int *offset,
                                      void *ptr);
 int winreg_BaseRegSetValue_req_coder(char *name, struct dcerpc_context *dce,
                                      struct dcerpc_pdu *pdu,
-                                     struct smb2_iovec *iov, int *offset,
+                                     struct dcerpc_iovec *iov, int *offset,
                                      void *ptr);
 int winreg_BaseRegEnumValue_rep_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
-                                      struct smb2_iovec *iov, int *offset,
+                                      struct dcerpc_iovec *iov, int *offset,
                                       void *ptr);
 int winreg_BaseRegEnumValue_req_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
-                                      struct smb2_iovec *iov, int *offset,
+                                      struct dcerpc_iovec *iov, int *offset,
                                       void *ptr);
 
 extern struct dcerpc_procedure winreg_procs[];

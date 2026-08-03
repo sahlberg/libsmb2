@@ -82,7 +82,7 @@ void si_cb(struct dcerpc_context *dce, int status,
 
         struct smb2_context *smb2 = dcerpc_get_smb2_context(dce);
         struct dcerpc_pdu *yaml_pdu;
-        struct smb2_iovec iov;
+        struct dcerpc_iovec iov;
         static unsigned char buf[65536];
         int offset = 0;
 

@@ -206,35 +206,35 @@ struct lsa_lookupnames2_rep {
 
 int lsa_Close_rep_coder(char *name, struct dcerpc_context *dce,
                         struct dcerpc_pdu *pdu,
-                        struct smb2_iovec *iov, int *offset,
+                        struct dcerpc_iovec *iov, int *offset,
                         void *ptr);
 int lsa_Close_req_coder(char *name, struct dcerpc_context *dce,
                         struct dcerpc_pdu *pdu,
-                        struct smb2_iovec *iov, int *offset,
+                        struct dcerpc_iovec *iov, int *offset,
                         void *ptr);
 int lsa_LookupSids2_rep_coder(char *name, struct dcerpc_context *dce,
                               struct dcerpc_pdu *pdu,
-                              struct smb2_iovec *iov, int *offset,
+                              struct dcerpc_iovec *iov, int *offset,
                               void *ptr);
 int lsa_LookupSids2_req_coder(char *name, struct dcerpc_context *dce,
                               struct dcerpc_pdu *pdu,
-                              struct smb2_iovec *iov, int *offset,
+                              struct dcerpc_iovec *iov, int *offset,
                               void *ptr);
 int lsa_LookupNames2_rep_coder(char *name, struct dcerpc_context *dce,
                                struct dcerpc_pdu *pdu,
-                               struct smb2_iovec *iov, int *offset,
+                               struct dcerpc_iovec *iov, int *offset,
                                void *ptr);
 int lsa_LookupNames2_req_coder(char *name, struct dcerpc_context *dce,
                                struct dcerpc_pdu *pdu,
-                               struct smb2_iovec *iov, int *offset,
+                               struct dcerpc_iovec *iov, int *offset,
                                void *ptr);
 int lsa_OpenPolicy2_rep_coder(char *name, struct dcerpc_context *dce,
                               struct dcerpc_pdu *pdu,
-                              struct smb2_iovec *iov, int *offset,
+                              struct dcerpc_iovec *iov, int *offset,
                               void *ptr);
 int lsa_OpenPolicy2_req_coder(char *name, struct dcerpc_context *dce,
                               struct dcerpc_pdu *pdu,
-                              struct smb2_iovec *iov, int *offset,
+                              struct dcerpc_iovec *iov, int *offset,
                               void *ptr);
 
 extern struct dcerpc_procedure lsa_procs[];

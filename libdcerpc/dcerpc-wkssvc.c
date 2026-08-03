@@ -126,7 +126,7 @@ static struct dcerpc_uint32_pretty_printer use_asg_type_pp = {
 int
 wkssvc_WKSTA_INFO_100_coder(char *name, struct dcerpc_context *dce,
                             struct dcerpc_pdu *pdu,
-                            struct smb2_iovec *iov, int *offset,
+                            struct dcerpc_iovec *iov, int *offset,
                             void *ptr)
 {
         struct wkssvc_WKSTA_INFO_100 *wi = ptr;
@@ -155,7 +155,7 @@ wkssvc_WKSTA_INFO_100_coder(char *name, struct dcerpc_context *dce,
 int
 wkssvc_WKSTA_INFO_100_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                    struct dcerpc_pdu *pdu,
-                                   struct smb2_iovec *iov, int *offset,
+                                   struct dcerpc_iovec *iov, int *offset,
                                    void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -175,7 +175,7 @@ wkssvc_WKSTA_INFO_100_STRUCT_coder(char *name, struct dcerpc_context *dce,
 int
 wkssvc_WKSTA_INFO_101_coder(char *name, struct dcerpc_context *dce,
                             struct dcerpc_pdu *pdu,
-                            struct smb2_iovec *iov, int *offset,
+                            struct dcerpc_iovec *iov, int *offset,
                             void *ptr)
 {
         struct wkssvc_WKSTA_INFO_101 *wi = ptr;
@@ -208,7 +208,7 @@ wkssvc_WKSTA_INFO_101_coder(char *name, struct dcerpc_context *dce,
 int
 wkssvc_WKSTA_INFO_101_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                    struct dcerpc_pdu *pdu,
-                                   struct smb2_iovec *iov, int *offset,
+                                   struct dcerpc_iovec *iov, int *offset,
                                    void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -229,7 +229,7 @@ wkssvc_WKSTA_INFO_101_STRUCT_coder(char *name, struct dcerpc_context *dce,
 int
 wkssvc_WKSTA_INFO_102_coder(char *name, struct dcerpc_context *dce,
                             struct dcerpc_pdu *pdu,
-                            struct smb2_iovec *iov, int *offset,
+                            struct dcerpc_iovec *iov, int *offset,
                             void *ptr)
 {
         struct wkssvc_WKSTA_INFO_102 *wi = ptr;
@@ -265,7 +265,7 @@ wkssvc_WKSTA_INFO_102_coder(char *name, struct dcerpc_context *dce,
 int
 wkssvc_WKSTA_INFO_102_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                    struct dcerpc_pdu *pdu,
-                                   struct smb2_iovec *iov, int *offset,
+                                   struct dcerpc_iovec *iov, int *offset,
                                    void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -314,7 +314,7 @@ wkssvc_WKSTA_INFO_102_STRUCT_coder(char *name, struct dcerpc_context *dce,
 int
 wkssvc_WKSTA_INFO_502_coder(char *name, struct dcerpc_context *dce,
                             struct dcerpc_pdu *pdu,
-                            struct smb2_iovec *iov, int *offset,
+                            struct dcerpc_iovec *iov, int *offset,
                             void *ptr)
 {
         struct wkssvc_WKSTA_INFO_502 *wi = ptr;
@@ -430,7 +430,7 @@ wkssvc_WKSTA_INFO_502_coder(char *name, struct dcerpc_context *dce,
 int
 wkssvc_WKSTA_INFO_502_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                    struct dcerpc_pdu *pdu,
-                                   struct smb2_iovec *iov, int *offset,
+                                   struct dcerpc_iovec *iov, int *offset,
                                    void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -448,7 +448,7 @@ wkssvc_WKSTA_INFO_502_STRUCT_coder(char *name, struct dcerpc_context *dce,
 static int
 wkssvc_WKSTA_INFO_coder(char *name, struct dcerpc_context *dce,
                         struct dcerpc_pdu *pdu,
-                        struct smb2_iovec *iov, int *offset,
+                        struct dcerpc_iovec *iov, int *offset,
                         void *ptr)
 {
         union wkssvc_WKSTA_INFO *info = ptr;
@@ -491,7 +491,7 @@ wkssvc_WKSTA_INFO_coder(char *name, struct dcerpc_context *dce,
 static int
 wkssvc_WKSTA_INFO_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                struct dcerpc_pdu *pdu,
-                               struct smb2_iovec *iov, int *offset,
+                               struct dcerpc_iovec *iov, int *offset,
                                void *ptr)
 {
         uint32_t Level = dcerpc_get_switch_is(pdu);
@@ -515,7 +515,7 @@ wkssvc_WKSTA_INFO_STRUCT_coder(char *name, struct dcerpc_context *dce,
 int
 wkssvc_NetrWkstaGetInfo_req_coder(char *name, struct dcerpc_context *dce,
                                   struct dcerpc_pdu *pdu,
-                                  struct smb2_iovec *iov, int *offset,
+                                  struct dcerpc_iovec *iov, int *offset,
                                   void *ptr)
 {
         struct wkssvc_NetrWkstaGetInfo_req *req = ptr;
@@ -535,7 +535,7 @@ wkssvc_NetrWkstaGetInfo_req_coder(char *name, struct dcerpc_context *dce,
 int
 wkssvc_NetrWkstaGetInfo_rep_coder(char *name, struct dcerpc_context *dce,
                                   struct dcerpc_pdu *pdu,
-                                  struct smb2_iovec *iov, int *offset,
+                                  struct dcerpc_iovec *iov, int *offset,
                                   void *ptr)
 {
         struct wkssvc_NetrWkstaGetInfo_rep *rep = ptr;
@@ -567,7 +567,7 @@ wkssvc_NetrWkstaGetInfo_rep_coder(char *name, struct dcerpc_context *dce,
 int
 wkssvc_NetrWkstaSetInfo_req_coder(char *name, struct dcerpc_context *dce,
                                   struct dcerpc_pdu *pdu,
-                                  struct smb2_iovec *iov, int *offset,
+                                  struct dcerpc_iovec *iov, int *offset,
                                   void *ptr)
 {
         struct wkssvc_NetrWkstaSetInfo_req *req = ptr;
@@ -596,7 +596,7 @@ wkssvc_NetrWkstaSetInfo_req_coder(char *name, struct dcerpc_context *dce,
 int
 wkssvc_NetrWkstaSetInfo_rep_coder(char *name, struct dcerpc_context *dce,
                                   struct dcerpc_pdu *pdu,
-                                  struct smb2_iovec *iov, int *offset,
+                                  struct dcerpc_iovec *iov, int *offset,
                                   void *ptr)
 {
         struct wkssvc_NetrWkstaSetInfo_rep *rep = ptr;
@@ -620,7 +620,7 @@ wkssvc_NetrWkstaSetInfo_rep_coder(char *name, struct dcerpc_context *dce,
 int
 wkssvc_WKSTA_USER_INFO_0_coder(char *name, struct dcerpc_context *dce,
                                struct dcerpc_pdu *pdu,
-                               struct smb2_iovec *iov, int *offset,
+                               struct dcerpc_iovec *iov, int *offset,
                                void *ptr)
 {
         struct wkssvc_WKSTA_USER_INFO_0 *ui = ptr;
@@ -635,7 +635,7 @@ wkssvc_WKSTA_USER_INFO_0_coder(char *name, struct dcerpc_context *dce,
 int
 wkssvc_WKSTA_USER_INFO_0_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
-                                      struct smb2_iovec *iov, int *offset,
+                                      struct dcerpc_iovec *iov, int *offset,
                                       void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -645,7 +645,7 @@ wkssvc_WKSTA_USER_INFO_0_STRUCT_coder(char *name, struct dcerpc_context *dce,
 static int
 wkssvc_WKSTA_USER_INFO_0_carray_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
-                                      struct smb2_iovec *iov, int *offset,
+                                      struct dcerpc_iovec *iov, int *offset,
                                       void *ptr)
 {
         return dcerpc_carray_coder("UserInfo0", dce, pdu, iov, offset,
@@ -663,7 +663,7 @@ wkssvc_WKSTA_USER_INFO_0_carray_coder(char *name, struct dcerpc_context *dce,
 int
 wkssvc_WKSTA_USER_INFO_0_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                                          struct dcerpc_pdu *pdu,
-                                         struct smb2_iovec *iov, int *offset,
+                                         struct dcerpc_iovec *iov, int *offset,
                                          void *ptr)
 {
         struct wkssvc_WKSTA_USER_INFO_0_CONTAINER *ctr = ptr;
@@ -705,7 +705,7 @@ wkssvc_WKSTA_USER_INFO_0_CONTAINER_coder(char *name, struct dcerpc_context *dce,
 int
 wkssvc_WKSTA_USER_INFO_1_coder(char *name, struct dcerpc_context *dce,
                                struct dcerpc_pdu *pdu,
-                               struct smb2_iovec *iov, int *offset,
+                               struct dcerpc_iovec *iov, int *offset,
                                void *ptr)
 {
         struct wkssvc_WKSTA_USER_INFO_1 *ui = ptr;
@@ -732,7 +732,7 @@ wkssvc_WKSTA_USER_INFO_1_coder(char *name, struct dcerpc_context *dce,
 int
 wkssvc_WKSTA_USER_INFO_1_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
-                                      struct smb2_iovec *iov, int *offset,
+                                      struct dcerpc_iovec *iov, int *offset,
                                       void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -742,7 +742,7 @@ wkssvc_WKSTA_USER_INFO_1_STRUCT_coder(char *name, struct dcerpc_context *dce,
 static int
 wkssvc_WKSTA_USER_INFO_1_carray_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
-                                      struct smb2_iovec *iov, int *offset,
+                                      struct dcerpc_iovec *iov, int *offset,
                                       void *ptr)
 {
         return dcerpc_carray_coder("UserInfo1", dce, pdu, iov, offset,
@@ -760,7 +760,7 @@ wkssvc_WKSTA_USER_INFO_1_carray_coder(char *name, struct dcerpc_context *dce,
 int
 wkssvc_WKSTA_USER_INFO_1_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                                          struct dcerpc_pdu *pdu,
-                                         struct smb2_iovec *iov, int *offset,
+                                         struct dcerpc_iovec *iov, int *offset,
                                          void *ptr)
 {
         struct wkssvc_WKSTA_USER_INFO_1_CONTAINER *ctr = ptr;
@@ -800,7 +800,7 @@ wkssvc_WKSTA_USER_INFO_1_CONTAINER_coder(char *name, struct dcerpc_context *dce,
 static int
 wkssvc_WKSTA_USER_ENUM_UNION_coder(char *name, struct dcerpc_context *dce,
                                    struct dcerpc_pdu *pdu,
-                                   struct smb2_iovec *iov, int *offset,
+                                   struct dcerpc_iovec *iov, int *offset,
                                    void *ptr)
 {
         union wkssvc_WKSTA_USER_ENUM_UNION *info = ptr;
@@ -837,7 +837,7 @@ wkssvc_WKSTA_USER_ENUM_UNION_coder(char *name, struct dcerpc_context *dce,
 int
 wkssvc_WKSTA_USER_ENUM_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                     struct dcerpc_pdu *pdu,
-                                    struct smb2_iovec *iov, int *offset,
+                                    struct dcerpc_iovec *iov, int *offset,
                                     void *ptr)
 {
         struct wkssvc_WKSTA_USER_ENUM_STRUCT *ues = ptr;
@@ -858,7 +858,7 @@ wkssvc_WKSTA_USER_ENUM_STRUCT_coder(char *name, struct dcerpc_context *dce,
 int
 wkssvc_WKSTA_USER_ENUM_STRUCT_struct_coder(char *name, struct dcerpc_context *dce,
                                            struct dcerpc_pdu *pdu,
-                                           struct smb2_iovec *iov, int *offset,
+                                           struct dcerpc_iovec *iov, int *offset,
                                            void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -878,7 +878,7 @@ wkssvc_WKSTA_USER_ENUM_STRUCT_struct_coder(char *name, struct dcerpc_context *dc
 int
 wkssvc_NetrWkstaUserEnum_req_coder(char *name, struct dcerpc_context *dce,
                                    struct dcerpc_pdu *pdu,
-                                   struct smb2_iovec *iov, int *offset,
+                                   struct dcerpc_iovec *iov, int *offset,
                                    void *ptr)
 {
         struct wkssvc_NetrWkstaUserEnum_req *req = ptr;
@@ -907,7 +907,7 @@ wkssvc_NetrWkstaUserEnum_req_coder(char *name, struct dcerpc_context *dce,
 int
 wkssvc_NetrWkstaUserEnum_rep_coder(char *name, struct dcerpc_context *dce,
                                    struct dcerpc_pdu *pdu,
-                                   struct smb2_iovec *iov, int *offset,
+                                   struct dcerpc_iovec *iov, int *offset,
                                    void *ptr)
 {
         struct wkssvc_NetrWkstaUserEnum_rep *rep = ptr;
@@ -940,7 +940,7 @@ wkssvc_NetrWkstaUserEnum_rep_coder(char *name, struct dcerpc_context *dce,
 int
 wkssvc_USE_INFO_0_coder(char *name, struct dcerpc_context *dce,
                         struct dcerpc_pdu *pdu,
-                        struct smb2_iovec *iov, int *offset,
+                        struct dcerpc_iovec *iov, int *offset,
                         void *ptr)
 {
         struct wkssvc_USE_INFO_0 *ui = ptr;
@@ -959,7 +959,7 @@ wkssvc_USE_INFO_0_coder(char *name, struct dcerpc_context *dce,
 int
 wkssvc_USE_INFO_0_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                struct dcerpc_pdu *pdu,
-                               struct smb2_iovec *iov, int *offset,
+                               struct dcerpc_iovec *iov, int *offset,
                                void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -969,7 +969,7 @@ wkssvc_USE_INFO_0_STRUCT_coder(char *name, struct dcerpc_context *dce,
 static int
 wkssvc_USE_INFO_0_carray_coder(char *name, struct dcerpc_context *dce,
                                struct dcerpc_pdu *pdu,
-                               struct smb2_iovec *iov, int *offset,
+                               struct dcerpc_iovec *iov, int *offset,
                                void *ptr)
 {
         return dcerpc_carray_coder("UseInfo0", dce, pdu, iov, offset,
@@ -987,7 +987,7 @@ wkssvc_USE_INFO_0_carray_coder(char *name, struct dcerpc_context *dce,
 int
 wkssvc_USE_INFO_0_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                                   struct dcerpc_pdu *pdu,
-                                  struct smb2_iovec *iov, int *offset,
+                                  struct dcerpc_iovec *iov, int *offset,
                                   void *ptr)
 {
         struct wkssvc_USE_INFO_0_CONTAINER *ctr = ptr;
@@ -1032,7 +1032,7 @@ wkssvc_USE_INFO_0_CONTAINER_coder(char *name, struct dcerpc_context *dce,
 int
 wkssvc_USE_INFO_1_coder(char *name, struct dcerpc_context *dce,
                         struct dcerpc_pdu *pdu,
-                        struct smb2_iovec *iov, int *offset,
+                        struct dcerpc_iovec *iov, int *offset,
                         void *ptr)
 {
         struct wkssvc_USE_INFO_1 *ui = ptr;
@@ -1069,7 +1069,7 @@ wkssvc_USE_INFO_1_coder(char *name, struct dcerpc_context *dce,
 int
 wkssvc_USE_INFO_1_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                struct dcerpc_pdu *pdu,
-                               struct smb2_iovec *iov, int *offset,
+                               struct dcerpc_iovec *iov, int *offset,
                                void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -1079,7 +1079,7 @@ wkssvc_USE_INFO_1_STRUCT_coder(char *name, struct dcerpc_context *dce,
 static int
 wkssvc_USE_INFO_1_carray_coder(char *name, struct dcerpc_context *dce,
                                struct dcerpc_pdu *pdu,
-                               struct smb2_iovec *iov, int *offset,
+                               struct dcerpc_iovec *iov, int *offset,
                                void *ptr)
 {
         return dcerpc_carray_coder("UseInfo1", dce, pdu, iov, offset,
@@ -1097,7 +1097,7 @@ wkssvc_USE_INFO_1_carray_coder(char *name, struct dcerpc_context *dce,
 int
 wkssvc_USE_INFO_1_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                                   struct dcerpc_pdu *pdu,
-                                  struct smb2_iovec *iov, int *offset,
+                                  struct dcerpc_iovec *iov, int *offset,
                                   void *ptr)
 {
         struct wkssvc_USE_INFO_1_CONTAINER *ctr = ptr;
@@ -1144,7 +1144,7 @@ wkssvc_USE_INFO_1_CONTAINER_coder(char *name, struct dcerpc_context *dce,
 int
 wkssvc_USE_INFO_2_coder(char *name, struct dcerpc_context *dce,
                         struct dcerpc_pdu *pdu,
-                        struct smb2_iovec *iov, int *offset,
+                        struct dcerpc_iovec *iov, int *offset,
                         void *ptr)
 {
         struct wkssvc_USE_INFO_2 *ui = ptr;
@@ -1189,7 +1189,7 @@ wkssvc_USE_INFO_2_coder(char *name, struct dcerpc_context *dce,
 int
 wkssvc_USE_INFO_2_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                struct dcerpc_pdu *pdu,
-                               struct smb2_iovec *iov, int *offset,
+                               struct dcerpc_iovec *iov, int *offset,
                                void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -1199,7 +1199,7 @@ wkssvc_USE_INFO_2_STRUCT_coder(char *name, struct dcerpc_context *dce,
 static int
 wkssvc_USE_INFO_2_carray_coder(char *name, struct dcerpc_context *dce,
                                struct dcerpc_pdu *pdu,
-                               struct smb2_iovec *iov, int *offset,
+                               struct dcerpc_iovec *iov, int *offset,
                                void *ptr)
 {
         return dcerpc_carray_coder("UseInfo2", dce, pdu, iov, offset,
@@ -1217,7 +1217,7 @@ wkssvc_USE_INFO_2_carray_coder(char *name, struct dcerpc_context *dce,
 int
 wkssvc_USE_INFO_2_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                                   struct dcerpc_pdu *pdu,
-                                  struct smb2_iovec *iov, int *offset,
+                                  struct dcerpc_iovec *iov, int *offset,
                                   void *ptr)
 {
         struct wkssvc_USE_INFO_2_CONTAINER *ctr = ptr;
@@ -1258,7 +1258,7 @@ wkssvc_USE_INFO_2_CONTAINER_coder(char *name, struct dcerpc_context *dce,
 static int
 wkssvc_USE_ENUM_UNION_coder(char *name, struct dcerpc_context *dce,
                             struct dcerpc_pdu *pdu,
-                            struct smb2_iovec *iov, int *offset,
+                            struct dcerpc_iovec *iov, int *offset,
                             void *ptr)
 {
         union wkssvc_USE_ENUM_UNION *info = ptr;
@@ -1301,7 +1301,7 @@ wkssvc_USE_ENUM_UNION_coder(char *name, struct dcerpc_context *dce,
 int
 wkssvc_USE_ENUM_STRUCT_coder(char *name, struct dcerpc_context *dce,
                              struct dcerpc_pdu *pdu,
-                             struct smb2_iovec *iov, int *offset,
+                             struct dcerpc_iovec *iov, int *offset,
                              void *ptr)
 {
         struct wkssvc_USE_ENUM_STRUCT *ues = ptr;
@@ -1322,7 +1322,7 @@ wkssvc_USE_ENUM_STRUCT_coder(char *name, struct dcerpc_context *dce,
 int
 wkssvc_USE_ENUM_STRUCT_struct_coder(char *name, struct dcerpc_context *dce,
                                     struct dcerpc_pdu *pdu,
-                                    struct smb2_iovec *iov, int *offset,
+                                    struct dcerpc_iovec *iov, int *offset,
                                     void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -1342,7 +1342,7 @@ wkssvc_USE_ENUM_STRUCT_struct_coder(char *name, struct dcerpc_context *dce,
 int
 wkssvc_NetrUseEnum_req_coder(char *name, struct dcerpc_context *dce,
                              struct dcerpc_pdu *pdu,
-                             struct smb2_iovec *iov, int *offset,
+                             struct dcerpc_iovec *iov, int *offset,
                              void *ptr)
 {
         struct wkssvc_NetrUseEnum_req *req = ptr;
@@ -1371,7 +1371,7 @@ wkssvc_NetrUseEnum_req_coder(char *name, struct dcerpc_context *dce,
 int
 wkssvc_NetrUseEnum_rep_coder(char *name, struct dcerpc_context *dce,
                              struct dcerpc_pdu *pdu,
-                             struct smb2_iovec *iov, int *offset,
+                             struct dcerpc_iovec *iov, int *offset,
                              void *ptr)
 {
         struct wkssvc_NetrUseEnum_rep *rep = ptr;
@@ -1417,7 +1417,7 @@ wkssvc_NetrUseEnum_rep_coder(char *name, struct dcerpc_context *dce,
 int
 wkssvc_STAT_WORKSTATION_0_coder(char *name, struct dcerpc_context *dce,
                                 struct dcerpc_pdu *pdu,
-                                struct smb2_iovec *iov, int *offset,
+                                struct dcerpc_iovec *iov, int *offset,
                                 void *ptr)
 {
         struct wkssvc_STAT_WORKSTATION_0 *st = ptr;
@@ -1583,7 +1583,7 @@ wkssvc_STAT_WORKSTATION_0_coder(char *name, struct dcerpc_context *dce,
 int
 wkssvc_STAT_WORKSTATION_0_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                        struct dcerpc_pdu *pdu,
-                                       struct smb2_iovec *iov, int *offset,
+                                       struct dcerpc_iovec *iov, int *offset,
                                        void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -1603,7 +1603,7 @@ wkssvc_STAT_WORKSTATION_0_STRUCT_coder(char *name, struct dcerpc_context *dce,
 int
 wkssvc_NetrWorkstationStatisticsGet_req_coder(char *name, struct dcerpc_context *dce,
                                               struct dcerpc_pdu *pdu,
-                                              struct smb2_iovec *iov, int *offset,
+                                              struct dcerpc_iovec *iov, int *offset,
                                               void *ptr)
 {
         struct wkssvc_NetrWorkstationStatisticsGet_req *req = ptr;
@@ -1639,7 +1639,7 @@ wkssvc_NetrWorkstationStatisticsGet_req_coder(char *name, struct dcerpc_context 
 int
 wkssvc_NetrWorkstationStatisticsGet_rep_coder(char *name, struct dcerpc_context *dce,
                                               struct dcerpc_pdu *pdu,
-                                              struct smb2_iovec *iov, int *offset,
+                                              struct dcerpc_iovec *iov, int *offset,
                                               void *ptr)
 {
         struct wkssvc_NetrWorkstationStatisticsGet_rep *rep = ptr;

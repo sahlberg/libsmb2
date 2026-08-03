@@ -394,82 +394,82 @@ struct dcerpc_pdu {
 #define RPTR 0x5270747272747052
 #define UPTR 0x5570747272747055
 static int ndr_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                        struct smb2_iovec *iov, int *offset, void *ptr, dcerpc_coder coder);
+                        struct dcerpc_iovec *iov, int *offset, void *ptr, dcerpc_coder coder);
 int ndr_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                     struct smb2_iovec *iov, int *offset, void *ptr);
+                     struct dcerpc_iovec *iov, int *offset, void *ptr);
 int ndr_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                     struct smb2_iovec *iov, int *offset, void *ptr);
+                     struct dcerpc_iovec *iov, int *offset, void *ptr);
 int ndr_uint8_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                    struct smb2_iovec *iov, int *offset, void *ptr);
+                    struct dcerpc_iovec *iov, int *offset, void *ptr);
 int ndr_uint3264_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                       struct smb2_iovec *iov, int *offset, void *ptr);
+                       struct dcerpc_iovec *iov, int *offset, void *ptr);
 static int ndr_conformance_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                                 struct smb2_iovec *iov, int *offset, void *ptr);
+                                 struct dcerpc_iovec *iov, int *offset, void *ptr);
 static int ndr_encode_ptr(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
-                          struct smb2_iovec *iov, int *offset, void *ptr,
+                          struct dcerpc_iovec *iov, int *offset, void *ptr,
                           enum ptr_type type, dcerpc_coder coder);
 static int ndr_decode_ptr(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
-                          struct smb2_iovec *iov, int *offset, void *ptr,
+                          struct dcerpc_iovec *iov, int *offset, void *ptr,
                           enum ptr_type type, dcerpc_coder coder);
 int ndr_carray_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                     struct smb2_iovec *iov, int *offset,
+                     struct dcerpc_iovec *iov, int *offset,
                      uint32_t num, void *ptr, int elem_size, dcerpc_coder coder);
 int ndr_union_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                    struct smb2_iovec *iov, int *offset,
+                    struct dcerpc_iovec *iov, int *offset,
                     uint32_t *switch_is, void *ptr, dcerpc_coder coder);
 int ndr_struct_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                     struct smb2_iovec *iov, int *offset, void *ptr, dcerpc_coder coder);
+                     struct dcerpc_iovec *iov, int *offset, void *ptr, dcerpc_coder coder);
 int ndr_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
-                  struct smb2_iovec *iov, int *offset, void *ptr,
+                  struct dcerpc_iovec *iov, int *offset, void *ptr,
                   enum ptr_type type, dcerpc_coder coder);
 static int ndr_encode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                            struct smb2_iovec *iov, int *offset, void *ptr, int nult);
+                            struct dcerpc_iovec *iov, int *offset, void *ptr, int nult);
 static int ndr_decode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                            struct smb2_iovec *iov, int *offset, void *ptr, int nult);
+                            struct dcerpc_iovec *iov, int *offset, void *ptr, int nult);
 int _ndr_utf16z_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                      struct smb2_iovec *iov, int *offset, void *ptr, int nult);
+                      struct dcerpc_iovec *iov, int *offset, void *ptr, int nult);
 int ndr_utf16z_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                     struct smb2_iovec *iov, int *offset, void *ptr);
+                     struct dcerpc_iovec *iov, int *offset, void *ptr);
 int ndr_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                    struct smb2_iovec *iov, int *offset, void *ptr);
+                    struct dcerpc_iovec *iov, int *offset, void *ptr);
 int ndr_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                   struct smb2_iovec *iov, int *offset, dcerpc_uuid_t *uuid);
+                   struct dcerpc_iovec *iov, int *offset, dcerpc_uuid_t *uuid);
 
 #ifdef HAVE_DCERPC_FULL
 /*
  * YAML
  */
 static int yaml_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                      struct smb2_iovec *iov, int *offset, void *ptr);
+                      struct dcerpc_iovec *iov, int *offset, void *ptr);
 static int yaml_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                      struct smb2_iovec *iov, int *offset, void *ptr);
+                      struct dcerpc_iovec *iov, int *offset, void *ptr);
 static int yaml_uint32_coder_pp(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                                struct smb2_iovec *iov, int *offset, void *ptr,
+                                struct dcerpc_iovec *iov, int *offset, void *ptr,
                                 struct dcerpc_uint32_pretty_printer *pp);
 static int yaml_uint64_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                      struct smb2_iovec *iov, int *offset, void *ptr);
+                      struct dcerpc_iovec *iov, int *offset, void *ptr);
 static int yaml_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                           struct smb2_iovec *iov, int *offset, dcerpc_uuid_t *uuid);
+                           struct dcerpc_iovec *iov, int *offset, dcerpc_uuid_t *uuid);
 static int yaml_carray_coder(char *name, struct dcerpc_context *ctx,
                       struct dcerpc_pdu *pdu,
-                      struct smb2_iovec *iov, int *offset,
+                      struct dcerpc_iovec *iov, int *offset,
                       uint32_t num, void *ptr, int elem_size, dcerpc_coder coder);
 static int yaml_union_coder(char *name, struct dcerpc_context *ctx,
                      struct dcerpc_pdu *pdu,
-                     struct smb2_iovec *iov, int *offset,
+                     struct dcerpc_iovec *iov, int *offset,
                      uint32_t *switch_is, void *ptr, dcerpc_coder coder);
 static int yaml_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
-                   struct smb2_iovec *iov, int *offset, void *ptr,
+                   struct dcerpc_iovec *iov, int *offset, void *ptr,
                    enum ptr_type type, dcerpc_coder coder);
 static int yaml_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                     struct smb2_iovec *iov, int *offset,
+                     struct dcerpc_iovec *iov, int *offset,
                      void *ptr);
 static int yaml_struct_coder(char *name, struct dcerpc_context *ctx,
                              struct dcerpc_pdu *pdu,
-                             struct smb2_iovec *iov, int *offset,
+                             struct dcerpc_iovec *iov, int *offset,
                              void *ptr, dcerpc_coder coder);
 static int yaml_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                         struct smb2_iovec *iov,
+                         struct dcerpc_iovec *iov,
                          int *offset, void *ptr,
                          dcerpc_coder coder);
 
@@ -477,43 +477,43 @@ static int yaml_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_p
  * JSON
  */
 static int json_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                             struct smb2_iovec *iov, int *offset, void *ptr);
+                             struct dcerpc_iovec *iov, int *offset, void *ptr);
 static int json_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                             struct smb2_iovec *iov, int *offset, void *ptr);
+                             struct dcerpc_iovec *iov, int *offset, void *ptr);
 static int json_uint32_coder_pp(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                                struct smb2_iovec *iov, int *offset, void *ptr,
+                                struct dcerpc_iovec *iov, int *offset, void *ptr,
                                 struct dcerpc_uint32_pretty_printer *pp);
 static int json_uint64_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                             struct smb2_iovec *iov, int *offset, void *ptr);
+                             struct dcerpc_iovec *iov, int *offset, void *ptr);
 static int json_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                           struct smb2_iovec *iov, int *offset, dcerpc_uuid_t *uuid);
+                           struct dcerpc_iovec *iov, int *offset, dcerpc_uuid_t *uuid);
 static int json_carray_coder(char *name, struct dcerpc_context *ctx,
                              struct dcerpc_pdu *pdu,
-                             struct smb2_iovec *iov, int *offset,
+                             struct dcerpc_iovec *iov, int *offset,
                              uint32_t num, void *ptr, int elem_size, dcerpc_coder coder);
 static int json_union_coder(char *name, struct dcerpc_context *ctx,
                             struct dcerpc_pdu *pdu,
-                            struct smb2_iovec *iov, int *offset,
+                            struct dcerpc_iovec *iov, int *offset,
                             uint32_t *switch_is, void *ptr, dcerpc_coder coder);
 static int json_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
-                          struct smb2_iovec *iov, int *offset, void *ptr,
+                          struct dcerpc_iovec *iov, int *offset, void *ptr,
                           enum ptr_type type, dcerpc_coder coder);
 static int json_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                            struct smb2_iovec *iov, int *offset,
+                            struct dcerpc_iovec *iov, int *offset,
                             void *ptr);
 static int json_struct_coder(char *name, struct dcerpc_context *ctx,
                              struct dcerpc_pdu *pdu,
-                             struct smb2_iovec *iov, int *offset,
+                             struct dcerpc_iovec *iov, int *offset,
                              void *ptr, dcerpc_coder coder);
 static int json_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                         struct smb2_iovec *iov,
+                         struct dcerpc_iovec *iov,
                          int *offset, void *ptr,
                          dcerpc_coder coder);
 #endif /* HAVE_DCERPC_FULL */
 
 
 int
-dcerpc_set_uint8(struct dcerpc_context *ctx, struct smb2_iovec *iov,
+dcerpc_set_uint8(struct dcerpc_context *ctx, struct dcerpc_iovec *iov,
                  int *offset, uint8_t value)
 {
         if (*offset + sizeof(uint8_t) > iov->len) {
@@ -526,7 +526,7 @@ dcerpc_set_uint8(struct dcerpc_context *ctx, struct smb2_iovec *iov,
 
 static int
 dcerpc_set_uint16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                  struct smb2_iovec *iov, int *offset, uint16_t value)
+                  struct dcerpc_iovec *iov, int *offset, uint16_t value)
 {
         *offset = (*offset + 1) & ~1;
         
@@ -545,7 +545,7 @@ dcerpc_set_uint16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 
 static int
 dcerpc_set_uint32(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                  struct smb2_iovec *iov, int *offset, uint32_t value)
+                  struct dcerpc_iovec *iov, int *offset, uint32_t value)
 {
         *offset = (*offset + 3) & ~3;
         
@@ -563,7 +563,7 @@ dcerpc_set_uint32(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 
 static int
 dcerpc_set_uint64(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                  struct smb2_iovec *iov, int *offset, uint64_t value)
+                  struct dcerpc_iovec *iov, int *offset, uint64_t value)
 {
         *offset = (*offset + 7) & ~7;
 
@@ -580,7 +580,7 @@ dcerpc_set_uint64(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 }
 
 static int
-dcerpc_get_uint8(struct dcerpc_context *ctx, struct smb2_iovec *iov,
+dcerpc_get_uint8(struct dcerpc_context *ctx, struct dcerpc_iovec *iov,
                   int *offset, uint8_t *value)
 {
         if (*offset + sizeof(uint8_t) > iov->len) {
@@ -593,7 +593,7 @@ dcerpc_get_uint8(struct dcerpc_context *ctx, struct smb2_iovec *iov,
 
 static int
 dcerpc_get_uint16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                  struct smb2_iovec *iov, int *offset, uint16_t *value)
+                  struct dcerpc_iovec *iov, int *offset, uint16_t *value)
 {
         uint16_t val;
 
@@ -614,7 +614,7 @@ dcerpc_get_uint16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 
 static int
 dcerpc_get_uint32(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                  struct smb2_iovec *iov, int *offset, uint32_t *value)
+                  struct dcerpc_iovec *iov, int *offset, uint32_t *value)
 {
         uint32_t val;
         
@@ -636,7 +636,7 @@ dcerpc_get_uint32(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 
 static int
 dcerpc_get_uint64(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                  struct smb2_iovec *iov, int *offset, uint64_t *value)
+                  struct dcerpc_iovec *iov, int *offset, uint64_t *value)
 {
         uint64_t val;
 
@@ -657,7 +657,7 @@ dcerpc_get_uint64(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 
 static int
 ndr_uint64_coder(char *name _U_, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                 struct smb2_iovec *iov, int *offset, void *ptr)
+                 struct dcerpc_iovec *iov, int *offset, void *ptr)
 {
         if (pdu->is_conformance_run) {
                 if (pdu->max_alignment < 8) {
@@ -857,7 +857,7 @@ dcerpc_add_deferred_pointer(struct dcerpc_context *ctx,
 
 int
 dcerpc_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-             struct smb2_iovec *iov,
+             struct dcerpc_iovec *iov,
              int *offset, void *ptr,
              dcerpc_coder coder)
 {
@@ -879,7 +879,7 @@ dcerpc_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 static int
 dcerpc_process_deferred_pointers(struct dcerpc_context *ctx,
                                  struct dcerpc_pdu *pdu,
-                                 struct smb2_iovec *iov,
+                                 struct dcerpc_iovec *iov,
                                  int *offset)
 {
         struct dcerpc_deferred_pointer *dp;
@@ -897,7 +897,7 @@ dcerpc_process_deferred_pointers(struct dcerpc_context *ctx,
 
 int
 dcerpc_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                 struct smb2_iovec *iov, int *offset, void *ptr)
+                 struct dcerpc_iovec *iov, int *offset, void *ptr)
 {
         switch(pdu->encoding) {
         case ENCODING_NDR:
@@ -915,7 +915,7 @@ dcerpc_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *p
 }
 
 int dcerpc_uint32_coder_pp(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                           struct smb2_iovec *iov, int *offset, void *ptr,
+                           struct dcerpc_iovec *iov, int *offset, void *ptr,
                            struct dcerpc_uint32_pretty_printer *pp)
 {
         switch(pdu->encoding) {
@@ -935,7 +935,7 @@ int dcerpc_uint32_coder_pp(char *name, struct dcerpc_context *ctx, struct dcerpc
 
 int
 dcerpc_uint64_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                    struct smb2_iovec *iov, int *offset, void *ptr)
+                    struct dcerpc_iovec *iov, int *offset, void *ptr)
 {
         switch(pdu->encoding) {
         case ENCODING_NDR:
@@ -954,7 +954,7 @@ dcerpc_uint64_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *p
 
 int
 dcerpc_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                 struct smb2_iovec *iov, int *offset, void *ptr)
+                 struct dcerpc_iovec *iov, int *offset, void *ptr)
 {
         switch(pdu->encoding) {
         case ENCODING_NDR:
@@ -974,7 +974,7 @@ dcerpc_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *p
 int
 dcerpc_carray_coder(char *name, struct dcerpc_context *ctx,
                  struct dcerpc_pdu *pdu,
-                 struct smb2_iovec *iov, int *offset,
+                 struct dcerpc_iovec *iov, int *offset,
                  uint32_t num, void *ptr, int elem_size, dcerpc_coder coder)
 {
         switch(pdu->encoding) {
@@ -997,7 +997,7 @@ dcerpc_carray_coder(char *name, struct dcerpc_context *ctx,
 
 int dcerpc_union_coder(char *name, struct dcerpc_context *ctx,
                        struct dcerpc_pdu *pdu,
-                       struct smb2_iovec *iov, int *offset,
+                       struct dcerpc_iovec *iov, int *offset,
                        uint32_t *switch_is, void *ptr, dcerpc_coder coder)
 {
         switch(pdu->encoding) {
@@ -1020,7 +1020,7 @@ int dcerpc_union_coder(char *name, struct dcerpc_context *ctx,
 
 int dcerpc_struct_coder(char *name, struct dcerpc_context *ctx,
                         struct dcerpc_pdu *pdu,
-                        struct smb2_iovec *iov, int *offset,
+                        struct dcerpc_iovec *iov, int *offset,
                         void *ptr, dcerpc_coder coder)
 {
         switch(pdu->encoding) {
@@ -1043,7 +1043,7 @@ int dcerpc_struct_coder(char *name, struct dcerpc_context *ctx,
 
 int
 dcerpc_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
-                 struct smb2_iovec *iov, int *offset, void *ptr,
+                 struct dcerpc_iovec *iov, int *offset, void *ptr,
                  enum ptr_type type, dcerpc_coder coder)
 {
         switch(pdu->encoding) {
@@ -1066,7 +1066,7 @@ dcerpc_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
 
 int
 dcerpc_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                   struct smb2_iovec *iov, int *offset,
+                   struct dcerpc_iovec *iov, int *offset,
                    void *ptr)
 {
         switch(pdu->encoding) {
@@ -1085,7 +1085,7 @@ dcerpc_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pd
 }
 int
 dcerpc_utf16z_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                    struct smb2_iovec *iov, int *offset,
+                    struct dcerpc_iovec *iov, int *offset,
                     void *ptr)
 {
         switch(pdu->encoding) {
@@ -1106,7 +1106,7 @@ dcerpc_utf16z_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *p
 
 int
 dcerpc_header_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                    struct smb2_iovec *iov, int *offset,
+                    struct dcerpc_iovec *iov, int *offset,
                     struct dcerpc_header *hdr)
 {
         /* Major Version */
@@ -1162,7 +1162,7 @@ static int
 dcerpc_bind_coder(struct dcerpc_context *ctx,
                   struct dcerpc_pdu *pdu,
                   struct dcerpc_bind_pdu *bind,
-                  struct smb2_iovec *iov, int *offset)
+                  struct dcerpc_iovec *iov, int *offset)
 {
         int oo, i, j;
         uint16_t v;
@@ -1236,7 +1236,7 @@ static int
 dcerpc_request_coder(struct dcerpc_context *ctx,
                      struct dcerpc_pdu *pdu,
                      struct dcerpc_request_pdu *req,
-                     struct smb2_iovec *iov, int *offset)
+                     struct dcerpc_iovec *iov, int *offset)
 {
         /* Alloc Hint */
         if (ndr_uint32_coder("AllocHint", ctx, pdu, iov, offset, &req->alloc_hint)) {
@@ -1259,7 +1259,7 @@ dcerpc_request_coder(struct dcerpc_context *ctx,
 static int
 dcerpc_bind_ack_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                       struct dcerpc_bind_ack_pdu *bind_ack,
-                      struct smb2_iovec *iov, int *offset)
+                      struct dcerpc_iovec *iov, int *offset)
 {
         int i;
         uint16_t sec_addr_len;
@@ -1338,7 +1338,7 @@ dcerpc_bind_ack_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 static int
 dcerpc_response_coder(struct dcerpc_context *ctx,
                       struct dcerpc_response_pdu *rsp,
-                      struct smb2_iovec *iov, int *offset)
+                      struct dcerpc_iovec *iov, int *offset)
 {
 #ifndef _MSC_VER
         struct dcerpc_pdu *pdu = container_of(rsp, struct dcerpc_pdu, rsp);
@@ -1387,7 +1387,7 @@ dcerpc_response_coder(struct dcerpc_context *ctx,
 
 static int
 dcerpc_pdu_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                 struct smb2_iovec *iov, int *offset)
+                 struct dcerpc_iovec *iov, int *offset)
 {
         if (dcerpc_header_coder(ctx, pdu, iov, offset, &pdu->hdr)) {
                 return -1;
@@ -1456,7 +1456,7 @@ dce_frags_status(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
 
         while (1) {
                 struct dcerpc_header hdr;
-                struct smb2_iovec tmpiov;
+                struct dcerpc_iovec tmpiov;
                 int o = 0;
 
                 if (len - offset < 16) {
@@ -1518,12 +1518,12 @@ dce_frags_status(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
  */
 static int
 dce_unfragment_iov(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
-                   struct smb2_iovec *iov)
+                   struct dcerpc_iovec *iov)
 {
         int offset = 0;
         int unfragment_len;
         struct dcerpc_header hdr, next_hdr;
-        struct smb2_iovec tmpiov;
+        struct dcerpc_iovec tmpiov;
         int o;
         int saved_dir = pdu->direction;
 
@@ -1747,7 +1747,7 @@ static void
 dcerpc_finish_call_from_reasm(struct dcerpc_context *dce,
                               struct dcerpc_pdu *pdu)
 {
-        struct smb2_iovec iov;
+        struct dcerpc_iovec iov;
         void *payload;
         int offset = 0;
         int st;
@@ -1875,7 +1875,7 @@ dcerpc_call_async(struct dcerpc_context *dce,
         struct dcerpc_pdu *pdu;
         struct smb2_pdu *smb2_pdu;
         struct smb2_ioctl_request smb2_req;
-        struct smb2_iovec iov;
+        struct dcerpc_iovec iov;
         int offset = 0, o;
         uint32_t v;
 
@@ -2115,7 +2115,7 @@ smb2_bind_cb(struct smb2_context *smb2, int status,
 {
         struct dcerpc_pdu *pdu = private_data;
         struct dcerpc_context *dce = pdu->dce;
-        struct smb2_iovec iov _U_;
+        struct dcerpc_iovec iov _U_;
         struct smb2_ioctl_reply *rep = command_data;
         int i;
         int offset = 0;
@@ -2183,7 +2183,7 @@ dcerpc_bind_async(struct dcerpc_context *dce, dcerpc_cb cb,
         struct dcerpc_pdu *pdu;
         struct smb2_pdu *smb2_pdu;
         struct smb2_ioctl_request req;
-        struct smb2_iovec iov _U_;
+        struct dcerpc_iovec iov _U_;
         int offset = 0;
         struct p_cont_elem_t *pce;
 
@@ -2501,7 +2501,7 @@ void *dcerpc_get_request(struct dcerpc_pdu *pdu)
 int
 dcerpc_context_handle_coder(char *name, struct dcerpc_context *dce,
                             struct dcerpc_pdu *pdu,
-                            struct smb2_iovec *iov, int *offset,
+                            struct dcerpc_iovec *iov, int *offset,
                             void *ptr)
 {
         struct dcerpc_context_handle *handle = ptr;
@@ -2559,7 +2559,7 @@ dcerpc_context_handle_coder(char *name, struct dcerpc_context *dce,
 static int
 _dcerpc_RPC_UNICODE_STRING_coder(char *name, struct dcerpc_context *dce,
                                  struct dcerpc_pdu *pdu,
-                                 struct smb2_iovec *iov, int *offset,
+                                 struct dcerpc_iovec *iov, int *offset,
                                  void *ptr, int nult)
 {
         uint16_t len, maxlen;
@@ -2653,7 +2653,7 @@ _dcerpc_RPC_UNICODE_STRING_coder(char *name, struct dcerpc_context *dce,
 int
 dcerpc_RPC_UNICODE_STRING_coder(char *name, struct dcerpc_context *dce,
                                 struct dcerpc_pdu *pdu,
-                                struct smb2_iovec *iov, int *offset,
+                                struct dcerpc_iovec *iov, int *offset,
                                 void *ptr)
 {
         return _dcerpc_RPC_UNICODE_STRING_coder(name, dce, pdu, iov, offset,
@@ -2667,7 +2667,7 @@ dcerpc_RPC_UNICODE_STRING_coder(char *name, struct dcerpc_context *dce,
 int
 dcerpc_RPC_UNICODE_STRINGz_coder(char *name, struct dcerpc_context *dce,
                                  struct dcerpc_pdu *pdu,
-                                 struct smb2_iovec *iov, int *offset,
+                                 struct dcerpc_iovec *iov, int *offset,
                                  void *ptr)
 {
         return _dcerpc_RPC_UNICODE_STRING_coder(name, dce, pdu, iov, offset,
@@ -2680,7 +2680,7 @@ dcerpc_RPC_UNICODE_STRINGz_coder(char *name, struct dcerpc_context *dce,
  */
 static int
 ndr_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-             struct smb2_iovec *iov,
+             struct dcerpc_iovec *iov,
              int *offset, void *ptr,
              dcerpc_coder coder)
 {
@@ -2699,7 +2699,7 @@ ndr_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 
 int
 ndr_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                 struct smb2_iovec *iov, int *offset, void *ptr)
+                 struct dcerpc_iovec *iov, int *offset, void *ptr)
 {
         if (pdu->is_conformance_run) {
                 if (pdu->max_alignment < 4) {
@@ -2716,7 +2716,7 @@ ndr_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 
 int
 ndr_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                 struct smb2_iovec *iov, int *offset, void *ptr)
+                 struct dcerpc_iovec *iov, int *offset, void *ptr)
 {
         if (pdu->is_conformance_run) {
                 if (pdu->max_alignment < 2) {
@@ -2734,7 +2734,7 @@ ndr_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 
 int
 ndr_uint8_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                   struct smb2_iovec *iov, int *offset, void *ptr)
+                   struct dcerpc_iovec *iov, int *offset, void *ptr)
 {
         if (pdu->is_conformance_run) {
                 if (pdu->max_alignment < 1) {
@@ -2754,7 +2754,7 @@ ndr_uint8_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 /* Encode words that vary in size depending on the transport syntax */
 int
 ndr_uint3264_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                   struct smb2_iovec *iov, int *offset, void *ptr)
+                   struct dcerpc_iovec *iov, int *offset, void *ptr)
 {
         uint32_t u32 = 0;
         uint64_t val = *(uint64_t *)ptr;
@@ -2798,7 +2798,7 @@ ndr_uint3264_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pd
 
 static int
 ndr_conformance_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                         struct smb2_iovec *iov, int *offset, void *ptr)
+                         struct dcerpc_iovec *iov, int *offset, void *ptr)
 {
         uint32_t u32 = 0;
         uint64_t val = *(uint64_t *)ptr;
@@ -2834,7 +2834,7 @@ ndr_conformance_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 
 static int
 ndr_encode_ptr(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
-               struct smb2_iovec *iov,
+               struct dcerpc_iovec *iov,
                int *offset, void *ptr,
                enum ptr_type type, dcerpc_coder coder)
 {
@@ -2943,7 +2943,7 @@ ndr_encode_ptr(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
 */
 static int
 ndr_decode_ptr(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
-               struct smb2_iovec *iov, int *offset, void *ptr,
+               struct dcerpc_iovec *iov, int *offset, void *ptr,
                enum ptr_type type, dcerpc_coder coder)
 {
         int top_level = pdu->top_level;
@@ -3031,7 +3031,7 @@ ndr_decode_ptr(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
 int
 ndr_carray_coder(char *name, struct dcerpc_context *ctx,
                  struct dcerpc_pdu *pdu,
-                 struct smb2_iovec *iov, int *offset,
+                 struct dcerpc_iovec *iov, int *offset,
                  uint32_t num, void *ptr, int elem_size, dcerpc_coder coder)
 {
         int i;
@@ -3059,7 +3059,7 @@ ndr_carray_coder(char *name, struct dcerpc_context *ctx,
 
 int ndr_union_coder(char *name, struct dcerpc_context *ctx,
                     struct dcerpc_pdu *pdu,
-                    struct smb2_iovec *iov, int *offset,
+                    struct dcerpc_iovec *iov, int *offset,
                     uint32_t *switch_is, void *ptr, dcerpc_coder coder)
 {
         uint64_t p;
@@ -3082,7 +3082,7 @@ int ndr_union_coder(char *name, struct dcerpc_context *ctx,
 
 int ndr_struct_coder(char *name, struct dcerpc_context *ctx,
                         struct dcerpc_pdu *pdu,
-                        struct smb2_iovec *iov, int *offset,
+                        struct dcerpc_iovec *iov, int *offset,
                         void *ptr, dcerpc_coder coder)
 {
         return coder(name, ctx, pdu, iov, offset, ptr);
@@ -3090,7 +3090,7 @@ int ndr_struct_coder(char *name, struct dcerpc_context *ctx,
 
 int
 ndr_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
-              struct smb2_iovec *iov, int *offset, void *ptr,
+              struct dcerpc_iovec *iov, int *offset, void *ptr,
               enum ptr_type type, dcerpc_coder coder)
 {
         if (pdu->direction == DCERPC_DECODE) {
@@ -3104,7 +3104,7 @@ ndr_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
 
 static int
 ndr_encode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                 struct smb2_iovec *iov, int *offset,
+                 struct dcerpc_iovec *iov, int *offset,
                  void *ptr, int nult)
 {
         struct dcerpc_utf16 *s = ptr;
@@ -3195,7 +3195,7 @@ ndr_encode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 
 static int
 ndr_decode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                 struct smb2_iovec *iov, int *offset,
+                 struct dcerpc_iovec *iov, int *offset,
                  void *ptr, int nult)
 {
         struct dcerpc_utf16 *s = ptr;
@@ -3264,7 +3264,7 @@ ndr_decode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 /* ptr is char ** */
 int
 _ndr_utf16z_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                 struct smb2_iovec *iov, int *offset,
+                 struct dcerpc_iovec *iov, int *offset,
                   void *ptr, int nult)
 {
         struct dcerpc_utf16 **u = ptr;
@@ -3317,7 +3317,7 @@ _ndr_utf16z_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu
 /* ptr is char ** */
 int
 ndr_utf16z_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                 struct smb2_iovec *iov, int *offset,
+                 struct dcerpc_iovec *iov, int *offset,
                  void *ptr)
 {
         return _ndr_utf16z_coder(name, ctx, pdu, iov, offset, ptr, 1);
@@ -3327,7 +3327,7 @@ ndr_utf16z_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 /* ptr is char ** */
 int
 ndr_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                struct smb2_iovec *iov, int *offset,
+                struct dcerpc_iovec *iov, int *offset,
                 void *ptr)
 {
         return _ndr_utf16z_coder(name, ctx, pdu, iov, offset, ptr, 0);
@@ -3335,7 +3335,7 @@ ndr_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 
 int
 ndr_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-               struct smb2_iovec *iov, int *offset,
+               struct dcerpc_iovec *iov, int *offset,
                dcerpc_uuid_t *uuid)
 {
         int i;
@@ -3364,7 +3364,7 @@ ndr_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 #ifdef HAVE_DCERPC_FULL
 void
 yaml_print_preamble(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                    struct smb2_iovec *iov, int *offset)
+                    struct dcerpc_iovec *iov, int *offset)
 {
         int i;
 
@@ -3397,7 +3397,7 @@ yaml_print_preamble(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 }
 
 int
-yaml_next_kv(struct dcerpc_pdu *pdu, struct smb2_iovec *iov, int *offset)
+yaml_next_kv(struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov, int *offset)
 {
         char *str;
 
@@ -3441,7 +3441,7 @@ yaml_next_kv(struct dcerpc_pdu *pdu, struct smb2_iovec *iov, int *offset)
 
 static int
 _yaml_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                   struct smb2_iovec *iov, int *offset, void *ptr,
+                   struct dcerpc_iovec *iov, int *offset, void *ptr,
                    struct dcerpc_uint32_pretty_printer *pp)
 {
         if (pdu->direction == DCERPC_DECODE) {
@@ -3480,13 +3480,13 @@ _yaml_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pd
 
 static int
 yaml_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                  struct smb2_iovec *iov, int *offset, void *ptr)
+                  struct dcerpc_iovec *iov, int *offset, void *ptr)
 {
         return _yaml_uint32_coder(name, ctx, pdu, iov, offset, ptr, NULL);
 }
         
 static int yaml_uint32_coder_pp(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                                struct smb2_iovec *iov, int *offset, void *ptr,
+                                struct dcerpc_iovec *iov, int *offset, void *ptr,
                                 struct dcerpc_uint32_pretty_printer *pp)
 {
         return _yaml_uint32_coder(name, ctx, pdu, iov, offset, ptr, pp);
@@ -3494,7 +3494,7 @@ static int yaml_uint32_coder_pp(char *name, struct dcerpc_context *ctx, struct d
 
 static int
 yaml_uint64_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                  struct smb2_iovec *iov, int *offset, void *ptr)
+                  struct dcerpc_iovec *iov, int *offset, void *ptr)
 {
         if (pdu->direction == DCERPC_DECODE) {
                 yaml_next_kv(pdu, iov, offset);
@@ -3521,7 +3521,7 @@ yaml_uint64_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu
 
 static int
 yaml_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                  struct smb2_iovec *iov, int *offset, void *ptr)
+                  struct dcerpc_iovec *iov, int *offset, void *ptr)
 {
         if (pdu->direction == DCERPC_DECODE) {
                 yaml_next_kv(pdu, iov, offset);
@@ -3545,7 +3545,7 @@ yaml_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu
 
 static int
 yaml_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                struct smb2_iovec *iov, int *offset, dcerpc_uuid_t *uuid)
+                struct dcerpc_iovec *iov, int *offset, dcerpc_uuid_t *uuid)
 {
         int i;
 
@@ -3597,7 +3597,7 @@ yaml_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 static int
 yaml_carray_coder(char *name, struct dcerpc_context *ctx,
                   struct dcerpc_pdu *pdu,
-                  struct smb2_iovec *iov, int *offset,
+                  struct dcerpc_iovec *iov, int *offset,
                   uint32_t num, void *ptr, int elem_size, dcerpc_coder coder)
 {
         int i;
@@ -3640,7 +3640,7 @@ yaml_carray_coder(char *name, struct dcerpc_context *ctx,
 static int
 yaml_union_coder(char *name, struct dcerpc_context *ctx,
                  struct dcerpc_pdu *pdu,
-                 struct smb2_iovec *iov, int *offset,
+                 struct dcerpc_iovec *iov, int *offset,
                  uint32_t *switch_is, void *ptr, dcerpc_coder coder)
 {
         int ret;
@@ -3677,7 +3677,7 @@ yaml_union_coder(char *name, struct dcerpc_context *ctx,
 
 static int
 yaml_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
-               struct smb2_iovec *iov, int *offset, void *ptr,
+               struct dcerpc_iovec *iov, int *offset, void *ptr,
                enum ptr_type type, dcerpc_coder coder)
 {
         if (ptr == NULL) {
@@ -3704,7 +3704,7 @@ yaml_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
 
 static int
 yaml_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                 struct smb2_iovec *iov, int *offset,
+                 struct dcerpc_iovec *iov, int *offset,
                  void *ptr)
 {
         if (pdu->direction == DCERPC_DECODE) {
@@ -3735,7 +3735,7 @@ yaml_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 static int
 yaml_struct_coder(char *name, struct dcerpc_context *ctx,
                   struct dcerpc_pdu *pdu,
-                  struct smb2_iovec *iov, int *offset,
+                  struct dcerpc_iovec *iov, int *offset,
                   void *ptr, dcerpc_coder coder)
 {
         int ret;
@@ -3770,7 +3770,7 @@ yaml_struct_coder(char *name, struct dcerpc_context *ctx,
 
 int
 yaml_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-             struct smb2_iovec *iov,
+             struct dcerpc_iovec *iov,
              int *offset, void *ptr,
              dcerpc_coder coder)
 {
@@ -3811,7 +3811,7 @@ yaml_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
  */
 
 static void
-json_write_indent(struct dcerpc_pdu *pdu, struct smb2_iovec *iov, int *offset)
+json_write_indent(struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov, int *offset)
 {
         int i;
 
@@ -3830,7 +3830,7 @@ json_write_indent(struct dcerpc_pdu *pdu, struct smb2_iovec *iov, int *offset)
  * sibling will need a leading comma.
  */
 void
-json_sep(struct dcerpc_pdu *pdu, struct smb2_iovec *iov, int *offset)
+json_sep(struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov, int *offset)
 {
         if (pdu->json_need_comma) {
                 if (*offset + 2 < (int)iov->len) {
@@ -3848,7 +3848,7 @@ json_sep(struct dcerpc_pdu *pdu, struct smb2_iovec *iov, int *offset)
 
 /* Append a NUL-terminated string if it fits. */
 int
-json_append(struct smb2_iovec *iov, int *offset, const char *s)
+json_append(struct dcerpc_iovec *iov, int *offset, const char *s)
 {
         size_t n = strlen(s);
 
@@ -3865,7 +3865,7 @@ json_append(struct smb2_iovec *iov, int *offset, const char *s)
  * characters as required by RFC 8259.
  */
 int
-json_append_quoted(struct smb2_iovec *iov, int *offset, const char *s)
+json_append_quoted(struct dcerpc_iovec *iov, int *offset, const char *s)
 {
         const unsigned char *p;
 
@@ -3914,7 +3914,7 @@ json_append_quoted(struct smb2_iovec *iov, int *offset, const char *s)
 }
 
 static int
-json_skip_ws(struct smb2_iovec *iov, int *offset)
+json_skip_ws(struct dcerpc_iovec *iov, int *offset)
 {
         while (*offset < (int)iov->len && iov->buf[*offset] != '\0') {
                 char c = (char)iov->buf[*offset];
@@ -3929,7 +3929,7 @@ json_skip_ws(struct smb2_iovec *iov, int *offset)
 }
 
 static int
-json_expect_char(struct smb2_iovec *iov, int *offset, char expect)
+json_expect_char(struct dcerpc_iovec *iov, int *offset, char expect)
 {
         json_skip_ws(iov, offset);
         if (*offset >= (int)iov->len || iov->buf[*offset] != (uint8_t)expect) {
@@ -3945,7 +3945,7 @@ json_expect_char(struct smb2_iovec *iov, int *offset, char expect)
  * Sets *start to the unescaped string (NUL-terminated in iov buffer).
  */
 int
-json_parse_string(struct smb2_iovec *iov, int *offset, char **start)
+json_parse_string(struct dcerpc_iovec *iov, int *offset, char **start)
 {
         char *dst;
         char *src;
@@ -4033,7 +4033,7 @@ json_parse_string(struct smb2_iovec *iov, int *offset, char **start)
  * key read, -1 on error.
  */
 static int
-json_next_key(struct dcerpc_pdu *pdu, struct smb2_iovec *iov, int *offset)
+json_next_key(struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov, int *offset)
 {
         char *key;
 
@@ -4065,14 +4065,14 @@ json_next_key(struct dcerpc_pdu *pdu, struct smb2_iovec *iov, int *offset)
  * Returns 0 if a key is available, 1 at end of object, -1 on error.
  */
 int
-dcerpc_json_next_key(struct dcerpc_pdu *pdu, struct smb2_iovec *iov,
+dcerpc_json_next_key(struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
                      int *offset)
 {
         return json_next_key(pdu, iov, offset);
 }
 
 int
-json_expect_key(struct dcerpc_pdu *pdu, struct smb2_iovec *iov, int *offset,
+json_expect_key(struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov, int *offset,
                 const char *name)
 {
         int rc;
@@ -4096,7 +4096,7 @@ json_expect_key(struct dcerpc_pdu *pdu, struct smb2_iovec *iov, int *offset,
 
 /* Parse a JSON number (integer) into an unsigned long. */
 static int
-json_parse_ulong(struct smb2_iovec *iov, int *offset, unsigned long *out)
+json_parse_ulong(struct dcerpc_iovec *iov, int *offset, unsigned long *out)
 {
         char *start;
         char *end;
@@ -4114,7 +4114,7 @@ json_parse_ulong(struct smb2_iovec *iov, int *offset, unsigned long *out)
 
 static int
 _json_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                   struct smb2_iovec *iov, int *offset, void *ptr,
+                   struct dcerpc_iovec *iov, int *offset, void *ptr,
                    struct dcerpc_uint32_pretty_printer *pp)
 {
         if (pdu->direction == DCERPC_DECODE) {
@@ -4152,14 +4152,14 @@ _json_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pd
 
 static int
 json_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                  struct smb2_iovec *iov, int *offset, void *ptr)
+                  struct dcerpc_iovec *iov, int *offset, void *ptr)
 {
         return _json_uint32_coder(name, ctx, pdu, iov, offset, ptr, NULL);
 }
 
 static int
 json_uint32_coder_pp(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                     struct smb2_iovec *iov, int *offset, void *ptr,
+                     struct dcerpc_iovec *iov, int *offset, void *ptr,
                      struct dcerpc_uint32_pretty_printer *pp)
 {
         return _json_uint32_coder(name, ctx, pdu, iov, offset, ptr, pp);
@@ -4168,7 +4168,7 @@ json_uint32_coder_pp(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *
 
 static int
 json_uint64_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                  struct smb2_iovec *iov, int *offset, void *ptr)
+                  struct dcerpc_iovec *iov, int *offset, void *ptr)
 {
         if (pdu->direction == DCERPC_DECODE) {
                 unsigned long v;
@@ -4200,7 +4200,7 @@ json_uint64_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu
 
 static int
 json_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                  struct smb2_iovec *iov, int *offset, void *ptr)
+                  struct dcerpc_iovec *iov, int *offset, void *ptr)
 {
         if (pdu->direction == DCERPC_DECODE) {
                 unsigned long v;
@@ -4232,7 +4232,7 @@ json_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu
 
 static int
 json_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                struct smb2_iovec *iov, int *offset, dcerpc_uuid_t *uuid)
+                struct dcerpc_iovec *iov, int *offset, dcerpc_uuid_t *uuid)
 {
         int i;
 
@@ -4290,7 +4290,7 @@ json_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 static int
 json_carray_coder(char *name, struct dcerpc_context *ctx,
                   struct dcerpc_pdu *pdu,
-                  struct smb2_iovec *iov, int *offset,
+                  struct dcerpc_iovec *iov, int *offset,
                   uint32_t num, void *ptr, int elem_size, dcerpc_coder coder)
 {
         int i;
@@ -4383,7 +4383,7 @@ json_carray_coder(char *name, struct dcerpc_context *ctx,
 static int
 json_union_coder(char *name, struct dcerpc_context *ctx,
                  struct dcerpc_pdu *pdu,
-                 struct smb2_iovec *iov, int *offset,
+                 struct dcerpc_iovec *iov, int *offset,
                  uint32_t *switch_is, void *ptr, dcerpc_coder coder)
 {
         int ret;
@@ -4441,7 +4441,7 @@ json_union_coder(char *name, struct dcerpc_context *ctx,
 
 static int
 json_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
-               struct smb2_iovec *iov, int *offset, void *ptr,
+               struct dcerpc_iovec *iov, int *offset, void *ptr,
                enum ptr_type type, dcerpc_coder coder)
 {
         if (ptr == NULL) {
@@ -4477,7 +4477,7 @@ json_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
 
 static int
 json_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                 struct smb2_iovec *iov, int *offset,
+                 struct dcerpc_iovec *iov, int *offset,
                  void *ptr)
 {
         if (pdu->direction == DCERPC_DECODE) {
@@ -4511,7 +4511,7 @@ json_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 static int
 json_struct_coder(char *name, struct dcerpc_context *ctx,
                   struct dcerpc_pdu *pdu,
-                  struct smb2_iovec *iov, int *offset,
+                  struct dcerpc_iovec *iov, int *offset,
                   void *ptr, dcerpc_coder coder)
 {
         int ret;
@@ -4560,7 +4560,7 @@ json_struct_coder(char *name, struct dcerpc_context *ctx,
 
 static int
 json_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-              struct smb2_iovec *iov,
+              struct dcerpc_iovec *iov,
               int *offset, void *ptr,
               dcerpc_coder coder)
 {

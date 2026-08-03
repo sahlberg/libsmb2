@@ -680,7 +680,8 @@ void smb2_change_events(struct smb2_context *smb2, t_socket fd, int events);
 void smb2_timeout_pdus(struct smb2_context *smb2);
 
 struct dcerpc_context;
-int dcerpc_set_uint8(struct dcerpc_context *ctx, struct smb2_iovec *iov,
+struct dcerpc_iovec;
+int dcerpc_set_uint8(struct dcerpc_context *ctx, struct dcerpc_iovec *iov,
                      int *offset, uint8_t value);
 
 struct dcerpc_pdu;
@@ -698,16 +699,16 @@ char *dcerpc_pdu_yaml_key(struct dcerpc_pdu *pdu);
 char *dcerpc_pdu_yaml_val(struct dcerpc_pdu *pdu);
 void dcerpc_pdu_clear_yaml_key(struct dcerpc_pdu *pdu);
 char *dcerpc_pdu_json_key(struct dcerpc_pdu *pdu);
-int dcerpc_json_next_key(struct dcerpc_pdu *pdu, struct smb2_iovec *iov,
+int dcerpc_json_next_key(struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
                          int *offset);
 void yaml_print_preamble(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                         struct smb2_iovec *iov, int *offset);
-int yaml_next_kv(struct dcerpc_pdu *pdu, struct smb2_iovec *iov, int *offset);
-void json_sep(struct dcerpc_pdu *pdu, struct smb2_iovec *iov, int *offset);
-int json_append(struct smb2_iovec *iov, int *offset, const char *s);
-int json_append_quoted(struct smb2_iovec *iov, int *offset, const char *s);
-int json_parse_string(struct smb2_iovec *iov, int *offset, char **start);
-int json_expect_key(struct dcerpc_pdu *pdu, struct smb2_iovec *iov, int *offset,
+                         struct dcerpc_iovec *iov, int *offset);
+int yaml_next_kv(struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov, int *offset);
+void json_sep(struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov, int *offset);
+int json_append(struct dcerpc_iovec *iov, int *offset, const char *s);
+int json_append_quoted(struct dcerpc_iovec *iov, int *offset, const char *s);
+int json_parse_string(struct dcerpc_iovec *iov, int *offset, char **start);
+int json_expect_key(struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov, int *offset,
                     const char *name);
 #endif
 

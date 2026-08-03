@@ -103,7 +103,7 @@ static struct dcerpc_uint32_pretty_printer vers_option_pp = {
 static int
 epm_uuid_field_coder(char *name, struct dcerpc_context *dce,
                      struct dcerpc_pdu *pdu,
-                     struct smb2_iovec *iov, int *offset,
+                     struct dcerpc_iovec *iov, int *offset,
                      void *ptr)
 {
         dcerpc_uuid_t *uuid = ptr;
@@ -223,7 +223,7 @@ epm_uuid_field_coder(char *name, struct dcerpc_context *dce,
 static int
 epm_tower_bytes_coder(char *name, struct dcerpc_context *dce,
                       struct dcerpc_pdu *pdu,
-                      struct smb2_iovec *iov, int *offset,
+                      struct dcerpc_iovec *iov, int *offset,
                       void *ptr)
 {
         struct epm_twr_t *twr = ptr;
@@ -312,7 +312,7 @@ epm_tower_bytes_coder(char *name, struct dcerpc_context *dce,
 int
 epm_twr_coder(char *name, struct dcerpc_context *dce,
               struct dcerpc_pdu *pdu,
-              struct smb2_iovec *iov, int *offset,
+              struct dcerpc_iovec *iov, int *offset,
               void *ptr)
 {
         struct epm_twr_t *twr = ptr;
@@ -343,7 +343,7 @@ epm_twr_coder(char *name, struct dcerpc_context *dce,
 static int
 epm_twr_STRUCT_coder(char *name, struct dcerpc_context *dce,
                      struct dcerpc_pdu *pdu,
-                     struct smb2_iovec *iov, int *offset,
+                     struct dcerpc_iovec *iov, int *offset,
                      void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -357,7 +357,7 @@ epm_twr_STRUCT_coder(char *name, struct dcerpc_context *dce,
 static int
 epm_annotation_coder(char *name, struct dcerpc_context *dce,
                      struct dcerpc_pdu *pdu,
-                     struct smb2_iovec *iov, int *offset,
+                     struct dcerpc_iovec *iov, int *offset,
                      void *ptr)
 {
         char **ann = ptr;
@@ -435,7 +435,7 @@ epm_annotation_coder(char *name, struct dcerpc_context *dce,
 int
 epm_entry_coder(char *name, struct dcerpc_context *dce,
                 struct dcerpc_pdu *pdu,
-                struct smb2_iovec *iov, int *offset,
+                struct dcerpc_iovec *iov, int *offset,
                 void *ptr)
 {
         struct epm_entry_t *ent = ptr;
@@ -471,7 +471,7 @@ epm_entry_coder(char *name, struct dcerpc_context *dce,
 static int
 epm_entry_STRUCT_coder(char *name, struct dcerpc_context *dce,
                        struct dcerpc_pdu *pdu,
-                       struct smb2_iovec *iov, int *offset,
+                       struct dcerpc_iovec *iov, int *offset,
                        void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -484,7 +484,7 @@ epm_entry_STRUCT_coder(char *name, struct dcerpc_context *dce,
 int
 epm_rpc_if_id_coder(char *name, struct dcerpc_context *dce,
                     struct dcerpc_pdu *pdu,
-                    struct smb2_iovec *iov, int *offset,
+                    struct dcerpc_iovec *iov, int *offset,
                     void *ptr)
 {
         struct epm_rpc_if_id *iid = ptr;
@@ -506,7 +506,7 @@ epm_rpc_if_id_coder(char *name, struct dcerpc_context *dce,
 static int
 epm_rpc_if_id_STRUCT_coder(char *name, struct dcerpc_context *dce,
                            struct dcerpc_pdu *pdu,
-                           struct smb2_iovec *iov, int *offset,
+                           struct dcerpc_iovec *iov, int *offset,
                            void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -516,7 +516,7 @@ epm_rpc_if_id_STRUCT_coder(char *name, struct dcerpc_context *dce,
 static int
 epm_context_handle_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                 struct dcerpc_pdu *pdu,
-                                struct smb2_iovec *iov, int *offset,
+                                struct dcerpc_iovec *iov, int *offset,
                                 void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -529,7 +529,7 @@ epm_context_handle_STRUCT_coder(char *name, struct dcerpc_context *dce,
 static int
 epm_entries_carray_coder(char *name, struct dcerpc_context *dce,
                          struct dcerpc_pdu *pdu,
-                         struct smb2_iovec *iov, int *offset,
+                         struct dcerpc_iovec *iov, int *offset,
                          void *ptr)
 {
         return dcerpc_carray_coder("Entries", dce, pdu, iov, offset,
@@ -545,7 +545,7 @@ epm_entries_carray_coder(char *name, struct dcerpc_context *dce,
 static int
 epm_entries_cvarray_coder(char *name, struct dcerpc_context *dce,
                           struct dcerpc_pdu *pdu,
-                          struct smb2_iovec *iov, int *offset,
+                          struct dcerpc_iovec *iov, int *offset,
                           void *ptr)
 {
         struct epm_Lookup_rep *rep = ptr;
@@ -625,7 +625,7 @@ epm_entries_cvarray_coder(char *name, struct dcerpc_context *dce,
 static int
 epm_twr_unique_elem_coder(char *name, struct dcerpc_context *dce,
                           struct dcerpc_pdu *pdu,
-                          struct smb2_iovec *iov, int *offset,
+                          struct dcerpc_iovec *iov, int *offset,
                           void *ptr)
 {
         return dcerpc_ptr_coder("Tower", dce, pdu, iov, offset, ptr,
@@ -640,7 +640,7 @@ epm_twr_unique_elem_coder(char *name, struct dcerpc_context *dce,
 static int
 epm_towers_cvarray_coder(char *name, struct dcerpc_context *dce,
                          struct dcerpc_pdu *pdu,
-                         struct smb2_iovec *iov, int *offset,
+                         struct dcerpc_iovec *iov, int *offset,
                          void *ptr)
 {
         struct epm_Map_rep *rep = ptr;
@@ -721,7 +721,7 @@ epm_towers_cvarray_coder(char *name, struct dcerpc_context *dce,
 int
 epm_Insert_req_coder(char *name, struct dcerpc_context *dce,
                      struct dcerpc_pdu *pdu,
-                     struct smb2_iovec *iov, int *offset,
+                     struct dcerpc_iovec *iov, int *offset,
                      void *ptr)
 {
         struct epm_Insert_req *req = ptr;
@@ -761,7 +761,7 @@ epm_Insert_req_coder(char *name, struct dcerpc_context *dce,
 int
 epm_Insert_rep_coder(char *name, struct dcerpc_context *dce,
                      struct dcerpc_pdu *pdu,
-                     struct smb2_iovec *iov, int *offset,
+                     struct dcerpc_iovec *iov, int *offset,
                      void *ptr)
 {
         struct epm_Insert_rep *rep = ptr;
@@ -778,7 +778,7 @@ epm_Insert_rep_coder(char *name, struct dcerpc_context *dce,
 int
 epm_Delete_req_coder(char *name, struct dcerpc_context *dce,
                      struct dcerpc_pdu *pdu,
-                     struct smb2_iovec *iov, int *offset,
+                     struct dcerpc_iovec *iov, int *offset,
                      void *ptr)
 {
         struct epm_Delete_req *req = ptr;
@@ -815,7 +815,7 @@ epm_Delete_req_coder(char *name, struct dcerpc_context *dce,
 int
 epm_Delete_rep_coder(char *name, struct dcerpc_context *dce,
                      struct dcerpc_pdu *pdu,
-                     struct smb2_iovec *iov, int *offset,
+                     struct dcerpc_iovec *iov, int *offset,
                      void *ptr)
 {
         struct epm_Delete_rep *rep = ptr;
@@ -836,7 +836,7 @@ epm_Delete_rep_coder(char *name, struct dcerpc_context *dce,
 static int
 epm_opt_uuid_unique_coder(char *name, struct dcerpc_context *dce,
                           struct dcerpc_pdu *pdu,
-                          struct smb2_iovec *iov, int *offset,
+                          struct dcerpc_iovec *iov, int *offset,
                           dcerpc_uuid_t *uuid, uint32_t *is_null)
 {
         void *obj_ptr;
@@ -886,7 +886,7 @@ epm_opt_uuid_unique_coder(char *name, struct dcerpc_context *dce,
 int
 epm_Lookup_req_coder(char *name, struct dcerpc_context *dce,
                      struct dcerpc_pdu *pdu,
-                     struct smb2_iovec *iov, int *offset,
+                     struct dcerpc_iovec *iov, int *offset,
                      void *ptr)
 {
         struct epm_Lookup_req *req = ptr;
@@ -943,7 +943,7 @@ epm_Lookup_req_coder(char *name, struct dcerpc_context *dce,
 int
 epm_Lookup_rep_coder(char *name, struct dcerpc_context *dce,
                      struct dcerpc_pdu *pdu,
-                     struct smb2_iovec *iov, int *offset,
+                     struct dcerpc_iovec *iov, int *offset,
                      void *ptr)
 {
         struct epm_Lookup_rep *rep = ptr;
@@ -977,7 +977,7 @@ epm_Lookup_rep_coder(char *name, struct dcerpc_context *dce,
 int
 epm_Map_req_coder(char *name, struct dcerpc_context *dce,
                   struct dcerpc_pdu *pdu,
-                  struct smb2_iovec *iov, int *offset,
+                  struct dcerpc_iovec *iov, int *offset,
                   void *ptr)
 {
         struct epm_Map_req *req = ptr;
@@ -1013,7 +1013,7 @@ epm_Map_req_coder(char *name, struct dcerpc_context *dce,
 int
 epm_Map_rep_coder(char *name, struct dcerpc_context *dce,
                   struct dcerpc_pdu *pdu,
-                  struct smb2_iovec *iov, int *offset,
+                  struct dcerpc_iovec *iov, int *offset,
                   void *ptr)
 {
         struct epm_Map_rep *rep = ptr;
@@ -1043,7 +1043,7 @@ epm_Map_rep_coder(char *name, struct dcerpc_context *dce,
 int
 epm_LookupHandleFree_req_coder(char *name, struct dcerpc_context *dce,
                                struct dcerpc_pdu *pdu,
-                               struct smb2_iovec *iov, int *offset,
+                               struct dcerpc_iovec *iov, int *offset,
                                void *ptr)
 {
         struct epm_LookupHandleFree_req *req = ptr;
@@ -1059,7 +1059,7 @@ epm_LookupHandleFree_req_coder(char *name, struct dcerpc_context *dce,
 int
 epm_LookupHandleFree_rep_coder(char *name, struct dcerpc_context *dce,
                                struct dcerpc_pdu *pdu,
-                               struct smb2_iovec *iov, int *offset,
+                               struct dcerpc_iovec *iov, int *offset,
                                void *ptr)
 {
         struct epm_LookupHandleFree_rep *rep = ptr;
@@ -1081,7 +1081,7 @@ epm_LookupHandleFree_rep_coder(char *name, struct dcerpc_context *dce,
 int
 epm_InqObject_req_coder(char *name, struct dcerpc_context *dce,
                         struct dcerpc_pdu *pdu,
-                        struct smb2_iovec *iov, int *offset,
+                        struct dcerpc_iovec *iov, int *offset,
                         void *ptr)
 {
         (void)name;
@@ -1096,7 +1096,7 @@ epm_InqObject_req_coder(char *name, struct dcerpc_context *dce,
 int
 epm_InqObject_rep_coder(char *name, struct dcerpc_context *dce,
                         struct dcerpc_pdu *pdu,
-                        struct smb2_iovec *iov, int *offset,
+                        struct dcerpc_iovec *iov, int *offset,
                         void *ptr)
 {
         struct epm_InqObject_rep *rep = ptr;
@@ -1117,7 +1117,7 @@ epm_InqObject_rep_coder(char *name, struct dcerpc_context *dce,
 int
 epm_MgmtDelete_req_coder(char *name, struct dcerpc_context *dce,
                          struct dcerpc_pdu *pdu,
-                         struct smb2_iovec *iov, int *offset,
+                         struct dcerpc_iovec *iov, int *offset,
                          void *ptr)
 {
         struct epm_MgmtDelete_req *req = ptr;
@@ -1154,7 +1154,7 @@ epm_MgmtDelete_req_coder(char *name, struct dcerpc_context *dce,
 int
 epm_MgmtDelete_rep_coder(char *name, struct dcerpc_context *dce,
                          struct dcerpc_pdu *pdu,
-                         struct smb2_iovec *iov, int *offset,
+                         struct dcerpc_iovec *iov, int *offset,
                          void *ptr)
 {
         struct epm_MgmtDelete_rep *rep = ptr;

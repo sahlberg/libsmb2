@@ -150,7 +150,7 @@ static struct dcerpc_uint32_pretty_printer lookup_level_pp = {
 static int
 lsa_PRPC_SID_ptr_coder(char *name, struct dcerpc_context *dce,
                        struct dcerpc_pdu *pdu,
-                       struct smb2_iovec *iov, int *offset,
+                       struct dcerpc_iovec *iov, int *offset,
                        void *ptr)
 {
         return dcerpc_ptr_coder("SID", dce, pdu, iov, offset,
@@ -161,7 +161,7 @@ lsa_PRPC_SID_ptr_coder(char *name, struct dcerpc_context *dce,
 static int
 lsa_PRPC_SID_array_coder(char *name, struct dcerpc_context *dce,
                          struct dcerpc_pdu *pdu,
-                         struct smb2_iovec *iov, int *offset,
+                         struct dcerpc_iovec *iov, int *offset,
                          void *ptr)
 {
         PLSAPR_SID_ENUM_BUFFER seb = ptr;
@@ -181,7 +181,7 @@ lsa_PRPC_SID_array_coder(char *name, struct dcerpc_context *dce,
 static int
 _lsa_SID_ENUM_BUFFER_coder(char *name, struct dcerpc_context *dce,
                           struct dcerpc_pdu *pdu,
-                          struct smb2_iovec *iov, int *offset,
+                          struct dcerpc_iovec *iov, int *offset,
                           void *ptr)
 {
         PLSAPR_SID_ENUM_BUFFER seb = ptr;
@@ -214,7 +214,7 @@ _lsa_SID_ENUM_BUFFER_coder(char *name, struct dcerpc_context *dce,
 static int
 lsa_SID_ENUM_BUFFER_coder(char *name, struct dcerpc_context *dce,
                           struct dcerpc_pdu *pdu,
-                          struct smb2_iovec *iov, int *offset,
+                          struct dcerpc_iovec *iov, int *offset,
                           void *ptr)
 {
         return dcerpc_struct_coder("SIDS", dce, pdu, iov, offset, ptr,
@@ -232,7 +232,7 @@ lsa_SID_ENUM_BUFFER_coder(char *name, struct dcerpc_context *dce,
 static int
 lsa_TRANSLATED_NAME_EX_coder(char *name, struct dcerpc_context *dce,
                              struct dcerpc_pdu *pdu,
-                             struct smb2_iovec *iov, int *offset,
+                             struct dcerpc_iovec *iov, int *offset,
                              void *ptr)
 {
         LSAPR_TRANSLATED_NAME_EX *tn = ptr;
@@ -264,7 +264,7 @@ lsa_TRANSLATED_NAME_EX_coder(char *name, struct dcerpc_context *dce,
 static int
 TRANSLATED_NAME_EX_array_coder(char *name, struct dcerpc_context *dce,
                                struct dcerpc_pdu *pdu,
-                               struct smb2_iovec *iov, int *offset,
+                               struct dcerpc_iovec *iov, int *offset,
                                void *ptr)
 {
         LSAPR_TRANSLATED_NAMES_EX *tn = ptr;
@@ -278,7 +278,7 @@ TRANSLATED_NAME_EX_array_coder(char *name, struct dcerpc_context *dce,
 static int
 lsa_TRANSLATED_NAMES_EX_coder(char *name, struct dcerpc_context *dce,
                               struct dcerpc_pdu *pdu,
-                              struct smb2_iovec *iov, int *offset,
+                              struct dcerpc_iovec *iov, int *offset,
                               void *ptr)
 {
         LSAPR_TRANSLATED_NAMES_EX *tn = ptr;
@@ -323,7 +323,7 @@ lsa_TRANSLATED_NAMES_EX_coder(char *name, struct dcerpc_context *dce,
 static int
 lsa_ObjectAttributes_coder(char *name, struct dcerpc_context *dce,
                            struct dcerpc_pdu *pdu,
-                           struct smb2_iovec *iov, int *offset,
+                           struct dcerpc_iovec *iov, int *offset,
                            void *ptr)
 {
         uint32_t len = 24;
@@ -359,7 +359,7 @@ lsa_ObjectAttributes_coder(char *name, struct dcerpc_context *dce,
 static int
 lsa_ObjectAttributes_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                   struct dcerpc_pdu *pdu,
-                                  struct smb2_iovec *iov, int *offset,
+                                  struct dcerpc_iovec *iov, int *offset,
                                   void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -369,7 +369,7 @@ lsa_ObjectAttributes_STRUCT_coder(char *name, struct dcerpc_context *dce,
 static int
 lsa_PolicyHandle_STRUCT_coder(char *name, struct dcerpc_context *dce,
                               struct dcerpc_pdu *pdu,
-                              struct smb2_iovec *iov, int *offset,
+                              struct dcerpc_iovec *iov, int *offset,
                               void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -385,7 +385,7 @@ lsa_PolicyHandle_STRUCT_coder(char *name, struct dcerpc_context *dce,
 int
 lsa_Close_req_coder(char *name, struct dcerpc_context *dce,
                     struct dcerpc_pdu *pdu,
-                    struct smb2_iovec *iov, int *offset,
+                    struct dcerpc_iovec *iov, int *offset,
                     void *ptr)
 {
         struct lsa_close_req *req = ptr;
@@ -401,7 +401,7 @@ lsa_Close_req_coder(char *name, struct dcerpc_context *dce,
 int
 lsa_Close_rep_coder(char *name, struct dcerpc_context *dce,
                     struct dcerpc_pdu *pdu,
-                    struct smb2_iovec *iov, int *offset,
+                    struct dcerpc_iovec *iov, int *offset,
                     void *ptr)
 {
         struct lsa_close_rep *rep = ptr;
@@ -429,7 +429,7 @@ lsa_Close_rep_coder(char *name, struct dcerpc_context *dce,
 int
 lsa_OpenPolicy2_req_coder(char *name, struct dcerpc_context *dce,
                           struct dcerpc_pdu *pdu,
-                          struct smb2_iovec *iov, int *offset,
+                          struct dcerpc_iovec *iov, int *offset,
                           void *ptr)
 {
         struct lsa_openpolicy2_req *req = ptr;
@@ -452,7 +452,7 @@ lsa_OpenPolicy2_req_coder(char *name, struct dcerpc_context *dce,
 int
 lsa_OpenPolicy2_rep_coder(char *name, struct dcerpc_context *dce,
                           struct dcerpc_pdu *pdu,
-                          struct smb2_iovec *iov, int *offset,
+                          struct dcerpc_iovec *iov, int *offset,
                           void *ptr)
 {
         struct lsa_openpolicy2_rep *rep = ptr;
@@ -477,7 +477,7 @@ lsa_OpenPolicy2_rep_coder(char *name, struct dcerpc_context *dce,
 static int
 lsa_TRUST_INFORMATION_coder(char *name, struct dcerpc_context *dce,
                             struct dcerpc_pdu *pdu,
-                            struct smb2_iovec *iov, int *offset,
+                            struct dcerpc_iovec *iov, int *offset,
                             void *ptr)
 {
         LSAPR_TRUST_INFORMATION *ti = ptr;
@@ -497,7 +497,7 @@ lsa_TRUST_INFORMATION_coder(char *name, struct dcerpc_context *dce,
 static int
 RDL_DOMAINS_array_coder(char *name, struct dcerpc_context *dce,
                         struct dcerpc_pdu *pdu,
-                        struct smb2_iovec *iov, int *offset,
+                        struct dcerpc_iovec *iov, int *offset,
                         void *ptr)
 {
         LSAPR_REFERENCED_DOMAIN_LIST *rdl = ptr;
@@ -519,7 +519,7 @@ RDL_DOMAINS_array_coder(char *name, struct dcerpc_context *dce,
 static int
 lsa_REFERENCED_DOMAIN_LIST_coder(char *name, struct dcerpc_context *dce,
                                  struct dcerpc_pdu *pdu,
-                                 struct smb2_iovec *iov, int *offset,
+                                 struct dcerpc_iovec *iov, int *offset,
                                  void *ptr)
 {
         LSAPR_REFERENCED_DOMAIN_LIST *rdl = ptr;
@@ -567,7 +567,7 @@ lsa_REFERENCED_DOMAIN_LIST_coder(char *name, struct dcerpc_context *dce,
 int
 lsa_LookupSids2_req_coder(char *name, struct dcerpc_context *dce,
                           struct dcerpc_pdu *pdu,
-                          struct smb2_iovec *iov, int *offset,
+                          struct dcerpc_iovec *iov, int *offset,
                           void *ptr)
 {
         struct lsa_lookupsids2_req *req = (struct lsa_lookupsids2_req*) ptr;
@@ -608,7 +608,7 @@ lsa_LookupSids2_req_coder(char *name, struct dcerpc_context *dce,
 int
 lsa_LookupSids2_rep_coder(char *name, struct dcerpc_context *dce,
                           struct dcerpc_pdu *pdu,
-                          struct smb2_iovec *iov, int *offset,
+                          struct dcerpc_iovec *iov, int *offset,
                           void *ptr)
 {
         struct lsa_lookupsids2_rep *rep = ptr;
@@ -642,7 +642,7 @@ lsa_LookupSids2_rep_coder(char *name, struct dcerpc_context *dce,
 static int
 lsa_TRANSLATED_SID_EX_coder(char *name, struct dcerpc_context *dce,
                             struct dcerpc_pdu *pdu,
-                            struct smb2_iovec *iov, int *offset,
+                            struct dcerpc_iovec *iov, int *offset,
                             void *ptr)
 {
         LSAPR_TRANSLATED_SID_EX *ts = ptr;
@@ -667,7 +667,7 @@ lsa_TRANSLATED_SID_EX_coder(char *name, struct dcerpc_context *dce,
 static int
 TRANSLATED_SID_EX_array_coder(char *name, struct dcerpc_context *dce,
                               struct dcerpc_pdu *pdu,
-                              struct smb2_iovec *iov, int *offset,
+                              struct dcerpc_iovec *iov, int *offset,
                               void *ptr)
 {
         LSAPR_TRANSLATED_SIDS_EX *ts = ptr;
@@ -687,7 +687,7 @@ TRANSLATED_SID_EX_array_coder(char *name, struct dcerpc_context *dce,
 static int
 lsa_TRANSLATED_SIDS_EX_coder(char *name, struct dcerpc_context *dce,
                              struct dcerpc_pdu *pdu,
-                             struct smb2_iovec *iov, int *offset,
+                             struct dcerpc_iovec *iov, int *offset,
                              void *ptr)
 {
         LSAPR_TRANSLATED_SIDS_EX *ts = ptr;
@@ -724,7 +724,7 @@ lsa_TRANSLATED_SIDS_EX_coder(char *name, struct dcerpc_context *dce,
 static int
 lsa_NAME_STRING_coder(char *name, struct dcerpc_context *dce,
                       struct dcerpc_pdu *pdu,
-                      struct smb2_iovec *iov, int *offset,
+                      struct dcerpc_iovec *iov, int *offset,
                       void *ptr)
 {
         return dcerpc_RPC_UNICODE_STRING_coder("Name", dce, pdu, iov, offset, ptr);
@@ -738,7 +738,7 @@ lsa_NAME_STRING_coder(char *name, struct dcerpc_context *dce,
 static int
 lsa_NAMES_array_coder(char *name, struct dcerpc_context *dce,
                       struct dcerpc_pdu *pdu,
-                      struct smb2_iovec *iov, int *offset,
+                      struct dcerpc_iovec *iov, int *offset,
                       void *ptr)
 {
         return dcerpc_carray_coder("Names", dce, pdu, iov, offset,
@@ -764,7 +764,7 @@ lsa_NAMES_array_coder(char *name, struct dcerpc_context *dce,
 int
 lsa_LookupNames2_req_coder(char *name, struct dcerpc_context *dce,
                            struct dcerpc_pdu *pdu,
-                           struct smb2_iovec *iov, int *offset,
+                           struct dcerpc_iovec *iov, int *offset,
                            void *ptr)
 {
         struct lsa_lookupnames2_req *req = (struct lsa_lookupnames2_req *)ptr;
@@ -835,7 +835,7 @@ lsa_LookupNames2_req_coder(char *name, struct dcerpc_context *dce,
 int
 lsa_LookupNames2_rep_coder(char *name, struct dcerpc_context *dce,
                            struct dcerpc_pdu *pdu,
-                           struct smb2_iovec *iov, int *offset,
+                           struct dcerpc_iovec *iov, int *offset,
                            void *ptr)
 {
         struct lsa_lookupnames2_rep *rep = ptr;

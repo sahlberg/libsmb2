@@ -111,27 +111,27 @@ struct dcerpc_pdu;
 
 int srvsvc_SHARE_INFO_0_coder(char *name, struct dcerpc_context *ctx,
                               struct dcerpc_pdu *pdu,
-                              struct smb2_iovec *iov, int *offset,
+                              struct dcerpc_iovec *iov, int *offset,
                               void *ptr);
 
 int srvsvc_SHARE_INFO_1_coder(char *name, struct dcerpc_context *ctx,
                               struct dcerpc_pdu *pdu,
-                              struct smb2_iovec *iov, int *offset,
+                              struct dcerpc_iovec *iov, int *offset,
                               void *ptr);
 
 int srvsvc_SHARE_INFO_1_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                                         struct dcerpc_pdu *pdu,
-                                        struct smb2_iovec *iov, int *offset,
+                                        struct dcerpc_iovec *iov, int *offset,
                                         void *ptr);
 
 int srvsvc_SHARE_INFO_2_coder(char *name, struct dcerpc_context *ctx,
                               struct dcerpc_pdu *pdu,
-                              struct smb2_iovec *iov, int *offset,
+                              struct dcerpc_iovec *iov, int *offset,
                               void *ptr);
 
 int srvsvc_SHARE_INFO_2_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                                         struct dcerpc_pdu *pdu,
-                                        struct smb2_iovec *iov, int *offset,
+                                        struct dcerpc_iovec *iov, int *offset,
                                         void *ptr);
 
 /*
@@ -158,12 +158,12 @@ struct srvsvc_SHARE_INFO_502 {
 };
 int srvsvc_SHARE_INFO_502_coder(char *name, struct dcerpc_context *ctx,
                                 struct dcerpc_pdu *pdu,
-                                struct smb2_iovec *iov, int *offset,
+                                struct dcerpc_iovec *iov, int *offset,
                                 void *ptr);
 
 int srvsvc_SHARE_INFO_502_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                                           struct dcerpc_pdu *pdu,
-                                          struct smb2_iovec *iov, int *offset,
+                                          struct dcerpc_iovec *iov, int *offset,
                                           void *ptr);
 #endif /* !LIBSMB2_DCERPC_MINIMAL */
 
@@ -311,7 +311,7 @@ struct srvsvc_CONNECTION_INFO_0 {
 };
 int srvsvc_CONNECTION_INFO_0_coder(char *name, struct dcerpc_context *ctx,
                                    struct dcerpc_pdu *pdu,
-                                   struct smb2_iovec *iov, int *offset,
+                                   struct dcerpc_iovec *iov, int *offset,
                                    void *ptr);
 
 struct srvsvc_CONNECT_INFO_0_CONTAINER {
@@ -330,7 +330,7 @@ struct srvsvc_CONNECTION_INFO_1 {
 };
 int srvsvc_CONNECTION_INFO_1_coder(char *name, struct dcerpc_context *ctx,
                                    struct dcerpc_pdu *pdu,
-                                   struct smb2_iovec *iov, int *offset,
+                                   struct dcerpc_iovec *iov, int *offset,
                                    void *ptr);
 
 struct srvsvc_CONNECT_INFO_1_CONTAINER {
@@ -377,7 +377,7 @@ struct srvsvc_FILE_INFO_2 {
 };
 int srvsvc_FILE_INFO_2_coder(char *name, struct dcerpc_context *ctx,
                              struct dcerpc_pdu *pdu,
-                             struct smb2_iovec *iov, int *offset,
+                             struct dcerpc_iovec *iov, int *offset,
                              void *ptr);
 
 struct srvsvc_FILE_INFO_2_CONTAINER {
@@ -394,7 +394,7 @@ struct srvsvc_FILE_INFO_3 {
 };
 int srvsvc_FILE_INFO_3_coder(char *name, struct dcerpc_context *ctx,
                              struct dcerpc_pdu *pdu,
-                             struct smb2_iovec *iov, int *offset,
+                             struct dcerpc_iovec *iov, int *offset,
                              void *ptr);
 
 struct srvsvc_FILE_INFO_3_CONTAINER {
@@ -478,7 +478,7 @@ struct srvsvc_SESSION_INFO_0 {
 };
 int srvsvc_SESSION_INFO_0_coder(char *name, struct dcerpc_context *ctx,
                                 struct dcerpc_pdu *pdu,
-                                struct smb2_iovec *iov, int *offset,
+                                struct dcerpc_iovec *iov, int *offset,
                                 void *ptr);
 
 struct srvsvc_SESSION_INFO_0_CONTAINER {
@@ -496,7 +496,7 @@ struct srvsvc_SESSION_INFO_1 {
 };
 int srvsvc_SESSION_INFO_1_coder(char *name, struct dcerpc_context *ctx,
                                 struct dcerpc_pdu *pdu,
-                                struct smb2_iovec *iov, int *offset,
+                                struct dcerpc_iovec *iov, int *offset,
                                 void *ptr);
 
 struct srvsvc_SESSION_INFO_1_CONTAINER {
@@ -515,7 +515,7 @@ struct srvsvc_SESSION_INFO_2 {
 };
 int srvsvc_SESSION_INFO_2_coder(char *name, struct dcerpc_context *ctx,
                                 struct dcerpc_pdu *pdu,
-                                struct smb2_iovec *iov, int *offset,
+                                struct dcerpc_iovec *iov, int *offset,
                                 void *ptr);
 
 struct srvsvc_SESSION_INFO_2_CONTAINER {
@@ -531,7 +531,7 @@ struct srvsvc_SESSION_INFO_10 {
 };
 int srvsvc_SESSION_INFO_10_coder(char *name, struct dcerpc_context *ctx,
                                  struct dcerpc_pdu *pdu,
-                                 struct smb2_iovec *iov, int *offset,
+                                 struct dcerpc_iovec *iov, int *offset,
                                  void *ptr);
 
 struct srvsvc_SESSION_INFO_10_CONTAINER {
@@ -551,7 +551,7 @@ struct srvsvc_SESSION_INFO_502 {
 };
 int srvsvc_SESSION_INFO_502_coder(char *name, struct dcerpc_context *ctx,
                                   struct dcerpc_pdu *pdu,
-                                  struct smb2_iovec *iov, int *offset,
+                                  struct dcerpc_iovec *iov, int *offset,
                                   void *ptr);
 
 struct srvsvc_SESSION_INFO_502_CONTAINER {
@@ -699,7 +699,7 @@ struct srvsvc_DISK_INFO {
 };
 int srvsvc_DISK_INFO_coder(char *name, struct dcerpc_context *ctx,
                            struct dcerpc_pdu *pdu,
-                           struct smb2_iovec *iov, int *offset,
+                           struct dcerpc_iovec *iov, int *offset,
                            void *ptr);
 
 struct srvsvc_DISK_ENUM_CONTAINER {
@@ -747,7 +747,7 @@ struct srvsvc_STAT_SERVER_0 {
 };
 int srvsvc_STAT_SERVER_0_coder(char *name, struct dcerpc_context *ctx,
                                struct dcerpc_pdu *pdu,
-                               struct smb2_iovec *iov, int *offset,
+                               struct dcerpc_iovec *iov, int *offset,
                                void *ptr);
 
 struct srvsvc_NetrServerStatisticsGet_req {
@@ -782,7 +782,7 @@ struct srvsvc_TIME_OF_DAY_INFO {
 };
 int srvsvc_TIME_OF_DAY_INFO_coder(char *name, struct dcerpc_context *ctx,
                                   struct dcerpc_pdu *pdu,
-                                  struct smb2_iovec *iov, int *offset,
+                                  struct dcerpc_iovec *iov, int *offset,
                                   void *ptr);
 
 struct srvsvc_NetrRemoteTOD_req {
@@ -797,123 +797,123 @@ struct srvsvc_NetrRemoteTOD_rep {
 
 int srvsvc_NetrConnectionEnum_rep_coder(char *name, struct dcerpc_context *dce,
                                          struct dcerpc_pdu *pdu,
-                                         struct smb2_iovec *iov, int *offset,
+                                         struct dcerpc_iovec *iov, int *offset,
                                          void *ptr);
 int srvsvc_NetrConnectionEnum_req_coder(char *name, struct dcerpc_context *ctx,
                                          struct dcerpc_pdu *pdu,
-                                         struct smb2_iovec *iov, int *offset,
+                                         struct dcerpc_iovec *iov, int *offset,
                                          void *ptr);
 int srvsvc_NetrFileEnum_rep_coder(char *name, struct dcerpc_context *dce,
                                    struct dcerpc_pdu *pdu,
-                                   struct smb2_iovec *iov, int *offset,
+                                   struct dcerpc_iovec *iov, int *offset,
                                    void *ptr);
 int srvsvc_NetrFileEnum_req_coder(char *name, struct dcerpc_context *ctx,
                                    struct dcerpc_pdu *pdu,
-                                   struct smb2_iovec *iov, int *offset,
+                                   struct dcerpc_iovec *iov, int *offset,
                                    void *ptr);
 int srvsvc_NetrFileGetInfo_rep_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
-                                      struct smb2_iovec *iov, int *offset,
+                                      struct dcerpc_iovec *iov, int *offset,
                                       void *ptr);
 int srvsvc_NetrFileGetInfo_req_coder(char *name, struct dcerpc_context *ctx,
                                       struct dcerpc_pdu *pdu,
-                                      struct smb2_iovec *iov, int *offset,
+                                      struct dcerpc_iovec *iov, int *offset,
                                       void *ptr);
 int srvsvc_NetrFileClose_rep_coder(char *name, struct dcerpc_context *dce,
                                     struct dcerpc_pdu *pdu,
-                                    struct smb2_iovec *iov, int *offset,
+                                    struct dcerpc_iovec *iov, int *offset,
                                     void *ptr);
 int srvsvc_NetrFileClose_req_coder(char *name, struct dcerpc_context *ctx,
                                     struct dcerpc_pdu *pdu,
-                                    struct smb2_iovec *iov, int *offset,
+                                    struct dcerpc_iovec *iov, int *offset,
                                     void *ptr);
 int srvsvc_NetrSessionEnum_rep_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
-                                      struct smb2_iovec *iov, int *offset,
+                                      struct dcerpc_iovec *iov, int *offset,
                                       void *ptr);
 int srvsvc_NetrSessionEnum_req_coder(char *name, struct dcerpc_context *ctx,
                                       struct dcerpc_pdu *pdu,
-                                      struct smb2_iovec *iov, int *offset,
+                                      struct dcerpc_iovec *iov, int *offset,
                                       void *ptr);
 int srvsvc_NetrSessionDel_rep_coder(char *name, struct dcerpc_context *dce,
                                      struct dcerpc_pdu *pdu,
-                                     struct smb2_iovec *iov, int *offset,
+                                     struct dcerpc_iovec *iov, int *offset,
                                      void *ptr);
 int srvsvc_NetrSessionDel_req_coder(char *name, struct dcerpc_context *ctx,
                                      struct dcerpc_pdu *pdu,
-                                     struct smb2_iovec *iov, int *offset,
+                                     struct dcerpc_iovec *iov, int *offset,
                                      void *ptr);
 int srvsvc_NetrShareEnum_rep_coder(char *name, struct dcerpc_context *dce,
                                    struct dcerpc_pdu *pdu,
-                                   struct smb2_iovec *iov, int *offset,
+                                   struct dcerpc_iovec *iov, int *offset,
                                    void *ptr);
 int srvsvc_NetrShareEnum_req_coder(char *name, struct dcerpc_context *ctx,
                                    struct dcerpc_pdu *pdu,
-                                   struct smb2_iovec *iov, int *offset,
+                                   struct dcerpc_iovec *iov, int *offset,
                                    void *ptr);
 int srvsvc_NetrShareGetInfo_rep_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
-                                      struct smb2_iovec *iov, int *offset,
+                                      struct dcerpc_iovec *iov, int *offset,
                                       void *ptr);
 int srvsvc_NetrShareGetInfo_req_coder(char *name, struct dcerpc_context *ctx,
                                       struct dcerpc_pdu *pdu,
-                                      struct smb2_iovec *iov, int *offset,
+                                      struct dcerpc_iovec *iov, int *offset,
                                       void *ptr);
 int srvsvc_NetrShareSetInfo_rep_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
-                                      struct smb2_iovec *iov, int *offset,
+                                      struct dcerpc_iovec *iov, int *offset,
                                       void *ptr);
 int srvsvc_NetrShareSetInfo_req_coder(char *name, struct dcerpc_context *ctx,
                                       struct dcerpc_pdu *pdu,
-                                      struct smb2_iovec *iov, int *offset,
+                                      struct dcerpc_iovec *iov, int *offset,
                                       void *ptr);
 int srvsvc_NetrShareDel_req_coder(char *name, struct dcerpc_context *ctx,
                                   struct dcerpc_pdu *pdu,
-                                  struct smb2_iovec *iov, int *offset,
+                                  struct dcerpc_iovec *iov, int *offset,
                                   void *ptr);
 int srvsvc_NetrShareDel_rep_coder(char *name, struct dcerpc_context *dce,
                                   struct dcerpc_pdu *pdu,
-                                  struct smb2_iovec *iov, int *offset,
+                                  struct dcerpc_iovec *iov, int *offset,
                                   void *ptr);
 int srvsvc_NetrServerGetInfo_req_coder(char *name, struct dcerpc_context *ctx,
                                        struct dcerpc_pdu *pdu,
-                                       struct smb2_iovec *iov, int *offset,
+                                       struct dcerpc_iovec *iov, int *offset,
                                        void *ptr);
 int srvsvc_NetrServerGetInfo_rep_coder(char *name, struct dcerpc_context *ctx,
                                        struct dcerpc_pdu *pdu,
-                                       struct smb2_iovec *iov, int *offset,
+                                       struct dcerpc_iovec *iov, int *offset,
                                        void *ptr);
 int srvsvc_NetrServerSetInfo_req_coder(char *name, struct dcerpc_context *ctx,
                                         struct dcerpc_pdu *pdu,
-                                        struct smb2_iovec *iov, int *offset,
+                                        struct dcerpc_iovec *iov, int *offset,
                                         void *ptr);
 int srvsvc_NetrServerSetInfo_rep_coder(char *name, struct dcerpc_context *ctx,
                                         struct dcerpc_pdu *pdu,
-                                        struct smb2_iovec *iov, int *offset,
+                                        struct dcerpc_iovec *iov, int *offset,
                                         void *ptr);
 int srvsvc_NetrServerDiskEnum_req_coder(char *name, struct dcerpc_context *ctx,
                                          struct dcerpc_pdu *pdu,
-                                         struct smb2_iovec *iov, int *offset,
+                                         struct dcerpc_iovec *iov, int *offset,
                                          void *ptr);
 int srvsvc_NetrServerDiskEnum_rep_coder(char *name, struct dcerpc_context *ctx,
                                          struct dcerpc_pdu *pdu,
-                                         struct smb2_iovec *iov, int *offset,
+                                         struct dcerpc_iovec *iov, int *offset,
                                          void *ptr);
 int srvsvc_NetrServerStatisticsGet_req_coder(char *name, struct dcerpc_context *ctx,
                                               struct dcerpc_pdu *pdu,
-                                              struct smb2_iovec *iov, int *offset,
+                                              struct dcerpc_iovec *iov, int *offset,
                                               void *ptr);
 int srvsvc_NetrServerStatisticsGet_rep_coder(char *name, struct dcerpc_context *ctx,
                                               struct dcerpc_pdu *pdu,
-                                              struct smb2_iovec *iov, int *offset,
+                                              struct dcerpc_iovec *iov, int *offset,
                                               void *ptr);
 int srvsvc_NetrRemoteTOD_req_coder(char *name, struct dcerpc_context *ctx,
                                     struct dcerpc_pdu *pdu,
-                                    struct smb2_iovec *iov, int *offset,
+                                    struct dcerpc_iovec *iov, int *offset,
                                     void *ptr);
 int srvsvc_NetrRemoteTOD_rep_coder(char *name, struct dcerpc_context *ctx,
                                     struct dcerpc_pdu *pdu,
-                                    struct smb2_iovec *iov, int *offset,
+                                    struct dcerpc_iovec *iov, int *offset,
                                     void *ptr);
 
 extern struct dcerpc_procedure srvsvc_procs[];

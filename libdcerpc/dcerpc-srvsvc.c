@@ -213,7 +213,7 @@ static struct dcerpc_uint32_pretty_printer sess_user_flags_pp = {
 /* For [out] DWORD *Type via ptr_coder (NetrShareCheck) */
 static int
 share_type_uint32_coder(char *name, struct dcerpc_context *dce,
-                        struct dcerpc_pdu *pdu, struct smb2_iovec *iov,
+                        struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
                         int *offset, void *ptr)
 {
         return dcerpc_uint32_coder_pp(name, dce, pdu, iov, offset, ptr,
@@ -234,7 +234,7 @@ share_type_uint32_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SHARE_INFO_0_coder(char *name, struct dcerpc_context *dce,
                            struct dcerpc_pdu *pdu,
-                           struct smb2_iovec *iov, int *offset,
+                           struct dcerpc_iovec *iov, int *offset,
                            void *ptr)
 {
         struct srvsvc_SHARE_INFO_0 *nsi1 = ptr;
@@ -249,7 +249,7 @@ srvsvc_SHARE_INFO_0_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SHARE_INFO_0_STRUCT_coder(char *name, struct dcerpc_context *dce,
                           struct dcerpc_pdu *pdu,
-                          struct smb2_iovec *iov, int *offset,
+                          struct dcerpc_iovec *iov, int *offset,
                           void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -262,7 +262,7 @@ srvsvc_SHARE_INFO_0_STRUCT_coder(char *name, struct dcerpc_context *dce,
 static int
 srvsvc_SHARE_INFO_0_carray_coder(char *name, struct dcerpc_context *dce,
                                  struct dcerpc_pdu *pdu,
-                                 struct smb2_iovec *iov, int *offset,
+                                 struct dcerpc_iovec *iov, int *offset,
                                  void *ptr)
 {
         return dcerpc_carray_coder("ShareInfo0", dce, pdu, iov, offset,
@@ -280,7 +280,7 @@ srvsvc_SHARE_INFO_0_carray_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SHARE_INFO_0_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                                     struct dcerpc_pdu *pdu,
-                                    struct smb2_iovec *iov, int *offset,
+                                    struct dcerpc_iovec *iov, int *offset,
                                     void *ptr)
 {
         struct srvsvc_SHARE_INFO_0_CONTAINER *ctr = ptr;
@@ -323,7 +323,7 @@ srvsvc_SHARE_INFO_0_CONTAINER_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SHARE_INFO_1_coder(char *name, struct dcerpc_context *dce,
                           struct dcerpc_pdu *pdu,
-                          struct smb2_iovec *iov, int *offset,
+                          struct dcerpc_iovec *iov, int *offset,
                           void *ptr)
 {
         struct srvsvc_SHARE_INFO_1 *nsi1 = ptr;
@@ -345,7 +345,7 @@ srvsvc_SHARE_INFO_1_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SHARE_INFO_1_STRUCT_coder(char *name, struct dcerpc_context *dce,
                           struct dcerpc_pdu *pdu,
-                          struct smb2_iovec *iov, int *offset,
+                          struct dcerpc_iovec *iov, int *offset,
                           void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -358,7 +358,7 @@ srvsvc_SHARE_INFO_1_STRUCT_coder(char *name, struct dcerpc_context *dce,
 static int
 srvsvc_SHARE_INFO_1_carray_coder(char *name, struct dcerpc_context *dce,
                                  struct dcerpc_pdu *pdu,
-                                 struct smb2_iovec *iov, int *offset,
+                                 struct dcerpc_iovec *iov, int *offset,
                                  void *ptr)
 {
         return dcerpc_carray_coder("ShareInfo1", dce, pdu, iov, offset,
@@ -376,7 +376,7 @@ srvsvc_SHARE_INFO_1_carray_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SHARE_INFO_1_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                                     struct dcerpc_pdu *pdu,
-                                    struct smb2_iovec *iov, int *offset,
+                                    struct dcerpc_iovec *iov, int *offset,
                                     void *ptr)
 {
         struct srvsvc_SHARE_INFO_1_CONTAINER *ctr = ptr;
@@ -425,7 +425,7 @@ srvsvc_SHARE_INFO_1_CONTAINER_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SHARE_INFO_2_coder(char *name, struct dcerpc_context *dce,
                           struct dcerpc_pdu *pdu,
-                          struct smb2_iovec *iov, int *offset,
+                          struct dcerpc_iovec *iov, int *offset,
                           void *ptr)
 {
         struct srvsvc_SHARE_INFO_2 *nsi2 = ptr;
@@ -465,7 +465,7 @@ srvsvc_SHARE_INFO_2_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SHARE_INFO_2_STRUCT_coder(char *name, struct dcerpc_context *dce,
                           struct dcerpc_pdu *pdu,
-                          struct smb2_iovec *iov, int *offset,
+                          struct dcerpc_iovec *iov, int *offset,
                           void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -478,7 +478,7 @@ srvsvc_SHARE_INFO_2_STRUCT_coder(char *name, struct dcerpc_context *dce,
 static int
 srvsvc_SHARE_INFO_2_carray_coder(char *name, struct dcerpc_context *dce,
                                  struct dcerpc_pdu *pdu,
-                                 struct smb2_iovec *iov, int *offset,
+                                 struct dcerpc_iovec *iov, int *offset,
                                  void *ptr)
 {
         return dcerpc_carray_coder("ShareInfo2", dce, pdu, iov, offset,
@@ -496,7 +496,7 @@ srvsvc_SHARE_INFO_2_carray_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SHARE_INFO_2_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                                     struct dcerpc_pdu *pdu,
-                                    struct smb2_iovec *iov, int *offset,
+                                    struct dcerpc_iovec *iov, int *offset,
                                     void *ptr)
 {
         struct srvsvc_SHARE_INFO_2_CONTAINER *ctr = ptr;
@@ -547,7 +547,7 @@ struct srvsvc_sd_blob {
 static int
 srvsvc_sd_blob_body_coder(char *name, struct dcerpc_context *dce,
                           struct dcerpc_pdu *pdu,
-                          struct smb2_iovec *iov, int *offset,
+                          struct dcerpc_iovec *iov, int *offset,
                           void *ptr)
 {
         struct srvsvc_sd_blob *blob = ptr;
@@ -607,7 +607,7 @@ srvsvc_sd_blob_body_coder(char *name, struct dcerpc_context *dce,
         }
 
         if (blob->sd_out) {
-                struct smb2_iovec sd_iov;
+                struct dcerpc_iovec sd_iov;
                 int sd_off = 0;
                 SECURITY_DESCRIPTOR *sd;
 
@@ -637,7 +637,7 @@ static int
 srvsvc_sd_to_bytes(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                    SECURITY_DESCRIPTOR *sd, uint8_t **bytes, uint32_t *len)
 {
-        struct smb2_iovec iov;
+        struct dcerpc_iovec iov;
         uint8_t *buf;
         int offset = 0;
         const int cap = 65536;
@@ -675,7 +675,7 @@ srvsvc_sd_to_bytes(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
 int
 srvsvc_SHARE_INFO_502_coder(char *name, struct dcerpc_context *dce,
                             struct dcerpc_pdu *pdu,
-                            struct smb2_iovec *iov, int *offset,
+                            struct dcerpc_iovec *iov, int *offset,
                             void *ptr)
 {
         struct srvsvc_SHARE_INFO_502 *nsi = ptr;
@@ -841,7 +841,7 @@ srvsvc_SHARE_INFO_502_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SHARE_INFO_502_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                    struct dcerpc_pdu *pdu,
-                                   struct smb2_iovec *iov, int *offset,
+                                   struct dcerpc_iovec *iov, int *offset,
                                    void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -851,7 +851,7 @@ srvsvc_SHARE_INFO_502_STRUCT_coder(char *name, struct dcerpc_context *dce,
 static int
 srvsvc_SHARE_INFO_502_carray_coder(char *name, struct dcerpc_context *dce,
                                    struct dcerpc_pdu *pdu,
-                                   struct smb2_iovec *iov, int *offset,
+                                   struct dcerpc_iovec *iov, int *offset,
                                    void *ptr)
 {
         return dcerpc_carray_coder("ShareInfo502", dce, pdu, iov, offset,
@@ -869,7 +869,7 @@ srvsvc_SHARE_INFO_502_carray_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SHARE_INFO_502_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
-                                      struct smb2_iovec *iov, int *offset,
+                                      struct dcerpc_iovec *iov, int *offset,
                                       void *ptr)
 {
         struct srvsvc_SHARE_INFO_502_CONTAINER *ctr = ptr;
@@ -919,7 +919,7 @@ srvsvc_SHARE_INFO_502_CONTAINER_coder(char *name, struct dcerpc_context *dce,
 static int
 srvsvc_SHARE_ENUM_UNION_coder(char *name, struct dcerpc_context *dce,
                               struct dcerpc_pdu *pdu,
-                              struct smb2_iovec *iov, int *offset,
+                              struct dcerpc_iovec *iov, int *offset,
                               void *ptr)
 {
         union srvsvc_SHARE_ENUM_UNION *info = ptr;
@@ -968,7 +968,7 @@ srvsvc_SHARE_ENUM_UNION_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SHARE_ENUM_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                struct dcerpc_pdu *pdu,
-                               struct smb2_iovec *iov, int *offset,
+                               struct dcerpc_iovec *iov, int *offset,
                                void *ptr)
 {
         struct srvsvc_SHARE_ENUM_STRUCT *ses = ptr;
@@ -989,7 +989,7 @@ srvsvc_SHARE_ENUM_STRUCT_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SHARE_ENUM_STRUCT_struct_coder(char *name, struct dcerpc_context *dce,
                                struct dcerpc_pdu *pdu,
-                               struct smb2_iovec *iov, int *offset,
+                               struct dcerpc_iovec *iov, int *offset,
                                void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -1016,7 +1016,7 @@ srvsvc_SHARE_ENUM_STRUCT_struct_coder(char *name, struct dcerpc_context *dce,
 static int
 srvsvc_SHARE_INFO_coder(char *name, struct dcerpc_context *dce,
                         struct dcerpc_pdu *pdu,
-                        struct smb2_iovec *iov, int *offset,
+                        struct dcerpc_iovec *iov, int *offset,
                         void *ptr)
 {
         union srvsvc_SHARE_INFO *info = ptr;
@@ -1056,7 +1056,7 @@ srvsvc_SHARE_INFO_coder(char *name, struct dcerpc_context *dce,
 
 static int
 srvsvc_SHARE_INFO_STRUCT_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
-                               struct smb2_iovec *iov, int *offset,
+                               struct dcerpc_iovec *iov, int *offset,
                                void *ptr)
 {
         uint32_t Level = dcerpc_get_switch_is(pdu);
@@ -1079,7 +1079,7 @@ srvsvc_SHARE_INFO_STRUCT_coder(char *name, struct dcerpc_context *dce, struct dc
 int
 srvsvc_SERVER_INFO_100_coder(char *name, struct dcerpc_context *dce,
                              struct dcerpc_pdu *pdu,
-                             struct smb2_iovec *iov, int *offset,
+                             struct dcerpc_iovec *iov, int *offset,
                              void *ptr)
 {
         struct srvsvc_SERVER_INFO_100 *si100 = ptr;
@@ -1098,7 +1098,7 @@ srvsvc_SERVER_INFO_100_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SERVER_INFO_100_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                     struct dcerpc_pdu *pdu,
-                                    struct smb2_iovec *iov, int *offset,
+                                    struct dcerpc_iovec *iov, int *offset,
                                     void *ptr)
 {
         return  dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -1119,7 +1119,7 @@ srvsvc_SERVER_INFO_100_STRUCT_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SERVER_INFO_101_coder(char *name, struct dcerpc_context *dce,
                              struct dcerpc_pdu *pdu,
-                             struct smb2_iovec *iov, int *offset,
+                             struct dcerpc_iovec *iov, int *offset,
                              void *ptr)
 {
         struct srvsvc_SERVER_INFO_101 *si101 = ptr;
@@ -1152,7 +1152,7 @@ srvsvc_SERVER_INFO_101_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SERVER_INFO_101_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                     struct dcerpc_pdu *pdu,
-                                    struct smb2_iovec *iov, int *offset,
+                                    struct dcerpc_iovec *iov, int *offset,
                                     void *ptr)
 {
         return  dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -1179,7 +1179,7 @@ srvsvc_SERVER_INFO_101_STRUCT_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SERVER_INFO_102_coder(char *name, struct dcerpc_context *dce,
                              struct dcerpc_pdu *pdu,
-                             struct smb2_iovec *iov, int *offset,
+                             struct dcerpc_iovec *iov, int *offset,
                              void *ptr)
 {
         struct srvsvc_SERVER_INFO_102 *si102 = ptr;
@@ -1234,7 +1234,7 @@ srvsvc_SERVER_INFO_102_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SERVER_INFO_102_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                     struct dcerpc_pdu *pdu,
-                                    struct smb2_iovec *iov, int *offset,
+                                    struct dcerpc_iovec *iov, int *offset,
                                     void *ptr)
 {
         return  dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -1262,7 +1262,7 @@ srvsvc_SERVER_INFO_102_STRUCT_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SERVER_INFO_103_coder(char *name, struct dcerpc_context *dce,
                              struct dcerpc_pdu *pdu,
-                             struct smb2_iovec *iov, int *offset,
+                             struct dcerpc_iovec *iov, int *offset,
                              void *ptr)
 {
         struct srvsvc_SERVER_INFO_103 *si103 = ptr;
@@ -1320,7 +1320,7 @@ srvsvc_SERVER_INFO_103_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SERVER_INFO_103_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                     struct dcerpc_pdu *pdu,
-                                    struct smb2_iovec *iov, int *offset,
+                                    struct dcerpc_iovec *iov, int *offset,
                                     void *ptr)
 {
         return  dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -1352,7 +1352,7 @@ srvsvc_SERVER_INFO_103_STRUCT_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SERVER_INFO_502_coder(char *name, struct dcerpc_context *dce,
                              struct dcerpc_pdu *pdu,
-                             struct smb2_iovec *iov, int *offset,
+                             struct dcerpc_iovec *iov, int *offset,
                              void *ptr)
 {
         struct srvsvc_SERVER_INFO_502 *si502 = ptr;
@@ -1417,7 +1417,7 @@ srvsvc_SERVER_INFO_502_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SERVER_INFO_502_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                     struct dcerpc_pdu *pdu,
-                                    struct smb2_iovec *iov, int *offset,
+                                    struct dcerpc_iovec *iov, int *offset,
                                     void *ptr)
 {
         return  dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -1473,7 +1473,7 @@ srvsvc_SERVER_INFO_502_STRUCT_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SERVER_INFO_503_coder(char *name, struct dcerpc_context *dce,
                              struct dcerpc_pdu *pdu,
-                             struct smb2_iovec *iov, int *offset,
+                             struct dcerpc_iovec *iov, int *offset,
                              void *ptr)
 {
         struct srvsvc_SERVER_INFO_503 *si503 = ptr;
@@ -1611,7 +1611,7 @@ srvsvc_SERVER_INFO_503_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SERVER_INFO_503_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                     struct dcerpc_pdu *pdu,
-                                    struct smb2_iovec *iov, int *offset,
+                                    struct dcerpc_iovec *iov, int *offset,
                                     void *ptr)
 {
         return  dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -1676,7 +1676,7 @@ srvsvc_SERVER_INFO_503_STRUCT_coder(char *name, struct dcerpc_context *dce,
 static int
 srvsvc_SERVER_INFO_coder(char *name, struct dcerpc_context *dce,
                          struct dcerpc_pdu *pdu,
-                         struct smb2_iovec *iov, int *offset,
+                         struct dcerpc_iovec *iov, int *offset,
                          void *ptr)
 {
         union srvsvc_SERVER_INFO *info = ptr;
@@ -1727,7 +1727,7 @@ srvsvc_SERVER_INFO_coder(char *name, struct dcerpc_context *dce,
 
 static int
 srvsvc_SERVER_INFO_STRUCT_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
-                                struct smb2_iovec *iov, int *offset,
+                                struct dcerpc_iovec *iov, int *offset,
                                 void *ptr)
 {
         uint32_t Level = dcerpc_get_switch_is(pdu);
@@ -1748,7 +1748,7 @@ srvsvc_SERVER_INFO_STRUCT_coder(char *name, struct dcerpc_context *dce, struct d
 int
 srvsvc_CONNECTION_INFO_0_coder(char *name, struct dcerpc_context *dce,
                                struct dcerpc_pdu *pdu,
-                               struct smb2_iovec *iov, int *offset,
+                               struct dcerpc_iovec *iov, int *offset,
                                void *ptr)
 {
         struct srvsvc_CONNECTION_INFO_0 *ci = ptr;
@@ -1762,7 +1762,7 @@ srvsvc_CONNECTION_INFO_0_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_CONNECTION_INFO_0_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
-                                      struct smb2_iovec *iov, int *offset,
+                                      struct dcerpc_iovec *iov, int *offset,
                                       void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -1775,7 +1775,7 @@ srvsvc_CONNECTION_INFO_0_STRUCT_coder(char *name, struct dcerpc_context *dce,
 static int
 srvsvc_CONNECTION_INFO_0_carray_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
-                                      struct smb2_iovec *iov, int *offset,
+                                      struct dcerpc_iovec *iov, int *offset,
                                       void *ptr)
 {
         return dcerpc_carray_coder("ConnectionInfo0", dce, pdu, iov, offset,
@@ -1793,7 +1793,7 @@ srvsvc_CONNECTION_INFO_0_carray_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_CONNECT_INFO_0_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
-                                      struct smb2_iovec *iov, int *offset,
+                                      struct dcerpc_iovec *iov, int *offset,
                                       void *ptr)
 {
         struct srvsvc_CONNECT_INFO_0_CONTAINER *ctr = ptr;
@@ -1840,7 +1840,7 @@ srvsvc_CONNECT_INFO_0_CONTAINER_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_CONNECTION_INFO_1_coder(char *name, struct dcerpc_context *dce,
                                struct dcerpc_pdu *pdu,
-                               struct smb2_iovec *iov, int *offset,
+                               struct dcerpc_iovec *iov, int *offset,
                                void *ptr)
 {
         struct srvsvc_CONNECTION_INFO_1 *ci = ptr;
@@ -1875,7 +1875,7 @@ srvsvc_CONNECTION_INFO_1_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_CONNECTION_INFO_1_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
-                                      struct smb2_iovec *iov, int *offset,
+                                      struct dcerpc_iovec *iov, int *offset,
                                       void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -1888,7 +1888,7 @@ srvsvc_CONNECTION_INFO_1_STRUCT_coder(char *name, struct dcerpc_context *dce,
 static int
 srvsvc_CONNECTION_INFO_1_carray_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
-                                      struct smb2_iovec *iov, int *offset,
+                                      struct dcerpc_iovec *iov, int *offset,
                                       void *ptr)
 {
         return dcerpc_carray_coder("ConnectionInfo1", dce, pdu, iov, offset,
@@ -1906,7 +1906,7 @@ srvsvc_CONNECTION_INFO_1_carray_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_CONNECT_INFO_1_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
-                                      struct smb2_iovec *iov, int *offset,
+                                      struct dcerpc_iovec *iov, int *offset,
                                       void *ptr)
 {
         struct srvsvc_CONNECT_INFO_1_CONTAINER *ctr = ptr;
@@ -1948,7 +1948,7 @@ srvsvc_CONNECT_INFO_1_CONTAINER_coder(char *name, struct dcerpc_context *dce,
 static int
 srvsvc_CONNECT_ENUM_UNION_coder(char *name, struct dcerpc_context *dce,
                                 struct dcerpc_pdu *pdu,
-                                struct smb2_iovec *iov, int *offset,
+                                struct dcerpc_iovec *iov, int *offset,
                                 void *ptr)
 {
         union srvsvc_CONNECT_ENUM_UNION *info = ptr;
@@ -1982,7 +1982,7 @@ srvsvc_CONNECT_ENUM_UNION_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_CONNECT_ENUM_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                  struct dcerpc_pdu *pdu,
-                                 struct smb2_iovec *iov, int *offset,
+                                 struct dcerpc_iovec *iov, int *offset,
                                  void *ptr)
 {
         struct srvsvc_CONNECT_ENUM_STRUCT *ces = ptr;
@@ -2003,7 +2003,7 @@ srvsvc_CONNECT_ENUM_STRUCT_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_CONNECT_ENUM_STRUCT_struct_coder(char *name, struct dcerpc_context *dce,
                                         struct dcerpc_pdu *pdu,
-                                        struct smb2_iovec *iov, int *offset,
+                                        struct dcerpc_iovec *iov, int *offset,
                                         void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -2024,7 +2024,7 @@ srvsvc_CONNECT_ENUM_STRUCT_struct_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_NetrConnectionEnum_req_coder(char *name, struct dcerpc_context *dce,
                                     struct dcerpc_pdu *pdu,
-                                    struct smb2_iovec *iov, int *offset,
+                                    struct dcerpc_iovec *iov, int *offset,
                                     void *ptr)
 {
         struct srvsvc_NetrConnectionEnum_req *req = ptr;
@@ -2056,7 +2056,7 @@ srvsvc_NetrConnectionEnum_req_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_NetrConnectionEnum_rep_coder(char *name, struct dcerpc_context *dce,
                                     struct dcerpc_pdu *pdu,
-                                    struct smb2_iovec *iov, int *offset,
+                                    struct dcerpc_iovec *iov, int *offset,
                                     void *ptr)
 {
         struct srvsvc_NetrConnectionEnum_rep *rep = ptr;
@@ -2088,7 +2088,7 @@ srvsvc_NetrConnectionEnum_rep_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_FILE_INFO_2_coder(char *name, struct dcerpc_context *dce,
                          struct dcerpc_pdu *pdu,
-                         struct smb2_iovec *iov, int *offset,
+                         struct dcerpc_iovec *iov, int *offset,
                          void *ptr)
 {
         struct srvsvc_FILE_INFO_2 *fi = ptr;
@@ -2102,7 +2102,7 @@ srvsvc_FILE_INFO_2_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_FILE_INFO_2_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                 struct dcerpc_pdu *pdu,
-                                struct smb2_iovec *iov, int *offset,
+                                struct dcerpc_iovec *iov, int *offset,
                                 void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -2115,7 +2115,7 @@ srvsvc_FILE_INFO_2_STRUCT_coder(char *name, struct dcerpc_context *dce,
 static int
 srvsvc_FILE_INFO_2_carray_coder(char *name, struct dcerpc_context *dce,
                                 struct dcerpc_pdu *pdu,
-                                struct smb2_iovec *iov, int *offset,
+                                struct dcerpc_iovec *iov, int *offset,
                                 void *ptr)
 {
         return dcerpc_carray_coder("FileInfo2", dce, pdu, iov, offset,
@@ -2133,7 +2133,7 @@ srvsvc_FILE_INFO_2_carray_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_FILE_INFO_2_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                                    struct dcerpc_pdu *pdu,
-                                   struct smb2_iovec *iov, int *offset,
+                                   struct dcerpc_iovec *iov, int *offset,
                                    void *ptr)
 {
         struct srvsvc_FILE_INFO_2_CONTAINER *ctr = ptr;
@@ -2178,7 +2178,7 @@ srvsvc_FILE_INFO_2_CONTAINER_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_FILE_INFO_3_coder(char *name, struct dcerpc_context *dce,
                          struct dcerpc_pdu *pdu,
-                         struct smb2_iovec *iov, int *offset,
+                         struct dcerpc_iovec *iov, int *offset,
                          void *ptr)
 {
         struct srvsvc_FILE_INFO_3 *fi = ptr;
@@ -2207,7 +2207,7 @@ srvsvc_FILE_INFO_3_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_FILE_INFO_3_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                 struct dcerpc_pdu *pdu,
-                                struct smb2_iovec *iov, int *offset,
+                                struct dcerpc_iovec *iov, int *offset,
                                 void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -2220,7 +2220,7 @@ srvsvc_FILE_INFO_3_STRUCT_coder(char *name, struct dcerpc_context *dce,
 static int
 srvsvc_FILE_INFO_3_carray_coder(char *name, struct dcerpc_context *dce,
                                 struct dcerpc_pdu *pdu,
-                                struct smb2_iovec *iov, int *offset,
+                                struct dcerpc_iovec *iov, int *offset,
                                 void *ptr)
 {
         return dcerpc_carray_coder("FileInfo3", dce, pdu, iov, offset,
@@ -2238,7 +2238,7 @@ srvsvc_FILE_INFO_3_carray_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_FILE_INFO_3_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                                    struct dcerpc_pdu *pdu,
-                                   struct smb2_iovec *iov, int *offset,
+                                   struct dcerpc_iovec *iov, int *offset,
                                    void *ptr)
 {
         struct srvsvc_FILE_INFO_3_CONTAINER *ctr = ptr;
@@ -2280,7 +2280,7 @@ srvsvc_FILE_INFO_3_CONTAINER_coder(char *name, struct dcerpc_context *dce,
 static int
 srvsvc_FILE_ENUM_UNION_coder(char *name, struct dcerpc_context *dce,
                              struct dcerpc_pdu *pdu,
-                             struct smb2_iovec *iov, int *offset,
+                             struct dcerpc_iovec *iov, int *offset,
                              void *ptr)
 {
         union srvsvc_FILE_ENUM_UNION *info = ptr;
@@ -2322,7 +2322,7 @@ srvsvc_FILE_ENUM_UNION_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_FILE_ENUM_STRUCT_coder(char *name, struct dcerpc_context *dce,
                               struct dcerpc_pdu *pdu,
-                              struct smb2_iovec *iov, int *offset,
+                              struct dcerpc_iovec *iov, int *offset,
                               void *ptr)
 {
         struct srvsvc_FILE_ENUM_STRUCT *fes = ptr;
@@ -2343,7 +2343,7 @@ srvsvc_FILE_ENUM_STRUCT_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_FILE_ENUM_STRUCT_struct_coder(char *name, struct dcerpc_context *dce,
                                      struct dcerpc_pdu *pdu,
-                                     struct smb2_iovec *iov, int *offset,
+                                     struct dcerpc_iovec *iov, int *offset,
                                      void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -2365,7 +2365,7 @@ srvsvc_FILE_ENUM_STRUCT_struct_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_NetrFileEnum_req_coder(char *name, struct dcerpc_context *dce,
                               struct dcerpc_pdu *pdu,
-                              struct smb2_iovec *iov, int *offset,
+                              struct dcerpc_iovec *iov, int *offset,
                               void *ptr)
 {
         struct srvsvc_NetrFileEnum_req *req = ptr;
@@ -2416,7 +2416,7 @@ srvsvc_NetrFileEnum_req_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_NetrFileEnum_rep_coder(char *name, struct dcerpc_context *dce,
                               struct dcerpc_pdu *pdu,
-                              struct smb2_iovec *iov, int *offset,
+                              struct dcerpc_iovec *iov, int *offset,
                               void *ptr)
 {
         struct srvsvc_NetrFileEnum_rep *rep = ptr;
@@ -2449,7 +2449,7 @@ srvsvc_NetrFileEnum_rep_coder(char *name, struct dcerpc_context *dce,
 static int
 srvsvc_FILE_INFO_coder(char *name, struct dcerpc_context *dce,
                        struct dcerpc_pdu *pdu,
-                       struct smb2_iovec *iov, int *offset,
+                       struct dcerpc_iovec *iov, int *offset,
                        void *ptr)
 {
         union srvsvc_FILE_INFO *info = ptr;
@@ -2480,7 +2480,7 @@ srvsvc_FILE_INFO_coder(char *name, struct dcerpc_context *dce,
 static int
 srvsvc_FILE_INFO_STRUCT_coder(char *name, struct dcerpc_context *dce,
                               struct dcerpc_pdu *pdu,
-                              struct smb2_iovec *iov, int *offset,
+                              struct dcerpc_iovec *iov, int *offset,
                               void *ptr)
 {
         uint32_t Level = dcerpc_get_switch_is(pdu);
@@ -2506,7 +2506,7 @@ srvsvc_FILE_INFO_STRUCT_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_NetrFileGetInfo_req_coder(char *name, struct dcerpc_context *dce,
                                  struct dcerpc_pdu *pdu,
-                                 struct smb2_iovec *iov, int *offset,
+                                 struct dcerpc_iovec *iov, int *offset,
                                  void *ptr)
 {
         struct srvsvc_NetrFileGetInfo_req *req = ptr;
@@ -2529,7 +2529,7 @@ srvsvc_NetrFileGetInfo_req_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_NetrFileGetInfo_rep_coder(char *name, struct dcerpc_context *dce,
                                  struct dcerpc_pdu *pdu,
-                                 struct smb2_iovec *iov, int *offset,
+                                 struct dcerpc_iovec *iov, int *offset,
                                  void *ptr)
 {
         struct srvsvc_NetrFileGetInfo_rep *rep = ptr;
@@ -2559,7 +2559,7 @@ srvsvc_NetrFileGetInfo_rep_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_NetrFileClose_req_coder(char *name, struct dcerpc_context *dce,
                                struct dcerpc_pdu *pdu,
-                               struct smb2_iovec *iov, int *offset,
+                               struct dcerpc_iovec *iov, int *offset,
                                void *ptr)
 {
         struct srvsvc_NetrFileClose_req *req = ptr;
@@ -2578,7 +2578,7 @@ srvsvc_NetrFileClose_req_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_NetrFileClose_rep_coder(char *name, struct dcerpc_context *dce,
                                struct dcerpc_pdu *pdu,
-                               struct smb2_iovec *iov, int *offset,
+                               struct dcerpc_iovec *iov, int *offset,
                                void *ptr)
 {
         struct srvsvc_NetrFileClose_rep *rep = ptr;
@@ -2598,7 +2598,7 @@ srvsvc_NetrFileClose_rep_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SESSION_INFO_0_coder(char *name, struct dcerpc_context *dce,
                             struct dcerpc_pdu *pdu,
-                            struct smb2_iovec *iov, int *offset,
+                            struct dcerpc_iovec *iov, int *offset,
                             void *ptr)
 {
         struct srvsvc_SESSION_INFO_0 *si = ptr;
@@ -2613,7 +2613,7 @@ srvsvc_SESSION_INFO_0_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SESSION_INFO_0_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                    struct dcerpc_pdu *pdu,
-                                   struct smb2_iovec *iov, int *offset,
+                                   struct dcerpc_iovec *iov, int *offset,
                                    void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -2626,7 +2626,7 @@ srvsvc_SESSION_INFO_0_STRUCT_coder(char *name, struct dcerpc_context *dce,
 static int
 srvsvc_SESSION_INFO_0_carray_coder(char *name, struct dcerpc_context *dce,
                                    struct dcerpc_pdu *pdu,
-                                   struct smb2_iovec *iov, int *offset,
+                                   struct dcerpc_iovec *iov, int *offset,
                                    void *ptr)
 {
         return dcerpc_carray_coder("SessionInfo0", dce, pdu, iov, offset,
@@ -2644,7 +2644,7 @@ srvsvc_SESSION_INFO_0_carray_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SESSION_INFO_0_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
-                                      struct smb2_iovec *iov, int *offset,
+                                      struct dcerpc_iovec *iov, int *offset,
                                       void *ptr)
 {
         struct srvsvc_SESSION_INFO_0_CONTAINER *ctr = ptr;
@@ -2690,7 +2690,7 @@ srvsvc_SESSION_INFO_0_CONTAINER_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SESSION_INFO_1_coder(char *name, struct dcerpc_context *dce,
                             struct dcerpc_pdu *pdu,
-                            struct smb2_iovec *iov, int *offset,
+                            struct dcerpc_iovec *iov, int *offset,
                             void *ptr)
 {
         struct srvsvc_SESSION_INFO_1 *si = ptr;
@@ -2722,7 +2722,7 @@ srvsvc_SESSION_INFO_1_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SESSION_INFO_1_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                    struct dcerpc_pdu *pdu,
-                                   struct smb2_iovec *iov, int *offset,
+                                   struct dcerpc_iovec *iov, int *offset,
                                    void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -2735,7 +2735,7 @@ srvsvc_SESSION_INFO_1_STRUCT_coder(char *name, struct dcerpc_context *dce,
 static int
 srvsvc_SESSION_INFO_1_carray_coder(char *name, struct dcerpc_context *dce,
                                    struct dcerpc_pdu *pdu,
-                                   struct smb2_iovec *iov, int *offset,
+                                   struct dcerpc_iovec *iov, int *offset,
                                    void *ptr)
 {
         return dcerpc_carray_coder("SessionInfo1", dce, pdu, iov, offset,
@@ -2753,7 +2753,7 @@ srvsvc_SESSION_INFO_1_carray_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SESSION_INFO_1_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
-                                      struct smb2_iovec *iov, int *offset,
+                                      struct dcerpc_iovec *iov, int *offset,
                                       void *ptr)
 {
         struct srvsvc_SESSION_INFO_1_CONTAINER *ctr = ptr;
@@ -2800,7 +2800,7 @@ srvsvc_SESSION_INFO_1_CONTAINER_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SESSION_INFO_2_coder(char *name, struct dcerpc_context *dce,
                             struct dcerpc_pdu *pdu,
-                            struct smb2_iovec *iov, int *offset,
+                            struct dcerpc_iovec *iov, int *offset,
                             void *ptr)
 {
         struct srvsvc_SESSION_INFO_2 *si = ptr;
@@ -2836,7 +2836,7 @@ srvsvc_SESSION_INFO_2_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SESSION_INFO_2_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                    struct dcerpc_pdu *pdu,
-                                   struct smb2_iovec *iov, int *offset,
+                                   struct dcerpc_iovec *iov, int *offset,
                                    void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -2849,7 +2849,7 @@ srvsvc_SESSION_INFO_2_STRUCT_coder(char *name, struct dcerpc_context *dce,
 static int
 srvsvc_SESSION_INFO_2_carray_coder(char *name, struct dcerpc_context *dce,
                                    struct dcerpc_pdu *pdu,
-                                   struct smb2_iovec *iov, int *offset,
+                                   struct dcerpc_iovec *iov, int *offset,
                                    void *ptr)
 {
         return dcerpc_carray_coder("SessionInfo2", dce, pdu, iov, offset,
@@ -2867,7 +2867,7 @@ srvsvc_SESSION_INFO_2_carray_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SESSION_INFO_2_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                                       struct dcerpc_pdu *pdu,
-                                      struct smb2_iovec *iov, int *offset,
+                                      struct dcerpc_iovec *iov, int *offset,
                                       void *ptr)
 {
         struct srvsvc_SESSION_INFO_2_CONTAINER *ctr = ptr;
@@ -2911,7 +2911,7 @@ srvsvc_SESSION_INFO_2_CONTAINER_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SESSION_INFO_10_coder(char *name, struct dcerpc_context *dce,
                              struct dcerpc_pdu *pdu,
-                             struct smb2_iovec *iov, int *offset,
+                             struct dcerpc_iovec *iov, int *offset,
                              void *ptr)
 {
         struct srvsvc_SESSION_INFO_10 *si = ptr;
@@ -2936,7 +2936,7 @@ srvsvc_SESSION_INFO_10_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SESSION_INFO_10_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                     struct dcerpc_pdu *pdu,
-                                    struct smb2_iovec *iov, int *offset,
+                                    struct dcerpc_iovec *iov, int *offset,
                                     void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -2949,7 +2949,7 @@ srvsvc_SESSION_INFO_10_STRUCT_coder(char *name, struct dcerpc_context *dce,
 static int
 srvsvc_SESSION_INFO_10_carray_coder(char *name, struct dcerpc_context *dce,
                                     struct dcerpc_pdu *pdu,
-                                    struct smb2_iovec *iov, int *offset,
+                                    struct dcerpc_iovec *iov, int *offset,
                                     void *ptr)
 {
         return dcerpc_carray_coder("SessionInfo10", dce, pdu, iov, offset,
@@ -2967,7 +2967,7 @@ srvsvc_SESSION_INFO_10_carray_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SESSION_INFO_10_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                                        struct dcerpc_pdu *pdu,
-                                       struct smb2_iovec *iov, int *offset,
+                                       struct dcerpc_iovec *iov, int *offset,
                                        void *ptr)
 {
         struct srvsvc_SESSION_INFO_10_CONTAINER *ctr = ptr;
@@ -3015,7 +3015,7 @@ srvsvc_SESSION_INFO_10_CONTAINER_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SESSION_INFO_502_coder(char *name, struct dcerpc_context *dce,
                               struct dcerpc_pdu *pdu,
-                              struct smb2_iovec *iov, int *offset,
+                              struct dcerpc_iovec *iov, int *offset,
                               void *ptr)
 {
         struct srvsvc_SESSION_INFO_502 *si = ptr;
@@ -3055,7 +3055,7 @@ srvsvc_SESSION_INFO_502_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SESSION_INFO_502_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                      struct dcerpc_pdu *pdu,
-                                     struct smb2_iovec *iov, int *offset,
+                                     struct dcerpc_iovec *iov, int *offset,
                                      void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -3068,7 +3068,7 @@ srvsvc_SESSION_INFO_502_STRUCT_coder(char *name, struct dcerpc_context *dce,
 static int
 srvsvc_SESSION_INFO_502_carray_coder(char *name, struct dcerpc_context *dce,
                                      struct dcerpc_pdu *pdu,
-                                     struct smb2_iovec *iov, int *offset,
+                                     struct dcerpc_iovec *iov, int *offset,
                                      void *ptr)
 {
         return dcerpc_carray_coder("SessionInfo502", dce, pdu, iov, offset,
@@ -3086,7 +3086,7 @@ srvsvc_SESSION_INFO_502_carray_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SESSION_INFO_502_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                                         struct dcerpc_pdu *pdu,
-                                        struct smb2_iovec *iov, int *offset,
+                                        struct dcerpc_iovec *iov, int *offset,
                                         void *ptr)
 {
         struct srvsvc_SESSION_INFO_502_CONTAINER *ctr = ptr;
@@ -3131,7 +3131,7 @@ srvsvc_SESSION_INFO_502_CONTAINER_coder(char *name, struct dcerpc_context *dce,
 static int
 srvsvc_SESSION_ENUM_UNION_coder(char *name, struct dcerpc_context *dce,
                                 struct dcerpc_pdu *pdu,
-                                struct smb2_iovec *iov, int *offset,
+                                struct dcerpc_iovec *iov, int *offset,
                                 void *ptr)
 {
         union srvsvc_SESSION_ENUM_UNION *info = ptr;
@@ -3191,7 +3191,7 @@ srvsvc_SESSION_ENUM_UNION_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SESSION_ENUM_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                  struct dcerpc_pdu *pdu,
-                                 struct smb2_iovec *iov, int *offset,
+                                 struct dcerpc_iovec *iov, int *offset,
                                  void *ptr)
 {
         struct srvsvc_SESSION_ENUM_STRUCT *ses = ptr;
@@ -3212,7 +3212,7 @@ srvsvc_SESSION_ENUM_STRUCT_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_SESSION_ENUM_STRUCT_struct_coder(char *name, struct dcerpc_context *dce,
                                         struct dcerpc_pdu *pdu,
-                                        struct smb2_iovec *iov, int *offset,
+                                        struct dcerpc_iovec *iov, int *offset,
                                         void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -3234,7 +3234,7 @@ srvsvc_SESSION_ENUM_STRUCT_struct_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_NetrSessionEnum_req_coder(char *name, struct dcerpc_context *dce,
                                  struct dcerpc_pdu *pdu,
-                                 struct smb2_iovec *iov, int *offset,
+                                 struct dcerpc_iovec *iov, int *offset,
                                  void *ptr)
 {
         struct srvsvc_NetrSessionEnum_req *req = ptr;
@@ -3285,7 +3285,7 @@ srvsvc_NetrSessionEnum_req_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_NetrSessionEnum_rep_coder(char *name, struct dcerpc_context *dce,
                                  struct dcerpc_pdu *pdu,
-                                 struct smb2_iovec *iov, int *offset,
+                                 struct dcerpc_iovec *iov, int *offset,
                                  void *ptr)
 {
         struct srvsvc_NetrSessionEnum_rep *rep = ptr;
@@ -3320,7 +3320,7 @@ srvsvc_NetrSessionEnum_rep_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_NetrSessionDel_req_coder(char *name, struct dcerpc_context *dce,
                                 struct dcerpc_pdu *pdu,
-                                struct smb2_iovec *iov, int *offset,
+                                struct dcerpc_iovec *iov, int *offset,
                                 void *ptr)
 {
         struct srvsvc_NetrSessionDel_req *req = ptr;
@@ -3359,7 +3359,7 @@ srvsvc_NetrSessionDel_req_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_NetrSessionDel_rep_coder(char *name, struct dcerpc_context *dce,
                                 struct dcerpc_pdu *pdu,
-                                struct smb2_iovec *iov, int *offset,
+                                struct dcerpc_iovec *iov, int *offset,
                                 void *ptr)
 {
         struct srvsvc_NetrSessionDel_rep *rep = ptr;
@@ -3383,7 +3383,7 @@ srvsvc_NetrSessionDel_rep_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_NetrShareAdd_req_coder(char *name, struct dcerpc_context *dce,
                               struct dcerpc_pdu *pdu,
-                              struct smb2_iovec *iov, int *offset,
+                              struct dcerpc_iovec *iov, int *offset,
                               void *ptr)
 {
         struct srvsvc_NetrShareAdd_req *req = ptr;
@@ -3412,7 +3412,7 @@ srvsvc_NetrShareAdd_req_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_NetrShareAdd_rep_coder(char *name, struct dcerpc_context *dce,
                               struct dcerpc_pdu *pdu,
-                              struct smb2_iovec *iov, int *offset,
+                              struct dcerpc_iovec *iov, int *offset,
                               void *ptr)
 {
         struct srvsvc_NetrShareAdd_rep *rep = ptr;
@@ -3442,7 +3442,7 @@ srvsvc_NetrShareAdd_rep_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_NetrShareEnum_req_coder(char *name, struct dcerpc_context *dce,
                                struct dcerpc_pdu *pdu,
-                               struct smb2_iovec *iov, int *offset,
+                               struct dcerpc_iovec *iov, int *offset,
                                void *ptr)
 {
         struct srvsvc_NetrShareEnum_req *req = ptr;
@@ -3470,7 +3470,7 @@ srvsvc_NetrShareEnum_req_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_NetrShareEnum_rep_coder(char *name, struct dcerpc_context *dce,
                                struct dcerpc_pdu *pdu,
-                               struct smb2_iovec *iov, int *offset,
+                               struct dcerpc_iovec *iov, int *offset,
                                void *ptr)
 {
         struct srvsvc_NetrShareEnum_rep *rep = ptr;
@@ -3506,7 +3506,7 @@ srvsvc_NetrShareEnum_rep_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_NetrShareGetInfo_req_coder(char *name, struct dcerpc_context *dce,
                                   struct dcerpc_pdu *pdu,
-                                  struct smb2_iovec *iov, int *offset,
+                                  struct dcerpc_iovec *iov, int *offset,
                                   void *ptr)
 {
         struct srvsvc_NetrShareGetInfo_req *req = ptr;
@@ -3531,7 +3531,7 @@ srvsvc_NetrShareGetInfo_req_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_NetrShareGetInfo_rep_coder(char *name, struct dcerpc_context *dce,
                                   struct dcerpc_pdu *pdu,
-                                  struct smb2_iovec *iov, int *offset,
+                                  struct dcerpc_iovec *iov, int *offset,
                                   void *ptr)
 {
         struct srvsvc_NetrShareGetInfo_rep *rep = ptr;
@@ -3564,7 +3564,7 @@ srvsvc_NetrShareGetInfo_rep_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_NetrShareSetInfo_req_coder(char *name, struct dcerpc_context *dce,
                                   struct dcerpc_pdu *pdu,
-                                  struct smb2_iovec *iov, int *offset,
+                                  struct dcerpc_iovec *iov, int *offset,
                                   void *ptr)
 {
         struct srvsvc_NetrShareSetInfo_req *req = ptr;
@@ -3598,7 +3598,7 @@ srvsvc_NetrShareSetInfo_req_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_NetrShareSetInfo_rep_coder(char *name, struct dcerpc_context *dce,
                                   struct dcerpc_pdu *pdu,
-                                  struct smb2_iovec *iov, int *offset,
+                                  struct dcerpc_iovec *iov, int *offset,
                                   void *ptr)
 {
         struct srvsvc_NetrShareSetInfo_rep *rep = ptr;
@@ -3625,7 +3625,7 @@ srvsvc_NetrShareSetInfo_rep_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_NetrShareDel_req_coder(char *name, struct dcerpc_context *dce,
                               struct dcerpc_pdu *pdu,
-                              struct smb2_iovec *iov, int *offset,
+                              struct dcerpc_iovec *iov, int *offset,
                               void *ptr)
 {
         struct srvsvc_NetrShareDel_req *req = ptr;
@@ -3648,7 +3648,7 @@ srvsvc_NetrShareDel_req_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_NetrShareDel_rep_coder(char *name, struct dcerpc_context *dce,
                               struct dcerpc_pdu *pdu,
-                              struct smb2_iovec *iov, int *offset,
+                              struct dcerpc_iovec *iov, int *offset,
                               void *ptr)
 {
         struct srvsvc_NetrShareDel_rep *rep = ptr;
@@ -3671,7 +3671,7 @@ srvsvc_NetrShareDel_rep_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_NetrShareCheck_req_coder(char *name, struct dcerpc_context *dce,
                               struct dcerpc_pdu *pdu,
-                              struct smb2_iovec *iov, int *offset,
+                              struct dcerpc_iovec *iov, int *offset,
                               void *ptr)
 {
         struct srvsvc_NetrShareCheck_req *req = ptr;
@@ -3691,7 +3691,7 @@ srvsvc_NetrShareCheck_req_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_NetrShareCheck_rep_coder(char *name, struct dcerpc_context *dce,
                                 struct dcerpc_pdu *pdu,
-                                struct smb2_iovec *iov, int *offset,
+                                struct dcerpc_iovec *iov, int *offset,
                                 void *ptr)
 {
         struct srvsvc_NetrShareCheck_rep *rep = ptr;
@@ -3717,7 +3717,7 @@ srvsvc_NetrShareCheck_rep_coder(char *name, struct dcerpc_context *dce,
 */
 int srvsvc_NetrServerGetInfo_req_coder(char *name, struct dcerpc_context *dce,
                                        struct dcerpc_pdu *pdu,
-                                       struct smb2_iovec *iov, int *offset,
+                                       struct dcerpc_iovec *iov, int *offset,
                                        void *ptr)
 {
         struct srvsvc_NetrServerGetInfo_req *req = ptr;
@@ -3736,7 +3736,7 @@ int srvsvc_NetrServerGetInfo_req_coder(char *name, struct dcerpc_context *dce,
         
 int srvsvc_NetrServerGetInfo_rep_coder(char *name, struct dcerpc_context *dce,
                                        struct dcerpc_pdu *pdu,
-                                       struct smb2_iovec *iov, int *offset,
+                                       struct dcerpc_iovec *iov, int *offset,
                                        void *ptr)
 {
         struct srvsvc_NetrServerGetInfo_rep *rep = ptr;
@@ -3768,7 +3768,7 @@ int srvsvc_NetrServerGetInfo_rep_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_NetrServerSetInfo_req_coder(char *name, struct dcerpc_context *dce,
                                    struct dcerpc_pdu *pdu,
-                                   struct smb2_iovec *iov, int *offset,
+                                   struct dcerpc_iovec *iov, int *offset,
                                    void *ptr)
 {
         struct srvsvc_NetrServerSetInfo_req *req = ptr;
@@ -3797,7 +3797,7 @@ srvsvc_NetrServerSetInfo_req_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_NetrServerSetInfo_rep_coder(char *name, struct dcerpc_context *dce,
                                    struct dcerpc_pdu *pdu,
-                                   struct smb2_iovec *iov, int *offset,
+                                   struct dcerpc_iovec *iov, int *offset,
                                    void *ptr)
 {
         struct srvsvc_NetrServerSetInfo_rep *rep = ptr;
@@ -3825,7 +3825,7 @@ srvsvc_NetrServerSetInfo_rep_coder(char *name, struct dcerpc_context *dce,
 static int
 srvsvc_DISK_varying_string_coder(char *name, struct dcerpc_context *dce,
                                  struct dcerpc_pdu *pdu,
-                                 struct smb2_iovec *iov, int *offset,
+                                 struct dcerpc_iovec *iov, int *offset,
                                  void *ptr)
 {
         char **str = ptr;
@@ -3922,7 +3922,7 @@ srvsvc_DISK_varying_string_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_DISK_INFO_coder(char *name, struct dcerpc_context *dce,
                        struct dcerpc_pdu *pdu,
-                       struct smb2_iovec *iov, int *offset,
+                       struct dcerpc_iovec *iov, int *offset,
                        void *ptr)
 {
         struct srvsvc_DISK_INFO *di = ptr;
@@ -3937,7 +3937,7 @@ srvsvc_DISK_INFO_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_DISK_INFO_STRUCT_coder(char *name, struct dcerpc_context *dce,
                               struct dcerpc_pdu *pdu,
-                              struct smb2_iovec *iov, int *offset,
+                              struct dcerpc_iovec *iov, int *offset,
                               void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -3953,7 +3953,7 @@ srvsvc_DISK_INFO_STRUCT_coder(char *name, struct dcerpc_context *dce,
 static int
 srvsvc_DISK_INFO_carray_coder(char *name, struct dcerpc_context *dce,
                               struct dcerpc_pdu *pdu,
-                              struct smb2_iovec *iov, int *offset,
+                              struct dcerpc_iovec *iov, int *offset,
                               void *ptr)
 {
         uint32_t num = dcerpc_get_size_is(pdu);
@@ -4009,7 +4009,7 @@ srvsvc_DISK_INFO_carray_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_DISK_ENUM_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                                  struct dcerpc_pdu *pdu,
-                                 struct smb2_iovec *iov, int *offset,
+                                 struct dcerpc_iovec *iov, int *offset,
                                  void *ptr)
 {
         struct srvsvc_DISK_ENUM_CONTAINER *ctr = ptr;
@@ -4045,7 +4045,7 @@ srvsvc_DISK_ENUM_CONTAINER_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_DISK_ENUM_CONTAINER_struct_coder(char *name, struct dcerpc_context *dce,
                                         struct dcerpc_pdu *pdu,
-                                        struct smb2_iovec *iov, int *offset,
+                                        struct dcerpc_iovec *iov, int *offset,
                                         void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -4066,7 +4066,7 @@ srvsvc_DISK_ENUM_CONTAINER_struct_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_NetrServerDiskEnum_req_coder(char *name, struct dcerpc_context *dce,
                                     struct dcerpc_pdu *pdu,
-                                    struct smb2_iovec *iov, int *offset,
+                                    struct dcerpc_iovec *iov, int *offset,
                                     void *ptr)
 {
         struct srvsvc_NetrServerDiskEnum_req *req = ptr;
@@ -4097,7 +4097,7 @@ srvsvc_NetrServerDiskEnum_req_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_NetrServerDiskEnum_rep_coder(char *name, struct dcerpc_context *dce,
                                     struct dcerpc_pdu *pdu,
-                                    struct smb2_iovec *iov, int *offset,
+                                    struct dcerpc_iovec *iov, int *offset,
                                     void *ptr)
 {
         struct srvsvc_NetrServerDiskEnum_rep *rep = ptr;
@@ -4145,7 +4145,7 @@ srvsvc_NetrServerDiskEnum_rep_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_STAT_SERVER_0_coder(char *name, struct dcerpc_context *dce,
                            struct dcerpc_pdu *pdu,
-                           struct smb2_iovec *iov, int *offset,
+                           struct dcerpc_iovec *iov, int *offset,
                            void *ptr)
 {
         struct srvsvc_STAT_SERVER_0 *st = ptr;
@@ -4207,7 +4207,7 @@ srvsvc_STAT_SERVER_0_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_STAT_SERVER_0_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                   struct dcerpc_pdu *pdu,
-                                  struct smb2_iovec *iov, int *offset,
+                                  struct dcerpc_iovec *iov, int *offset,
                                   void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -4227,7 +4227,7 @@ srvsvc_STAT_SERVER_0_STRUCT_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_NetrServerStatisticsGet_req_coder(char *name, struct dcerpc_context *dce,
                                          struct dcerpc_pdu *pdu,
-                                         struct smb2_iovec *iov, int *offset,
+                                         struct dcerpc_iovec *iov, int *offset,
                                          void *ptr)
 {
         struct srvsvc_NetrServerStatisticsGet_req *req = ptr;
@@ -4263,7 +4263,7 @@ srvsvc_NetrServerStatisticsGet_req_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_NetrServerStatisticsGet_rep_coder(char *name, struct dcerpc_context *dce,
                                          struct dcerpc_pdu *pdu,
-                                         struct smb2_iovec *iov, int *offset,
+                                         struct dcerpc_iovec *iov, int *offset,
                                          void *ptr)
 {
         struct srvsvc_NetrServerStatisticsGet_rep *rep = ptr;
@@ -4298,7 +4298,7 @@ srvsvc_NetrServerStatisticsGet_rep_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_TIME_OF_DAY_INFO_coder(char *name, struct dcerpc_context *dce,
                               struct dcerpc_pdu *pdu,
-                              struct smb2_iovec *iov, int *offset,
+                              struct dcerpc_iovec *iov, int *offset,
                               void *ptr)
 {
         struct srvsvc_TIME_OF_DAY_INFO *tod = ptr;
@@ -4352,7 +4352,7 @@ srvsvc_TIME_OF_DAY_INFO_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_TIME_OF_DAY_INFO_STRUCT_coder(char *name, struct dcerpc_context *dce,
                                      struct dcerpc_pdu *pdu,
-                                     struct smb2_iovec *iov, int *offset,
+                                     struct dcerpc_iovec *iov, int *offset,
                                      void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -4369,7 +4369,7 @@ srvsvc_TIME_OF_DAY_INFO_STRUCT_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_NetrRemoteTOD_req_coder(char *name, struct dcerpc_context *dce,
                                struct dcerpc_pdu *pdu,
-                               struct smb2_iovec *iov, int *offset,
+                               struct dcerpc_iovec *iov, int *offset,
                                void *ptr)
 {
         struct srvsvc_NetrRemoteTOD_req *req = ptr;
@@ -4385,7 +4385,7 @@ srvsvc_NetrRemoteTOD_req_coder(char *name, struct dcerpc_context *dce,
 int
 srvsvc_NetrRemoteTOD_rep_coder(char *name, struct dcerpc_context *dce,
                                struct dcerpc_pdu *pdu,
-                               struct smb2_iovec *iov, int *offset,
+                               struct dcerpc_iovec *iov, int *offset,
                                void *ptr)
 {
         struct srvsvc_NetrRemoteTOD_rep *rep = ptr;

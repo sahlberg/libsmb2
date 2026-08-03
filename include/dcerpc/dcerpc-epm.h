@@ -260,72 +260,72 @@ struct epm_MgmtDelete_rep {
 /* Coders */
 int epm_twr_coder(char *name, struct dcerpc_context *ctx,
                   struct dcerpc_pdu *pdu,
-                  struct smb2_iovec *iov, int *offset,
+                  struct dcerpc_iovec *iov, int *offset,
                   void *ptr);
 int epm_entry_coder(char *name, struct dcerpc_context *ctx,
                     struct dcerpc_pdu *pdu,
-                    struct smb2_iovec *iov, int *offset,
+                    struct dcerpc_iovec *iov, int *offset,
                     void *ptr);
 int epm_rpc_if_id_coder(char *name, struct dcerpc_context *ctx,
                         struct dcerpc_pdu *pdu,
-                        struct smb2_iovec *iov, int *offset,
+                        struct dcerpc_iovec *iov, int *offset,
                         void *ptr);
 
 int epm_Insert_req_coder(char *name, struct dcerpc_context *ctx,
                          struct dcerpc_pdu *pdu,
-                         struct smb2_iovec *iov, int *offset,
+                         struct dcerpc_iovec *iov, int *offset,
                          void *ptr);
 int epm_Insert_rep_coder(char *name, struct dcerpc_context *ctx,
                          struct dcerpc_pdu *pdu,
-                         struct smb2_iovec *iov, int *offset,
+                         struct dcerpc_iovec *iov, int *offset,
                          void *ptr);
 int epm_Delete_req_coder(char *name, struct dcerpc_context *ctx,
                          struct dcerpc_pdu *pdu,
-                         struct smb2_iovec *iov, int *offset,
+                         struct dcerpc_iovec *iov, int *offset,
                          void *ptr);
 int epm_Delete_rep_coder(char *name, struct dcerpc_context *ctx,
                          struct dcerpc_pdu *pdu,
-                         struct smb2_iovec *iov, int *offset,
+                         struct dcerpc_iovec *iov, int *offset,
                          void *ptr);
 int epm_Lookup_req_coder(char *name, struct dcerpc_context *ctx,
                          struct dcerpc_pdu *pdu,
-                         struct smb2_iovec *iov, int *offset,
+                         struct dcerpc_iovec *iov, int *offset,
                          void *ptr);
 int epm_Lookup_rep_coder(char *name, struct dcerpc_context *ctx,
                          struct dcerpc_pdu *pdu,
-                         struct smb2_iovec *iov, int *offset,
+                         struct dcerpc_iovec *iov, int *offset,
                          void *ptr);
 int epm_Map_req_coder(char *name, struct dcerpc_context *ctx,
                       struct dcerpc_pdu *pdu,
-                      struct smb2_iovec *iov, int *offset,
+                      struct dcerpc_iovec *iov, int *offset,
                       void *ptr);
 int epm_Map_rep_coder(char *name, struct dcerpc_context *ctx,
                       struct dcerpc_pdu *pdu,
-                      struct smb2_iovec *iov, int *offset,
+                      struct dcerpc_iovec *iov, int *offset,
                       void *ptr);
 int epm_LookupHandleFree_req_coder(char *name, struct dcerpc_context *ctx,
                                    struct dcerpc_pdu *pdu,
-                                   struct smb2_iovec *iov, int *offset,
+                                   struct dcerpc_iovec *iov, int *offset,
                                    void *ptr);
 int epm_LookupHandleFree_rep_coder(char *name, struct dcerpc_context *ctx,
                                    struct dcerpc_pdu *pdu,
-                                   struct smb2_iovec *iov, int *offset,
+                                   struct dcerpc_iovec *iov, int *offset,
                                    void *ptr);
 int epm_InqObject_req_coder(char *name, struct dcerpc_context *ctx,
                             struct dcerpc_pdu *pdu,
-                            struct smb2_iovec *iov, int *offset,
+                            struct dcerpc_iovec *iov, int *offset,
                             void *ptr);
 int epm_InqObject_rep_coder(char *name, struct dcerpc_context *ctx,
                             struct dcerpc_pdu *pdu,
-                            struct smb2_iovec *iov, int *offset,
+                            struct dcerpc_iovec *iov, int *offset,
                             void *ptr);
 int epm_MgmtDelete_req_coder(char *name, struct dcerpc_context *ctx,
                              struct dcerpc_pdu *pdu,
-                             struct smb2_iovec *iov, int *offset,
+                             struct dcerpc_iovec *iov, int *offset,
                              void *ptr);
 int epm_MgmtDelete_rep_coder(char *name, struct dcerpc_context *ctx,
                              struct dcerpc_pdu *pdu,
-                             struct smb2_iovec *iov, int *offset,
+                             struct dcerpc_iovec *iov, int *offset,
                              void *ptr);
 
 /*

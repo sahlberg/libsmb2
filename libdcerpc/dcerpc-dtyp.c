@@ -66,7 +66,7 @@ unsigned char NT_SID_AUTHORITY[6] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x05 };
 static int
 ndr_sid_coder(char *name, struct dcerpc_context *dce,
               struct dcerpc_pdu *pdu,
-              struct smb2_iovec *iov, int *offset,
+              struct dcerpc_iovec *iov, int *offset,
               void *ptr)
 {
         RPC_SID *sid = ptr;
@@ -109,7 +109,7 @@ ndr_sid_coder(char *name, struct dcerpc_context *dce,
  */
 static int
 yaml_sid_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
-               struct smb2_iovec *iov, int *offset, void *ptr)
+               struct dcerpc_iovec *iov, int *offset, void *ptr)
 {
         RPC_SID *sid = ptr;
         int i;
@@ -248,7 +248,7 @@ yaml_sid_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
  */
 static int
 json_sid_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
-               struct smb2_iovec *iov, int *offset, void *ptr)
+               struct dcerpc_iovec *iov, int *offset, void *ptr)
 {
         RPC_SID *sid = ptr;
         int i;
@@ -385,7 +385,7 @@ json_sid_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
 int
 dcerpc_sid_coder(char *name, struct dcerpc_context *dce,
                  struct dcerpc_pdu *pdu,
-                 struct smb2_iovec *iov, int *offset,
+                 struct dcerpc_iovec *iov, int *offset,
                  void *ptr)
 {
         switch (dcerpc_pdu_encoding(pdu)) {
@@ -495,7 +495,7 @@ static struct dcerpc_uint32_pretty_printer ace_flags_pp = {
 static int
 dcerpc_uint8_pp_coder(char *name, struct dcerpc_context *dce,
                       struct dcerpc_pdu *pdu,
-                      struct smb2_iovec *iov, int *offset,
+                      struct dcerpc_iovec *iov, int *offset,
                       void *ptr,
                       struct dcerpc_uint32_pretty_printer *pp)
 {
@@ -524,7 +524,7 @@ dcerpc_uint8_pp_coder(char *name, struct dcerpc_context *dce,
 static int
 ace_header_fields_coder(char *name, struct dcerpc_context *dce,
                         struct dcerpc_pdu *pdu,
-                        struct smb2_iovec *iov, int *offset,
+                        struct dcerpc_iovec *iov, int *offset,
                         void *ptr)
 {
         ACE_HEADER *hdr = ptr;
@@ -554,7 +554,7 @@ ace_header_fields_coder(char *name, struct dcerpc_context *dce,
 int
 dcerpc_ACE_HEADER_coder(char *name, struct dcerpc_context *dce,
                         struct dcerpc_pdu *pdu,
-                        struct smb2_iovec *iov, int *offset,
+                        struct dcerpc_iovec *iov, int *offset,
                         void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -602,7 +602,7 @@ static struct dcerpc_uint32_pretty_printer access_mask_pp = {
 static int
 ndr_packet_sid_coder(char *name, struct dcerpc_context *dce,
                      struct dcerpc_pdu *pdu,
-                     struct smb2_iovec *iov, int *offset,
+                     struct dcerpc_iovec *iov, int *offset,
                      void *ptr)
 {
         RPC_SID *sid = ptr;
@@ -648,7 +648,7 @@ ndr_packet_sid_coder(char *name, struct dcerpc_context *dce,
 static int
 dcerpc_packet_sid_coder(char *name, struct dcerpc_context *dce,
                         struct dcerpc_pdu *pdu,
-                        struct smb2_iovec *iov, int *offset,
+                        struct dcerpc_iovec *iov, int *offset,
                         void *ptr)
 {
         switch (dcerpc_pdu_encoding(pdu)) {
@@ -682,7 +682,7 @@ ace_mask_sid_size(const struct ace_mask_sid *ace)
 static int
 ace_mask_sid_fields_coder(char *name, struct dcerpc_context *dce,
                           struct dcerpc_pdu *pdu,
-                          struct smb2_iovec *iov, int *offset,
+                          struct dcerpc_iovec *iov, int *offset,
                           void *ptr)
 {
         struct ace_mask_sid *ace = ptr;
@@ -728,7 +728,7 @@ ace_mask_sid_fields_coder(char *name, struct dcerpc_context *dce,
 int
 dcerpc_ACCESS_ALLOWED_ACE_coder(char *name, struct dcerpc_context *dce,
                                 struct dcerpc_pdu *pdu,
-                                struct smb2_iovec *iov, int *offset,
+                                struct dcerpc_iovec *iov, int *offset,
                                 void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -738,7 +738,7 @@ dcerpc_ACCESS_ALLOWED_ACE_coder(char *name, struct dcerpc_context *dce,
 int
 dcerpc_ACCESS_DENIED_ACE_coder(char *name, struct dcerpc_context *dce,
                                struct dcerpc_pdu *pdu,
-                               struct smb2_iovec *iov, int *offset,
+                               struct dcerpc_iovec *iov, int *offset,
                                void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -748,7 +748,7 @@ dcerpc_ACCESS_DENIED_ACE_coder(char *name, struct dcerpc_context *dce,
 int
 dcerpc_SYSTEM_AUDIT_ACE_coder(char *name, struct dcerpc_context *dce,
                               struct dcerpc_pdu *pdu,
-                              struct smb2_iovec *iov, int *offset,
+                              struct dcerpc_iovec *iov, int *offset,
                               void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -758,7 +758,7 @@ dcerpc_SYSTEM_AUDIT_ACE_coder(char *name, struct dcerpc_context *dce,
 int
 dcerpc_SYSTEM_ALARM_ACE_coder(char *name, struct dcerpc_context *dce,
                               struct dcerpc_pdu *pdu,
-                              struct smb2_iovec *iov, int *offset,
+                              struct dcerpc_iovec *iov, int *offset,
                               void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -768,7 +768,7 @@ dcerpc_SYSTEM_ALARM_ACE_coder(char *name, struct dcerpc_context *dce,
 int
 dcerpc_SYSTEM_MANDATORY_LABEL_ACE_coder(char *name, struct dcerpc_context *dce,
                                         struct dcerpc_pdu *pdu,
-                                        struct smb2_iovec *iov, int *offset,
+                                        struct dcerpc_iovec *iov, int *offset,
                                         void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -778,7 +778,7 @@ dcerpc_SYSTEM_MANDATORY_LABEL_ACE_coder(char *name, struct dcerpc_context *dce,
 int
 dcerpc_SYSTEM_SCOPED_POLICY_ID_ACE_coder(char *name, struct dcerpc_context *dce,
                                          struct dcerpc_pdu *pdu,
-                                         struct smb2_iovec *iov, int *offset,
+                                         struct dcerpc_iovec *iov, int *offset,
                                          void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -832,7 +832,7 @@ acl_compute_size(const ACL *acl)
 static int
 acl_aces_coder(char *name, struct dcerpc_context *dce,
                struct dcerpc_pdu *pdu,
-               struct smb2_iovec *iov, int *offset,
+               struct dcerpc_iovec *iov, int *offset,
                void *ptr)
 {
         ACL *acl = ptr;
@@ -864,7 +864,7 @@ acl_aces_coder(char *name, struct dcerpc_context *dce,
 static int
 acl_fields_coder(char *name, struct dcerpc_context *dce,
                  struct dcerpc_pdu *pdu,
-                 struct smb2_iovec *iov, int *offset,
+                 struct dcerpc_iovec *iov, int *offset,
                  void *ptr)
 {
         ACL *acl = ptr;
@@ -957,7 +957,7 @@ acl_fields_coder(char *name, struct dcerpc_context *dce,
 int
 dcerpc_ACL_coder(char *name, struct dcerpc_context *dce,
                  struct dcerpc_pdu *pdu,
-                 struct smb2_iovec *iov, int *offset,
+                 struct dcerpc_iovec *iov, int *offset,
                  void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
@@ -1005,7 +1005,7 @@ static struct dcerpc_uint32_pretty_printer sd_control_pp = {
 
 static int
 sd_write_u32_at(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
-                struct smb2_iovec *iov, int pos, uint32_t val)
+                struct dcerpc_iovec *iov, int pos, uint32_t val)
 {
         int o = pos;
 
@@ -1014,7 +1014,7 @@ sd_write_u32_at(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
 
 static int
 sd_read_u32_at(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
-               struct smb2_iovec *iov, int pos, uint32_t *val)
+               struct dcerpc_iovec *iov, int pos, uint32_t *val)
 {
         int o = pos;
 
@@ -1028,7 +1028,7 @@ sd_read_u32_at(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
 static int
 sd_optional_sid_text(char *name, struct dcerpc_context *dce,
                      struct dcerpc_pdu *pdu,
-                     struct smb2_iovec *iov, int *offset,
+                     struct dcerpc_iovec *iov, int *offset,
                      RPC_SID **sidp)
 {
         if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
@@ -1073,7 +1073,7 @@ sd_optional_sid_text(char *name, struct dcerpc_context *dce,
 static int
 sd_optional_acl_text(char *name, struct dcerpc_context *dce,
                      struct dcerpc_pdu *pdu,
-                     struct smb2_iovec *iov, int *offset,
+                     struct dcerpc_iovec *iov, int *offset,
                      ACL **aclp)
 {
         if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
@@ -1112,7 +1112,7 @@ sd_optional_acl_text(char *name, struct dcerpc_context *dce,
 
 static int
 sd_ndr_encode(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
-              struct smb2_iovec *iov, int *offset, SECURITY_DESCRIPTOR *sd)
+              struct dcerpc_iovec *iov, int *offset, SECURITY_DESCRIPTOR *sd)
 {
         int base;
         int pos;
@@ -1200,7 +1200,7 @@ sd_ndr_encode(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
 
 static int
 sd_ndr_decode(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
-              struct smb2_iovec *iov, int *offset, SECURITY_DESCRIPTOR *sd)
+              struct dcerpc_iovec *iov, int *offset, SECURITY_DESCRIPTOR *sd)
 {
         int base;
         int end;
@@ -1300,7 +1300,7 @@ static struct dcerpc_uint32_pretty_printer sd_revision_pp = {
 static int
 security_descriptor_fields_coder(char *name, struct dcerpc_context *dce,
                                  struct dcerpc_pdu *pdu,
-                                 struct smb2_iovec *iov, int *offset,
+                                 struct dcerpc_iovec *iov, int *offset,
                                  void *ptr)
 {
         SECURITY_DESCRIPTOR *sd = ptr;
@@ -1414,7 +1414,7 @@ security_descriptor_fields_coder(char *name, struct dcerpc_context *dce,
 int
 dcerpc_SECURITY_DESCRIPTOR_coder(char *name, struct dcerpc_context *dce,
                                  struct dcerpc_pdu *pdu,
-                                 struct smb2_iovec *iov, int *offset,
+                                 struct dcerpc_iovec *iov, int *offset,
                                  void *ptr)
 {
         return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,

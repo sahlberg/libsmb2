@@ -54,7 +54,7 @@ static void test_dcerpc_coder(struct dcerpc_context *dce, char *method,
                               int print_buf, int endian)
 {
         struct dcerpc_pdu *pdu1, *pdu2;
-        struct smb2_iovec iov;
+        struct dcerpc_iovec iov;
         static unsigned char buf[65536];
         int offset;
         int i;
@@ -211,7 +211,7 @@ static void test_utf16_ndr64_le(struct dcerpc_context *dce)
   int
   srvsvc_SHARE_INFO_1_coder(struct dcerpc_context *ctx,
                             struct dcerpc_pdu *pdu,
-                            struct smb2_iovec *iov, int *offset,
+                            struct dcerpc_iovec *iov, int *offset,
                             void *ptr)
 */
 

@@ -43,7 +43,7 @@ int idx;
 int num_ops;
 struct opdata {
         uint8_t buf[65536];
-        struct smb2_iovec iov;        
+        struct dcerpc_iovec iov;        
         int offset;
 };
 #define MAXOPDATA 16

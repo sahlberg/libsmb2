@@ -102,7 +102,7 @@ void se_cb(struct smb2_context *smb2, int status,
 
         struct dcerpc_context *dce;
         struct dcerpc_pdu *yaml_pdu;
-        struct smb2_iovec iov;
+        struct dcerpc_iovec iov;
         static unsigned char buf[65536];
         int offset = 0;
 

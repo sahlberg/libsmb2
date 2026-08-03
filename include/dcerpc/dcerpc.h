@@ -29,9 +29,24 @@ extern "C" {
 struct dcerpc_context;
 struct dcerpc_pdu;
 
+/* Opaque; full definition in smb2/libsmb2.h. */
+struct smb2_context;
+
+/*
+ * Buffer descriptor for NDR/YAML/JSON encode/decode.
+ * Layout is identical to libsmb2's struct smb2_iovec (stable public ABI)
+ * so the same buffer can be cast either way; dcerpc owns this type so
+ * consumers do not need to include or redefine smb2_iovec.
+ */
+struct dcerpc_iovec {
+        uint8_t *buf;
+        size_t len;
+        void (*free)(void *);
+};
+
 /* Encoder/Decoder for a DCERPC object */
 typedef int (*dcerpc_coder)(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
-                            struct smb2_iovec *iov, int *offset,
+                            struct dcerpc_iovec *iov, int *offset,
                             void *ptr);
 
 enum dcerpc_encoding {
@@ -156,7 +171,7 @@ void *dcerpc_call(struct dcerpc_context *dce,
                   dcerpc_coder rep_coder, int decode_size);
 
 int dcerpc_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                    struct smb2_iovec *iov,
+                    struct dcerpc_iovec *iov,
                     int *offset, void *ptr,
                     dcerpc_coder coder);
 #define DCERPC_DECODE 0
@@ -191,68 +206,68 @@ void dcerpc_set_request(struct dcerpc_pdu *pdu, void *request);
 void *dcerpc_get_request(struct dcerpc_pdu *pdu);
 
 int ndr_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
-                  struct smb2_iovec *iov, int *offset, void *ptr,
+                  struct dcerpc_iovec *iov, int *offset, void *ptr,
                   enum ptr_type type, dcerpc_coder coder);
 int ndr_carray_coder(char *name, struct dcerpc_context *ctx,
                      struct dcerpc_pdu *pdu,
-                     struct smb2_iovec *iov, int *offset,
+                     struct dcerpc_iovec *iov, int *offset,
                      uint32_t num, void *ptr, int elem_size, dcerpc_coder coder);
 int ndr_uint8_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                    struct smb2_iovec *iov, int *offset, void *ptr);
+                    struct dcerpc_iovec *iov, int *offset, void *ptr);
 int ndr_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                     struct smb2_iovec *iov, int *offset, void *ptr);
+                     struct dcerpc_iovec *iov, int *offset, void *ptr);
 int ndr_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                     struct smb2_iovec *iov, int *offset, void *ptr);
+                     struct dcerpc_iovec *iov, int *offset, void *ptr);
 int ndr_uint3264_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                       struct smb2_iovec *iov, int *offset, void *ptr);
+                       struct dcerpc_iovec *iov, int *offset, void *ptr);
 int ndr_union_coder(char *name, struct dcerpc_context *ctx,
                     struct dcerpc_pdu *pdu,
-                    struct smb2_iovec *iov, int *offset,
+                    struct dcerpc_iovec *iov, int *offset,
                     uint32_t *switch_is, void *ptr, dcerpc_coder coder);
 int ndr_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                    struct smb2_iovec *iov, int *offset, void *ptr);
+                    struct dcerpc_iovec *iov, int *offset, void *ptr);
 int ndr_utf16z_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                     struct smb2_iovec *iov, int *offset, void *ptr);
+                     struct dcerpc_iovec *iov, int *offset, void *ptr);
 int ndr_uuid_coder(char *name, struct dcerpc_context *dce,
                    struct dcerpc_pdu *pdu,
-                   struct smb2_iovec *iov, int *offset,
+                   struct dcerpc_iovec *iov, int *offset,
                    dcerpc_uuid_t *uuid);
 
 int dcerpc_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
-                     struct smb2_iovec *iov, int *offset, void *ptr,
+                     struct dcerpc_iovec *iov, int *offset, void *ptr,
                      enum ptr_type type, dcerpc_coder coder);
 int dcerpc_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                        struct smb2_iovec *iov, int *offset, void *ptr);
+                        struct dcerpc_iovec *iov, int *offset, void *ptr);
 int dcerpc_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                        struct smb2_iovec *iov, int *offset, void *ptr);
+                        struct dcerpc_iovec *iov, int *offset, void *ptr);
 int dcerpc_uint32_coder_pp(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                           struct smb2_iovec *iov, int *offset, void *ptr,
+                           struct dcerpc_iovec *iov, int *offset, void *ptr,
                            struct dcerpc_uint32_pretty_printer *pp);
 int dcerpc_uint64_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                        struct smb2_iovec *iov, int *offset, void *ptr);
+                        struct dcerpc_iovec *iov, int *offset, void *ptr);
 int dcerpc_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                       struct smb2_iovec *iov, int *offset, void *ptr);
+                       struct dcerpc_iovec *iov, int *offset, void *ptr);
 int dcerpc_utf16z_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                        struct smb2_iovec *iov, int *offset, void *ptr);
+                        struct dcerpc_iovec *iov, int *offset, void *ptr);
 int dcerpc_carray_coder(char *name, struct dcerpc_context *ctx,
                         struct dcerpc_pdu *pdu,
-                        struct smb2_iovec *iov, int *offset,
+                        struct dcerpc_iovec *iov, int *offset,
                         uint32_t num, void *ptr, int elem_size, dcerpc_coder coder);
 int dcerpc_union_coder(char *name, struct dcerpc_context *ctx,
                        struct dcerpc_pdu *pdu,
-                       struct smb2_iovec *iov, int *offset,
+                       struct dcerpc_iovec *iov, int *offset,
                        uint32_t *switch_is, void *ptr, dcerpc_coder coder);
 int dcerpc_struct_coder(char *name, struct dcerpc_context *ctx,
                         struct dcerpc_pdu *pdu,
-                        struct smb2_iovec *iov, int *offset,
+                        struct dcerpc_iovec *iov, int *offset,
                         void *ptr, dcerpc_coder coder);
 int dcerpc_context_handle_coder(char *name, struct dcerpc_context *dce,
                                 struct dcerpc_pdu *pdu,
-                                struct smb2_iovec *iov, int *offset,
+                                struct dcerpc_iovec *iov, int *offset,
                                 void *ptr);
 int dcerpc_sid_coder(char *name, struct dcerpc_context *dce,
                      struct dcerpc_pdu *pdu,
-                     struct smb2_iovec *iov, int *offset,
+                     struct dcerpc_iovec *iov, int *offset,
                      void *ptr);
 /*
  * RPC_UNICODE_STRING (MS-DTYP). Buffer is not required to be NUL-terminated.
@@ -268,11 +283,11 @@ int dcerpc_sid_coder(char *name, struct dcerpc_context *dce,
  */
 int dcerpc_RPC_UNICODE_STRING_coder(char *name, struct dcerpc_context *dce,
                                     struct dcerpc_pdu *pdu,
-                                    struct smb2_iovec *iov, int *offset,
+                                    struct dcerpc_iovec *iov, int *offset,
                                     void *ptr);
 int dcerpc_RPC_UNICODE_STRINGz_coder(char *name, struct dcerpc_context *dce,
                                      struct dcerpc_pdu *pdu,
-                                     struct smb2_iovec *iov, int *offset,
+                                     struct dcerpc_iovec *iov, int *offset,
                                      void *ptr);
 /* MS-RRP name for the NUL-terminated form */
 #define dcerpc_RRP_UNICODE_STRING_coder dcerpc_RPC_UNICODE_STRINGz_coder
