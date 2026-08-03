@@ -609,7 +609,12 @@ krb5_init_server_client_cred(struct smb2_server *server, struct smb2_context *sm
                 cred_usage = GSS_C_ACCEPT;
         }
 #ifndef __APPLE__
-        if (server->auth_data && ((struct private_auth_data *)server->auth_data)->keytab) {
+        /*
+         * server->auth_data is private_auth_data only when a keytab was
+         * configured at server start (see krb5_init_server_credentials).
+         */
+        if (server->keytab_path[0] && server->auth_data &&
+            ((struct private_auth_data *)server->auth_data)->keytab) {
                 struct private_auth_data *server_auth_data;
                 char keytab_path[256];
                 char ccache_path[256];
@@ -839,18 +844,25 @@ krb5_session_reply(struct smb2_context *smb2,
 int
 krb5_renew_server_credentials(struct smb2_server *server)
 {
-        struct private_auth_data *auth_data = server->auth_data;
+        struct private_auth_data *auth_data;
         int ret;
 
-        if (!auth_data || !auth_data->keytab) {
+        /*
+         * server->auth_data is only a private_auth_data when we initialized
+         * Kerberos with a keytab. Otherwise it may be NULL or (historically)
+         * some other app pointer — never dereference keytab without a keytab
+         * path set by the server.
+         */
+        if (server == NULL || server->keytab_path[0] == '\0') {
+                return 0;
+        }
+        auth_data = server->auth_data;
+        if (!auth_data || !auth_data->keytab || !auth_data->krb5_cctx ||
+            !auth_data->principal || !auth_data->krb5_Ccache) {
                 return 0;
         }
 
         do { /* try */
-                if (!auth_data) {
-                        ret = -1;
-                        break;
-                }
                 /* this is the equivalent of "kinit -kt keytab_path -c ccache_path principal"
                 */
                 ret = krb5_get_init_creds_keytab(auth_data->krb5_cctx, &auth_data->server_cred,
@@ -1019,10 +1031,17 @@ krb5_init_server_credentials(struct smb2_server *server, const char *keytab_path
 void
 krb5_free_server_credentials(struct smb2_server *server)
 {
-        if (server && server->auth_data) {
-                krb5_free_auth_data(server->auth_data);
-                server->auth_data = NULL;
+        /*
+         * Only free when we installed private_auth_data for a keytab.
+         * Without a keytab path, auth_data must not be treated as Kerberos
+         * state (application code may leave it NULL or use other meaning).
+         */
+        if (server == NULL || server->keytab_path[0] == '\0' ||
+            server->auth_data == NULL) {
+                return;
         }
+        krb5_free_auth_data(server->auth_data);
+        server->auth_data = NULL;
 }
 
 int

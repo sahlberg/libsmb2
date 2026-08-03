@@ -4655,13 +4655,23 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
                         }
                 }
 #ifdef HAVE_LIBKRB5
-                /* renew kerberos credentials daily */
+                /* renew kerberos credentials daily (non-fatal on failure) */
                 time(&now);
 
                 if (credential_renewal_time < now) {
-                        credential_renewal_time = now + 60*60*24;
+                        int rerr;
 
-                        err = krb5_renew_server_credentials(server);
+                        credential_renewal_time = now + 60*60*24;
+                        rerr = krb5_renew_server_credentials(server);
+                        if (rerr) {
+                                /* Keep serving; NTLM/guest still work. */
+                                if (server->error[0]) {
+                                        fprintf(stderr,
+                                                "smb2_serve_port: Kerberos "
+                                                "credential renew failed: %s\n",
+                                                server->error);
+                                }
+                        }
                 }
 #endif
         }
