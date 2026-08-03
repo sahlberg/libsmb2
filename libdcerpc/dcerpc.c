@@ -64,6 +64,12 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "compat.h"
 
 #include <stdio.h>
+#ifdef HAVE_SYS_POLL_H
+#include <sys/poll.h>
+#endif
+#ifdef HAVE_POLL_H
+#include <poll.h>
+#endif
 #include "smb2.h"
 #include "libsmb2.h"
 #include <dcerpc/dcerpc.h>
@@ -1941,6 +1947,99 @@ dcerpc_call_async(struct dcerpc_context *dce,
         smb2_queue_pdu(dce->smb2, smb2_pdu);
  
         return 0;
+}
+
+/*
+ * Sync wait helper (same pattern as lib/sync.c wait_for_reply).
+ * Uses struct sync_cb_data from libsmb2-private.h.
+ */
+static int
+dcerpc_wait_for_reply(struct smb2_context *smb2, struct sync_cb_data *cb_data)
+{
+        while (!cb_data->is_finished) {
+                struct pollfd pfd;
+
+                memset(&pfd, 0, sizeof(pfd));
+                pfd.fd = smb2_get_fd(smb2);
+                pfd.events = smb2_which_events(smb2);
+
+                if (poll(&pfd, 1, 1000) < 0) {
+                        smb2_set_error(smb2, "Poll failed");
+                        return -1;
+                }
+                if (pfd.revents == 0) {
+                        continue;
+                }
+                if (smb2_service(smb2, pfd.revents) < 0) {
+                        smb2_set_error(smb2, "smb2_service failed with : "
+                                       "%s\n", smb2_get_error(smb2));
+                        return -1;
+                }
+        }
+        return 0;
+}
+
+static void
+dcerpc_call_sync_cb(struct dcerpc_context *dce, int status,
+                    void *command_data, void *cb_data)
+{
+        struct sync_cb_data *scb = cb_data;
+
+        (void)dce;
+        scb->status = status;
+        scb->ptr = command_data;
+        scb->is_finished = 1;
+}
+
+void *
+dcerpc_call(struct dcerpc_context *dce,
+            int opnum,
+            dcerpc_coder req_coder, void *req,
+            dcerpc_coder rep_coder, int decode_size)
+{
+        struct smb2_context *smb2;
+        struct sync_cb_data *scb;
+        void *rep = NULL;
+        int rc;
+
+        if (dce == NULL) {
+                return NULL;
+        }
+        smb2 = dcerpc_get_smb2_context(dce);
+        if (smb2 == NULL) {
+                return NULL;
+        }
+
+        scb = calloc(1, sizeof(*scb));
+        if (scb == NULL) {
+                smb2_set_error(smb2, "Failed to allocate sync_cb_data");
+                return NULL;
+        }
+
+        rc = dcerpc_call_async(dce, opnum, req_coder, req, rep_coder,
+                               decode_size, dcerpc_call_sync_cb, scb);
+        if (rc != 0) {
+                free(scb);
+                return NULL;
+        }
+
+        if (dcerpc_wait_for_reply(smb2, scb) < 0) {
+                free(scb);
+                return NULL;
+        }
+
+        if (scb->status != (int)SMB2_STATUS_SUCCESS) {
+                /* Reply root may still be present on some error paths. */
+                if (scb->ptr != NULL) {
+                        dcerpc_free_data(dce, scb->ptr);
+                }
+                free(scb);
+                return NULL;
+        }
+
+        rep = scb->ptr;
+        free(scb);
+        return rep;
 }
 
 static void

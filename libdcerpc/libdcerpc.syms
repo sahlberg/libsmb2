@@ -29,6 +29,7 @@ dcerpc_ACL_coder
 dcerpc_align_3264
 dcerpc_allocate_pdu
 dcerpc_alloc_data
+dcerpc_call
 dcerpc_call_async
 dcerpc_carray_coder
 dcerpc_connect_context_async

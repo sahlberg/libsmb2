@@ -134,6 +134,18 @@ int dcerpc_call_async(struct dcerpc_context *dce,
                       dcerpc_coder rep_coder, int decode_size,
                       dcerpc_cb cb, void *cb_data);
 
+/*
+ * Synchronous DCE/RPC request (wraps dcerpc_call_async + event wait).
+ *
+ * Returns the decoded reply root on success (same ownership as the async
+ * callback's command_data). Free with dcerpc_free_data(dce, rep).
+ * Returns NULL on failure; check dcerpc_get_error() / smb2_get_error().
+ */
+void *dcerpc_call(struct dcerpc_context *dce,
+                  int opnum,
+                  dcerpc_coder req_coder, void *req,
+                  dcerpc_coder rep_coder, int decode_size);
+
 int dcerpc_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                     struct smb2_iovec *iov,
                     int *offset, void *ptr,
