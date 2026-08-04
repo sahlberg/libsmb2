@@ -189,6 +189,12 @@ p_syntax_id_t ndr64_syntax = {
 
 struct dcerpc_context {
         struct smb2_context *smb2;
+        /*
+         * Set when dcerpc_create_context_smb() allocated/connected the
+         * smb2 context. dcerpc_destroy_context() will then disconnect
+         * the IPC$ share and free smb2.
+         */
+        int owns_smb2;
         const char *path;
         p_syntax_id_t *syntax;
         smb2_file_id file_id;
@@ -702,8 +708,73 @@ dcerpc_create_context(struct smb2_context *smb2)
         }
 
         ctx->smb2 = smb2;
+        ctx->owns_smb2 = 0;
         ctx->packed_drep[0] |= DCERPC_DR_LITTLE_ENDIAN;
         return ctx;
+}
+
+/*
+ * Convenience constructor: create an smb2 context from an SMB URL, apply
+ * user/domain and query args from the URL, connect IPC$, and wrap it in a
+ * dcerpc context that owns the smb2 lifecycle.
+ *
+ * URL format (same as smb2_parse_url):
+ *   smb://[[domain;]user@]server[:port]/[share[/path]][?args]
+ *
+ * Query args are applied by smb2_parse_url (e.g. ?sign, ?seal, ?sec=ntlmssp).
+ * Signing is not forced here; pass ?sign when the client wants it.
+ *
+ * The share path is ignored for tree connect; DCE/RPC named pipes always
+ * use IPC$. Call dcerpc_connect_context() afterwards to open the pipe.
+ *
+ * On success the returned context owns smb2; dcerpc_destroy_context() will
+ * disconnect IPC$ and destroy the smb2 context. On failure returns NULL.
+ */
+struct dcerpc_context *
+dcerpc_create_context_smb(const char *smb_url)
+{
+        struct smb2_context *smb2;
+        struct smb2_url *url;
+        struct dcerpc_context *dce;
+
+        if (smb_url == NULL) {
+                return NULL;
+        }
+
+        smb2 = smb2_init_context();
+        if (smb2 == NULL) {
+                return NULL;
+        }
+
+        url = smb2_parse_url(smb2, smb_url);
+        if (url == NULL) {
+                smb2_destroy_context(smb2);
+                return NULL;
+        }
+
+        if (url->user) {
+                smb2_set_user(smb2, url->user);
+        }
+        if (url->domain) {
+                smb2_set_domain(smb2, url->domain);
+        }
+
+        if (smb2_connect_share(smb2, url->server, "IPC$", NULL) < 0) {
+                smb2_destroy_url(url);
+                smb2_destroy_context(smb2);
+                return NULL;
+        }
+        smb2_destroy_url(url);
+
+        dce = dcerpc_create_context(smb2);
+        if (dce == NULL) {
+                smb2_disconnect_share(smb2);
+                smb2_destroy_context(smb2);
+                return NULL;
+        }
+
+        dce->owns_smb2 = 1;
+        return dce;
 }
 
 int
@@ -741,6 +812,8 @@ dcerpc_close_cb(struct smb2_context *smb2 _U_, int status _U_,
 void
 dcerpc_destroy_context(struct dcerpc_context *dce)
 {
+        struct smb2_context *smb2;
+        int owns_smb2;
         int i;
         int opened = 0;
 
@@ -767,8 +840,16 @@ dcerpc_destroy_context(struct dcerpc_context *dce)
                 }
         }
 
+        smb2 = dce->smb2;
+        owns_smb2 = dce->owns_smb2;
+
         free(discard_const(dce->path));
         free(dce);
+
+        if (owns_smb2 && smb2) {
+                smb2_disconnect_share(smb2);
+                smb2_destroy_context(smb2);
+        }
 }
 
 void *

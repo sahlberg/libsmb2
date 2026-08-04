@@ -36,6 +36,7 @@ dcerpc_connect_context
 dcerpc_connect_context_async
 dcerpc_context_handle_coder
 dcerpc_create_context
+dcerpc_create_context_smb
 dcerpc_destroy_context
 dcerpc_do_coder
 dcerpc_free_data

@@ -22,6 +22,7 @@
 #define dcerpc_connect_context_async libsmb2_dcerpc_connect_context_async
 #define dcerpc_context_handle_coder libsmb2_dcerpc_context_handle_coder
 #define dcerpc_create_context libsmb2_dcerpc_create_context
+#define dcerpc_create_context_smb libsmb2_dcerpc_create_context_smb
 #define dcerpc_destroy_context libsmb2_dcerpc_destroy_context
 #define dcerpc_do_coder libsmb2_dcerpc_do_coder
 #define dcerpc_free_data libsmb2_dcerpc_free_data

@@ -131,7 +131,28 @@ struct dcerpc_service {
         
 extern struct dcerpc_service dcerpc_services[];
 
+/*
+ * Create a DCE/RPC context on an existing smb2 context.
+ * The caller retains ownership of smb2; dcerpc_destroy_context() will not
+ * free it. Use this when you need fine-grained smb2 configuration before
+ * connecting IPC$ / opening a pipe.
+ */
 struct dcerpc_context *dcerpc_create_context(struct smb2_context *smb2);
+/*
+ * Convenience: create smb2 from an SMB URL, apply user/domain and query
+ * args from the URL, connect IPC$, and return a dcerpc context that owns
+ * the smb2 lifecycle. dcerpc_destroy_context() will disconnect IPC$ and
+ * free the smb2 context.
+ *
+ * URL format: smb://[[domain;]user@]server[:port]/[share[/path]][?args]
+ * Query args (via smb2_parse_url): sign, seal, sec=ntlmssp|krb5, etc.
+ * Signing is not forced; pass ?sign when desired.
+ * Tree connect always uses IPC$ (named-pipe transport); share in the URL
+ * is ignored for connect. Still call dcerpc_connect_context() for the pipe.
+ *
+ * Returns NULL on failure.
+ */
+struct dcerpc_context *dcerpc_create_context_smb(const char *smb_url);
 void dcerpc_free_data(struct dcerpc_context *dce, void *data);
 const char *dcerpc_get_error(struct dcerpc_context *dce);
 int dcerpc_connect_context_async(struct dcerpc_context *dce,
@@ -146,6 +167,12 @@ int dcerpc_connect_context_async(struct dcerpc_context *dce,
  */
 int dcerpc_connect_context(struct dcerpc_context *dce,
                            const char *path, p_syntax_id_t *syntax);
+/*
+ * Free a dcerpc context. Always closes an open named pipe (best-effort).
+ * If the context was created with dcerpc_create_context_smb(), also
+ * disconnects IPC$ and destroys the owned smb2 context. If created with
+ * dcerpc_create_context(), the caller's smb2 is left intact.
+ */
 void dcerpc_destroy_context(struct dcerpc_context *dce);
 
 struct smb2_context *dcerpc_get_smb2_context(struct dcerpc_context *dce);
