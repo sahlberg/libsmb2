@@ -201,7 +201,7 @@ smb2_encode_negotiate_reply(struct smb2_context *smb2,
                               struct smb2_negotiate_reply *rep)
 {
         uint8_t *buf;
-        int len, seclen;
+        int len, seclen = 0;
         struct smb2_iovec *iov;
 
         len = SMB2_NEGOTIATE_REPLY_SIZE & 0xfffe;
@@ -223,8 +223,11 @@ smb2_encode_negotiate_reply(struct smb2_context *smb2,
         iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
 
         if (rep->security_buffer_length) {
-                seclen = rep->security_buffer_length;
-                seclen = PAD_TO_64BIT(len);
+                /* The buffer has to be sized from the security buffer we are
+                 * about to copy into it, not from the size of the fixed part
+                 * of the reply.
+                 */
+                seclen = PAD_TO_64BIT(rep->security_buffer_length);
                 /* Security buffer */
                 buf = malloc(seclen);
                 if (buf == NULL) {
@@ -321,12 +324,19 @@ smb2_parse_negotiate_contexts(struct smb2_context *smb2,
         uint16_t type, len;
 
         while (count--) {
-                if (offset > (int)iov->len) {
-                        smb2_set_error(smb2, "Bad len in negotiate context\n");
+                /* the 8 byte context header must be present, and the context
+                 * data it describes must fit in what is left of the buffer
+                 */
+                if (offset < 0 || (size_t)offset + 8 > iov->len) {
+                        smb2_set_error(smb2, "Bad offset in negotiate context");
                         return -1;
                 }
                 smb2_get_uint16(iov, offset, &type);
                 smb2_get_uint16(iov, offset + 2, &len);
+                if ((size_t)len > iov->len - offset - 8) {
+                        smb2_set_error(smb2, "Bad len in negotiate context");
+                        return -1;
+                }
 
                 switch (type) {
                 case SMB2_PREAUTH_INTEGRITY_CAP:
@@ -393,7 +403,8 @@ smb2_process_negotiate_fixed(struct smb2_context *smb2,
         smb2_get_uint16(iov, 58, &rep->security_buffer_length);
 
         if (rep->security_buffer_length &&
-            (rep->security_buffer_offset + rep->security_buffer_length > (uint16_t)smb2->spl)) {
+            ((uint32_t)rep->security_buffer_offset +
+             rep->security_buffer_length > smb2->spl)) {
                 smb2_set_error(smb2, "Security buffer extends beyond end of "
                                "PDU");
                 pdu->payload = NULL;
@@ -527,11 +538,14 @@ smb2_parse_netname_request_context(struct smb2_context *smb2,
                               struct smb2_iovec *iov,
                               int offset, int len)
 {
-        char netname[128];
         char *client;
 
-        memcpy(netname, iov->buf + offset, len);
-        client = discard_const(smb2_utf16_to_utf8((uint16_t *)netname, len));
+        if (offset < 0 || len < 0 || (size_t)offset + (size_t)len > iov->len) {
+                smb2_set_error(smb2, "Netname context extends beyond the "
+                               "negotiate request");
+                return -1;
+        }
+        client = discard_const(smb2_utf16_to_utf8((uint16_t *)(void *)(iov->buf + offset), len / 2));
         free(client);
         return 0;
 }
@@ -545,10 +559,16 @@ smb2_parse_negotiate_request_contexts(struct smb2_context *smb2,
         uint16_t type, len;
 
         while (count--) {
+                /* the 8 byte context header must be present, and the context
+                 * data it describes must fit in what is left of the buffer
+                 */
+                if (offset < 0 || (size_t)offset + 8 > iov->len) {
+                        smb2_set_error(smb2, "Bad offset in negotiate context");
+                        return -1;
+                }
                 smb2_get_uint16(iov, offset, &type);
                 smb2_get_uint16(iov, offset + 2, &len);
-
-                if (offset > (int)iov->len) {
+                if ((size_t)len > iov->len - offset - 8) {
                         smb2_set_error(smb2, "Bad len in negotiate context");
                         return -1;
                 }

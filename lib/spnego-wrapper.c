@@ -439,6 +439,15 @@ smb2_spnego_unwrap_targ(struct smb2_context *smb2, const uint8_t *spnego,
                 case ASN1_CONTEXT(2):
                         /* response token */
                         require_typeandlen(&asn_decoder, asnOCTET_STRING, 8, fail);
+                        /* the token length is returned to the caller, which
+                         * reads that many bytes, so it must not run past the
+                         * end of the blob we were given
+                         */
+                        if (typelen > (uint32_t)(asn_decoder.src_count -
+                                                 asn_decoder.src_tail)) {
+                                fail_line = __LINE__;
+                                goto fail;
+                        }
                         *token  = asn_decoder.src + asn_decoder.src_tail;
                         token_len = typelen;
                         break;
@@ -466,7 +475,7 @@ smb2_spnego_unwrap_gssapi(struct smb2_context *smb2, const uint8_t *spnego,
         int decode_pos;
         int mech_bytes;
         uint32_t mechs = 0;
-        int fail_line;
+        int fail_line = 0;
         int ret;
 
         memset(&asn_decoder, 0, sizeof(asn_decoder));

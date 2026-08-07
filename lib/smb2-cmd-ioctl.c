@@ -291,7 +291,8 @@ smb2_process_ioctl_variable(struct smb2_context *smb2,
         struct smb2_iovec vec;
         void *ptr;
 
-        if (rep->output_count > iov->len - IOV_OFFSET) {
+        if (IOV_OFFSET > iov->len ||
+            rep->output_count > iov->len - IOV_OFFSET) {
                 return -EINVAL;
         }
 
@@ -302,6 +303,9 @@ smb2_process_ioctl_variable(struct smb2_context *smb2,
         case SMB2_FSCTL_GET_REPARSE_POINT:
                 ptr = smb2_alloc_init(smb2,
                                       sizeof(struct smb2_reparse_data_buffer));
+                if (ptr == NULL) {
+                        return -ENOMEM;
+                }
                 if (smb2_decode_reparse_data_buffer(smb2, ptr, ptr, &vec)) {
                         smb2_set_error(smb2, "could not decode reparse "
                                        "data buffer. %s",
@@ -314,7 +318,14 @@ smb2_process_ioctl_variable(struct smb2_context *smb2,
                 if (ptr == NULL) {
                         return -ENOMEM;
                 }
-                memcpy(ptr, &iov->buf[IOV_OFFSET], iov->len - IOV_OFFSET);
+                /*
+                 * Only copy the output buffer. iov->len also covers the
+                 * padding and any input buffer that precedes it (see the
+                 * length smb2_process_ioctl_fixed() returned), so using it
+                 * as the copy length overruns the allocation whenever
+                 * input_count is non-zero.
+                 */
+                memcpy(ptr, &iov->buf[IOV_OFFSET], rep->output_count);
         }
 
         rep->output = ptr;
@@ -388,11 +399,9 @@ smb2_process_ioctl_request_variable(struct smb2_context *smb2,
         struct smb2_iovec vec;
         void *ptr = NULL;
         struct smb2_ioctl_validate_negotiate_info *info;
-        /* this one is handled locally regardless of proxy or not */
-        ptr = smb2_alloc_init(smb2, sizeof(struct smb2_ioctl_validate_negotiate_info));
-        info = ptr;
 
-        if (req->input_count > iov->len - IOVREQ_OFFSET) {
+        if (IOVREQ_OFFSET > iov->len ||
+            req->input_count > iov->len - IOVREQ_OFFSET) {
                 return -EINVAL;
         }
 
@@ -401,6 +410,17 @@ smb2_process_ioctl_request_variable(struct smb2_context *smb2,
 
         switch (req->ctl_code) {
         case SMB2_FSCTL_VALIDATE_NEGOTIATE_INFO:
+                /* this one is handled locally regardless of proxy or not */
+                if (vec.len < 24) {
+                        smb2_set_error(smb2, "Validate negotiate info request "
+                                       "is too short");
+                        return -EINVAL;
+                }
+                ptr = smb2_alloc_init(smb2, sizeof(struct smb2_ioctl_validate_negotiate_info));
+                if (ptr == NULL) {
+                        return -ENOMEM;
+                }
+                info = ptr;
                 smb2_get_uint32(&vec, 0, &info->capabilities);
                 memcpy(info->guid, &vec.buf[4], 16);
                 smb2_get_uint16(&vec, 20, &info->security_mode);
