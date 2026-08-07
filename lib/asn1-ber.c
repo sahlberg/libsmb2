@@ -165,6 +165,18 @@ int asn1ber_length_from_ber(struct asn1ber_context *actx, uint32_t *len)
         /* simple small len */
         val = (uint32_t)b;
     }
+    /*
+     * A BER length always describes content that follows it in the same
+     * buffer, so it can never exceed what is left. Without this check the
+     * decoded length is handed back to callers (which use it to size the
+     * token they return) while pointing past the end of the input.
+     */
+    if (actx->src_count < actx->src_tail ||
+        val > (uint32_t)(actx->src_count - actx->src_tail))
+    {
+        actx->last_error = -E2BIG;
+        return -1;
+    }
     *len = val;
     return 0;
 }

@@ -411,6 +411,19 @@ read_more_data:
         switch (smb2->recv_state) {
         case SMB2_RECV_SPL:
                 smb2->spl = be32toh(smb2->spl);
+                /*
+                 * The SPL is fully controlled by the peer and is used all over
+                 * this function to compute buffer sizes and remaining byte
+                 * counts. Reject anything that can not describe at least a
+                 * bare SMB2 header, or that is large enough to be a memory
+                 * exhaustion vector, before we act on it.
+                 */
+                if (smb2->spl < SMB2_HEADER_SIZE ||
+                    smb2->spl > SMB2_MAX_PDU_SIZE) {
+                        smb2_set_error(smb2, "Invalid session packet length "
+                                       "%u in PDU", smb2->spl);
+                        return -1;
+                }
                 smb2->recv_state = SMB2_RECV_HEADER;
                 if (smb2_add_iovector(smb2, &smb2->in, &smb2->header[0],
                                   SMB2_HEADER_SIZE, NULL) == NULL) {
@@ -420,6 +433,19 @@ read_more_data:
                 goto read_more_data;
         case SMB2_RECV_HEADER:
                 if (!memcmp(smb2->in.iov[smb2->in.niov - 1].buf, smb3tfrm, 4)) {
+                        /*
+                         * We have already read SMB2_HEADER_SIZE bytes, of
+                         * which the first 52 are the transform header and the
+                         * remaining 12 are the start of the encrypted payload
+                         * that we copy into the payload buffer below. The
+                         * buffer must therefore be able to hold those 12
+                         * bytes.
+                         */
+                        if (smb2->spl < 52 + 12) {
+                                smb2_set_error(smb2, "Transform header PDU is "
+                                               "too short: %u", smb2->spl);
+                                return -1;
+                        }
                         smb2->in.iov[smb2->in.niov - 1].len = 52;
                         len = smb2->spl - 52;
                         smb2->in.total_size -= 12;

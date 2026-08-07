@@ -151,6 +151,11 @@ decode_ace(struct smb2_context *smb2, void *memctx, struct smb2_iovec *vec)
         }
         DEC_VLEN(4);
         v.buf = &v.buf[4];
+        /* An ACE only owns ace_size bytes, 4 of which were the header we just
+         * skipped. Without clamping here the "rest of the buffer" cases below
+         * (ad_len/raw_len) swallow every following ACE as well.
+         */
+        v.len = ace_size - 4;
 
         /* decode the content of the ace */
         /* TODO: have a default case where we just keep the raw blob */
@@ -204,6 +209,9 @@ decode_ace(struct smb2_context *smb2, void *memctx, struct smb2_iovec *vec)
                 DEC_VLEN(4);
                 v.buf = &v.buf[4];
                 ace->sid = decode_sid(smb2, memctx, &v);
+                if (ace->sid == NULL) {
+                        return NULL;
+                }
 
                 ace->ad_len = v.len;
                 ace->ad_data = smb2_alloc_data(smb2, memctx, ace->ad_len);

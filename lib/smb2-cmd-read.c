@@ -351,11 +351,15 @@ smb2_process_read_request_fixed(struct smb2_context *smb2,
         smb2_get_uint32(iov, 32, &req->minimum_count);
         smb2_get_uint32(iov, 36, &req->channel);
         smb2_get_uint32(iov, 40, &req->remaining_bytes);
+        /* The length has to be read before it can be tested, otherwise the
+         * offset is never decoded and every request that carries channel
+         * info gets rejected below.
+         */
+        smb2_get_uint16(iov, 46, &req->read_channel_info_length);
         if (req->read_channel_info_length) {
                 req->read_channel_info_offset = (SMB2_READ_REQUEST_SIZE & 0xfffffffe) + SMB2_HEADER_SIZE;
                 smb2_get_uint16(iov, 44, &req->read_channel_info_offset);
         }
-        smb2_get_uint16(iov, 46, &req->read_channel_info_length);
 
         if (req->length > smb2->max_read_size) {
                 smb2_set_error(smb2, "can not read more than %d bytes", smb2->max_read_size);

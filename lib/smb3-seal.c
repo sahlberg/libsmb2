@@ -146,6 +146,20 @@ smb3_decrypt_pdu(struct smb2_context *smb2)
                 smb2->in.iov[smb2->in.niov - 1].free = NULL;
                 smb2_free_iovector(smb2, &smb2->in);
 
+                /*
+                 * The decrypted blob is fed back through the same receive
+                 * state machine with enc_len standing in for the SPL, so it
+                 * needs the same sanity check the on-the-wire SPL gets.
+                 */
+                if (smb2->enc_len < SMB2_HEADER_SIZE ||
+                    smb2->enc_len > SMB2_MAX_PDU_SIZE) {
+                        smb2_set_error(smb2, "Invalid decrypted PDU length %zu",
+                                       smb2->enc_len);
+                        free(smb2->enc);
+                        smb2->enc = NULL;
+                        return -1;
+                }
+
                 smb2->spl = (uint32_t)smb2->enc_len;
                 smb2->recv_state = SMB2_RECV_HEADER;
                 if (smb2_add_iovector(smb2, &smb2->in, &smb2->header[0],

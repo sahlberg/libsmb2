@@ -69,7 +69,8 @@ smb2_decode_reparse_data_buffer(struct smb2_context *smb2,
         smb2_get_uint32(vec, 0, &rp->reparse_tag);
         smb2_get_uint16(vec, 4, &rp->reparse_data_length);
 
-        if ((uint16_t)vec->len < rp->reparse_data_length + 8) {
+        /* Do not truncate vec->len to 16 bits for this comparison. */
+        if (vec->len < (size_t)rp->reparse_data_length + 8) {
                 return -1;
         }
         switch (rp->reparse_tag) {
@@ -87,6 +88,9 @@ smb2_decode_reparse_data_buffer(struct smb2_context *smb2,
 
                 tmp = smb2_utf16_to_utf8((uint16_t *)(void *)(&vec->buf[suboffset + 20]),
                                    sublen / 2);
+                if (tmp == NULL) {
+                        return -1;
+                }
                 rp->symlink.subname = smb2_alloc_data(smb2, rp,
                                                       strlen(tmp) + 1);
                 if (rp->symlink.subname == NULL) {
@@ -103,6 +107,9 @@ smb2_decode_reparse_data_buffer(struct smb2_context *smb2,
                 }
                 tmp = smb2_utf16_to_utf8((uint16_t *)(void *)(&vec->buf[printoffset + 20]),
                                    printlen / 2);
+                if (tmp == NULL) {
+                        return -1;
+                }
                 rp->symlink.printname = smb2_alloc_data(smb2, rp,
                                                         strlen(tmp) + 1);
                 if (rp->symlink.printname == NULL) {

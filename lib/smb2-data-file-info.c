@@ -153,23 +153,33 @@ smb2_decode_file_stream_info(struct smb2_context *smb2,
                                struct smb2_file_stream_info *fs,
                                struct smb2_iovec *vec)
 {
-        int offset = 0;
+        size_t offset = 0;
         uint32_t our_offset = 0;
         uint32_t next_offset;
         int name_len;
         const char *name;
 
         do {
-                smb2_get_uint32(vec, offset + 0, &next_offset);
-                smb2_get_uint32(vec, offset + 4, &fs->stream_name_length);
-                smb2_get_uint64(vec, offset + 8, &fs->stream_size);
-                smb2_get_uint64(vec, offset + 16, &fs->stream_allocation_size);
+                size_t avail;
+
+                /* The 24 byte fixed part of the entry must be present. */
+                if (offset + 24 > vec->len) {
+                        smb2_set_error(smb2, "Not enough data for stream "
+                                       "info entry");
+                        return -1;
+                }
+                next_offset = 0;
+                smb2_get_uint32(vec, (int)offset + 0, &next_offset);
+                smb2_get_uint32(vec, (int)offset + 4, &fs->stream_name_length);
+                smb2_get_uint64(vec, (int)offset + 8, &fs->stream_size);
+                smb2_get_uint64(vec, (int)offset + 16,
+                                &fs->stream_allocation_size);
 
                 if (fs->stream_name_length > 0) {
-                        name_len = fs->stream_name_length;
-                        if (vec->len < (offset + 24 + name_len)) {
-                                name_len = (int)vec->len - (int)offset - 24;
-                        }
+                        /* The name follows the fixed part of the entry. */
+                        avail = vec->len - offset - 24;
+                        name_len = (fs->stream_name_length > avail) ?
+                                (int)avail : (int)fs->stream_name_length;
                         if (name_len > 0) {
                                 name = smb2_utf16_to_utf8(
                                         (uint16_t *)(void *)&vec->buf[offset + 24],
@@ -193,6 +203,22 @@ smb2_decode_file_stream_info(struct smb2_context *smb2,
                 }
 
                 if (next_offset) {
+                        /*
+                         * NextEntryOffset has to skip at least the 24 byte
+                         * fixed part of the entry we just decoded, and must
+                         * stay inside the buffer. Callers size the output
+                         * array as 1 + vec->len / 24 entries, so a smaller
+                         * NextEntryOffset would let a malicious server drive
+                         * many more iterations than there are entries and
+                         * walk 'fs' off the end of that allocation.
+                         */
+                        if (next_offset < 24 ||
+                            next_offset > vec->len - offset) {
+                                smb2_set_error(smb2, "Invalid NextEntryOffset "
+                                               "%u in stream info",
+                                               next_offset);
+                                return -1;
+                        }
                         offset += next_offset;
 
                         /* note - since name is now a separate alloc, our offset is just

@@ -373,6 +373,7 @@ ntlm_decode_challenge_message(struct smb2_context *smb2, struct auth_data *auth_
                 memcpy(&auth_data->ntlm_buf[16], &u32, 4);
 
                 if (inlen > 0 && inoff < len && inlen <= len - inoff && (outoff + inlen) < alloc_len) {
+                        free(auth_data->target_name);
                         auth_data->target_name = discard_const(smb2_utf16_to_utf8((const uint16_t *)(void *)&buf[inoff], inlen / 2));
                         memcpy(&auth_data->ntlm_buf[outoff], &buf[inoff], inlen);
                         outoff += inlen;
@@ -385,18 +386,32 @@ ntlm_decode_challenge_message(struct smb2_context *smb2, struct auth_data *auth_
 
                 infolen = 0;
 
-                if (inlen > 0 && inlen < len && (outoff + inlen) < alloc_len) {
+                /* As for the target name above, the offset has to be validated
+                 * too and not just the length, otherwise the walk below reads
+                 * at an arbitrary offset from the challenge buffer.
+                 */
+                if (inlen > 0 && inoff < len && inlen <= len - inoff &&
+                    (outoff + inlen) < alloc_len) {
                         /* back annotate target info field offset */
                         u32 = htole32(outoff);
                         memcpy(&auth_data->ntlm_buf[44], &u32, 4);
 
                         /* transcode target info fields, appending our target-name */
                         while (inlen > 0) {
+                                /* Each attribute is a 4 byte header followed
+                                 * by attr_len bytes of value, all of which
+                                 * must fit in what is left of the input, and
+                                 * the re-encoded copy must fit in the output.
+                                 */
+                                if (inlen < 4) {
+                                        break;
+                                }
                                 memcpy(&u16, &buf[inoff], 2);
                                 attr_code = htole16(u16);
                                 memcpy(&u16, &buf[inoff + 2], 2);
                                 attr_len = htole16(u16);
-                                if (attr_len > inlen || (outoff + attr_len) > alloc_len) {
+                                if (attr_len > inlen - 4 ||
+                                    (outoff + 4 + attr_len) > alloc_len) {
                                         /* invalid, must be out of parse? */
                                         break;
                                 }
@@ -408,6 +423,14 @@ ntlm_decode_challenge_message(struct smb2_context *smb2, struct auth_data *auth_
                                                 if (utf16_spn != NULL) {
                                                         attr_code = 0x9; /* target-name code */
                                                         attr_len = utf16_spn->len * 2;
+                                                        /* the target-name we append plus the
+                                                         * 4 byte end-of-list marker below have
+                                                         * to fit in the output buffer too
+                                                         */
+                                                        if ((outoff + 4 + attr_len + 4) > alloc_len) {
+                                                                free(utf16_spn);
+                                                                break;
+                                                        }
                                                         u16 = htole16(attr_code);
                                                         memcpy(&auth_data->ntlm_buf[outoff], &u16, 2);
                                                         u16 = htole16(attr_len);
@@ -419,6 +442,9 @@ ntlm_decode_challenge_message(struct smb2_context *smb2, struct auth_data *auth_
                                                         infolen += 4 + attr_len;
                                                         free(utf16_spn);
                                                 }
+                                        }
+                                        if ((outoff + 4) > alloc_len) {
+                                                break;
                                         }
                                         /* insert original end of list attr */
                                         u16 = 0;
@@ -656,8 +682,10 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
                 goto finished;
         }
 
-        /* Must have at least enough bytes for server name offset */
-        if (auth_data->ntlm_len < 47) {
+        /* Must have at least enough bytes for server name offset, which is
+         * the 4 bytes at offset 44, so we need 48 bytes and not 47.
+         */
+        if (auth_data->ntlm_len < 48) {
                 goto finished;
         }
         /* get the server neg flags */
@@ -685,7 +713,7 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
                         auth_data->client_challenge, 8,
                         (uint8_t*)server_challenge,
                         (uint8_t*)server_name_buf, server_name_len) < 0) {
-                return -1;
+                goto finished;
         }
 
         smb2_hmac_md5(&auth_data->buf[8], (unsigned int)auth_data->len-8,
@@ -979,7 +1007,12 @@ encode_ntlm_challenge(struct smb2_context *smb2, struct auth_data *auth_data)
 
         /* save the target info in auth-data for later */
         auth_data->target_info_len = auth_data->len - target_info_pos;
+        free(auth_data->target_info);
         auth_data->target_info = malloc(auth_data->target_info_len);
+        if (auth_data->target_info == NULL) {
+                auth_data->target_info_len = 0;
+                goto finished;
+        }
         memcpy(auth_data->target_info,
                         auth_data->buf + target_info_pos,
                         auth_data->target_info_len);
@@ -1160,6 +1193,13 @@ ntlmssp_get_utf16_field(uint8_t *input_buf, int input_len, int offset, char **re
         memcpy(&u32, &input_buf[offset + 4], 4);
         field_off = le32toh(u32);
         if (field_len && field_off) {
+                /* Both the offset and the length come straight off the wire
+                 * and must be verified to describe a range inside the blob.
+                 */
+                if (field_off > (uint32_t)input_len ||
+                    field_len > (uint32_t)input_len - field_off) {
+                        return;
+                }
                 *result = (char*)smb2_utf16_to_utf8((uint16_t *)(void *)(input_buf + field_off), field_len / 2);
         }
 }
@@ -1182,7 +1222,11 @@ ntlmssp_authenticate_blob(struct smb2_server *server, struct smb2_context *smb2,
         /* uint32_t negotiate_flags; */
         uint32_t u32;
 
-        if (!input_buf || (input_len < 8) || memcmp(input_buf, "NTLMSSP", 8)) {
+        /* We unconditionally read the 64 byte fixed part of the
+         * AUTHENTICATE_MESSAGE below (up to and including the negotiate flags
+         * at offset 4*15), so insist on having all of it.
+         */
+        if (!input_buf || (input_len < 64) || memcmp(input_buf, "NTLMSSP", 8)) {
                 return -1;
         }
         memcpy(&u32, &input_buf[4*2], 4);
@@ -1230,7 +1274,7 @@ ntlmssp_authenticate_blob(struct smb2_server *server, struct smb2_context *smb2,
         /* if no user/pw, and anonymous allowed, do anonymous */
         if (!auth_data->user || (auth_data->user[0] == '\0') ||
                         !smb2->password || (smb2->password[0] == '\0')) {
-                if (server->allow_anonymous) {
+                if (server && server->allow_anonymous) {
                         return 0;
                 }
                 return -1;
@@ -1248,7 +1292,15 @@ ntlmssp_authenticate_blob(struct smb2_server *server, struct smb2_context *smb2,
         if (field_len == 0 || field_off == 0) {
                 return -1;
         }
-        if (field_off > (uint32_t)input_len) {
+        /* The response consists of a 16 byte NTProofStr followed by the
+         * client's "temp" blob. Both the offset and the length are attacker
+         * controlled, so verify the whole response lies inside the blob
+         * before we read any of it.
+         */
+        if (field_len < 16 ||
+            field_off > (uint32_t)input_len ||
+            field_len > (uint32_t)input_len - field_off) {
+                smb2_set_error(smb2, "NTLMSSP response field out of bounds");
                 return -1;
         }
         /* 16 byte NTLMv2 response */
@@ -1261,6 +1313,9 @@ ntlmssp_authenticate_blob(struct smb2_server *server, struct smb2_context *smb2,
                         free(auth_data->client_challenge);
                 }
                 auth_data->client_challenge = malloc(8);
+                if (auth_data->client_challenge == NULL) {
+                        return -1;
+                }
                 memcpy(auth_data->client_challenge, input_buf + field_off + 32, 8);
         }
         else {

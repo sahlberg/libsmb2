@@ -447,9 +447,11 @@ smb2_process_query_directory_fixed(struct smb2_context *smb2,
         smb2_get_uint16(iov, 2, &rep->output_buffer_offset);
         smb2_get_uint32(iov, 4, &rep->output_buffer_length);
         if (rep->output_buffer_length &&
-            (rep->output_buffer_offset + rep->output_buffer_length > smb2->spl)) {
+            ((uint64_t)rep->output_buffer_offset +
+             rep->output_buffer_length > (uint64_t)smb2->spl)) {
                 smb2_set_error(smb2, "Output buffer extends beyond end of "
                                "PDU");
+                pdu->payload = NULL;
                 free(rep);
                 return -1;
         }
@@ -462,6 +464,7 @@ smb2_process_query_directory_fixed(struct smb2_context *smb2,
             (SMB2_QUERY_INFO_REPLY_SIZE & 0xfffe)) {
                 smb2_set_error(smb2, "Output buffer overlaps with "
                                "Query Dir reply header");
+                pdu->payload = NULL;
                 free(rep);
                 return -1;
         }
@@ -521,9 +524,11 @@ smb2_process_query_directory_request_fixed(struct smb2_context *smb2,
         smb2_get_uint32(iov, 28, &req->output_buffer_length);
 
         if (req->file_name_length &&
-            (req->file_name_offset + req->file_name_length > (uint16_t)smb2->spl)) {
+            ((uint32_t)req->file_name_offset +
+             req->file_name_length > smb2->spl)) {
                 smb2_set_error(smb2, "Filename extends beyond end of "
                                "PDU");
+                pdu->payload = NULL;
                 free(req);
                 return -1;
         }
@@ -536,6 +541,7 @@ smb2_process_query_directory_request_fixed(struct smb2_context *smb2,
             (SMB2_QUERY_DIRECTORY_REQUEST_SIZE & 0xfffe)) {
                 smb2_set_error(smb2, "Name buffer overlaps with "
                                "Query Dir request header");
+                pdu->payload = NULL;
                 free(req);
                 return -1;
         }
