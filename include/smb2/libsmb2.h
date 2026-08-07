@@ -128,6 +128,7 @@ typedef SOCKET t_socket;
 #define T_SOCKET_DEFINED
 typedef int t_socket;
 #endif
+#include <sys/select.h>
 #endif
 
 /*
@@ -1461,6 +1462,11 @@ struct smb2_server_request_handlers {
                             struct smb2_lease_break_acknowledgement *req);
         int (*lock_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
                             struct smb2_lock_request *req);
+        /*
+         * Return 0 on success (rep filled), <0 on error, >0 to defer the
+         * reply (handler will later queue smb2_cmd_*_reply_async itself
+         * with the original request message id).
+         */
         int (*ioctl_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
                             struct smb2_ioctl_request *req,
                             struct smb2_ioctl_reply *rep);
@@ -1506,6 +1512,16 @@ struct smb2_server {
         char keytab_path[256];
         char error[128];
         void *auth_data;
+        /*
+         * Optional hooks so applications can fold extra sockets into
+         * smb2_serve_port()'s select loop (e.g. dcerpcd control UDS).
+         * extra_fdset: add FDs to rfds/wfds and update *maxfd.
+         * extra_service: handle ready FDs after the SMB clients.
+         */
+        void (*extra_fdset)(struct smb2_server *server,
+                            fd_set *rfds, fd_set *wfds, int *maxfd);
+        void (*extra_service)(struct smb2_server *server,
+                              fd_set *rfds, fd_set *wfds);
 };
 
 int smb2_bind_and_listen(const uint16_t port, const int max_connections, int *out_fd);

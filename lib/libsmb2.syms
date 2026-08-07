@@ -14,6 +14,7 @@ smb2_cmd_close_async
 smb2_cmd_create_async
 smb2_cmd_echo_async
 smb2_cmd_ioctl_async
+smb2_cmd_ioctl_reply_async
 smb2_cmd_logoff_async
 smb2_cmd_negotiate_async
 smb2_cmd_query_directory_async
@@ -54,10 +55,13 @@ smb2_get_error
 smb2_get_fd
 smb2_get_fds
 smb2_get_file_id
+smb2_get_last_request_message_id
+smb2_get_last_reply_message_id
 smb2_get_max_read_size
 smb2_get_max_write_size
 smb2_get_opaque
 smb2_get_passthrough
+smb2_get_pdu_message_id
 smb2_get_server_guid
 smb2_get_tree_id_for_pdu
 smb2_get_uint32
@@ -110,6 +114,7 @@ smb2_set_opaque
 smb2_set_passthrough
 smb2_set_password
 smb2_set_password_from_file
+smb2_set_pdu_message_id
 smb2_set_seal
 smb2_set_security_mode
 smb2_set_sign
