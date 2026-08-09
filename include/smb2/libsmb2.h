@@ -128,7 +128,20 @@ typedef SOCKET t_socket;
 #define T_SOCKET_DEFINED
 typedef int t_socket;
 #endif
+/*
+ * fd_set is used by the smb2_server extra_fdset/extra_service hooks below.
+ * Not every toolchain we support has <sys/select.h>; the PS2 IOP one
+ * declares fd_set in <ps2ip.h> instead.
+ */
+#if defined(__PS2__) && !defined(_EE)
+#include <ps2ip.h>
+#elif defined(__has_include)
+#if __has_include(<sys/select.h>)
 #include <sys/select.h>
+#endif
+#else
+#include <sys/select.h>
+#endif
 #endif
 
 /*
