@@ -493,6 +493,18 @@ ntlm_convert_password_hash(const char *password, unsigned char password_hash[16]
                 return -1;
         }
 
+        /* The caller only gets here for a "ntlm:<32 hex digits>" password
+         * and the loops below walk exactly 32 UTF-16 code units. The buffer
+         * is sized from the code unit count of the string though, not from
+         * its byte count, so any multi-byte UTF-8 in those 32 bytes makes it
+         * shorter than that and the loops run off the end of it - reading
+         * and writing.
+         */
+        if (utf16_password->len != 32) {
+                free(utf16_password);
+                return -1;
+        }
+
         for (i = 0; i < 32; i++) {
                 utf16_password->val[i] = le16toh(utf16_password->val[i]);
                 if (islower((unsigned int) utf16_password->val[i])) {
@@ -507,6 +519,8 @@ ntlm_convert_password_hash(const char *password, unsigned char password_hash[16]
                 ln = utf16_password->val[i + 1] > '9' ? utf16_password->val[i + 1] - 'A' + 10 : utf16_password->val[i + 1] - '0';
                 password_hash[i / 2] = (hn << 4) | ln;
         }
+
+        free(utf16_password);
 
         return 0;
 }
