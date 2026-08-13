@@ -404,7 +404,7 @@ smb2_process_create_request_fixed(struct smb2_context *smb2,
         struct smb2_create_request *req;
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
         uint16_t struct_size;
-        int remaining;
+        uint32_t end;
 
         smb2_get_uint16(iov, 0, &struct_size);
         if (struct_size != SMB2_CREATE_REQUEST_SIZE ||
@@ -444,14 +444,36 @@ smb2_process_create_request_fixed(struct smb2_context *smb2,
                 return 0;
         }
 
+        /*
+         * The size we hand back has to cover whichever of the two regions
+         * ends last. It used to be derived from
+         * create_context_offset - name_offset whenever the contexts
+         * followed the name, which ignores name_length completely: a
+         * request with the contexts placed just after name_offset and a
+         * large NameLength sized the buffer from the small gap and then had
+         * smb2_process_create_request_variable() read name_length bytes out
+         * of it. Both regions also have to lie inside this PDU.
+         */
+        end = SMB2_HEADER_SIZE + (SMB2_CREATE_REQUEST_SIZE & 0xfffe);
+
         if (req->name_length > 0) {
-                if (req->name_offset < SMB2_HEADER_SIZE +
-                    (SMB2_CREATE_REQUEST_SIZE & 0xfffe)) {
+                if (req->name_offset < end) {
                         smb2_set_error(smb2, "name overlaps with "
                                        "request header");
                         pdu->payload = NULL;
                         free(req);
                         return -1;
+                }
+                if ((uint64_t)req->name_offset + req->name_length >
+                    (uint64_t)smb2->spl) {
+                        smb2_set_error(smb2, "name extends beyond end of "
+                                       "PDU");
+                        pdu->payload = NULL;
+                        free(req);
+                        return -1;
+                }
+                if ((uint32_t)req->name_offset + req->name_length > end) {
+                        end = (uint32_t)req->name_offset + req->name_length;
                 }
         }
 
@@ -464,19 +486,26 @@ smb2_process_create_request_fixed(struct smb2_context *smb2,
                         free(req);
                         return -1;
                 }
+                if ((uint64_t)req->create_context_offset +
+                    req->create_context_length > (uint64_t)smb2->spl) {
+                        smb2_set_error(smb2, "Create context extends beyond "
+                                       "end of PDU");
+                        pdu->payload = NULL;
+                        free(req);
+                        return -1;
+                }
+                if (req->create_context_offset +
+                    req->create_context_length > end) {
+                        end = req->create_context_offset +
+                                req->create_context_length;
+                }
         }
 
-        /* Return the amount of data that the name will take up.
-         * Including any padding before the name itself, and between name and create contexts
+        /* Everything from the end of the fixed part up to whichever region
+         * ends last, so that any padding in between is included too.
          */
-        remaining = IOVREQ_OFFSET_CREATE;
-        if (req->create_context_offset > req->name_offset) {
-                remaining += PAD_TO_64BIT(req->create_context_offset - req->name_offset);
-        } else {
-                remaining += req->name_length;
-        }
-        remaining += req->create_context_length;
-        return remaining;
+        return (int)(end - (SMB2_HEADER_SIZE +
+                            (SMB2_CREATE_REQUEST_SIZE & 0xfffe)));
 }
 
 int
@@ -485,13 +514,30 @@ smb2_process_create_request_variable(struct smb2_context *smb2,
 {
         struct smb2_create_request *req = (struct smb2_create_request*)pdu->payload;
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
+        const uint32_t base = SMB2_HEADER_SIZE +
+                (SMB2_CREATE_REQUEST_SIZE & 0xfffe);
         uint32_t offset;
         void *ptr;
         int name_byte_len;
 
         req->name = NULL;
         if (req->name_length > 0) {
-                req->name = smb2_utf16_to_utf8((const uint16_t *)(void *)iov->buf, req->name_length / 2);
+                /* This buffer starts at the end of the fixed part, so the
+                 * name lives at name_offset relative to that and not at
+                 * offset 0 - reading it from the start of the buffer only
+                 * happened to be right when the name immediately followed
+                 * the fixed part. smb2_process_create_request_fixed() has
+                 * checked name_offset >= base already.
+                 */
+                offset = req->name_offset - base;
+                if ((size_t)offset + req->name_length > iov->len) {
+                        smb2_set_error(smb2, "name is outside of the "
+                                       "create request buffer");
+                        return -1;
+                }
+                req->name = smb2_utf16_to_utf8(
+                        (const uint16_t *)(void *)&iov->buf[offset],
+                        req->name_length / 2);
                 if (req->name) {
                         name_byte_len = strlen(req->name) + 1;
                         ptr = smb2_alloc_init(smb2, name_byte_len);
@@ -516,8 +562,12 @@ smb2_process_create_request_variable(struct smb2_context *smb2,
          */
         req->create_context = NULL;
         if (req->create_context_length && req->create_context_offset) {
-                offset = req->create_context_offset - SMB2_HEADER_SIZE -
-                        (SMB2_CREATE_REQUEST_SIZE & 0xfffe);
+                offset = req->create_context_offset - base;
+                if ((size_t)offset + req->create_context_length > iov->len) {
+                        smb2_set_error(smb2, "create contexts are outside of "
+                                       "the create request buffer");
+                        return -1;
+                }
                 req->create_context = iov->buf + offset;
         }
         return 0;
