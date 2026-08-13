@@ -852,12 +852,30 @@ read_more_data:
 
         /* We don't yet have the signing key until later, once session
          * setup has completed, so we can not yet verify the signature
-         * of the final leg of session setup.
+         * of the final leg of session setup. NEGOTIATE is exempt for the
+         * same reason, and a PDU that arrived inside a transform header has
+         * already been authenticated by the AEAD tag.
+         *
+         * Everything else has to be signed once signing is in effect. Note
+         * that we must not make the check itself conditional on
+         * SMB2_FLAGS_SIGNED: that flag lives in the very header we are
+         * trying to authenticate, so treating a cleared flag as "nothing to
+         * verify" lets anyone on the path strip it from a forged PDU and
+         * bypass signing entirely. MS-SMB2 3.2.5.1.3 requires us to drop
+         * such a message instead.
          */
         if (smb2->sign &&
-            (smb2->hdr.flags & SMB2_FLAGS_SIGNED) &&
-            (smb2->hdr.command != SMB2_SESSION_SETUP) ) {
+            (smb2->hdr.command != SMB2_NEGOTIATE) &&
+            (smb2->hdr.command != SMB2_SESSION_SETUP) &&
+            !smb2->enc) {
                 uint8_t signature[16] _U_;
+
+                if (!(smb2->hdr.flags & SMB2_FLAGS_SIGNED)) {
+                        smb2_set_error(smb2, "PDU for command %d is not "
+                                       "signed but signing is required",
+                                       smb2->hdr.command);
+                        return -1;
+                }
                 memcpy(&signature[0], &smb2->in.iov[1 + iov_offset].buf[48], 16);
                 if (smb2_calc_signature(smb2, &smb2->in.iov[1 + iov_offset].buf[48],
                                         &smb2->in.iov[1 + iov_offset],
