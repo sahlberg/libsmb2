@@ -127,8 +127,8 @@ smb3_encrypt_pdu(struct smb2_context *smb2,
         return 0;
 }
 
-int
-smb3_decrypt_pdu(struct smb2_context *smb2)
+static int
+smb3_do_decrypt_pdu(struct smb2_context *smb2)
 {
         int rc;
 
@@ -177,6 +177,32 @@ smb3_decrypt_pdu(struct smb2_context *smb2)
         rc = smb2_read_from_buf(smb2);
         free(smb2->enc);
         smb2->enc = NULL;
+
+        return rc;
+}
+
+int
+smb3_decrypt_pdu(struct smb2_context *smb2)
+{
+        int rc;
+
+        /*
+         * The decrypted payload is fed back through the same receive state
+         * machine, whose SMB2_RECV_HEADER case tests for the transform
+         * magic and calls us again on a match. SMB3 never nests transform
+         * headers, so a payload that contains one is a peer trying to
+         * recurse us off the end of the stack - and each level also
+         * overwrites smb2->enc, leaking the outer buffer and corrupting the
+         * outer read state. Refuse to go more than one deep.
+         */
+        if (smb2->enc_depth > 0) {
+                smb2_set_error(smb2, "Nested SMB3 transform header");
+                return -1;
+        }
+
+        smb2->enc_depth++;
+        rc = smb3_do_decrypt_pdu(smb2);
+        smb2->enc_depth--;
 
         return rc;
 }

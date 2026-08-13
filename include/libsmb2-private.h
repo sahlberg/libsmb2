@@ -236,6 +236,11 @@ struct smb2_context {
         unsigned char *enc;
         size_t enc_len;
         int enc_pos;
+        /* How many transform headers deep we currently are. SMB3 never
+         * nests them, so this only ever goes above 1 for a peer that is
+         * trying to recurse us off the end of the stack.
+         */
+        int enc_depth;
 
         /*
          * For sending PDUs
