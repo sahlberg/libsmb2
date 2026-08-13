@@ -590,7 +590,13 @@ smb2_spnego_unwrap_gssapi(struct smb2_context *smb2, const uint8_t *spnego,
         if (token) {
                 *token = NULL;
                 typelen = 0;
-                if (asn_decoder.src_count > 2 &&
+                /* Test the cursor, not the total length: when the sequence
+                 * of mechanism OIDs ends exactly at the end of the blob -
+                 * an ordinary negotiate reply with no mechToken and no
+                 * negHints - src_tail equals src_count and peeking here
+                 * reads one byte past the security buffer.
+                 */
+                if (asn_decoder.src_tail < asn_decoder.src_count &&
                                 asn_decoder.src[asn_decoder.src_tail] == ASN1_CONTEXT(2)) {
                         /* mech token, note we expect NTLMSSP (7 bytes) at least here */
                         require_typeandlen(&asn_decoder, ASN1_CONTEXT(2), 10, fail);
