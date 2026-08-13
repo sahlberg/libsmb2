@@ -352,6 +352,23 @@ smb2_process_create_fixed(struct smb2_context *smb2,
                 return -1;
         }
 
+        /* Both of these are 32 bit values straight off the wire and the
+         * return below adds them together in 32 bit arithmetic, so without
+         * this check a large offset plus a large length can wrap to a small
+         * positive size. The receive loop would then allocate that small
+         * buffer while smb2_process_create_variable() still indexes it at
+         * IOV_OFFSET_CREATE, handing the caller a create_context pointer
+         * far outside the allocation.
+         */
+        if ((uint64_t)rep->create_context_offset +
+            rep->create_context_length > (uint64_t)smb2->spl) {
+                smb2_set_error(smb2, "Create context extends beyond end of "
+                               "PDU");
+                pdu->payload = NULL;
+                free(rep);
+                return -1;
+        }
+
         /* Return the amount of data that the security buffer will take up.
          * Including any padding before the security buffer itself.
          */

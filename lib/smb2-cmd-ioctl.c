@@ -313,6 +313,32 @@ smb2_process_ioctl_fixed(struct smb2_context *smb2,
                 return -1;
         }
 
+        /* input_count, output_count and output_offset are all 32 bit values
+         * straight off the wire and the size returned below is computed
+         * from all three in 32 bit arithmetic. Without this both the
+         * PAD_TO_64BIT() rounding and the additions can wrap, and even
+         * without wrapping the result drives a malloc in the receive loop,
+         * so a 4 byte field would buy a ~2GB allocation. Everything has to
+         * describe data inside this PDU.
+         */
+        if ((uint64_t)rep->output_offset + rep->output_count >
+            (uint64_t)smb2->spl) {
+                smb2_set_error(smb2, "Ioctl output buffer extends beyond "
+                               "end of PDU");
+                pdu->payload = NULL;
+                free(rep);
+                return -1;
+        }
+        if (rep->input_count &&
+            ((uint64_t)rep->input_offset + rep->input_count >
+             (uint64_t)smb2->spl)) {
+                smb2_set_error(smb2, "Ioctl input buffer extends beyond "
+                               "end of PDU");
+                pdu->payload = NULL;
+                free(rep);
+                return -1;
+        }
+
         /* Return the amount of data that the output buffer will take up.
          * Including any padding before the input and output buffer itself.
          * note: input_count should be 0, but there are exceptions, see

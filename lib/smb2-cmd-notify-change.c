@@ -228,6 +228,21 @@ smb2_process_change_notify_fixed(struct smb2_context *smb2,
         smb2_get_uint16(iov, 2, &rep->output_buffer_offset);
         smb2_get_uint32(iov, 4, &rep->output_buffer_length);
 
+        /* OutputBufferLength is returned to the receive loop as the size of
+         * the variable part, which mallocs that many bytes, so a hostile
+         * server could ask us for a ~2GB allocation from a 4 byte field.
+         * It has to describe data inside this PDU.
+         */
+        if (rep->output_buffer_length &&
+            ((uint64_t)rep->output_buffer_offset +
+             rep->output_buffer_length > (uint64_t)smb2->spl)) {
+                smb2_set_error(smb2, "Output buffer extends beyond end of "
+                               "PDU");
+                pdu->payload = NULL;
+                free(rep);
+                return -1;
+        }
+
         return rep->output_buffer_length;
 }
 
