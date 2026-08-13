@@ -208,6 +208,25 @@ endif()
       list(APPEND CORE_LIBRARIES ${SOCKET_LIBRARY} ${NSL_LIBRARY})
     endif()
 
+    # Look for a cryptographically strong source of random bytes for
+    # smb2_random_bytes(). Only probed on the host-like systems: anything we
+    # do not positively identify here simply falls back to the random()
+    # based path, so the console and embedded toolchains are left alone.
+    if(CMAKE_SYSTEM_NAME MATCHES "Linux|Darwin|.*BSD|Solaris|Android")
+      include(CheckSymbolExists)
+      check_symbol_exists(arc4random_buf "stdlib.h" HAVE_ARC4RANDOM_BUF)
+      check_symbol_exists(getrandom "sys/random.h" HAVE_GETRANDOM)
+      if(HAVE_ARC4RANDOM_BUF)
+        add_definitions(-DHAVE_ARC4RANDOM_BUF)
+      endif()
+      if(HAVE_GETRANDOM)
+        add_definitions(-DHAVE_SYS_RANDOM_H -DHAVE_GETRANDOM)
+      endif()
+      if(EXISTS "/dev/urandom")
+        add_definitions(-DHAVE_DEV_URANDOM)
+      endif()
+    endif()
+
 
     add_subdirectory(lib)
     if(ENABLE_LIBDCERPC)

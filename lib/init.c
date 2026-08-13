@@ -68,6 +68,18 @@
 #include <sys/errno.h>
 #endif
 
+#ifdef HAVE_FCNTL_H
+#include <fcntl.h>
+#endif
+
+#ifdef HAVE_SYS_FCNTL_H
+#include <sys/fcntl.h>
+#endif
+
+#ifdef HAVE_SYS_RANDOM_H
+#include <sys/random.h>
+#endif
+
 #include "compat.h"
 
 #include "smb2.h"
@@ -291,13 +303,102 @@ void smb2_destroy_url(struct smb2_url *url)
 }
 
 
+/*
+ * Fill buf with len random bytes.
+ *
+ * Several of the values libsmb2 generates - the NTLMv2 client challenge,
+ * the SMB 3.1.1 preauth salt and above all the AES-CCM nonce - are only
+ * worth anything if an attacker can not predict them. A repeated or
+ * predicted CCM nonce under a given key breaks both the confidentiality
+ * and the integrity of the sealed traffic, so use a real CSPRNG where the
+ * platform has one.
+ *
+ * Not all of the platforms libsmb2 supports have one, so every strong
+ * source is optional and we always fall back to the random() based
+ * sequence rather than failing. Returns 0 when the bytes came from a
+ * strong source and -1 when the fallback was used.
+ */
+int
+smb2_random_bytes(void *buf, size_t len)
+{
+        uint8_t *p = buf;
+
+#ifdef HAVE_ARC4RANDOM_BUF
+        arc4random_buf(p, len);
+        return 0;
+#else /* !HAVE_ARC4RANDOM_BUF */
+
+#ifdef HAVE_GETRANDOM
+        {
+                size_t done = 0;
+
+                while (done < len) {
+                        ssize_t count = getrandom(p + done, len - done, 0);
+
+                        if (count < 0) {
+                                if (errno == EINTR) {
+                                        continue;
+                                }
+                                break;
+                        }
+                        done += (size_t)count;
+                }
+                if (done == len) {
+                        return 0;
+                }
+        }
+#endif /* HAVE_GETRANDOM */
+
+#ifdef HAVE_DEV_URANDOM
+        {
+                int fd = open("/dev/urandom", O_RDONLY);
+
+                if (fd != -1) {
+                        size_t done = 0;
+
+                        while (done < len) {
+                                ssize_t count = read(fd, p + done, len - done);
+
+                                if (count <= 0) {
+                                        if (count < 0 && errno == EINTR) {
+                                                continue;
+                                        }
+                                        break;
+                                }
+                                done += (size_t)count;
+                        }
+                        close(fd);
+                        if (done == len) {
+                                return 0;
+                        }
+                }
+        }
+#endif /* HAVE_DEV_URANDOM */
+
+        /*
+         * Either this platform has no strong source or the one it has
+         * failed at runtime. Fall back to the random() sequence seeded in
+         * smb2_init_context().
+         */
+        {
+                size_t i;
+
+                for (i = 0; i < len; i++) {
+                        p[i] = random() & 0xff;
+                }
+        }
+        return -1;
+#endif /* !HAVE_ARC4RANDOM_BUF */
+}
+
 struct smb2_context *smb2_init_context(void)
 {
         struct smb2_context *smb2;
         char buf[1024] _U_;
-        int i, ret;
+        int ret;
         static int ctr;
 
+        /* Only seeds the fallback path in smb2_random_bytes(). */
         srandom((unsigned)time(NULL) ^ getpid() ^ ctr++);
 
         smb2 = calloc(1, sizeof(struct smb2_context));
@@ -316,14 +417,10 @@ struct smb2_context *smb2_init_context(void)
         smb2->version = SMB2_VERSION_ANY;
         smb2->ndr = 1;
 
-        for (i = 0; i < 8; i++) {
-                smb2->client_challenge[i] = random() & 0xff;
-        }
-        for (i = 0; i < SMB2_SALT_SIZE; i++) {
-                smb2->salt[i] = random() & 0xff;
-        }
-
-        snprintf(smb2->client_guid, 16, "libsmb2-%d", (int)random());
+        smb2_random_bytes(smb2->client_challenge,
+                          sizeof(smb2->client_challenge));
+        smb2_random_bytes(smb2->salt, sizeof(smb2->salt));
+        smb2_random_bytes(smb2->client_guid, sizeof(smb2->client_guid));
 
         smb2->session_key = NULL;
 

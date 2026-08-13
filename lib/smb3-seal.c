@@ -96,9 +96,12 @@ smb3_encrypt_pdu(struct smb2_context *smb2,
         }
 
         memcpy(&pdu->crypt[0], xfer, 4);
-        for (i = 20; i < 31; i++) {
-                pdu->crypt[i] = random()&0xff;
-        }
+        /*
+         * The 11 byte AES-CCM nonce. CCM provides no confidentiality and no
+         * integrity at all once a nonce repeats under the same key, so this
+         * has to come from the strong source and not from random().
+         */
+        smb2_random_bytes(&pdu->crypt[20], 11);
         u32 = htole32(spl - 52);
         memcpy(&pdu->crypt[36], &u32, 4);
         u16 = htole16(SMB_ENCRYPTION_AES128_CCM);
