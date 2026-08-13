@@ -365,11 +365,24 @@ read_more_data:
         }
         tmpiov = iov;
 
-        /* Skip the vectors we have already read */
-        while (num_done >= tmpiov->iov_len) {
+        /* Skip the vectors we have already read.
+         *
+         * The niov test is not redundant: a zero length vector, or a state
+         * where we have already read everything we asked for, makes this
+         * walk past the last populated entry and start reading iov_len out
+         * of uninitialised stack, for as long as it keeps finding zeros.
+         * Every caller below is supposed to have queued something left to
+         * read, so if there is nothing, that is a bug rather than an
+         * on-the-wire condition.
+         */
+        while (niov > 0 && num_done >= tmpiov->iov_len) {
                 num_done -= tmpiov->iov_len;
                 tmpiov++;
                 niov--;
+        }
+        if (niov <= 0) {
+                smb2_set_error(smb2, "No io vectors left to read into");
+                return -1;
         }
 
         /* Adjust the first vector to read */
@@ -537,6 +550,40 @@ read_more_data:
                         if (!has_xfrmhdr) {
                                 len += SMB2_SPL_SIZE;
                         }
+                        /*
+                         * A header-only interim response (an SPL of exactly
+                         * SMB2_HEADER_SIZE, which passes the SPL check
+                         * above) leaves no padding at all. Queueing a zero
+                         * length vector for it would leave num_done equal to
+                         * total_size and send the skip loop off the end of
+                         * the work array, so just finish the PDU here.
+                         */
+                        if (len < 0) {
+                                smb2_set_error(smb2, "Negative number of PAD "
+                                               "bytes in PENDING reply");
+                                return -1;
+                        }
+                        if (len == 0) {
+                                /* Nothing to skip, so this interim reply is
+                                 * already complete. Finish it here rather
+                                 * than falling through the shared tail
+                                 * below, which assumes at least two input
+                                 * vectors and would reject a decrypted
+                                 * header-only PDU, where the only vector is
+                                 * the header itself.
+                                 */
+                                if (smb2->passthrough) {
+                                        pdu = smb2_find_pdu(smb2,
+                                                        smb2->hdr.message_id);
+                                        if (pdu) {
+                                                pdu->cb(smb2, smb2->hdr.status,
+                                                        pdu->payload,
+                                                        pdu->cb_data);
+                                        }
+                                }
+                                smb2->in.num_done = 0;
+                                return 0;
+                        }
                         /* Add padding before the next PDU */
                         smb2->recv_state = SMB2_RECV_PAD;
                         {
@@ -588,9 +635,18 @@ read_more_data:
                                         if (!has_xfrmhdr) {
                                                 len += SMB2_SPL_SIZE;
                                         }
-                                        if (len > SMB2_MAX_PDU_SIZE) {
+                                        if (len < 0 || len > SMB2_MAX_PDU_SIZE) {
                                                 smb2_set_error(smb2, "no matching PDU found");
                                                 return -1;
+                                        }
+                                        /* As in the PENDING case above, a
+                                         * header-only reply leaves nothing
+                                         * to skip, so do not queue an empty
+                                         * vector for it.
+                                         */
+                                        if (len == 0) {
+                                                smb2->in.num_done = 0;
+                                                return 0;
                                         }
                                         smb2->recv_state = SMB2_RECV_UNKNOWN;
                                         {
