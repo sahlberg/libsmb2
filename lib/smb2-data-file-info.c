@@ -493,9 +493,15 @@ smb2_decode_file_normalized_name_info(struct smb2_context *smb2,
 
         if (fs->file_name_length > 0) {
                 name_len = fs->file_name_length;
-                if (vec->len < (name_len + 4)) {
+                /* Compare against what is left of the buffer rather than
+                 * adding to name_len: the addition is done in uint32 and a
+                 * FileNameLength of 0xfffffffc..0xffffffff wraps it to
+                 * 0..3, so the clamp below would never fire and we would
+                 * read ~2GB past the end of vec. vec->len >= 4 above.
+                 */
+                if (name_len > vec->len - 4) {
                         /* name can be truncated if client supplied small buffer */
-                        name_len = vec->len - 4;
+                        name_len = (uint32_t)(vec->len - 4);
                 }
                 if (name_len > 0) {
                         name = smb2_utf16_to_utf8((uint16_t *)(void *)&vec->buf[4], name_len / 2);
