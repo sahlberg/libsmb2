@@ -176,6 +176,14 @@ struct smb2_context {
 
         enum smb2_negotiate_version version;
 
+        /* The dialects we actually offered in our NEGOTIATE request. The
+         * dialect the server picks has to be one of these, so we need to
+         * remember them to be able to reject a downgrade. Zero count means
+         * we have not sent a negotiate request on this context.
+         */
+        uint16_t offered_dialects[SMB2_NEGOTIATE_MAX_DIALECTS];
+        uint16_t offered_dialect_count;
+
         const char *server;
         const char *share;
         const char *user;

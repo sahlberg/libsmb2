@@ -128,6 +128,16 @@ smb2_encode_negotiate_request(struct smb2_context *smb2,
         int i, len;
         struct smb2_iovec *iov;
 
+        /* req->dialects only has room for SMB2_NEGOTIATE_MAX_DIALECTS
+         * entries, so a larger count would read past the end of it below.
+         */
+        if (req->dialect_count > SMB2_NEGOTIATE_MAX_DIALECTS) {
+                smb2_set_error(smb2, "Too many dialects (%d) in negotiate "
+                               "request, max is %d", req->dialect_count,
+                               SMB2_NEGOTIATE_MAX_DIALECTS);
+                return -1;
+        }
+
         len = SMB2_NEGOTIATE_REQUEST_SIZE +
                 req->dialect_count * sizeof(uint16_t);
         len = PAD_TO_32BIT(len);
@@ -179,6 +189,15 @@ smb2_encode_negotiate_request(struct smb2_context *smb2,
         for (i = 0; i < req->dialect_count; i++) {
                 smb2_set_uint16(iov, 36 + i * sizeof(uint16_t),
                                 req->dialects[i]);
+        }
+
+        /* Remember what we offered so that smb2_process_negotiate_fixed()
+         * can verify the server picked one of these and did not downgrade
+         * us to a dialect we never asked for.
+         */
+        smb2->offered_dialect_count = req->dialect_count;
+        for (i = 0; i < req->dialect_count; i++) {
+                smb2->offered_dialects[i] = req->dialects[i];
         }
 
         return 0;
@@ -412,6 +431,33 @@ smb2_process_negotiate_fixed(struct smb2_context *smb2,
 
         smb2_get_uint16(iov, 2, &rep->security_mode);
         smb2_get_uint16(iov, 4, &rep->dialect_revision);
+
+        /*
+         * The dialect is what selects signing, encryption and preauth
+         * integrity for the rest of the connection, so a server that is
+         * allowed to answer with a dialect we never offered can silently
+         * downgrade us out of all three. Only accept one of the dialects we
+         * actually put in our negotiate request.
+         */
+        if (smb2->offered_dialect_count) {
+                int d;
+
+                for (d = 0; d < smb2->offered_dialect_count; d++) {
+                        if (smb2->offered_dialects[d] ==
+                            rep->dialect_revision) {
+                                break;
+                        }
+                }
+                if (d >= smb2->offered_dialect_count) {
+                        smb2_set_error(smb2, "Server picked dialect 0x%04x "
+                                       "which we did not offer",
+                                       rep->dialect_revision);
+                        pdu->payload = NULL;
+                        free(rep);
+                        return -1;
+                }
+        }
+
         memcpy(rep->server_guid, iov->buf + 8, SMB2_GUID_SIZE);
         memcpy(smb2->server_guid, iov->buf + 8, SMB2_GUID_SIZE);
         smb2_get_uint32(iov, 24, &rep->capabilities);
