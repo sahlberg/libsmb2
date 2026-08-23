@@ -57,7 +57,7 @@
 #include <sys/unistd.h>
 #endif
 
-#if __APPLE__
+#ifdef __APPLE__
 #include <GSS/GSS.h>
 #else
 #include <gssapi/gssapi_krb5.h>

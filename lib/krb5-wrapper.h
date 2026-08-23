@@ -34,8 +34,8 @@ extern "C" {
 
 #include <krb5/krb5.h>
 
-#if __APPLE__
-#import <GSS/GSS.h>
+#ifdef __APPLE__
+#include <GSS/GSS.h>
 #else
 #include <gssapi/gssapi.h>
 #include <gssapi/gssapi_ext.h>
