@@ -251,12 +251,11 @@ smb2_encode_file_stream_info(struct smb2_context *smb2,
                              struct smb2_iovec *vec)
 {
         uint32_t offset = 0;
-        uint32_t padded_offset;
-        uint32_t fslen;
-        struct smb2_utf16 *name = NULL;
-        int name_len = 0;
 
         do {
+                struct smb2_utf16 *name = NULL;
+                uint32_t name_len = 0;
+                uint32_t entry_len, padded_len, i;
                 size_t avail;
 
                 /* The 24 byte fixed part of the entry must fit in the buffer
@@ -269,60 +268,63 @@ smb2_encode_file_stream_info(struct smb2_context *smb2,
                 }
                 avail = vec->len - offset - 24;
 
-                fs->stream_name_length *= 2;
-                if (fs->stream_name_length > avail) {
-                        smb2_set_error(smb2, "Not enough space for stream "
-                                       "name");
-                        return -1;
-                }
-                smb2_set_uint64(vec, offset + 8, fs->stream_size);
-                smb2_set_uint32(vec, offset + 4, fs->stream_name_length);
-                smb2_set_uint64(vec, offset + 16, fs->stream_allocation_size);
-
                 if (fs->stream_name) {
                         name = smb2_utf8_to_utf16((const char*)fs->stream_name);
-                        if (name) {
-                                name_len = 2 * name->len;
-                                if ((size_t)name_len > avail) {
-                                        free(name);
-                                        smb2_set_error(smb2, "Not enough "
-                                                       "space for stream "
-                                                       "name");
-                                        return -1;
-                                }
-                                memcpy((uint16_t *)(void *)&vec->buf[offset + 24], name->val, name_len);
+                        if (name == NULL) {
+                                smb2_set_error(smb2, "Could not convert "
+                                               "stream name to UTF-16");
+                                return -1;
+                        }
+                        name_len = 2 * name->len;
+                        if (name_len > avail) {
                                 free(name);
-                        } else {
+                                smb2_set_error(smb2, "Not enough space for "
+                                               "stream name");
                                 return -1;
                         }
                 }
 
-                fslen = 24 + fs->stream_name_length;
+                /* StreamNameLength is the length of the name we are about to
+                 * write, in bytes. Derive it from the converted name rather
+                 * than from fs->stream_name_length, which the caller sets in
+                 * whatever units it likes and which the decoder fills in with
+                 * the length of the UTF-8 name.
+                 */
+                smb2_set_uint32(vec, offset + 4, name_len);
+                smb2_set_uint64(vec, offset + 8, fs->stream_size);
+                smb2_set_uint64(vec, offset + 16, fs->stream_allocation_size);
+                if (name) {
+                        memcpy((uint16_t *)(void *)&vec->buf[offset + 24],
+                               name->val, name_len);
+                        free(name);
+                }
 
-                if (fs->next_entry_offset) {
-                        padded_offset = PAD_TO_64BIT(offset + fslen);
-                        /* The padding must fit too, otherwise we would
-                         * return a length that is past the end of vec.
-                         */
-                        if ((size_t)padded_offset > vec->len) {
-                                smb2_set_error(smb2, "Not enough space for "
-                                               "stream info padding");
-                                return -1;
-                        }
-                        smb2_set_uint32(vec, offset + 0, padded_offset);
-                        offset += fslen;
-                        while (offset < padded_offset) {
-                                smb2_set_uint8(vec, offset, 0);
-                                offset++;
-                        }
-                        fs++;
-                } else {
-                        padded_offset =  0;
+                entry_len = 24 + name_len;
+
+                if (!fs->next_entry_offset) {
                         smb2_set_uint32(vec, offset + 0, 0);
-                        offset += fslen;
+                        offset += entry_len;
                         break;
                 }
-        } while (padded_offset && ((offset + 24) <= vec->len));
+
+                /* NextEntryOffset is relative to the start of this entry, not
+                 * an absolute offset into the buffer, and the next entry has
+                 * to start on an 8 byte boundary. offset stays 8 byte aligned
+                 * because every entry but the last advances by padded_len.
+                 */
+                padded_len = PAD_TO_64BIT(entry_len);
+                if ((size_t)offset + padded_len > vec->len) {
+                        smb2_set_error(smb2, "Not enough space for stream "
+                                       "info padding");
+                        return -1;
+                }
+                smb2_set_uint32(vec, offset + 0, padded_len);
+                for (i = entry_len; i < padded_len; i++) {
+                        smb2_set_uint8(vec, offset + i, 0);
+                }
+                offset += padded_len;
+                fs++;
+        } while (1);
 
         return (int)offset;
 }
