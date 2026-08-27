@@ -582,9 +582,14 @@ smb2_encode_file_normalized_name_info(struct smb2_context *smb2,
                           struct smb2_iovec *vec)
 {
         struct smb2_utf16 *name = NULL;
-        int name_len;
+        uint32_t name_len;
 
-        if (vec->len < (4 + fs->file_name_length)) {
+        /* Compare against what is left of the buffer rather than adding to
+         * file_name_length: the addition is done in uint32 and a caller
+         * supplied length of 0xfffffffc..0xffffffff wraps it to 0..3, so the
+         * check would pass and the memset below would run off the end.
+         */
+        if (vec->len < 4 || fs->file_name_length > vec->len - 4) {
                 return -1;
         }
 
@@ -592,12 +597,15 @@ smb2_encode_file_normalized_name_info(struct smb2_context *smb2,
                 name = smb2_utf8_to_utf16((const char*)fs->name);
                 if (name) {
                         name_len = 2 * name->len;
+                        if (name_len > vec->len - 4) {
+                                free(name);
+                                smb2_set_error(smb2, "Not enough space for "
+                                               "file name");
+                                return -1;
+                        }
                         if (fs->file_name_length < name_len) {
                                 /* should be set already */
                                 fs->file_name_length = name_len;
-                        }
-                        if (vec->len < name_len + 4) {
-                                return -1;
                         }
                         memcpy((uint16_t *)(void *)&vec->buf[4], name->val, name_len);
                         if (name_len < fs->file_name_length) {
@@ -613,6 +621,6 @@ smb2_encode_file_normalized_name_info(struct smb2_context *smb2,
         }
 
         smb2_set_uint32(vec, 0, fs->file_name_length);
-        return 4 + fs->file_name_length;
+        return (int)(4 + fs->file_name_length);
 }
 
