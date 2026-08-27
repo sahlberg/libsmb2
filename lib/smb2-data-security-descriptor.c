@@ -170,6 +170,9 @@ decode_ace(struct smb2_context *smb2, void *memctx, struct smb2_iovec *vec)
                 DEC_VLEN(4);
                 v.buf = &v.buf[4];
                 ace->sid = decode_sid(smb2, memctx, &v);
+                if (ace->sid == NULL) {
+                        return NULL;
+                }
                 break;
         case SMB2_ACCESS_ALLOWED_OBJECT_ACE_TYPE:
         case SMB2_ACCESS_DENIED_OBJECT_ACE_TYPE:
@@ -196,6 +199,9 @@ decode_ace(struct smb2_context *smb2, void *memctx, struct smb2_iovec *vec)
                 DEC_VLEN(SMB2_OBJECT_TYPE_SIZE);
                 v.buf = &v.buf[SMB2_OBJECT_TYPE_SIZE];
                 ace->sid = decode_sid(smb2, memctx, &v);
+                if (ace->sid == NULL) {
+                        return NULL;
+                }
                 break;
         case SMB2_ACCESS_ALLOWED_CALLBACK_ACE_TYPE:
         case SMB2_ACCESS_DENIED_CALLBACK_ACE_TYPE:
