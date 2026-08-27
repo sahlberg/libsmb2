@@ -290,7 +290,7 @@ smb2_decode_file_fs_control_info(struct smb2_context *smb2,
         smb2_get_uint64(vec, 32, &fs->default_quota_limit);
         smb2_get_uint32(vec, 40, &fs->file_system_control_flags);
 
-        return 44;
+        return 0;
 }
 
 int
