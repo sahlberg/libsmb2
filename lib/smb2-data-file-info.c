@@ -220,17 +220,27 @@ smb2_decode_file_stream_info(struct smb2_context *smb2,
                                 return -1;
                         }
                         offset += next_offset;
-
-                        /* note - since name is now a separate alloc, our offset is just
-                         * sizeof struct alone, so update our struct
-                         */
-                        our_offset += sizeof(struct smb2_file_stream_info);
-                        fs->next_entry_offset = our_offset;
-                } else {
-                        fs->next_entry_offset = 0;
                 }
+
+                /*
+                 * Only advertise a next entry if we are actually going to
+                 * decode one. NextEntryOffset may point exactly at the end
+                 * of the buffer, in which case the loop terminates here and
+                 * whoever walks the chain would otherwise follow
+                 * next_entry_offset into an entry we never filled in.
+                 */
+                if (!next_offset || (offset + 24) > vec->len) {
+                        fs->next_entry_offset = 0;
+                        break;
+                }
+
+                /* note - since name is now a separate alloc, our offset is just
+                 * sizeof struct alone, so update our struct
+                 */
+                our_offset += sizeof(struct smb2_file_stream_info);
+                fs->next_entry_offset = our_offset;
                 fs++;
-        } while (next_offset && ((offset + 24) <= vec->len));
+        } while (1);
 
         return 0;
 }
