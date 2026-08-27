@@ -79,6 +79,9 @@ smb2_decode_file_fs_volume_info(struct smb2_context *smb2,
         }
         name = smb2_utf16_to_utf8((uint16_t *)(void *)&vec->buf[18],
                             fs->volume_label_length / 2);
+        if (name == NULL) {
+                return -1;
+        }
         fs->volume_label = smb2_alloc_data(smb2, memctx, strlen(name) + 1);
         if (fs->volume_label == NULL) {
                 free(discard_const(name));
