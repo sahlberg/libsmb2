@@ -99,13 +99,32 @@ smb2_encode_file_fs_volume_info(struct smb2_context *smb2,
         struct smb2_utf16 *name;
         int name_len;
 
+        if (vec->len < 18) {
+                return -1;
+        }
+
         t = smb2_timeval_to_win(&fs->creation_time);
         smb2_set_uint64(vec,  0, t);
         smb2_set_uint32(vec,  8, fs->volume_serial_number);
         smb2_set_uint8(vec,  16, fs->supports_objects);
         smb2_set_uint8(vec,  17, fs->reserved);
+
+        if (fs->volume_label == NULL) {
+                smb2_set_uint32(vec, 12, 0);
+                return 18;
+        }
         name = smb2_utf8_to_utf16((char*)fs->volume_label);
+        if (name == NULL) {
+                smb2_set_error(smb2, "Could not convert volume label to "
+                               "UTF-16");
+                return -1;
+        }
         name_len = 2 * name->len;
+        if (vec->len - 18 < (size_t)name_len) {
+                free(name);
+                smb2_set_error(smb2, "Not enough space for volume label");
+                return -1;
+        }
         smb2_set_uint32(vec, 12, name_len);
         memcpy(&vec->buf[18], name->val, name_len);
         free(name);
@@ -232,8 +251,22 @@ smb2_encode_file_fs_attribute_info(struct smb2_context *smb2,
         smb2_set_uint32(vec,  0, fs->filesystem_attributes);
         smb2_set_uint32(vec,  4, fs->maximum_component_name_length);
 
+        if (fs->filesystem_name == NULL) {
+                smb2_set_uint32(vec, 8, 0);
+                return 12;
+        }
         name = smb2_utf8_to_utf16((char*)fs->filesystem_name);
+        if (name == NULL) {
+                smb2_set_error(smb2, "Could not convert filesystem name to "
+                               "UTF-16");
+                return -1;
+        }
         name_len = 2  * name->len;
+        if (vec->len - 12 < (size_t)name_len) {
+                free(name);
+                smb2_set_error(smb2, "Not enough space for filesystem name");
+                return -1;
+        }
         smb2_set_uint32(vec, 8, name_len);
         memcpy(&vec->buf[12], name->val, name_len);
         free(name);

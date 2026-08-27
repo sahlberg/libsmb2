@@ -411,7 +411,7 @@ smb2_encode_file_all_info(struct smb2_context *smb2,
         v.len = 40;
         smb2_encode_file_basic_info(smb2, &fs->basic, &v);
 
-        if (vec->len < 64) {
+        if (vec->len < 100) {
                 return -1;
         }
 
@@ -429,6 +429,12 @@ smb2_encode_file_all_info(struct smb2_context *smb2,
                 name = smb2_utf8_to_utf16((const char*)fs->name);
                 if (name) {
                         name_len = 2 * name->len;
+                        if (vec->len - 100 < (size_t)name_len) {
+                                free(name);
+                                smb2_set_error(smb2, "Not enough space for "
+                                               "file name");
+                                return -1;
+                        }
                         smb2_set_uint32(vec, 96, name_len);
                         memcpy((uint16_t *)(void *)&vec->buf[100], name->val, name_len);
                         free(name);
