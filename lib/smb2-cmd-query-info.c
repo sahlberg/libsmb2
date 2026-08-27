@@ -134,7 +134,7 @@ smb2_encode_query_info_reply(struct smb2_context *smb2,
         int len;
         uint8_t *buf;
         struct smb2_iovec *iov, *cmdiov;
-        uint32_t created_output_buffer_length;
+        int created_output_buffer_length;
 
         len = SMB2_QUERY_INFO_REPLY_SIZE & 0xfffe;
         buf = calloc(len, sizeof(uint8_t));
@@ -163,7 +163,10 @@ smb2_encode_query_info_reply(struct smb2_context *smb2,
                 /* not sure exactly how long the encoding will be, some of them
                  * include variable data so add a whole lot of extra space
                  *  TODO - better estimate = sizeof C struct vs sizeof packed data! */
-                buf = malloc(len + 1024);
+                /* calloc, not malloc: whatever the encoder below does not
+                 * write must not be sent to the peer.
+                 */
+                buf = calloc(1, len + 1024);
                 if (buf == NULL) {
                         smb2_set_error(smb2, "Failed to allocate output buffer");
                         return -1;
@@ -319,7 +322,8 @@ smb2_encode_query_info_reply(struct smb2_context *smb2,
                                 iov->len = 0;
                         }
                 } else {
-                        if (created_output_buffer_length > req->output_buffer_length) {
+                        if ((uint32_t)created_output_buffer_length >
+                            req->output_buffer_length) {
                                 /* truncate output buffer to what request can handle in return */
                                 created_output_buffer_length = req->output_buffer_length;
                                 smb2_set_pdu_status(smb2, pdu, SMB2_STATUS_BUFFER_OVERFLOW);
