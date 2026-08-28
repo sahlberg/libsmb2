@@ -106,7 +106,7 @@ smb3_encrypt_pdu(struct smb2_context *smb2,
         memcpy(&pdu->crypt[36], &u32, 4);
         u16 = htole16(SMB_ENCRYPTION_AES128_CCM);
         memcpy(&pdu->crypt[42], &u16, 2);
-        memcpy(&pdu->crypt[44], &smb2->session_id, 8);
+        *(uint64_t *)(void *)&pdu->crypt[44] = htole64(smb2->session_id);
 
         spl = 52;  /* transform header */
         for (tmp_pdu = pdu; tmp_pdu; tmp_pdu = tmp_pdu->next_compound) {
