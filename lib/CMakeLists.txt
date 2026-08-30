@@ -143,7 +143,9 @@ else()
   endif()
 endif()
 
-if(NOT PICO_BOARD OR NOT ESP_PLATFORM)
+# Neither the pico nor the esp-idf build installs anything, and neither of
+# them even creates a target called smb2, so this must be skipped for both.
+if(NOT PICO_BOARD AND NOT ESP_PLATFORM)
 if(EE AND PS2RPC)
 install(TARGETS smb2_rpc EXPORT smb2_rpc
                      RUNTIME DESTINATION bin

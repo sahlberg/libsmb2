@@ -237,7 +237,9 @@ endif()
       add_subdirectory(examples)
     endif()
 
-  if(NOT PICO_BOARD OR ESP_PLATFORM)
+  # The packaging and install rules below need PROJECT_VERSION and the
+  # INSTALL_* paths, and neither is set for the pico or the esp-idf build.
+  if(NOT PICO_BOARD AND NOT ESP_PLATFORM)
       include(CMakePackageConfigHelpers)
       write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/libsmb2-config-version.cmake
                                     VERSION ${PROJECT_VERSION}
