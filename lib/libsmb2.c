@@ -608,7 +608,7 @@ smb3_init_preauth_hash(struct smb2_context *smb2)
 }
 
 /* MS-SMB2 3.2.5.2 */
-static int
+int
 smb3_update_preauth_hash(struct smb2_context *smb2, int niov,
                          struct smb2_iovec *iov)
 {
@@ -891,8 +891,8 @@ send_session_setup_request(struct smb2_context *smb2,
                 smb2_close_context(smb2);
                 return -ENOMEM;
         }
+        pdu->update_preauth_hash = 1;
         smb2_queue_pdu(smb2, pdu);
-        smb3_update_preauth_hash(smb2, pdu->out.niov, &pdu->out.iov[0]);
 
         return 0;
 }
@@ -1095,8 +1095,8 @@ connect_cb(struct smb2_context *smb2, int status,
                 free_c_data(smb2, c_data);
                 return;
         }
+        pdu->update_preauth_hash = 1;
         smb2_queue_pdu(smb2, pdu);
-        smb3_update_preauth_hash(smb2, pdu->out.niov, &pdu->out.iov[0]);
 }
 
 int
@@ -3630,8 +3630,8 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                 smb2_close_context(smb2);
                 return;
         }
+        pdu->update_preauth_hash = 1;
         smb2_queue_pdu(smb2, pdu);
-        smb3_update_preauth_hash(smb2, pdu->out.niov, &pdu->out.iov[0]);
 }
 
 static void
@@ -3835,8 +3835,8 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
                 return;
         }
 
+        pdu->update_preauth_hash = 1;
         smb2_queue_pdu(smb2, pdu);
-        smb3_update_preauth_hash(smb2, pdu->out.niov, &pdu->out.iov[0]);
 
         if (req) {
                 /* alloc a pdu for session request */
