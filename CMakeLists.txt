@@ -89,13 +89,28 @@ endif()
     endif()
   endif()
 
-  if(CMAKE_SYSTEM_NAME MATCHES Linux)
-    if (ENABLE_LIBKRB5)
-      find_package(LibKrb5)
-    endif()
-  elseif(IOS)
-    if (ENABLE_GSSAPI)
-      find_package(GSSAPI)  
+  # Kerberos. Every krb5_* and gss_* symbol we use comes out of
+  # gssapi_krb5, which is also the only thing the autotools build links.
+  #
+  # This used to be probed on linux only, with ios looking for gssapi
+  # instead, so on macos and the BSDs the header check in ConfigureChecks
+  # still compiled the kerberos code in and then there was nothing to link
+  # it against. That is issue #413. It went unnoticed on linux because an
+  # ELF shared library may carry undefined symbols, while the macos linker
+  # refuses them.
+  if(CMAKE_SYSTEM_NAME MATCHES "Linux|Darwin|.*BSD|Solaris|Android" OR IOS)
+    if(ENABLE_LIBKRB5 OR ENABLE_GSSAPI)
+      find_package(GSSAPI)
+      if(GSSAPI_FOUND)
+        set(core_DEPENDS ${GSSAPI_LIBRARIES} CACHE STRING "" FORCE)
+      else()
+        # Compiling the kerberos paths in when there is no library to link
+        # them against only moves the failure to link time, so build
+        # without kerberos instead.
+        message(STATUS "gssapi_krb5 not found, building without Kerberos")
+        set(ENABLE_LIBKRB5 OFF)
+        set(ENABLE_GSSAPI OFF)
+      endif()
     endif()
   endif()
 
@@ -126,16 +141,6 @@ endif()
       )
     endif()
     
-    if(CMAKE_SYSTEM_NAME MATCHES Linux)
-      if (ENABLE_LIBKRB5)
-        set(core_DEPENDS ${LIBKRB5_LIBRARY} CACHE STRING "" FORCE)  
-      endif()
-    elseif(IOS)
-      if (ENABLE_GSSAPI)
-        set(core_DEPENDS ${GSSAPI_LIBRARIES} CACHE STRING "" FORCE)   
-      endif()
-    endif()
-
     if(MSVC AND BUILD_SHARED_LIBS)
       # If we are building dll with msvc, then generate a def file according to the syms file
       set(SYMS_FILE_PATH "${PROJECT_SOURCE_DIR}/lib/libsmb2.syms")
