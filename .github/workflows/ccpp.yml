@@ -243,3 +243,23 @@ jobs:
         make -f Makefile.AMIGA clean
         make -f Makefile.AMIGA
       
+
+  configure-embedded:
+    name: Embedded cmake configure
+
+    # The pico and esp-idf builds select different targets and skip the
+    # install rules, and getting those conditionals wrong breaks configure
+    # for both of them without any of the jobs above noticing. See issue
+    # #376. Configuring for the pico needs no sdk, so this is a cheap way
+    # to keep that logic honest. It configures only, it does not build.
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y libkrb5-dev
+
+    - name: CMake configure (Pico W)
+      run: cmake -S . -B build-pico -DPICO_BOARD=pico_w
