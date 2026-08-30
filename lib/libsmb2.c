@@ -165,6 +165,16 @@ struct smb2fh {
         smb2_file_id file_id;
         int64_t offset;
         int64_t end_of_file;
+
+        /*
+         * Kept so that we can open the target instead if the server tells
+         * us that the path we asked for was a symlink. Only set for the
+         * plain open path, we do not chase links for an open that asked
+         * for a lease or that hands the pdu back to the caller.
+         */
+        char *path;
+        int flags;
+        int symlink_hops;
 };
 
 void
@@ -1279,58 +1289,24 @@ smb2_connect_share_async(struct smb2_context *smb2,
 }
 
 static void
-free_smb2fh(struct smb2_context *smb2, struct smb2fh *fh)
+free_smb2fh(struct smb2_context *smb2 _U_, struct smb2fh *fh)
 {
+        free(fh->path);
         free(fh);
 }
 
+/*
+ * Turn posix open() flags into the fields of an SMB2 create request.
+ */
 static void
-open_cb(struct smb2_context *smb2, int status,
-        void *command_data, void *private_data)
+open_flags_to_create_request(struct smb2_create_request *req,
+                             const char *path, int flags,
+                             uint8_t oplock_level)
 {
-        struct smb2fh *fh = private_data;
-        struct smb2_create_reply *rep = command_data;
-
-        if (status != SMB2_STATUS_SUCCESS) {
-                smb2_set_nterror(smb2, status, "Open failed with (0x%08x) %s.",
-                               status, nterror_to_str(status));
-                fh->cb(smb2, -nterror_to_errno(status), NULL, fh->cb_data);
-                free_smb2fh(smb2, fh);
-                return;
-        }
-
-        memcpy(fh->file_id, rep->file_id, SMB2_FD_SIZE);
-        fh->end_of_file = rep->end_of_file;
-        fh->cb(smb2, 0, fh, fh->cb_data);
-}
-
-static struct smb2_pdu *
-_smb2_open_async_with_oplock_or_lease(struct smb2_context *smb2, const char *path, int flags,
-                uint8_t oplock_level, uint32_t lease_state, smb2_lease_key lease_key,
-                smb2_command_cb cb, void *cb_data, void (*free_cb)(void *),
-                int caller_frees_pdu)
-{
-        struct smb2fh *fh;
-        struct smb2_create_request req;
-        struct smb2_pdu *pdu;
-        struct smb2_iovec iov;
         uint32_t desired_access = 0;
         uint32_t create_disposition = 0;
         uint32_t create_options = 0;
         uint32_t file_attributes = 0;
-
-        if (smb2 == NULL) {
-                return NULL;
-        }
-
-        fh = calloc(1, sizeof(struct smb2fh));
-        if (fh == NULL) {
-                smb2_set_error(smb2, "Failed to allocate smbfh");
-                return NULL;
-        }
-
-        fh->cb = cb;
-        fh->cb_data = cb_data;
 
         /* Create disposition */
         if (flags & O_CREAT) {
@@ -1382,15 +1358,259 @@ _smb2_open_async_with_oplock_or_lease(struct smb2_context *smb2, const char *pat
                 create_options |= SMB2_FILE_NO_INTERMEDIATE_BUFFERING;
         }
 
-        memset(&req, 0, sizeof(struct smb2_create_request));
-        req.requested_oplock_level = oplock_level;
-        req.impersonation_level = SMB2_IMPERSONATION_IMPERSONATION;
-        req.desired_access = desired_access;
-        req.file_attributes = file_attributes;
-        req.share_access = SMB2_FILE_SHARE_READ | SMB2_FILE_SHARE_WRITE;
-        req.create_disposition = create_disposition;
-        req.create_options = create_options;
-        req.name = path;
+        memset(req, 0, sizeof(struct smb2_create_request));
+        req->requested_oplock_level = oplock_level;
+        req->impersonation_level = SMB2_IMPERSONATION_IMPERSONATION;
+        req->desired_access = desired_access;
+        req->file_attributes = file_attributes;
+        req->share_access = SMB2_FILE_SHARE_READ | SMB2_FILE_SHARE_WRITE;
+        req->create_disposition = create_disposition;
+        req->create_options = create_options;
+        req->name = path;
+}
+
+/*
+ * Follow at most this many links before giving up, so that a loop on the
+ * server can not spin us forever.
+ */
+#define SMB2_MAX_SYMLINK_HOPS 8
+
+/*
+ * The server stopped on a symlink while resolving path. Work out the
+ * path that the link points at so that we can try that instead.
+ *
+ * Returns a newly allocated path, or NULL if we can not follow this link,
+ * in which case the error string says why.
+ */
+static char *
+symlink_error_target(struct smb2_context *smb2, const char *path,
+                     struct smb2_error_reply *rep)
+{
+        struct smb2_symlink_error_response sl;
+        struct smb2_iovec vec;
+        struct smb2_utf16 *u16 = NULL;
+        const char *prefix = NULL, *unparsed = NULL;
+        char *target = NULL;
+        void *memctx;
+        size_t unparsed_units;
+        int parsed, cut;
+
+        if (rep == NULL || rep->error_data == NULL || rep->byte_count < 8) {
+                smb2_set_error(smb2, "No symlink data in the error reply");
+                return NULL;
+        }
+
+        vec.buf = rep->error_data;
+        vec.len = rep->byte_count;
+        vec.free = NULL;
+
+        /*
+         * From 3.1.1 on the error data is wrapped in an error context,
+         * which is a length and an id followed by the data itself.
+         */
+        if (rep->error_context_count) {
+                if (vec.len < 8) {
+                        smb2_set_error(smb2, "Truncated error context");
+                        return NULL;
+                }
+                vec.buf += 8;
+                vec.len -= 8;
+        }
+
+        memctx = smb2_alloc_init(smb2, 1);
+        if (memctx == NULL) {
+                return NULL;
+        }
+        memset(&sl, 0, sizeof(sl));
+        if (smb2_decode_symlink_error_response(smb2, memctx, &sl, &vec)) {
+                smb2_free_data(smb2, memctx);
+                return NULL;
+        }
+
+        if (!(sl.flags & SMB2_SYMLINK_FLAG_RELATIVE)) {
+                /*
+                 * An absolute target names a path in the servers own
+                 * namespace, such as \??\C:\dir, and we have no way to
+                 * tell where, or even whether, that lands inside the share.
+                 */
+                smb2_set_error(smb2, "Can not follow the absolute symlink "
+                               "to %s", sl.printname);
+                smb2_free_data(smb2, memctx);
+                return NULL;
+        }
+
+        /*
+         * unparsed_path_length counts the utf16 bytes at the end of the
+         * path that the server never looked at, so do the splitting in
+         * utf16 rather than trying to count utf8 bytes.
+         */
+        u16 = smb2_utf8_to_utf16(path);
+        if (u16 == NULL) {
+                smb2_set_error(smb2, "Could not convert path into UTF-16");
+                smb2_free_data(smb2, memctx);
+                return NULL;
+        }
+        unparsed_units = sl.unparsed_path_length / 2;
+        if (unparsed_units > (size_t)u16->len) {
+                smb2_set_error(smb2, "Server unparsed path length is longer "
+                               "than the path we sent");
+                goto out;
+        }
+        parsed = u16->len - (int)unparsed_units;
+
+        /*
+         * The parsed part ends with the link itself. Drop that component,
+         * keeping the separator, and the substitute name goes in its place.
+         */
+        for (cut = parsed; cut > 0; cut--) {
+                uint16_t ch = le16toh(u16->val[cut - 1]);
+
+                if (ch == '/' || ch == '\\') {
+                        break;
+                }
+        }
+
+        prefix = smb2_utf16_to_utf8(u16->val, cut);
+        unparsed = smb2_utf16_to_utf8(&u16->val[parsed], unparsed_units);
+        if (prefix == NULL || unparsed == NULL) {
+                smb2_set_error(smb2, "Could not convert path into UTF-8");
+                goto out;
+        }
+
+        target = malloc(strlen(prefix) + strlen(sl.subname) +
+                        strlen(unparsed) + 1);
+        if (target == NULL) {
+                smb2_set_error(smb2, "Failed to allocate symlink target");
+                goto out;
+        }
+        sprintf(target, "%s%s%s", prefix, sl.subname, unparsed);
+
+ out:
+        free(discard_const(prefix));
+        free(discard_const(unparsed));
+        free(u16);
+        smb2_free_data(smb2, memctx);
+
+        return target;
+}
+
+static void open_cb(struct smb2_context *smb2, int status,
+                    void *command_data, void *private_data);
+
+/*
+ * Reissue the create against fh->path, which is the target of a symlink
+ * we just walked into.
+ */
+static int
+open_retry(struct smb2_context *smb2, struct smb2fh *fh)
+{
+        struct smb2_create_request req;
+        struct smb2_pdu *pdu;
+
+        open_flags_to_create_request(&req, fh->path, fh->flags,
+                                     SMB2_OPLOCK_LEVEL_NONE);
+
+        pdu = smb2_cmd_create_async(smb2, &req, open_cb, fh);
+        if (pdu == NULL) {
+                smb2_set_error(smb2, "Failed to create create command");
+                return -1;
+        }
+        smb2_queue_pdu(smb2, pdu);
+
+        return 0;
+}
+
+static void
+open_cb(struct smb2_context *smb2, int status,
+        void *command_data, void *private_data)
+{
+        struct smb2fh *fh = private_data;
+        struct smb2_create_reply *rep = command_data;
+
+        if (status == SMB2_STATUS_STOPPED_ON_SYMLINK && fh->path) {
+                char *target;
+
+                if (fh->symlink_hops >= SMB2_MAX_SYMLINK_HOPS) {
+                        smb2_set_error(smb2, "Too many levels of symbolic "
+                                       "links while opening %s", fh->path);
+                        fh->cb(smb2, -ELOOP, NULL, fh->cb_data);
+                        free_smb2fh(smb2, fh);
+                        return;
+                }
+                target = symlink_error_target(smb2, fh->path, command_data);
+                if (target) {
+                        free(fh->path);
+                        fh->path = target;
+                        fh->symlink_hops++;
+                        if (open_retry(smb2, fh) == 0) {
+                                return;
+                        }
+                        fh->cb(smb2, -EIO, NULL, fh->cb_data);
+                        free_smb2fh(smb2, fh);
+                        return;
+                }
+                /*
+                 * We could not work out where the link went. Report that
+                 * rather than the bare STOPPED_ON_SYMLINK.
+                 */
+                fh->cb(smb2, -nterror_to_errno(status), NULL, fh->cb_data);
+                free_smb2fh(smb2, fh);
+                return;
+        }
+
+        if (status != SMB2_STATUS_SUCCESS) {
+                smb2_set_nterror(smb2, status, "Open failed with (0x%08x) %s.",
+                               status, nterror_to_str(status));
+                fh->cb(smb2, -nterror_to_errno(status), NULL, fh->cb_data);
+                free_smb2fh(smb2, fh);
+                return;
+        }
+
+        memcpy(fh->file_id, rep->file_id, SMB2_FD_SIZE);
+        fh->end_of_file = rep->end_of_file;
+        fh->cb(smb2, 0, fh, fh->cb_data);
+}
+
+static struct smb2_pdu *
+_smb2_open_async_with_oplock_or_lease(struct smb2_context *smb2, const char *path, int flags,
+                uint8_t oplock_level, uint32_t lease_state, smb2_lease_key lease_key,
+                smb2_command_cb cb, void *cb_data, void (*free_cb)(void *),
+                int caller_frees_pdu)
+{
+        struct smb2fh *fh;
+        struct smb2_create_request req;
+        struct smb2_pdu *pdu;
+        struct smb2_iovec iov;
+
+        if (smb2 == NULL) {
+                return NULL;
+        }
+
+        fh = calloc(1, sizeof(struct smb2fh));
+        if (fh == NULL) {
+                smb2_set_error(smb2, "Failed to allocate smbfh");
+                return NULL;
+        }
+
+        fh->cb = cb;
+        fh->cb_data = cb_data;
+        fh->flags = flags;
+
+        /*
+         * An open that asked for a lease can not be retried behind the
+         * caller's back, since the retry would silently drop the lease
+         * request, so those are left to report the symlink as an error.
+         */
+        if (!lease_state) {
+                fh->path = strdup(path);
+                if (fh->path == NULL) {
+                        smb2_set_error(smb2, "Failed to allocate path");
+                        free_smb2fh(smb2, fh);
+                        return NULL;
+                }
+        }
+
+        open_flags_to_create_request(&req, path, flags, oplock_level);
 
         if (lease_state && lease_key) {
                 req.create_context_length = SMB2_CREATE_REQUEST_LEASE_SIZE + 24;
@@ -2740,7 +2960,47 @@ struct symlink_cb_data {
          * so we have to keep it alive until the whole compound is done.
          */
         uint8_t *reparse;
+        /*
+         * If we managed to create the placeholder but then failed to turn
+         * it into a symlink we have to remove it again, so remember the
+         * path and the error that made us give up.
+         */
+        int created;
+        int is_dir;
+        char *linkpath;
+        char *error;
 };
+
+static void
+free_symlink_data(struct symlink_cb_data *cb_data)
+{
+        free(cb_data->error);
+        free(cb_data->linkpath);
+        free(cb_data->reparse);
+        free(cb_data);
+}
+
+static void
+symlink_finish(struct smb2_context *smb2, struct symlink_cb_data *cb_data)
+{
+        /* The cleanup unlink will have overwritten the error that
+         * actually made us fail, so put it back. */
+        if (cb_data->error) {
+                smb2_set_error(smb2, "%s", cb_data->error);
+        }
+        cb_data->cb(smb2, -nterror_to_errno(cb_data->status),
+                    NULL, cb_data->cb_data);
+        free_symlink_data(cb_data);
+}
+
+static void
+symlink_cleanup_cb(struct smb2_context *smb2, int status _U_,
+                   void *command_data _U_, void *private_data)
+{
+        /* Whether or not we managed to remove the placeholder again, the
+         * error we report is the one that made the symlink fail. */
+        symlink_finish(smb2, private_data);
+}
 
 static void
 symlink_cb_1(struct smb2_context *smb2, int status,
@@ -2750,6 +3010,8 @@ symlink_cb_1(struct smb2_context *smb2, int status,
 
         if (status != SMB2_STATUS_SUCCESS) {
                 smb2_set_nterror(smb2, status, "%s", nterror_to_str(status));
+        } else {
+                cb_data->created = 1;
         }
         cb_data->status = status;
 }
@@ -2780,10 +3042,21 @@ symlink_cb_3(struct smb2_context *smb2, int status,
                 cb_data->status = status;
         }
 
-        cb_data->cb(smb2, -nterror_to_errno(cb_data->status),
-                    NULL, cb_data->cb_data);
-        free(cb_data->reparse);
-        free(cb_data);
+        if (cb_data->status != SMB2_STATUS_SUCCESS && cb_data->created) {
+                /*
+                 * We created the placeholder but never got to turn it into
+                 * a symlink. Do not leave an empty file or directory
+                 * behind.
+                 */
+                cb_data->error = strdup(smb2_get_error(smb2));
+                if (smb2_unlink_internal(smb2, cb_data->linkpath,
+                                         cb_data->is_dir,
+                                         symlink_cleanup_cb, cb_data) == 0) {
+                        return;
+                }
+        }
+
+        symlink_finish(smb2, cb_data);
 }
 
 /*
@@ -2839,12 +3112,19 @@ smb2_symlink_async(struct smb2_context *smb2, const char *target,
         }
         symlink_data->cb = cb;
         symlink_data->cb_data = cb_data;
+        symlink_data->is_dir = !!(flags & SMB2_SYMLINK_DIRECTORY);
+        symlink_data->linkpath = strdup(linkpath);
+        if (symlink_data->linkpath == NULL) {
+                smb2_set_error(smb2, "Failed to allocate linkpath");
+                free_symlink_data(symlink_data);
+                return -ENOMEM;
+        }
 
         /* The print name is the target the way a user would write it. */
         printname = strdup(target);
         if (printname == NULL) {
                 smb2_set_error(smb2, "Failed to allocate print name");
-                free(symlink_data);
+                free_symlink_data(symlink_data);
                 return -ENOMEM;
         }
         for (ptr = printname; *ptr; ptr++) {
@@ -2866,7 +3146,7 @@ smb2_symlink_async(struct smb2_context *smb2, const char *target,
                         smb2_set_error(smb2, "Failed to allocate "
                                        "substitute name");
                         free(printname);
-                        free(symlink_data);
+                        free_symlink_data(symlink_data);
                         return -ENOMEM;
                 }
                 sprintf(subname, "\\??\\%s", printname);
@@ -2876,7 +3156,7 @@ smb2_symlink_async(struct smb2_context *smb2, const char *target,
                         smb2_set_error(smb2, "Failed to allocate "
                                        "substitute name");
                         free(printname);
-                        free(symlink_data);
+                        free_symlink_data(symlink_data);
                         return -ENOMEM;
                 }
         }
@@ -2898,7 +3178,7 @@ smb2_symlink_async(struct smb2_context *smb2, const char *target,
                 smb2_set_error(smb2, "Failed to allocate reparse buffer");
                 free(subname);
                 free(printname);
-                free(symlink_data);
+                free_symlink_data(symlink_data);
                 return -ENOMEM;
         }
         vec.buf = symlink_data->reparse;
@@ -2909,8 +3189,7 @@ smb2_symlink_async(struct smb2_context *smb2, const char *target,
         free(subname);
         free(printname);
         if (len < 0) {
-                free(symlink_data->reparse);
-                free(symlink_data);
+                free_symlink_data(symlink_data);
                 return -EINVAL;
         }
 
@@ -2932,8 +3211,7 @@ smb2_symlink_async(struct smb2_context *smb2, const char *target,
         pdu = smb2_cmd_create_async(smb2, &cr_req, symlink_cb_1, symlink_data);
         if (pdu == NULL) {
                 smb2_set_error(smb2, "Failed to create create command");
-                free(symlink_data->reparse);
-                free(symlink_data);
+                free_symlink_data(symlink_data);
                 return -EINVAL;
         }
 
@@ -2950,8 +3228,7 @@ smb2_symlink_async(struct smb2_context *smb2, const char *target,
         if (next_pdu == NULL) {
                 smb2_set_error(smb2, "Failed to create ioctl command");
                 smb2_free_pdu(smb2, pdu);
-                free(symlink_data->reparse);
-                free(symlink_data);
+                free_symlink_data(symlink_data);
                 return -EINVAL;
         }
         smb2_add_compound_pdu(smb2, pdu, next_pdu);
@@ -2966,8 +3243,7 @@ smb2_symlink_async(struct smb2_context *smb2, const char *target,
         if (next_pdu == NULL) {
                 smb2_set_error(smb2, "Failed to create close command");
                 smb2_free_pdu(smb2, pdu);
-                free(symlink_data->reparse);
-                free(symlink_data);
+                free_symlink_data(symlink_data);
                 return -EINVAL;
         }
         smb2_add_compound_pdu(smb2, pdu, next_pdu);

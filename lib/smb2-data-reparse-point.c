@@ -92,6 +92,69 @@ decode_reparse_name(struct smb2_context *smb2, void *memctx,
  * Encode a reparse data buffer into vec, returning the number of bytes
  * used or -1 on failure. Only the tags that we can create are supported.
  */
+/*
+ * Decode the symbolic link error response that a server returns with
+ * STATUS_STOPPED_ON_SYMLINK. [MS-SMB2] 2.2.2.2.1
+ */
+int
+smb2_decode_symlink_error_response(struct smb2_context *smb2,
+                                   void *memctx,
+                                   struct smb2_symlink_error_response *sl,
+                                   struct smb2_iovec *vec)
+{
+        uint16_t suboffset, sublen, printoffset, printlen, datalen, unparsed;
+        uint32_t tag;
+
+        if (vec->len < 28) {
+                smb2_set_error(smb2, "Symlink error response is too short");
+                return -1;
+        }
+
+        smb2_get_uint32(vec, 4, &tag);
+        if (tag != SMB2_SYMLINK_ERROR_TAG) {
+                smb2_set_error(smb2, "Not a symlink error response");
+                return -1;
+        }
+        smb2_get_uint32(vec, 8, &tag);
+        if (tag != SMB2_REPARSE_TAG_SYMLINK) {
+                smb2_set_error(smb2, "Symlink error response for reparse "
+                               "tag 0x%08x", tag);
+                return -1;
+        }
+
+        smb2_get_uint16(vec, 12, &datalen);
+        smb2_get_uint16(vec, 14, &unparsed);
+        smb2_get_uint16(vec, 16, &suboffset);
+        smb2_get_uint16(vec, 18, &sublen);
+        smb2_get_uint16(vec, 20, &printoffset);
+        smb2_get_uint16(vec, 22, &printlen);
+        smb2_get_uint32(vec, 24, &sl->flags);
+
+        /* The names live in the path buffer, which starts at 28. */
+        if ((size_t)suboffset + sublen + 12 > datalen ||
+            (size_t)printoffset + printlen + 12 > datalen) {
+                smb2_set_error(smb2, "Symlink error response names do not "
+                               "fit in the path buffer");
+                return -1;
+        }
+
+        sl->unparsed_path_length = unparsed;
+        sl->subname = decode_reparse_name(smb2, memctx, vec, 28,
+                                          suboffset, sublen);
+        if (sl->subname == NULL) {
+                smb2_set_error(smb2, "Could not decode the substitute name");
+                return -1;
+        }
+        sl->printname = decode_reparse_name(smb2, memctx, vec, 28,
+                                            printoffset, printlen);
+        if (sl->printname == NULL) {
+                smb2_set_error(smb2, "Could not decode the print name");
+                return -1;
+        }
+
+        return 0;
+}
+
 int
 smb2_encode_reparse_data_buffer(struct smb2_context *smb2,
                                 struct smb2_reparse_data_buffer *rp,

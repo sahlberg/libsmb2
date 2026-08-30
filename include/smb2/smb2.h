@@ -1104,6 +1104,26 @@ struct smb2_lx_symlink_reparse_buffer {
 #define SMB2_REPARSE_TAG_WCI_LINK_1             0xa0001027
 
 /*
+ * Symbolic link error response. [MS-SMB2] 2.2.2.2.1
+ *
+ * A server that walks into a symlink while resolving a path fails the
+ * request with STATUS_STOPPED_ON_SYMLINK and returns this, so that the
+ * client can work out what the link pointed at and try again.
+ *
+ * unparsed_path_length is the number of bytes at the end of the path we
+ * asked for that the server never got to look at, because it stopped at
+ * the link.
+ */
+#define SMB2_SYMLINK_ERROR_TAG 0x4c4d5953
+
+struct smb2_symlink_error_response {
+        uint32_t unparsed_path_length;
+        uint32_t flags;
+        char *subname;
+        char *printname;
+};
+
+/*
  * Reparse_data_buffer
  */
 struct smb2_reparse_data_buffer {

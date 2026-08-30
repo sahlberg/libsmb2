@@ -698,6 +698,10 @@ int smb2_decode_file_fs_sector_size_info(struct smb2_context *smb2,
 int smb2_encode_file_fs_sector_size_info(struct smb2_context *smb2,
                                      struct smb2_file_fs_sector_size_info *fs,
                                      struct smb2_iovec *vec);
+int smb2_decode_symlink_error_response(struct smb2_context *smb2,
+                                    void *memctx,
+                                    struct smb2_symlink_error_response *sl,
+                                    struct smb2_iovec *vec);
 int smb2_encode_reparse_data_buffer(struct smb2_context *smb2,
                                     struct smb2_reparse_data_buffer *rp,
                                     struct smb2_iovec *vec);

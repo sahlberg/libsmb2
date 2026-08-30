@@ -1058,6 +1058,18 @@ const char *nterror_to_str(uint32_t status) {
                 return "SMB2_STATUS_VOLUME_DISMOUNTED";
         case SMB2_STATUS_NOT_A_REPARSE_POINT:
                 return "STATUS_NOT_A_REPARSE_POINT";
+        case SMB2_STATUS_IO_REPARSE_TAG_INVALID:
+                return "SMB2_STATUS_IO_REPARSE_TAG_INVALID";
+        case SMB2_STATUS_IO_REPARSE_TAG_MISMATCH:
+                return "SMB2_STATUS_IO_REPARSE_TAG_MISMATCH";
+        case SMB2_STATUS_IO_REPARSE_DATA_INVALID:
+                return "SMB2_STATUS_IO_REPARSE_DATA_INVALID";
+        case SMB2_STATUS_IO_REPARSE_TAG_NOT_HANDLED:
+                return "SMB2_STATUS_IO_REPARSE_TAG_NOT_HANDLED";
+        case SMB2_STATUS_REPARSE_POINT_NOT_RESOLVED:
+                return "SMB2_STATUS_REPARSE_POINT_NOT_RESOLVED";
+        case SMB2_STATUS_DIRECTORY_IS_A_REPARSE_POINT:
+                return "SMB2_STATUS_DIRECTORY_IS_A_REPARSE_POINT";
         case SMB2_STATUS_STOPPED_ON_SYMLINK:
                 return "SMB2_STATUS_STOPPED_ON_SYMLINK";
         default:
@@ -1128,7 +1140,15 @@ int nterror_to_errno(uint32_t status) {
         case SMB2_STATUS_INVALID_PARAMETER:
         case SMB2_STATUS_NOT_SUPPORTED:
         case SMB2_STATUS_NOT_A_REPARSE_POINT:
+        case SMB2_STATUS_IO_REPARSE_TAG_INVALID:
+        case SMB2_STATUS_IO_REPARSE_TAG_MISMATCH:
+        case SMB2_STATUS_IO_REPARSE_DATA_INVALID:
                 return EINVAL;
+        case SMB2_STATUS_IO_REPARSE_TAG_NOT_HANDLED:
+        case SMB2_STATUS_REPARSE_POINT_NOT_RESOLVED:
+                return ENOLINK;
+        case SMB2_STATUS_DIRECTORY_IS_A_REPARSE_POINT:
+                return EISDIR;
         case SMB2_STATUS_STOPPED_ON_SYMLINK:
                 return ENOLINK;
         case SMB2_STATUS_TOO_MANY_OPENED_FILES:
