@@ -88,6 +88,74 @@ decode_reparse_name(struct smb2_context *smb2, void *memctx,
         return name;
 }
 
+/*
+ * Encode a reparse data buffer into vec, returning the number of bytes
+ * used or -1 on failure. Only the tags that we can create are supported.
+ */
+int
+smb2_encode_reparse_data_buffer(struct smb2_context *smb2,
+                                struct smb2_reparse_data_buffer *rp,
+                                struct smb2_iovec *vec)
+{
+        struct smb2_utf16 *sub = NULL, *print = NULL;
+        size_t sublen, printlen, pathlen, len;
+
+        switch (rp->reparse_tag) {
+        case SMB2_REPARSE_TAG_SYMLINK:
+                break;
+        default:
+                smb2_set_error(smb2, "Can not encode reparse tag 0x%08x",
+                               rp->reparse_tag);
+                return -1;
+        }
+
+        sub = smb2_utf8_to_utf16(rp->symlink.subname ?
+                                 rp->symlink.subname : "");
+        if (sub == NULL) {
+                smb2_set_error(smb2, "Could not convert substitute name "
+                               "into UTF-16");
+                return -1;
+        }
+        print = smb2_utf8_to_utf16(rp->symlink.printname ?
+                                   rp->symlink.printname : "");
+        if (print == NULL) {
+                smb2_set_error(smb2, "Could not convert print name "
+                               "into UTF-16");
+                free(sub);
+                return -1;
+        }
+
+        sublen = 2 * (size_t)sub->len;
+        printlen = 2 * (size_t)print->len;
+        /* Both names are stored nul terminated, the nul is not counted
+         * in the name lengths. */
+        pathlen = sublen + 2 + printlen + 2;
+        len = 8 + 12 + pathlen;
+
+        if (len > 65535 || vec->len < len) {
+                smb2_set_error(smb2, "Reparse data buffer does not fit");
+                free(sub);
+                free(print);
+                return -1;
+        }
+
+        memset(vec->buf, 0, len);
+        smb2_set_uint32(vec, 0, rp->reparse_tag);
+        smb2_set_uint16(vec, 4, (uint16_t)(12 + pathlen));
+        smb2_set_uint16(vec, 8, 0);                       /* subname offset */
+        smb2_set_uint16(vec, 10, (uint16_t)sublen);
+        smb2_set_uint16(vec, 12, (uint16_t)(sublen + 2)); /* printname off */
+        smb2_set_uint16(vec, 14, (uint16_t)printlen);
+        smb2_set_uint32(vec, 16, rp->symlink.flags);
+        memcpy(&vec->buf[20], sub->val, sublen);
+        memcpy(&vec->buf[20 + sublen + 2], print->val, printlen);
+
+        free(sub);
+        free(print);
+
+        return (int)len;
+}
+
 int
 smb2_decode_reparse_data_buffer(struct smb2_context *smb2,
                                 void *memctx,

@@ -1910,7 +1910,14 @@ smb2_unlink_internal(struct smb2_context *smb2, const char *path,
         cr_req.share_access = SMB2_FILE_SHARE_READ | SMB2_FILE_SHARE_WRITE |
                 SMB2_FILE_SHARE_DELETE;
         cr_req.create_disposition = SMB2_FILE_OPEN;
-        cr_req.create_options = SMB2_FILE_DELETE_ON_CLOSE;
+        /*
+         * Open the reparse point itself rather than following it, so that
+         * unlink() removes a symlink instead of what it points at, the
+         * way posix unlink() does. This is ignored for files that are not
+         * reparse points.
+         */
+        cr_req.create_options = SMB2_FILE_DELETE_ON_CLOSE |
+                SMB2_FILE_OPEN_REPARSE_POINT;
         cr_req.name = path;
 
         pdu = smb2_cmd_create_async(smb2, &cr_req, create_cb_1, create_data);
@@ -2718,6 +2725,253 @@ smb2_ftruncate_async(struct smb2_context *smb2, struct smb2fh *fh,
                 smb2_set_error(smb2, "Failed to create set info command");
                 return -ENOMEM;
         }
+        smb2_queue_pdu(smb2, pdu);
+
+        return 0;
+}
+
+struct symlink_cb_data {
+        smb2_command_cb cb;
+        void *cb_data;
+
+        uint32_t status;
+        /*
+         * The reparse buffer we hand to the ioctl is not owned by the pdu,
+         * so we have to keep it alive until the whole compound is done.
+         */
+        uint8_t *reparse;
+};
+
+static void
+symlink_cb_1(struct smb2_context *smb2, int status,
+             void *command_data _U_, void *private_data)
+{
+        struct symlink_cb_data *cb_data = private_data;
+
+        if (status != SMB2_STATUS_SUCCESS) {
+                smb2_set_nterror(smb2, status, "%s", nterror_to_str(status));
+        }
+        cb_data->status = status;
+}
+
+static void
+symlink_cb_2(struct smb2_context *smb2, int status,
+             void *command_data _U_, void *private_data)
+{
+        struct symlink_cb_data *cb_data = private_data;
+
+        if (status != SMB2_STATUS_SUCCESS &&
+            cb_data->status == SMB2_STATUS_SUCCESS) {
+                smb2_set_nterror(smb2, status, "Failed to set the reparse "
+                                 "point: %s", nterror_to_str(status));
+        }
+        if (cb_data->status == SMB2_STATUS_SUCCESS) {
+                cb_data->status = status;
+        }
+}
+
+static void
+symlink_cb_3(struct smb2_context *smb2, int status,
+             void *command_data _U_, void *private_data)
+{
+        struct symlink_cb_data *cb_data = private_data;
+
+        if (cb_data->status == SMB2_STATUS_SUCCESS) {
+                cb_data->status = status;
+        }
+
+        cb_data->cb(smb2, -nterror_to_errno(cb_data->status),
+                    NULL, cb_data->cb_data);
+        free(cb_data->reparse);
+        free(cb_data);
+}
+
+/*
+ * Is this target an absolute path on the server, as opposed to one that
+ * is relative to the directory the link lives in ? Absolute means either
+ * a drive relative path such as "c:\dir" or one that starts at the root
+ * of the current volume.
+ */
+static int
+symlink_target_is_absolute(const char *target)
+{
+        if (target[0] == '\\') {
+                return 1;
+        }
+        if (((target[0] >= 'a' && target[0] <= 'z') ||
+             (target[0] >= 'A' && target[0] <= 'Z')) &&
+            target[1] == ':') {
+                return 1;
+        }
+        return 0;
+}
+
+int
+smb2_symlink_async(struct smb2_context *smb2, const char *target,
+                   const char *linkpath, uint32_t flags,
+                   smb2_command_cb cb, void *cb_data)
+{
+        struct symlink_cb_data *symlink_data;
+        struct smb2_create_request cr_req;
+        struct smb2_ioctl_request io_req;
+        struct smb2_close_request cl_req;
+        struct smb2_reparse_data_buffer rp;
+        struct smb2_iovec vec;
+        struct smb2_pdu *pdu, *next_pdu;
+        char *printname = NULL, *subname = NULL;
+        char *ptr;
+        size_t buflen;
+        int absolute, len;
+
+        if (smb2 == NULL) {
+                return -EINVAL;
+        }
+        if (target == NULL || target[0] == 0 ||
+            linkpath == NULL || linkpath[0] == 0) {
+                smb2_set_error(smb2, "Target and linkpath are required");
+                return -EINVAL;
+        }
+
+        symlink_data = calloc(1, sizeof(struct symlink_cb_data));
+        if (symlink_data == NULL) {
+                smb2_set_error(smb2, "Failed to allocate symlink_data");
+                return -ENOMEM;
+        }
+        symlink_data->cb = cb;
+        symlink_data->cb_data = cb_data;
+
+        /* The print name is the target the way a user would write it. */
+        printname = strdup(target);
+        if (printname == NULL) {
+                smb2_set_error(smb2, "Failed to allocate print name");
+                free(symlink_data);
+                return -ENOMEM;
+        }
+        for (ptr = printname; *ptr; ptr++) {
+                if (*ptr == '/') {
+                        *ptr = '\\';
+                }
+        }
+
+        absolute = (flags & SMB2_SYMLINK_ABSOLUTE) ||
+                symlink_target_is_absolute(printname);
+
+        /*
+         * The substitute name is what the server resolves. An absolute
+         * target has to be given as an object manager path.
+         */
+        if (absolute) {
+                subname = malloc(strlen(printname) + 5);
+                if (subname == NULL) {
+                        smb2_set_error(smb2, "Failed to allocate "
+                                       "substitute name");
+                        free(printname);
+                        free(symlink_data);
+                        return -ENOMEM;
+                }
+                sprintf(subname, "\\??\\%s", printname);
+        } else {
+                subname = strdup(printname);
+                if (subname == NULL) {
+                        smb2_set_error(smb2, "Failed to allocate "
+                                       "substitute name");
+                        free(printname);
+                        free(symlink_data);
+                        return -ENOMEM;
+                }
+        }
+
+        memset(&rp, 0, sizeof(rp));
+        rp.reparse_tag = SMB2_REPARSE_TAG_SYMLINK;
+        rp.symlink.flags = absolute ? 0 : SMB2_SYMLINK_FLAG_RELATIVE;
+        rp.symlink.subname = subname;
+        rp.symlink.printname = printname;
+
+        /*
+         * Each utf8 byte produces at most one utf16 code unit, so this is
+         * always enough for the fixed fields, the two names and their nul
+         * terminators.
+         */
+        buflen = 24 + 2 * (strlen(subname) + strlen(printname));
+        symlink_data->reparse = calloc(1, buflen);
+        if (symlink_data->reparse == NULL) {
+                smb2_set_error(smb2, "Failed to allocate reparse buffer");
+                free(subname);
+                free(printname);
+                free(symlink_data);
+                return -ENOMEM;
+        }
+        vec.buf = symlink_data->reparse;
+        vec.len = buflen;
+        vec.free = NULL;
+
+        len = smb2_encode_reparse_data_buffer(smb2, &rp, &vec);
+        free(subname);
+        free(printname);
+        if (len < 0) {
+                free(symlink_data->reparse);
+                free(symlink_data);
+                return -EINVAL;
+        }
+
+        /* CREATE the file or directory that will carry the reparse point */
+        memset(&cr_req, 0, sizeof(struct smb2_create_request));
+        cr_req.requested_oplock_level = SMB2_OPLOCK_LEVEL_NONE;
+        cr_req.impersonation_level = SMB2_IMPERSONATION_IMPERSONATION;
+        cr_req.desired_access = SMB2_FILE_WRITE_ATTRIBUTES |
+                SMB2_FILE_WRITE_DATA | SMB2_DELETE | SMB2_SYNCHRONIZE;
+        cr_req.file_attributes = 0;
+        cr_req.share_access = SMB2_FILE_SHARE_READ | SMB2_FILE_SHARE_WRITE |
+                SMB2_FILE_SHARE_DELETE;
+        cr_req.create_disposition = SMB2_FILE_CREATE;
+        cr_req.create_options = SMB2_FILE_OPEN_REPARSE_POINT |
+                ((flags & SMB2_SYMLINK_DIRECTORY) ?
+                 SMB2_FILE_DIRECTORY_FILE : SMB2_FILE_NON_DIRECTORY_FILE);
+        cr_req.name = linkpath;
+
+        pdu = smb2_cmd_create_async(smb2, &cr_req, symlink_cb_1, symlink_data);
+        if (pdu == NULL) {
+                smb2_set_error(smb2, "Failed to create create command");
+                free(symlink_data->reparse);
+                free(symlink_data);
+                return -EINVAL;
+        }
+
+        /* IOCTL command to turn it into a symlink */
+        memset(&io_req, 0, sizeof(struct smb2_ioctl_request));
+        io_req.ctl_code = SMB2_FSCTL_SET_REPARSE_POINT;
+        memcpy(io_req.file_id, compound_file_id, SMB2_FD_SIZE);
+        io_req.input_count = len;
+        io_req.input = symlink_data->reparse;
+        io_req.flags = SMB2_0_IOCTL_IS_FSCTL;
+
+        next_pdu = smb2_cmd_ioctl_async(smb2, &io_req, symlink_cb_2,
+                                        symlink_data);
+        if (next_pdu == NULL) {
+                smb2_set_error(smb2, "Failed to create ioctl command");
+                smb2_free_pdu(smb2, pdu);
+                free(symlink_data->reparse);
+                free(symlink_data);
+                return -EINVAL;
+        }
+        smb2_add_compound_pdu(smb2, pdu, next_pdu);
+
+        /* CLOSE command */
+        memset(&cl_req, 0, sizeof(struct smb2_close_request));
+        cl_req.flags = SMB2_CLOSE_FLAG_POSTQUERY_ATTRIB;
+        memcpy(cl_req.file_id, compound_file_id, SMB2_FD_SIZE);
+
+        next_pdu = smb2_cmd_close_async(smb2, &cl_req, symlink_cb_3,
+                                        symlink_data);
+        if (next_pdu == NULL) {
+                smb2_set_error(smb2, "Failed to create close command");
+                smb2_free_pdu(smb2, pdu);
+                free(symlink_data->reparse);
+                free(symlink_data);
+                return -EINVAL;
+        }
+        smb2_add_compound_pdu(smb2, pdu, next_pdu);
+
         smb2_queue_pdu(smb2, pdu);
 
         return 0;

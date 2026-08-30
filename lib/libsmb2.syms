@@ -129,6 +129,8 @@ smb2_stat
 smb2_stat_async
 smb2_statvfs
 smb2_statvfs_async
+smb2_symlink
+smb2_symlink_async
 smb2_telldir
 smb2_timeval_to_win
 smb2_truncate

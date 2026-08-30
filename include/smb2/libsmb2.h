@@ -1237,6 +1237,50 @@ int smb2_link(struct smb2_context *smb2, const char *oldpath,
               const char *newpath);
 
 /*
+ * Flags for smb2_symlink()
+ */
+/*
+ * Create a link to a directory. Windows symlinks are typed and a link to
+ * a directory must be created as one, so unlike posix we have to be told
+ * which kind of link the caller wants.
+ */
+#define SMB2_SYMLINK_DIRECTORY 0x00000001
+/*
+ * Treat the target as an absolute path on the server instead of one
+ * relative to the directory the link lives in. By default a target that
+ * starts with a drive letter or a path separator is taken as absolute
+ * and everything else as relative, which is usually what you want.
+ */
+#define SMB2_SYMLINK_ABSOLUTE  0x00000002
+
+/*
+ * Async symlink()
+ *
+ * Creates a symlink at linkpath that points at target.
+ * Note that windows servers normally only allow this for accounts that
+ * hold SeCreateSymbolicLinkPrivilege, which is administrators only, and
+ * the share must have been created without restrictions on symlinks.
+ *
+ * Returns
+ *  0     : The operation was initiated. Result of the operation will be
+ *          reported through the callback function.
+ * -errno : There was an error. The callback function will not be invoked.
+ *
+ * When the callback is invoked, status indicates the result:
+ *      0 : Success.
+ * -errno : An error occurred.
+ */
+int smb2_symlink_async(struct smb2_context *smb2, const char *target,
+                       const char *linkpath, uint32_t flags,
+                       smb2_command_cb cb, void *cb_data);
+
+/*
+ * Sync symlink()
+ */
+int smb2_symlink(struct smb2_context *smb2, const char *target,
+                 const char *linkpath, uint32_t flags);
+
+/*
  * Async truncate()
  *
  * Returns

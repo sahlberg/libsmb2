@@ -74,6 +74,29 @@ smb2_ioctl_status_uses_reply_format(uint32_t ctl_code, uint32_t status)
         }
 }
 
+/*
+ * How many bytes of output do we tell the server it may return ?
+ *
+ * We have always asked for 64k, and callers that memset their request
+ * still get that, but the fsctls that only set state and return nothing
+ * are rejected by windows with STATUS_INVALID_PARAMETER unless the max
+ * output is exactly zero.
+ */
+static uint32_t
+smb2_ioctl_max_output_response(struct smb2_ioctl_request *req)
+{
+        switch (req->ctl_code) {
+        case SMB2_FSCTL_SET_REPARSE_POINT:
+                return 0;
+        default:
+                break;
+        }
+        if (req->max_output_response) {
+                return req->max_output_response;
+        }
+        return 65535;
+}
+
 static int
 smb2_encode_ioctl_request(struct smb2_context *smb2,
                           struct smb2_pdu *pdu,
@@ -102,7 +125,7 @@ smb2_encode_ioctl_request(struct smb2_context *smb2,
                         (SMB2_IOCTL_REQUEST_SIZE & 0xfffffffe));
         smb2_set_uint32(iov, 28, req->input_count);
         smb2_set_uint32(iov, 32, 0); /* Max input response */
-        smb2_set_uint32(iov, 44, 65535); /* Max output response */
+        smb2_set_uint32(iov, 44, smb2_ioctl_max_output_response(req));
         smb2_set_uint32(iov, 48, req->flags);
 
         if (req->input_count) {

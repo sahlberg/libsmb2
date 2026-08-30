@@ -12,6 +12,7 @@ noinst_PROGRAMS = smb2-cat-async smb2-cat-sync \
 	smb2-lseek-sync \
 	smb2-share-enum-sync \
 	smb2-stat-sync \
+	smb2-symlink-sync \
 	smb2-statvfs-sync \
 	smb2-truncate-sync \
 	smb2-rename-sync \
@@ -65,6 +66,7 @@ smb2_server_side_copy_sync_LDADD = $(COMMON_LIBS)
 smb2_lseek_sync_LDADD = $(COMMON_LIBS)
 smb2_share_enum_sync_LDADD = $(COMMON_LIBS)
 smb2_stat_sync_LDADD = $(COMMON_LIBS)
+smb2_symlink_sync_LDADD = $(COMMON_LIBS)
 smb2_statvfs_sync_LDADD = $(COMMON_LIBS)
 smb2_truncate_sync_LDADD = $(COMMON_LIBS)
 smb2_rename_sync_LDADD = $(COMMON_LIBS)
