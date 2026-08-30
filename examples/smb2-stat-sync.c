@@ -83,9 +83,28 @@ int main(int argc, char *argv[])
         case SMB2_TYPE_DIRECTORY:
                 printf("Type:DIRECTORY\n");
                 break;
+        case SMB2_TYPE_LINK:
+                printf("Type:LINK\n");
+                break;
+        case SMB2_TYPE_FIFO:
+                printf("Type:FIFO\n");
+                break;
+        case SMB2_TYPE_CHARDEV:
+                printf("Type:CHARDEV\n");
+                break;
+        case SMB2_TYPE_BLOCKDEV:
+                printf("Type:BLOCKDEV\n");
+                break;
+        case SMB2_TYPE_SOCKET:
+                printf("Type:SOCKET\n");
+                break;
         default:
                 printf("Type:unknown\n");
                 break;
+        }
+        printf("Attributes:0x%08"PRIx32"\n", st.smb2_attributes);
+        if (st.smb2_attributes & SMB2_FILE_ATTRIBUTE_REPARSE_POINT) {
+                printf("ReparseTag:0x%08"PRIx32"\n", st.smb2_reparse_tag);
         }
         printf("Size:%"PRIu64"\n", st.smb2_size);
         printf("Inode:0x%"PRIx64"\n", st.smb2_ino);

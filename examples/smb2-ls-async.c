@@ -84,6 +84,18 @@ void od_cb(struct smb2_context *smb2, int status,
                 case SMB2_TYPE_DIRECTORY:
                         type = "DIRECTORY";
                         break;
+                case SMB2_TYPE_FIFO:
+                        type = "FIFO";
+                        break;
+                case SMB2_TYPE_CHARDEV:
+                        type = "CHARDEV";
+                        break;
+                case SMB2_TYPE_BLOCKDEV:
+                        type = "BLOCKDEV";
+                        break;
+                case SMB2_TYPE_SOCKET:
+                        type = "SOCKET";
+                        break;
                 default:
                         type = "unknown";
                         break;

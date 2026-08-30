@@ -91,6 +91,37 @@ smb2_tv_timeval_to_win(struct smb2_timeval *tv){
 }
 
 int
+smb2_decode_file_attribute_tag_info(struct smb2_context *smb2 _U_,
+                                    void *memctx _U_,
+                                    struct smb2_file_attribute_tag_info *fs,
+                                    struct smb2_iovec *vec)
+{
+        if (vec->len < 8) {
+                return -1;
+        }
+
+        smb2_get_uint32(vec, 0, &fs->file_attributes);
+        smb2_get_uint32(vec, 4, &fs->reparse_tag);
+
+        return 0;
+}
+
+int
+smb2_encode_file_attribute_tag_info(struct smb2_context *smb2 _U_,
+                                    struct smb2_file_attribute_tag_info *fs,
+                                    struct smb2_iovec *vec)
+{
+        if (vec->len < 8) {
+                return -1;
+        }
+
+        smb2_set_uint32(vec, 0, fs->file_attributes);
+        smb2_set_uint32(vec, 4, fs->reparse_tag);
+
+        return 8;
+}
+
+int
 smb2_encode_file_basic_info(struct smb2_context *smb2,
                             struct smb2_file_basic_info *fs,
                             struct smb2_iovec *vec)

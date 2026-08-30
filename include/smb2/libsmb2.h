@@ -75,6 +75,14 @@ typedef void (*smb2_oplock_or_lease_break_cb)(struct smb2_context *smb2,
 #define SMB2_TYPE_FILE      0x00000000
 #define SMB2_TYPE_DIRECTORY 0x00000001
 #define SMB2_TYPE_LINK      0x00000002
+/*
+ * The types below are only ever reported for the reparse points that
+ * WSL uses to store non-regular files on a windows filesystem.
+ */
+#define SMB2_TYPE_FIFO      0x00000003
+#define SMB2_TYPE_CHARDEV   0x00000004
+#define SMB2_TYPE_BLOCKDEV  0x00000005
+#define SMB2_TYPE_SOCKET    0x00000006
 struct smb2_stat_64 {
         uint32_t smb2_type;
         uint32_t smb2_nlink;
@@ -88,6 +96,18 @@ struct smb2_stat_64 {
         uint64_t smb2_ctime_nsec;
         uint64_t smb2_btime;
         uint64_t smb2_btime_nsec;
+        /*
+         * The raw windows attributes for this file, a mask of
+         * SMB2_FILE_ATTRIBUTE_*.
+         */
+        uint32_t smb2_attributes;
+        /*
+         * If SMB2_FILE_ATTRIBUTE_REPARSE_POINT is set in smb2_attributes
+         * this is the reparse tag, one of SMB2_REPARSE_TAG_*.
+         * It is 0 both for files that are not reparse points and for the
+         * servers that do not tell us the tag.
+         */
+        uint32_t smb2_reparse_tag;
 };
 
 struct smb2_statvfs {

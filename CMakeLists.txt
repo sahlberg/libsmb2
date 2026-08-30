@@ -29,9 +29,9 @@ if(NOT ESP_PLATFORM)
   else()
     project(libsmb2
             LANGUAGES C
-            VERSION 6.1.0
+            VERSION 7.0.0
     )  
-    set(VERSION 6.1.0)
+    set(VERSION 7.0.0)
     set(PACKAGE "libsmb2")
     set(PACKAGE_BUGREPORT "ronniesahlberg@gmail.com")
     set(PACKAGE_NAME "libsmb2")
@@ -44,7 +44,7 @@ if(NOT ESP_PLATFORM)
 endif()
 
   if(NOT ESP_PLATFORM)
-    set(SOVERSION 1 CACHE STRING "" FORCE)
+    set(SOVERSION 7 CACHE STRING "" FORCE)
     if(NOT IOP AND NOT BUILD_IRX)
       set(INSTALL_LIB_DIR "${CMAKE_INSTALL_PREFIX}/lib${LIB_SUFFIX}" CACHE PATH "Installation directory for libraries")
       set(INSTALL_INC_DIR "${CMAKE_INSTALL_PREFIX}/include" CACHE PATH "Installation directory for headers")

@@ -828,7 +828,13 @@ static void readlink_cb(struct smb2_context *smb2, int status,
 
         cb_data->is_finished = 1;
         cb_data->status = status;
+
+        /* There is no target to report unless the call succeeded. */
+        if (status || command_data == NULL || rl_data->len <= 0) {
+                return;
+        }
         strncpy(rl_data->buf, command_data, rl_data->len);
+        rl_data->buf[rl_data->len - 1] = 0;
 }
 
 int smb2_readlink(struct smb2_context *smb2, const char *path,

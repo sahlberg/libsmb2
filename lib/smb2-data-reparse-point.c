@@ -53,6 +53,41 @@
 #include "libsmb2.h"
 #include "libsmb2-private.h"
 
+/*
+ * Pull one of the utf16 names out of the path buffer of a symlink or
+ * mount point reparse buffer and return it as a utf8 string allocated
+ * off memctx. offset and len are relative to the start of the path
+ * buffer, which itself starts at pathbuffer bytes into the reparse
+ * data buffer.
+ */
+static char *
+decode_reparse_name(struct smb2_context *smb2, void *memctx,
+                    struct smb2_iovec *vec, size_t pathbuffer,
+                    uint16_t offset, uint16_t len)
+{
+        const char *tmp;
+        char *name;
+
+        if (pathbuffer + offset + len > vec->len) {
+                return NULL;
+        }
+
+        tmp = smb2_utf16_to_utf8((uint16_t *)(void *)
+                                 (&vec->buf[pathbuffer + offset]), len / 2);
+        if (tmp == NULL) {
+                return NULL;
+        }
+        name = smb2_alloc_data(smb2, memctx, strlen(tmp) + 1);
+        if (name == NULL) {
+                free(discard_const(tmp));
+                return NULL;
+        }
+        strcpy(name, tmp);
+        free(discard_const(tmp));
+
+        return name;
+}
+
 int
 smb2_decode_reparse_data_buffer(struct smb2_context *smb2,
                                 void *memctx,
@@ -60,7 +95,7 @@ smb2_decode_reparse_data_buffer(struct smb2_context *smb2,
                                 struct smb2_iovec *vec)
 {
         uint16_t suboffset, sublen, printoffset, printlen;
-        const char *tmp;
+        size_t pathbuffer, targetlen;
 
         if (vec->len < 8) {
                 return -1;
@@ -75,49 +110,83 @@ smb2_decode_reparse_data_buffer(struct smb2_context *smb2,
         }
         switch (rp->reparse_tag) {
         case SMB2_REPARSE_TAG_SYMLINK:
-                if (vec->len < 20) {
-                        return -1;
+        case SMB2_REPARSE_TAG_MOUNT_POINT:
+                /*
+                 * The two buffers are the same except that the symlink
+                 * has an additional 32 bit flags field just before the
+                 * path buffer. [MS-FSCC] 2.1.2.4 and 2.1.2.5
+                 */
+                if (rp->reparse_tag == SMB2_REPARSE_TAG_SYMLINK) {
+                        pathbuffer = 20;
+                        if (vec->len < pathbuffer) {
+                                return -1;
+                        }
+                        smb2_get_uint32(vec, 16, &rp->symlink.flags);
+                } else {
+                        pathbuffer = 16;
+                        if (vec->len < pathbuffer) {
+                                return -1;
+                        }
+                        rp->symlink.flags = 0;
                 }
-                smb2_get_uint32(vec, 16, &rp->symlink.flags);
+                rp->symlink.subname = NULL;
+                rp->symlink.printname = NULL;
 
                 smb2_get_uint16(vec, 8, &suboffset);
                 smb2_get_uint16(vec, 10, &sublen);
-                if (suboffset + sublen + 12 > rp->reparse_data_length) {
-                        return -1;
-                }
-
-                tmp = smb2_utf16_to_utf8((uint16_t *)(void *)(&vec->buf[suboffset + 20]),
-                                   sublen / 2);
-                if (tmp == NULL) {
-                        return -1;
-                }
-                rp->symlink.subname = smb2_alloc_data(smb2, rp,
-                                                      strlen(tmp) + 1);
-                if (rp->symlink.subname == NULL) {
-                        free(discard_const(tmp));
-                        return -1;
-                }
-                strcpy(rp->symlink.subname, tmp);
-                free(discard_const(tmp));
-
                 smb2_get_uint16(vec, 12, &printoffset);
                 smb2_get_uint16(vec, 14, &printlen);
-                if (printoffset + printlen + 12 > rp->reparse_data_length) {
+
+                /* The names must fit inside the path buffer. */
+                if ((size_t)suboffset + sublen + pathbuffer - 8 >
+                    rp->reparse_data_length) {
                         return -1;
                 }
-                tmp = smb2_utf16_to_utf8((uint16_t *)(void *)(&vec->buf[printoffset + 20]),
-                                   printlen / 2);
-                if (tmp == NULL) {
+                if ((size_t)printoffset + printlen + pathbuffer - 8 >
+                    rp->reparse_data_length) {
                         return -1;
                 }
-                rp->symlink.printname = smb2_alloc_data(smb2, rp,
-                                                        strlen(tmp) + 1);
+
+                rp->symlink.subname = decode_reparse_name(smb2, memctx, vec,
+                                                          pathbuffer,
+                                                          suboffset, sublen);
+                if (rp->symlink.subname == NULL) {
+                        return -1;
+                }
+                rp->symlink.printname = decode_reparse_name(smb2, memctx, vec,
+                                                            pathbuffer,
+                                                            printoffset,
+                                                            printlen);
                 if (rp->symlink.printname == NULL) {
-                        free(discard_const(tmp));
                         return -1;
                 }
-                strcpy(rp->symlink.printname, tmp);
-                free(discard_const(tmp));
+                break;
+        case SMB2_REPARSE_TAG_LX_SYMLINK:
+                /*
+                 * A 32 bit version followed by the target as utf8.
+                 * The target is not nul terminated. [MS-FSCC] 2.1.2.7
+                 */
+                if (rp->reparse_data_length < 4) {
+                        return -1;
+                }
+                smb2_get_uint32(vec, 8, &rp->lx_symlink.version);
+                targetlen = rp->reparse_data_length - 4;
+
+                rp->lx_symlink.target = smb2_alloc_data(smb2, memctx,
+                                                        targetlen + 1);
+                if (rp->lx_symlink.target == NULL) {
+                        return -1;
+                }
+                memcpy(rp->lx_symlink.target, &vec->buf[12], targetlen);
+                rp->lx_symlink.target[targetlen] = 0;
+                break;
+        default:
+                /*
+                 * A tag we have no decoder for. The tag itself has still
+                 * been filled in, which is all the caller needs to tell
+                 * what kind of object this is.
+                 */
+                break;
         }
 
         return 0;

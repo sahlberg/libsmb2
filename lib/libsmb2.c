@@ -277,6 +277,74 @@ smb2_closedir(struct smb2_context *smb2, struct smb2dir *dir)
         free_smb2dir(smb2, dir);
 }
 
+/*
+ * Map the windows file attributes, and for a reparse point also the
+ * reparse tag, onto a posix-like file type.
+ *
+ * Only a few reparse tags redirect to a different name and thus behave
+ * like a posix symlink. Most of the tags are just private data for a
+ * filter driver, for example deduplication, compression, hsm or cloud
+ * storage such as onedrive, and for those the file is still an ordinary
+ * file that we can read and write as usual. Reporting all of them as
+ * links, which is what we used to do, breaks any application that
+ * handles links the posix way.
+ *
+ * For a tag we do not know about we fall back to the name surrogate bit,
+ * which is how microsoft tells us whether the object names some other
+ * entity or not. [MS-FSCC] 2.1.2.1
+ */
+static void
+smb2_set_stat_type(struct smb2_stat_64 *st, uint32_t attributes,
+                   uint32_t reparse_tag)
+{
+        st->smb2_attributes = attributes;
+        st->smb2_reparse_tag = 0;
+
+        if (attributes & SMB2_FILE_ATTRIBUTE_DIRECTORY) {
+                st->smb2_type = SMB2_TYPE_DIRECTORY;
+        } else {
+                st->smb2_type = SMB2_TYPE_FILE;
+        }
+
+        if (!(attributes & SMB2_FILE_ATTRIBUTE_REPARSE_POINT)) {
+                return;
+        }
+        st->smb2_reparse_tag = reparse_tag;
+
+        switch (reparse_tag) {
+        case 0:
+                /*
+                 * The server did not tell us the tag. Assume it is a link,
+                 * which is the safer guess for a reparse point and also
+                 * what libsmb2 has always reported.
+                 */
+                st->smb2_type = SMB2_TYPE_LINK;
+                break;
+        case SMB2_REPARSE_TAG_SYMLINK:
+        case SMB2_REPARSE_TAG_MOUNT_POINT:
+        case SMB2_REPARSE_TAG_LX_SYMLINK:
+                st->smb2_type = SMB2_TYPE_LINK;
+                break;
+        case SMB2_REPARSE_TAG_LX_FIFO:
+                st->smb2_type = SMB2_TYPE_FIFO;
+                break;
+        case SMB2_REPARSE_TAG_LX_CHR:
+                st->smb2_type = SMB2_TYPE_CHARDEV;
+                break;
+        case SMB2_REPARSE_TAG_LX_BLK:
+                st->smb2_type = SMB2_TYPE_BLOCKDEV;
+                break;
+        case SMB2_REPARSE_TAG_AF_UNIX:
+                st->smb2_type = SMB2_TYPE_SOCKET;
+                break;
+        default:
+                if (SMB2_REPARSE_TAG_IS_NAME_SURROGATE(reparse_tag)) {
+                        st->smb2_type = SMB2_TYPE_LINK;
+                }
+                break;
+        }
+}
+
 static int
 decode_dirents(struct smb2_context *smb2, struct smb2dir *dir,
                struct smb2_iovec *vec)
@@ -310,13 +378,15 @@ decode_dirents(struct smb2_context *smb2, struct smb2dir *dir,
                                                            &tmp_vec);
                 /* steal the name */
                 ent->dirent.name = fs.name;
-                ent->dirent.st.smb2_type = SMB2_TYPE_FILE;
-                if (fs.file_attributes & SMB2_FILE_ATTRIBUTE_DIRECTORY) {
-                        ent->dirent.st.smb2_type = SMB2_TYPE_DIRECTORY;
-                }
-                if (fs.file_attributes & SMB2_FILE_ATTRIBUTE_REPARSE_POINT) {
-                        ent->dirent.st.smb2_type = SMB2_TYPE_LINK;
-                }
+                /*
+                 * For a reparse point the server overloads the ea_size
+                 * field with the reparse tag, so we get the tag for free
+                 * here without having to open every single entry.
+                 */
+                smb2_set_stat_type(&ent->dirent.st, fs.file_attributes,
+                                   (fs.file_attributes &
+                                    SMB2_FILE_ATTRIBUTE_REPARSE_POINT) ?
+                                   fs.ea_size : 0);
                 ent->dirent.st.smb2_nlink = 0;
                 ent->dirent.st.smb2_ino = fs.file_id;
                 ent->dirent.st.smb2_size = fs.end_of_file;
@@ -1945,7 +2015,44 @@ struct stat_cb_data {
         uint8_t info_type;
         uint8_t file_info_class;
         void *st;
+        /*
+         * FILE_ALL_INFORMATION does not carry the reparse tag so we ask
+         * for FILE_ATTRIBUTE_TAG_INFORMATION as well and stash the tag
+         * here until we build the stat structure.
+         */
+        uint32_t reparse_tag;
 };
+
+/*
+ * FILE_ALL_INFORMATION does not contain the reparse tag, so stat and
+ * fstat also ask for FILE_ATTRIBUTE_TAG_INFORMATION and remember the tag
+ * here. This query is compounded ahead of the FILE_ALL_INFORMATION one
+ * so that the tag is already known when we build the stat structure.
+ */
+static void
+stat_attribute_tag_cb(struct smb2_context *smb2, int status,
+                      void *command_data, void *private_data)
+{
+        struct stat_cb_data *stat_data = private_data;
+        struct smb2_query_info_reply *rep = command_data;
+        struct smb2_file_attribute_tag_info *tag;
+
+        /*
+         * Deliberately do not fail the stat if this query failed. Not
+         * every server knows this info class and all we lose is the tag,
+         * in which case we just report the reparse point as a link the
+         * way we always used to.
+         */
+        if (status != SMB2_STATUS_SUCCESS || rep == NULL) {
+                return;
+        }
+
+        tag = rep->output_buffer;
+        if (tag) {
+                stat_data->reparse_tag = tag->reparse_tag;
+                smb2_free_data(smb2, tag);
+        }
+}
 
 static void
 fstat_cb_1(struct smb2_context *smb2, int status,
@@ -1963,13 +2070,8 @@ fstat_cb_1(struct smb2_context *smb2, int status,
                 return;
         }
 
-        st->smb2_type = SMB2_TYPE_FILE;
-        if (fs->basic.file_attributes & SMB2_FILE_ATTRIBUTE_DIRECTORY) {
-                st->smb2_type = SMB2_TYPE_DIRECTORY;
-        }
-        if (fs->basic.file_attributes & SMB2_FILE_ATTRIBUTE_REPARSE_POINT) {
-                st->smb2_type = SMB2_TYPE_LINK;
-        }
+        smb2_set_stat_type(st, fs->basic.file_attributes,
+                           stat_data->reparse_tag);
         st->smb2_nlink      = fs->standard.number_of_links;
         st->smb2_ino        = fs->index_number;
         st->smb2_size       = fs->standard.end_of_file;
@@ -1999,7 +2101,7 @@ smb2_fstat_async(struct smb2_context *smb2, struct smb2fh *fh,
 {
         struct stat_cb_data *stat_data;
         struct smb2_query_info_request req;
-        struct smb2_pdu *pdu;
+        struct smb2_pdu *pdu, *next_pdu;
 
         if (smb2 == NULL) {
                 return -EINVAL;
@@ -2021,18 +2123,32 @@ smb2_fstat_async(struct smb2_context *smb2, struct smb2fh *fh,
 
         memset(&req, 0, sizeof(struct smb2_query_info_request));
         req.info_type = SMB2_0_INFO_FILE;
-        req.file_info_class = SMB2_FILE_ALL_INFORMATION;
+        req.file_info_class = SMB2_FILE_ATTRIBUTE_TAG_INFORMATION;
         req.output_buffer_length = DEFAULT_OUTPUT_BUFFER_LENGTH;
         req.additional_information = 0;
         req.flags = 0;
         memcpy(req.file_id, fh->file_id, SMB2_FD_SIZE);
 
-        pdu = smb2_cmd_query_info_async(smb2, &req, fstat_cb_1, stat_data);
+        pdu = smb2_cmd_query_info_async(smb2, &req, stat_attribute_tag_cb,
+                                        stat_data);
         if (pdu == NULL) {
                 smb2_set_error(smb2, "Failed to create query command");
                 free(stat_data);
                 return -ENOMEM;
         }
+
+        req.file_info_class = SMB2_FILE_ALL_INFORMATION;
+        memcpy(req.file_id, compound_file_id, SMB2_FD_SIZE);
+
+        next_pdu = smb2_cmd_query_info_async(smb2, &req, fstat_cb_1, stat_data);
+        if (next_pdu == NULL) {
+                smb2_set_error(smb2, "Failed to create query command");
+                smb2_free_pdu(smb2, pdu);
+                free(stat_data);
+                return -ENOMEM;
+        }
+        smb2_add_compound_pdu(smb2, pdu, next_pdu);
+
         smb2_queue_pdu(smb2, pdu);
 
         return 0;
@@ -2072,13 +2188,8 @@ getinfo_cb_2(struct smb2_context *smb2, int status,
                 struct smb2_stat_64 *st = stat_data->st;
                 struct smb2_file_all_info *fs = rep->output_buffer;
 
-                st->smb2_type = SMB2_TYPE_FILE;
-                if (fs->basic.file_attributes & SMB2_FILE_ATTRIBUTE_DIRECTORY) {
-                        st->smb2_type = SMB2_TYPE_DIRECTORY;
-                }
-                if (fs->basic.file_attributes & SMB2_FILE_ATTRIBUTE_REPARSE_POINT) {
-                        st->smb2_type = SMB2_TYPE_LINK;
-                }
+                smb2_set_stat_type(st, fs->basic.file_attributes,
+                                   stat_data->reparse_tag);
                 st->smb2_nlink      = fs->standard.number_of_links;
                 st->smb2_ino        = fs->index_number;
                 st->smb2_size       = fs->standard.end_of_file;
@@ -2165,6 +2276,29 @@ smb2_getinfo_async(struct smb2_context *smb2, const char *path,
                 smb2_set_error(smb2, "Failed to create create command");
                 free(stat_data);
                 return -1;
+        }
+
+        /* QUERY INFO command for the reparse tag, only needed for stat() */
+        if (info_type == SMB2_0_INFO_FILE &&
+            file_info_class == SMB2_FILE_ALL_INFORMATION) {
+                memset(&qi_req, 0, sizeof(struct smb2_query_info_request));
+                qi_req.info_type = SMB2_0_INFO_FILE;
+                qi_req.file_info_class = SMB2_FILE_ATTRIBUTE_TAG_INFORMATION;
+                qi_req.output_buffer_length = DEFAULT_OUTPUT_BUFFER_LENGTH;
+                qi_req.additional_information = 0;
+                qi_req.flags = 0;
+                memcpy(qi_req.file_id, compound_file_id, SMB2_FD_SIZE);
+
+                next_pdu = smb2_cmd_query_info_async(smb2, &qi_req,
+                                                     stat_attribute_tag_cb,
+                                                     stat_data);
+                if (next_pdu == NULL) {
+                        smb2_set_error(smb2, "Failed to create query command");
+                        free(stat_data);
+                        smb2_free_pdu(smb2, pdu);
+                        return -1;
+                }
+                smb2_add_compound_pdu(smb2, pdu, next_pdu);
         }
 
         /* QUERY INFO command */
@@ -2597,22 +2731,67 @@ struct readlink_cb_data {
         struct smb2_reparse_data_buffer *reparse;
 };
 
+/*
+ * Strip the "\??\" prefix that windows puts in front of an absolute
+ * substitute name. It is an object manager path and means nothing to us.
+ */
+static char *
+readlink_strip_nt_prefix(char *name)
+{
+        if (name && !strncmp(name, "\\??\\", 4)) {
+                return name + 4;
+        }
+        return name;
+}
+
 static void
 readlink_cb_3(struct smb2_context *smb2, int status,
             void *command_data _U_, void *private_data)
 {
         struct readlink_cb_data *cb_data = private_data;
         struct smb2_reparse_data_buffer *rp = cb_data->reparse;
-        char *target = (char*)"<unknown reparse point type>";
+        char *target = NULL;
+        int rc;
 
-        if (rp) {
+        rc = -nterror_to_errno(cb_data->status);
+        if (rc == 0 && rp == NULL) {
+                smb2_set_error(smb2, "No reparse data in reply");
+                rc = -EIO;
+        }
+        if (rc == 0) {
                 switch (rp->reparse_tag) {
                 case SMB2_REPARSE_TAG_SYMLINK:
-                        target = rp->symlink.subname;
+                case SMB2_REPARSE_TAG_MOUNT_POINT:
+                        /*
+                         * The print name is the human readable form of the
+                         * target. It is optional so fall back to the
+                         * substitute name when it is not there.
+                         */
+                        if (rp->symlink.printname &&
+                            rp->symlink.printname[0]) {
+                                target = rp->symlink.printname;
+                        } else {
+                                target = readlink_strip_nt_prefix(
+                                                rp->symlink.subname);
+                        }
+                        break;
+                case SMB2_REPARSE_TAG_LX_SYMLINK:
+                        target = rp->lx_symlink.target;
+                        break;
+                default:
+                        /*
+                         * Some other kind of reparse point. Most of them
+                         * are filter driver private data on a file that is
+                         * otherwise perfectly normal, so this is the same
+                         * error posix readlink() returns for a non-link.
+                         */
+                        smb2_set_error(smb2, "Reparse point tag 0x%08x is "
+                                       "not a link", rp->reparse_tag);
+                        rc = -EINVAL;
+                        break;
                 }
         }
-        cb_data->cb(smb2, -nterror_to_errno(cb_data->status),
-                    target, cb_data->cb_data);
+        cb_data->cb(smb2, rc, target, cb_data->cb_data);
         smb2_free_data(smb2, rp);
         free(cb_data);
 }

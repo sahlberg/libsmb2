@@ -637,6 +637,17 @@ struct smb2_file_basic_info {
 };
 
 /*
+ * FILE_ATTRIBUTE_TAG_INFORMATION
+ * This is the only way to learn the reparse tag of a file we have open.
+ * reparse_tag is only valid if file_attributes has
+ * SMB2_FILE_ATTRIBUTE_REPARSE_POINT set.
+ */
+struct smb2_file_attribute_tag_info {
+        uint32_t file_attributes;
+        uint32_t reparse_tag;
+};
+
+/*
  * FILE_STANDARD_INFORMATION
  */
 struct smb2_file_standard_info {
@@ -1009,13 +1020,89 @@ struct smb2_query_info_reply {
 #define SMB2_0_IOCTL_IS_FSCTL                   0x00000001
 
 #define SMB2_SYMLINK_FLAG_RELATIVE 0x00000001
+/*
+ * Used for both IO_REPARSE_TAG_SYMLINK and IO_REPARSE_TAG_MOUNT_POINT.
+ * The two buffers are identical except that the mount point has no
+ * flags field, in which case flags is reported as 0.
+ * [MS-FSCC] 2.1.2.4 and 2.1.2.5
+ */
 struct smb2_symlink_reparse_buffer {
         uint32_t flags;
         char *subname;
         char *printname;
 };
 
+/*
+ * IO_REPARSE_TAG_LX_SYMLINK, the symlinks that WSL creates.
+ * [MS-FSCC] 2.1.2.7
+ */
+struct smb2_lx_symlink_reparse_buffer {
+        uint32_t version;
+        char *target;
+};
+
+/*
+ * Reparse point tags. [MS-FSCC] 2.1.2.1
+ *
+ * The top four bits of a tag describe the tag itself :
+ *   M  Microsoft owned tag.
+ *   R  Reserved.
+ *   N  Name surrogate. The object names some other entity in the system,
+ *      i.e. it is a link of some sort.
+ *   D  A directory with this tag can have children.
+ *
+ * Only a handful of tags actually redirect to another name and thus
+ * behave like a posix symlink. Most of them are just private data for a
+ * filter driver (deduplication, compression, cloud storage, hsm, ...)
+ * where the file is still an ordinary file that reads and writes as
+ * usual. For tags we do not know about, the name surrogate bit is
+ * microsofts generic way of telling us which of the two it is.
+ */
+#define SMB2_REPARSE_TAG_MICROSOFT_BIT          0x80000000
+#define SMB2_REPARSE_TAG_RESERVED_BIT           0x40000000
+#define SMB2_REPARSE_TAG_NAME_SURROGATE_BIT     0x20000000
+#define SMB2_REPARSE_TAG_DIRECTORY_BIT          0x10000000
+
+#define SMB2_REPARSE_TAG_IS_NAME_SURROGATE(t) \
+        (((t) & SMB2_REPARSE_TAG_NAME_SURROGATE_BIT) != 0)
+
+#define SMB2_REPARSE_TAG_MOUNT_POINT            0xa0000003
+#define SMB2_REPARSE_TAG_HSM                    0xc0000004
+#define SMB2_REPARSE_TAG_DRIVE_EXTENDER         0x80000005
+#define SMB2_REPARSE_TAG_HSM2                   0x80000006
+#define SMB2_REPARSE_TAG_SIS                    0x80000007
+#define SMB2_REPARSE_TAG_WIM                    0x80000008
+#define SMB2_REPARSE_TAG_CSV                    0x80000009
+#define SMB2_REPARSE_TAG_DFS                    0x8000000a
+#define SMB2_REPARSE_TAG_FILTER_MANAGER         0x8000000b
 #define SMB2_REPARSE_TAG_SYMLINK                0xa000000c
+#define SMB2_REPARSE_TAG_IIS_CACHE              0xa0000010
+#define SMB2_REPARSE_TAG_DFSR                   0x80000012
+#define SMB2_REPARSE_TAG_DEDUP                  0x80000013
+#define SMB2_REPARSE_TAG_NFS                    0x80000014
+#define SMB2_REPARSE_TAG_FILE_PLACEHOLDER       0x80000015
+#define SMB2_REPARSE_TAG_DFM                    0x80000016
+#define SMB2_REPARSE_TAG_WOF                    0x80000017
+#define SMB2_REPARSE_TAG_WCI                    0x80000018
+#define SMB2_REPARSE_TAG_WCI_1                  0x90001018
+#define SMB2_REPARSE_TAG_GLOBAL_REPARSE         0xa0000019
+#define SMB2_REPARSE_TAG_CLOUD                  0x9000001a
+#define SMB2_REPARSE_TAG_APPEXECLINK            0x8000001b
+#define SMB2_REPARSE_TAG_PROJFS                 0x9000001c
+#define SMB2_REPARSE_TAG_LX_SYMLINK             0xa000001d
+#define SMB2_REPARSE_TAG_STORAGE_SYNC           0x8000001e
+#define SMB2_REPARSE_TAG_WCI_TOMBSTONE          0xa000001f
+#define SMB2_REPARSE_TAG_UNHANDLED              0x80000020
+#define SMB2_REPARSE_TAG_ONEDRIVE               0x80000021
+#define SMB2_REPARSE_TAG_PROJFS_TOMBSTONE       0xa0000022
+#define SMB2_REPARSE_TAG_AF_UNIX                0x80000023
+#define SMB2_REPARSE_TAG_LX_FIFO                0x80000024
+#define SMB2_REPARSE_TAG_LX_CHR                 0x80000025
+#define SMB2_REPARSE_TAG_LX_BLK                 0x80000026
+#define SMB2_REPARSE_TAG_WCI_LINK               0xa0000027
+#define SMB2_REPARSE_TAG_STORAGE_SYNC_FOLDER    0x90000027
+#define SMB2_REPARSE_TAG_WCI_LINK_1             0xa0001027
+
 /*
  * Reparse_data_buffer
  */
@@ -1024,6 +1111,7 @@ struct smb2_reparse_data_buffer {
         uint16_t reparse_data_length;
         union {
                 struct smb2_symlink_reparse_buffer symlink;
+                struct smb2_lx_symlink_reparse_buffer lx_symlink;
         };
 };
 

@@ -77,8 +77,8 @@ libsmb2_la_SOURCES = \
 	unicode.c \
 	usha.c
 
-SOCURRENT=6
-SOREVISION=1
+SOCURRENT=7
+SOREVISION=0
 SOAGE=0
 
 libsmb2_la_LDFLAGS = \

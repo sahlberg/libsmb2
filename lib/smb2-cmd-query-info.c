@@ -197,6 +197,9 @@ smb2_encode_query_info_reply(struct smb2_context *smb2,
                         case SMB2_FILE_ALTERNATE_NAME_INFORMATION:
                                 break;
                         case SMB2_FILE_ATTRIBUTE_TAG_INFORMATION:
+                                created_output_buffer_length =
+                                        smb2_encode_file_attribute_tag_info(smb2,
+                                                (struct smb2_file_attribute_tag_info *)rep->output_buffer, iov);
                                 break;
                         case SMB2_FILE_BASIC_INFORMATION:
                                 created_output_buffer_length =
@@ -471,6 +474,18 @@ int smb2_process_query_info_variable(struct smb2_context *smb2,
                 case SMB2_FILE_ALTERNATE_NAME_INFORMATION:
                         break;
                 case SMB2_FILE_ATTRIBUTE_TAG_INFORMATION:
+                        ptr = smb2_alloc_init(smb2,
+                                  sizeof(struct smb2_file_attribute_tag_info));
+                        if (ptr == NULL) {
+                                return -ENOMEM;
+                        }
+                        if (smb2_decode_file_attribute_tag_info(smb2, ptr, ptr,
+                                                                &vec)) {
+                                smb2_set_error(smb2, "could not decode file "
+                                               "attribute tag info. %s",
+                                               smb2_get_error(smb2));
+                                return -1;
+                        }
                         break;
                 case SMB2_FILE_BASIC_INFORMATION:
                         ptr = smb2_alloc_init(smb2,
