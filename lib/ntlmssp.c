@@ -898,7 +898,6 @@ encode_ntlm_challenge(struct smb2_context *smb2, struct auth_data *auth_data)
         uint8_t anonymous = 0;
         int target_info_pos;
         int namelen;
-     int cc;
         char *upper = NULL;
 
         /* Generate CHALLENGE_MESSAGE  */
@@ -931,10 +930,14 @@ encode_ntlm_challenge(struct smb2_context *smb2, struct auth_data *auth_data)
         u32 = htole32(u32);
         encoder(&u32, 4, auth_data);
 
-        /* server challenge */
-        for (cc = 0; cc < 8; cc++) {
-                auth_data->server_challenge[cc] = cc + 1;
-        }
+        /*
+         * Server challenge. This has to be unpredictable: with a fixed
+         * challenge a captured response stays valid forever and responses
+         * can be precomputed offline. We used to send 01 02 03 04 05 06 07
+         * 08 every single time.
+         */
+        smb2_random_bytes(auth_data->server_challenge,
+                          sizeof(auth_data->server_challenge));
         encoder(auth_data->server_challenge, 8, auth_data);
 
         /* reserved */

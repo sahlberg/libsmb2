@@ -665,6 +665,43 @@ void smb2_set_security_mode(struct smb2_context *smb2, uint16_t security_mode)
         smb2->security_mode = security_mode;
 }
 
+/*
+ * Does name match the host part of the server string ?
+ *
+ * smb2->server can carry a port, and IPv6 is in [...] form, exactly as
+ * smb2_connect_async() parses it. NTLM_USER_FILE is keyed on the host
+ * alone, and a key in that file can not contain a port anyway since the
+ * colon is the field separator, so compare only the host part. Comparing
+ * the whole string meant that a URL naming a port never matched anything
+ * in the file, the client then had no password, and it silently fell
+ * back to an anonymous session.
+ */
+static int
+server_host_matches(const char *server, const char *name)
+{
+        const char *host, *end;
+        size_t len;
+
+        if (server == NULL || name == NULL) {
+                return 0;
+        }
+
+        host = server;
+        if (host[0] == '[') {
+                host++;
+                end = strchr(host, ']');
+                if (end == NULL) {
+                        return 0;
+                }
+                len = (size_t)(end - host);
+        } else {
+                end = strchr(host, ':');
+                len = end ? (size_t)(end - host) : strlen(host);
+        }
+
+        return strlen(name) == len && !strncmp(name, host, len);
+}
+
 void smb2_set_password_from_file(struct smb2_context *smb2)
 {
 #if !defined(_XBOX) && !defined(_IOP) && !defined(__amigaos4__) && !defined(__AMIGA__) && !defined(__AROS__)
@@ -743,7 +780,7 @@ void smb2_set_password_from_file(struct smb2_context *smb2)
                         fclose(fh);
                         return;
                 }
-                if (domain[0] && smb2->server && !strcmp(smb2->server, domain)) {
+                if (domain[0] && server_host_matches(smb2->server, domain)) {
                         smb2_set_password(smb2, password);
                         fclose(fh);
                         return;
