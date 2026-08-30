@@ -401,8 +401,19 @@ smb2_process_set_info_request_variable(struct smb2_context *smb2,
         struct smb2_set_info_request *req = (struct smb2_set_info_request*)pdu->payload;
         struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
 
-        if (!smb2->passthrough) {
-                smb2_set_error(smb2, "can not interpret set-info buffers yet");
+        /*
+         * We have no decoders for the set-info payloads, but a server still
+         * has to answer them and windows clients send them all the time, so
+         * refusing everything unless the application asked for passthrough
+         * made libsmb2 unusable as a server for those clients.
+         *
+         * Hand the raw buffer over instead. The application knows which
+         * structure it is from info_type and file_info_class, and how much
+         * of it there is from buffer_length.
+         */
+        if (iov->len < req->buffer_length) {
+                smb2_set_error(smb2, "Set-info buffer is shorter than the "
+                               "advertised length");
                 return -1;
         }
         req->input_data = iov->buf;

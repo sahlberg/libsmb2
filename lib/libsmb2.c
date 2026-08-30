@@ -5263,8 +5263,13 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
                 return err;
         }
         server->session_counter = 0x1234;
+        server->listener_ready = 1;
 
         do {
+                if (server->stop_requested) {
+                        break;
+                }
+
                 /* select on the file descriptors of all active client connections and our server socket
                    for the first readable event
                 */
@@ -5344,6 +5349,7 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
                                         if (c_data == NULL) {
                                                 smb2_set_error(smb2, "Failed to allocate connect_data");
                                                 smb2_close_context(smb2);
+                                                continue;
                                         }
                                         c_data->server_context = server;
                                         smb2->connect_data = c_data;
@@ -5353,6 +5359,7 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
                                         if (!smb2->pdu) {
                                                 smb2_set_error(smb2, "can not alloc pdu for request");
                                                 smb2_close_context(smb2);
+                                                continue;
                                         }
                                         /* got a new smb2 context with a connection, enlist it and tell user */
                                         smb2->owning_server = server;
@@ -5417,8 +5424,9 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
                 }
 #endif
         }
-        while (err == 0);
+        while (err == 0 && !server->stop_requested);
 
+        server->listener_ready = 0;
         close(server->fd);
         server->fd = -1;
 

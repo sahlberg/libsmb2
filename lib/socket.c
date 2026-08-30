@@ -1520,6 +1520,9 @@ smb2_bind_and_listen(const uint16_t port, const int max_connections, int *out_fd
         t_socket fd;
         socklen_t socksize;
         struct sockaddr_in serv_addr;
+#if defined(SO_REUSEADDR) && !defined(_WIN32) && !defined(_MSC_VER)
+        int const yes = 1;
+#endif
 
              *out_fd = -1;
 
@@ -1531,6 +1534,20 @@ smb2_bind_and_listen(const uint16_t port, const int max_connections, int *out_fd
         set_nonblocking(fd);
         set_tcp_sockopt(fd, TCP_NODELAY, 1);
 
+#if defined(SO_REUSEADDR) && !defined(_WIN32) && !defined(_MSC_VER)
+        /*
+         * Allow binding while an old socket for this port is still sitting
+         * in TIME_WAIT, otherwise stopping and restarting the server fails
+         * with EADDRINUSE.
+         *
+         * Not done on windows, where SO_REUSEADDR lets an unrelated
+         * process take over a port we are already listening on.
+         */
+        setsockopt(fd, SOL_SOCKET, SO_REUSEADDR,
+                   (const void *)&yes, sizeof(yes));
+#endif
+
+        memset(&serv_addr, 0, sizeof(serv_addr));
         serv_addr.sin_port = htons(port);
         serv_addr.sin_family = AF_INET;
         serv_addr.sin_addr.s_addr = INADDR_ANY;

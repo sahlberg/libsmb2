@@ -1599,6 +1599,20 @@ struct smb2_server {
                             fd_set *rfds, fd_set *wfds, int *maxfd);
         void (*extra_service)(struct smb2_server *server,
                               fd_set *rfds, fd_set *wfds);
+        /*
+         * Set this from another thread, an RTOS task or a signal handler
+         * to make smb2_serve_port() finish its current pass through the
+         * loop, tear the connections down and return 0. Without it there
+         * is no way to stop the server short of killing the process.
+         */
+        volatile int stop_requested;
+        /*
+         * Set by smb2_serve_port() once the listening socket is bound and
+         * listening, and cleared again when it returns, so that whoever
+         * started the server can tell when it is actually reachable
+         * instead of having to sleep and hope.
+         */
+        volatile int listener_ready;
 };
 
 int smb2_bind_and_listen(const uint16_t port, const int max_connections, int *out_fd);
