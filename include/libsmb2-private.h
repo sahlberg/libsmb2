@@ -329,6 +329,14 @@ struct smb2_pdu {
         uint64_t prev_compound_mid;
 
         int caller_frees_pdu;
+        /*
+         * Set for the negotiate and session setup pdus that take part in
+         * the SMB3.1.1 preauth integrity hash. The hash has to be taken
+         * over the bytes we actually send, so it is done inside
+         * smb2_queue_pdu() once the header is encoded and the pdu is
+         * signed, and before the pdu can be written out and freed.
+         */
+        int update_preauth_hash;
         smb2_command_cb cb;
         void *cb_data;
         void (*free_cb)(void *);
@@ -698,6 +706,8 @@ int smb2_decode_file_fs_sector_size_info(struct smb2_context *smb2,
 int smb2_encode_file_fs_sector_size_info(struct smb2_context *smb2,
                                      struct smb2_file_fs_sector_size_info *fs,
                                      struct smb2_iovec *vec);
+int smb3_update_preauth_hash(struct smb2_context *smb2, int niov,
+                             struct smb2_iovec *iov);
 int smb2_decode_symlink_error_response(struct smb2_context *smb2,
                                     void *memctx,
                                     struct smb2_symlink_error_response *sl,
