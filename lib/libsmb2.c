@@ -1898,7 +1898,7 @@ fstat_cb_1(struct smb2_context *smb2, int status,
 {
         struct stat_cb_data *stat_data = private_data;
         struct smb2_query_info_reply *rep = command_data;
-        struct smb2_file_all_info *fs = rep->output_buffer;
+        struct smb2_file_all_info *fs;
         struct smb2_stat_64 *st = stat_data->st;
 
         if (status != SMB2_STATUS_SUCCESS) {
@@ -1907,6 +1907,13 @@ fstat_cb_1(struct smb2_context *smb2, int status,
                 free(stat_data);
                 return;
         }
+
+        /* command_data is NULL on any non-success completion -- notably
+         * smb2_destroy_context(), which drains the waitqueue by invoking every
+         * pending callback with (SMB2_STATUS_SHUTDOWN, NULL). Dereferencing it
+         * before the status check above segfaulted whenever a socket died with
+         * an fstat in flight. */
+        fs = rep->output_buffer;
 
         st->smb2_type = SMB2_TYPE_FILE;
         if (fs->basic.file_attributes & SMB2_FILE_ATTRIBUTE_DIRECTORY) {
