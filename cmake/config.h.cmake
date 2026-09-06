@@ -9,6 +9,9 @@
 /* Define to 1 if you have the <fcntl.h> header file. */
 #cmakedefine HAVE_FCNTL_H "@HAVE_FCNTL_H@"
 
+/* Define to 1 if you have the <CommonCrypto/CommonCryptor.h> header file. */
+#cmakedefine HAVE_COMMONCRYPTO_COMMONCRYPTOR_H "@HAVE_COMMONCRYPTO_COMMONCRYPTOR_H@"
+
 /* Define to 1 if you have the <sys/fcntl.h> header file. */
 #cmakedefine HAVE_SYS_FCNTL_H "@HAVE_SYS_FCNTL_H@"
 

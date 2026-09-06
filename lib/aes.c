@@ -18,14 +18,17 @@
 
 #include "aes.h"
 
-#ifdef __APPLE__
+/* Use Apple's CommonCrypto only where it actually exists; otherwise fall
+ * back to the portable reference AES implementation, e.g. when building
+ * with a toolchain that doesn't see Apple's framework headers at all. */
+#if defined(__APPLE__) && defined(HAVE_COMMONCRYPTO_COMMONCRYPTOR_H)
 #include "aes_apple.h"
 #else
 #include "aes_reference.h"
 #endif
 
 void AES128_ECB_encrypt(uint8_t* input, const uint8_t* key, uint8_t *output) {
-#ifdef __APPLE__
+#if defined(__APPLE__) && defined(HAVE_COMMONCRYPTO_COMMONCRYPTOR_H)
 AES128_ECB_encrypt_apple(input, key, output);
 #else
 AES128_ECB_encrypt_reference(input, key, output);

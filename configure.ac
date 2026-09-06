@@ -100,6 +100,16 @@ AC_SUBST([LIBSOCKET])
 
 AC_CHECK_LIB([dl], [dlsym], [], [AC_MSG_ERROR([dlsym not found, libdl is required])])
 
+dnl  CommonCrypto.framework is not always reachable on Apple platforms
+dnl  (e.g. a toolchain that doesn't see Apple's framework headers at
+dnl  all). Check for CommonCryptor.h, the header that actually declares
+dnl  the Cryptor API aes_apple.c uses (unlike the CommonCrypto.h
+dnl  umbrella header, which only exists from the 10.9 SDK onward,
+dnl  CommonCryptor.h has shipped since CommonCrypto was introduced in
+dnl  the 10.5 SDK). aes.c falls back to the portable reference AES
+dnl  implementation when it is missing.
+AC_CHECK_HEADERS([CommonCrypto/CommonCryptor.h])
+
 dnl  Check for poll.h
 AC_CHECK_HEADERS([poll.h])
 
