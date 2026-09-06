@@ -90,10 +90,12 @@ endif()
   endif()
 
   # Kerberos. On Apple with GSS.framework, link only that framework (and
-  # Kerberos.framework); otherwise every krb5_* and gss_* symbol we use
-  # comes out of gssapi_krb5, which is also the only thing the autotools
-  # build links in that case. See the block below for why the two paths
-  # must not mix.
+  # Kerberos.framework); see the block below for why the two paths must
+  # not mix. Otherwise we use gss_* symbols from gssapi_krb5 and krb5_*
+  # symbols from krb5 directly (gssapi_krb5 only imports the latter, it
+  # does not define them). FindGSSAPI links krb5 too whenever it can
+  # find it separately, same as the autotools build; see its comments
+  # for why that's best-effort rather than required.
   #
   # This used to be probed on linux only, with ios looking for gssapi
   # instead, so on macos and the BSDs the header check in ConfigureChecks

@@ -59,10 +59,20 @@ AS_IF([test "x$with_libkrb5" != "xno"], [
         dnl  guaranteed to match, regardless of what else -L turns up.
         MAYBE_LIBKRB5="-framework GSS -framework Kerberos"
     ], [
-        MAYBE_LIBKRB5="-lgssapi_krb5"
         AC_CHECK_HEADERS([gssapi/gssapi.h], [], [
             AC_MSG_ERROR([You need gssapi development files to compile libsmb2.])
         ])
+        dnl  -lgssapi_krb5 alone is not enough on a normal Unix/MIT krb5
+        dnl  install: the gssapi_krb5 library only imports krb5_* symbols
+        dnl  from libkrb5, it does not define them, so -no-undefined
+        dnl  shared library links (and static links) fail unless libkrb5
+        dnl  is linked explicitly. Only add -lkrb5 when it is actually
+        dnl  there, so this is a no-op wherever the old
+        dnl  -lgssapi_krb5-only link already worked (e.g. if a platform
+        dnl  bundles the krb5_* symbols into gssapi_krb5 itself).
+        AC_CHECK_LIB([krb5], [krb5_init_context],
+            [MAYBE_LIBKRB5="-lgssapi_krb5 -lkrb5"],
+            [MAYBE_LIBKRB5="-lgssapi_krb5"])
     ])
 ], [
     MAYBE_LIBKRB5=""
