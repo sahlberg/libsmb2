@@ -4302,7 +4302,9 @@ srvsvc_TIME_OF_DAY_INFO_coder(char *name, struct dcerpc_context *dce,
                               void *ptr)
 {
         struct srvsvc_TIME_OF_DAY_INFO *tod = ptr;
-        uint32_t timezone = 0;
+        /* Not named "timezone": that shadows the POSIX global of
+         * the same name declared by <time.h> on some platforms. */
+        uint32_t tz = 0;
 
         if (dcerpc_uint32_coder("Elapsedt", dce, pdu, iov, offset, &tod->elapsedt)) {
                 return -1;
@@ -4323,13 +4325,13 @@ srvsvc_TIME_OF_DAY_INFO_coder(char *name, struct dcerpc_context *dce,
                 return -1;
         }
         if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
-                timezone = (uint32_t)tod->timezone;
+                tz = (uint32_t)tod->timezone;
         }
-        if (dcerpc_uint32_coder("Timezone", dce, pdu, iov, offset, &timezone)) {
+        if (dcerpc_uint32_coder("Timezone", dce, pdu, iov, offset, &tz)) {
                 return -1;
         }
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && !dcerpc_get_cr(pdu)) {
-                tod->timezone = (int32_t)timezone;
+                tod->timezone = (int32_t)tz;
         }
         if (dcerpc_uint32_coder("Tinterval", dce, pdu, iov, offset, &tod->tinterval)) {
                 return -1;
