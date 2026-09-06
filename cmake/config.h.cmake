@@ -18,6 +18,9 @@
 /* Define to 1 if you have the <gssapi/gssapi.h> header file. */
 #cmakedefine HAVE_GSSAPI_GSSAPI_H "@HAVE_GSSAPI_GSSAPI_H@"
 
+/* Define to 1 if you have the <GSS/GSS.h> header file. */
+#cmakedefine HAVE_GSS_GSS_H "@HAVE_GSS_GSS_H@"
+
 /* Whether we use gssapi_krb5 or not */
 #cmakedefine HAVE_LIBKRB5 "@HAVE_LIBKRB5@"
 

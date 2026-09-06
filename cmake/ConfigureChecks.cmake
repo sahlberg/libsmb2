@@ -17,6 +17,9 @@ check_include_file("gssapi/gssapi.h" HAVE_GSSAPI_GSSAPI_H)
 endif()
 if (ENABLE_LIBKRB5)
 check_include_file("krb5/krb5.h" HAVE_LIBKRB5)
+# Prefer Apple's GSS.framework header when present; otherwise the code
+# falls back to the normal Unix gssapi/gssapi.h codepath (issue #476).
+check_include_file("GSS/GSS.h" HAVE_GSS_GSS_H)
 endif()
 check_include_file("inttypes.h" HAVE_INTTYPES_H)
 check_include_file("netdb.h" HAVE_NETDB_H)

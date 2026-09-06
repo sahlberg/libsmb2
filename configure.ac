@@ -35,12 +35,34 @@ AC_ARG_WITH([libkrb5],
                              NTLMSSP module for authentication instead.])])
 
 AS_IF([test "x$with_libkrb5" != "xno"], [
-    MAYBE_LIBKRB5="-lgssapi_krb5"
     AC_DEFINE([HAVE_LIBKRB5], [1], [Whether we use gssapi_krb5 or not])
     AC_MSG_NOTICE([Build with gssapi_krb5 support])
-    dnl  Check for gssapi/gssapi.h
-    AC_CHECK_HEADERS([gssapi/gssapi.h], [], [
-        AC_MSG_ERROR([You need gssapi development files to compile libsmb2.])
+    dnl  On Apple platforms we prefer the GSS.framework header, but it is
+    dnl  not always present (e.g. older SDKs, or a Heimdal/MIT krb5 install
+    dnl  from a package manager instead of Xcode). Fall back to the normal
+    dnl  Unix gssapi/gssapi.h codepath whenever GSS/GSS.h is not available.
+    AC_CHECK_HEADERS([GSS/GSS.h])
+    AS_IF([test "x$ac_cv_header_GSS_GSS_h" = "xyes"], [
+        dnl  When GSS.framework is what we compile against, link *only*
+        dnl  the framework (and Kerberos.framework for the krb5_* API),
+        dnl  never -lgssapi_krb5/-lkrb5. Those plain -l names are found
+        dnl  by searching the whole library path, so on a system with a
+        dnl  package manager (MacPorts, Homebrew, ...) they can just as
+        dnl  easily resolve to a completely unrelated MIT/Heimdal krb5
+        dnl  install as to Apple's own. That wouldn't just be untidy: it
+        dnl  would run code compiled against GSS.framework's header (and
+        dnl  gated on GSS.framework's specific limitations, e.g. no
+        dnl  gss_set_neg_mechs, no s4u2self proxy credentials) against a
+        dnl  *different* implementation that doesn't actually share those
+        dnl  limitations. Frameworks are found via the framework search
+        dnl  path, not -L, so this keeps header and implementation
+        dnl  guaranteed to match, regardless of what else -L turns up.
+        MAYBE_LIBKRB5="-framework GSS -framework Kerberos"
+    ], [
+        MAYBE_LIBKRB5="-lgssapi_krb5"
+        AC_CHECK_HEADERS([gssapi/gssapi.h], [], [
+            AC_MSG_ERROR([You need gssapi development files to compile libsmb2.])
+        ])
     ])
 ], [
     MAYBE_LIBKRB5=""
