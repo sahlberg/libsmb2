@@ -1229,7 +1229,7 @@ set_nonblocking(t_socket fd)
          * translation internally, so use that instead of building the
          * F_SETFL flags word ourselves. */
         int one = 1;
-        int ioctl_ret = net_ioctl(fd, FIONBIO, &one);
+        net_ioctl(fd, FIONBIO, &one);
 #else
         unsigned v;
         v = fcntl(fd, F_GETFL, 0);
