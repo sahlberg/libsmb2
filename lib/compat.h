@@ -763,21 +763,31 @@ void smb2_freeaddrinfo(struct addrinfo *res);
 #define freeaddrinfo smb2_freeaddrinfo
 
 #ifndef __NDS__
+int smb2_net_connect(int fd, struct sockaddr *addr, socklen_t addrlen);
+int smb2_net_close(int fd);
+int smb2_net_fcntl(int fd, int cmd, ...);
 ssize_t smb2_net_write(int fd, const void *buf, size_t count);
 ssize_t smb2_net_read(int fd, void *buf, size_t count);
-int smb2_net_close(int fd);
+int smb2_net_socket(int domain, int type, int protocol);
+int smb2_net_getsockopt(int fd, int level, int optname, void *optval, socklen_t *optlen);
+int smb2_net_setsockopt(int fd, int level, int optname, const void *optval, socklen_t optlen);
+int smb2_net_bind(int fd, struct sockaddr *addr, socklen_t addrlen);
+int smb2_net_listen(int fd, int backlog);
+int smb2_net_accept(int fd, struct sockaddr *addr, socklen_t *addrlen);
+int smb2_net_select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout);
 
-#define connect net_connect
-#define socket net_socket 
-#define setsockopt net_setsockopt
-s32 getsockopt(int sockfd, int level, int optname, void *optval, socklen_t *optlen);
-#define select net_select
-#define accept net_accept
-#define listen net_listen
-#define bind net_bind
-#define write(fd, buf, count) smb2_net_write(fd, buf, count)
-#define read(fd, buf, count)  smb2_net_read(fd, buf, count)
-#define close(fd)             smb2_net_close(fd)
+#define socket smb2_net_socket
+#define getsockopt smb2_net_getsockopt
+#define setsockopt smb2_net_setsockopt
+#define select smb2_net_select
+#define accept smb2_net_accept
+#define listen smb2_net_listen
+#define bind smb2_net_bind
+#define connect smb2_net_connect
+#define close smb2_net_close
+#define fcntl smb2_net_fcntl
+#define write smb2_net_write
+#define read  smb2_net_read
 #endif
 
 struct pollfd {
