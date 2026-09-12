@@ -671,6 +671,27 @@ struct addrinfo {
 	struct addrinfo *ai_next;	/* next structure in linked list */
 };
 
+#if defined(__wii__) || defined(__gamecube__)
+#if !defined(HAVE_SOCKADDR_STORAGE)
+/*
+ * RFC 2553: protocol-independent placeholder for socket addresses.
+ * libogc's <network.h> has no sockaddr_storage of its own.
+ */
+#define _SS_MAXSIZE     128
+#define _SS_ALIGNSIZE   (sizeof(double))
+#define _SS_PAD1SIZE    (_SS_ALIGNSIZE - sizeof(unsigned short))
+#define _SS_PAD2SIZE    (_SS_MAXSIZE - sizeof(unsigned short) - \
+                            _SS_PAD1SIZE - _SS_ALIGNSIZE)
+
+struct sockaddr_storage {
+    unsigned short ss_family;
+    char    __ss_pad1[_SS_PAD1SIZE];
+    double  __ss_align;
+    char    __ss_pad2[_SS_PAD2SIZE];
+};
+#endif
+#endif
+
 #endif
 #define sockaddr_in6 sockaddr_in
 #else
