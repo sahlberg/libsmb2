@@ -684,7 +684,8 @@ struct addrinfo {
                             _SS_PAD1SIZE - _SS_ALIGNSIZE)
 
 struct sockaddr_storage {
-    unsigned short ss_family;
+    unsigned char  ss_len;
+    unsigned char  ss_family;
     char    __ss_pad1[_SS_PAD1SIZE];
     double  __ss_align;
     char    __ss_pad2[_SS_PAD2SIZE];
