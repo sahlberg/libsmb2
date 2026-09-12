@@ -798,6 +798,14 @@ int smb2_net_select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptf
 #define read  smb2_net_read
 #endif
 
+#if defined(__has_include)
+#if __has_include(<poll.h>)
+#include <poll.h>
+#define SMB2_HAVE_OGC_POLL_H 1
+#endif
+#endif
+
+#ifndef SMB2_HAVE_OGC_POLL_H
 struct pollfd {
         int fd;
         short events;
@@ -805,6 +813,7 @@ struct pollfd {
 };
 
 int poll(struct pollfd *fds, unsigned int nfds, int timo);
+#endif
 
 #endif
 

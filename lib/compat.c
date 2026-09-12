@@ -577,7 +577,7 @@ ssize_t readv(t_socket fd, const struct iovec* vector, int count)
 }
 #endif
 
-#ifdef NEED_POLL
+#if defined(NEED_POLL) && !defined(SMB2_HAVE_OGC_POLL_H)
 int poll(struct pollfd *fds, unsigned int nfds, int timo)
 {
         struct timeval timeout, *toptr;
