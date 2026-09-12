@@ -70,12 +70,6 @@ check_include_file("stddef.h" STDC_HEADERS)
 
 include(CheckStructHasMember)
 if(SMB2_OGC_SINGLE_NETWORK_HEADER)
-  # Same reasoning as above: probing sys/socket.h in isolation here would
-  # report a result for a header lib/compat.h never actually includes on
-  # this platform. Leave both unset so lib/compat.h's own libogc2 fallback
-  # (unsigned char ss_len first, matching <network.h>'s 4.4BSD-style
-  # struct sockaddr_in layout) is the one that's compiled in, instead of
-  # silently deferring to a struct that's never included.
   set(HAVE_SOCKADDR_LEN OFF)
   set(HAVE_SOCKADDR_STORAGE OFF)
   check_struct_has_member("struct linger" l_linger network.h HAVE_LINGER)
