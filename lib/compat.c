@@ -251,6 +251,38 @@ socklen_t *optlen)
 
 
 }
+
+ssize_t smb2_net_write(int fd, const void *buf, size_t count)
+{
+        s32 ret = net_write(fd, buf, count);
+        if (ret < 0) {
+                errno = -ret;
+                return -1;
+        }
+        return ret;
+}
+
+ssize_t smb2_net_read(int fd, void *buf, size_t count)
+{
+        s32 ret = net_read(fd, buf, count);
+        if (ret < 0) {
+                errno = -ret;
+                return -1;
+        }
+        return ret;
+}
+
+int smb2_net_close(int fd)
+{
+        s32 ret = net_close(fd);
+        if (ret < 0) {
+                errno = -ret;
+                return -1;
+        }
+        return 0;
+}
+
+
 #endif
 
 #endif /* __SWITCH__ */
