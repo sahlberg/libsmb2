@@ -657,15 +657,7 @@ struct iovec {
 };	
 #if defined(__wii__) || defined(__gamecube__) || defined(__NDS__)
 #ifndef __NDS__
-
-#if !defined(AF_INET) && !defined(_SYS_SOCKET_H_) && !defined(_SYS_SOCKET_H) && \
-    !defined(_NETINET_IN_H_) && !defined(_NETINET_IN_H) && \
-    !defined(_ARPA_INET_H_) && !defined(_ARPA_INET_H)
 #include <network.h>
-#define SMB2_HAVE_OGC_NETWORK_H 1
-#endif
-#else
-#define SMB2_HAVE_OGC_NETWORK_H 1 /* __NDS__ never touches <network.h>; nothing below depends on it */
 #endif
 
 struct addrinfo {
@@ -770,7 +762,7 @@ void smb2_freeaddrinfo(struct addrinfo *res);
 #define getaddrinfo smb2_getaddrinfo
 #define freeaddrinfo smb2_freeaddrinfo
 
-#if !defined(__NDS__) && defined(SMB2_HAVE_OGC_NETWORK_H)
+#ifndef __NDS__
 int smb2_net_connect(int fd, struct sockaddr *addr, socklen_t addrlen);
 int smb2_net_close(int fd);
 int smb2_net_fcntl(int fd, int cmd, ...);

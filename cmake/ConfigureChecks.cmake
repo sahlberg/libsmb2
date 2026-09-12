@@ -1,6 +1,16 @@
 include(CheckIncludeFile)
 include(CheckIncludeFiles)
+
+set(SMB2_OGC_SINGLE_NETWORK_HEADER FALSE)
+if(CMAKE_SYSTEM_NAME MATCHES NintendoGameCube OR CMAKE_SYSTEM_NAME MATCHES NintendoWii)
+  set(SMB2_OGC_SINGLE_NETWORK_HEADER TRUE)
+endif()
+
+if(SMB2_OGC_SINGLE_NETWORK_HEADER)
+  set(HAVE_ARPA_INET_H OFF)
+else()
 check_include_file("arpa/inet.h" HAVE_ARPA_INET_H)
+endif()
 check_include_file("dlfcn.h" HAVE_DLFCN_H)
 check_include_file("fcntl.h" HAVE_FCNTL_H)
 # CommonCrypto.framework is not always reachable on Apple platforms
@@ -23,7 +33,11 @@ check_include_file("GSS/GSS.h" HAVE_GSS_GSS_H)
 endif()
 check_include_file("inttypes.h" HAVE_INTTYPES_H)
 check_include_file("netdb.h" HAVE_NETDB_H)
+if(SMB2_OGC_SINGLE_NETWORK_HEADER)
+  set(HAVE_NETINET_IN_H OFF)
+else()
 check_include_file("netinet/in.h" HAVE_NETINET_IN_H)
+endif()
 check_include_files("sys/types.h;netinet/tcp.h" HAVE_NETINET_TCP_H)
 check_include_file("poll.h" HAVE_POLL_H)
 check_include_file("stdint.h" HAVE_STDINT_H)
@@ -35,7 +49,11 @@ check_include_file("sys/ioctl.h" HAVE_SYS_IOCTL_H)
 if(NOT PS4)
 check_include_file("sys/poll.h" HAVE_SYS_POLL_H)
 endif()
+if(SMB2_OGC_SINGLE_NETWORK_HEADER)
+  set(HAVE_SYS_SOCKET_H OFF)
+else()
 check_include_file("sys/socket.h" HAVE_SYS_SOCKET_H)
+endif()
 check_include_file("sys/stat.h" HAVE_SYS_STAT_H)
 check_include_file("sys/types.h" HAVE_SYS_TYPES_H)
 check_include_file("sys/uio.h" HAVE_SYS_UIO_H)
@@ -51,11 +69,19 @@ check_include_file("errno.h" HAVE_ERRNO_H)
 check_include_file("stddef.h" STDC_HEADERS)
 
 include(CheckStructHasMember)
+if(SMB2_OGC_SINGLE_NETWORK_HEADER)
+  # Same reasoning as above: probing sys/socket.h in isolation here would
+  # report a result for a header lib/compat.h never actually includes on
+  # this platform. Leave both unset so lib/compat.h's own libogc2 fallback
+  # (unsigned char ss_len first, matching <network.h>'s 4.4BSD-style
+  # struct sockaddr_in layout) is the one that's compiled in, instead of
+  # silently deferring to a struct that's never included.
+  set(HAVE_SOCKADDR_LEN OFF)
+  set(HAVE_SOCKADDR_STORAGE OFF)
+  check_struct_has_member("struct linger" l_linger network.h HAVE_LINGER)
+else()
 check_struct_has_member("struct sockaddr" sa_len sys/socket.h HAVE_SOCKADDR_LEN)
 check_struct_has_member("struct sockaddr_storage" ss_family sys/socket.h HAVE_SOCKADDR_STORAGE)
-if(CMAKE_SYSTEM_NAME MATCHES NintendoGameCube OR CMAKE_SYSTEM_NAME MATCHES NintendoWii)
-check_struct_has_member("struct linger" l_linger network.h HAVE_LINGER)
-else()
 check_struct_has_member("struct linger" l_linger sys/socket.h HAVE_LINGER)
 endif()
 
