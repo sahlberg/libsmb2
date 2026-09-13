@@ -25,7 +25,7 @@ gc_install: gc_all
 	cmake --build build --target install
 
 nds_all:
-	cmake -S . -B build -G Ninja "-DCMAKE_TOOLCHAIN_FILE=${DEVKITPRO}/cmake/NDS.cmake" 
+	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=${DEVKITPRO}/cmake/NDS.cmake" 
 	cmake --build build
 
 nds_install: nds_all
@@ -39,21 +39,21 @@ wii_install: wii_all
 	cmake --build build --target install
 
 3ds_all:
-	cmake -S . -B build -G Ninja "-DCMAKE_TOOLCHAIN_FILE=${DEVKITPRO}/cmake/3DS.cmake" 
+	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=${DEVKITPRO}/cmake/3DS.cmake" 
 	cmake --build build
 
 3ds_install: 3ds_all
-	cmake --build build -G Ninja --target install
+	cmake --build build --target install
 
 wiiu_all:
-	cmake -S . -B build -G Ninja "-DCMAKE_TOOLCHAIN_FILE=${DEVKITPRO}/cmake/WiiU.cmake" 
+	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=${DEVKITPRO}/cmake/WiiU.cmake" 
 	cmake --build build
 
 wiiu_install: wiiu_all
-	cmake --build build -G Ninja --target install
+	cmake --build build --target install
 
 switch_all:
-	cmake -S . -B build -G Ninja "-DCMAKE_TOOLCHAIN_FILE=${DEVKITPRO}/cmake/Switch.cmake" 
+	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=${DEVKITPRO}/cmake/Switch.cmake" 
 	cmake --build build
 
 switch_install: switch_all
