@@ -248,8 +248,7 @@ struct smb2fh *smb2_open(struct smb2_context *smb2, const char *path, int flags)
                 return NULL;
         }
 
-        /* pdu takes ownership of cb_data and will free it when the pdu is freed */
-	pdu = smb2_open_async_pdu(smb2, path, flags, sync_open_cb, cb_data, free);
+	pdu = smb2_open_async_pdu(smb2, path, flags, sync_open_cb, cb_data, NULL);
         if (pdu == NULL) {
 		smb2_set_error(smb2, "smb2_open_async failed");
                 free(cb_data);
@@ -258,12 +257,13 @@ struct smb2fh *smb2_open(struct smb2_context *smb2, const char *path, int flags)
 
 	if (wait_for_reply(smb2, cb_data) < 0) {
                 smb2_free_pdu(smb2, pdu);
+                free(cb_data);
                 return NULL;
         }
 
 	ptr = cb_data->ptr;
-        cb_data->ptr = NULL;
         smb2_free_pdu(smb2, pdu);
+        free(cb_data);
         return ptr;
 }
 
