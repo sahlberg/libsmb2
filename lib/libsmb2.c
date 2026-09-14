@@ -4045,6 +4045,7 @@ notify_change_cb(struct smb2_context *smb2, int status,
                                                NULL, notify_change_data->cb_data);
                 }
                 free(fnc);
+                free_smb2fh(smb2, notify_change_data->fh);
                 free(notify_change_data);
                 return;
         }
