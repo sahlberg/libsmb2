@@ -4045,6 +4045,14 @@ notify_change_cb(struct smb2_context *smb2, int status,
                                                NULL, notify_change_data->cb_data);
                 }
                 free(fnc);
+                /* Release the directory handle, as the loop==0 completion path below
+                 * does with smb2_close(). It cannot go through smb2_close() here: this
+                 * path runs while smb2_destroy_context() is flushing the queues, so the
+                 * socket is on its way out and the synchronous round trip inside
+                 * smb2_close() would re-enter the event loop rather than complete. Free
+                 * the handle directly instead -- nothing else can, since the handle that
+                 * smb2_notify_change_async() opens is never given to the caller. */
+                free_smb2fh(smb2, notify_change_data->fh);
                 free(notify_change_data);
                 return;
         }
