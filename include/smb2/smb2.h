@@ -634,6 +634,17 @@ struct smb2_file_basic_info {
         struct smb2_timeval last_write_time;
         struct smb2_timeval change_time;
         uint32_t file_attributes;
+
+        /* Raw, unconverted 100ns-resolution Windows FILETIME values,
+         * preserved alongside the lossy (whole-microsecond) timeval
+         * fields above -- smb2_win_to_timeval() only has microsecond
+         * resolution, so any caller needing bit-exact precision must
+         * read these instead.
+         */
+        uint64_t creation_time_raw;
+        uint64_t last_access_time_raw;
+        uint64_t last_write_time_raw;
+        uint64_t change_time_raw;
 };
 
 /*

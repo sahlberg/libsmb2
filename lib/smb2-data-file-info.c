@@ -63,15 +63,19 @@ smb2_decode_file_basic_info(struct smb2_context *smb2,
 
         smb2_get_uint64(vec, 0, &t);
         smb2_win_to_timeval(t, &fs->creation_time);
+        fs->creation_time_raw = t;
 
         smb2_get_uint64(vec, 8, &t);
         smb2_win_to_timeval(t, &fs->last_access_time);
+        fs->last_access_time_raw = t;
 
         smb2_get_uint64(vec, 16, &t);
         smb2_win_to_timeval(t, &fs->last_write_time);
+        fs->last_write_time_raw = t;
 
         smb2_get_uint64(vec, 24, &t);
         smb2_win_to_timeval(t, &fs->change_time);
+        fs->change_time_raw = t;
 
         smb2_get_uint32(vec, 32, &fs->file_attributes);
 

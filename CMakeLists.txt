@@ -89,8 +89,13 @@ endif()
     endif()
   endif()
 
-  # Kerberos. Every krb5_* and gss_* symbol we use comes out of
-  # gssapi_krb5, which is also the only thing the autotools build links.
+  # Kerberos. On Apple with GSS.framework, link only that framework (and
+  # Kerberos.framework); see the block below for why the two paths must
+  # not mix. Otherwise we use gss_* symbols from gssapi_krb5 and krb5_*
+  # symbols from krb5 directly (gssapi_krb5 only imports the latter, it
+  # does not define them). FindGSSAPI links krb5 too whenever it can
+  # find it separately, same as the autotools build; see its comments
+  # for why that's best-effort rather than required.
   #
   # This used to be probed on linux only, with ios looking for gssapi
   # instead, so on macos and the BSDs the header check in ConfigureChecks
@@ -100,16 +105,43 @@ endif()
   # refuses them.
   if(CMAKE_SYSTEM_NAME MATCHES "Linux|Darwin|.*BSD|Solaris|Android" OR IOS)
     if(ENABLE_LIBKRB5 OR ENABLE_GSSAPI)
-      find_package(GSSAPI)
-      if(GSSAPI_FOUND)
-        set(core_DEPENDS ${GSSAPI_LIBRARIES} CACHE STRING "" FORCE)
+      set(_SMB2_GSS_FRAMEWORK FALSE)
+      if(APPLE)
+        include(CheckIncludeFile)
+        check_include_file("GSS/GSS.h" HAVE_GSS_GSS_H)
+        if(HAVE_GSS_GSS_H)
+          set(_SMB2_GSS_FRAMEWORK TRUE)
+        endif()
+      endif()
+      if(_SMB2_GSS_FRAMEWORK)
+        # When GSS.framework is what we compile against, link *only* the
+        # framework (and Kerberos.framework for the krb5_* API), never
+        # -lgssapi_krb5/-lkrb5. Those plain library names are found by
+        # searching the whole library path, so on a system with a
+        # package manager (MacPorts, Homebrew, ...) they can just as
+        # easily resolve to a completely unrelated MIT/Heimdal krb5
+        # install as to Apple's own. That wouldn't just be untidy: it
+        # would run code compiled against GSS.framework's header (and
+        # gated on GSS.framework's specific limitations, e.g. no
+        # gss_set_neg_mechs, no s4u2self proxy credentials) against a
+        # different implementation that doesn't actually share those
+        # limitations. Frameworks are found via the framework search
+        # path, not -L, so this keeps header and implementation
+        # guaranteed to match, regardless of what else the library
+        # search path turns up.
+        set(core_DEPENDS "-framework GSS" "-framework Kerberos" CACHE STRING "" FORCE)
       else()
-        # Compiling the kerberos paths in when there is no library to link
-        # them against only moves the failure to link time, so build
-        # without kerberos instead.
-        message(STATUS "gssapi_krb5 not found, building without Kerberos")
-        set(ENABLE_LIBKRB5 OFF)
-        set(ENABLE_GSSAPI OFF)
+        find_package(GSSAPI)
+        if(GSSAPI_FOUND)
+          set(core_DEPENDS ${GSSAPI_LIBRARIES} CACHE STRING "" FORCE)
+        else()
+          # Compiling the kerberos paths in when there is no library to link
+          # them against only moves the failure to link time, so build
+          # without kerberos instead.
+          message(STATUS "gssapi_krb5 not found, building without Kerberos")
+          set(ENABLE_LIBKRB5 OFF)
+          set(ENABLE_GSSAPI OFF)
+        endif()
       endif()
     endif()
   endif()

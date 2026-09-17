@@ -20,9 +20,16 @@
 
 #include "aes_apple.h"
 
-#ifdef __APPLE__
+/* Use Apple's CommonCrypto only where it actually exists; otherwise
+ * aes.c falls back to the portable reference AES implementation, e.g.
+ * when building with a toolchain that doesn't see Apple's framework
+ * headers at all. CommonCryptor.h (not the CommonCrypto.h umbrella,
+ * which only exists from the 10.9 SDK onward) is the actual header
+ * that declares the Cryptor API used below, and has shipped since
+ * CommonCrypto was introduced in the 10.5 SDK. */
+#if defined(__APPLE__) && defined(HAVE_COMMONCRYPTO_COMMONCRYPTOR_H)
 
-#include <CommonCrypto/CommonCrypto.h>
+#include <CommonCrypto/CommonCryptor.h>
 
 #define AES128_KEY_LEN 16
 #define AES128_BLOCK_SIZE 16
@@ -32,9 +39,9 @@ void AES128_ECB_encrypt_apple(const uint8_t *input, const uint8_t *key, uint8_t 
 
     // Create an AES ECB encryption context
     CCCryptorStatus status = CCCryptorCreate(
-        kCCEncrypt,         
-        kCCAlgorithmAES,     
-        kCCOptionECBMode,     
+        kCCEncrypt,
+        kCCAlgorithmAES128,
+        kCCOptionECBMode,
         key,                   
         AES128_KEY_LEN,         
         NULL,                    

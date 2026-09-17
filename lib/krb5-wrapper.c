@@ -57,7 +57,10 @@
 #include <sys/unistd.h>
 #endif
 
-#ifdef __APPLE__
+/* Use Apple's GSS.framework only where it actually exists (issue #476);
+ * otherwise fall back to the normal Unix gssapi/gssapi.h codepath, e.g.
+ * when linking against a Heimdal/MIT krb5 install on macOS. */
+#if defined(__APPLE__) && defined(HAVE_GSS_GSS_H)
 #include <GSS/GSS.h>
 #else
 #include <gssapi/gssapi_krb5.h>
@@ -265,7 +268,7 @@ krb5_negotiate_reply(struct smb2_context *smb2,
 
         /* TODO: the proper mechanism (SPNEGO vs NTLM vs KRB5) should be
          * selected based on the SMB negotiation flags */
-        #ifdef __APPLE__
+        #if defined(__APPLE__) && defined(HAVE_GSS_GSS_H)
         auth_data->mech_type = auth_data->use_spnego ? GSS_SPNEGO_MECHANISM : GSS_KRB5_MECHANISM;
         #else
         auth_data->mech_type = auth_data->use_spnego ? &gss_mech_spnego : gss_mech_krb5;
@@ -327,7 +330,7 @@ krb5_negotiate_reply(struct smb2_context *smb2,
                         krb5_free_auth_data(auth_data);
                         return NULL;
         }
-        #ifndef __APPLE__ /* gss_set_neg_mechs is not defined on macOS/iOS. */
+        #if !defined(__APPLE__) || !defined(HAVE_GSS_GSS_H) /* gss_set_neg_mechs is not defined by Apple's GSS.framework. */
         #ifdef SMB2_USER_KRB5_FOR_NTLLM
         if (smb2->sec != SMB2_SEC_UNDEFINED) {
                 gss_OID_set_desc wantMech;
@@ -458,7 +461,7 @@ krb5_session_request(struct smb2_context *smb2,
         return 0;
 }
 
-#ifndef __APPLE__
+#if !defined(__APPLE__) || !defined(HAVE_GSS_GSS_H)
 static OM_uint32
 establish_contexts(struct smb2_context *smb2,
                       gss_OID imech,
@@ -555,7 +558,7 @@ krb5_init_server_client_cred(struct smb2_server *server, struct smb2_context *sm
         char *spos;
         gss_OID mech = GSS_C_NO_OID;
 
-#ifndef __APPLE__
+#if !defined(__APPLE__) || !defined(HAVE_GSS_GSS_H)
         if (smb2->sec != SMB2_SEC_KRB5) {
                 mech = discard_const(gss_mech_krb5);
         } else {
@@ -608,7 +611,7 @@ krb5_init_server_client_cred(struct smb2_server *server, struct smb2_context *sm
         } else {
                 cred_usage = GSS_C_ACCEPT;
         }
-#ifndef __APPLE__
+#if !defined(__APPLE__) || !defined(HAVE_GSS_GSS_H)
         /*
          * server->auth_data is private_auth_data only when a keytab was
          * configured at server start (see krb5_init_server_credentials).
@@ -781,7 +784,7 @@ krb5_session_reply(struct smb2_context *smb2,
                  * the client context, so attempt an s4u2self
                  * with user-name to get one
                  */
-#ifdef __APPLE__
+#if defined(__APPLE__) && defined(HAVE_GSS_GSS_H)
                 smb2_set_error(smb2, "Apple has no way to proxy credentials");
                 return -1;
 #else
@@ -1059,7 +1062,7 @@ krb5_get_output_token_buffer(struct private_auth_data *auth_data)
 int
 krb5_can_do_ntlmssp(void)
 {
-#ifndef __APPLE__
+#if !defined(__APPLE__) || !defined(HAVE_GSS_GSS_H)
         gss_OID_set mech_attrs;
         gss_OID_set known_mech_attrs;
         uint32_t maj, min;

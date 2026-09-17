@@ -3,11 +3,23 @@ include(CheckIncludeFiles)
 check_include_file("arpa/inet.h" HAVE_ARPA_INET_H)
 check_include_file("dlfcn.h" HAVE_DLFCN_H)
 check_include_file("fcntl.h" HAVE_FCNTL_H)
+# CommonCrypto.framework is not always reachable on Apple platforms
+# (e.g. a toolchain that doesn't see Apple's framework headers at all).
+# Check for CommonCryptor.h, the header that actually declares the
+# Cryptor API aes_apple.c uses (unlike the CommonCrypto.h umbrella
+# header, which only exists from the 10.9 SDK onward, CommonCryptor.h
+# has shipped since CommonCrypto was introduced in the 10.5 SDK). aes.c
+# falls back to the portable reference AES implementation when it is
+# missing.
+check_include_file("CommonCrypto/CommonCryptor.h" HAVE_COMMONCRYPTO_COMMONCRYPTOR_H)
 if (ENABLE_GSSAPI)
 check_include_file("gssapi/gssapi.h" HAVE_GSSAPI_GSSAPI_H)
 endif()
 if (ENABLE_LIBKRB5)
 check_include_file("krb5/krb5.h" HAVE_LIBKRB5)
+# Prefer Apple's GSS.framework header when present; otherwise the code
+# falls back to the normal Unix gssapi/gssapi.h codepath (issue #476).
+check_include_file("GSS/GSS.h" HAVE_GSS_GSS_H)
 endif()
 check_include_file("inttypes.h" HAVE_INTTYPES_H)
 check_include_file("netdb.h" HAVE_NETDB_H)

@@ -27,7 +27,7 @@
 #include <stdint.h>
 #endif
 
-#ifdef __APPLE__
+#if defined(__APPLE__) && defined(HAVE_COMMONCRYPTO_COMMONCRYPTOR_H)
 void AES128_ECB_encrypt_apple(const uint8_t* input, const uint8_t* key, uint8_t *output);
 #endif
 
