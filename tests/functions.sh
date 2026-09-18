@@ -9,3 +9,7 @@ failure() {
     exit 1
 }
 
+skipped() {
+    echo "[SKIPPED] $*"
+}
+
