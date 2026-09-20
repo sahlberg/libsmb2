@@ -650,16 +650,25 @@ ssize_t readv(t_socket fd, const struct iovec *iov, int iovcnt);
 
 #include <sys/types.h>
 
+#if defined(__wii__) || defined(__gamecube__)
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+#endif
+
 #if defined(__3DS__) || defined(__wii__) || defined(__gamecube__) || defined(__WIIU__) || defined(__NDS__)
+#if !defined(HAVE_STRUCT_IOVEC)
 struct iovec {
   void  *iov_base;
   size_t iov_len;
-};	
+};
+#endif
 #if defined(__wii__) || defined(__gamecube__) || defined(__NDS__)
 #ifndef __NDS__
 #include <network.h>
 #endif
 
+#if !defined(HAVE_STRUCT_ADDRINFO)
 struct addrinfo {
 	int	ai_flags;	/* AI_PASSIVE, AI_CANONNAME */
 	int	ai_family;	/* PF_xxx */
@@ -670,6 +679,7 @@ struct addrinfo {
 	struct sockaddr *ai_addr;	/* binary address */
 	struct addrinfo *ai_next;	/* next structure in linked list */
 };
+#endif
 
 #if defined(__wii__) || defined(__gamecube__)
 #if !defined(HAVE_SOCKADDR_STORAGE)
