@@ -1219,6 +1219,17 @@ set_nonblocking(t_socket fd)
 #elif (defined(__AMIGA__) || defined(__AROS__)) && !defined(__amigaos4__) && !defined(__amigaos3__)
         unsigned long opt = 0;
         IoctlSocket(fd, FIONBIO, (char *)&opt);
+#elif defined(__wii__) || defined(__gamecube__)
+        /* net_fcntl(F_SETFL, O_NONBLOCK) is a dead end on this platform:
+         * IOS's SO_FCNTL only recognises its own internal IOS_O_NONBLOCK
+         * bit (0x04) - the flags word goes straight through to IOS with
+         * no translation of this toolchain's real O_NONBLOCK (0x4000),
+         * so the call "succeeds" (ret=0) without the socket ever actually
+         * becoming non-blocking. net_ioctl(FIONBIO) does the correct
+         * translation internally, so use that instead of building the
+         * F_SETFL flags word ourselves. */
+        int one = 1;
+        net_ioctl(fd, FIONBIO, &one);
 #else
         unsigned v;
         v = fcntl(fd, F_GETFL, 0);

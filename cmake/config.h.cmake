@@ -47,6 +47,8 @@
 
 /* Whether we have sockaddr_Storage */
 #cmakedefine HAVE_SOCKADDR_STORAGE "@HAVE_SOCKADDR_STORAGE@"
+#cmakedefine HAVE_STRUCT_ADDRINFO "@HAVE_STRUCT_ADDRINFO@"
+#cmakedefine HAVE_STRUCT_IOVEC "@HAVE_STRUCT_IOVEC@"
 
 /* Whether we have linger */
 #cmakedefine HAVE_LINGER "@HAVE_LINGER@"

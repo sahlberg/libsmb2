@@ -231,6 +231,7 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
 #include <3ds/types.h>	
 #elif defined(__wii__) || defined(__gamecube__)
 #include <gctypes.h>
+#include <stdarg.h>
 #elif defined(__WIIU__)
 #include <wut_types.h>
 #elif defined(__NDS__)
@@ -240,16 +241,133 @@ int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
 #define login_num ENXIO
 
 #if defined(__wii__) || defined(__gamecube__)
-s32 getsockopt(int sockfd, int level, int optname, void *optval,
-socklen_t *optlen)
+int smb2_net_connect(int fd, struct sockaddr *addr, socklen_t addrlen)
+{
+        s32 ret = net_connect(fd, addr, addrlen);
+        if (ret < 0) {
+                errno = -ret;
+                return -1;
+        }
+        return 0;
+}
+
+int smb2_net_close(int fd)
+{
+        s32 ret = net_close(fd);
+        if (ret < 0) {
+                errno = -ret;
+                return -1;
+        }
+        return 0;
+}
+
+int smb2_net_fcntl(int fd, int cmd, ...)
+{
+        u32 val = 0;
+        va_list ap;
+
+        va_start(ap, cmd);
+        val = (u32)va_arg(ap, int);
+        va_end(ap);
+
+        s32 ret = net_fcntl(fd, (u32)cmd, val);
+        if (ret < 0) {
+                errno = -ret;
+                return -1;
+        }
+        return (int)ret;
+}
+
+ssize_t smb2_net_write(int fd, const void *buf, size_t count)
+{
+        s32 ret = net_write(fd, buf, count);
+        if (ret < 0) {
+                errno = -ret;
+                return -1;
+        }
+        return ret;
+}
+
+ssize_t smb2_net_read(int fd, void *buf, size_t count)
+{
+        s32 ret = net_read(fd, buf, count);
+        if (ret < 0) {
+                errno = -ret;
+                return -1;
+        }
+        return ret;
+}
+
+int smb2_net_socket(int domain, int type, int protocol)
+{
+        s32 ret = net_socket((u32)domain, (u32)type, (u32)protocol);
+        if (ret < 0) {
+                errno = -ret;
+                return -1;
+        }
+        return (int)ret;
+}
+
+int smb2_net_getsockopt(int fd, int level, int optname, void *optval, socklen_t *optlen)
 {
 #ifdef __gamecube__
-         return net_getsockopt(sockfd, level, optname, optval, optlen);
-#else
-	 return 0;
+        s32 ret = net_getsockopt(fd, (u32)level, (u32)optname, optval, optlen);
+        if (ret < 0) {
+                errno = -ret;
+                return -1;
+        }
 #endif
+        return 0;
+}
 
+int smb2_net_setsockopt(int fd, int level, int optname, const void *optval, socklen_t optlen)
+{
+        s32 ret = net_setsockopt(fd, (u32)level, (u32)optname, optval, optlen);
+        if (ret < 0) {
+                errno = -ret;
+                return -1;
+        }
+        return 0;
+}
 
+int smb2_net_bind(int fd, struct sockaddr *addr, socklen_t addrlen)
+{
+        s32 ret = net_bind(fd, addr, addrlen);
+        if (ret < 0) {
+                errno = -ret;
+                return -1;
+        }
+        return 0;
+}
+
+int smb2_net_listen(int fd, int backlog)
+{
+        s32 ret = net_listen(fd, (u32)backlog);
+        if (ret < 0) {
+                errno = -ret;
+                return -1;
+        }
+        return 0;
+}
+
+int smb2_net_accept(int fd, struct sockaddr *addr, socklen_t *addrlen)
+{
+        s32 ret = net_accept(fd, addr, addrlen);
+        if (ret < 0) {
+                errno = -ret;
+                return -1;
+        }
+        return (int)ret;
+}
+
+int smb2_net_select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout)
+{
+        s32 ret = net_select(nfds, readfds, writefds, exceptfds, timeout);
+        if (ret < 0) {
+                errno = -ret;
+                return -1;
+        }
+        return (int)ret;
 }
 #endif
 
@@ -460,7 +578,11 @@ ssize_t readv(t_socket fd, const struct iovec* vector, int count)
 #endif
 
 #ifdef NEED_POLL
+#ifdef SMB2_HAVE_OGC_POLL_H
+int poll(struct pollfd *fds, nfds_t nfds, int timo)
+#else
 int poll(struct pollfd *fds, unsigned int nfds, int timo)
+#endif
 {
         struct timeval timeout, *toptr;
         fd_set ifds, ofds, efds, *ip, *op;

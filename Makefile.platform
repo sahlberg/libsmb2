@@ -18,7 +18,7 @@
 .PHONY: gc_all gc_install nds_all nds_install wii_all wii_install 3ds_all 3ds_install wiiu_all wiiu_install switch_all switch_install dc_all dc_install ps2_ee_all ps2_ee_install ps2_ips_all ps2_ips_install ps2_iop_all ps2_iop_install ps4_all ps4_install
 
 gc_all:
-	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=${DEVKITPRO}/cmake/GameCube.cmake" 
+	cmake -S . -B build -G Ninja "-DCMAKE_TOOLCHAIN_FILE=${DEVKITPRO}/cmake/GameCube.cmake" 
 	cmake --build build
 
 gc_install: gc_all
@@ -32,7 +32,7 @@ nds_install: nds_all
 	cmake --build build --target install
 
 wii_all:
-	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=${DEVKITPRO}/cmake/Wii.cmake" 
+	cmake -S . -B build -G Ninja "-DCMAKE_TOOLCHAIN_FILE=${DEVKITPRO}/cmake/Wii.cmake" 
 	cmake --build build
 
 wii_install: wii_all
