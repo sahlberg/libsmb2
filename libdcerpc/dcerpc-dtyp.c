@@ -77,11 +77,17 @@ ndr_sid_coder(char *name, struct dcerpc_context *dce,
         if (ndr_uint3264_coder("", dce, pdu, iov, offset, &count)) {
                 return -1;
         }
+        if (count > MAXSUBAUTH) {
+                return -1;
+        }
 
         if (ndr_uint8_coder("Revision", dce, pdu, iov, offset, &sid->Revision)) {
                 return -1;
         }
         if (ndr_uint8_coder("SubAuthorityCount", dce, pdu, iov, offset, &sid->SubAuthorityCount)) {
+                return -1;
+        }
+        if (sid->SubAuthorityCount != count) {
                 return -1;
         }
         for (i = 0; i < 6; i++) {
@@ -119,7 +125,7 @@ yaml_sid_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                 char *end;
                 unsigned long rev;
                 unsigned long long ia;
-                uint32_t sub[15];
+                uint32_t sub[MAXSUBAUTH];
                 int count = 0;
 
                 yaml_next_kv(pdu, iov, offset);
@@ -163,7 +169,7 @@ yaml_sid_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                         unsigned long sa;
 
                         p++;
-                        if (count >= 15) {
+                        if (count >= MAXSUBAUTH) {
                                 printf("Too many SID subauthorities for %s: %s\n",
                                        name, dcerpc_pdu_yaml_val(pdu));
                                 return -1;
@@ -259,7 +265,7 @@ json_sid_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                 char *val;
                 unsigned long rev;
                 unsigned long long ia;
-                uint32_t sub[15];
+                uint32_t sub[MAXSUBAUTH];
                 int count = 0;
 
                 if (json_expect_key(pdu, iov, offset, name) < 0) {
@@ -301,7 +307,7 @@ json_sid_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                         unsigned long sa;
 
                         p++;
-                        if (count >= 15) {
+                        if (count >= MAXSUBAUTH) {
                                 printf("Too many SID subauthorities for %s: %s\n",
                                        name, val);
                                 return -1;

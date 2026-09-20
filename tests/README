@@ -26,3 +26,15 @@ A good idea is to use a special share/subdirectory on the server
 so that the tests do not overwrite/corrupt/delete important files.
 Create a dedicated share on the server that is only used for testing
 and be prepared that any data in this share can be randomly deleted.
+
+
+Tests that need a special server
+================================
+test_0311_open_timeout.sh needs a server that accepts a create and then
+never answers it, which no normal server does. It reports [SKIPPED] unless
+TESTURL points at scrambla running from the tests/libsmb2_issue_484 branch:
+
+https://github.com/sahlberg/scrambla/tree/tests/libsmb2_issue_484
+
+That branch swallows the create for the name "libsmb2_issue_484" so that
+the client is forced down its timeout path.
