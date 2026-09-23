@@ -5,6 +5,7 @@ nterror_to_str
 smb2_accept_connection_async
 smb2_active_contexts
 smb2_add_compound_pdu
+smb2_add_unrelated_compound_pdu
 smb2_alloc_data
 smb2_alloc_init
 smb2_bind_and_listen

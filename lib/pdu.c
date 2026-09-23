@@ -341,6 +341,53 @@ smb2_add_compound_pdu(struct smb2_context *smb2,
 }
 
 void
+smb2_add_unrelated_compound_pdu(struct smb2_context *smb2,
+                                struct smb2_pdu *pdu,
+                                struct smb2_pdu *next_pdu)
+{
+    int i, offset;
+
+    /* Find the last PDU in the chain */
+    while (pdu->next_compound) {
+        pdu = pdu->next_compound;
+    }
+
+    pdu->next_compound = next_pdu;
+
+    /* Calculate NextCommand offset */
+    for (i = 0, offset = 0; i < pdu->out.niov; i++) {
+        offset += (int)pdu->out.iov[i].len;
+    }
+
+    pdu->header.next_command = offset;
+
+    smb2_set_uint32(&pdu->out.iov[0],
+                    20,
+                    pdu->header.next_command);
+
+    /*
+     * This is an UNRELATED compound.
+     * Do NOT set SMB2_FLAGS_RELATED_OPERATIONS.
+     */
+    pdu->header.flags &=
+        ~SMB2_FLAGS_RELATED_OPERATIONS;
+
+    next_pdu->header.flags &=
+        ~SMB2_FLAGS_RELATED_OPERATIONS;
+
+    /*
+     * Mark both PDUs so the receive path knows
+     * not to enforce compound ordering.
+     */
+    pdu->unrelated_compound = 1;
+    next_pdu->unrelated_compound = 1;
+
+    smb2_set_uint32(&next_pdu->out.iov[0],
+                    16,
+                    next_pdu->header.flags);
+}
+
+void
 smb2_free_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
         SMB2_LIST_REMOVE(&smb2->outqueue, pdu);
@@ -693,8 +740,18 @@ smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
                         /*
                          * Track the mid of the previous command in the chain
                          * so we can enforce ordering on receive.
+                         *
+                         * Related compounds require replies to be processed
+                         * in order.
+                         *
+                         * Unrelated compounds do not have this dependency.
                          */
-                        p->prev_compound_mid = prev_compound_mid;
+                        if (p->unrelated_compound) {
+                                p->prev_compound_mid = 0;
+                        } else {
+                                p->prev_compound_mid = prev_compound_mid;
+                        }
+
                         prev_compound_mid = p->header.message_id;
                 }
 
