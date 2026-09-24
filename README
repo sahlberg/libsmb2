@@ -371,7 +371,7 @@ Nintendo DS CPU is both ARM7TDMI and ARM946E-S.
 To compile libsmb2 for the Nintendo DS, first install the devkitPro with libnds using pacman to set it up.
 
 Then to build libsmb2, run
-  $ make -f Makefile.platform ds_install
+  $ make -f Makefile.platform nds_install
 
 The process will copy the resulting libsmb29.a and the include/smb2 headers to your
 devkitPro ds portlibs folder on: lib/arm9.

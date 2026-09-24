@@ -15,7 +15,7 @@
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with this program; if not, see <http://www.gnu.org/licenses/>.
 
-.PHONY: gc_all gc_install nds_all nds_install wii_all wii_install 3ds_all 3ds_install wiiu_all wiiu_install switch_all switch_install dc_all dc_install ps2_ee_all ps2_ee_install ps2_ips_all ps2_ips_install ps2_iop_all ps2_iop_install ps4_all ps4_install
+.PHONY: gc_all gc_install nds_all nds_install wii_all wii_install 3ds_all 3ds_install wiiu_all wiiu_install switch_all switch_install dc_all dc_install ps2_ee_all ps2_ee_install ps2_rpc_all ps2_rpc_install ps2_iop_all ps2_iop_install ps2_irx_all ps2_irx_install vita_all vita_install ps4_all ps4_install
 
 gc_all:
 	cmake -S . -B build -G Ninja "-DCMAKE_TOOLCHAIN_FILE=${DEVKITPRO}/cmake/GameCube.cmake" 
