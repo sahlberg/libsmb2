@@ -330,6 +330,7 @@ struct smb2_pdu {
 
         struct smb2_pdu *next_compound;
         uint64_t prev_compound_mid;
+        int unrelated_compound;
 
         int caller_frees_pdu;
         /*
