@@ -13,6 +13,7 @@ smb2_close
 smb2_close_async
 smb2_close_context
 smb2_closedir
+smb2_cmd_cancel_async
 smb2_cmd_change_notify_async
 smb2_cmd_change_notify_reply_async
 smb2_cmd_close_async

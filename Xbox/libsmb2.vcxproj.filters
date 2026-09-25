@@ -199,6 +199,9 @@
     <ClCompile Include="..\lib\sha384-512.c">
       <Filter>lib</Filter>
     </ClCompile>
+    <ClCompile Include="..\lib\smb2-cmd-cancel.c">
+      <Filter>lib</Filter>
+    </ClCompile>
     <ClCompile Include="..\lib\smb2-cmd-close.c">
       <Filter>lib</Filter>
     </ClCompile>

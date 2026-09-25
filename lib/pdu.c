@@ -117,6 +117,12 @@ smb2_allocate_pdu(struct smb2_context *smb2, enum smb2_command command,
                  * looking at traces.
                  */
                 hdr->credit_charge = 0;
+        } else if (hdr->command == SMB2_CANCEL) {
+                /* CANCEL reuses the MessageId (or AsyncId) of the request
+                 * it cancels instead of consuming a new one, so it must
+                 * not charge any credits of its own.
+                 */
+                hdr->credit_charge = 0;
         } else {
                 /* Assume the credits for this PDU will be 1.
                  * READ/WRITE/IOCTL/QUERYDIR that consumes more than
@@ -132,7 +138,7 @@ smb2_allocate_pdu(struct smb2_context *smb2, enum smb2_command command,
         case SMB2_SESSION_SETUP:
         case SMB2_LOGOFF:
         case SMB2_ECHO:
-        /* case SMB2_CANCEL: */
+        case SMB2_CANCEL:
                 hdr->sync.tree_id = 0;
                 break;
         case SMB2_TREE_CONNECT:
@@ -211,7 +217,7 @@ smb2_get_tree_id_for_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu, uint32
                 case SMB2_SESSION_SETUP:
                 case SMB2_LOGOFF:
                 case SMB2_ECHO:
-                /* case SMB2_CANCEL: */
+                case SMB2_CANCEL:
                 case SMB2_TREE_CONNECT:
                         *tree_id  = 0;
                         return 0;
@@ -243,7 +249,7 @@ smb2_set_tree_id_for_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu, uint32
                 case SMB2_SESSION_SETUP:
                 case SMB2_LOGOFF:
                 case SMB2_ECHO:
-                /* case SMB2_CANCEL: */
+                case SMB2_CANCEL:
                         break;
                 case SMB2_TREE_CONNECT:
                         break;
@@ -492,7 +498,7 @@ static void
 smb2_encode_header(struct smb2_context *smb2, struct smb2_iovec *iov,
                    struct smb2_header *hdr)
 {
-        if (!smb2_is_server(smb2)) {
+        if (!smb2_is_server(smb2) && hdr->command != SMB2_CANCEL) {
                 hdr->message_id = smb2->message_id++;
                 if (hdr->credit_charge > 1) {
                         smb2->message_id += (hdr->credit_charge - 1);
@@ -580,7 +586,7 @@ smb2_decode_header(struct smb2_context *smb2, struct smb2_iovec *iov,
                         case SMB2_SESSION_SETUP:
                         case SMB2_LOGOFF:
                         case SMB2_ECHO:
-                        /* case SMB2_CANCEL: */
+                        case SMB2_CANCEL:
                                 break;
                         case SMB2_TREE_CONNECT:
                                 break;
