@@ -663,10 +663,14 @@ read_more_data:
                                         goto read_more_data;
                                 }
                                 /*
-                                 * If part of a compound chain, verify that
-                                 * the previous command has been processed.
+                                 * Related compound requests must receive replies
+                                 * in order.
+                                 *
+                                 * Unrelated compound requests are independent and
+                                 * may receive replies in any order.
                                  */
-                                if (pdu->prev_compound_mid &&
+                                if (!pdu->unrelated_compound &&
+                                    pdu->prev_compound_mid &&
                                     smb2_find_pdu(smb2, pdu->prev_compound_mid)) {
                                         smb2_set_error(smb2, "compound reply received out of order");
                                         return -1;

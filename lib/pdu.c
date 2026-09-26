@@ -315,9 +315,10 @@ smb2_pdu_is_compound(struct smb2_context *smb2)
                 (smb2->hdr.next_command != 0) : 0;
 }
 
-void
-smb2_add_compound_pdu(struct smb2_context *smb2,
-                      struct smb2_pdu *pdu, struct smb2_pdu *next_pdu)
+static void
+_smb2_add_compound_pdu(struct smb2_context *smb2,
+                       struct smb2_pdu *pdu, struct smb2_pdu *next_pdu,
+                       int is_related)
 {
         int i, offset;
 
@@ -335,9 +336,40 @@ smb2_add_compound_pdu(struct smb2_context *smb2,
         pdu->header.next_command = offset;
         smb2_set_uint32(&pdu->out.iov[0], 20, pdu->header.next_command);
 
-        /* Fixup flags */
-        next_pdu->header.flags |= SMB2_FLAGS_RELATED_OPERATIONS;
+        if (is_related) {
+                /* Fixup flags */
+                next_pdu->header.flags |= SMB2_FLAGS_RELATED_OPERATIONS;
+        } else {
+                /*
+                 * This is an UNRELATED compound.
+                 * Do NOT set SMB2_FLAGS_RELATED_OPERATIONS.
+                 */
+                pdu->header.flags &= ~SMB2_FLAGS_RELATED_OPERATIONS;
+                next_pdu->header.flags &= ~SMB2_FLAGS_RELATED_OPERATIONS;
+
+                /*
+                 * Mark both PDUs so the receive path knows
+                 * not to enforce compound ordering.
+                 */
+                pdu->unrelated_compound = 1;
+                next_pdu->unrelated_compound = 1;
+        }
         smb2_set_uint32(&next_pdu->out.iov[0], 16, next_pdu->header.flags);
+}
+
+void
+smb2_add_compound_pdu(struct smb2_context *smb2,
+                      struct smb2_pdu *pdu, struct smb2_pdu *next_pdu)
+{
+        _smb2_add_compound_pdu(smb2, pdu, next_pdu, 1);
+}
+
+void
+smb2_add_unrelated_compound_pdu(struct smb2_context *smb2,
+                                struct smb2_pdu *pdu,
+                                struct smb2_pdu *next_pdu)
+{
+        _smb2_add_compound_pdu(smb2, pdu, next_pdu, 0);
 }
 
 void
@@ -693,8 +725,18 @@ smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
                         /*
                          * Track the mid of the previous command in the chain
                          * so we can enforce ordering on receive.
+                         *
+                         * Related compounds require replies to be processed
+                         * in order.
+                         *
+                         * Unrelated compounds do not have this dependency.
                          */
-                        p->prev_compound_mid = prev_compound_mid;
+                        if (p->unrelated_compound) {
+                                p->prev_compound_mid = 0;
+                        } else {
+                                p->prev_compound_mid = prev_compound_mid;
+                        }
+
                         prev_compound_mid = p->header.message_id;
                 }
 

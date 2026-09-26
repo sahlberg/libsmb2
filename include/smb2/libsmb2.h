@@ -691,6 +691,21 @@ void smb2_destroy_url(struct smb2_url *url);
  */
 void smb2_add_compound_pdu(struct smb2_context *smb2,
                            struct smb2_pdu *pdu, struct smb2_pdu *next_pdu);
+
+/*
+ * Like smb2_add_compound_pdu() but does NOT set
+ * SMB2_FLAGS_RELATED_OPERATIONS on next_pdu. Use this when chaining
+ * independent requests to different files in one compound packet
+ * (unrelated compounding, MS-SMB2 3.2.4.1.4). smb2_add_compound_pdu()
+ * sets SMB2_FLAGS_RELATED_OPERATIONS which tells the server to use the
+ * file handle from the previous response -- correct for related chains
+ * (CREATE->QUERY->CLOSE on the same file) but causes STATUS_FILE_CLOSED
+ * when used for independent operations on different files.
+ */
+void smb2_add_unrelated_compound_pdu(struct smb2_context *smb2,
+                                     struct smb2_pdu *pdu,
+                                     struct smb2_pdu *next_pdu);
+
 void smb2_free_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu);
 void smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu);
 
