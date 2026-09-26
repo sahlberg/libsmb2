@@ -349,15 +349,22 @@ _smb2_add_compound_pdu(struct smb2_context *smb2,
                 /*
                  * This is an UNRELATED compound.
                  * Do NOT set SMB2_FLAGS_RELATED_OPERATIONS.
+                 *
+                 * Only touch next_pdu here, never pdu (the last pdu of
+                 * whatever chain we are appending to): pdu may already
+                 * be legitimately related to its own predecessor from
+                 * an earlier smb2_add_compound_pdu() call, and clearing
+                 * that would corrupt the FileId that relatedness was
+                 * supposed to resolve, turning a compound_file_id
+                 * placeholder into a bogus literal FileId.
                  */
-                pdu->header.flags &= ~SMB2_FLAGS_RELATED_OPERATIONS;
                 next_pdu->header.flags &= ~SMB2_FLAGS_RELATED_OPERATIONS;
 
                 /*
-                 * Mark both PDUs so the receive path knows
-                 * not to enforce compound ordering.
+                 * Mark the new pdu so the receive path knows not to
+                 * enforce compound ordering against whatever came
+                 * before it.
                  */
-                pdu->unrelated_compound = 1;
                 next_pdu->unrelated_compound = 1;
         }
         smb2_set_uint32(&next_pdu->out.iov[0], 16, next_pdu->header.flags);
