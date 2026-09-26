@@ -557,7 +557,11 @@ smb2_spnego_unwrap_gssapi(struct smb2_context *smb2, const uint8_t *spnego,
         asn_decoder.src_count = spnego_len;
         asn_decoder.src_tail = 0;
 
-        require_typeandlen(&asn_decoder, asnCONSTRUCTOR | asnAPPLICATION, 32, fail);
+        /* spnego oid (8) + four short-form headers (8) + one mech oid (11+).
+         * An NTLMSSP-only negTokenInit is 28 bytes, so the old minimum of
+         * 32 rejected it and we fell back to KRB5.
+         */
+        require_typeandlen(&asn_decoder, asnCONSTRUCTOR | asnAPPLICATION, 27, fail);
         /* gss-spnego mech oid */
         ret = asn1ber_oid_from_ber(&asn_decoder, &oid);
         require_noerr(ret, fail);
