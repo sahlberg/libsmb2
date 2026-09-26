@@ -318,8 +318,21 @@ smb2_write_to_socket(struct smb2_context *smb2)
 
                                 if (!smb2_is_server(smb2)) {
                                         smb2->credits -= smb2_get_real_credit_charge_for_one_pdu(smb2, &pdu->header);
-                                        /* queue requests we send to correlate replies with */
-                                        SMB2_LIST_ADD_END(&smb2->waitqueue, pdu);
+                                        if (pdu->header.command == SMB2_CANCEL) {
+                                                /*
+                                                 * The server never sends a reply to a
+                                                 * CANCEL request, so there is nothing to
+                                                 * correlate on the wait queue. Complete
+                                                 * it locally now that it has been sent.
+                                                 */
+                                                if (pdu->cb) {
+                                                        pdu->cb(smb2, 0, NULL, pdu->cb_data);
+                                                }
+                                                smb2_free_pdu(smb2, pdu);
+                                        } else {
+                                                /* queue requests we send to correlate replies with */
+                                                SMB2_LIST_ADD_END(&smb2->waitqueue, pdu);
+                                        }
                                 }
                                 else {
                                         /* alway allow writing replies */
@@ -572,10 +585,24 @@ read_more_data:
                                  * header-only PDU, where the only vector is
                                  * the header itself.
                                  */
-                                if (smb2->passthrough) {
+                                if (!smb2_is_server(smb2)) {
                                         pdu = smb2_find_pdu(smb2,
                                                         smb2->hdr.message_id);
-                                        if (pdu) {
+                                        if (pdu != NULL &&
+                                            (smb2->hdr.flags & SMB2_FLAGS_ASYNC_COMMAND)) {
+                                                /*
+                                                 * Remember the AsyncId from this
+                                                 * interim response so the request
+                                                 * can still be cancelled correctly
+                                                 * (MS-SMB2 2.2.30). The final reply
+                                                 * is still correlated by MessageId,
+                                                 * so the pdu stays on the wait
+                                                 * queue as-is.
+                                                 */
+                                                pdu->header.flags |= SMB2_FLAGS_ASYNC_COMMAND;
+                                                pdu->header.async.async_id = smb2->hdr.async.async_id;
+                                        }
+                                        if (smb2->passthrough && pdu) {
                                                 pdu->cb(smb2, smb2->hdr.status,
                                                         pdu->payload,
                                                         pdu->cb_data);
@@ -891,19 +918,31 @@ read_more_data:
                 /* This was a pending command. Just ignore it and proceed
                  * to read the next chain.
                  */
-                if (smb2->passthrough) {
+                if (!smb2_is_server(smb2)) {
                         pdu = smb2_find_pdu(smb2, smb2->hdr.message_id);
-                        if (pdu == NULL) {
-                                smb2_set_error(smb2, "no matching PDU found");
-                                /* ignore this error for now, it might be OK
-                                 * to not pass the pending reply along */
-                                /*return -1;*/
+                        if (pdu != NULL &&
+                            (smb2->hdr.flags & SMB2_FLAGS_ASYNC_COMMAND)) {
+                                /*
+                                 * Remember the AsyncId from this interim
+                                 * response so the request can still be
+                                 * cancelled correctly (MS-SMB2 2.2.30). The
+                                 * final reply is still correlated by
+                                 * MessageId, so the pdu stays on the wait
+                                 * queue as-is.
+                                 */
+                                pdu->header.flags |= SMB2_FLAGS_ASYNC_COMMAND;
+                                pdu->header.async.async_id = smb2->hdr.async.async_id;
                         }
-                        else
-                        {
-                                /* need to pass all pdus through note we do not free
-                                * the pdu or delist the request */
-                                pdu->cb(smb2, smb2->hdr.status, pdu->payload, pdu->cb_data);
+                        if (smb2->passthrough) {
+                                if (pdu == NULL) {
+                                        smb2_set_error(smb2, "no matching PDU found");
+                                }
+                                else
+                                {
+                                        /* need to pass all pdus through note we do not free
+                                        * the pdu or delist the request */
+                                        pdu->cb(smb2, smb2->hdr.status, pdu->payload, pdu->cb_data);
+                                }
                         }
                 }
                 smb2->in.num_done = 0;

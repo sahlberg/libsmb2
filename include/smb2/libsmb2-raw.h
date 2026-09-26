@@ -376,6 +376,31 @@ struct smb2_pdu *smb2_cmd_echo_reply_async(struct smb2_context *smb2,
                                      smb2_command_cb cb, void *cb_data);
 
 /*
+ * Asynchronous SMB2 Cancel
+ *
+ * msg_id is the MessageId of a still-outstanding request (obtained via
+ * smb2_get_pdu_message_id() on a pdu previously returned by another
+ * smb2_cmd_*_async() function and already passed to smb2_queue_pdu())
+ * that the application wants to cancel.
+ *
+ * Cancelling a request does not guarantee that the operation will not
+ * complete anyway: the original request's callback will still be invoked
+ * once its own reply (successful, or with STATUS_CANCELLED) arrives.
+ *
+ * Returns:
+ * pdu  : If the call was initiated. There is no reply from the server to
+ *        a CANCEL request, so the callback function is invoked locally,
+ *        with status 0, as soon as the request has been sent.
+ * NULL : If there was an error, for example if msg_id does not match any
+ *        outstanding request. The callback function will not be invoked.
+ *
+ * command_data is always NULL.
+ */
+struct smb2_pdu *smb2_cmd_cancel_async(struct smb2_context *smb2,
+                                       uint64_t msg_id,
+                                       smb2_command_cb cb, void *cb_data);
+
+/*
  * Asynchronous SMB2 Lock
  *
  * Returns:
