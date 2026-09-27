@@ -63,6 +63,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 #include "compat.h"
 
+#include <stdarg.h>
 #include <stdio.h>
 #ifdef HAVE_SYS_POLL_H
 #include <sys/poll.h>
@@ -170,7 +171,6 @@ struct dcerpc_deferred_pointer {
         void *ptr;
 };
 
-#define MAX_DEFERRED_PTR 1024
 
 #define NDR32_UUID     0x8a885d04, 0x1ceb, 0x11c9, {0x9f, 0xe8, 0x08, 0x00, 0x2b, 0x10, 0x48, 0x60}
 #define NDR64_UUID     0x71710533, 0xbeba, 0x4937, {0x83, 0x19, 0xb5, 0xdb, 0xef, 0x9c, 0xcc, 0x36}
@@ -187,8 +187,23 @@ p_syntax_id_t ndr64_syntax = {
         {NDR64_UUID}, 1, 0
 };
 
+/*
+ * An SMB2 request in flight on behalf of a dcerpc context. Tracked so that
+ * dcerpc_destroy_context() can cancel it: the user callback is invoked
+ * with -ECANCELED and the request is marked orphaned, so that when SMB2
+ * later completes (or cancels) it, the SMB2 callback only frees it.
+ */
+struct dcerpc_pending {
+        struct dcerpc_pending *next;
+        int orphaned;
+        dcerpc_cb cb;
+        void *cb_data;
+};
+
 struct dcerpc_context {
         struct smb2_context *smb2;
+        struct dcerpc_pending *pending;
+        int destroying;
         /*
          * Set when dcerpc_create_context_smb() allocated/connected the
          * smb2 context. dcerpc_destroy_context() will then disconnect
@@ -202,6 +217,7 @@ struct dcerpc_context {
         uint8_t tctx_id; /* 0:NDR32 1:NDR64 */
         uint8_t packed_drep[4];
         uint32_t call_id;
+        uint16_t max_xmit_frag; /* server's max_recv_frag from BIND_ACK */
 };
 
 struct dcerpc_header {
@@ -323,14 +339,20 @@ struct dcerpc_response_pdu {
 #define PFC_OBJECT_UUID     0x80
 
 #define NSE_BUF_SIZE 128*1024
+/* Largest request we try to encode. */
+#define NSE_BUF_MAX (16 * 1024 * 1024)
+/* Fragment size to use when sending before a BIND_ACK told us one. */
+#define DCE_DEFAULT_XMIT_FRAG 4280
 
 struct dcerpc_cb_data {
+        struct dcerpc_pending pending;
         struct dcerpc_context *dce;
         dcerpc_cb cb;
         void *cb_data;
 };
 
 struct dcerpc_pdu {
+        struct dcerpc_pending pending;
         struct dcerpc_header hdr;
 
         union {
@@ -353,6 +375,14 @@ struct dcerpc_pdu {
         int decode_size;
         void *payload;
 
+        /*
+         * Multi-fragment REQUEST: all fragments back to back. Fragments
+         * before the last are sent with WRITE, the last with TRANSCEIVE.
+         */
+        uint8_t *frag_buf;
+        size_t frag_len;
+        size_t frag_pos;
+
         /* Multi-fragment response reassembly (named-pipe / IOCTL) */
         uint8_t *reasm_buf;
         size_t reasm_len;
@@ -363,7 +393,8 @@ struct dcerpc_pdu {
 
         int cur_ptr;
         int max_ptr;
-        struct dcerpc_deferred_pointer ptrs[MAX_DEFERRED_PTR];
+        int ptrs_cap;
+        struct dcerpc_deferred_pointer *ptrs;
         int direction;
         enum dcerpc_encoding encoding;
         void *request;
@@ -813,16 +844,56 @@ dcerpc_close_cb(struct smb2_context *smb2 _U_, int status _U_,
         /* best-effort close on destroy; nothing to free */
 }
 
+static void
+dcerpc_track(struct dcerpc_context *dce, struct dcerpc_pending *p,
+             dcerpc_cb cb, void *cb_data)
+{
+        p->orphaned = 0;
+        p->cb = cb;
+        p->cb_data = cb_data;
+        p->next = dce->pending;
+        dce->pending = p;
+}
+
+static void
+dcerpc_untrack(struct dcerpc_context *dce, struct dcerpc_pending *p)
+{
+        struct dcerpc_pending **pp;
+
+        for (pp = &dce->pending; *pp; pp = &(*pp)->next) {
+                if (*pp == p) {
+                        *pp = p->next;
+                        p->next = NULL;
+                        return;
+                }
+        }
+}
+
 void
 dcerpc_destroy_context(struct dcerpc_context *dce)
 {
         struct smb2_context *smb2;
+        struct dcerpc_pending *p;
         int owns_smb2;
         int i;
         int opened = 0;
 
-        if (dce == NULL) {
+        if (dce == NULL || dce->destroying) {
                 return;
+        }
+        dce->destroying = 1;
+
+        /*
+         * Cancel requests still in flight. Their SMB2 callbacks will run
+         * later (reply, or smb2_destroy_context()) and must not touch dce.
+         */
+        while ((p = dce->pending) != NULL) {
+                dce->pending = p->next;
+                p->next = NULL;
+                p->orphaned = 1;
+                if (p->cb) {
+                        p->cb(dce, -ECANCELED, NULL, p->cb_data);
+                }
         }
 
         for (i = 0; i < SMB2_FD_SIZE; i++) {
@@ -891,7 +962,9 @@ dcerpc_free_pdu(struct dcerpc_context *dce _U_, struct dcerpc_pdu *pdu)
         }
 
         dcerpc_mem_free(pdu->payload);
+        free(pdu->frag_buf);
         free(pdu->reasm_buf);
+        free(pdu->ptrs);
         free(pdu);
 }
 
@@ -935,9 +1008,18 @@ dcerpc_add_deferred_pointer(struct dcerpc_context *ctx,
                             struct dcerpc_pdu *pdu,
                             dcerpc_coder coder, void *ptr)
 {
-        if (pdu->max_ptr >= MAX_DEFERRED_PTR) {
-                smb2_set_error(ctx->smb2, "Too many deferred NDR pointers");
-                return -1;
+        if (pdu->max_ptr >= pdu->ptrs_cap) {
+                int cap = pdu->ptrs_cap ? pdu->ptrs_cap * 2 : 64;
+                struct dcerpc_deferred_pointer *np;
+
+                np = realloc(pdu->ptrs, cap * sizeof(*np));
+                if (np == NULL) {
+                        smb2_set_error(ctx->smb2, "Failed to grow deferred "
+                                       "NDR pointer array");
+                        return -1;
+                }
+                pdu->ptrs = np;
+                pdu->ptrs_cap = cap;
         }
         pdu->ptrs[pdu->max_ptr].coder = coder;
         pdu->ptrs[pdu->max_ptr].ptr = ptr;
@@ -1775,6 +1857,17 @@ dcerpc_frag_read_cb(struct smb2_context *smb2, int status,
         struct smb2_read_reply *rep = command_data;
         uint32_t nread = 0;
 
+        if (pdu->pending.orphaned) {
+                free(fr->buf);
+                free(fr);
+                dcerpc_free_pdu(NULL, pdu);
+                return;
+        }
+
+        /* A fragment larger than our read buffer: take what we got. */
+        if (status == SMB2_STATUS_BUFFER_OVERFLOW) {
+                status = SMB2_STATUS_SUCCESS;
+        }
         if (status != SMB2_STATUS_SUCCESS) {
                 smb2_set_error(smb2, "DCERPC fragment READ failed "
                                "(0x%08x) %s", status, nterror_to_str(status));
@@ -1927,6 +2020,7 @@ dcerpc_send_pdu_cb_and_free(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
         dcerpc_cb pdu_cb = pdu->cb;
         void *pdu_cb_data = pdu->cb_data;
 
+        dcerpc_untrack(dce, &pdu->pending);
         pdu_cb(dce, status, command_data, pdu_cb_data);
         dcerpc_free_pdu(dce, pdu);
 }
@@ -1939,8 +2033,24 @@ dcerpc_call_cb(struct smb2_context *smb2, int status,
         struct dcerpc_context *dce = pdu->dce;
         struct smb2_ioctl_reply *rep = command_data;
 
+        if (pdu->pending.orphaned) {
+                if (rep && (status == SMB2_STATUS_SUCCESS ||
+                            status == SMB2_STATUS_BUFFER_OVERFLOW)) {
+                        smb2_free_data(smb2, rep->output);
+                }
+                dcerpc_free_pdu(NULL, pdu);
+                return;
+        }
+
         pdu->direction = DCERPC_DECODE;
 
+        /*
+         * The response did not fit max_output_response: the output holds
+         * the start of it and the rest is read from the pipe.
+         */
+        if (status == SMB2_STATUS_BUFFER_OVERFLOW) {
+                status = SMB2_STATUS_SUCCESS;
+        }
         if (status != SMB2_STATUS_SUCCESS) {
                 dcerpc_send_pdu_cb_and_free(dce, pdu, -nterror_to_errno(status), NULL);
                 return;
@@ -1975,6 +2085,206 @@ dcerpc_call_cb(struct smb2_context *smb2, int status,
 }
 
 /*
+ * Encode a REQUEST (header + stub) as a single PDU into a payload buffer
+ * of the given size. Returns the pdu with the encoded length in *len, or
+ * NULL if it did not fit (or failed to encode).
+ */
+static struct dcerpc_pdu *
+dcerpc_encode_request(struct dcerpc_context *dce, int opnum,
+                      dcerpc_coder req_coder, void *req, size_t size,
+                      int *len)
+{
+        struct dcerpc_pdu *pdu;
+        struct dcerpc_iovec iov;
+        int offset = 0;
+
+        pdu = dcerpc_allocate_pdu(dce, ENCODING_NDR, DCERPC_ENCODE,
+                                  (int)size);
+        if (pdu == NULL) {
+                return NULL;
+        }
+
+        pdu->hdr.rpc_vers = 5;
+        pdu->hdr.rpc_vers_minor = 0;
+        pdu->hdr.PTYPE = PDU_TYPE_REQUEST;
+        pdu->hdr.pfc_flags = PFC_FIRST_FRAG | PFC_LAST_FRAG;
+        pdu->hdr.packed_drep[0] = dce->packed_drep[0];
+        pdu->hdr.frag_length = 0;
+        pdu->hdr.auth_length = 0;
+        pdu->req.alloc_hint = 0;
+        pdu->req.context_id = dce->tctx_id;
+        pdu->req.opnum = opnum;
+
+        iov.buf = pdu->payload;
+        iov.len = size;
+        iov.free = NULL;
+        if (dcerpc_pdu_coder(dce, pdu, &iov, &offset)) {
+                dcerpc_free_pdu(dce, pdu);
+                return NULL;
+        }
+
+        /* encode the blob */
+        pdu->top_level = 1;
+        /* Remember the request in case we need to dereference it from the reply */
+        dcerpc_set_request(pdu, req);
+        if (req_coder("Request", dce, pdu, &iov, &offset, req)) {
+                dcerpc_free_pdu(dce, pdu);
+                return NULL;
+        }
+        *len = offset;
+        return pdu;
+}
+
+/*
+ * Write frag_length, pfc_flags and alloc_hint into the 24 byte REQUEST
+ * header at buf.
+ */
+static int
+dcerpc_fixup_request_hdr(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+                         uint8_t *buf, size_t frag_len, uint8_t pfc_flags,
+                         uint32_t alloc_hint)
+{
+        struct dcerpc_iovec iov;
+        int o;
+
+        iov.buf = buf;
+        iov.len = frag_len;
+        iov.free = NULL;
+
+        buf[3] = pfc_flags;
+        o = 8;
+        if (dcerpc_set_uint16(dce, pdu, &iov, &o, (uint16_t)frag_len)) {
+                return -1;
+        }
+        o = 16;
+        if (ndr_uint32_coder("v", dce, pdu, &iov, &o, &alloc_hint)) {
+                return -1;
+        }
+        return 0;
+}
+
+/*
+ * Split the single encoded REQUEST in buf into fragments of at most
+ * max_frag bytes, stored back to back in pdu->frag_buf. Stub data in all
+ * but the last fragment is a multiple of 8 bytes.
+ */
+static int
+dcerpc_fragment_request(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+                        const uint8_t *buf, size_t len, size_t max_frag)
+{
+        const uint8_t *stub = buf + 24;
+        size_t stub_len = len - 24;
+        size_t max_stub = (max_frag - 24) & ~(size_t)7;
+        size_t nfrags, off, o = 0;
+
+        nfrags = (stub_len + max_stub - 1) / max_stub;
+        pdu->frag_buf = malloc(stub_len + nfrags * 24);
+        if (pdu->frag_buf == NULL) {
+                smb2_set_error(dce->smb2, "Failed to allocate request "
+                               "fragments");
+                return -1;
+        }
+        for (off = 0; off < stub_len; ) {
+                size_t chunk = stub_len - off;
+                uint8_t pfc = 0;
+
+                if (chunk > max_stub) {
+                        chunk = max_stub;
+                }
+                if (off == 0) {
+                        pfc |= PFC_FIRST_FRAG;
+                }
+                if (off + chunk == stub_len) {
+                        pfc |= PFC_LAST_FRAG;
+                }
+                memcpy(pdu->frag_buf + o, buf, 24);
+                memcpy(pdu->frag_buf + o + 24, stub + off, chunk);
+                if (dcerpc_fixup_request_hdr(dce, pdu, pdu->frag_buf + o,
+                                             24 + chunk, pfc,
+                                             (uint32_t)(stub_len - off))) {
+                        return -1;
+                }
+                o += 24 + chunk;
+                off += chunk;
+        }
+        pdu->frag_len = o;
+        pdu->frag_pos = 0;
+        return 0;
+}
+
+static int dcerpc_send_request_frag(struct dcerpc_context *dce,
+                                    struct dcerpc_pdu *pdu);
+
+static void
+dcerpc_frag_write_cb(struct smb2_context *smb2 _U_, int status,
+                     void *command_data _U_, void *private_data)
+{
+        struct dcerpc_pdu *pdu = private_data;
+        struct dcerpc_context *dce = pdu->dce;
+        int rc;
+
+        if (pdu->pending.orphaned) {
+                dcerpc_free_pdu(NULL, pdu);
+                return;
+        }
+        if (status != SMB2_STATUS_SUCCESS) {
+                smb2_set_error(dce->smb2, "DCERPC fragment WRITE failed "
+                               "(0x%08x) %s", status, nterror_to_str(status));
+                dcerpc_send_pdu_cb_and_free(dce, pdu,
+                                            -nterror_to_errno(status), NULL);
+                return;
+        }
+        rc = dcerpc_send_request_frag(dce, pdu);
+        if (rc) {
+                dcerpc_send_pdu_cb_and_free(dce, pdu, rc, NULL);
+        }
+}
+
+/*
+ * Send the fragment at frag_pos: WRITE if more follow (continuing from
+ * dcerpc_frag_write_cb), TRANSCEIVE for the last one.
+ */
+static int
+dcerpc_send_request_frag(struct dcerpc_context *dce, struct dcerpc_pdu *pdu)
+{
+        uint8_t *frag = pdu->frag_buf + pdu->frag_pos;
+        uint16_t flen = frag[8] | (frag[9] << 8);
+        struct smb2_pdu *smb2_pdu;
+
+        if (!(pdu->hdr.packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN)) {
+                flen = (frag[8] << 8) | frag[9];
+        }
+        pdu->frag_pos += flen;
+
+        if (frag[3] & PFC_LAST_FRAG) {
+                struct smb2_ioctl_request req;
+
+                memset(&req, 0, sizeof(req));
+                req.ctl_code = SMB2_FSCTL_PIPE_TRANSCEIVE;
+                memcpy(req.file_id, dce->file_id, SMB2_FD_SIZE);
+                req.input_count = flen;
+                req.input = frag;
+                req.flags = SMB2_0_IOCTL_IS_FSCTL;
+                smb2_pdu = smb2_cmd_ioctl_async(dce->smb2, &req,
+                                                dcerpc_call_cb, pdu);
+        } else {
+                struct smb2_write_request req;
+
+                memset(&req, 0, sizeof(req));
+                memcpy(req.file_id, dce->file_id, SMB2_FD_SIZE);
+                req.length = flen;
+                req.buf = frag;
+                smb2_pdu = smb2_cmd_write_async(dce->smb2, &req, 0,
+                                                dcerpc_frag_write_cb, pdu);
+        }
+        if (smb2_pdu == NULL) {
+                return -ENOMEM;
+        }
+        smb2_queue_pdu(dce->smb2, smb2_pdu);
+        return 0;
+}
+
+/*
  * Issue an async DCE/RPC request (FSCTL_PIPE_TRANSCEIVE).
  *
  * Reply memory ownership (success path)
@@ -2000,80 +2310,66 @@ dcerpc_call_async(struct dcerpc_context *dce,
                   dcerpc_coder rep_coder, int decode_size,
                   dcerpc_cb cb, void *cb_data)
 {
-        struct dcerpc_pdu *pdu;
-        struct smb2_pdu *smb2_pdu;
-        struct smb2_ioctl_request smb2_req;
-        struct dcerpc_iovec iov;
-        int offset = 0, o;
-        uint32_t v;
+        struct dcerpc_pdu *pdu = NULL;
+        size_t size, max_frag;
+        int len = 0;
 
-        pdu = dcerpc_allocate_pdu(dce, ENCODING_NDR, DCERPC_ENCODE, NSE_BUF_SIZE);
-        if (pdu == NULL) {
-                return -ENOMEM;
+        if (dce->destroying) {
+                return -ECANCELED;
         }
 
-        pdu->hdr.rpc_vers = 5;
-        pdu->hdr.rpc_vers_minor = 0;
-        pdu->hdr.PTYPE = PDU_TYPE_REQUEST;
-        pdu->hdr.pfc_flags = PFC_FIRST_FRAG | PFC_LAST_FRAG;
-        pdu->hdr.packed_drep[0] = dce->packed_drep[0];
-        pdu->hdr.frag_length = 0;
-        pdu->hdr.auth_length = 0;
-        pdu->req.alloc_hint = 0;
-        pdu->req.context_id = dce->tctx_id;
-        pdu->req.opnum = opnum;
+        /*
+         * The NDR encoder cannot tell us how big the request will be, so
+         * retry with a doubled buffer until it fits.
+         */
+        for (size = NSE_BUF_SIZE; size <= NSE_BUF_MAX; size *= 2) {
+                pdu = dcerpc_encode_request(dce, opnum, req_coder, req,
+                                            size, &len);
+                if (pdu) {
+                        break;
+                }
+        }
+        if (pdu == NULL) {
+                return -1;
+        }
 
         pdu->coder = rep_coder;
         pdu->decode_size = decode_size;
         pdu->cb = cb;
         pdu->cb_data = cb_data;
 
-        iov.buf = pdu->payload;
-        iov.len = NSE_BUF_SIZE;
-        iov.free = NULL;
-        if (dcerpc_pdu_coder(dce, pdu, &iov, &offset)) {
+        max_frag = dce->max_xmit_frag ? dce->max_xmit_frag
+                                      : DCE_DEFAULT_XMIT_FRAG;
+        if (max_frag < 24 + 8) {
+                max_frag = DCE_DEFAULT_XMIT_FRAG;
+        }
+        if ((size_t)len <= max_frag) {
+                /* fits in one fragment: send it straight from the payload */
+                pdu->frag_buf = malloc(len);
+                if (pdu->frag_buf == NULL) {
+                        dcerpc_free_pdu(dce, pdu);
+                        return -ENOMEM;
+                }
+                memcpy(pdu->frag_buf, pdu->payload, len);
+                if (dcerpc_fixup_request_hdr(dce, pdu, pdu->frag_buf, len,
+                                             PFC_FIRST_FRAG | PFC_LAST_FRAG,
+                                             len - 24)) {
+                        dcerpc_free_pdu(dce, pdu);
+                        return -1;
+                }
+                pdu->frag_len = len;
+                pdu->frag_pos = 0;
+        } else if (dcerpc_fragment_request(dce, pdu, pdu->payload, len,
+                                           max_frag)) {
+                dcerpc_free_pdu(dce, pdu);
+                return -1;
+        }
+
+        if (dcerpc_send_request_frag(dce, pdu)) {
                 dcerpc_free_pdu(dce, pdu);
                 return -ENOMEM;
         }
-
-        /* encode the blob */
-        pdu->top_level = 1;
-        /* Remember the request in case we need to dereference it from the reply */
-        dcerpc_set_request(pdu, req);
-        if (req_coder("Request", dce, pdu, &iov, &offset, req)) {
-                dcerpc_free_pdu(dce, pdu);
-                return -1;
-        }
-
-        iov.len = offset;
-
-        /* Fixup frag_length and alloc_hint */
-        o = 8;
-        if (dcerpc_set_uint16(dce, pdu, &iov,  &o, offset)) {
-                dcerpc_free_pdu(dce, pdu);
-                return -1;
-        }
-        o = 16;
-        v = offset - 24;
-        if (ndr_uint32_coder("v", dce, pdu, &iov, &o, &v)) {
-                dcerpc_free_pdu(dce, pdu);
-                return -1;
-        }
-
-        memset(&smb2_req, 0, sizeof(struct smb2_ioctl_request));
-        smb2_req.ctl_code = SMB2_FSCTL_PIPE_TRANSCEIVE;
-        memcpy(smb2_req.file_id, dce->file_id, SMB2_FD_SIZE);
-        smb2_req.input_count = (uint32_t)iov.len;
-        smb2_req.input = iov.buf;
-        smb2_req.flags = SMB2_0_IOCTL_IS_FSCTL;
-
-        smb2_pdu = smb2_cmd_ioctl_async(dce->smb2, &smb2_req, dcerpc_call_cb, pdu);
-        if (smb2_pdu == NULL) {
-                dcerpc_free_pdu(dce, pdu);
-                return -ENOMEM;
-        }
-        smb2_queue_pdu(dce->smb2, smb2_pdu);
- 
+        dcerpc_track(dce, &pdu->pending, cb, cb_data);
         return 0;
 }
 
@@ -2247,7 +2543,15 @@ smb2_bind_cb(struct smb2_context *smb2, int status,
         struct smb2_ioctl_reply *rep = command_data;
         int i;
         int offset = 0;
-        
+
+        if (pdu->pending.orphaned) {
+                if (rep && status == SMB2_STATUS_SUCCESS) {
+                        smb2_free_data(smb2, rep->output);
+                }
+                dcerpc_free_pdu(NULL, pdu);
+                return;
+        }
+
         pdu->direction = DCERPC_DECODE;
 
         if (status != SMB2_STATUS_SUCCESS) {
@@ -2300,6 +2604,7 @@ smb2_bind_cb(struct smb2_context *smb2, int status,
                 dcerpc_send_pdu_cb_and_free(dce, pdu, -EINVAL, NULL);
                 return;
         }
+        dce->max_xmit_frag = pdu->bind_ack.max_recv_frag;
 
         dcerpc_send_pdu_cb_and_free(dce, pdu, 0, NULL);
 }
@@ -2386,11 +2691,16 @@ dcerpc_bind_async(struct dcerpc_context *dce, dcerpc_cb cb,
         req.input = iov.buf;
         req.flags = SMB2_0_IOCTL_IS_FSCTL;
 
+        if (dce->destroying) {
+                dcerpc_free_pdu(dce, pdu);
+                return -ECANCELED;
+        }
         smb2_pdu = smb2_cmd_ioctl_async(dce->smb2, &req, smb2_bind_cb, pdu);
         if (smb2_pdu == NULL) {
                 dcerpc_free_pdu(dce, pdu);
                 return -ENOMEM;
         }
+        dcerpc_track(dce, &pdu->pending, cb, cb_data);
         smb2_queue_pdu(dce->smb2, smb2_pdu);
  
         return 0;
@@ -2403,6 +2713,25 @@ smb2_open_cb(struct smb2_context *smb2, int status,
         struct dcerpc_cb_data *data = private_data;
         struct smb2_create_reply *rep = command_data;
         struct dcerpc_context *dce = data->dce;
+
+        if (data->pending.orphaned) {
+                /* context destroyed while opening: close the pipe again */
+                if (status == SMB2_STATUS_SUCCESS) {
+                        struct smb2_close_request cl_req;
+                        struct smb2_pdu *pdu;
+
+                        memset(&cl_req, 0, sizeof(cl_req));
+                        memcpy(cl_req.file_id, rep->file_id, SMB2_FD_SIZE);
+                        pdu = smb2_cmd_close_async(smb2, &cl_req,
+                                                   dcerpc_close_cb, NULL);
+                        if (pdu) {
+                                smb2_queue_pdu(smb2, pdu);
+                        }
+                }
+                free(data);
+                return;
+        }
+        dcerpc_untrack(dce, &data->pending);
 
         if (status != SMB2_STATUS_SUCCESS) {
                 data->cb(dce, -nterror_to_errno(status),
@@ -2461,11 +2790,16 @@ dcerpc_open_async(struct dcerpc_context *dce, dcerpc_cb cb,
         req.create_options = 0;
         req.name = dce->path;
 
+        if (dce->destroying) {
+                free(data);
+                return -ECANCELED;
+        }
         pdu = smb2_cmd_create_async(dce->smb2, &req, smb2_open_cb, data);
         if (pdu == NULL) {
                 free(data);
                 return -ENOMEM;
         }
+        dcerpc_track(dce, &data->pending, cb, cb_data);
         smb2_queue_pdu(dce->smb2, pdu);
 
         return 0;
@@ -3660,23 +3994,51 @@ ndr_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
  * YAML
  */
 #ifdef HAVE_DCERPC_FULL
-void
+/*
+ * Append formatted text to a YAML/JSON output buffer. Fails, instead of
+ * silently truncating, when the output does not fit.
+ */
+static int
+dcerpc_text_printf(struct dcerpc_context *ctx, struct dcerpc_iovec *iov,
+                   int *offset, const char *fmt, ...)
+{
+        va_list ap;
+        size_t room;
+        int n;
+
+        if (*offset < 0 || (size_t)*offset >= iov->len) {
+                goto full;
+        }
+        room = iov->len - (size_t)*offset;
+        va_start(ap, fmt);
+        n = vsnprintf((char *)&iov->buf[*offset], room, fmt, ap);
+        va_end(ap);
+        if (n < 0 || (size_t)n >= room) {
+                goto full;
+        }
+        *offset += n;
+        return 0;
+full:
+        smb2_set_error(ctx->smb2, "DCERPC text encoding: output buffer "
+                       "too small");
+        return -1;
+}
+
+int
 yaml_print_preamble(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                     struct dcerpc_iovec *iov, int *offset)
 {
         int i;
 
         for(i = 0; i < pdu->yaml_indentation; i++) {
-                if (*offset + 3 < iov->len) {
-                        strncat((char *)&iov->buf[*offset], "  ", iov->len - *offset);
-                        *offset += 2;
+                if (dcerpc_text_printf(ctx, iov, offset, "  ")) {
+                        return -1;
                 }
         }
         if (pdu->yaml_array_prefix) {
                 /* First field of a list item: "  - key: value" */
-                if (*offset + 3 < iov->len) {
-                        strncat((char *)&iov->buf[*offset], "- ", iov->len - *offset);
-                        *offset += 2;
+                if (dcerpc_text_printf(ctx, iov, offset, "- ")) {
+                        return -1;
                 }
                 pdu->yaml_array_prefix = 0;
                 pdu->yaml_array_item = 1;
@@ -3687,11 +4049,11 @@ yaml_print_preamble(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                  *   - Name: BUILTIN
                  *     SID: S-1-5-32
                  */
-                if (*offset + 3 < iov->len) {
-                        strncat((char *)&iov->buf[*offset], "  ", iov->len - *offset);
-                        *offset += 2;
+                if (dcerpc_text_printf(ctx, iov, offset, "  ")) {
+                        return -1;
                 }
         }
+        return 0;
 }
 
 /*
@@ -3819,20 +4181,29 @@ _yaml_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pd
                 char *fmt = pp ? pp->fmt : "%u";
                 int i;
                 
-                yaml_print_preamble(ctx, pdu, iov, offset);
-                if (*offset + 256 < iov->len) {
-                        *offset += snprintf((char *)&iov->buf[*offset], iov->len - *offset, "%s: ", name);
-                        *offset += snprintf((char *)&iov->buf[*offset], iov->len - *offset, fmt, *(uint32_t *)ptr);
-                        if (pp && pp->bitfields[0].name) {
-                                *offset += snprintf((char *)&iov->buf[*offset], iov->len - *offset, " #");
-                                for (i = 0; pp->bitfields[i].name; i++) {
-                                        if ((*(uint32_t *)ptr & pp->bitfields[i].mask) == pp->bitfields[i].value) {
-                                                *offset += snprintf((char *)&iov->buf[*offset], iov->len - *offset, " %s",
-                                                                    pp->bitfields[i].name);
+                if (yaml_print_preamble(ctx, pdu, iov, offset)) {
+                        return -1;
+                }
+                if (dcerpc_text_printf(ctx, iov, offset, "%s: ", name)) {
+                        return -1;
+                }
+                if (dcerpc_text_printf(ctx, iov, offset, fmt, *(uint32_t *)ptr)) {
+                        return -1;
+                }
+                if (pp && pp->bitfields[0].name) {
+                        if (dcerpc_text_printf(ctx, iov, offset, " #")) {
+                                return -1;
+                        }
+                        for (i = 0; pp->bitfields[i].name; i++) {
+                                if ((*(uint32_t *)ptr & pp->bitfields[i].mask) == pp->bitfields[i].value) {
+                                        if (dcerpc_text_printf(ctx, iov, offset, " %s", pp->bitfields[i].name)) {
+                                                return -1;
                                         }
                                 }
                         }
-                        *offset += snprintf((char *)&iov->buf[*offset], iov->len - *offset, "\n");
+                }
+                if (dcerpc_text_printf(ctx, iov, offset, "\n")) {
+                        return -1;
                 }
                 return 0;
         }
@@ -3868,12 +4239,11 @@ yaml_uint64_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu
                 yaml_next_kv(pdu, iov, offset);
                 return 0;
         } else {
-                yaml_print_preamble(ctx, pdu, iov, offset);
-                if (*offset + 256 < iov->len) {
-                        *offset += snprintf((char *)&iov->buf[*offset],
-                                           iov->len - *offset,
-                                           "%s: %" PRIu64 "\n",
-                                           name, *(uint64_t *)ptr);
+                if (yaml_print_preamble(ctx, pdu, iov, offset)) {
+                        return -1;
+                }
+                if (dcerpc_text_printf(ctx, iov, offset, "%s: %" PRIu64 "\n", name, *(uint64_t *)ptr)) {
+                        return -1;
                 }
                 return 0;
         }
@@ -3895,11 +4265,11 @@ yaml_uint8_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 yaml_next_kv(pdu, iov, offset);
                 return 0;
         } else {
-                yaml_print_preamble(ctx, pdu, iov, offset);
-                if (*offset + 256 < iov->len) {
-                        *offset += snprintf((char *)&iov->buf[*offset],
-                                           iov->len - *offset, "%s: %u\n",
-                                           name, *(uint8_t *)ptr);
+                if (yaml_print_preamble(ctx, pdu, iov, offset)) {
+                        return -1;
+                }
+                if (dcerpc_text_printf(ctx, iov, offset, "%s: %u\n", name, *(uint8_t *)ptr)) {
+                        return -1;
                 }
                 return 0;
         }
@@ -3921,9 +4291,11 @@ yaml_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu
                 yaml_next_kv(pdu, iov, offset);
                 return 0;
         } else {
-                yaml_print_preamble(ctx, pdu, iov, offset);
-                if (*offset + 256 < iov->len) {
-                        *offset += snprintf((char *)&iov->buf[*offset], iov->len - *offset, "%s: %u\n", name, *(uint16_t *)ptr);
+                if (yaml_print_preamble(ctx, pdu, iov, offset)) {
+                        return -1;
+                }
+                if (dcerpc_text_printf(ctx, iov, offset, "%s: %u\n", name, *(uint16_t *)ptr)) {
+                        return -1;
                 }
                 return 0;
         }
@@ -3964,17 +4336,11 @@ yaml_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 yaml_next_kv(pdu, iov, offset);
                 return 0;
         } else {
-                yaml_print_preamble(ctx, pdu, iov, offset);
-                if (*offset + 256 < iov->len) {
-                        *offset += snprintf((char *)&iov->buf[*offset],
-                                           iov->len - *offset,
-                                           "%s: %08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x\n",
-                                           name,
-                                           uuid->v1, uuid->v2, uuid->v3,
-                                           uuid->v4[0], uuid->v4[1],
-                                           uuid->v4[2], uuid->v4[3],
-                                           uuid->v4[4], uuid->v4[5],
-                                           uuid->v4[6], uuid->v4[7]);
+                if (yaml_print_preamble(ctx, pdu, iov, offset)) {
+                        return -1;
+                }
+                if (dcerpc_text_printf(ctx, iov, offset, "%s: %08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x\n", name, uuid->v1, uuid->v2, uuid->v3, uuid->v4[0], uuid->v4[1], uuid->v4[2], uuid->v4[3], uuid->v4[4], uuid->v4[5], uuid->v4[6], uuid->v4[7])) {
+                        return -1;
                 }
                 return 0;
         }
@@ -4005,9 +4371,11 @@ yaml_carray_coder(char *name, struct dcerpc_context *ctx,
                 }
                 return 0;
         } else {
-                yaml_print_preamble(ctx, pdu, iov, offset);
-                if (*offset + 256 < iov->len) {
-                        *offset += snprintf((char *)&iov->buf[*offset], iov->len - *offset, "%s:\n", name);
+                if (yaml_print_preamble(ctx, pdu, iov, offset)) {
+                        return -1;
+                }
+                if (dcerpc_text_printf(ctx, iov, offset, "%s:\n", name)) {
+                        return -1;
                 }
 
                 pdu->yaml_indentation++;
@@ -4048,9 +4416,11 @@ yaml_union_coder(char *name, struct dcerpc_context *ctx,
                 name = pdu->yaml_key;
                 ret = coder(name, ctx, pdu, iov, offset, ptr);
         } else {
-                yaml_print_preamble(ctx, pdu, iov, offset);
-                if (*offset + 256 < iov->len) {
-                        *offset += snprintf((char *)&iov->buf[*offset], iov->len - *offset, "%s:\n", name);
+                if (yaml_print_preamble(ctx, pdu, iov, offset)) {
+                        return -1;
+                }
+                if (dcerpc_text_printf(ctx, iov, offset, "%s:\n", name)) {
+                        return -1;
                 }
         
                 pdu->yaml_indentation++;
@@ -4107,11 +4477,11 @@ yaml_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         } else {
                 const char *s = *(char **)ptr;
 
-                yaml_print_preamble(ctx, pdu, iov, offset);
-                if (*offset + 256 < iov->len) {
-                        *offset += snprintf((char *)&iov->buf[*offset],
-                                           iov->len - *offset, "%s: %s\n",
-                                           name, s ? s : "");
+                if (yaml_print_preamble(ctx, pdu, iov, offset)) {
+                        return -1;
+                }
+                if (dcerpc_text_printf(ctx, iov, offset, "%s: %s\n", name, s ? s : "")) {
+                        return -1;
                 }
                 return 0;
         }
@@ -4137,8 +4507,12 @@ yaml_struct_coder(char *name, struct dcerpc_context *ctx,
                 yaml_next_kv(pdu, iov, offset);
                 ret = coder(name, ctx, pdu, iov, offset, ptr);
         } else {
-                yaml_print_preamble(ctx, pdu, iov, offset);
-                *offset += snprintf((char *)&iov->buf[*offset], iov->len - *offset, "%s: %s\n", name, pdu->yaml_val);
+                if (yaml_print_preamble(ctx, pdu, iov, offset)) {
+                        return -1;
+                }
+                if (dcerpc_text_printf(ctx, iov, offset, "%s: %s\n", name, pdu->yaml_val)) {
+                        return -1;
+                }
                 pdu->yaml_val = "";
                 /*
                  * Nested fields use yaml_indentation, not the list-item
@@ -4517,20 +4891,15 @@ _json_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pd
         } else {
                 char *fmt = pp ? pp->fmt : "%u";
 
-                if (*offset + 64 >= (int)iov->len) {
-                        return 0;
-                }
                 json_sep(pdu, iov, offset);
                 if (json_append_quoted(iov, offset, name) < 0) {
                         return -1;
                 }
-                if (*offset + 32 < (int)iov->len) {
-                        *offset += snprintf((char *)&iov->buf[*offset],
-                                           iov->len - *offset,
-                                            ": ");
-                        *offset += snprintf((char *)&iov->buf[*offset],
-                                           iov->len - *offset,
-                                           fmt, *(uint32_t *)ptr);
+                if (dcerpc_text_printf(ctx, iov, offset, ": ")) {
+                        return -1;
+                }
+                if (dcerpc_text_printf(ctx, iov, offset, fmt, *(uint32_t *)ptr)) {
+                        return -1;
                 }
                 return 0;
         }
@@ -4568,17 +4937,12 @@ json_uint64_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu
                 *(uint64_t *)ptr = (uint64_t)v;
                 return 0;
         } else {
-                if (*offset + 64 >= (int)iov->len) {
-                        return 0;
-                }
                 json_sep(pdu, iov, offset);
                 if (json_append_quoted(iov, offset, name) < 0) {
                         return -1;
                 }
-                if (*offset + 48 < (int)iov->len) {
-                        *offset += snprintf((char *)&iov->buf[*offset],
-                                           iov->len - *offset,
-                                           ": %" PRIu64, *(uint64_t *)ptr);
+                if (dcerpc_text_printf(ctx, iov, offset, ": %" PRIu64, *(uint64_t *)ptr)) {
+                        return -1;
                 }
                 return 0;
         }
@@ -4600,17 +4964,12 @@ json_uint8_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 *(uint8_t *)ptr = (uint8_t)v;
                 return 0;
         } else {
-                if (*offset + 64 >= (int)iov->len) {
-                        return 0;
-                }
                 json_sep(pdu, iov, offset);
                 if (json_append_quoted(iov, offset, name) < 0) {
                         return -1;
                 }
-                if (*offset + 32 < (int)iov->len) {
-                        *offset += snprintf((char *)&iov->buf[*offset],
-                                           iov->len - *offset,
-                                           ": %u", *(uint8_t *)ptr);
+                if (dcerpc_text_printf(ctx, iov, offset, ": %u", *(uint8_t *)ptr)) {
+                        return -1;
                 }
                 return 0;
         }
@@ -4632,17 +4991,12 @@ json_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu
                 *(uint16_t *)ptr = (uint16_t)v;
                 return 0;
         } else {
-                if (*offset + 64 >= (int)iov->len) {
-                        return 0;
-                }
                 json_sep(pdu, iov, offset);
                 if (json_append_quoted(iov, offset, name) < 0) {
                         return -1;
                 }
-                if (*offset + 32 < (int)iov->len) {
-                        *offset += snprintf((char *)&iov->buf[*offset],
-                                           iov->len - *offset,
-                                           ": %u", *(uint16_t *)ptr);
+                if (dcerpc_text_printf(ctx, iov, offset, ": %u", *(uint16_t *)ptr)) {
+                        return -1;
                 }
                 return 0;
         }
