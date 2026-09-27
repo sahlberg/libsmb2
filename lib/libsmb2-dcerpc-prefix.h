@@ -58,6 +58,7 @@
 #define dcerpc_set_unicode_max_length libsmb2_dcerpc_set_unicode_max_length
 #define dcerpc_struct_coder libsmb2_dcerpc_struct_coder
 #define dcerpc_uint16_coder libsmb2_dcerpc_uint16_coder
+#define dcerpc_uint16_coder_pp libsmb2_dcerpc_uint16_coder_pp
 #define dcerpc_uint32_coder libsmb2_dcerpc_uint32_coder
 #define dcerpc_uint32_coder_pp libsmb2_dcerpc_uint32_coder_pp
 #define dcerpc_uint64_coder libsmb2_dcerpc_uint64_coder

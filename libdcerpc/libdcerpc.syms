@@ -79,6 +79,7 @@ dcerpc_SYSTEM_MANDATORY_LABEL_ACE_coder
 dcerpc_SYSTEM_SCOPED_POLICY_ID_ACE_coder
 dcerpc_uint8_coder
 dcerpc_uint16_coder
+dcerpc_uint16_coder_pp
 dcerpc_uint32_coder
 dcerpc_uint32_coder_pp
 dcerpc_uint64_coder

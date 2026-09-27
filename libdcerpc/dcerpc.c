@@ -485,6 +485,9 @@ static int yaml_uint8_coder(char *name, struct dcerpc_context *ctx, struct dcerp
                      struct dcerpc_iovec *iov, int *offset, void *ptr);
 static int yaml_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                       struct dcerpc_iovec *iov, int *offset, void *ptr);
+static int yaml_uint16_coder_pp(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                                struct dcerpc_iovec *iov, int *offset, void *ptr,
+                                struct dcerpc_uint32_pretty_printer *pp);
 static int yaml_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                       struct dcerpc_iovec *iov, int *offset, void *ptr);
 static int yaml_uint32_coder_pp(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
@@ -524,6 +527,9 @@ static int json_uint8_coder(char *name, struct dcerpc_context *ctx, struct dcerp
                             struct dcerpc_iovec *iov, int *offset, void *ptr);
 static int json_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                              struct dcerpc_iovec *iov, int *offset, void *ptr);
+static int json_uint16_coder_pp(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                                struct dcerpc_iovec *iov, int *offset, void *ptr,
+                                struct dcerpc_uint32_pretty_printer *pp);
 static int json_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                              struct dcerpc_iovec *iov, int *offset, void *ptr);
 static int json_uint32_coder_pp(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
@@ -1155,6 +1161,25 @@ dcerpc_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *p
                 return yaml_uint16_coder(name, ctx, pdu, iov, offset, ptr);
         case ENCODING_JSON:
                 return json_uint16_coder(name, ctx, pdu, iov, offset, ptr);
+#endif
+        default:
+                return -1;
+        }
+        return -1;
+}
+
+int dcerpc_uint16_coder_pp(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                           struct dcerpc_iovec *iov, int *offset, void *ptr,
+                           struct dcerpc_uint32_pretty_printer *pp)
+{
+        switch(pdu->encoding) {
+        case ENCODING_NDR:
+                return ndr_uint16_coder(name, ctx, pdu, iov, offset, ptr);
+#ifdef HAVE_DCERPC_FULL
+        case ENCODING_YAML:
+                return yaml_uint16_coder_pp(name, ctx, pdu, iov, offset, ptr, pp);
+        case ENCODING_JSON:
+                return json_uint16_coder_pp(name, ctx, pdu, iov, offset, ptr, pp);
 #endif
         default:
                 return -1;
@@ -4276,8 +4301,9 @@ yaml_uint8_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 }
 
 static int
-yaml_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                  struct dcerpc_iovec *iov, int *offset, void *ptr)
+_yaml_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                   struct dcerpc_iovec *iov, int *offset, void *ptr,
+                   struct dcerpc_uint32_pretty_printer *pp)
 {
         if (pdu->direction == DCERPC_DECODE) {
                 yaml_next_kv(pdu, iov, offset);
@@ -4291,14 +4317,49 @@ yaml_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu
                 yaml_next_kv(pdu, iov, offset);
                 return 0;
         } else {
+                char *fmt = pp ? pp->fmt : "%u";
+                int i;
+
                 if (yaml_print_preamble(ctx, pdu, iov, offset)) {
                         return -1;
                 }
-                if (dcerpc_text_printf(ctx, iov, offset, "%s: %u\n", name, *(uint16_t *)ptr)) {
+                if (dcerpc_text_printf(ctx, iov, offset, "%s: ", name)) {
+                        return -1;
+                }
+                if (dcerpc_text_printf(ctx, iov, offset, fmt, *(uint16_t *)ptr)) {
+                        return -1;
+                }
+                if (pp && pp->bitfields[0].name) {
+                        if (dcerpc_text_printf(ctx, iov, offset, " #")) {
+                                return -1;
+                        }
+                        for (i = 0; pp->bitfields[i].name; i++) {
+                                if ((*(uint16_t *)ptr & pp->bitfields[i].mask) == pp->bitfields[i].value) {
+                                        if (dcerpc_text_printf(ctx, iov, offset, " %s", pp->bitfields[i].name)) {
+                                                return -1;
+                                        }
+                                }
+                        }
+                }
+                if (dcerpc_text_printf(ctx, iov, offset, "\n")) {
                         return -1;
                 }
                 return 0;
         }
+}
+
+static int
+yaml_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                  struct dcerpc_iovec *iov, int *offset, void *ptr)
+{
+        return _yaml_uint16_coder(name, ctx, pdu, iov, offset, ptr, NULL);
+}
+
+static int yaml_uint16_coder_pp(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                                struct dcerpc_iovec *iov, int *offset, void *ptr,
+                                struct dcerpc_uint32_pretty_printer *pp)
+{
+        return _yaml_uint16_coder(name, ctx, pdu, iov, offset, ptr, pp);
 }
 
 static int
@@ -4976,8 +5037,9 @@ json_uint8_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 }
 
 static int
-json_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                  struct dcerpc_iovec *iov, int *offset, void *ptr)
+_json_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                   struct dcerpc_iovec *iov, int *offset, void *ptr,
+                   struct dcerpc_uint32_pretty_printer *pp)
 {
         if (pdu->direction == DCERPC_DECODE) {
                 unsigned long v;
@@ -4991,15 +5053,35 @@ json_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu
                 *(uint16_t *)ptr = (uint16_t)v;
                 return 0;
         } else {
+                char *fmt = pp ? pp->fmt : "%u";
+
                 json_sep(pdu, iov, offset);
                 if (json_append_quoted(iov, offset, name) < 0) {
                         return -1;
                 }
-                if (dcerpc_text_printf(ctx, iov, offset, ": %u", *(uint16_t *)ptr)) {
+                if (dcerpc_text_printf(ctx, iov, offset, ": ")) {
+                        return -1;
+                }
+                if (dcerpc_text_printf(ctx, iov, offset, fmt, *(uint16_t *)ptr)) {
                         return -1;
                 }
                 return 0;
         }
+}
+
+static int
+json_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                  struct dcerpc_iovec *iov, int *offset, void *ptr)
+{
+        return _json_uint16_coder(name, ctx, pdu, iov, offset, ptr, NULL);
+}
+
+static int
+json_uint16_coder_pp(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                     struct dcerpc_iovec *iov, int *offset, void *ptr,
+                     struct dcerpc_uint32_pretty_printer *pp)
+{
+        return _json_uint16_coder(name, ctx, pdu, iov, offset, ptr, pp);
 }
 
 static int

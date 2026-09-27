@@ -321,6 +321,9 @@ int dcerpc_uint8_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu
                        struct dcerpc_iovec *iov, int *offset, void *ptr);
 int dcerpc_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                         struct dcerpc_iovec *iov, int *offset, void *ptr);
+int dcerpc_uint16_coder_pp(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                           struct dcerpc_iovec *iov, int *offset, void *ptr,
+                           struct dcerpc_uint32_pretty_printer *pp);
 int dcerpc_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                         struct dcerpc_iovec *iov, int *offset, void *ptr);
 int dcerpc_uint32_coder_pp(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
