@@ -4186,12 +4186,102 @@ again:
         return 0;
 }
 
+/*
+ * Print a pretty-printed value as "NAME1 | NAME2 | 0x10": every matching
+ * bitfield name, followed by any bits no matching entry covers, formatted
+ * with pp->fmt. If nothing matches the plain number is printed.
+ */
+static int
+yaml_print_pp_value(struct dcerpc_context *ctx, struct dcerpc_iovec *iov,
+                    int *offset, struct dcerpc_uint32_pretty_printer *pp,
+                    uint32_t value)
+{
+        char *fmt = pp ? pp->fmt : "%u";
+        uint32_t covered = 0;
+        int count = 0;
+        int i;
+
+        for (i = 0; pp && pp->bitfields[i].name; i++) {
+                if ((value & pp->bitfields[i].mask) != pp->bitfields[i].value) {
+                        continue;
+                }
+                if (dcerpc_text_printf(ctx, iov, offset, "%s%s",
+                                       count ? " | " : "",
+                                       pp->bitfields[i].name)) {
+                        return -1;
+                }
+                covered |= pp->bitfields[i].mask;
+                count++;
+        }
+        if (count && (value & ~covered) == 0) {
+                return 0;
+        }
+        if (count && dcerpc_text_printf(ctx, iov, offset, " | ")) {
+                return -1;
+        }
+        return dcerpc_text_printf(ctx, iov, offset, fmt,
+                                  count ? value & ~covered : value);
+}
+
+/*
+ * Parse a value written by yaml_print_pp_value(): a '|' separated list
+ * of bitfield names and/or numbers that are OR'ed together. A plain
+ * number is the degenerate case.
+ */
+static int
+yaml_parse_pp_value(char *str, struct dcerpc_uint32_pretty_printer *pp,
+                    uint32_t *out)
+{
+        char *tok, *next, *end;
+        uint32_t value = 0;
+        int i;
+
+        if (str == NULL) {
+                printf("YAML parse error: missing value\n");
+                return -1;
+        }
+        for (tok = str; tok; tok = next) {
+                next = strchr(tok, '|');
+                if (next) {
+                        *next++ = '\0';
+                }
+                while (*tok == ' ' || *tok == '\t') {
+                        tok++;
+                }
+                end = tok + strlen(tok);
+                while (end > tok && (end[-1] == ' ' || end[-1] == '\t')) {
+                        *--end = '\0';
+                }
+                if (*tok == '\0') {
+                        continue;
+                }
+                if ((*tok >= '0' && *tok <= '9') || *tok == '-') {
+                        value |= (uint32_t)strtoul(tok, NULL, 0);
+                        continue;
+                }
+                for (i = 0; pp && pp->bitfields[i].name; i++) {
+                        if (!strcmp(pp->bitfields[i].name, tok)) {
+                                value |= pp->bitfields[i].value;
+                                break;
+                        }
+                }
+                if (pp == NULL || pp->bitfields[i].name == NULL) {
+                        printf("YAML parse error: unknown value '%s'\n", tok);
+                        return -1;
+                }
+        }
+        *out = value;
+        return 0;
+}
+
 static int
 _yaml_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                    struct dcerpc_iovec *iov, int *offset, void *ptr,
                    struct dcerpc_uint32_pretty_printer *pp)
 {
         if (pdu->direction == DCERPC_DECODE) {
+                uint32_t v;
+
                 yaml_next_kv(pdu, iov, offset);
                 if (strcmp(pdu->yaml_key,  name)) {
                         printf("Wrong YAML key encountered for uint32. Expected %s but got %s\n",
@@ -4199,33 +4289,22 @@ _yaml_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pd
                         return -1;
                 }
                 pdu->yaml_key = NULL;
-                *(uint32_t *)ptr = strtol(pdu->yaml_val, NULL, 0);
+                if (yaml_parse_pp_value(pdu->yaml_val, pp, &v)) {
+                        return -1;
+                }
+                *(uint32_t *)ptr = v;
                 yaml_next_kv(pdu, iov, offset);
                 return 0;
         } else {
-                char *fmt = pp ? pp->fmt : "%u";
-                int i;
-                
                 if (yaml_print_preamble(ctx, pdu, iov, offset)) {
                         return -1;
                 }
                 if (dcerpc_text_printf(ctx, iov, offset, "%s: ", name)) {
                         return -1;
                 }
-                if (dcerpc_text_printf(ctx, iov, offset, fmt, *(uint32_t *)ptr)) {
+                if (yaml_print_pp_value(ctx, iov, offset, pp,
+                                        *(uint32_t *)ptr)) {
                         return -1;
-                }
-                if (pp && pp->bitfields[0].name) {
-                        if (dcerpc_text_printf(ctx, iov, offset, " #")) {
-                                return -1;
-                        }
-                        for (i = 0; pp->bitfields[i].name; i++) {
-                                if ((*(uint32_t *)ptr & pp->bitfields[i].mask) == pp->bitfields[i].value) {
-                                        if (dcerpc_text_printf(ctx, iov, offset, " %s", pp->bitfields[i].name)) {
-                                                return -1;
-                                        }
-                                }
-                        }
                 }
                 if (dcerpc_text_printf(ctx, iov, offset, "\n")) {
                         return -1;
@@ -4306,6 +4385,8 @@ _yaml_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pd
                    struct dcerpc_uint32_pretty_printer *pp)
 {
         if (pdu->direction == DCERPC_DECODE) {
+                uint32_t v;
+
                 yaml_next_kv(pdu, iov, offset);
                 if (strcmp(pdu->yaml_key,  name)) {
                         printf("Wrong YAML key encountered for uint16. Expected %s but got %s\n",
@@ -4313,33 +4394,22 @@ _yaml_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pd
                         return -1;
                 }
                 pdu->yaml_key = NULL;
-                *(uint16_t *)ptr = strtol(pdu->yaml_val, NULL, 0);
+                if (yaml_parse_pp_value(pdu->yaml_val, pp, &v)) {
+                        return -1;
+                }
+                *(uint16_t *)ptr = (uint16_t)v;
                 yaml_next_kv(pdu, iov, offset);
                 return 0;
         } else {
-                char *fmt = pp ? pp->fmt : "%u";
-                int i;
-
                 if (yaml_print_preamble(ctx, pdu, iov, offset)) {
                         return -1;
                 }
                 if (dcerpc_text_printf(ctx, iov, offset, "%s: ", name)) {
                         return -1;
                 }
-                if (dcerpc_text_printf(ctx, iov, offset, fmt, *(uint16_t *)ptr)) {
+                if (yaml_print_pp_value(ctx, iov, offset, pp,
+                                        *(uint16_t *)ptr)) {
                         return -1;
-                }
-                if (pp && pp->bitfields[0].name) {
-                        if (dcerpc_text_printf(ctx, iov, offset, " #")) {
-                                return -1;
-                        }
-                        for (i = 0; pp->bitfields[i].name; i++) {
-                                if ((*(uint16_t *)ptr & pp->bitfields[i].mask) == pp->bitfields[i].value) {
-                                        if (dcerpc_text_printf(ctx, iov, offset, " %s", pp->bitfields[i].name)) {
-                                                return -1;
-                                        }
-                                }
-                        }
                 }
                 if (dcerpc_text_printf(ctx, iov, offset, "\n")) {
                         return -1;
@@ -4947,7 +5017,7 @@ _json_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pd
                 if (json_parse_ulong(iov, offset, &v) < 0) {
                         return -1;
                 }
-                *(uint32_t *)ptr = (uint32_t)v;
+                *(uint32_t *)ptr = v;
                 return 0;
         } else {
                 char *fmt = pp ? pp->fmt : "%u";
