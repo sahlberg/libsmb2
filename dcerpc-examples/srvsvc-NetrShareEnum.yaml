@@ -1,7 +1,7 @@
 NetrShareEnum: Request
   ServerName: \\10.10.10.11
   InfoStruct:
-    Level: 2
+    Level: 0
     ShareInfo:
   PreferedMaximumLength: 0xffffffff
   ResumeHandle: 0

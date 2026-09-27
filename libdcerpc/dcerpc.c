@@ -450,6 +450,8 @@ int ndr_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pd
 /*
  * YAML
  */
+static int yaml_uint8_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                     struct dcerpc_iovec *iov, int *offset, void *ptr);
 static int yaml_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                       struct dcerpc_iovec *iov, int *offset, void *ptr);
 static int yaml_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
@@ -487,6 +489,8 @@ static int yaml_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_p
 /*
  * JSON
  */
+static int json_uint8_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                            struct dcerpc_iovec *iov, int *offset, void *ptr);
 static int json_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                              struct dcerpc_iovec *iov, int *offset, void *ptr);
 static int json_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
@@ -1031,6 +1035,25 @@ dcerpc_uint64_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *p
                 return yaml_uint64_coder(name, ctx, pdu, iov, offset, ptr);
         case ENCODING_JSON:
                 return json_uint64_coder(name, ctx, pdu, iov, offset, ptr);
+#endif
+        default:
+                return -1;
+        }
+        return -1;
+}
+
+int
+dcerpc_uint8_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                   struct dcerpc_iovec *iov, int *offset, void *ptr)
+{
+        switch (pdu->encoding) {
+        case ENCODING_NDR:
+                return ndr_uint8_coder(name, ctx, pdu, iov, offset, ptr);
+#ifdef HAVE_DCERPC_FULL
+        case ENCODING_YAML:
+                return yaml_uint8_coder(name, ctx, pdu, iov, offset, ptr);
+        case ENCODING_JSON:
+                return json_uint8_coder(name, ctx, pdu, iov, offset, ptr);
 #endif
         default:
                 return -1;
@@ -1951,6 +1974,25 @@ dcerpc_call_cb(struct smb2_context *smb2, int status,
         dcerpc_finish_call_from_reasm(dce, pdu);
 }
 
+/*
+ * Issue an async DCE/RPC request (FSCTL_PIPE_TRANSCEIVE).
+ *
+ * Reply memory ownership (success path)
+ * -------------------------------------
+ * On success the callback's command_data is the decoded reply root: a buffer
+ * of decode_size bytes allocated as a dcerpc mem-tree root.  Nested decode
+ * allocations (dcerpc_alloc_data: arrays, strings, pointed-to structs, …)
+ * are linked to that same root.  Freeing the root with dcerpc_free_data()
+ * (or smb2_free_data(); the header layouts match) frees the entire tree.
+ *
+ * The internal PDU is destroyed after the callback is invoked and does not
+ * own that tree.  Before free, the root is stolen out of pdu->payload so
+ * dcerpc_free_pdu() does not free it.  Lifetime of all reply allocations is
+ * therefore tied to the returned rep pointer, not to the PDU or dce context.
+ *
+ * On error, command_data is NULL; there is nothing to free for the reply.
+ * Request-side buffers supplied by the caller are never part of this tree.
+ */
 int
 dcerpc_call_async(struct dcerpc_context *dce,
                   int opnum,
@@ -2444,27 +2486,29 @@ dcerpc_free_data(struct dcerpc_context *dce _U_, void *data)
 
 /*
  * Read filename and decode it as YAML into a structure of decode_size bytes
- * using coder.  The structure is a mem-tree root; the file content is loaded
- * with dcerpc_alloc_data() so YAML string fields that point into that buffer
- * share the same lifetime.  Free the result with dcerpc_free_data().
+ * using coder.  A temporary smb2 + dcerpc context is created for the decode
+ * and destroyed before return.  The structure is a mem-tree root; the file
+ * content is loaded with dcerpc_alloc_data() so YAML string fields that point
+ * into that buffer share the same lifetime.  Free the result with
+ * dcerpc_free_data(NULL, ptr).
  */
 void *
-dcerpc_read_yaml_file(struct dcerpc_context *dce,
-                      const char *filename,
+dcerpc_read_yaml_file(const char *filename,
                       dcerpc_coder coder,
                       int decode_size)
 {
 #ifndef HAVE_DCERPC_FULL
-        if (dce && dce->smb2) {
-                smb2_set_error(dce->smb2,
-                               "YAML decoding requires libdcerpc");
-        }
+        (void)filename;
+        (void)coder;
+        (void)decode_size;
         return NULL;
 #else
-        struct dcerpc_pdu *pdu;
+        struct smb2_context *smb2 = NULL;
+        struct dcerpc_context *dce = NULL;
+        struct dcerpc_pdu *pdu = NULL;
         struct dcerpc_iovec iov;
         struct stat st;
-        void *payload;
+        void *payload = NULL;
         char *filebuf;
         char root_key[256];
         const char *p;
@@ -2476,40 +2520,40 @@ dcerpc_read_yaml_file(struct dcerpc_context *dce,
         size_t total = 0;
         size_t file_size;
 
-        if (dce == NULL || filename == NULL || coder == NULL ||
-            decode_size <= 0) {
-                if (dce && dce->smb2) {
-                        smb2_set_error(dce->smb2,
-                                       "dcerpc_read_yaml_file: invalid "
-                                       "arguments");
-                }
+        if (filename == NULL || coder == NULL || decode_size <= 0) {
                 return NULL;
+        }
+
+        smb2 = smb2_init_context();
+        if (smb2 == NULL) {
+                return NULL;
+        }
+        dce = dcerpc_create_context(smb2);
+        if (dce == NULL) {
+                goto out;
         }
 
         fd = open(filename, O_RDONLY);
         if (fd < 0) {
-                smb2_set_error(dce->smb2, "Failed to open %s: %s",
+                smb2_set_error(smb2, "Failed to open %s: %s",
                                filename, strerror(errno));
-                return NULL;
+                goto out;
         }
         if (fstat(fd, &st) < 0) {
-                smb2_set_error(dce->smb2, "Failed to stat %s: %s",
+                smb2_set_error(smb2, "Failed to stat %s: %s",
                                filename, strerror(errno));
-                close(fd);
-                return NULL;
+                goto out;
         }
         if (st.st_size < 0) {
-                smb2_set_error(dce->smb2, "Invalid size for %s", filename);
-                close(fd);
-                return NULL;
+                smb2_set_error(smb2, "Invalid size for %s", filename);
+                goto out;
         }
         file_size = (size_t)st.st_size;
 
         pdu = dcerpc_allocate_pdu(dce, ENCODING_YAML, DCERPC_DECODE,
                                   decode_size);
         if (pdu == NULL) {
-                close(fd);
-                return NULL;
+                goto out;
         }
 
         /*
@@ -2519,19 +2563,15 @@ dcerpc_read_yaml_file(struct dcerpc_context *dce,
          */
         filebuf = dcerpc_alloc_data(pdu, file_size + 1);
         if (filebuf == NULL) {
-                close(fd);
-                dcerpc_free_pdu(dce, pdu);
-                return NULL;
+                goto out;
         }
 
         while (total < file_size) {
                 n = read(fd, filebuf + total, file_size - total);
                 if (n < 0) {
-                        smb2_set_error(dce->smb2, "Failed to read %s: %s",
+                        smb2_set_error(smb2, "Failed to read %s: %s",
                                        filename, strerror(errno));
-                        close(fd);
-                        dcerpc_free_pdu(dce, pdu);
-                        return NULL;
+                        goto out;
                 }
                 if (n == 0) {
                         break;
@@ -2539,22 +2579,39 @@ dcerpc_read_yaml_file(struct dcerpc_context *dce,
                 total += (size_t)n;
         }
         close(fd);
+        fd = -1;
         filebuf[total] = '\0';
 
-        /* Peek first YAML mapping key (text before first ':'). */
+        /*
+         * Peek first YAML mapping key (text before first ':'), skipping
+         * blank lines and full-line # comments.
+         */
         p = filebuf;
-        while (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r') {
-                p++;
+        for (;;) {
+                while (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r') {
+                        p++;
+                }
+                if (*p == '#') {
+                        while (*p && *p != '\n' && *p != '\r') {
+                                p++;
+                        }
+                        continue;
+                }
+                break;
         }
         start = p;
-        while (*p && *p != ':' && *p != '\n' && *p != '\r') {
+        while (*p && *p != ':' && *p != '\n' && *p != '\r' && *p != '#') {
                 p++;
         }
         key_len = (size_t)(p - start);
+        /* Trim trailing spaces on the key token. */
+        while (key_len > 0 &&
+               (start[key_len - 1] == ' ' || start[key_len - 1] == '\t')) {
+                key_len--;
+        }
         if (*p != ':' || key_len == 0 || key_len >= sizeof(root_key)) {
-                smb2_set_error(dce->smb2, "No YAML root key in %s", filename);
-                dcerpc_free_pdu(dce, pdu);
-                return NULL;
+                smb2_set_error(smb2, "No YAML root key in %s", filename);
+                goto out;
         }
         memcpy(root_key, start, key_len);
         root_key[key_len] = '\0';
@@ -2567,21 +2624,32 @@ dcerpc_read_yaml_file(struct dcerpc_context *dce,
 
         if (dcerpc_do_coder(root_key, dce, pdu, &iov, &offset,
                             pdu->payload, coder)) {
-                /* Prefer any error the coder already set. */
-                if (smb2_get_error(dce->smb2) == NULL ||
-                    smb2_get_error(dce->smb2)[0] == '\0') {
-                        smb2_set_error(dce->smb2,
+                if (smb2_get_error(smb2) == NULL ||
+                    smb2_get_error(smb2)[0] == '\0') {
+                        smb2_set_error(smb2,
                                        "Failed to decode YAML from %s",
                                        filename);
                 }
-                dcerpc_free_pdu(dce, pdu);
-                return NULL;
+                goto out;
         }
 
         /* Steal root (struct + filebuf + nested allocs); free PDU only. */
         payload = pdu->payload;
         pdu->payload = NULL;
-        dcerpc_free_pdu(dce, pdu);
+
+out:
+        if (fd >= 0) {
+                close(fd);
+        }
+        if (pdu) {
+                dcerpc_free_pdu(dce, pdu);
+        }
+        if (dce) {
+                dcerpc_destroy_context(dce);
+        }
+        if (smb2) {
+                smb2_destroy_context(smb2);
+        }
         return payload;
 #endif /* HAVE_DCERPC_FULL */
 }
@@ -3626,12 +3694,38 @@ yaml_print_preamble(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         }
 }
 
+/*
+ * Advance to the next YAML key: value (or list item "- key: value").
+ *
+ * Skips blank lines and # comments:
+ *   - full-line comments: optional indent, then '#' to end of line
+ *   - trailing comments: "key: value # comment" (space/tab before '#')
+ *
+ * '#' inside an unquoted value with no preceding whitespace is kept as
+ * part of the value (e.g. password: abc#def). Quoted strings are not
+ * special-cased by this codec.
+ */
 int
 yaml_next_kv(struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov, int *offset)
 {
         char *str;
+        char *hash;
+        char *end;
 
         if (pdu->yaml_key) {
+                return 0;
+        }
+
+again:
+        if (*offset < 0 || (size_t)*offset >= iov->len ||
+            iov->buf[*offset] == '\0') {
+                /*
+                 * End of buffer: leave an empty key so callers that
+                 * strcmp(yaml_key, name) for optional UNIQUE fields do not
+                 * crash (same as a blank line with no ':').
+                 */
+                pdu->yaml_key = (char *)"";
+                pdu->yaml_val = NULL;
                 return 0;
         }
 
@@ -3645,24 +3739,60 @@ yaml_next_kv(struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov, int *offset)
         }
 
         pdu->yaml_indentation = 0;
-        while (*str == ' ') {
+        while (*str == ' ' || *str == '\t') {
                 str++;
                 pdu->yaml_indentation++;
         }
-        /* YAML list items: "  - key: value" */
-        if (str[0] == '-' && str[1] == ' ') {
+        /* Blank line or full-line comment → try the next line. */
+        if (*str == '\0' || *str == '#') {
+                goto again;
+        }
+        /* YAML list items: "  - key: value" (optional spaces after '-'). */
+        if (str[0] == '-' && (str[1] == ' ' || str[1] == '\t')) {
                 str += 2;
+                while (*str == ' ' || *str == '\t') {
+                        str++;
+                }
+                if (*str == '\0' || *str == '#') {
+                        goto again;
+                }
         }
 
         pdu->yaml_key = str;
         str = strchr(str, ':');
         if (str == NULL) {
-                pdu->yaml_val = NULL;
-                return 0;
+                /* Not a key: line (e.g. ---); skip and continue. */
+                pdu->yaml_key = NULL;
+                goto again;
         }
         *str++ = 0;
-        while (*str == ' ') {
+        /* Trim trailing whitespace from key. */
+        end = pdu->yaml_key + strlen(pdu->yaml_key);
+        while (end > pdu->yaml_key &&
+               (end[-1] == ' ' || end[-1] == '\t')) {
+                *--end = '\0';
+        }
+        while (*str == ' ' || *str == '\t') {
                 str++;
+        }
+        /*
+         * Strip a trailing # comment from the value. A '#' starts a comment
+         * only when it is at the start of the value or preceded by whitespace
+         * (so password: abc#def keeps the hash; "value # note" drops the note).
+         */
+        for (hash = str; *hash; hash++) {
+                if (*hash != '#') {
+                        continue;
+                }
+                if (hash == str || hash[-1] == ' ' || hash[-1] == '\t') {
+                        end = hash;
+                        while (end > str &&
+                               (end[-1] == ' ' || end[-1] == '\t')) {
+                                end--;
+                        }
+                        *end = '\0';
+                        break;
+                }
         }
         pdu->yaml_val = str;
 
@@ -3744,6 +3874,32 @@ yaml_uint64_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu
                                            iov->len - *offset,
                                            "%s: %" PRIu64 "\n",
                                            name, *(uint64_t *)ptr);
+                }
+                return 0;
+        }
+}
+
+static int
+yaml_uint8_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                 struct dcerpc_iovec *iov, int *offset, void *ptr)
+{
+        if (pdu->direction == DCERPC_DECODE) {
+                yaml_next_kv(pdu, iov, offset);
+                if (strcmp(pdu->yaml_key, name)) {
+                        printf("Wrong YAML key encountered for uint8. Expected %s but got %s\n",
+                               name, pdu->yaml_key);
+                        return -1;
+                }
+                pdu->yaml_key = NULL;
+                *(uint8_t *)ptr = (uint8_t)strtoul(pdu->yaml_val, NULL, 0);
+                yaml_next_kv(pdu, iov, offset);
+                return 0;
+        } else {
+                yaml_print_preamble(ctx, pdu, iov, offset);
+                if (*offset + 256 < iov->len) {
+                        *offset += snprintf((char *)&iov->buf[*offset],
+                                           iov->len - *offset, "%s: %u\n",
+                                           name, *(uint8_t *)ptr);
                 }
                 return 0;
         }
@@ -4423,6 +4579,38 @@ json_uint64_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu
                         *offset += snprintf((char *)&iov->buf[*offset],
                                            iov->len - *offset,
                                            ": %" PRIu64, *(uint64_t *)ptr);
+                }
+                return 0;
+        }
+}
+
+static int
+json_uint8_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                 struct dcerpc_iovec *iov, int *offset, void *ptr)
+{
+        if (pdu->direction == DCERPC_DECODE) {
+                unsigned long v;
+
+                if (json_expect_key(pdu, iov, offset, name) < 0) {
+                        return -1;
+                }
+                if (json_parse_ulong(iov, offset, &v) < 0) {
+                        return -1;
+                }
+                *(uint8_t *)ptr = (uint8_t)v;
+                return 0;
+        } else {
+                if (*offset + 64 >= (int)iov->len) {
+                        return 0;
+                }
+                json_sep(pdu, iov, offset);
+                if (json_append_quoted(iov, offset, name) < 0) {
+                        return -1;
+                }
+                if (*offset + 32 < (int)iov->len) {
+                        *offset += snprintf((char *)&iov->buf[*offset],
+                                           iov->len - *offset,
+                                           ": %u", *(uint8_t *)ptr);
                 }
                 return 0;
         }

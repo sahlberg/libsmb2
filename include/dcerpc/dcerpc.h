@@ -123,6 +123,23 @@ struct dcerpc_procedure {
         int rep_size;
 };
 
+/*
+ * Server-side implementation callback for a decoded request.
+ * req/rep are the allocated request and response structures.
+ * pdu may be used with dcerpc_alloc_data() for nested allocations.
+ * Return 0 if rep is populated; non-zero on failure.
+ */
+typedef int (*dcerpc_stub_fn)(struct dcerpc_context *dce,
+                              struct dcerpc_pdu *pdu,
+                              void *req,
+                              void *rep);
+
+struct dcerpc_stub {
+        int opnum;
+        char *name;
+        dcerpc_stub_fn fn;
+};
+
 struct dcerpc_service {
         const char *name;
         p_syntax_id_t *interface;
@@ -179,6 +196,25 @@ struct smb2_context *dcerpc_get_smb2_context(struct dcerpc_context *dce);
 void *dcerpc_get_pdu_payload(struct dcerpc_pdu *pdu);
 
 int dcerpc_open_async(struct dcerpc_context *dce, dcerpc_cb cb, void *cb_data);
+/*
+ * Issue an async DCE/RPC request (FSCTL_PIPE_TRANSCEIVE).
+ *
+ * Reply memory ownership (success path)
+ * -------------------------------------
+ * On success the callback's command_data is the decoded reply root: a buffer
+ * of decode_size bytes allocated as a dcerpc mem-tree root.  Nested decode
+ * allocations (dcerpc_alloc_data: arrays, strings, pointed-to structs, …)
+ * are linked to that same root.  Freeing the root with dcerpc_free_data()
+ * (or smb2_free_data(); the header layouts match) frees the entire tree.
+ *
+ * The internal PDU is destroyed after the callback is invoked and does not
+ * own that tree.  Before free, the root is stolen out of pdu->payload so
+ * dcerpc_free_pdu() does not free it.  Lifetime of all reply allocations is
+ * therefore tied to the returned rep pointer, not to the PDU or dce context.
+ *
+ * On error, command_data is NULL; there is nothing to free for the reply.
+ * Request-side buffers supplied by the caller are never part of this tree.
+ */
 int dcerpc_call_async(struct dcerpc_context *dce,
                       int opnum,
                       dcerpc_coder req_coder, void *req,
@@ -205,17 +241,18 @@ int dcerpc_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *p
  * Read a YAML file and decode it with coder into a newly allocated structure
  * of decode_size bytes.
  *
- * The returned pointer is a dcerpc mem-tree root (same model as a successful
- * dcerpc_call_async reply). Nested decode allocations and the file buffer
- * (loaded via dcerpc_alloc_data so YAML string pointers into the buffer stay
- * valid) are owned by that root. Free with dcerpc_free_data().
+ * Creates a temporary smb2/dcerpc context internally; the caller does not
+ * pass or manage a dcerpc_context. The returned pointer is a dcerpc mem-tree
+ * root (same model as a successful dcerpc_call_async reply). Nested decode
+ * allocations and the file buffer (loaded via dcerpc_alloc_data so YAML
+ * string pointers into the buffer stay valid) are owned by that root. Free
+ * with dcerpc_free_data(NULL, ptr) — the dce argument is unused.
  *
- * Returns NULL on error (see dcerpc_get_error()). Requires libdcerpc YAML
- * support (HAVE_DCERPC_FULL). The top-level YAML key is taken from the file
- * and must match what coder expects (e.g. "NetrShareEnum").
+ * Returns NULL on error. Requires libdcerpc YAML support (HAVE_DCERPC_FULL).
+ * The top-level YAML key is taken from the file and must match what coder
+ * expects (e.g. "CONFIG", "PASSWD", "NetrShareEnum").
  */
-void *dcerpc_read_yaml_file(struct dcerpc_context *dce,
-                            const char *filename,
+void *dcerpc_read_yaml_file(const char *filename,
                             dcerpc_coder coder,
                             int decode_size);
 #define DCERPC_DECODE 0
@@ -280,6 +317,8 @@ int ndr_uuid_coder(char *name, struct dcerpc_context *dce,
 int dcerpc_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                      struct dcerpc_iovec *iov, int *offset, void *ptr,
                      enum ptr_type type, dcerpc_coder coder);
+int dcerpc_uint8_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+                       struct dcerpc_iovec *iov, int *offset, void *ptr);
 int dcerpc_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                         struct dcerpc_iovec *iov, int *offset, void *ptr);
 int dcerpc_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
