@@ -187,6 +187,7 @@ smb2_encode_ioctl_reply(struct smb2_context *smb2,
         }
 
         ioctlv = NULL;
+        len = 0;
         if (rep->output_count) {
                 switch (rep->ctl_code) {
                 case SMB2_FSCTL_VALIDATE_NEGOTIATE_INFO:
