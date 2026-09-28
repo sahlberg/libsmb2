@@ -89,16 +89,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "libsmb2-raw.h"
 #include "libsmb2-private.h"
 
-struct dcerpc_service dcerpc_services[] = {
-        {"srvsvc", &srvsvc_interface, srvsvc_procs},
-#ifdef HAVE_DCERPC_FULL
-        {"lsarpc", &lsa_interface, lsa_procs},
-        {"wkssvc", &wkssvc_interface, wkssvc_procs},
-        {"winreg", &winreg_interface, winreg_procs},
-        {"epmapper", &epm_interface, epm_procs},
-#endif
-        {NULL, NULL}
-};
+struct dcerpc_service *dcerpc_services = NULL;
 
 #define container_of(ptr, type, member) ({                      \
         const typeof( ((type *)0)->member ) *__mptr = (ptr);    \
@@ -737,6 +728,39 @@ dcerpc_get_pdu_payload(struct dcerpc_pdu *pdu)
         return pdu->payload;
 }
 
+int
+dcerpc_register_coder(const char *name,
+                      p_syntax_id_t *interface,
+                      struct dcerpc_procedure *procs)
+{
+        struct dcerpc_service *service;
+
+        for (service = dcerpc_services; service; service = service->next) {
+                if (!strcmp(name, service->name)) {
+                        return -EEXIST;
+                }
+        }
+
+        service = calloc(1, sizeof(struct dcerpc_service));
+        if (service == NULL) {
+                return -ENOMEM;
+        }
+
+        service->name = strdup(name);
+        if (service->name == NULL) {
+                free(service);
+                return -ENOMEM;
+        }
+
+        service->next = dcerpc_services;
+        service->interface = interface;
+        service->procs = procs;
+
+        dcerpc_services = service;
+
+        return 0;
+}
+
 struct dcerpc_context *
 dcerpc_create_context(struct smb2_context *smb2)
 {
@@ -751,6 +775,15 @@ dcerpc_create_context(struct smb2_context *smb2)
         ctx->smb2 = smb2;
         ctx->owns_smb2 = 0;
         ctx->packed_drep[0] |= DCERPC_DR_LITTLE_ENDIAN;
+
+        dcerpc_register_coder("srvsvc", &srvsvc_interface, srvsvc_procs);
+#ifdef HAVE_DCERPC_FULL
+        dcerpc_register_coder("lsarpc", &lsa_interface, lsa_procs);
+        dcerpc_register_coder("wkssvc", &wkssvc_interface, wkssvc_procs);
+        dcerpc_register_coder("winreg", &winreg_interface, winreg_procs);
+        dcerpc_register_coder("epmapper", &epm_interface, epm_procs);
+#endif
+
         return ctx;
 }
 

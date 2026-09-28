@@ -13,6 +13,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 #define _GNU_SOURCE
 
+#include <dlfcn.h>
 #include <inttypes.h>
 #include <fcntl.h>
 #include <poll.h>
@@ -60,8 +61,13 @@ struct rpc_cb_data {
 int usage(void)
 {
         fprintf(stderr, "Usage:\n"
-                "dcerpc [-j|--json] <smb2-url> [request.yaml]\n\n"
-                "  -j, --json   Encode responses as JSON instead of YAML\n\n"
+                "dcerpc [-j|--json] [-c|--coder <file.so>] <smb2-url> [request.yaml]\n\n"
+                "  -j, --json          Encode responses as JSON instead of YAML\n"
+                "  -c, --coder <file>  Load an IDL-generated coder shared object\n"
+                "                      (e.g. axpy_coder.so). The service name is\n"
+                "                      the file name without \"_coder.so\" and the\n"
+                "                      object must export <name>_interface and\n"
+                "                      <name>_procs.\n\n"
                 "URL format: "
                 "smb://[<domain;][<username>@]<host>[:<port>]/IPC$/<service-name>\n"
                 "Request file is YAML (or stdin if omitted). Multiple requests\n"
@@ -337,6 +343,75 @@ apply_response_substitutions(struct opdata *req, int cur_idx)
         return 0;
 }
 
+static int
+load_coder(const char *path)
+{
+        void *handle;
+        const char *base;
+        char name[256];
+        char sym[300];
+        size_t len;
+        p_syntax_id_t *interface;
+        struct dcerpc_procedure *procs;
+        int ret;
+
+        base = strrchr(path, '/');
+        base = base ? base + 1 : path;
+        len = strlen(base);
+        if (len > 3 && !strcmp(base + len - 3, ".so")) {
+                len -= 3;
+        }
+        if (len > 6 && !strncmp(base + len - 6, "_coder", 6)) {
+                len -= 6;
+        }
+        if (len == 0 || len >= sizeof(name)) {
+                fprintf(stderr, "Can not derive service name from %s\n",
+                        path);
+                return -1;
+        }
+        memcpy(name, base, len);
+        name[len] = '\0';
+
+        /* dlopen() only searches the library path unless there is a '/' */
+        if (strchr(path, '/') == NULL) {
+                char local[4096];
+
+                snprintf(local, sizeof(local), "./%s", path);
+                handle = dlopen(local, RTLD_NOW);
+        } else {
+                handle = dlopen(path, RTLD_NOW);
+        }
+        if (handle == NULL) {
+                fprintf(stderr, "Failed to load coder %s: %s\n",
+                        path, dlerror());
+                return -1;
+        }
+
+        snprintf(sym, sizeof(sym), "%s_interface", name);
+        interface = dlsym(handle, sym);
+        if (interface == NULL) {
+                fprintf(stderr, "Coder %s has no symbol %s\n", path, sym);
+                dlclose(handle);
+                return -1;
+        }
+        snprintf(sym, sizeof(sym), "%s_procs", name);
+        procs = dlsym(handle, sym);
+        if (procs == NULL) {
+                fprintf(stderr, "Coder %s has no symbol %s\n", path, sym);
+                dlclose(handle);
+                return -1;
+        }
+
+        ret = dcerpc_register_coder(name, interface, procs);
+        if (ret) {
+                fprintf(stderr, "Failed to register service %s: %s\n",
+                        name, strerror(-ret));
+                dlclose(handle);
+                return -1;
+        }
+        return 0;
+}
+
 void do_request(struct dcerpc_context *dce);
 
 void si_cb(struct dcerpc_context *dce, int status,
@@ -500,6 +575,15 @@ int main(int argc, char *argv[])
                 if (!strcmp(argv[argi], "-j") || !strcmp(argv[argi], "--json")) {
                         output_encoding = ENCODING_JSON;
                         argi++;
+                } else if (!strcmp(argv[argi], "-c") || !strcmp(argv[argi], "--coder")) {
+                        if (argi + 1 >= argc) {
+                                fprintf(stderr, "%s requires a filename\n", argv[argi]);
+                                usage();
+                        }
+                        if (load_coder(argv[argi + 1])) {
+                                exit(9);
+                        }
+                        argi += 2;
                 } else if (!strcmp(argv[argi], "-h") || !strcmp(argv[argi], "--help")) {
                         usage();
                 } else {
@@ -633,13 +717,12 @@ int main(int argc, char *argv[])
 		exit(10);
         }
 
-        for (i = 0; dcerpc_services[i].name; i++) {
-                service = &dcerpc_services[i];
+        for (service = dcerpc_services; service; service = service->next) {
                 if (!strcmp(service->name, url->path)) {
                         break;
                 }
         }
-        if (service->name == NULL) {
+        if (service == NULL) {
                 printf("Could not find a service with the name %s\n", url->path);
                 exit(10);
         }

@@ -141,12 +141,22 @@ struct dcerpc_stub {
 };
 
 struct dcerpc_service {
+        struct dcerpc_service *next;
         const char *name;
         p_syntax_id_t *interface;
         struct dcerpc_procedure *procs;
 };
         
-extern struct dcerpc_service dcerpc_services[];
+extern struct dcerpc_service *dcerpc_services;
+
+/*
+ * Register a service so it can be looked up by name in dcerpc_services.
+ * Returns 0 on success, -EEXIST if name is already registered or
+ * -ENOMEM.
+ */
+int dcerpc_register_coder(const char *name,
+                          p_syntax_id_t *interface,
+                          struct dcerpc_procedure *procs);
 
 /*
  * Create a DCE/RPC context on an existing smb2 context.

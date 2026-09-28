@@ -54,6 +54,8 @@ if(ENABLE_LIBDCERPC AND TARGET dcerpc)
     endif()
   endforeach()
 
+  target_link_libraries(dcerpc ${CMAKE_DL_LIBS})
+
   find_package(Curses)
   if(CURSES_FOUND)
     target_link_libraries(winreg-tui ${CURSES_LIBRARIES})
