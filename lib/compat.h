@@ -879,6 +879,10 @@ int getlogin_r(char *buf, size_t size);
 #define EINVAL 22
 #endif
 
+#ifndef ECANCELED
+#define ECANCELED 125
+#endif
+
 #ifndef typeof
 #define typeof __typeof__
 #endif
