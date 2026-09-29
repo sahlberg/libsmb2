@@ -24,6 +24,7 @@ extern "C" {
 #endif
 
 #define LIBSMB2_SHARE_ENUM_V2 1
+#define LIBSMB2_SRVSVC_V2 1
 
 struct smb2_iovec {
         uint8_t *buf;
