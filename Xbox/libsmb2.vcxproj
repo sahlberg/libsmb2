@@ -75,6 +75,7 @@
     <ClCompile Include="..\lib\sha1.c" />
     <ClCompile Include="..\lib\sha224-256.c" />
     <ClCompile Include="..\lib\sha384-512.c" />
+    <ClCompile Include="..\lib\smb2-cmd-cancel.c" />
     <ClCompile Include="..\lib\smb2-cmd-close.c" />
     <ClCompile Include="..\lib\smb2-cmd-create.c" />
     <ClCompile Include="..\lib\smb2-cmd-echo.c" />

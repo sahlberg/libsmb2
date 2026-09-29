@@ -5,8 +5,8 @@ AM_CFLAGS = $(WARN_CFLAGS)
 LDADD = ../lib/libsmb2.la
 
 noinst_PROGRAMS = prog_ls prog_mkdir prog_rmdir prog_cat \
-	prog_cat_cancel prog_open_timeout prog_setsd prog_ssc \
-	prog_unrelated_compound
+	prog_cat_cancel prog_open_timeout prog_notify_cancel prog_lock_cancel \
+	prog_setsd prog_ssc prog_unrelated_compound
 noinst_PROGRAMS += metastat-0202-censored
 
 if BUILD_LIBDCERPC
