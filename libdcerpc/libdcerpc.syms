@@ -31,6 +31,7 @@ dcerpc_allocate_pdu
 dcerpc_alloc_data
 dcerpc_call
 dcerpc_call_async
+dcerpc_bytes_coder
 dcerpc_carray_coder
 dcerpc_connect_context
 dcerpc_connect_context_async
@@ -86,12 +87,8 @@ dcerpc_uint32_coder_pp
 dcerpc_uint64_coder
 dcerpc_union_coder
 dcerpc_utf16_coder
+dcerpc_varying_bytes_coder
 dcerpc_utf16z_coder
-json_append
-json_append_quoted
-json_expect_key
-json_parse_string
-json_sep
 lsa_Close_rep_coder
 lsa_Close_req_coder
 lsa_interface
@@ -293,5 +290,3 @@ wkssvc_WKSTA_USER_INFO_0_STRUCT_coder
 wkssvc_WKSTA_USER_INFO_1_coder
 wkssvc_WKSTA_USER_INFO_1_CONTAINER_coder
 wkssvc_WKSTA_USER_INFO_1_STRUCT_coder
-yaml_next_kv
-yaml_print_preamble

@@ -750,15 +750,6 @@ void dcerpc_pdu_clear_yaml_key(struct dcerpc_pdu *pdu);
 char *dcerpc_pdu_json_key(struct dcerpc_pdu *pdu);
 int dcerpc_json_next_key(struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
                          int *offset);
-int yaml_print_preamble(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                        struct dcerpc_iovec *iov, int *offset);
-int yaml_next_kv(struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov, int *offset);
-void json_sep(struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov, int *offset);
-int json_append(struct dcerpc_iovec *iov, int *offset, const char *s);
-int json_append_quoted(struct dcerpc_iovec *iov, int *offset, const char *s);
-int json_parse_string(struct dcerpc_iovec *iov, int *offset, char **start);
-int json_expect_key(struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov, int *offset,
-                    const char *name);
 #endif
 
 struct connect_data;                                           /* defined in libsmb2.c */

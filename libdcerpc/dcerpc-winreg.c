@@ -757,77 +757,6 @@ winreg_BaseRegDeleteValue_rep_coder(char *name, struct dcerpc_context *dce,
         return 0;
 }
 
-/*
- * Shared buffer descriptor for NDR byte arrays (SetValue / EnumValue).
- */
-struct winreg_blob {
-        uint8_t *data;
-        uint32_t max_count;
-        uint32_t actual_count;
-};
-
-/*
- * [size_is(cbData)] BYTE lpData[] — conformant array only (max_count + data).
- * ptr is struct winreg_blob * (actual_count unused; max_count == length).
- */
-static int
-winreg_conformant_bytes_coder(char *name, struct dcerpc_context *dce,
-                              struct dcerpc_pdu *pdu,
-                              struct dcerpc_iovec *iov, int *offset,
-                              void *ptr)
-{
-        struct winreg_blob *b = ptr;
-        uint32_t max_count;
-        uint32_t i;
-
-        if (dcerpc_pdu_encoding(pdu) != ENCODING_NDR) {
-                return 0;
-        }
-        if (dcerpc_get_cr(pdu)) {
-                return 0;
-        }
-
-        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
-                max_count = b->max_count;
-        } else {
-                max_count = 0;
-        }
-        if (dcerpc_uint32_coder("MaxCount", dce, pdu, iov, offset, &max_count)) {
-                return -1;
-        }
-        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {
-                if (max_count > 0x4000000) {
-                        return -1;
-                }
-                b->max_count = max_count;
-                b->actual_count = max_count;
-                if (max_count == 0) {
-                        b->data = NULL;
-                        return 0;
-                }
-                b->data = dcerpc_alloc_data(pdu,
-                                          max_count);
-                if (b->data == NULL) {
-                        return -1;
-                }
-                for (i = 0; i < max_count; i++) {
-                        if (ndr_uint8_coder("Data", dce, pdu, iov, offset,
-                                            &b->data[i])) {
-                                return -1;
-                        }
-                }
-                return 0;
-        }
-        for (i = 0; i < max_count; i++) {
-                uint8_t byte = b->data ? b->data[i] : 0;
-
-                if (ndr_uint8_coder("Data", dce, pdu, iov, offset, &byte)) {
-                        return -1;
-                }
-        }
-        return 0;
-}
-
 /**********************
  * Function: 0x16
  *      error_status_t BaseRegSetValue(
@@ -845,7 +774,7 @@ winreg_BaseRegSetValue_req_coder(char *name, struct dcerpc_context *dce,
                                  void *ptr)
 {
         struct winreg_BaseRegSetValue_req *req = ptr;
-        struct winreg_blob blob;
+        struct dcerpc_bytes bytes;
 
         if (dcerpc_ptr_coder("hKey", dce, pdu, iov, offset, &req->hKey,
                              PTR_REF, winreg_RPC_HKEY_STRUCT_coder)) {
@@ -860,16 +789,18 @@ winreg_BaseRegSetValue_req_coder(char *name, struct dcerpc_context *dce,
                                    &reg_type_pp)) {
                 return -1;
         }
-        blob.data = req->lpData;
-        blob.max_count = req->cbData;
-        blob.actual_count = req->cbData;
         /*
          * Top-level [size_is] array: not unique. Encode max_count + bytes
-         * inline. Pass &blob as the array body pointer.
+         * inline.
          */
-        if (winreg_conformant_bytes_coder("lpData", dce, pdu, iov, offset,
-                                          &blob)) {
+        bytes.len = req->cbData;
+        bytes.data = req->lpData;
+        if (dcerpc_bytes_coder("lpData", dce, pdu, iov, offset, &bytes)) {
                 return -1;
+        }
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE &&
+            !dcerpc_get_cr(pdu)) {
+                req->lpData = bytes.data;
         }
         if (dcerpc_uint32_coder("cbData", dce, pdu, iov, offset, &req->cbData)) {
                 return -1;
@@ -948,89 +879,6 @@ winreg_BaseRegOpenKey_rep_coder(char *name, struct dcerpc_context *dce,
         return 0;
 }
 
-/*
- * Conformant-varying byte array for
- *   [size_is(max), length_is(actual)] BYTE data[]
- * Wire: max_count, offset, actual_count, then actual_count bytes.
- * ptr is struct winreg_blob *.
- */
-static int
-winreg_blob_coder(char *name, struct dcerpc_context *dce,
-                  struct dcerpc_pdu *pdu,
-                  struct dcerpc_iovec *iov, int *offset,
-                  void *ptr)
-{
-        struct winreg_blob *b = ptr;
-        uint32_t max_count;
-        uint32_t arr_offset = 0;
-        uint32_t actual;
-        uint32_t i;
-
-        if (dcerpc_pdu_encoding(pdu) != ENCODING_NDR) {
-                /* Text encodings: omit raw blob body */
-                return 0;
-        }
-
-        if (dcerpc_get_cr(pdu)) {
-                return 0;
-        }
-
-        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
-                max_count = b->max_count;
-                actual = b->actual_count;
-                if (actual > max_count) {
-                        return -1;
-                }
-        } else {
-                max_count = 0;
-                actual = 0;
-        }
-
-        if (dcerpc_uint32_coder("MaxCount", dce, pdu, iov, offset, &max_count)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("Offset", dce, pdu, iov, offset, &arr_offset)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("ActualCount", dce, pdu, iov, offset, &actual)) {
-                return -1;
-        }
-
-        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {
-                if (actual > max_count || actual > 0x4000000) {
-                        return -1;
-                }
-                b->max_count = max_count;
-                b->actual_count = actual;
-                if (actual == 0) {
-                        b->data = NULL;
-                        return 0;
-                }
-                b->data = dcerpc_alloc_data(pdu,
-                                          actual);
-                if (b->data == NULL) {
-                        return -1;
-                }
-                for (i = 0; i < actual; i++) {
-                        if (ndr_uint8_coder("Data", dce, pdu, iov, offset,
-                                            &b->data[i])) {
-                                return -1;
-                        }
-                }
-                return 0;
-        }
-
-        /* Encode data bytes */
-        for (i = 0; i < actual; i++) {
-                uint8_t byte = b->data ? b->data[i] : 0;
-
-                if (ndr_uint8_coder("Data", dce, pdu, iov, offset, &byte)) {
-                        return -1;
-                }
-        }
-        return 0;
-}
-
 /**********************
  * Function: 0x0a
  *      error_status_t BaseRegEnumValue(
@@ -1054,7 +902,7 @@ winreg_BaseRegEnumValue_req_coder(char *name, struct dcerpc_context *dce,
                                   void *ptr)
 {
         struct winreg_BaseRegEnumValue_req *req = ptr;
-        struct winreg_blob blob;
+        struct dcerpc_varying_bytes blob;
         uint16_t name_ml;
 
         if (dcerpc_ptr_coder("hKey", dce, pdu, iov, offset, &req->hKey,
@@ -1079,15 +927,13 @@ winreg_BaseRegEnumValue_req_coder(char *name, struct dcerpc_context *dce,
         }
         blob.data = req->lpData;
         blob.max_count = req->cbData;
-        blob.actual_count = req->cbLen;
-        if (blob.max_count == 0 && req->lpData == NULL) {
-                /* still send a zero-size unique array header pair via sizes */
-                blob.max_count = 0;
-                blob.actual_count = 0;
-        }
+        blob.len = req->cbLen;
         if (dcerpc_ptr_coder("lpData", dce, pdu, iov, offset, &blob,
-                             PTR_UNIQUE, winreg_blob_coder)) {
+                             PTR_UNIQUE, dcerpc_varying_bytes_coder)) {
                 return -1;
+        }
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {
+                req->lpData = blob.data;
         }
         if (dcerpc_ptr_coder("lpcbData", dce, pdu, iov, offset, &req->cbData,
                              PTR_UNIQUE, dcerpc_uint32_coder)) {
@@ -1107,9 +953,14 @@ winreg_BaseRegEnumValue_rep_coder(char *name, struct dcerpc_context *dce,
                                   void *ptr)
 {
         struct winreg_BaseRegEnumValue_rep *rep = ptr;
-        struct winreg_blob blob;
+        struct dcerpc_varying_bytes blob;
 
         memset(&blob, 0, sizeof(blob));
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
+                blob.data = rep->lpData;
+                blob.max_count = rep->cbData;
+                blob.len = rep->cbLen;
+        }
 
         if (dcerpc_ptr_coder("lpValueName", dce, pdu, iov, offset,
                              &rep->lpValueName,
@@ -1121,7 +972,7 @@ winreg_BaseRegEnumValue_rep_coder(char *name, struct dcerpc_context *dce,
                 return -1;
         }
         if (dcerpc_ptr_coder("lpData", dce, pdu, iov, offset, &blob,
-                             PTR_UNIQUE, winreg_blob_coder)) {
+                             PTR_UNIQUE, dcerpc_varying_bytes_coder)) {
                 return -1;
         }
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {
@@ -1130,7 +981,7 @@ winreg_BaseRegEnumValue_rep_coder(char *name, struct dcerpc_context *dce,
                  * Prefer length_is (bytes returned). max_count is the
                  * size_is buffer capacity from the server.
                  */
-                rep->cbLen = blob.actual_count;
+                rep->cbLen = blob.len;
                 rep->cbData = blob.max_count;
         }
         if (dcerpc_ptr_coder("lpcbData", dce, pdu, iov, offset, &rep->cbData,

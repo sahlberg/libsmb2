@@ -17,6 +17,7 @@
 #define dcerpc_alloc_data libsmb2_dcerpc_alloc_data
 #define dcerpc_call libsmb2_dcerpc_call
 #define dcerpc_call_async libsmb2_dcerpc_call_async
+#define dcerpc_bytes_coder libsmb2_dcerpc_bytes_coder
 #define dcerpc_carray_coder libsmb2_dcerpc_carray_coder
 #define dcerpc_connect_context libsmb2_dcerpc_connect_context
 #define dcerpc_connect_context_async libsmb2_dcerpc_connect_context_async
@@ -64,12 +65,8 @@
 #define dcerpc_uint64_coder libsmb2_dcerpc_uint64_coder
 #define dcerpc_union_coder libsmb2_dcerpc_union_coder
 #define dcerpc_utf16_coder libsmb2_dcerpc_utf16_coder
+#define dcerpc_varying_bytes_coder libsmb2_dcerpc_varying_bytes_coder
 #define dcerpc_utf16z_coder libsmb2_dcerpc_utf16z_coder
-#define json_append libsmb2_json_append
-#define json_append_quoted libsmb2_json_append_quoted
-#define json_expect_key libsmb2_json_expect_key
-#define json_parse_string libsmb2_json_parse_string
-#define json_sep libsmb2_json_sep
 #define ndr32_syntax libsmb2_ndr32_syntax
 #define ndr64_syntax libsmb2_ndr64_syntax
 #define ndr_carray_coder libsmb2_ndr_carray_coder
@@ -101,7 +98,5 @@
 #define srvsvc_SHARE_INFO_2_coder libsmb2_srvsvc_SHARE_INFO_2_coder
 #define srvsvc_SHARE_INFO_2_CONTAINER_coder libsmb2_srvsvc_SHARE_INFO_2_CONTAINER_coder
 #define srvsvc_SHARE_INFO_2_STRUCT_coder libsmb2_srvsvc_SHARE_INFO_2_STRUCT_coder
-#define yaml_next_kv libsmb2_yaml_next_kv
-#define yaml_print_preamble libsmb2_yaml_print_preamble
 
 #endif /* _LIBSMB2_DCERPC_PREFIX_H_ */

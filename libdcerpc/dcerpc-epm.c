@@ -101,121 +101,6 @@ static struct dcerpc_uint32_pretty_printer vers_option_pp = {
 };
 
 /**********************
- * UUID field (NDR / YAML / JSON)
- **********************/
-static int
-epm_uuid_field_coder(char *name, struct dcerpc_context *dce,
-                     struct dcerpc_pdu *pdu,
-                     struct dcerpc_iovec *iov, int *offset,
-                     void *ptr)
-{
-        dcerpc_uuid_t *uuid = ptr;
-        int i;
-
-        if (dcerpc_pdu_encoding(pdu) == ENCODING_NDR) {
-                return ndr_uuid_coder(name, dce, pdu, iov, offset, uuid);
-        }
-
-#ifdef HAVE_DCERPC_FULL
-        if (dcerpc_pdu_encoding(pdu) == ENCODING_YAML) {
-                if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {
-                        unsigned int v1, v2, v3;
-                        unsigned int b[8];
-
-                        yaml_next_kv(pdu, iov, offset);
-                        if (strcmp(dcerpc_pdu_yaml_key(pdu), name)) {
-                                /* optional unique: missing key */
-                                return 0;
-                        }
-                        dcerpc_pdu_clear_yaml_key(pdu);
-                        if (sscanf(dcerpc_pdu_yaml_val(pdu),
-                                   "%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x",
-                                   &v1, &v2, &v3,
-                                   &b[0], &b[1], &b[2], &b[3],
-                                   &b[4], &b[5], &b[6], &b[7]) != 11) {
-                                return -1;
-                        }
-                        uuid->v1 = v1;
-                        uuid->v2 = (uint16_t)v2;
-                        uuid->v3 = (uint16_t)v3;
-                        for (i = 0; i < 8; i++) {
-                                uuid->v4[i] = (uint8_t)b[i];
-                        }
-                        yaml_next_kv(pdu, iov, offset);
-                        return 0;
-                }
-                yaml_print_preamble(dce, pdu, iov, offset);
-                if (*offset + 256 < (int)iov->len) {
-                        *offset += snprintf((char *)&iov->buf[*offset],
-                                           iov->len - *offset,
-                                           "%s: %08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x\n",
-                                           name,
-                                           uuid->v1, uuid->v2, uuid->v3,
-                                           uuid->v4[0], uuid->v4[1],
-                                           uuid->v4[2], uuid->v4[3],
-                                           uuid->v4[4], uuid->v4[5],
-                                           uuid->v4[6], uuid->v4[7]);
-                }
-                return 0;
-        }
-        if (dcerpc_pdu_encoding(pdu) == ENCODING_JSON) {
-                if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {
-                        char *val;
-                        unsigned int v1, v2, v3;
-                        unsigned int b[8];
-
-                        if (json_expect_key(pdu, iov, offset, name) < 0) {
-                                return -1;
-                        }
-                        if (json_parse_string(iov, offset, &val) < 0) {
-                                return -1;
-                        }
-                        if (sscanf(val,
-                                   "%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x",
-                                   &v1, &v2, &v3,
-                                   &b[0], &b[1], &b[2], &b[3],
-                                   &b[4], &b[5], &b[6], &b[7]) != 11) {
-                                return -1;
-                        }
-                        uuid->v1 = v1;
-                        uuid->v2 = (uint16_t)v2;
-                        uuid->v3 = (uint16_t)v3;
-                        for (i = 0; i < 8; i++) {
-                                uuid->v4[i] = (uint8_t)b[i];
-                        }
-                        return 0;
-                }
-                {
-                        char uuidstr[64];
-
-                        snprintf(uuidstr, sizeof(uuidstr),
-                                 "%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x",
-                                 uuid->v1, uuid->v2, uuid->v3,
-                                 uuid->v4[0], uuid->v4[1],
-                                 uuid->v4[2], uuid->v4[3],
-                                 uuid->v4[4], uuid->v4[5],
-                                 uuid->v4[6], uuid->v4[7]);
-                        json_sep(pdu, iov, offset);
-                        if (json_append_quoted(iov, offset, name) < 0) {
-                                return -1;
-                        }
-                        if (json_append(iov, offset, ": ") < 0) {
-                                return -1;
-                        }
-                        if (json_append_quoted(iov, offset, uuidstr) < 0) {
-                                return -1;
-                        }
-                }
-                return 0;
-        }
-#else
-        (void)dce;
-        (void)i;
-#endif
-        return -1;
-}
-
-/**********************
  * twr_t
  *
  *   unsigned32 tower_length;
@@ -223,95 +108,6 @@ epm_uuid_field_coder(char *name, struct dcerpc_context *dce,
  *
  * Wire: tower_length, then conformant max_count, then bytes.
  **********************/
-static int
-epm_tower_bytes_coder(char *name, struct dcerpc_context *dce,
-                      struct dcerpc_pdu *pdu,
-                      struct dcerpc_iovec *iov, int *offset,
-                      void *ptr)
-{
-        struct epm_twr_t *twr = ptr;
-        uint32_t max_count;
-        uint32_t i;
-
-        if (dcerpc_pdu_encoding(pdu) != ENCODING_NDR) {
-                /* YAML/JSON: hex string under TowerOctetString */
-                if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
-                        if (twr->tower_length == 0 ||
-                            twr->tower_octet_string == NULL) {
-                                return 0;
-                        }
-#ifdef HAVE_DCERPC_FULL
-                        if (dcerpc_pdu_encoding(pdu) == ENCODING_YAML) {
-                                yaml_print_preamble(dce, pdu, iov, offset);
-                                if (*offset + 32 + (int)twr->tower_length * 2 <
-                                    (int)iov->len) {
-                                        *offset += snprintf(
-                                                (char *)&iov->buf[*offset],
-                                                iov->len - *offset,
-                                                "TowerOctetString: ");
-                                        for (i = 0; i < twr->tower_length; i++) {
-                                                *offset += snprintf(
-                                                        (char *)&iov->buf[*offset],
-                                                        iov->len - *offset,
-                                                        "%02x",
-                                                        twr->tower_octet_string[i]);
-                                        }
-                                        *offset += snprintf(
-                                                (char *)&iov->buf[*offset],
-                                                iov->len - *offset, "\n");
-                                }
-                                return 0;
-                        }
-#endif
-                        return 0;
-                }
-                return 0;
-        }
-
-        if (dcerpc_get_cr(pdu)) {
-                return 0;
-        }
-
-        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
-                max_count = twr->tower_length;
-        } else {
-                max_count = 0;
-        }
-        if (dcerpc_uint32_coder("MaxCount", dce, pdu, iov, offset, &max_count)) {
-                return -1;
-        }
-        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {
-                if (max_count > 0x100000) {
-                        return -1;
-                }
-                twr->tower_length = max_count;
-                if (max_count == 0) {
-                        twr->tower_octet_string = NULL;
-                        return 0;
-                }
-                twr->tower_octet_string = dcerpc_alloc_data(pdu, max_count);
-                if (twr->tower_octet_string == NULL) {
-                        return -1;
-                }
-                for (i = 0; i < max_count; i++) {
-                        if (ndr_uint8_coder("Data", dce, pdu, iov, offset,
-                                            &twr->tower_octet_string[i])) {
-                                return -1;
-                        }
-                }
-                return 0;
-        }
-        for (i = 0; i < max_count; i++) {
-                uint8_t byte = twr->tower_octet_string ?
-                        twr->tower_octet_string[i] : 0;
-
-                if (ndr_uint8_coder("Data", dce, pdu, iov, offset, &byte)) {
-                        return -1;
-                }
-        }
-        return 0;
-}
-
 int
 epm_twr_coder(char *name, struct dcerpc_context *dce,
               struct dcerpc_pdu *pdu,
@@ -320,6 +116,7 @@ epm_twr_coder(char *name, struct dcerpc_context *dce,
 {
         struct epm_twr_t *twr = ptr;
         uint32_t len;
+        struct dcerpc_bytes bytes;
 
         if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
                 len = twr->tower_length;
@@ -336,9 +133,16 @@ epm_twr_coder(char *name, struct dcerpc_context *dce,
          * Conformant array body is coded after tower_length. size_is is
          * tower_length; for NDR the array also writes max_count.
          */
-        if (epm_tower_bytes_coder("TowerOctetString", dce, pdu, iov, offset,
-                                  twr)) {
+        bytes.len = twr->tower_length;
+        bytes.data = twr->tower_octet_string;
+        if (dcerpc_bytes_coder("TowerOctetString", dce, pdu, iov, offset,
+                               &bytes)) {
                 return -1;
+        }
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE &&
+            !dcerpc_get_cr(pdu)) {
+                twr->tower_length = bytes.len;
+                twr->tower_octet_string = bytes.data;
         }
         return 0;
 }
@@ -444,7 +248,7 @@ epm_entry_coder(char *name, struct dcerpc_context *dce,
         struct epm_entry_t *ent = ptr;
         void *tower_ptr;
 
-        if (epm_uuid_field_coder("Object", dce, pdu, iov, offset, &ent->object)) {
+        if (dcerpc_uuid_coder("Object", dce, pdu, iov, offset, &ent->object)) {
                 return -1;
         }
 
@@ -492,7 +296,7 @@ epm_rpc_if_id_coder(char *name, struct dcerpc_context *dce,
 {
         struct epm_rpc_if_id *iid = ptr;
 
-        if (epm_uuid_field_coder("Uuid", dce, pdu, iov, offset, &iid->uuid)) {
+        if (dcerpc_uuid_coder("Uuid", dce, pdu, iov, offset, &iid->uuid)) {
                 return -1;
         }
         if (dcerpc_uint16_coder("VersMajor", dce, pdu, iov, offset,
@@ -847,7 +651,7 @@ epm_opt_uuid_unique_coder(char *name, struct dcerpc_context *dce,
         if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
                 obj_ptr = (*is_null) ? NULL : uuid;
                 return dcerpc_ptr_coder(name, dce, pdu, iov, offset, obj_ptr,
-                                        PTR_UNIQUE, epm_uuid_field_coder);
+                                        PTR_UNIQUE, dcerpc_uuid_coder);
         }
 
         /* DECODE: assume null until a non-null unique fills the field */
@@ -860,7 +664,7 @@ epm_opt_uuid_unique_coder(char *name, struct dcerpc_context *dce,
                  * *is_null.
                  */
                 if (dcerpc_ptr_coder(name, dce, pdu, iov, offset, uuid,
-                                     PTR_UNIQUE, epm_uuid_field_coder)) {
+                                     PTR_UNIQUE, dcerpc_uuid_coder)) {
                         return -1;
                 }
                 /* If any field non-zero, treat as present */
@@ -876,7 +680,7 @@ epm_opt_uuid_unique_coder(char *name, struct dcerpc_context *dce,
          * fact; treat remaining all-zero as null (common for Lookup).
          */
         if (dcerpc_ptr_coder(name, dce, pdu, iov, offset, uuid,
-                             PTR_UNIQUE, epm_uuid_field_coder)) {
+                             PTR_UNIQUE, dcerpc_uuid_coder)) {
                 return -1;
         }
         if (uuid->v1 || uuid->v2 || uuid->v3 ||
@@ -1105,7 +909,7 @@ epm_InqObject_rep_coder(char *name, struct dcerpc_context *dce,
         struct epm_InqObject_rep *rep = ptr;
 
         if (dcerpc_ptr_coder("EptObject", dce, pdu, iov, offset, &rep->ept_object,
-                             PTR_REF, epm_uuid_field_coder)) {
+                             PTR_REF, dcerpc_uuid_coder)) {
                 return -1;
         }
         if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
@@ -1138,7 +942,7 @@ epm_MgmtDelete_req_coder(char *name, struct dcerpc_context *dce,
                 req->object_null = 0;
         }
         if (dcerpc_ptr_coder("Object", dce, pdu, iov, offset, obj_ptr,
-                             PTR_UNIQUE, epm_uuid_field_coder)) {
+                             PTR_UNIQUE, dcerpc_uuid_coder)) {
                 return -1;
         }
         if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {

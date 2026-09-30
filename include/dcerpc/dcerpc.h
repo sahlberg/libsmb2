@@ -49,6 +49,38 @@ typedef int (*dcerpc_coder)(char *name, struct dcerpc_context *dce, struct dcerp
                             struct dcerpc_iovec *iov, int *offset,
                             void *ptr);
 
+struct dcerpc_uint32_pretty_printer_bitfield {
+        char *name;
+        uint32_t mask;
+        uint32_t value;
+};
+
+struct dcerpc_uint32_pretty_printer {
+        char *fmt;
+        struct dcerpc_uint32_pretty_printer_bitfield bitfields[];
+};
+
+/* Encoder/Decoder for a DCERPC object with a pretty-printer*/
+typedef int (*dcerpc_coder_pp)(char *name, struct dcerpc_context *dce,
+                               struct dcerpc_pdu *pdu,
+                               struct dcerpc_iovec *iov, int *offset,
+                               void *ptr,
+                               struct dcerpc_uint32_pretty_printer *pp);
+
+/* Encoder/Decoder for a DCERPC object with a pass-through coder*/
+typedef int (*dcerpc_coder_cdr)(char *name, struct dcerpc_context *dce,
+                                struct dcerpc_pdu *pdu,
+                                struct dcerpc_iovec *iov, int *offset,
+                                void *ptr,
+                                dcerpc_coder coder);
+
+/* Encoder/Decoder for a DCERPC union with a discriminator */
+typedef int (*dcerpc_coder_union)(char *name, struct dcerpc_context *dce,
+                                  struct dcerpc_pdu *pdu,
+                                  struct dcerpc_iovec *iov, int *offset,
+                                  uint32_t *switch_is, void *ptr,
+                                  dcerpc_coder coder);
+
 enum dcerpc_encoding {
         ENCODING_NDR    = 0,
         ENCODING_YAML   = 1,
@@ -92,17 +124,6 @@ struct dcerpc_utf16 {
         struct smb2_utf16 *utf16; /* internal use only */
         
         const char *utf8;
-};
-
-struct dcerpc_uint32_pretty_printer_bitfield {
-        char *name;
-        uint32_t mask;
-        uint32_t value;
-};
-
-struct dcerpc_uint32_pretty_printer {
-        char *fmt;
-        struct dcerpc_uint32_pretty_printer_bitfield bitfields[];
 };
 
 extern p_syntax_id_t lsa_interface;
@@ -322,7 +343,7 @@ int ndr_utf16z_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *
 int ndr_uuid_coder(char *name, struct dcerpc_context *dce,
                    struct dcerpc_pdu *pdu,
                    struct dcerpc_iovec *iov, int *offset,
-                   dcerpc_uuid_t *uuid);
+                   void *ptr);
 
 int dcerpc_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                      struct dcerpc_iovec *iov, int *offset, void *ptr,
@@ -361,10 +382,47 @@ int dcerpc_context_handle_coder(char *name, struct dcerpc_context *dce,
                                 struct dcerpc_pdu *pdu,
                                 struct dcerpc_iovec *iov, int *offset,
                                 void *ptr);
+int dcerpc_uuid_coder(char *name, struct dcerpc_context *ctx,
+                      struct dcerpc_pdu *pdu,
+                      struct dcerpc_iovec *iov, int *offset, void *ptr);
 int dcerpc_sid_coder(char *name, struct dcerpc_context *dce,
                      struct dcerpc_pdu *pdu,
                      struct dcerpc_iovec *iov, int *offset,
                      void *ptr);
+
+/*
+ * [size_is(len)] byte data[] — a conformant byte array.
+ * NDR: max_count followed by the bytes. YAML/JSON: a hex string.
+ * On decode data is allocated from the pdu (dcerpc_alloc_data).
+ * ptr is struct dcerpc_bytes *.
+ */
+#define DCERPC_BYTES_MAX 0x4000000
+struct dcerpc_bytes {
+        uint32_t len;
+        uint8_t *data;
+};
+int dcerpc_bytes_coder(char *name, struct dcerpc_context *dce,
+                       struct dcerpc_pdu *pdu,
+                       struct dcerpc_iovec *iov, int *offset,
+                       void *ptr);
+
+/*
+ * [size_is(max_count), length_is(len)] byte data[] — a conformant-varying
+ * byte array. NDR: max_count, offset (always 0), len, then len bytes.
+ * YAML/JSON: the len bytes as a hex string; max_count is not carried and
+ * is set to len on decode.
+ * On decode data is allocated from the pdu (dcerpc_alloc_data).
+ * ptr is struct dcerpc_varying_bytes *.
+ */
+struct dcerpc_varying_bytes {
+        uint32_t max_count;
+        uint32_t len;
+        uint8_t *data;
+};
+int dcerpc_varying_bytes_coder(char *name, struct dcerpc_context *dce,
+                               struct dcerpc_pdu *pdu,
+                               struct dcerpc_iovec *iov, int *offset,
+                               void *ptr);
 /*
  * RPC_UNICODE_STRING (MS-DTYP). Buffer is not required to be NUL-terminated.
  * ptr is char ** (UTF-8).
