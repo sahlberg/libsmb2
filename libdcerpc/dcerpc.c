@@ -161,6 +161,13 @@ dcerpc_mem_free(void *ptr)
 struct dcerpc_deferred_pointer {
         dcerpc_coder coder;
         void *ptr;
+        /*
+         * size_is/switch_is in effect when the pointer was queued. The
+         * referent is coded later, after sibling and nested coders may
+         * have changed them, so they are restored before coding it.
+         */
+        uint32_t size_is;
+        int switch_is;
 };
 
 
@@ -3884,12 +3891,22 @@ ndr_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
              int *offset, void *ptr,
              dcerpc_coder coder)
 {
+        uint32_t size_is = pdu->size_is;
+        int switch_is = pdu->switch_is;
+
         pdu->max_alignment = 1;
         pdu->is_conformance_run = 1;
         if (coder(name, ctx, pdu, iov, offset, ptr)) {
                 return -1;
         }
         *offset = (*offset + (pdu->max_alignment - 1)) & ~(pdu->max_alignment - 1);
+        /*
+         * Both runs must see the same inputs: nested coders in the
+         * conformance run (e.g. array elements with their own size_is)
+         * may have changed size_is/switch_is.
+         */
+        pdu->size_is = size_is;
+        pdu->switch_is = switch_is;
         pdu->is_conformance_run = 0;
         if (coder(name, ctx, pdu, iov, offset, ptr)) {
                 return -1;
@@ -4179,6 +4196,8 @@ dcerpc_add_deferred_pointer(struct dcerpc_context *ctx,
         }
         pdu->ptrs[pdu->max_ptr].coder = coder;
         pdu->ptrs[pdu->max_ptr].ptr = ptr;
+        pdu->ptrs[pdu->max_ptr].size_is = pdu->size_is;
+        pdu->ptrs[pdu->max_ptr].switch_is = pdu->switch_is;
         pdu->max_ptr++;
         return 0;
 }
@@ -4195,6 +4214,8 @@ dcerpc_process_deferred_pointers(struct dcerpc_context *ctx,
         while (pdu->cur_ptr != pdu->max_ptr) {
                 idx = pdu->cur_ptr++;
                 dp = &pdu->ptrs[idx];
+                pdu->size_is = dp->size_is;
+                pdu->switch_is = dp->switch_is;
                 if (ndr_do_coder("DEFERRED", ctx, pdu, iov, offset, dp->ptr, dp->coder)) {
                         return -1;
                 }
