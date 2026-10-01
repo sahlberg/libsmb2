@@ -695,6 +695,11 @@ int main(int argc, char *argv[])
                         smb2_get_error(smb2));
                 exit(0);
         }
+        if (url->path == NULL || url->path[0] == '\0') {
+                printf("No service name in URL. Use smb://<host>/IPC$/<service>\n");
+                exit(10);
+        }
+
         if (url->user) {
                 smb2_set_user(smb2, url->user);
         }

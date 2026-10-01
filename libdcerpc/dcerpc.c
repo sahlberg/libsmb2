@@ -443,8 +443,7 @@ struct dcerpc_pdu {
 #ifdef HAVE_DCERPC_FULL
         /* YAML/JSON text codecs — full libdcerpc only */
         int yaml_indentation;
-        int yaml_array_prefix;
-        int yaml_array_item; /* 1 while encoding fields of a list item after "- " */
+        int yaml_array_prefix; /* next key is the first field of a list item */
         char *yaml_key;
         char *yaml_val;
 
@@ -3317,30 +3316,29 @@ static int
 yaml_print_preamble(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                     struct dcerpc_iovec *iov, int *offset)
 {
-        int i;
+        int i, n = pdu->yaml_indentation;
 
-        for(i = 0; i < pdu->yaml_indentation; i++) {
+        /*
+         * The body of a list item is one indentation level deeper than
+         * the list. On the item's first line "- " takes the place of
+         * that level, so all fields of the item, including nested ones,
+         * line up under the first key:
+         *   - Name: BUILTIN
+         *     SID: S-1-5-32
+         */
+        if (pdu->yaml_array_prefix) {
+                n--;
+        }
+        for(i = 0; i < n; i++) {
                 if (dcerpc_text_printf(ctx, iov, offset, "  ")) {
                         return -1;
                 }
         }
         if (pdu->yaml_array_prefix) {
-                /* First field of a list item: "  - key: value" */
                 if (dcerpc_text_printf(ctx, iov, offset, "- ")) {
                         return -1;
                 }
                 pdu->yaml_array_prefix = 0;
-                pdu->yaml_array_item = 1;
-        } else if (pdu->yaml_array_item) {
-                /*
-                 * Later fields of the same list item: align under the key
-                 * after "- " so multi-field elements form one YAML mapping:
-                 *   - Name: BUILTIN
-                 *     SID: S-1-5-32
-                 */
-                if (dcerpc_text_printf(ctx, iov, offset, "  ")) {
-                        return -1;
-                }
         }
         return 0;
 }
@@ -5866,12 +5864,6 @@ yaml_struct_coder(char *name, struct dcerpc_context *ctx,
                         return -1;
                 }
                 pdu->yaml_val = "";
-                /*
-                 * Nested fields use yaml_indentation, not the list-item
-                 * "  " padding from yaml_array_item (that is for bare
-                 * multi-field array elements without a struct wrapper).
-                 */
-                pdu->yaml_array_item = 0;
 
                 pdu->yaml_indentation++;
                 ret = coder(name, ctx, pdu, iov, offset, ptr);
@@ -6065,10 +6057,12 @@ yaml_carray_coder(char *name, struct dcerpc_context *ctx,
                 pdu->yaml_indentation++;
                 for (i = 0; i < (int)num; i++) {
                         pdu->yaml_array_prefix = 1;
+                        pdu->yaml_indentation++;
                         if (coder(name, ctx, pdu, iov, offset, &data[i * elem_size])) {
                                 return -1;
                         }
-                        pdu->yaml_array_item = 0;
+                        pdu->yaml_indentation--;
+                        pdu->yaml_array_prefix = 0;
                 }
                 pdu->yaml_indentation--;
         }
