@@ -130,7 +130,7 @@ lsa_RPC_UNICODE_STRING_carray_coder(char *name, struct dcerpc_context *dce,
                      struct dcerpc_iovec *iov, int *offset,
                      void *ptr)
 {
-        return dcerpc_carray_coder(name, dce, pdu, iov, offset,
+        return dcerpc_scalar_carray_coder(name, dce, pdu, iov, offset,
                                    dcerpc_get_size_is(pdu), ptr,
                                    sizeof(char *),
                                    dcerpc_RPC_UNICODE_STRING_coder);

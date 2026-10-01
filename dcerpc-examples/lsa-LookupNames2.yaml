@@ -11,9 +11,9 @@ LookupNames2: Request
     UUID: @UUID:-1@
   Count: 3
   Names:
-    - Names: sahlberg
-    - Names: Administrator
-    - Names: UserDoesNotExist
+    - sahlberg
+    - Administrator
+    - UserDoesNotExist
   TranslatedSids:
     Entries: 0
   LookupLevel: LsapLookupWksta
