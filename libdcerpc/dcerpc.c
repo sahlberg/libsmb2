@@ -5747,6 +5747,17 @@ json_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                struct dcerpc_iovec *iov, int *offset, void *ptr,
                enum ptr_type type, dcerpc_coder coder)
 {
+        if (name == NULL) {
+                /*
+                 * Element of a list of bare values (scalar_carray_coder):
+                 * the value itself; a NULL element cannot be shown.
+                 */
+                if (ptr == NULL) {
+                        printf("NULL element in a list of values\n");
+                        return -1;
+                }
+                return coder(name, dce, pdu, iov, offset, ptr);
+        }
         if (ptr == NULL) {
                 return 0;
         }
@@ -6398,6 +6409,17 @@ yaml_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                struct dcerpc_iovec *iov, int *offset, void *ptr,
                enum ptr_type type, dcerpc_coder coder)
 {
+        if (name == NULL) {
+                /*
+                 * Element of a list of bare values (scalar_carray_coder):
+                 * the value itself; a NULL element cannot be shown.
+                 */
+                if (ptr == NULL) {
+                        printf("NULL element in a list of values\n");
+                        return -1;
+                }
+                return coder(name, dce, pdu, iov, offset, ptr);
+        }
         if (ptr == NULL) {
                 return 0;
         }
