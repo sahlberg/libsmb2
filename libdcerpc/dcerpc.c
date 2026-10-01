@@ -371,6 +371,9 @@ struct dcerpc_coders {
         dcerpc_coder     sid_coder;     /* in dcerpc-dtyp.c, full build only */
         dcerpc_coder     utf16_coder;
         dcerpc_coder     utf16z_coder;
+        /* MS-DTYP RPC_UNICODE_STRING, C char *; z: NUL-terminated Buffer */
+        dcerpc_coder     unicode_string_coder;
+        dcerpc_coder     unicode_stringz_coder;
         dcerpc_coder_cdr struct_coder;
         dcerpc_coder_cdr do_coder;
         dcerpc_coder_union union_coder;
@@ -403,6 +406,8 @@ dcerpc_coders_missing(const struct dcerpc_coders *coders)
         CHECK_CODER(sid_coder);
         CHECK_CODER(utf16_coder);
         CHECK_CODER(utf16z_coder);
+        CHECK_CODER(unicode_string_coder);
+        CHECK_CODER(unicode_stringz_coder);
         CHECK_CODER(struct_coder);
         CHECK_CODER(do_coder);
         CHECK_CODER(union_coder);
@@ -3176,25 +3181,16 @@ dcerpc_context_handle_coder(char *name, struct dcerpc_context *dce,
  * _ndr_utf16z_coder.
  *
  * Represented in C as char * (UTF-8). ptr is char **.
+ * NDR form; YAML/JSON show only the string (yaml/json_unicode_string_coder).
  */
 static int
-_dcerpc_RPC_UNICODE_STRING_coder(char *name, struct dcerpc_context *dce,
-                                 struct dcerpc_pdu *pdu,
-                                 struct dcerpc_iovec *iov, int *offset,
-                                 void *ptr, int nult)
+_ndr_RPC_UNICODE_STRING_coder(char *name, struct dcerpc_context *dce,
+                              struct dcerpc_pdu *pdu,
+                              struct dcerpc_iovec *iov, int *offset,
+                              void *ptr, int nult)
 {
         uint16_t len, maxlen;
         dcerpc_coder buffer_coder;
-
-        /*
-         * YAML/JSON only need the string value. NDR alignment and Length/
-         * MaxLength must not run for text encodings: align would skip past
-         * the current NUL in the text buffer and truncate the visible output.
-         */
-        if (dcerpc_pdu_encoding(pdu) == ENCODING_YAML ||
-            dcerpc_pdu_encoding(pdu) == ENCODING_JSON) {
-                return dcerpc_utf16_coder(name, dce, pdu, iov, offset, ptr);
-        }
 
 /* TODO conformance split
  * during the conformance run we need to do the alignment in all the
@@ -3202,8 +3198,6 @@ _dcerpc_RPC_UNICODE_STRING_coder(char *name, struct dcerpc_context *dce,
 
   that will eliminate the need to manually set the alignment like
   we do here
-
-  It needs to become a proper type in dcerpc.c
 */
         *offset = dcerpc_align_3264(dce, *offset);
 
@@ -3268,6 +3262,26 @@ _dcerpc_RPC_UNICODE_STRING_coder(char *name, struct dcerpc_context *dce,
         return 0;
 }
 
+static int
+ndr_RPC_UNICODE_STRING_coder(char *name, struct dcerpc_context *dce,
+                             struct dcerpc_pdu *pdu,
+                             struct dcerpc_iovec *iov, int *offset,
+                             void *ptr)
+{
+        return _ndr_RPC_UNICODE_STRING_coder(name, dce, pdu, iov, offset,
+                                             ptr, 0);
+}
+
+static int
+ndr_RPC_UNICODE_STRINGz_coder(char *name, struct dcerpc_context *dce,
+                              struct dcerpc_pdu *pdu,
+                              struct dcerpc_iovec *iov, int *offset,
+                              void *ptr)
+{
+        return _ndr_RPC_UNICODE_STRING_coder(name, dce, pdu, iov, offset,
+                                             ptr, 1);
+}
+
 /* RPC_UNICODE_STRING: Buffer not required to be NUL-terminated. */
 int
 dcerpc_RPC_UNICODE_STRING_coder(char *name, struct dcerpc_context *dce,
@@ -3275,8 +3289,11 @@ dcerpc_RPC_UNICODE_STRING_coder(char *name, struct dcerpc_context *dce,
                                 struct dcerpc_iovec *iov, int *offset,
                                 void *ptr)
 {
-        return _dcerpc_RPC_UNICODE_STRING_coder(name, dce, pdu, iov, offset,
-                                                ptr, 0);
+        if (pdu->coders->unicode_string_coder) {
+                return pdu->coders->unicode_string_coder(name, dce, pdu,
+                                                         iov, offset, ptr);
+        }
+        return -1;
 }
 
 /*
@@ -3289,8 +3306,11 @@ dcerpc_RPC_UNICODE_STRINGz_coder(char *name, struct dcerpc_context *dce,
                                  struct dcerpc_iovec *iov, int *offset,
                                  void *ptr)
 {
-        return _dcerpc_RPC_UNICODE_STRING_coder(name, dce, pdu, iov, offset,
-                                                ptr, 1);
+        if (pdu->coders->unicode_stringz_coder) {
+                return pdu->coders->unicode_stringz_coder(name, dce, pdu,
+                                                          iov, offset, ptr);
+        }
+        return -1;
 }
 
 
@@ -4432,6 +4452,8 @@ struct dcerpc_coders ndr_coders = {
         .sid_coder       = ndr_sid_coder,
         .utf16_coder     = ndr_utf16_coder,
         .utf16z_coder    = ndr_utf16z_coder,
+        .unicode_string_coder  = ndr_RPC_UNICODE_STRING_coder,
+        .unicode_stringz_coder = ndr_RPC_UNICODE_STRINGz_coder,
         .struct_coder    = ndr_struct_coder,
         .do_coder        = ndr_do_coder,
         .union_coder     = ndr_union_coder,
@@ -5606,6 +5628,18 @@ json_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
         }
 }
 
+/*
+ * RPC_UNICODE_STRING (plain and NUL-terminated): text encodings show only
+ * the string; Length/MaximumLength are NDR-only.
+ */
+static int
+json_unicode_string_coder(char *name, struct dcerpc_context *ctx,
+                          struct dcerpc_pdu *pdu,
+                          struct dcerpc_iovec *iov, int *offset, void *ptr)
+{
+        return json_utf16_coder(name, ctx, pdu, iov, offset, ptr);
+}
+
 struct dcerpc_coders json_coders = {
         .uint8_coder     = json_uint8_coder,
         .uint16_coder    = json_uint16_coder,
@@ -5617,6 +5651,8 @@ struct dcerpc_coders json_coders = {
         .sid_coder       = json_sid_coder,
         .utf16_coder     = json_utf16_coder,
         .utf16z_coder    = json_utf16z_coder,
+        .unicode_string_coder  = json_unicode_string_coder,
+        .unicode_stringz_coder = json_unicode_string_coder,
         .struct_coder    = json_struct_coder,
         .do_coder        = json_do_coder,
         .union_coder     = json_union_coder,
@@ -6186,6 +6222,18 @@ yaml_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
         }
 }
 
+/*
+ * RPC_UNICODE_STRING (plain and NUL-terminated): text encodings show only
+ * the string; Length/MaximumLength are NDR-only.
+ */
+static int
+yaml_unicode_string_coder(char *name, struct dcerpc_context *ctx,
+                          struct dcerpc_pdu *pdu,
+                          struct dcerpc_iovec *iov, int *offset, void *ptr)
+{
+        return yaml_utf16_coder(name, ctx, pdu, iov, offset, ptr);
+}
+
 struct dcerpc_coders yaml_coders = {
         .uint8_coder     = yaml_uint8_coder,
         .uint16_coder    = yaml_uint16_coder,
@@ -6197,6 +6245,8 @@ struct dcerpc_coders yaml_coders = {
         .sid_coder       = yaml_sid_coder,
         .utf16_coder     = yaml_utf16_coder,
         .utf16z_coder    = yaml_utf16z_coder,
+        .unicode_string_coder  = yaml_unicode_string_coder,
+        .unicode_stringz_coder = yaml_unicode_string_coder,
         .struct_coder    = yaml_struct_coder,
         .do_coder        = yaml_do_coder,
         .union_coder     = yaml_union_coder,
