@@ -6,8 +6,7 @@ lib_LTLIBRARIES = libdcerpc.la
 libdcerpc_la_CPPFLAGS = -I$(abs_top_srcdir)/include \
 			-I$(abs_top_srcdir)/include/smb2 \
 			-I$(abs_top_srcdir)/lib \
-			"-D_U_=__attribute__((unused))" \
-			-DHAVE_DCERPC_FULL
+			"-D_U_=__attribute__((unused))"
 
 libdcerpc_la_SOURCES = \
 	dcerpc.c \
@@ -16,7 +15,8 @@ libdcerpc_la_SOURCES = \
 	dcerpc-lsa.c \
 	dcerpc-wkssvc.c \
 	dcerpc-winreg.c \
-	dcerpc-epm.c
+	dcerpc-epm.c \
+	dcerpc-private.h
 
 SOCURRENT=1
 SOREVISION=0

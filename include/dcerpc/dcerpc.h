@@ -279,7 +279,7 @@ int dcerpc_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *p
  * string pointers into the buffer stay valid) are owned by that root. Free
  * with dcerpc_free_data(NULL, ptr) — the dce argument is unused.
  *
- * Returns NULL on error. Requires libdcerpc YAML support (HAVE_DCERPC_FULL).
+ * Returns NULL on error.
  * The top-level YAML key is taken from the file and must match what coder
  * expects (e.g. "CONFIG", "PASSWD", "NetrShareEnum").
  */

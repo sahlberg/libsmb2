@@ -62,6 +62,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <dcerpc/dcerpc-epm.h>
 #include "libsmb2-raw.h"
 #include "libsmb2-private.h"
+#include "dcerpc-private.h"
 
 /* MS-RPCE / C706: uuid(e1af8308-5d1f-11c9-91a4-08002b14a0fa), version(3.0) */
 #define EPM_UUID 0xe1af8308, 0x5d1f, 0x11c9, \

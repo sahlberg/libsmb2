@@ -6,6 +6,7 @@ set(DCERPC_LIB_SOURCES
     dcerpc-wkssvc.c
     dcerpc-winreg.c
     dcerpc-epm.c
+    dcerpc-private.h
 )
 
 set(INCLUDE_PATH ../include)
@@ -23,7 +24,6 @@ set(DCERPC_HEADERS
 if(NOT ESP_PLATFORM AND NOT PICO_BOARD AND NOT (IOP AND BUILD_IRX))
   if(ENABLE_LIBDCERPC)
     add_library(dcerpc ${DCERPC_LIB_SOURCES} ${DCERPC_HEADERS})
-    target_compile_definitions(dcerpc PRIVATE HAVE_DCERPC_FULL=1)
     if(NOT MSVC)
       target_compile_definitions(dcerpc PRIVATE "_U_=__attribute__((unused))")
     else()

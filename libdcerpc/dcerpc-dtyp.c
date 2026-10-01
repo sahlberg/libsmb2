@@ -52,6 +52,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <dcerpc/dcerpc-dtyp.h>
 #include "libsmb2-raw.h"
 #include "libsmb2-private.h"
+#include "dcerpc-private.h"
 
 unsigned char NT_SID_AUTHORITY[6] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x05 };
 

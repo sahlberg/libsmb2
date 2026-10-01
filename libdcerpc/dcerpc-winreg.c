@@ -61,6 +61,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <dcerpc/dcerpc-winreg.h>
 #include "libsmb2-raw.h"
 #include "libsmb2-private.h"
+#include "dcerpc-private.h"
 
 /*
  * MS-RRP RRP_UNICODE_STRING is the same type as dcerpc's

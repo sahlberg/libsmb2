@@ -81,14 +81,13 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <dcerpc/dcerpc.h>
 #include <dcerpc/dcerpc-dtyp.h>
 #include <dcerpc/dcerpc-srvsvc.h>
-#ifdef HAVE_DCERPC_FULL
 #include <dcerpc/dcerpc-lsa.h>
 #include <dcerpc/dcerpc-wkssvc.h>
 #include <dcerpc/dcerpc-winreg.h>
 #include <dcerpc/dcerpc-epm.h>
-#endif
 #include "libsmb2-raw.h"
 #include "libsmb2-private.h"
+#include "dcerpc-private.h"
 
 struct dcerpc_service *dcerpc_services = NULL;
 
@@ -382,10 +381,8 @@ struct dcerpc_coders {
 };
 
 struct dcerpc_coders ndr_coders;
-#ifdef HAVE_DCERPC_FULL
 struct dcerpc_coders yaml_coders;
 struct dcerpc_coders json_coders;
-#endif /*HAVE_DCERPC_FULL*/
 
 /*
  * Every encoding must implement every slot in struct dcerpc_coders.
@@ -403,9 +400,7 @@ dcerpc_coders_missing(const struct dcerpc_coders *coders)
         CHECK_CODER(uint32_coder_pp);
         CHECK_CODER(uint64_coder);
         CHECK_CODER(uuid_coder);
-#ifdef HAVE_DCERPC_FULL
         CHECK_CODER(sid_coder);
-#endif /*HAVE_DCERPC_FULL*/
         CHECK_CODER(utf16_coder);
         CHECK_CODER(utf16z_coder);
         CHECK_CODER(struct_coder);
@@ -432,10 +427,8 @@ dcerpc_check_coders(struct smb2_context *smb2)
                 const struct dcerpc_coders *coders;
         } tables[] = {
                 { "NDR", &ndr_coders },
-#ifdef HAVE_DCERPC_FULL
                 { "YAML", &yaml_coders },
                 { "JSON", &json_coders },
-#endif /*HAVE_DCERPC_FULL*/
         };
         const char *missing;
         size_t i;
@@ -524,7 +517,6 @@ struct dcerpc_pdu {
          */
         uint16_t unicode_max_length;
 
-#ifdef HAVE_DCERPC_FULL
         /* YAML/JSON text codecs — full libdcerpc only */
         int yaml_indentation;
         int yaml_array_prefix; /* next key is the first field of a list item */
@@ -534,7 +526,6 @@ struct dcerpc_pdu {
         int json_indentation;
         int json_need_comma; /* 1 if a comma is required before the next value */
         char *json_key;
-#endif
 };
 
 /*
@@ -582,7 +573,6 @@ int ndr_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *p
 int ndr_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                    struct dcerpc_iovec *iov, int *offset, void *ptr);
 
-#ifdef HAVE_DCERPC_FULL
 /*
  * YAML
  */
@@ -616,7 +606,6 @@ static int json_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerp
 static int json_utf16z_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                             struct dcerpc_iovec *iov, int *offset,
                             void *ptr);
-#endif /* HAVE_DCERPC_FULL */
 
 
 int
@@ -839,12 +828,10 @@ dcerpc_create_context(struct smb2_context *smb2)
         ctx->packed_drep[0] |= DCERPC_DR_LITTLE_ENDIAN;
 
         dcerpc_register_coder("srvsvc", &srvsvc_interface, srvsvc_procs);
-#ifdef HAVE_DCERPC_FULL
         dcerpc_register_coder("lsarpc", &lsa_interface, lsa_procs);
         dcerpc_register_coder("wkssvc", &wkssvc_interface, wkssvc_procs);
         dcerpc_register_coder("winreg", &winreg_interface, winreg_procs);
         dcerpc_register_coder("epmapper", &epm_interface, epm_procs);
-#endif
 
         return ctx;
 }
@@ -1075,13 +1062,6 @@ dcerpc_allocate_pdu(struct dcerpc_context *dce, enum dcerpc_encoding encoding,
 {
         struct dcerpc_pdu *pdu;
 
-#ifndef HAVE_DCERPC_FULL
-        if (encoding == ENCODING_YAML || encoding == ENCODING_JSON) {
-                smb2_set_error(dce->smb2,
-                               "YAML/JSON DCE/RPC encodings require libdcerpc");
-                return NULL;
-        }
-#endif
 
         pdu = calloc(1, sizeof(struct dcerpc_pdu));
         if (pdu == NULL) {
@@ -1096,18 +1076,12 @@ dcerpc_allocate_pdu(struct dcerpc_context *dce, enum dcerpc_encoding encoding,
         case ENCODING_NDR:
                 pdu->coders = &ndr_coders;
                 break;
-#ifdef HAVE_DCERPC_FULL
         case ENCODING_YAML:
                 pdu->coders = &yaml_coders;
                 break;
         case ENCODING_JSON:
                 pdu->coders = &json_coders;
                 break;
-#else
-        case ENCODING_YAML:
-        case ENCODING_JSON:
-                return NULL;
-#endif /*HAVE_DCERPC_FULL*/
         }
         pdu->direction = direction;
         pdu->top_level = 1;
@@ -1181,7 +1155,6 @@ dcerpc_uuid_coder(char *name, struct dcerpc_context *ctx,
         return -1;
 }
 
-#ifdef HAVE_DCERPC_FULL
 int
 dcerpc_sid_coder(char *name, struct dcerpc_context *ctx,
                  struct dcerpc_pdu *pdu,
@@ -1193,7 +1166,6 @@ dcerpc_sid_coder(char *name, struct dcerpc_context *ctx,
         }
         return -1;
 }
-#endif /*HAVE_DCERPC_FULL*/
 
 int
 dcerpc_uint8_coder(char *name, struct dcerpc_context *ctx,
@@ -2865,12 +2837,6 @@ dcerpc_read_yaml_file(const char *filename,
                       dcerpc_coder coder,
                       int decode_size)
 {
-#ifndef HAVE_DCERPC_FULL
-        (void)filename;
-        (void)coder;
-        (void)decode_size;
-        return NULL;
-#else
         struct smb2_context *smb2 = NULL;
         struct dcerpc_context *dce = NULL;
         struct dcerpc_pdu *pdu = NULL;
@@ -3019,7 +2985,6 @@ out:
                 smb2_destroy_context(smb2);
         }
         return payload;
-#endif /* HAVE_DCERPC_FULL */
 }
 
 int
@@ -3034,7 +2999,6 @@ dcerpc_pdu_encoding(struct dcerpc_pdu *pdu)
         return pdu->encoding;
 }
 
-#ifdef HAVE_DCERPC_FULL
 char *
 dcerpc_pdu_yaml_key(struct dcerpc_pdu *pdu)
 {
@@ -3058,7 +3022,6 @@ dcerpc_pdu_json_key(struct dcerpc_pdu *pdu)
 {
         return pdu->json_key;
 }
-#endif /* HAVE_DCERPC_FULL */
 
 int
 dcerpc_pdu_is_conformance_run(struct dcerpc_pdu *pdu)
@@ -3074,7 +3037,6 @@ dcerpc_pdu_raise_max_alignment(struct dcerpc_pdu *pdu, int alignment)
         }
 }
 
-#ifdef HAVE_DCERPC_FULL
 /*
  * Packet-form structures such as self-relative SECURITY_DESCRIPTORs, ACLs
  * and ACEs are defined as little-endian byte layouts, not as NDR, so they
@@ -3092,7 +3054,6 @@ dcerpc_pdu_packet_form_end(struct dcerpc_pdu *pdu)
 {
         pdu->packet_form--;
 }
-#endif /* HAVE_DCERPC_FULL */
 
 int
 dcerpc_align_3264(struct dcerpc_context *ctx, int offset)
@@ -3230,12 +3191,10 @@ _dcerpc_RPC_UNICODE_STRING_coder(char *name, struct dcerpc_context *dce,
          * MaxLength must not run for text encodings: align would skip past
          * the current NUL in the text buffer and truncate the visible output.
          */
-#ifdef HAVE_DCERPC_FULL
         if (dcerpc_pdu_encoding(pdu) == ENCODING_YAML ||
             dcerpc_pdu_encoding(pdu) == ENCODING_JSON) {
                 return dcerpc_utf16_coder(name, dce, pdu, iov, offset, ptr);
         }
-#endif
 
 /* TODO conformance split
  * during the conformance run we need to do the alignment in all the
@@ -3335,7 +3294,6 @@ dcerpc_RPC_UNICODE_STRINGz_coder(char *name, struct dcerpc_context *dce,
 }
 
 
-#ifdef HAVE_DCERPC_FULL
 /*
  * Append formatted text to a YAML/JSON output buffer. Fails, instead of
  * silently truncating, when the output does not fit.
@@ -3566,7 +3524,6 @@ again:
         return 0;
 }
 
-#endif /* HAVE_DCERPC_FULL: YAML/JSON text codecs */
 
 /*
  * NDR coders
@@ -4472,9 +4429,7 @@ struct dcerpc_coders ndr_coders = {
         .uint32_coder_pp = ndr_uint32_coder_pp,
         .uint64_coder    = ndr_uint64_coder,
         .uuid_coder      = ndr_uuid_coder,
-#ifdef HAVE_DCERPC_FULL
         .sid_coder       = ndr_sid_coder,
-#endif /*HAVE_DCERPC_FULL*/
         .utf16_coder     = ndr_utf16_coder,
         .utf16z_coder    = ndr_utf16z_coder,
         .struct_coder    = ndr_struct_coder,
@@ -4487,7 +4442,6 @@ struct dcerpc_coders ndr_coders = {
 };
 
 
-#ifdef HAVE_DCERPC_FULL
 /*
  * Blob fields: a [size_is(len)] unique byte array whose bytes are a
  * packet-form object such as a self-relative SECURITY_DESCRIPTOR. The C
@@ -4676,9 +4630,7 @@ dcerpc_blob_coder(char *name, struct dcerpc_context *dce,
         }
         return 0;
 }
-#endif /* HAVE_DCERPC_FULL */
 
-#ifdef HAVE_DCERPC_FULL
 /*
  * JSON Coders
  */
@@ -5623,10 +5575,8 @@ struct dcerpc_coders json_coders = {
         .varying_bytes_coder = json_varying_bytes_coder,
 };
 
-#endif /*HAVE_DCERPC_FULL*/
 
 
-#ifdef HAVE_DCERPC_FULL
 /*
  * YAML Coders
  */
@@ -6205,4 +6155,3 @@ struct dcerpc_coders yaml_coders = {
         .varying_bytes_coder = yaml_varying_bytes_coder,
 };
 
-#endif /*HAVE_DCERPC_FULL*/

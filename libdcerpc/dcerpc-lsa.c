@@ -61,6 +61,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <dcerpc/dcerpc-lsa.h>
 #include "libsmb2-raw.h"
 #include "libsmb2-private.h"
+#include "dcerpc-private.h"
 
 #define LSA_UUID    0x12345778, 0x1234, 0xabcd, {0xef, 0x00, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab}
 
