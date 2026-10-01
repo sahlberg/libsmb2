@@ -378,6 +378,8 @@ struct dcerpc_coders {
         dcerpc_coder_cdr do_coder;
         dcerpc_coder_union union_coder;
         dcerpc_coder_carray carray_coder;
+        /* array of plain values: YAML/JSON show a bare list, no keys */
+        dcerpc_coder_carray scalar_carray_coder;
         dcerpc_coder_ptr ptr_coder;
         dcerpc_coder     bytes_coder;
         dcerpc_coder     varying_bytes_coder;
@@ -412,6 +414,7 @@ dcerpc_coders_missing(const struct dcerpc_coders *coders)
         CHECK_CODER(do_coder);
         CHECK_CODER(union_coder);
         CHECK_CODER(carray_coder);
+        CHECK_CODER(scalar_carray_coder);
         CHECK_CODER(ptr_coder);
         CHECK_CODER(bytes_coder);
         CHECK_CODER(varying_bytes_coder);
@@ -1215,6 +1218,26 @@ dcerpc_carray_coder(char *name, struct dcerpc_context *ctx,
         if (pdu->coders->carray_coder) {
                 return pdu->coders->carray_coder(name, ctx, pdu, iov, offset,
                                                  num, ptr, elem_size, coder);
+        }
+        return -1;
+}
+
+/*
+ * Conformant array of plain values (integers, strings, SIDs, ...). Same
+ * as dcerpc_carray_coder() in NDR; YAML/JSON show a list of bare values.
+ * The element coder is called with a NULL name.
+ */
+int
+dcerpc_scalar_carray_coder(char *name, struct dcerpc_context *ctx,
+                           struct dcerpc_pdu *pdu,
+                           struct dcerpc_iovec *iov, int *offset,
+                           uint32_t num, void *ptr, int elem_size,
+                           dcerpc_coder coder)
+{
+        if (pdu->coders->scalar_carray_coder) {
+                return pdu->coders->scalar_carray_coder(name, ctx, pdu, iov,
+                                                        offset, num, ptr,
+                                                        elem_size, coder);
         }
         return -1;
 }
@@ -3440,6 +3463,43 @@ yaml_print_preamble(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 }
 
 /*
+ * Start a YAML "name: " line. An anonymous array element (name NULL, see
+ * scalar_carray_coder) is just the value after the list item's "- ".
+ */
+static int
+yaml_print_key(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
+               struct dcerpc_iovec *iov, int *offset, const char *name)
+{
+        if (yaml_print_preamble(ctx, pdu, iov, offset)) {
+                return -1;
+        }
+        if (name == NULL) {
+                return 0;
+        }
+        return dcerpc_text_printf(ctx, iov, offset, "%s: ", name);
+}
+
+/*
+ * Does the current key match name? An anonymous array element (name
+ * NULL) is a key-less list item, which yaml_next_kv() returns as key "".
+ */
+static int
+yaml_key_mismatch(struct dcerpc_pdu *pdu, const char *name)
+{
+        if (name == NULL) {
+                return pdu->yaml_key == NULL || pdu->yaml_key[0] != '\0';
+        }
+        return strcmp(pdu->yaml_key, name);
+}
+
+/* name for error messages */
+static const char *
+yaml_name(const char *name)
+{
+        return name ? name : "array element";
+}
+
+/*
  * Advance to the next YAML key: value (or list item "- key: value").
  *
  * Skips blank lines and # comments:
@@ -3456,6 +3516,8 @@ yaml_next_kv(struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov, int *offset)
         char *str;
         char *hash;
         char *end;
+        char *sep;
+        int item;
 
         if (pdu->yaml_key) {
                 return 0;
@@ -3493,23 +3555,40 @@ again:
                 goto again;
         }
         /* YAML list items: "  - key: value" (optional spaces after '-'). */
-        if (str[0] == '-' && (str[1] == ' ' || str[1] == '\t')) {
-                str += 2;
+        item = 0;
+        if (str[0] == '-' && (str[1] == ' ' || str[1] == '\t' ||
+                              str[1] == '\0')) {
+                item = 1;
+                str += str[1] ? 2 : 1;
                 while (*str == ' ' || *str == '\t') {
                         str++;
                 }
-                if (*str == '\0' || *str == '#') {
+                if (*str == '#') {
                         goto again;
                 }
         }
 
-        pdu->yaml_key = str;
-        str = strchr(str, ':');
-        if (str == NULL) {
+        /* The key ends at ": " or at a ':' that ends the line. */
+        for (sep = str; (sep = strchr(sep, ':')) != NULL; sep++) {
+                if (sep[1] == '\0' || sep[1] == ' ' || sep[1] == '\t') {
+                        break;
+                }
+        }
+        if (sep == NULL) {
+                if (item) {
+                        /*
+                         * "- value": an anonymous array element; the
+                         * key is "" (see yaml_key_mismatch()).
+                         */
+                        pdu->yaml_key = (char *)"";
+                        goto value;
+                }
                 /* Not a key: line (e.g. ---); skip and continue. */
                 pdu->yaml_key = NULL;
                 goto again;
         }
+        pdu->yaml_key = str;
+        str = sep;
         *str++ = 0;
         /* Trim trailing whitespace from key. */
         end = pdu->yaml_key + strlen(pdu->yaml_key);
@@ -3520,6 +3599,7 @@ again:
         while (*str == ' ' || *str == '\t') {
                 str++;
         }
+value:
         /*
          * Strip a trailing # comment from the value. A '#' starts a comment
          * only when it is at the start of the value or preceded by whitespace
@@ -4458,6 +4538,7 @@ struct dcerpc_coders ndr_coders = {
         .do_coder        = ndr_do_coder,
         .union_coder     = ndr_union_coder,
         .carray_coder    = ndr_carray_coder,
+        .scalar_carray_coder = ndr_carray_coder,
         .ptr_coder       = ndr_ptr_coder,
         .bytes_coder     = ndr_bytes_coder,
         .varying_bytes_coder = ndr_varying_bytes_coder,
@@ -4790,6 +4871,24 @@ json_append_quoted(struct dcerpc_iovec *iov, int *offset, const char *s)
         return 0;
 }
 
+/*
+ * Start a JSON member: separator, then "name": . An anonymous array
+ * element (name NULL, see scalar_carray_coder) is a bare value.
+ */
+static int
+json_print_key(struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov, int *offset,
+               const char *name)
+{
+        json_sep(pdu, iov, offset);
+        if (name == NULL) {
+                return 0;
+        }
+        if (json_append_quoted(iov, offset, name) < 0) {
+                return -1;
+        }
+        return json_append(iov, offset, ": ");
+}
+
 static int
 json_skip_ws(struct dcerpc_iovec *iov, int *offset)
 {
@@ -4954,6 +5053,10 @@ json_expect_key(struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov, int *offset,
 {
         int rc;
 
+        if (name == NULL) {
+                /* anonymous array element: a bare value, no key */
+                return 0;
+        }
         rc = json_next_key(pdu, iov, offset);
         if (rc != 0) {
                 if (rc > 0) {
@@ -5049,11 +5152,10 @@ json_uint8_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 *(uint8_t *)ptr = (uint8_t)v;
                 return 0;
         } else {
-                json_sep(pdu, iov, offset);
-                if (json_append_quoted(iov, offset, name) < 0) {
+                if (json_print_key(pdu, iov, offset, name) < 0) {
                         return -1;
                 }
-                if (dcerpc_text_printf(ctx, iov, offset, ": %u", *(uint8_t *)ptr)) {
+                if (dcerpc_text_printf(ctx, iov, offset, "%u", *(uint8_t *)ptr)) {
                         return -1;
                 }
                 return 0;
@@ -5077,11 +5179,7 @@ _json_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pd
                 *(uint16_t *)ptr = (uint16_t)v;
                 return 0;
         } else {
-                json_sep(pdu, iov, offset);
-                if (json_append_quoted(iov, offset, name) < 0) {
-                        return -1;
-                }
-                if (dcerpc_text_printf(ctx, iov, offset, ": ")) {
+                if (json_print_key(pdu, iov, offset, name) < 0) {
                         return -1;
                 }
                 if (json_print_pp_value(ctx, iov, offset, pp,
@@ -5124,11 +5222,7 @@ _json_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pd
                 *(uint32_t *)ptr = v;
                 return 0;
         } else {
-                json_sep(pdu, iov, offset);
-                if (json_append_quoted(iov, offset, name) < 0) {
-                        return -1;
-                }
-                if (dcerpc_text_printf(ctx, iov, offset, ": ")) {
+                if (json_print_key(pdu, iov, offset, name) < 0) {
                         return -1;
                 }
                 if (json_print_pp_value(ctx, iov, offset, pp,
@@ -5170,11 +5264,10 @@ json_uint64_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu
                 *(uint64_t *)ptr = (uint64_t)v;
                 return 0;
         } else {
-                json_sep(pdu, iov, offset);
-                if (json_append_quoted(iov, offset, name) < 0) {
+                if (json_print_key(pdu, iov, offset, name) < 0) {
                         return -1;
                 }
-                if (dcerpc_text_printf(ctx, iov, offset, ": %" PRIu64, *(uint64_t *)ptr)) {
+                if (dcerpc_text_printf(ctx, iov, offset, "%" PRIu64, *(uint64_t *)ptr)) {
                         return -1;
                 }
                 return 0;
@@ -5205,7 +5298,7 @@ json_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                            &b[0], &b[1], &b[2], &b[3],
                            &b[4], &b[5], &b[6], &b[7]) != 11) {
                         printf("Failed to parse UUID value for %s: %s\n",
-                               name, val);
+                               name ? name : "array element", val);
                         return -1;
                 }
                 uuid->v1 = v1;
@@ -5225,11 +5318,7 @@ json_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                          uuid->v4[2], uuid->v4[3],
                          uuid->v4[4], uuid->v4[5],
                          uuid->v4[6], uuid->v4[7]);
-                json_sep(pdu, iov, offset);
-                if (json_append_quoted(iov, offset, name) < 0) {
-                        return -1;
-                }
-                if (json_append(iov, offset, ": ") < 0) {
+                if (json_print_key(pdu, iov, offset, name) < 0) {
                         return -1;
                 }
                 if (json_append_quoted(iov, offset, uuidstr) < 0) {
@@ -5406,11 +5495,7 @@ json_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         } else {
                 const char *s = *(char **)ptr;
 
-                json_sep(pdu, iov, offset);
-                if (json_append_quoted(iov, offset, name) < 0) {
-                        return -1;
-                }
-                if (json_append(iov, offset, ": ") < 0) {
+                if (json_print_key(pdu, iov, offset, name) < 0) {
                         return -1;
                 }
                 if (json_append_quoted(iov, offset, s ? s : "") < 0) {
@@ -5438,11 +5523,10 @@ json_bytes_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 }
                 return dcerpc_text_parse_hex(pdu, name, val, b);
         } else {
-                json_sep(pdu, iov, offset);
-                if (json_append_quoted(iov, offset, name) < 0) {
+                if (json_print_key(pdu, iov, offset, name) < 0) {
                         return -1;
                 }
-                if (dcerpc_text_printf(ctx, iov, offset, ": \"")) {
+                if (dcerpc_text_printf(ctx, iov, offset, "\"")) {
                         return -1;
                 }
                 if (b->data &&
@@ -5592,6 +5676,72 @@ json_carray_coder(char *name, struct dcerpc_context *ctx,
         }
 }
 
+/* Array of plain values as a JSON array: "Names": ["a", "b"] */
+static int
+json_scalar_carray_coder(char *name, struct dcerpc_context *ctx,
+                         struct dcerpc_pdu *pdu,
+                         struct dcerpc_iovec *iov, int *offset,
+                         uint32_t num, void *ptr, int elem_size,
+                         dcerpc_coder coder)
+{
+        int i;
+        uint8_t *data = ptr;
+
+        if (pdu->direction == DCERPC_DECODE) {
+                if (json_expect_key(pdu, iov, offset, name) < 0) {
+                        return -1;
+                }
+                if (json_expect_char(iov, offset, '[') < 0) {
+                        return -1;
+                }
+                for (i = 0; i < (int)num; i++) {
+                        json_skip_ws(iov, offset);
+                        if (i > 0) {
+                                if (json_expect_char(iov, offset, ',') < 0) {
+                                        return -1;
+                                }
+                        }
+                        if (coder(NULL, ctx, pdu, iov, offset,
+                                  &data[i * elem_size])) {
+                                return -1;
+                        }
+                }
+                return json_expect_char(iov, offset, ']');
+        }
+        if (json_print_key(pdu, iov, offset, name) < 0) {
+                return -1;
+        }
+        if (json_append(iov, offset, "[") < 0) {
+                return -1;
+        }
+        if (num == 0) {
+                if (json_append(iov, offset, "]") < 0) {
+                        return -1;
+                }
+                pdu->json_need_comma = 1;
+                return 0;
+        }
+        pdu->json_indentation++;
+        for (i = 0; i < (int)num; i++) {
+                /* the element's json_print_key() writes the separator */
+                pdu->json_need_comma = (i > 0);
+                if (coder(NULL, ctx, pdu, iov, offset, &data[i * elem_size])) {
+                        return -1;
+                }
+        }
+        pdu->json_indentation--;
+        if (*offset + 2 < (int)iov->len) {
+                iov->buf[(*offset)++] = '\n';
+                iov->buf[*offset] = '\0';
+        }
+        json_write_indent(pdu, iov, offset);
+        if (json_append(iov, offset, "]") < 0) {
+                return -1;
+        }
+        pdu->json_need_comma = 1;
+        return 0;
+}
+
 static int
 json_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                struct dcerpc_iovec *iov, int *offset, void *ptr,
@@ -5657,6 +5807,7 @@ struct dcerpc_coders json_coders = {
         .do_coder        = json_do_coder,
         .union_coder     = json_union_coder,
         .carray_coder    = json_carray_coder,
+        .scalar_carray_coder = json_scalar_carray_coder,
         .ptr_coder       = json_ptr_coder,
         .bytes_coder     = json_bytes_coder,
         .varying_bytes_coder = json_varying_bytes_coder,
@@ -5673,9 +5824,9 @@ yaml_uint8_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 {
         if (pdu->direction == DCERPC_DECODE) {
                 yaml_next_kv(pdu, iov, offset);
-                if (strcmp(pdu->yaml_key, name)) {
+                if (yaml_key_mismatch(pdu, name)) {
                         printf("Wrong YAML key encountered for uint8. Expected %s but got %s\n",
-                               name, pdu->yaml_key);
+                               yaml_name(name), pdu->yaml_key);
                         return -1;
                 }
                 pdu->yaml_key = NULL;
@@ -5683,10 +5834,10 @@ yaml_uint8_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 yaml_next_kv(pdu, iov, offset);
                 return 0;
         } else {
-                if (yaml_print_preamble(ctx, pdu, iov, offset)) {
+                if (yaml_print_key(ctx, pdu, iov, offset, name)) {
                         return -1;
                 }
-                if (dcerpc_text_printf(ctx, iov, offset, "%s: %u\n", name, *(uint8_t *)ptr)) {
+                if (dcerpc_text_printf(ctx, iov, offset, "%u\n", *(uint8_t *)ptr)) {
                         return -1;
                 }
                 return 0;
@@ -5790,9 +5941,9 @@ _yaml_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pd
                 uint32_t v;
 
                 yaml_next_kv(pdu, iov, offset);
-                if (strcmp(pdu->yaml_key,  name)) {
+                if (yaml_key_mismatch(pdu, name)) {
                         printf("Wrong YAML key encountered for uint16. Expected %s but got %s\n",
-                               name, pdu->yaml_key);
+                               yaml_name(name), pdu->yaml_key);
                         return -1;
                 }
                 pdu->yaml_key = NULL;
@@ -5803,10 +5954,7 @@ _yaml_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pd
                 yaml_next_kv(pdu, iov, offset);
                 return 0;
         } else {
-                if (yaml_print_preamble(ctx, pdu, iov, offset)) {
-                        return -1;
-                }
-                if (dcerpc_text_printf(ctx, iov, offset, "%s: ", name)) {
+                if (yaml_print_key(ctx, pdu, iov, offset, name)) {
                         return -1;
                 }
                 if (text_print_pp_value(ctx, iov, offset, pp,
@@ -5845,9 +5993,9 @@ _yaml_uint32_coder(char *name, struct dcerpc_context *ctx,
                 uint32_t v;
 
                 yaml_next_kv(pdu, iov, offset);
-                if (strcmp(pdu->yaml_key,  name)) {
+                if (yaml_key_mismatch(pdu, name)) {
                         printf("Wrong YAML key encountered for uint32. Expected %s but got %s\n",
-                               name, pdu->yaml_key);
+                               yaml_name(name), pdu->yaml_key);
                         return -1;
                 }
                 pdu->yaml_key = NULL;
@@ -5858,10 +6006,7 @@ _yaml_uint32_coder(char *name, struct dcerpc_context *ctx,
                 yaml_next_kv(pdu, iov, offset);
                 return 0;
         } else {
-                if (yaml_print_preamble(ctx, pdu, iov, offset)) {
-                        return -1;
-                }
-                if (dcerpc_text_printf(ctx, iov, offset, "%s: ", name)) {
+                if (yaml_print_key(ctx, pdu, iov, offset, name)) {
                         return -1;
                 }
                 if (text_print_pp_value(ctx, iov, offset, pp,
@@ -5898,9 +6043,9 @@ yaml_uint64_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu
 {
         if (pdu->direction == DCERPC_DECODE) {
                 yaml_next_kv(pdu, iov, offset);
-                if (strcmp(pdu->yaml_key, name)) {
+                if (yaml_key_mismatch(pdu, name)) {
                         printf("Wrong YAML key encountered for uint64. Expected %s but got %s\n",
-                               name, pdu->yaml_key);
+                               yaml_name(name), pdu->yaml_key);
                         return -1;
                 }
                 pdu->yaml_key = NULL;
@@ -5908,10 +6053,10 @@ yaml_uint64_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu
                 yaml_next_kv(pdu, iov, offset);
                 return 0;
         } else {
-                if (yaml_print_preamble(ctx, pdu, iov, offset)) {
+                if (yaml_print_key(ctx, pdu, iov, offset, name)) {
                         return -1;
                 }
-                if (dcerpc_text_printf(ctx, iov, offset, "%s: %" PRIu64 "\n", name, *(uint64_t *)ptr)) {
+                if (dcerpc_text_printf(ctx, iov, offset, "%" PRIu64 "\n", *(uint64_t *)ptr)) {
                         return -1;
                 }
                 return 0;
@@ -5930,9 +6075,9 @@ yaml_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 unsigned int b[8];
 
                 yaml_next_kv(pdu, iov, offset);
-                if (strcmp(pdu->yaml_key, name)) {
+                if (yaml_key_mismatch(pdu, name)) {
                         printf("Wrong YAML key encountered for uuid. Expected %s but got %s\n",
-                               name, pdu->yaml_key);
+                               yaml_name(name), pdu->yaml_key);
                         return -1;
                 }
                 pdu->yaml_key = NULL;
@@ -5942,7 +6087,7 @@ yaml_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                            &b[0], &b[1], &b[2], &b[3],
                            &b[4], &b[5], &b[6], &b[7]) != 11) {
                         printf("Failed to parse UUID value for %s: %s\n",
-                               name, pdu->yaml_val);
+                               yaml_name(name), pdu->yaml_val);
                         return -1;
                 }
                 uuid->v1 = v1;
@@ -5954,10 +6099,10 @@ yaml_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 yaml_next_kv(pdu, iov, offset);
                 return 0;
         } else {
-                if (yaml_print_preamble(ctx, pdu, iov, offset)) {
+                if (yaml_print_key(ctx, pdu, iov, offset, name)) {
                         return -1;
                 }
-                if (dcerpc_text_printf(ctx, iov, offset, "%s: %08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x\n", name, uuid->v1, uuid->v2, uuid->v3, uuid->v4[0], uuid->v4[1], uuid->v4[2], uuid->v4[3], uuid->v4[4], uuid->v4[5], uuid->v4[6], uuid->v4[7])) {
+                if (dcerpc_text_printf(ctx, iov, offset, "%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x\n", uuid->v1, uuid->v2, uuid->v3, uuid->v4[0], uuid->v4[1], uuid->v4[2], uuid->v4[3], uuid->v4[4], uuid->v4[5], uuid->v4[6], uuid->v4[7])) {
                         return -1;
                 }
                 return 0;
@@ -6065,9 +6210,9 @@ yaml_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 {
         if (pdu->direction == DCERPC_DECODE) {
                 yaml_next_kv(pdu, iov, offset);
-                if (strcmp(pdu->yaml_key,  name)) {
+                if (yaml_key_mismatch(pdu, name)) {
                         printf("Wrong YAML key encountered for ptr. Expected %s but got %s\n",
-                               name, pdu->yaml_key);
+                               yaml_name(name), pdu->yaml_key);
                         return -1;
                 }
                 pdu->yaml_key = NULL;
@@ -6077,10 +6222,10 @@ yaml_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         } else {
                 const char *s = *(char **)ptr;
 
-                if (yaml_print_preamble(ctx, pdu, iov, offset)) {
+                if (yaml_print_key(ctx, pdu, iov, offset, name)) {
                         return -1;
                 }
-                if (dcerpc_text_printf(ctx, iov, offset, "%s: %s\n", name, s ? s : "")) {
+                if (dcerpc_text_printf(ctx, iov, offset, "%s\n", s ? s : "")) {
                         return -1;
                 }
                 return 0;
@@ -6118,9 +6263,9 @@ yaml_bytes_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 
         if (pdu->direction == DCERPC_DECODE) {
                 yaml_next_kv(pdu, iov, offset);
-                if (strcmp(pdu->yaml_key, name)) {
+                if (yaml_key_mismatch(pdu, name)) {
                         printf("Wrong YAML key encountered for bytes. Expected %s but got %s\n",
-                               name, pdu->yaml_key);
+                               yaml_name(name), pdu->yaml_key);
                         return -1;
                 }
                 pdu->yaml_key = NULL;
@@ -6133,8 +6278,8 @@ yaml_bytes_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 if (yaml_print_preamble(ctx, pdu, iov, offset)) {
                         return -1;
                 }
-                if (dcerpc_text_printf(ctx, iov, offset, "%s:%s", name,
-                                       b->len && b->data ? " " : "")) {
+                if (name && dcerpc_text_printf(ctx, iov, offset, "%s:%s", name,
+                                               b->len && b->data ? " " : "")) {
                         return -1;
                 }
                 if (b->data &&
@@ -6195,6 +6340,59 @@ yaml_carray_coder(char *name, struct dcerpc_context *ctx,
         return 0;
 }
 
+/*
+ * Array of plain values as a YAML sequence:
+ *   Names:
+ *     - sahlberg
+ *     - Administrator
+ */
+static int
+yaml_scalar_carray_coder(char *name, struct dcerpc_context *ctx,
+                         struct dcerpc_pdu *pdu,
+                         struct dcerpc_iovec *iov, int *offset,
+                         uint32_t num, void *ptr, int elem_size,
+                         dcerpc_coder coder)
+{
+        int i;
+        uint8_t *data = ptr;
+
+        if (pdu->direction == DCERPC_DECODE) {
+                yaml_next_kv(pdu, iov, offset);
+                if (strcmp(pdu->yaml_key, name)) {
+                        printf("Wrong YAML key encountered for carray. Expected %s but got %s\n",
+                               name, pdu->yaml_key);
+                        return -1;
+                }
+                pdu->yaml_key = NULL;
+                yaml_next_kv(pdu, iov, offset);
+                for (i = 0; i < (int)num; i++) {
+                        if (coder(NULL, ctx, pdu, iov, offset,
+                                  &data[i * elem_size])) {
+                                return -1;
+                        }
+                }
+                return 0;
+        }
+        if (yaml_print_preamble(ctx, pdu, iov, offset)) {
+                return -1;
+        }
+        if (dcerpc_text_printf(ctx, iov, offset, "%s:\n", name)) {
+                return -1;
+        }
+        pdu->yaml_indentation++;
+        for (i = 0; i < (int)num; i++) {
+                pdu->yaml_array_prefix = 1;
+                pdu->yaml_indentation++;
+                if (coder(NULL, ctx, pdu, iov, offset, &data[i * elem_size])) {
+                        return -1;
+                }
+                pdu->yaml_indentation--;
+                pdu->yaml_array_prefix = 0;
+        }
+        pdu->yaml_indentation--;
+        return 0;
+}
+
 static int
 yaml_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                struct dcerpc_iovec *iov, int *offset, void *ptr,
@@ -6251,6 +6449,7 @@ struct dcerpc_coders yaml_coders = {
         .do_coder        = yaml_do_coder,
         .union_coder     = yaml_union_coder,
         .carray_coder    = yaml_carray_coder,
+        .scalar_carray_coder = yaml_scalar_carray_coder,
         .ptr_coder       = yaml_ptr_coder,
         .bytes_coder     = yaml_bytes_coder,
         .varying_bytes_coder = yaml_varying_bytes_coder,

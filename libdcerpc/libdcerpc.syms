@@ -68,6 +68,7 @@ dcerpc_read_yaml_file
 dcerpc_register_coder
 dcerpc_RPC_UNICODE_STRING_coder
 dcerpc_RPC_UNICODE_STRINGz_coder
+dcerpc_scalar_carray_coder
 dcerpc_SECURITY_DESCRIPTOR_coder
 dcerpc_services
 dcerpc_set_request

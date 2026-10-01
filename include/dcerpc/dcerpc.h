@@ -382,6 +382,15 @@ int dcerpc_carray_coder(char *name, struct dcerpc_context *ctx,
                         struct dcerpc_pdu *pdu,
                         struct dcerpc_iovec *iov, int *offset,
                         uint32_t num, void *ptr, int elem_size, dcerpc_coder coder);
+/*
+ * Like dcerpc_carray_coder() for an array of plain values (integers,
+ * strings, SIDs, ...): NDR is identical; YAML/JSON show a list of bare
+ * values. The element coder is called with a NULL name.
+ */
+int dcerpc_scalar_carray_coder(char *name, struct dcerpc_context *ctx,
+                        struct dcerpc_pdu *pdu,
+                        struct dcerpc_iovec *iov, int *offset,
+                        uint32_t num, void *ptr, int elem_size, dcerpc_coder coder);
 int dcerpc_union_coder(char *name, struct dcerpc_context *ctx,
                        struct dcerpc_pdu *pdu,
                        struct dcerpc_iovec *iov, int *offset,
