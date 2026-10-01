@@ -33,15 +33,6 @@
     <ClInclude Include="..\include\smb2\libsmb2.h">
       <Filter>include\smb2</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\smb2\libsmb2-dcerpc.h">
-      <Filter>include\smb2</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\smb2\libsmb2-dcerpc-lsa.h">
-      <Filter>include\smb2</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\smb2\libsmb2-dcerpc-srvsvc.h">
-      <Filter>include\smb2</Filter>
-    </ClInclude>
     <ClInclude Include="..\include\smb2\libsmb2-raw.h">
       <Filter>include\smb2</Filter>
     </ClInclude>
@@ -149,15 +140,6 @@
       <Filter>lib</Filter>
     </ClCompile>
     <ClCompile Include="..\lib\compat.c">
-      <Filter>lib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\lib\dcerpc.c">
-      <Filter>lib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\lib\dcerpc-lsa.c">
-      <Filter>lib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\lib\dcerpc-srvsvc.c">
       <Filter>lib</Filter>
     </ClCompile>
     <ClCompile Include="..\lib\errors.c">

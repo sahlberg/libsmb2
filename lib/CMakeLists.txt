@@ -2,9 +2,7 @@ if(GSSAPI_FOUND OR LIBKRB5_FOUND)
   set(KRB5_SOURCE krb5-wrapper.c)
 endif()
 
-# Core SMB2 sources. Minimal DCE/RPC for share enum uses wrapper objects
-# that apply libsmb2_ symbol prefixes (see libsmb2-dcerpc*.c). Sources for
-# the full stack live in ../libdcerpc.
+# Core SMB2 sources. The DCE/RPC library is built separately in ../libdcerpc.
 set(SMB2_CORE_SOURCES
     aes.c
     aes_reference.c
@@ -12,8 +10,6 @@ set(SMB2_CORE_SOURCES
     alloc.c
     asn1-ber.c
     compat.c
-    libsmb2-dcerpc.c
-    libsmb2-dcerpc-srvsvc.c
     errors.c
     hmac.c
     hmac-md5.c
@@ -94,8 +90,7 @@ set(HEADERS
     ${SMB2_INCLUDE}/smb2-errors.h
     ${SMB2_INCLUDE}/smb2.h)
 
-# libsmb2-dcerpc*.c #include "../libdcerpc/dcerpc*.c"; those files then
-# #include "compat.h" etc. from this directory, so add lib/ as a private -I.
+# Private headers (compat.h etc.) live in this directory.
 set(_SMB2_PRIVATE_INCLUDES ${CMAKE_CURRENT_SOURCE_DIR})
 
 if(EE AND PS2RPC)

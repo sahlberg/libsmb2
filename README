@@ -38,14 +38,15 @@ srvsvc/lsa/winreg/wkssvc/epm) is provided by a separate library, **libdcerpc**
   Link with:  -ldcerpc -lsmb2
   pkg-config: libdcerpc
 
-libsmb2 still provides high-level share enumeration only
-(smb2_share_enum_async / smb2_share_enum_sync for NetrShareEnum levels 0/1/2).
-Internal DCE/RPC symbols used for that path are prefixed with libsmb2_ so
-applications can link both libraries without symbol conflicts.
+libsmb2 itself provides share enumeration only
+(smb2_share_enum_async / smb2_share_enum_sync for NetrShareEnum levels 0/1/2,
+see libsmb2-share-enum.h). It has its own small implementation of that one
+call and does not contain or depend on libdcerpc, so applications can link
+both libraries without symbol conflicts.
 
 libdcerpc is not built on Windows (native or MinGW): its symbols collide with
-Microsoft's own RPC libraries. On Windows, only the minimal share-enum path
-in libsmb2 is available.
+Microsoft's own RPC libraries. On Windows, only share enumeration in libsmb2
+is available.
 
 Public DCE/RPC headers are under include/dcerpc/.
 
@@ -115,8 +116,8 @@ interface set is built as libdcerpc by default (srvsvc, lsarpc, winreg,
 wkssvc, epm). Disable with cmake -DENABLE_LIBDCERPC=OFF.
 
 Windows and embedded targets (ESP, Pico, consoles, PS2/PS3/PS4, Vita, ...)
-always build only the minimal ShareEnum surface in libsmb2; libdcerpc is
-not available there (on Windows, due to symbol collisions with Microsoft RPC).
+only have share enumeration in libsmb2; libdcerpc is not available there
+(on Windows, due to symbol collisions with Microsoft RPC).
 
 MIT KERBEROS
 ============

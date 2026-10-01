@@ -24,47 +24,36 @@ extern "C" {
 #endif
 
 /*
- * Minimal share-enum types and high-level API provided by libsmb2.
- * Full DCE/RPC (including SHARE_INFO_502 and other srvsvc ops) lives in
- * libdcerpc — see dcerpc/dcerpc-srvsvc.h.
+ * Share enumeration (srvsvc NetrShareEnum) provided by libsmb2 itself.
+ * Only levels 0, 1 and 2 are supported. Full srvsvc support is in
+ * libdcerpc (dcerpc/dcerpc-srvsvc.h); its srvsvc_* types are separate.
  */
 
-/* Low 2 bits describe the share type (STYPE_*) */
-#define SRVSVC_SHARE_TYPE_DISKTREE   0
-#define SRVSVC_SHARE_TYPE_PRINTQ     1
-#define SRVSVC_SHARE_TYPE_DEVICE     2
-#define SRVSVC_SHARE_TYPE_IPC        3
-#define SRVSVC_SHARE_TYPE_TEMPORARY  0x40000000
-#define SRVSVC_SHARE_TYPE_HIDDEN     0x80000000 /* STYPE_SPECIAL */
+/* smb2_share_info_N.type: the low 2 bits are the share type (STYPE_*) */
+#define SMB2_SHARE_TYPE_DISKTREE   0
+#define SMB2_SHARE_TYPE_PRINTQ     1
+#define SMB2_SHARE_TYPE_DEVICE     2
+#define SMB2_SHARE_TYPE_IPC        3
+#define SMB2_SHARE_TYPE_TEMPORARY  0x40000000
+#define SMB2_SHARE_TYPE_HIDDEN     0x80000000 /* STYPE_SPECIAL */
 
-enum SHARE_INFO_enum {
-        SHARE_INFO_0 = 0,
-        SHARE_INFO_1 = 1,
-        SHARE_INFO_2 = 2,
-        SHARE_INFO_502 = 502,
+enum smb2_share_info_level {
+        SMB2_SHARE_INFO_0 = 0,
+        SMB2_SHARE_INFO_1 = 1,
+        SMB2_SHARE_INFO_2 = 2,
 };
 
-struct srvsvc_SHARE_INFO_0 {
+struct smb2_share_info_0 {
         char *netname;
 };
 
-struct srvsvc_SHARE_INFO_0_CONTAINER {
-        uint32_t EntriesRead;
-        struct srvsvc_SHARE_INFO_0 *share_info_0;
-};
-
-struct srvsvc_SHARE_INFO_1 {
+struct smb2_share_info_1 {
         char *netname;
         uint32_t type;
         char *remark;
 };
 
-struct srvsvc_SHARE_INFO_1_CONTAINER {
-        uint32_t EntriesRead;
-        struct srvsvc_SHARE_INFO_1 *share_info_1;
-};
-
-struct srvsvc_SHARE_INFO_2 {
+struct smb2_share_info_2 {
         char *netname;
         uint32_t type;
         char *remark;
@@ -75,44 +64,20 @@ struct srvsvc_SHARE_INFO_2 {
         char *passwd;
 };
 
-struct srvsvc_SHARE_INFO_2_CONTAINER {
-        uint32_t EntriesRead;
-        struct srvsvc_SHARE_INFO_2 *share_info_2;
-};
-
-/* Incomplete unless dcerpc/dcerpc-srvsvc.h (libdcerpc) is also included. */
-struct srvsvc_SHARE_INFO_502;
-
-struct srvsvc_SHARE_INFO_502_CONTAINER {
-        uint32_t EntriesRead;
-        struct srvsvc_SHARE_INFO_502 *share_info_502;
-};
-
-union srvsvc_SHARE_ENUM_UNION {
-        struct srvsvc_SHARE_INFO_0_CONTAINER Level0;
-        struct srvsvc_SHARE_INFO_1_CONTAINER Level1;
-        struct srvsvc_SHARE_INFO_2_CONTAINER Level2;
-        struct srvsvc_SHARE_INFO_502_CONTAINER Level502;
-};
-
-struct srvsvc_SHARE_ENUM_STRUCT {
-        uint32_t Level;
-        union srvsvc_SHARE_ENUM_UNION ShareEnum;
-};
-
-struct srvsvc_NetrShareEnum_req {
-        char *ServerName;
-        struct srvsvc_SHARE_ENUM_STRUCT ses;
-        uint32_t PreferedMaximumLength;
-        uint32_t ResumeHandle;
-};
-
-struct srvsvc_NetrShareEnum_rep {
-        struct srvsvc_SHARE_ENUM_STRUCT ses;
+/*
+ * Result of a share enumeration. share_info holds entries_read entries
+ * of the type selected by level; total_entries is the number of shares
+ * the server reported in total.
+ */
+struct smb2_share_enum_reply {
+        uint32_t level;
+        uint32_t entries_read;
         uint32_t total_entries;
-        uint32_t resume_handle;
-
-        uint32_t status;
+        union {
+                struct smb2_share_info_0 *info_0;
+                struct smb2_share_info_1 *info_1;
+                struct smb2_share_info_2 *info_2;
+        } share_info;
 };
 
 /*
@@ -125,25 +90,29 @@ struct srvsvc_NetrShareEnum_rep {
  * -errno : There was an error. The callback function will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
- *      0 : Success. Command_data is struct srvsvc_NetrShareEnum_rep *
+ *      0 : Success. Command_data is struct smb2_share_enum_reply *
  *          This pointer must be freed using smb2_free_data().
- * -errno : An error occurred.
- *
- * libsmb2 implements levels 0, 1 and 2. Level 502 requires libdcerpc.
+ * -errno : An error occurred. Command_data is NULL.
+ *  other : The server returned this (positive) WERROR status.
+ *          Command_data is a struct smb2_share_enum_reply * that must be
+ *          freed using smb2_free_data().
  */
-int smb2_share_enum_async(struct smb2_context *smb2, enum SHARE_INFO_enum level,
+int smb2_share_enum_async(struct smb2_context *smb2,
+                          enum smb2_share_info_level level,
                           smb2_command_cb cb, void *cb_data);
+
 /*
  * Sync share_enum()
  * This function only works when connected to the IPC$ share.
  *
  * Returns
- * NULL: Failure
- * !NULL: Success. The returned pointer is struct srvsvc_NetrShareEnum_rep *
- *        This pointer must be freed using smb2_free_data().
+ *  NULL  : An error occurred. Use smb2_get_error() for details.
+ *  else  : struct smb2_share_enum_reply *, to be freed with
+ *          smb2_free_data().
  */
-struct srvsvc_NetrShareEnum_rep *
-smb2_share_enum_sync(struct smb2_context *smb2, enum SHARE_INFO_enum level);
+struct smb2_share_enum_reply *
+smb2_share_enum_sync(struct smb2_context *smb2,
+                     enum smb2_share_info_level level);
 
 #ifdef __cplusplus
 }
