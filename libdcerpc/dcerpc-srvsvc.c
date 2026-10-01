@@ -4404,6 +4404,366 @@ srvsvc_NetrRemoteTOD_rep_coder(char *name, struct dcerpc_context *dce,
 }
 
 
+/*
+ * typedef struct _SERVER_TRANSPORT_INFO_3 {
+ *       DWORD svti3_numberofvcs;
+ *       [string] wchar_t *svti3_transportname;
+ *       [size_is(svti3_transportaddresslength)] unsigned char *svti3_transportaddress;
+ *       DWORD svti3_transportaddresslength;
+ *       [string] wchar_t *svti3_networkaddress;
+ *       [string] wchar_t *svti3_domain;
+ *       DWORD svti3_flags;
+ *       DWORD svti3_passwordlength;
+ *       unsigned char svti3_password[256];
+ * } SERVER_TRANSPORT_INFO_3;
+ *
+ * Levels 0, 1 and 2 are prefixes of level 3: 0 ends after networkaddress,
+ * 1 adds domain, 2 adds flags.
+ */
+static int
+srvsvc_SERVER_TRANSPORT_INFO_level_coder(int level, char *name,
+                                         struct dcerpc_context *dce,
+                                         struct dcerpc_pdu *pdu,
+                                         struct dcerpc_iovec *iov,
+                                         int *offset, void *ptr)
+{
+        struct srvsvc_SERVER_TRANSPORT_INFO *ti = ptr;
+        int ndr = dcerpc_pdu_encoding(pdu) == ENCODING_NDR;
+        int encode = dcerpc_pdu_direction(pdu) == DCERPC_ENCODE;
+        uint32_t addrlen;
+        uint32_t i;
+
+        if (dcerpc_uint32_coder("NumberOfVcs", dce, pdu, iov, offset,
+                                &ti->NumberOfVcs)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("TransportName", dce, pdu, iov, offset,
+                             &ti->TransportName, PTR_UNIQUE,
+                             dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (ndr) {
+                /* unique pointer to [size_is(...length)] bytes, then length */
+                if (dcerpc_ptr_coder("TransportAddress", dce, pdu, iov, offset,
+                                     encode && ti->TransportAddress.len == 0 ?
+                                     NULL : &ti->TransportAddress,
+                                     PTR_UNIQUE, dcerpc_bytes_coder)) {
+                        return -1;
+                }
+                addrlen = ti->TransportAddress.len;
+                if (dcerpc_uint32_coder("TransportAddressLength", dce, pdu,
+                                        iov, offset, &addrlen)) {
+                        return -1;
+                }
+        } else {
+                if (dcerpc_bytes_coder("TransportAddress", dce, pdu, iov,
+                                       offset, &ti->TransportAddress)) {
+                        return -1;
+                }
+        }
+        if (dcerpc_ptr_coder("NetworkAddress", dce, pdu, iov, offset,
+                             &ti->NetworkAddress, PTR_UNIQUE,
+                             dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (level >= 1 &&
+            dcerpc_ptr_coder("Domain", dce, pdu, iov, offset, &ti->Domain,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (level >= 2 &&
+            dcerpc_uint32_coder("Flags", dce, pdu, iov, offset, &ti->Flags)) {
+                return -1;
+        }
+        if (level < 3) {
+                return 0;
+        }
+        if (ndr) {
+                if (dcerpc_uint32_coder("PasswordLength", dce, pdu, iov,
+                                        offset, &ti->PasswordLength)) {
+                        return -1;
+                }
+                for (i = 0; i < sizeof(ti->Password); i++) {
+                        if (dcerpc_uint8_coder("Password", dce, pdu, iov,
+                                               offset, &ti->Password[i])) {
+                                return -1;
+                        }
+                }
+        } else {
+                /* YAML/JSON: the PasswordLength valid bytes, as hex */
+                struct dcerpc_bytes pw;
+
+                pw.len = ti->PasswordLength > sizeof(ti->Password) ?
+                        sizeof(ti->Password) : ti->PasswordLength;
+                pw.data = ti->Password;
+                if (dcerpc_bytes_coder("Password", dce, pdu, iov, offset,
+                                       &pw)) {
+                        return -1;
+                }
+                if (!encode) {
+                        if (pw.len > sizeof(ti->Password)) {
+                                return -1;
+                        }
+                        if (pw.data != ti->Password) {
+                                memcpy(ti->Password, pw.data, pw.len);
+                        }
+                        ti->PasswordLength = pw.len;
+                }
+        }
+        return 0;
+}
+
+/*
+ * Per-level element, struct-wrapper and array coders for
+ * SERVER_TRANSPORT_INFO_<n> and its [size_is(EntriesRead)] Buffer.
+ */
+#define SRVSVC_XPORT_LEVEL_CODERS(n)                                         \
+static int                                                                   \
+srvsvc_SERVER_TRANSPORT_INFO_##n##_coder(char *name,                         \
+                                         struct dcerpc_context *dce,         \
+                                         struct dcerpc_pdu *pdu,             \
+                                         struct dcerpc_iovec *iov,           \
+                                         int *offset, void *ptr)             \
+{                                                                            \
+        return srvsvc_SERVER_TRANSPORT_INFO_level_coder(n, name, dce, pdu,   \
+                                                        iov, offset, ptr);   \
+}                                                                            \
+static int                                                                   \
+srvsvc_SERVER_TRANSPORT_INFO_##n##_STRUCT_coder(char *name,                  \
+                                                struct dcerpc_context *dce,  \
+                                                struct dcerpc_pdu *pdu,      \
+                                                struct dcerpc_iovec *iov,    \
+                                                int *offset, void *ptr)      \
+{                                                                            \
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,         \
+                                   srvsvc_SERVER_TRANSPORT_INFO_##n##_coder); \
+}                                                                            \
+static int                                                                   \
+srvsvc_SERVER_TRANSPORT_INFO_##n##_carray_coder(char *name,                  \
+                                                struct dcerpc_context *dce,  \
+                                                struct dcerpc_pdu *pdu,      \
+                                                struct dcerpc_iovec *iov,    \
+                                                int *offset, void *ptr)      \
+{                                                                            \
+        return dcerpc_carray_coder("TransportInfo" #n, dce, pdu, iov,        \
+                                   offset, dcerpc_get_size_is(pdu), ptr,     \
+                                   sizeof(struct srvsvc_SERVER_TRANSPORT_INFO), \
+                                   srvsvc_SERVER_TRANSPORT_INFO_##n##_STRUCT_coder); \
+}
+
+SRVSVC_XPORT_LEVEL_CODERS(0)
+SRVSVC_XPORT_LEVEL_CODERS(1)
+SRVSVC_XPORT_LEVEL_CODERS(2)
+SRVSVC_XPORT_LEVEL_CODERS(3)
+
+static dcerpc_coder srvsvc_xport_carray_coders[] = {
+        srvsvc_SERVER_TRANSPORT_INFO_0_carray_coder,
+        srvsvc_SERVER_TRANSPORT_INFO_1_carray_coder,
+        srvsvc_SERVER_TRANSPORT_INFO_2_carray_coder,
+        srvsvc_SERVER_TRANSPORT_INFO_3_carray_coder,
+};
+
+/*
+ * typedef struct _SERVER_XPORT_INFO_<n>_CONTAINER {
+ *       DWORD EntriesRead;
+ *       [size_is(EntriesRead)] LPSERVER_TRANSPORT_INFO_<n> Buffer;
+ * } SERVER_XPORT_INFO_<n>_CONTAINER;
+ *
+ * The level is the union discriminant (switch_is), which is in effect for
+ * the container whether coded inline or as a deferred pointer referent.
+ */
+static int
+srvsvc_SERVER_XPORT_INFO_CONTAINER_coder(char *name,
+                                         struct dcerpc_context *dce,
+                                         struct dcerpc_pdu *pdu,
+                                         struct dcerpc_iovec *iov,
+                                         int *offset, void *ptr)
+{
+        struct srvsvc_SERVER_XPORT_INFO_CONTAINER *ctr = ptr;
+        int level = dcerpc_get_switch_is(pdu);
+
+        if (level < 0 || level > 3) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset,
+                                &ctr->EntriesRead)) {
+                return -1;
+        }
+        if (ctr->EntriesRead) {
+                dcerpc_set_size_is(pdu, ctr->EntriesRead);
+        }
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && ctr->EntriesRead &&
+            ctr->Buffer == NULL) {
+                size_t esize = sizeof(struct srvsvc_SERVER_TRANSPORT_INFO);
+
+                if (ctr->EntriesRead > SIZE_MAX / esize) {
+                        return -1;
+                }
+                ctr->Buffer = dcerpc_alloc_data(pdu,
+                                (size_t)ctr->EntriesRead * esize);
+                if (ctr->Buffer == NULL) {
+                        return -1;
+                }
+        }
+        if (dcerpc_ptr_coder("TransportInfo", dce, pdu, iov, offset,
+                             ctr->Buffer, PTR_UNIQUE,
+                             srvsvc_xport_carray_coders[level])) {
+                return -1;
+        }
+        return 0;
+}
+
+/*
+ * typedef [switch_type(DWORD)] union _SERVER_XPORT_ENUM_UNION {
+ *       [case(0)] PSERVER_XPORT_INFO_0_CONTAINER Level0;
+ *       [case(1)] PSERVER_XPORT_INFO_1_CONTAINER Level1;
+ *       [case(2)] PSERVER_XPORT_INFO_2_CONTAINER Level2;
+ *       [case(3)] PSERVER_XPORT_INFO_3_CONTAINER Level3;
+ * } SERVER_XPORT_ENUM_UNION;
+ */
+static int
+srvsvc_SERVER_XPORT_ENUM_UNION_coder(char *name, struct dcerpc_context *dce,
+                                     struct dcerpc_pdu *pdu,
+                                     struct dcerpc_iovec *iov, int *offset,
+                                     void *ptr)
+{
+        union srvsvc_SERVER_XPORT_ENUM_UNION *info = ptr;
+        struct srvsvc_SERVER_XPORT_INFO_CONTAINER *ctr;
+        char *arm;
+
+        switch (dcerpc_get_switch_is(pdu)) {
+        case 0:
+                ctr = &info->Level0;
+                arm = "XportInfo0Container";
+                break;
+        case 1:
+                ctr = &info->Level1;
+                arm = "XportInfo1Container";
+                break;
+        case 2:
+                ctr = &info->Level2;
+                arm = "XportInfo2Container";
+                break;
+        case 3:
+                ctr = &info->Level3;
+                arm = "XportInfo3Container";
+                break;
+        default:
+                return -1;
+        }
+        return dcerpc_ptr_coder(arm, dce, pdu, iov, offset, ctr, PTR_UNIQUE,
+                                srvsvc_SERVER_XPORT_INFO_CONTAINER_coder);
+}
+
+/*
+ * typedef struct _SERVER_XPORT_ENUM_STRUCT {
+ *       DWORD Level;
+ *       [switch_is(Level)] SERVER_XPORT_ENUM_UNION XportInfo;
+ * } SERVER_XPORT_ENUM_STRUCT, *PSERVER_XPORT_ENUM_STRUCT, *LPSERVER_XPORT_ENUM_STRUCT;
+ */
+static int
+srvsvc_SERVER_XPORT_ENUM_STRUCT_coder(char *name, struct dcerpc_context *dce,
+                                      struct dcerpc_pdu *pdu,
+                                      struct dcerpc_iovec *iov, int *offset,
+                                      void *ptr)
+{
+        struct srvsvc_SERVER_XPORT_ENUM_STRUCT *xes = ptr;
+
+        if (dcerpc_uint32_coder("Level", dce, pdu, iov, offset, &xes->Level)) {
+                return -1;
+        }
+        if (dcerpc_union_coder("XportInfo", dce, pdu, iov, offset,
+                               &xes->Level, &xes->XportInfo,
+                               srvsvc_SERVER_XPORT_ENUM_UNION_coder)) {
+                return -1;
+        }
+        return 0;
+}
+
+static int
+srvsvc_SERVER_XPORT_ENUM_STRUCT_struct_coder(char *name,
+                                             struct dcerpc_context *dce,
+                                             struct dcerpc_pdu *pdu,
+                                             struct dcerpc_iovec *iov,
+                                             int *offset, void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_SERVER_XPORT_ENUM_STRUCT_coder);
+}
+
+/*****************
+ * Function: 0x1a
+ * NET_API_STATUS NetrServerTransportEnum (
+ *   [in,string,unique] SRVSVC_HANDLE ServerName,
+ *   [in,out] LPSERVER_XPORT_ENUM_STRUCT InfoStruct,
+ *   [in] DWORD PreferedMaximumLength,
+ *   [out] DWORD * TotalEntries,
+ *   [in,out,unique] DWORD * ResumeHandle
+ * );
+ */
+int
+srvsvc_NetrServerTransportEnum_req_coder(char *name,
+                                         struct dcerpc_context *dce,
+                                         struct dcerpc_pdu *pdu,
+                                         struct dcerpc_iovec *iov,
+                                         int *offset, void *ptr)
+{
+        struct srvsvc_NetrServerTransportEnum_req *req = ptr;
+
+        if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset,
+                             &req->ServerName, PTR_UNIQUE,
+                             dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("InfoStruct", dce, pdu, iov, offset,
+                             &req->InfoStruct, PTR_REF,
+                             srvsvc_SERVER_XPORT_ENUM_STRUCT_struct_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("PreferedMaximumLength", dce, pdu, iov, offset,
+                             &req->PreferedMaximumLength, PTR_REF,
+                             dcerpc_uint32_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("ResumeHandle", dce, pdu, iov, offset,
+                             &req->ResumeHandle, PTR_UNIQUE,
+                             dcerpc_uint32_coder)) {
+                return -1;
+        }
+        return 0;
+}
+
+int
+srvsvc_NetrServerTransportEnum_rep_coder(char *name,
+                                         struct dcerpc_context *dce,
+                                         struct dcerpc_pdu *pdu,
+                                         struct dcerpc_iovec *iov,
+                                         int *offset, void *ptr)
+{
+        struct srvsvc_NetrServerTransportEnum_rep *rep = ptr;
+
+        if (dcerpc_ptr_coder("InfoStruct", dce, pdu, iov, offset,
+                             &rep->InfoStruct, PTR_REF,
+                             srvsvc_SERVER_XPORT_ENUM_STRUCT_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("TotalEntries", dce, pdu, iov, offset,
+                             &rep->TotalEntries, PTR_REF,
+                             dcerpc_uint32_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("ResumeHandle", dce, pdu, iov, offset,
+                             &rep->ResumeHandle, PTR_UNIQUE,
+                             dcerpc_uint32_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset,
+                                &rep->status)) {
+                return -1;
+        }
+        return 0;
+}
+
 #endif /* HAVE_DCERPC_FULL: other Netr* ops after NetrShareEnum */
 struct dcerpc_procedure srvsvc_procs[] = {
 #ifdef HAVE_DCERPC_FULL
@@ -4476,6 +4836,12 @@ struct dcerpc_procedure srvsvc_procs[] = {
         {SRVSVC_NETRSERVERSTATISTICSGET, "NetrServerStatisticsGet",
          srvsvc_NetrServerStatisticsGet_req_coder, sizeof(struct srvsvc_NetrServerStatisticsGet_req),
          srvsvc_NetrServerStatisticsGet_rep_coder, sizeof(struct srvsvc_NetrServerStatisticsGet_rep),
+        },
+        {SRVSVC_NETRSERVERTRANSPORTENUM, "NetrServerTransportEnum",
+         srvsvc_NetrServerTransportEnum_req_coder,
+         sizeof(struct srvsvc_NetrServerTransportEnum_req),
+         srvsvc_NetrServerTransportEnum_rep_coder,
+         sizeof(struct srvsvc_NetrServerTransportEnum_rep),
         },
         {SRVSVC_NETRREMOTETOD, "NetrRemoteTOD",
          srvsvc_NetrRemoteTOD_req_coder, sizeof(struct srvsvc_NetrRemoteTOD_req),

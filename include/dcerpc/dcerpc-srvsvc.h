@@ -47,6 +47,7 @@ extern "C" {
 #define SRVSVC_NETRSERVERSETINFO  0x16
 #define SRVSVC_NETRSERVERDISKENUM     0x17
 #define SRVSVC_NETRSERVERSTATISTICSGET 0x18
+#define SRVSVC_NETRSERVERTRANSPORTENUM 0x1a
 #define SRVSVC_NETRREMOTETOD           0x1c
 
 struct dcerpc_context;
@@ -795,6 +796,56 @@ struct srvsvc_NetrRemoteTOD_rep {
         uint32_t status;
 };
 
+/*
+ * SERVER_TRANSPORT_INFO_0..3 (NetrServerTransportEnum). Each level extends
+ * the previous one, so one C struct holds them all; fields beyond the
+ * level being coded are ignored. TransportAddress is the
+ * [size_is(svtiN_transportaddresslength)] byte array; that length field,
+ * and PasswordLength in YAML/JSON, are derived from the byte counts.
+ */
+struct srvsvc_SERVER_TRANSPORT_INFO {
+        uint32_t NumberOfVcs;
+        char *TransportName;
+        struct dcerpc_bytes TransportAddress;
+        char *NetworkAddress;
+        char *Domain;                   /* level 1+ */
+        uint32_t Flags;                 /* level 2+ */
+        uint32_t PasswordLength;        /* level 3 */
+        uint8_t Password[256];          /* level 3 */
+};
+
+struct srvsvc_SERVER_XPORT_INFO_CONTAINER {
+        uint32_t EntriesRead;
+        struct srvsvc_SERVER_TRANSPORT_INFO *Buffer;
+};
+
+union srvsvc_SERVER_XPORT_ENUM_UNION {
+        struct srvsvc_SERVER_XPORT_INFO_CONTAINER Level0;
+        struct srvsvc_SERVER_XPORT_INFO_CONTAINER Level1;
+        struct srvsvc_SERVER_XPORT_INFO_CONTAINER Level2;
+        struct srvsvc_SERVER_XPORT_INFO_CONTAINER Level3;
+};
+
+struct srvsvc_SERVER_XPORT_ENUM_STRUCT {
+        uint32_t Level;
+        union srvsvc_SERVER_XPORT_ENUM_UNION XportInfo;
+};
+
+struct srvsvc_NetrServerTransportEnum_req {
+        char *ServerName;
+        struct srvsvc_SERVER_XPORT_ENUM_STRUCT InfoStruct;
+        uint32_t PreferedMaximumLength;
+        uint32_t ResumeHandle;
+};
+
+struct srvsvc_NetrServerTransportEnum_rep {
+        struct srvsvc_SERVER_XPORT_ENUM_STRUCT InfoStruct;
+        uint32_t TotalEntries;
+        uint32_t ResumeHandle;
+
+        uint32_t status;
+};
+
 int srvsvc_NetrConnectionEnum_rep_coder(char *name, struct dcerpc_context *dce,
                                          struct dcerpc_pdu *pdu,
                                          struct dcerpc_iovec *iov, int *offset,
@@ -915,6 +966,16 @@ int srvsvc_NetrRemoteTOD_rep_coder(char *name, struct dcerpc_context *ctx,
                                     struct dcerpc_pdu *pdu,
                                     struct dcerpc_iovec *iov, int *offset,
                                     void *ptr);
+int srvsvc_NetrServerTransportEnum_req_coder(char *name,
+                                             struct dcerpc_context *dce,
+                                             struct dcerpc_pdu *pdu,
+                                             struct dcerpc_iovec *iov,
+                                             int *offset, void *ptr);
+int srvsvc_NetrServerTransportEnum_rep_coder(char *name,
+                                             struct dcerpc_context *dce,
+                                             struct dcerpc_pdu *pdu,
+                                             struct dcerpc_iovec *iov,
+                                             int *offset, void *ptr);
 
 extern struct dcerpc_procedure srvsvc_procs[];
         
