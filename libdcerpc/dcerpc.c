@@ -4489,6 +4489,197 @@ struct dcerpc_coders ndr_coders = {
 
 #ifdef HAVE_DCERPC_FULL
 /*
+ * Blob fields: a [size_is(len)] unique byte array whose bytes are a
+ * packet-form object such as a self-relative SECURITY_DESCRIPTOR. The C
+ * struct holds the decoded object instead of the bytes.
+ */
+struct dcerpc_blob {
+        struct dcerpc_bytes bytes;
+        void **objp;
+        size_t obj_size;
+        dcerpc_coder coder;
+        int present;
+};
+
+/* Serialize obj with coder into a buffer on pdu. */
+static int
+blob_serialize(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+               void *obj, dcerpc_coder coder, uint8_t **bytes, uint32_t *len)
+{
+        struct dcerpc_iovec iov;
+        size_t cap;
+        int off;
+
+        for (cap = 256; cap <= 65536; cap *= 2) {
+                iov.buf = calloc(1, cap);
+                if (iov.buf == NULL) {
+                        return -1;
+                }
+                iov.len = cap;
+                iov.free = NULL;
+                off = 0;
+                if (coder("", dce, pdu, &iov, &off, obj) == 0) {
+                        *bytes = dcerpc_alloc_data(pdu, off ? (size_t)off : 1);
+                        if (*bytes == NULL) {
+                                free(iov.buf);
+                                return -1;
+                        }
+                        memcpy(*bytes, iov.buf, (size_t)off);
+                        *len = (uint32_t)off;
+                        free(iov.buf);
+                        return 0;
+                }
+                free(iov.buf); /* assume it did not fit; retry larger */
+        }
+        smb2_set_error(dce->smb2, "Failed to serialize blob object");
+        return -1;
+}
+
+/* NDR deferred body: max_count + bytes; on decode parse them into *objp. */
+static int
+blob_body_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset, void *ptr)
+{
+        struct dcerpc_blob *b = ptr;
+        struct dcerpc_iovec biov;
+        int boff = 0;
+        void *obj;
+
+        if (ndr_bytes_coder(name, dce, pdu, iov, offset, &b->bytes)) {
+                return -1;
+        }
+        if (pdu->is_conformance_run || pdu->direction == DCERPC_ENCODE ||
+            b->bytes.len == 0) {
+                return 0;
+        }
+        obj = dcerpc_alloc_data(pdu, b->obj_size);
+        if (obj == NULL) {
+                return -1;
+        }
+        biov.buf = b->bytes.data;
+        biov.len = b->bytes.len;
+        biov.free = NULL;
+        if (b->coder(name, dce, pdu, &biov, &boff, obj)) {
+                return -1;
+        }
+        *b->objp = obj;
+        return 0;
+}
+
+/* YAML/JSON: the pointer coders only call this when the key is present. */
+static int
+blob_text_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset, void *ptr)
+{
+        struct dcerpc_blob *b = ptr;
+
+        b->present = 1;
+        return b->coder(name, dce, pdu, iov, offset, *b->objp);
+}
+
+/*
+ * The length field of a blob. NDR: on encode it is computed from obj (NULL
+ * obj = 0). YAML/JSON: wire-only, so it is omitted (and 0 on decode).
+ */
+int
+dcerpc_blob_len_coder(char *name, struct dcerpc_context *dce,
+                      struct dcerpc_pdu *pdu,
+                      struct dcerpc_iovec *iov, int *offset,
+                      uint32_t *len, void *obj, dcerpc_coder coder)
+{
+        uint8_t *bytes;
+
+        if (pdu->encoding != ENCODING_NDR) {
+                if (pdu->direction == DCERPC_DECODE) {
+                        *len = 0;
+                }
+                return 0;
+        }
+        if (pdu->direction == DCERPC_ENCODE && !pdu->is_conformance_run) {
+                *len = 0;
+                if (obj && blob_serialize(dce, pdu, obj, coder, &bytes, len)) {
+                        return -1;
+                }
+        }
+        return ndr_uint32_coder(name, dce, pdu, iov, offset, len);
+}
+
+/*
+ * The byte-array field of a blob. objp is the address of the object
+ * pointer field (e.g. SECURITY_DESCRIPTOR **), obj_size the object size.
+ * NDR: unique pointer to [size_is(len)] bytes holding the object.
+ * YAML/JSON: the object itself; a NULL object is an absent key.
+ */
+int
+dcerpc_blob_coder(char *name, struct dcerpc_context *dce,
+                  struct dcerpc_pdu *pdu,
+                  struct dcerpc_iovec *iov, int *offset,
+                  uint32_t len, void *objp, size_t obj_size,
+                  dcerpc_coder coder)
+{
+        void **op = objp;
+        struct dcerpc_blob *b = NULL;
+
+        if (pdu->encoding == ENCODING_NDR) {
+                if (!pdu->is_conformance_run) {
+                        if (pdu->direction == DCERPC_ENCODE && *op) {
+                                b = dcerpc_alloc_data(pdu, sizeof(*b));
+                                if (b == NULL ||
+                                    blob_serialize(dce, pdu, *op, coder,
+                                                   &b->bytes.data,
+                                                   &b->bytes.len)) {
+                                        return -1;
+                                }
+                                if (b->bytes.len != len) {
+                                        smb2_set_error(dce->smb2, "Blob %s "
+                                                       "length mismatch", name);
+                                        return -1;
+                                }
+                        } else if (pdu->direction == DCERPC_DECODE) {
+                                *op = NULL;
+                                if (len) {
+                                        b = dcerpc_alloc_data(pdu, sizeof(*b));
+                                        if (b == NULL) {
+                                                return -1;
+                                        }
+                                        b->objp = op;
+                                        b->obj_size = obj_size;
+                                        b->coder = coder;
+                                }
+                        }
+                }
+                return ndr_ptr_coder(name, dce, pdu, iov, offset, b,
+                                     PTR_UNIQUE, blob_body_coder);
+        }
+
+        if (pdu->direction == DCERPC_ENCODE && *op == NULL) {
+                return 0;
+        }
+        b = dcerpc_alloc_data(pdu, sizeof(*b));
+        if (b == NULL) {
+                return -1;
+        }
+        b->objp = op;
+        b->coder = coder;
+        if (pdu->direction == DCERPC_DECODE) {
+                *op = dcerpc_alloc_data(pdu, obj_size);
+                if (*op == NULL) {
+                        return -1;
+                }
+        }
+        if (dcerpc_ptr_coder(name, dce, pdu, iov, offset, b, PTR_UNIQUE,
+                             blob_text_coder)) {
+                return -1;
+        }
+        if (pdu->direction == DCERPC_DECODE && !b->present) {
+                *op = NULL;
+        }
+        return 0;
+}
+#endif /* HAVE_DCERPC_FULL */
+
+#ifdef HAVE_DCERPC_FULL
+/*
  * JSON Coders
  */
 /*

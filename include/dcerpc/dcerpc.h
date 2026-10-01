@@ -419,6 +419,27 @@ int dcerpc_bytes_coder(char *name, struct dcerpc_context *dce,
                        void *ptr);
 
 /*
+ * Blob: a [size_is(len)] unique byte array whose bytes are a packet-form
+ * object (e.g. a self-relative SECURITY_DESCRIPTOR coded by
+ * dcerpc_SECURITY_DESCRIPTOR_coder). The C struct holds the decoded object
+ * pointer instead of the bytes; idlcomp emits these for [blob(T)] fields.
+ *
+ * dcerpc_blob_len_coder codes the length field: computed from obj on NDR
+ * encode, omitted in YAML/JSON. dcerpc_blob_coder codes the byte array:
+ * objp is the address of the object pointer field. In YAML/JSON the object
+ * is shown directly and a NULL object is an absent key. Full libdcerpc only.
+ */
+int dcerpc_blob_len_coder(char *name, struct dcerpc_context *dce,
+                          struct dcerpc_pdu *pdu,
+                          struct dcerpc_iovec *iov, int *offset,
+                          uint32_t *len, void *obj, dcerpc_coder coder);
+int dcerpc_blob_coder(char *name, struct dcerpc_context *dce,
+                      struct dcerpc_pdu *pdu,
+                      struct dcerpc_iovec *iov, int *offset,
+                      uint32_t len, void *objp, size_t obj_size,
+                      dcerpc_coder coder);
+
+/*
  * [size_is(max_count), length_is(len)] byte data[] — a conformant-varying
  * byte array. NDR: max_count, offset (always 0), len, then len bytes.
  * YAML/JSON: the len bytes as a hex string; max_count is not carried and

@@ -31,6 +31,8 @@ dcerpc_allocate_pdu
 dcerpc_alloc_data
 dcerpc_call
 dcerpc_call_async
+dcerpc_blob_coder
+dcerpc_blob_len_coder
 dcerpc_bytes_coder
 dcerpc_carray_coder
 dcerpc_connect_context
