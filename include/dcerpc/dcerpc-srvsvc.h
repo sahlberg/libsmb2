@@ -521,43 +521,50 @@ union srvsvc_SERVER_INFO {
 };
         
 /*
- * CONNECTION_INFO / CONNECT_ENUM (NetrConnectionEnum)
+ * NetrConnectionEnum, NetrFileEnum, NetrFileGetInfo, NetrFileClose,
+ * NetrSessionEnum and NetrSessionDel: generated from the [MS-SRVS] IDL.
+ * Field names follow the IDL.
  */
 enum CONNECTION_INFO_enum {
         CONNECTION_INFO_0 = 0,
         CONNECTION_INFO_1 = 1,
 };
 
-struct srvsvc_CONNECTION_INFO_0 {
-        uint32_t id;
+enum FILE_INFO_enum {
+        FILE_INFO_2 = 2,
+        FILE_INFO_3 = 3,
 };
-int srvsvc_CONNECTION_INFO_0_coder(char *name, struct dcerpc_context *ctx,
-                                   struct dcerpc_pdu *pdu,
-                                   struct dcerpc_iovec *iov, int *offset,
-                                   void *ptr);
+
+enum SESSION_INFO_enum {
+        SESSION_INFO_0 = 0,
+        SESSION_INFO_1 = 1,
+        SESSION_INFO_2 = 2,
+        SESSION_INFO_10 = 10,
+        SESSION_INFO_502 = 502,
+};
+
+struct srvsvc_CONNECTION_INFO_0 {
+        uint32_t coni0_id;
+};
 
 struct srvsvc_CONNECT_INFO_0_CONTAINER {
         uint32_t EntriesRead;
-        struct srvsvc_CONNECTION_INFO_0 *connection_info_0;
+        struct srvsvc_CONNECTION_INFO_0 * Buffer;
 };
 
 struct srvsvc_CONNECTION_INFO_1 {
-        uint32_t id;
-        uint32_t type;
-        uint32_t num_opens;
-        uint32_t num_users;
-        uint32_t time;
-        char *username;
-        char *netname;
+        uint32_t coni1_id;
+        uint32_t coni1_type;
+        uint32_t coni1_num_opens;
+        uint32_t coni1_num_users;
+        uint32_t coni1_time;
+        char * coni1_username;
+        char * coni1_netname;
 };
-int srvsvc_CONNECTION_INFO_1_coder(char *name, struct dcerpc_context *ctx,
-                                   struct dcerpc_pdu *pdu,
-                                   struct dcerpc_iovec *iov, int *offset,
-                                   void *ptr);
 
 struct srvsvc_CONNECT_INFO_1_CONTAINER {
         uint32_t EntriesRead;
-        struct srvsvc_CONNECTION_INFO_1 *connection_info_1;
+        struct srvsvc_CONNECTION_INFO_1 * Buffer;
 };
 
 union srvsvc_CONNECT_ENUM_UNION {
@@ -567,61 +574,29 @@ union srvsvc_CONNECT_ENUM_UNION {
 
 struct srvsvc_CONNECT_ENUM_STRUCT {
         uint32_t Level;
-        union srvsvc_CONNECT_ENUM_UNION ConnectEnum;
-};
-
-struct srvsvc_NetrConnectionEnum_req {
-        char *ServerName;
-        char *Qualifier;
-        struct srvsvc_CONNECT_ENUM_STRUCT ces;
-        uint32_t PreferedMaximumLength;
-        uint32_t ResumeHandle;
-};
-
-struct srvsvc_NetrConnectionEnum_rep {
-        struct srvsvc_CONNECT_ENUM_STRUCT ces;
-        uint32_t total_entries;
-        uint32_t resume_handle;
-
-        uint32_t status;
-};
-
-/*
- * FILE_INFO / FILE_ENUM (NetrFileEnum)
- */
-enum FILE_INFO_enum {
-        FILE_INFO_2 = 2,
-        FILE_INFO_3 = 3,
+        union srvsvc_CONNECT_ENUM_UNION ConnectInfo;
 };
 
 struct srvsvc_FILE_INFO_2 {
-        uint32_t id;
+        uint32_t fi2_id;
 };
-int srvsvc_FILE_INFO_2_coder(char *name, struct dcerpc_context *ctx,
-                             struct dcerpc_pdu *pdu,
-                             struct dcerpc_iovec *iov, int *offset,
-                             void *ptr);
 
 struct srvsvc_FILE_INFO_2_CONTAINER {
         uint32_t EntriesRead;
-        struct srvsvc_FILE_INFO_2 *file_info_2;
+        struct srvsvc_FILE_INFO_2 * Buffer;
 };
 
 struct srvsvc_FILE_INFO_3 {
-        uint32_t id;
-        uint32_t permissions;
-        uint32_t num_locks;
-        char *pathname;
-        char *username;
+        uint32_t fi3_id;
+        uint32_t fi3_permissions;
+        uint32_t fi3_num_locks;
+        char * fi3_pathname;
+        char * fi3_username;
 };
-int srvsvc_FILE_INFO_3_coder(char *name, struct dcerpc_context *ctx,
-                             struct dcerpc_pdu *pdu,
-                             struct dcerpc_iovec *iov, int *offset,
-                             void *ptr);
 
 struct srvsvc_FILE_INFO_3_CONTAINER {
         uint32_t EntriesRead;
-        struct srvsvc_FILE_INFO_3 *file_info_3;
+        struct srvsvc_FILE_INFO_3 * Buffer;
 };
 
 union srvsvc_FILE_ENUM_UNION {
@@ -634,151 +609,75 @@ struct srvsvc_FILE_ENUM_STRUCT {
         union srvsvc_FILE_ENUM_UNION FileInfo;
 };
 
-struct srvsvc_NetrFileEnum_req {
-        char *ServerName;
-        char *BasePath;
-        char *UserName;
-        struct srvsvc_FILE_ENUM_STRUCT fes;
-        uint32_t PreferedMaximumLength;
-        uint32_t ResumeHandle;
-};
-
-struct srvsvc_NetrFileEnum_rep {
-        struct srvsvc_FILE_ENUM_STRUCT fes;
-        uint32_t total_entries;
-        uint32_t resume_handle;
-
-        uint32_t status;
-};
-
-/*
- * FILE_INFO union used by NetrFileGetInfo
- * typedef [switch_type(unsigned long)] union _FILE_INFO {
- *   [case(2)] LPFILE_INFO_2 FileInfo2;
- *   [case(3)] LPFILE_INFO_3 FileInfo3;
- * } FILE_INFO, *PFILE_INFO, *LPFILE_INFO;
- */
 union srvsvc_FILE_INFO {
         struct srvsvc_FILE_INFO_2 FileInfo2;
         struct srvsvc_FILE_INFO_3 FileInfo3;
 };
 
-struct srvsvc_NetrFileGetInfo_req {
-        char *ServerName;
-        uint32_t FileId;
-        uint32_t Level;
-};
-
-struct srvsvc_NetrFileGetInfo_rep {
-        union srvsvc_FILE_INFO InfoStruct;
-
-        uint32_t status;
-};
-
-struct srvsvc_NetrFileClose_req {
-        char *ServerName;
-        uint32_t FileId;
-};
-
-struct srvsvc_NetrFileClose_rep {
-        uint32_t status;
-};
-
-/*
- * SESSION_INFO / SESSION_ENUM (NetrSessionEnum)
- */
-enum SESSION_INFO_enum {
-        SESSION_INFO_0 = 0,
-        SESSION_INFO_1 = 1,
-        SESSION_INFO_2 = 2,
-        SESSION_INFO_10 = 10,
-        SESSION_INFO_502 = 502,
-};
-
 struct srvsvc_SESSION_INFO_0 {
-        char *cname;
+        char * sesi0_cname;
 };
-int srvsvc_SESSION_INFO_0_coder(char *name, struct dcerpc_context *ctx,
-                                struct dcerpc_pdu *pdu,
-                                struct dcerpc_iovec *iov, int *offset,
-                                void *ptr);
 
 struct srvsvc_SESSION_INFO_0_CONTAINER {
         uint32_t EntriesRead;
-        struct srvsvc_SESSION_INFO_0 *session_info_0;
+        struct srvsvc_SESSION_INFO_0 * Buffer;
 };
 
 struct srvsvc_SESSION_INFO_1 {
-        char *cname;
-        char *username;
-        uint32_t num_opens;
-        uint32_t time;
-        uint32_t idle_time;
-        uint32_t user_flags;
+        char * sesi1_cname;
+        char * sesi1_username;
+        uint32_t sesi1_num_opens;
+        uint32_t sesi1_time;
+        uint32_t sesi1_idle_time;
+        uint32_t sesi1_user_flags;
 };
-int srvsvc_SESSION_INFO_1_coder(char *name, struct dcerpc_context *ctx,
-                                struct dcerpc_pdu *pdu,
-                                struct dcerpc_iovec *iov, int *offset,
-                                void *ptr);
 
 struct srvsvc_SESSION_INFO_1_CONTAINER {
         uint32_t EntriesRead;
-        struct srvsvc_SESSION_INFO_1 *session_info_1;
+        struct srvsvc_SESSION_INFO_1 * Buffer;
 };
 
 struct srvsvc_SESSION_INFO_2 {
-        char *cname;
-        char *username;
-        uint32_t num_opens;
-        uint32_t time;
-        uint32_t idle_time;
-        uint32_t user_flags;
-        char *cltype_name;
+        char * sesi2_cname;
+        char * sesi2_username;
+        uint32_t sesi2_num_opens;
+        uint32_t sesi2_time;
+        uint32_t sesi2_idle_time;
+        uint32_t sesi2_user_flags;
+        char * sesi2_cltype_name;
 };
-int srvsvc_SESSION_INFO_2_coder(char *name, struct dcerpc_context *ctx,
-                                struct dcerpc_pdu *pdu,
-                                struct dcerpc_iovec *iov, int *offset,
-                                void *ptr);
 
 struct srvsvc_SESSION_INFO_2_CONTAINER {
         uint32_t EntriesRead;
-        struct srvsvc_SESSION_INFO_2 *session_info_2;
+        struct srvsvc_SESSION_INFO_2 * Buffer;
 };
 
 struct srvsvc_SESSION_INFO_10 {
-        char *cname;
-        char *username;
-        uint32_t time;
-        uint32_t idle_time;
+        char * sesi10_cname;
+        char * sesi10_username;
+        uint32_t sesi10_time;
+        uint32_t sesi10_idle_time;
 };
-int srvsvc_SESSION_INFO_10_coder(char *name, struct dcerpc_context *ctx,
-                                 struct dcerpc_pdu *pdu,
-                                 struct dcerpc_iovec *iov, int *offset,
-                                 void *ptr);
 
 struct srvsvc_SESSION_INFO_10_CONTAINER {
         uint32_t EntriesRead;
-        struct srvsvc_SESSION_INFO_10 *session_info_10;
+        struct srvsvc_SESSION_INFO_10 * Buffer;
 };
 
 struct srvsvc_SESSION_INFO_502 {
-        char *cname;
-        char *username;
-        uint32_t num_opens;
-        uint32_t time;
-        uint32_t idle_time;
-        uint32_t user_flags;
-        char *cltype_name;
-        char *transport;
+        char * sesi502_cname;
+        char * sesi502_username;
+        uint32_t sesi502_num_opens;
+        uint32_t sesi502_time;
+        uint32_t sesi502_idle_time;
+        uint32_t sesi502_user_flags;
+        char * sesi502_cltype_name;
+        char * sesi502_transport;
 };
-int srvsvc_SESSION_INFO_502_coder(char *name, struct dcerpc_context *ctx,
-                                  struct dcerpc_pdu *pdu,
-                                  struct dcerpc_iovec *iov, int *offset,
-                                  void *ptr);
 
 struct srvsvc_SESSION_INFO_502_CONTAINER {
         uint32_t EntriesRead;
-        struct srvsvc_SESSION_INFO_502 *session_info_502;
+        struct srvsvc_SESSION_INFO_502 * Buffer;
 };
 
 union srvsvc_SESSION_ENUM_UNION {
@@ -794,32 +693,297 @@ struct srvsvc_SESSION_ENUM_STRUCT {
         union srvsvc_SESSION_ENUM_UNION SessionInfo;
 };
 
+struct srvsvc_NetrConnectionEnum_req {
+        char * ServerName;
+        char * Qualifier;
+        struct srvsvc_CONNECT_ENUM_STRUCT InfoStruct;
+        uint32_t PreferedMaximumLength;
+        uint32_t ResumeHandle;
+};
+
+struct srvsvc_NetrConnectionEnum_rep {
+        struct srvsvc_CONNECT_ENUM_STRUCT InfoStruct;
+        uint32_t TotalEntries;
+        uint32_t ResumeHandle;
+        uint32_t status;
+};
+
+struct srvsvc_NetrFileEnum_req {
+        char * ServerName;
+        char * BasePath;
+        char * UserName;
+        struct srvsvc_FILE_ENUM_STRUCT InfoStruct;
+        uint32_t PreferedMaximumLength;
+        uint32_t ResumeHandle;
+};
+
+struct srvsvc_NetrFileEnum_rep {
+        struct srvsvc_FILE_ENUM_STRUCT InfoStruct;
+        uint32_t TotalEntries;
+        uint32_t ResumeHandle;
+        uint32_t status;
+};
+
+struct srvsvc_NetrFileGetInfo_req {
+        char * ServerName;
+        uint32_t FileId;
+        uint32_t Level;
+};
+
+struct srvsvc_NetrFileGetInfo_rep {
+        union srvsvc_FILE_INFO InfoStruct;
+        uint32_t status;
+};
+
+struct srvsvc_NetrFileClose_req {
+        char * ServerName;
+        uint32_t FileId;
+};
+
+struct srvsvc_NetrFileClose_rep {
+        uint32_t status;
+};
+
 struct srvsvc_NetrSessionEnum_req {
-        char *ServerName;
-        char *ClientName;
-        char *UserName;
-        struct srvsvc_SESSION_ENUM_STRUCT ses;
+        char * ServerName;
+        char * ClientName;
+        char * UserName;
+        struct srvsvc_SESSION_ENUM_STRUCT InfoStruct;
         uint32_t PreferedMaximumLength;
         uint32_t ResumeHandle;
 };
 
 struct srvsvc_NetrSessionEnum_rep {
-        struct srvsvc_SESSION_ENUM_STRUCT ses;
-        uint32_t total_entries;
-        uint32_t resume_handle;
-
+        struct srvsvc_SESSION_ENUM_STRUCT InfoStruct;
+        uint32_t TotalEntries;
+        uint32_t ResumeHandle;
         uint32_t status;
 };
 
 struct srvsvc_NetrSessionDel_req {
-        char *ServerName;
-        char *ClientName;
-        char *UserName;
+        char * ServerName;
+        char * ClientName;
+        char * UserName;
 };
 
 struct srvsvc_NetrSessionDel_rep {
         uint32_t status;
 };
+
+int srvsvc_CONNECTION_INFO_0_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_CONNECTION_INFO_0_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_CONNECT_INFO_0_CONTAINER_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_CONNECT_INFO_0_CONTAINER_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_CONNECTION_INFO_1_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_CONNECTION_INFO_1_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_CONNECT_INFO_1_CONTAINER_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_CONNECT_INFO_1_CONTAINER_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_CONNECT_ENUM_UNION_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_CONNECT_ENUM_STRUCT_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_CONNECT_ENUM_STRUCT_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_FILE_INFO_2_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_FILE_INFO_2_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_FILE_INFO_2_CONTAINER_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_FILE_INFO_2_CONTAINER_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_FILE_INFO_3_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_FILE_INFO_3_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_FILE_INFO_3_CONTAINER_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_FILE_INFO_3_CONTAINER_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_FILE_ENUM_UNION_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_FILE_ENUM_STRUCT_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_FILE_ENUM_STRUCT_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_FILE_INFO_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_FILE_INFO_switch_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_SESSION_INFO_0_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SESSION_INFO_0_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_SESSION_INFO_0_CONTAINER_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SESSION_INFO_0_CONTAINER_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_SESSION_INFO_1_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SESSION_INFO_1_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_SESSION_INFO_1_CONTAINER_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SESSION_INFO_1_CONTAINER_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_SESSION_INFO_2_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SESSION_INFO_2_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_SESSION_INFO_2_CONTAINER_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SESSION_INFO_2_CONTAINER_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_SESSION_INFO_10_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SESSION_INFO_10_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_SESSION_INFO_10_CONTAINER_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SESSION_INFO_10_CONTAINER_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_SESSION_INFO_502_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SESSION_INFO_502_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_SESSION_INFO_502_CONTAINER_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SESSION_INFO_502_CONTAINER_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_SESSION_ENUM_UNION_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_SESSION_ENUM_STRUCT_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SESSION_ENUM_STRUCT_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+/* NetrConnectionEnum opnum 0x08 (SRVSVC_NETRCONNECTIONENUM) */
+int srvsvc_NetrConnectionEnum_req_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_NetrConnectionEnum_rep_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+/* NetrFileEnum opnum 0x09 (SRVSVC_NETRFILEENUM) */
+int srvsvc_NetrFileEnum_req_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_NetrFileEnum_rep_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+/* NetrFileGetInfo opnum 0x0a (SRVSVC_NETRFILEGETINFO) */
+int srvsvc_NetrFileGetInfo_req_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_NetrFileGetInfo_rep_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+/* NetrFileClose opnum 0x0b (SRVSVC_NETRFILECLOSE) */
+int srvsvc_NetrFileClose_req_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_NetrFileClose_rep_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+/* NetrSessionEnum opnum 0x0c (SRVSVC_NETRSESSIONENUM) */
+int srvsvc_NetrSessionEnum_req_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_NetrSessionEnum_rep_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+/* NetrSessionDel opnum 0x0d (SRVSVC_NETRSESSIONDEL) */
+int srvsvc_NetrSessionDel_req_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_NetrSessionDel_rep_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
 
 struct srvsvc_NetrShareAdd_req {
         char * ServerName;
@@ -1061,54 +1225,6 @@ struct srvsvc_NetrServerTransportEnum_rep {
         uint32_t status;
 };
 
-int srvsvc_NetrConnectionEnum_rep_coder(char *name, struct dcerpc_context *dce,
-                                         struct dcerpc_pdu *pdu,
-                                         struct dcerpc_iovec *iov, int *offset,
-                                         void *ptr);
-int srvsvc_NetrConnectionEnum_req_coder(char *name, struct dcerpc_context *ctx,
-                                         struct dcerpc_pdu *pdu,
-                                         struct dcerpc_iovec *iov, int *offset,
-                                         void *ptr);
-int srvsvc_NetrFileEnum_rep_coder(char *name, struct dcerpc_context *dce,
-                                   struct dcerpc_pdu *pdu,
-                                   struct dcerpc_iovec *iov, int *offset,
-                                   void *ptr);
-int srvsvc_NetrFileEnum_req_coder(char *name, struct dcerpc_context *ctx,
-                                   struct dcerpc_pdu *pdu,
-                                   struct dcerpc_iovec *iov, int *offset,
-                                   void *ptr);
-int srvsvc_NetrFileGetInfo_rep_coder(char *name, struct dcerpc_context *dce,
-                                      struct dcerpc_pdu *pdu,
-                                      struct dcerpc_iovec *iov, int *offset,
-                                      void *ptr);
-int srvsvc_NetrFileGetInfo_req_coder(char *name, struct dcerpc_context *ctx,
-                                      struct dcerpc_pdu *pdu,
-                                      struct dcerpc_iovec *iov, int *offset,
-                                      void *ptr);
-int srvsvc_NetrFileClose_rep_coder(char *name, struct dcerpc_context *dce,
-                                    struct dcerpc_pdu *pdu,
-                                    struct dcerpc_iovec *iov, int *offset,
-                                    void *ptr);
-int srvsvc_NetrFileClose_req_coder(char *name, struct dcerpc_context *ctx,
-                                    struct dcerpc_pdu *pdu,
-                                    struct dcerpc_iovec *iov, int *offset,
-                                    void *ptr);
-int srvsvc_NetrSessionEnum_rep_coder(char *name, struct dcerpc_context *dce,
-                                      struct dcerpc_pdu *pdu,
-                                      struct dcerpc_iovec *iov, int *offset,
-                                      void *ptr);
-int srvsvc_NetrSessionEnum_req_coder(char *name, struct dcerpc_context *ctx,
-                                      struct dcerpc_pdu *pdu,
-                                      struct dcerpc_iovec *iov, int *offset,
-                                      void *ptr);
-int srvsvc_NetrSessionDel_rep_coder(char *name, struct dcerpc_context *dce,
-                                     struct dcerpc_pdu *pdu,
-                                     struct dcerpc_iovec *iov, int *offset,
-                                     void *ptr);
-int srvsvc_NetrSessionDel_req_coder(char *name, struct dcerpc_context *ctx,
-                                     struct dcerpc_pdu *pdu,
-                                     struct dcerpc_iovec *iov, int *offset,
-                                     void *ptr);
 int srvsvc_NetrShareEnum_rep_coder(char *name, struct dcerpc_context *dce,
                                    struct dcerpc_pdu *pdu,
                                    struct dcerpc_iovec *iov, int *offset,

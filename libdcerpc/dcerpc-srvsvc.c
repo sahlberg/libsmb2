@@ -70,21 +70,6 @@ p_syntax_id_t srvsvc_interface = {
         {SRVSVC_UUID}, 3, 0
 };
 
-static struct dcerpc_uint32_pretty_printer share_type_pp = {
-        .fmt = "0x%08x",
-        .bitfields = {
-                { "DISKTREE",  0x00000003, SRVSVC_SHARE_TYPE_DISKTREE },
-                { "PRINTQ",    0x00000003, SRVSVC_SHARE_TYPE_PRINTQ },
-                { "DEVICE",    0x00000003, SRVSVC_SHARE_TYPE_DEVICE },
-                { "IPC",       0x00000003, SRVSVC_SHARE_TYPE_IPC },
-                { "TEMPORARY", SRVSVC_SHARE_TYPE_TEMPORARY,
-                  SRVSVC_SHARE_TYPE_TEMPORARY },
-                { "SPECIAL",   SRVSVC_SHARE_TYPE_HIDDEN,
-                  SRVSVC_SHARE_TYPE_HIDDEN },
-                { NULL, 0, 0},
-        },
-};
-
 /* MS-SRVS 2.2.2.7 Software Type Flags (SERVER_INFO_* .type / SV_TYPE_*) */
 static struct dcerpc_uint32_pretty_printer server_type_pp = {
         .fmt = "0x%08x",
@@ -164,43 +149,42 @@ static struct dcerpc_uint32_pretty_printer platform_id_pp = {
         },
 };
 
-/* Open file permissions (FILE_INFO_3.permissions / PERM_FILE_*) */
-static struct dcerpc_uint32_pretty_printer file_perm_pp = {
-        .fmt = "0x%08x",
-        .bitfields = {
-                { "PERM_FILE_READ",   SRVSVC_PERM_FILE_READ,
-                  SRVSVC_PERM_FILE_READ },
-                { "PERM_FILE_WRITE",  SRVSVC_PERM_FILE_WRITE,
-                  SRVSVC_PERM_FILE_WRITE },
-                { "PERM_FILE_CREATE", SRVSVC_PERM_FILE_CREATE,
-                  SRVSVC_PERM_FILE_CREATE },
-                { NULL, 0, 0},
-        },
-};
-
-/* MS-SRVS Session User Flags (SESSION_INFO_*.user_flags) */
-static struct dcerpc_uint32_pretty_printer sess_user_flags_pp = {
-        .fmt = "0x%08x",
-        .bitfields = {
-                { "SESS_GUEST",        SRVSVC_SESS_GUEST,
-                  SRVSVC_SESS_GUEST },
-                { "SESS_NOENCRYPTION", SRVSVC_SESS_NOENCRYPTION,
-                  SRVSVC_SESS_NOENCRYPTION },
-                { NULL, 0, 0},
-        },
-};
-
 /*
  * SRVSVC BEGIN:  DEFINITIONS FROM SRVSVC.IDL
  * [MS-SRVS].pdf
  */
 
 /*
- * NetrShareEnum and NetrShareGetInfo types: SHARE_INFO levels 0, 1, 2,
- * 501, 502, 503, 1004, 1005, 1006 and 1501, their containers,
- * SHARE_ENUM_UNION, SHARE_ENUM_STRUCT and the SHARE_INFO union. Generated
- * from the [MS-SRVS] IDL; field names follow the IDL.
+ * Types for the connection, file, session and share calls: generated from
+ * the [MS-SRVS] IDL; field names follow the IDL.
  */
+int srvsvc_CONNECTION_INFO_0_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_CONNECTION_INFO_1_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_FILE_INFO_2_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_FILE_INFO_3_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SESSION_INFO_0_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SESSION_INFO_1_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SESSION_INFO_2_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SESSION_INFO_10_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SESSION_INFO_502_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
 int srvsvc_SHARE_INFO_0_coder(char *name, struct dcerpc_context *dce,
                 struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
                 int *offset, void *ptr);
@@ -219,6 +203,114 @@ int srvsvc_SHARE_INFO_502_I_coder(char *name, struct dcerpc_context *dce,
 int srvsvc_SHARE_INFO_503_I_coder(char *name, struct dcerpc_context *dce,
                 struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
                 int *offset, void *ptr);
+
+static int
+srvsvc_CONNECTION_INFO_0_carray_coder(char *name, struct dcerpc_context *dce,
+                     struct dcerpc_pdu *pdu,
+                     struct dcerpc_iovec *iov, int *offset,
+                     void *ptr)
+{
+        return dcerpc_carray_coder(name, dce, pdu, iov, offset,
+                                   dcerpc_get_size_is(pdu), ptr,
+                                   sizeof(struct srvsvc_CONNECTION_INFO_0),
+                                   srvsvc_CONNECTION_INFO_0_coder);
+}
+
+static int
+srvsvc_CONNECTION_INFO_1_carray_coder(char *name, struct dcerpc_context *dce,
+                     struct dcerpc_pdu *pdu,
+                     struct dcerpc_iovec *iov, int *offset,
+                     void *ptr)
+{
+        return dcerpc_carray_coder(name, dce, pdu, iov, offset,
+                                   dcerpc_get_size_is(pdu), ptr,
+                                   sizeof(struct srvsvc_CONNECTION_INFO_1),
+                                   srvsvc_CONNECTION_INFO_1_coder);
+}
+
+static int
+srvsvc_FILE_INFO_2_carray_coder(char *name, struct dcerpc_context *dce,
+                     struct dcerpc_pdu *pdu,
+                     struct dcerpc_iovec *iov, int *offset,
+                     void *ptr)
+{
+        return dcerpc_carray_coder(name, dce, pdu, iov, offset,
+                                   dcerpc_get_size_is(pdu), ptr,
+                                   sizeof(struct srvsvc_FILE_INFO_2),
+                                   srvsvc_FILE_INFO_2_coder);
+}
+
+static int
+srvsvc_FILE_INFO_3_carray_coder(char *name, struct dcerpc_context *dce,
+                     struct dcerpc_pdu *pdu,
+                     struct dcerpc_iovec *iov, int *offset,
+                     void *ptr)
+{
+        return dcerpc_carray_coder(name, dce, pdu, iov, offset,
+                                   dcerpc_get_size_is(pdu), ptr,
+                                   sizeof(struct srvsvc_FILE_INFO_3),
+                                   srvsvc_FILE_INFO_3_coder);
+}
+
+static int
+srvsvc_SESSION_INFO_0_carray_coder(char *name, struct dcerpc_context *dce,
+                     struct dcerpc_pdu *pdu,
+                     struct dcerpc_iovec *iov, int *offset,
+                     void *ptr)
+{
+        return dcerpc_carray_coder(name, dce, pdu, iov, offset,
+                                   dcerpc_get_size_is(pdu), ptr,
+                                   sizeof(struct srvsvc_SESSION_INFO_0),
+                                   srvsvc_SESSION_INFO_0_coder);
+}
+
+static int
+srvsvc_SESSION_INFO_1_carray_coder(char *name, struct dcerpc_context *dce,
+                     struct dcerpc_pdu *pdu,
+                     struct dcerpc_iovec *iov, int *offset,
+                     void *ptr)
+{
+        return dcerpc_carray_coder(name, dce, pdu, iov, offset,
+                                   dcerpc_get_size_is(pdu), ptr,
+                                   sizeof(struct srvsvc_SESSION_INFO_1),
+                                   srvsvc_SESSION_INFO_1_coder);
+}
+
+static int
+srvsvc_SESSION_INFO_2_carray_coder(char *name, struct dcerpc_context *dce,
+                     struct dcerpc_pdu *pdu,
+                     struct dcerpc_iovec *iov, int *offset,
+                     void *ptr)
+{
+        return dcerpc_carray_coder(name, dce, pdu, iov, offset,
+                                   dcerpc_get_size_is(pdu), ptr,
+                                   sizeof(struct srvsvc_SESSION_INFO_2),
+                                   srvsvc_SESSION_INFO_2_coder);
+}
+
+static int
+srvsvc_SESSION_INFO_10_carray_coder(char *name, struct dcerpc_context *dce,
+                     struct dcerpc_pdu *pdu,
+                     struct dcerpc_iovec *iov, int *offset,
+                     void *ptr)
+{
+        return dcerpc_carray_coder(name, dce, pdu, iov, offset,
+                                   dcerpc_get_size_is(pdu), ptr,
+                                   sizeof(struct srvsvc_SESSION_INFO_10),
+                                   srvsvc_SESSION_INFO_10_coder);
+}
+
+static int
+srvsvc_SESSION_INFO_502_carray_coder(char *name, struct dcerpc_context *dce,
+                     struct dcerpc_pdu *pdu,
+                     struct dcerpc_iovec *iov, int *offset,
+                     void *ptr)
+{
+        return dcerpc_carray_coder(name, dce, pdu, iov, offset,
+                                   dcerpc_get_size_is(pdu), ptr,
+                                   sizeof(struct srvsvc_SESSION_INFO_502),
+                                   srvsvc_SESSION_INFO_502_coder);
+}
 
 static int
 srvsvc_SHARE_INFO_0_carray_coder(char *name, struct dcerpc_context *dce,
@@ -290,6 +382,1019 @@ srvsvc_SHARE_INFO_503_I_carray_coder(char *name, struct dcerpc_context *dce,
                                    dcerpc_get_size_is(pdu), ptr,
                                    sizeof(struct srvsvc_SHARE_INFO_503_I),
                                    srvsvc_SHARE_INFO_503_I_coder);
+}
+
+int
+srvsvc_CONNECTION_INFO_0_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        struct srvsvc_CONNECTION_INFO_0 *s = ptr;
+
+        (void)name;
+        if (dcerpc_uint32_coder("coni0_id", dce, pdu, iov, offset, &s->coni0_id)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_CONNECTION_INFO_0_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_CONNECTION_INFO_0_coder);
+}
+
+int
+srvsvc_CONNECT_INFO_0_CONTAINER_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        struct srvsvc_CONNECT_INFO_0_CONTAINER *s = ptr;
+
+        (void)name;
+        if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &s->EntriesRead)) {
+                return -1;
+        }
+        if (s->EntriesRead) {
+                dcerpc_set_size_is(pdu, s->EntriesRead);
+        }
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && s->EntriesRead) {
+                if (s->Buffer == NULL) {
+                        size_t esize = sizeof(struct srvsvc_CONNECTION_INFO_0);
+                        if (s->EntriesRead > SIZE_MAX / esize) {
+                                return -1;
+                        }
+                        s->Buffer = dcerpc_alloc_data(pdu,
+                                (size_t)s->EntriesRead * esize);
+                        if (s->Buffer == NULL) {
+                                return -1;
+                        }
+                }
+        }
+        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset, s->Buffer,
+                             PTR_UNIQUE, srvsvc_CONNECTION_INFO_0_carray_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_CONNECT_INFO_0_CONTAINER_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_CONNECT_INFO_0_CONTAINER_coder);
+}
+
+int
+srvsvc_CONNECTION_INFO_1_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        struct srvsvc_CONNECTION_INFO_1 *s = ptr;
+
+        (void)name;
+        if (dcerpc_uint32_coder("coni1_id", dce, pdu, iov, offset, &s->coni1_id)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("coni1_type", dce, pdu, iov, offset, &s->coni1_type)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("coni1_num_opens", dce, pdu, iov, offset, &s->coni1_num_opens)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("coni1_num_users", dce, pdu, iov, offset, &s->coni1_num_users)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("coni1_time", dce, pdu, iov, offset, &s->coni1_time)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("coni1_username", dce, pdu, iov, offset, &s->coni1_username,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("coni1_netname", dce, pdu, iov, offset, &s->coni1_netname,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_CONNECTION_INFO_1_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_CONNECTION_INFO_1_coder);
+}
+
+int
+srvsvc_CONNECT_INFO_1_CONTAINER_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        struct srvsvc_CONNECT_INFO_1_CONTAINER *s = ptr;
+
+        (void)name;
+        if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &s->EntriesRead)) {
+                return -1;
+        }
+        if (s->EntriesRead) {
+                dcerpc_set_size_is(pdu, s->EntriesRead);
+        }
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && s->EntriesRead) {
+                if (s->Buffer == NULL) {
+                        size_t esize = sizeof(struct srvsvc_CONNECTION_INFO_1);
+                        if (s->EntriesRead > SIZE_MAX / esize) {
+                                return -1;
+                        }
+                        s->Buffer = dcerpc_alloc_data(pdu,
+                                (size_t)s->EntriesRead * esize);
+                        if (s->Buffer == NULL) {
+                                return -1;
+                        }
+                }
+        }
+        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset, s->Buffer,
+                             PTR_UNIQUE, srvsvc_CONNECTION_INFO_1_carray_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_CONNECT_INFO_1_CONTAINER_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_CONNECT_INFO_1_CONTAINER_coder);
+}
+
+int
+srvsvc_CONNECT_ENUM_UNION_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        union srvsvc_CONNECT_ENUM_UNION *u = ptr;
+
+        (void)name;
+        switch (dcerpc_get_switch_is(pdu)) {
+        case 0:
+                if (dcerpc_ptr_coder("Level0", dce, pdu, iov, offset, &u->Level0,
+                                     PTR_UNIQUE, srvsvc_CONNECT_INFO_0_CONTAINER_struct_coder)) {
+                        return -1;
+                }
+                break;
+        case 1:
+                if (dcerpc_ptr_coder("Level1", dce, pdu, iov, offset, &u->Level1,
+                                     PTR_UNIQUE, srvsvc_CONNECT_INFO_1_CONTAINER_struct_coder)) {
+                        return -1;
+                }
+                break;
+        default:
+                /* NDR conformance pass: the discriminant is not read yet */
+                if (dcerpc_pdu_is_conformance_run(pdu)) {
+                        return 0;
+                }
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_CONNECT_ENUM_STRUCT_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        struct srvsvc_CONNECT_ENUM_STRUCT *s = ptr;
+
+        (void)name;
+        if (dcerpc_uint32_coder("Level", dce, pdu, iov, offset, &s->Level)) {
+                return -1;
+        }
+        if (dcerpc_union_coder("ConnectInfo", dce, pdu, iov, offset,
+                               &s->Level, &s->ConnectInfo,
+                               srvsvc_CONNECT_ENUM_UNION_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_CONNECT_ENUM_STRUCT_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_CONNECT_ENUM_STRUCT_coder);
+}
+
+int
+srvsvc_FILE_INFO_2_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        struct srvsvc_FILE_INFO_2 *s = ptr;
+
+        (void)name;
+        if (dcerpc_uint32_coder("fi2_id", dce, pdu, iov, offset, &s->fi2_id)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_FILE_INFO_2_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_FILE_INFO_2_coder);
+}
+
+int
+srvsvc_FILE_INFO_2_CONTAINER_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        struct srvsvc_FILE_INFO_2_CONTAINER *s = ptr;
+
+        (void)name;
+        if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &s->EntriesRead)) {
+                return -1;
+        }
+        if (s->EntriesRead) {
+                dcerpc_set_size_is(pdu, s->EntriesRead);
+        }
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && s->EntriesRead) {
+                if (s->Buffer == NULL) {
+                        size_t esize = sizeof(struct srvsvc_FILE_INFO_2);
+                        if (s->EntriesRead > SIZE_MAX / esize) {
+                                return -1;
+                        }
+                        s->Buffer = dcerpc_alloc_data(pdu,
+                                (size_t)s->EntriesRead * esize);
+                        if (s->Buffer == NULL) {
+                                return -1;
+                        }
+                }
+        }
+        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset, s->Buffer,
+                             PTR_UNIQUE, srvsvc_FILE_INFO_2_carray_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_FILE_INFO_2_CONTAINER_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_FILE_INFO_2_CONTAINER_coder);
+}
+
+int
+srvsvc_FILE_INFO_3_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        struct srvsvc_FILE_INFO_3 *s = ptr;
+
+        (void)name;
+        if (dcerpc_uint32_coder("fi3_id", dce, pdu, iov, offset, &s->fi3_id)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("fi3_permissions", dce, pdu, iov, offset, &s->fi3_permissions)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("fi3_num_locks", dce, pdu, iov, offset, &s->fi3_num_locks)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("fi3_pathname", dce, pdu, iov, offset, &s->fi3_pathname,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("fi3_username", dce, pdu, iov, offset, &s->fi3_username,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_FILE_INFO_3_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_FILE_INFO_3_coder);
+}
+
+int
+srvsvc_FILE_INFO_3_CONTAINER_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        struct srvsvc_FILE_INFO_3_CONTAINER *s = ptr;
+
+        (void)name;
+        if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &s->EntriesRead)) {
+                return -1;
+        }
+        if (s->EntriesRead) {
+                dcerpc_set_size_is(pdu, s->EntriesRead);
+        }
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && s->EntriesRead) {
+                if (s->Buffer == NULL) {
+                        size_t esize = sizeof(struct srvsvc_FILE_INFO_3);
+                        if (s->EntriesRead > SIZE_MAX / esize) {
+                                return -1;
+                        }
+                        s->Buffer = dcerpc_alloc_data(pdu,
+                                (size_t)s->EntriesRead * esize);
+                        if (s->Buffer == NULL) {
+                                return -1;
+                        }
+                }
+        }
+        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset, s->Buffer,
+                             PTR_UNIQUE, srvsvc_FILE_INFO_3_carray_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_FILE_INFO_3_CONTAINER_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_FILE_INFO_3_CONTAINER_coder);
+}
+
+int
+srvsvc_FILE_ENUM_UNION_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        union srvsvc_FILE_ENUM_UNION *u = ptr;
+
+        (void)name;
+        switch (dcerpc_get_switch_is(pdu)) {
+        case 2:
+                if (dcerpc_ptr_coder("Level2", dce, pdu, iov, offset, &u->Level2,
+                                     PTR_UNIQUE, srvsvc_FILE_INFO_2_CONTAINER_struct_coder)) {
+                        return -1;
+                }
+                break;
+        case 3:
+                if (dcerpc_ptr_coder("Level3", dce, pdu, iov, offset, &u->Level3,
+                                     PTR_UNIQUE, srvsvc_FILE_INFO_3_CONTAINER_struct_coder)) {
+                        return -1;
+                }
+                break;
+        default:
+                /* NDR conformance pass: the discriminant is not read yet */
+                if (dcerpc_pdu_is_conformance_run(pdu)) {
+                        return 0;
+                }
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_FILE_ENUM_STRUCT_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        struct srvsvc_FILE_ENUM_STRUCT *s = ptr;
+
+        (void)name;
+        if (dcerpc_uint32_coder("Level", dce, pdu, iov, offset, &s->Level)) {
+                return -1;
+        }
+        if (dcerpc_union_coder("FileInfo", dce, pdu, iov, offset,
+                               &s->Level, &s->FileInfo,
+                               srvsvc_FILE_ENUM_UNION_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_FILE_ENUM_STRUCT_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_FILE_ENUM_STRUCT_coder);
+}
+
+int
+srvsvc_FILE_INFO_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        union srvsvc_FILE_INFO *u = ptr;
+
+        (void)name;
+        switch (dcerpc_get_switch_is(pdu)) {
+        case 2:
+                if (dcerpc_ptr_coder("FileInfo2", dce, pdu, iov, offset, &u->FileInfo2,
+                                     PTR_UNIQUE, srvsvc_FILE_INFO_2_struct_coder)) {
+                        return -1;
+                }
+                break;
+        case 3:
+                if (dcerpc_ptr_coder("FileInfo3", dce, pdu, iov, offset, &u->FileInfo3,
+                                     PTR_UNIQUE, srvsvc_FILE_INFO_3_struct_coder)) {
+                        return -1;
+                }
+                break;
+        default:
+                /* NDR conformance pass: the discriminant is not read yet */
+                if (dcerpc_pdu_is_conformance_run(pdu)) {
+                        return 0;
+                }
+                return -1;
+        }
+
+        return 0;
+}
+
+/* The union as a [switch_is] parameter: discriminant from switch_is */
+int
+srvsvc_FILE_INFO_switch_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        uint32_t level = dcerpc_get_switch_is(pdu);
+
+        return dcerpc_union_coder(name, dce, pdu, iov, offset, &level, ptr,
+                                  srvsvc_FILE_INFO_coder);
+}
+
+int
+srvsvc_SESSION_INFO_0_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        struct srvsvc_SESSION_INFO_0 *s = ptr;
+
+        (void)name;
+        if (dcerpc_ptr_coder("sesi0_cname", dce, pdu, iov, offset, &s->sesi0_cname,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_SESSION_INFO_0_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_SESSION_INFO_0_coder);
+}
+
+int
+srvsvc_SESSION_INFO_0_CONTAINER_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        struct srvsvc_SESSION_INFO_0_CONTAINER *s = ptr;
+
+        (void)name;
+        if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &s->EntriesRead)) {
+                return -1;
+        }
+        if (s->EntriesRead) {
+                dcerpc_set_size_is(pdu, s->EntriesRead);
+        }
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && s->EntriesRead) {
+                if (s->Buffer == NULL) {
+                        size_t esize = sizeof(struct srvsvc_SESSION_INFO_0);
+                        if (s->EntriesRead > SIZE_MAX / esize) {
+                                return -1;
+                        }
+                        s->Buffer = dcerpc_alloc_data(pdu,
+                                (size_t)s->EntriesRead * esize);
+                        if (s->Buffer == NULL) {
+                                return -1;
+                        }
+                }
+        }
+        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset, s->Buffer,
+                             PTR_UNIQUE, srvsvc_SESSION_INFO_0_carray_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_SESSION_INFO_0_CONTAINER_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_SESSION_INFO_0_CONTAINER_coder);
+}
+
+int
+srvsvc_SESSION_INFO_1_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        struct srvsvc_SESSION_INFO_1 *s = ptr;
+
+        (void)name;
+        if (dcerpc_ptr_coder("sesi1_cname", dce, pdu, iov, offset, &s->sesi1_cname,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("sesi1_username", dce, pdu, iov, offset, &s->sesi1_username,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("sesi1_num_opens", dce, pdu, iov, offset, &s->sesi1_num_opens)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("sesi1_time", dce, pdu, iov, offset, &s->sesi1_time)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("sesi1_idle_time", dce, pdu, iov, offset, &s->sesi1_idle_time)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("sesi1_user_flags", dce, pdu, iov, offset, &s->sesi1_user_flags)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_SESSION_INFO_1_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_SESSION_INFO_1_coder);
+}
+
+int
+srvsvc_SESSION_INFO_1_CONTAINER_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        struct srvsvc_SESSION_INFO_1_CONTAINER *s = ptr;
+
+        (void)name;
+        if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &s->EntriesRead)) {
+                return -1;
+        }
+        if (s->EntriesRead) {
+                dcerpc_set_size_is(pdu, s->EntriesRead);
+        }
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && s->EntriesRead) {
+                if (s->Buffer == NULL) {
+                        size_t esize = sizeof(struct srvsvc_SESSION_INFO_1);
+                        if (s->EntriesRead > SIZE_MAX / esize) {
+                                return -1;
+                        }
+                        s->Buffer = dcerpc_alloc_data(pdu,
+                                (size_t)s->EntriesRead * esize);
+                        if (s->Buffer == NULL) {
+                                return -1;
+                        }
+                }
+        }
+        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset, s->Buffer,
+                             PTR_UNIQUE, srvsvc_SESSION_INFO_1_carray_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_SESSION_INFO_1_CONTAINER_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_SESSION_INFO_1_CONTAINER_coder);
+}
+
+int
+srvsvc_SESSION_INFO_2_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        struct srvsvc_SESSION_INFO_2 *s = ptr;
+
+        (void)name;
+        if (dcerpc_ptr_coder("sesi2_cname", dce, pdu, iov, offset, &s->sesi2_cname,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("sesi2_username", dce, pdu, iov, offset, &s->sesi2_username,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("sesi2_num_opens", dce, pdu, iov, offset, &s->sesi2_num_opens)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("sesi2_time", dce, pdu, iov, offset, &s->sesi2_time)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("sesi2_idle_time", dce, pdu, iov, offset, &s->sesi2_idle_time)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("sesi2_user_flags", dce, pdu, iov, offset, &s->sesi2_user_flags)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("sesi2_cltype_name", dce, pdu, iov, offset, &s->sesi2_cltype_name,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_SESSION_INFO_2_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_SESSION_INFO_2_coder);
+}
+
+int
+srvsvc_SESSION_INFO_2_CONTAINER_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        struct srvsvc_SESSION_INFO_2_CONTAINER *s = ptr;
+
+        (void)name;
+        if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &s->EntriesRead)) {
+                return -1;
+        }
+        if (s->EntriesRead) {
+                dcerpc_set_size_is(pdu, s->EntriesRead);
+        }
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && s->EntriesRead) {
+                if (s->Buffer == NULL) {
+                        size_t esize = sizeof(struct srvsvc_SESSION_INFO_2);
+                        if (s->EntriesRead > SIZE_MAX / esize) {
+                                return -1;
+                        }
+                        s->Buffer = dcerpc_alloc_data(pdu,
+                                (size_t)s->EntriesRead * esize);
+                        if (s->Buffer == NULL) {
+                                return -1;
+                        }
+                }
+        }
+        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset, s->Buffer,
+                             PTR_UNIQUE, srvsvc_SESSION_INFO_2_carray_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_SESSION_INFO_2_CONTAINER_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_SESSION_INFO_2_CONTAINER_coder);
+}
+
+int
+srvsvc_SESSION_INFO_10_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        struct srvsvc_SESSION_INFO_10 *s = ptr;
+
+        (void)name;
+        if (dcerpc_ptr_coder("sesi10_cname", dce, pdu, iov, offset, &s->sesi10_cname,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("sesi10_username", dce, pdu, iov, offset, &s->sesi10_username,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("sesi10_time", dce, pdu, iov, offset, &s->sesi10_time)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("sesi10_idle_time", dce, pdu, iov, offset, &s->sesi10_idle_time)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_SESSION_INFO_10_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_SESSION_INFO_10_coder);
+}
+
+int
+srvsvc_SESSION_INFO_10_CONTAINER_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        struct srvsvc_SESSION_INFO_10_CONTAINER *s = ptr;
+
+        (void)name;
+        if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &s->EntriesRead)) {
+                return -1;
+        }
+        if (s->EntriesRead) {
+                dcerpc_set_size_is(pdu, s->EntriesRead);
+        }
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && s->EntriesRead) {
+                if (s->Buffer == NULL) {
+                        size_t esize = sizeof(struct srvsvc_SESSION_INFO_10);
+                        if (s->EntriesRead > SIZE_MAX / esize) {
+                                return -1;
+                        }
+                        s->Buffer = dcerpc_alloc_data(pdu,
+                                (size_t)s->EntriesRead * esize);
+                        if (s->Buffer == NULL) {
+                                return -1;
+                        }
+                }
+        }
+        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset, s->Buffer,
+                             PTR_UNIQUE, srvsvc_SESSION_INFO_10_carray_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_SESSION_INFO_10_CONTAINER_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_SESSION_INFO_10_CONTAINER_coder);
+}
+
+int
+srvsvc_SESSION_INFO_502_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        struct srvsvc_SESSION_INFO_502 *s = ptr;
+
+        (void)name;
+        if (dcerpc_ptr_coder("sesi502_cname", dce, pdu, iov, offset, &s->sesi502_cname,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("sesi502_username", dce, pdu, iov, offset, &s->sesi502_username,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("sesi502_num_opens", dce, pdu, iov, offset, &s->sesi502_num_opens)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("sesi502_time", dce, pdu, iov, offset, &s->sesi502_time)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("sesi502_idle_time", dce, pdu, iov, offset, &s->sesi502_idle_time)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("sesi502_user_flags", dce, pdu, iov, offset, &s->sesi502_user_flags)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("sesi502_cltype_name", dce, pdu, iov, offset, &s->sesi502_cltype_name,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("sesi502_transport", dce, pdu, iov, offset, &s->sesi502_transport,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_SESSION_INFO_502_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_SESSION_INFO_502_coder);
+}
+
+int
+srvsvc_SESSION_INFO_502_CONTAINER_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        struct srvsvc_SESSION_INFO_502_CONTAINER *s = ptr;
+
+        (void)name;
+        if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &s->EntriesRead)) {
+                return -1;
+        }
+        if (s->EntriesRead) {
+                dcerpc_set_size_is(pdu, s->EntriesRead);
+        }
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && s->EntriesRead) {
+                if (s->Buffer == NULL) {
+                        size_t esize = sizeof(struct srvsvc_SESSION_INFO_502);
+                        if (s->EntriesRead > SIZE_MAX / esize) {
+                                return -1;
+                        }
+                        s->Buffer = dcerpc_alloc_data(pdu,
+                                (size_t)s->EntriesRead * esize);
+                        if (s->Buffer == NULL) {
+                                return -1;
+                        }
+                }
+        }
+        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset, s->Buffer,
+                             PTR_UNIQUE, srvsvc_SESSION_INFO_502_carray_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_SESSION_INFO_502_CONTAINER_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_SESSION_INFO_502_CONTAINER_coder);
+}
+
+int
+srvsvc_SESSION_ENUM_UNION_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        union srvsvc_SESSION_ENUM_UNION *u = ptr;
+
+        (void)name;
+        switch (dcerpc_get_switch_is(pdu)) {
+        case 0:
+                if (dcerpc_ptr_coder("Level0", dce, pdu, iov, offset, &u->Level0,
+                                     PTR_UNIQUE, srvsvc_SESSION_INFO_0_CONTAINER_struct_coder)) {
+                        return -1;
+                }
+                break;
+        case 1:
+                if (dcerpc_ptr_coder("Level1", dce, pdu, iov, offset, &u->Level1,
+                                     PTR_UNIQUE, srvsvc_SESSION_INFO_1_CONTAINER_struct_coder)) {
+                        return -1;
+                }
+                break;
+        case 2:
+                if (dcerpc_ptr_coder("Level2", dce, pdu, iov, offset, &u->Level2,
+                                     PTR_UNIQUE, srvsvc_SESSION_INFO_2_CONTAINER_struct_coder)) {
+                        return -1;
+                }
+                break;
+        case 10:
+                if (dcerpc_ptr_coder("Level10", dce, pdu, iov, offset, &u->Level10,
+                                     PTR_UNIQUE, srvsvc_SESSION_INFO_10_CONTAINER_struct_coder)) {
+                        return -1;
+                }
+                break;
+        case 502:
+                if (dcerpc_ptr_coder("Level502", dce, pdu, iov, offset, &u->Level502,
+                                     PTR_UNIQUE, srvsvc_SESSION_INFO_502_CONTAINER_struct_coder)) {
+                        return -1;
+                }
+                break;
+        default:
+                /* NDR conformance pass: the discriminant is not read yet */
+                if (dcerpc_pdu_is_conformance_run(pdu)) {
+                        return 0;
+                }
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_SESSION_ENUM_STRUCT_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        struct srvsvc_SESSION_ENUM_STRUCT *s = ptr;
+
+        (void)name;
+        if (dcerpc_uint32_coder("Level", dce, pdu, iov, offset, &s->Level)) {
+                return -1;
+        }
+        if (dcerpc_union_coder("SessionInfo", dce, pdu, iov, offset,
+                               &s->Level, &s->SessionInfo,
+                               srvsvc_SESSION_ENUM_UNION_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_SESSION_ENUM_STRUCT_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_SESSION_ENUM_STRUCT_coder);
 }
 
 int
@@ -1005,6 +2110,10 @@ srvsvc_SHARE_ENUM_UNION_coder(char *name, struct dcerpc_context *dce,
                 }
                 break;
         default:
+                /* NDR conformance pass: the discriminant is not read yet */
+                if (dcerpc_pdu_is_conformance_run(pdu)) {
+                        return 0;
+                }
                 return -1;
         }
 
@@ -1113,6 +2222,10 @@ srvsvc_SHARE_INFO_coder(char *name, struct dcerpc_context *dce,
                 }
                 break;
         default:
+                /* NDR conformance pass: the discriminant is not read yet */
+                if (dcerpc_pdu_is_conformance_run(pdu)) {
+                        return 0;
+                }
                 return -1;
         }
 
@@ -1802,304 +2915,39 @@ srvsvc_SERVER_INFO_STRUCT_coder(char *name, struct dcerpc_context *dce, struct d
         return 0;
 }
 
-/*
- * typedef struct _CONNECTION_INFO_0 {
- *       DWORD coni0_id;
- * } CONNECTION_INFO_0, *PCONNECTION_INFO_0, *LPCONNECTION_INFO_0;
- */
-int
-srvsvc_CONNECTION_INFO_0_coder(char *name, struct dcerpc_context *dce,
-                               struct dcerpc_pdu *pdu,
-                               struct dcerpc_iovec *iov, int *offset,
-                               void *ptr)
-{
-        struct srvsvc_CONNECTION_INFO_0 *ci = ptr;
-
-        if (dcerpc_uint32_coder("Id", dce, pdu, iov, offset, &ci->id)) {
-                return -1;
-        }
-        return 0;
-}
-
-int
-srvsvc_CONNECTION_INFO_0_STRUCT_coder(char *name, struct dcerpc_context *dce,
-                                      struct dcerpc_pdu *pdu,
-                                      struct dcerpc_iovec *iov, int *offset,
-                                      void *ptr)
-{
-        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
-                                   srvsvc_CONNECTION_INFO_0_coder);
-}
-
-/*
- *       [size_is(EntriesRead)] LPCONNECTION_INFO_0 Buffer;
- */
-static int
-srvsvc_CONNECTION_INFO_0_carray_coder(char *name, struct dcerpc_context *dce,
-                                      struct dcerpc_pdu *pdu,
-                                      struct dcerpc_iovec *iov, int *offset,
-                                      void *ptr)
-{
-        return dcerpc_carray_coder("ConnectionInfo0", dce, pdu, iov, offset,
-                                   dcerpc_get_size_is(pdu), ptr,
-                                   sizeof(struct srvsvc_CONNECTION_INFO_0),
-                                   srvsvc_CONNECTION_INFO_0_coder);
-}
-
-/*
- * typedef struct _CONNECT_INFO_0_CONTAINER {
- *       DWORD EntriesRead;
- *       [size_is(EntriesRead)] LPCONNECTION_INFO_0 Buffer;
- * } CONNECT_INFO_0_CONTAINER;
- */
-int
-srvsvc_CONNECT_INFO_0_CONTAINER_coder(char *name, struct dcerpc_context *dce,
-                                      struct dcerpc_pdu *pdu,
-                                      struct dcerpc_iovec *iov, int *offset,
-                                      void *ptr)
-{
-        struct srvsvc_CONNECT_INFO_0_CONTAINER *ctr = ptr;
-
-        if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &ctr->EntriesRead)) {
-                return -1;
-        }
-        if (ctr->EntriesRead) {
-                dcerpc_set_size_is(pdu, ctr->EntriesRead);
-        }
-        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && ctr->EntriesRead) {
-                if (ctr->connection_info_0 == NULL) {
-                        size_t esize = sizeof(struct srvsvc_CONNECTION_INFO_0);
-
-                        if (ctr->EntriesRead > SIZE_MAX / esize) {
-                                return -1;
-                        }
-                        ctr->connection_info_0 = dcerpc_alloc_data(pdu,
-                                (size_t)ctr->EntriesRead * esize);
-                        if (ctr->connection_info_0 == NULL) {
-                                return -1;
-                        }
-                }
-        }
-        if (dcerpc_ptr_coder("ConnectionInfo0", dce, pdu, iov, offset, ctr->connection_info_0,
-                             PTR_UNIQUE, srvsvc_CONNECTION_INFO_0_carray_coder)) {
-                return -1;
-        }
-
-        return 0;
-}
-
-/*
- * typedef struct _CONNECTION_INFO_1 {
- *       DWORD coni1_id;
- *       DWORD coni1_type;
- *       DWORD coni1_num_opens;
- *       DWORD coni1_num_users;
- *       DWORD coni1_time;
- *       [string] wchar_t *coni1_username;
- *       [string] wchar_t *coni1_netname;
- * } CONNECTION_INFO_1, *PCONNECTION_INFO_1, *LPCONNECTION_INFO_1;
- */
-int
-srvsvc_CONNECTION_INFO_1_coder(char *name, struct dcerpc_context *dce,
-                               struct dcerpc_pdu *pdu,
-                               struct dcerpc_iovec *iov, int *offset,
-                               void *ptr)
-{
-        struct srvsvc_CONNECTION_INFO_1 *ci = ptr;
-
-        if (dcerpc_uint32_coder("Id", dce, pdu, iov, offset, &ci->id)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder_pp("Type", dce, pdu, iov, offset, &ci->type,
-                                   &share_type_pp)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("NumOpens", dce, pdu, iov, offset, &ci->num_opens)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("NumUsers", dce, pdu, iov, offset, &ci->num_users)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("Time", dce, pdu, iov, offset, &ci->time)) {
-                return -1;
-        }
-        if (dcerpc_ptr_coder("UserName", dce, pdu, iov, offset, &ci->username,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
-                return -1;
-        }
-        if (dcerpc_ptr_coder("NetName", dce, pdu, iov, offset, &ci->netname,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
-                return -1;
-        }
-        return 0;
-}
-
-int
-srvsvc_CONNECTION_INFO_1_STRUCT_coder(char *name, struct dcerpc_context *dce,
-                                      struct dcerpc_pdu *pdu,
-                                      struct dcerpc_iovec *iov, int *offset,
-                                      void *ptr)
-{
-        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
-                                   srvsvc_CONNECTION_INFO_1_coder);
-}
-
-/*
- *       [size_is(EntriesRead)] LPCONNECTION_INFO_1 Buffer;
- */
-static int
-srvsvc_CONNECTION_INFO_1_carray_coder(char *name, struct dcerpc_context *dce,
-                                      struct dcerpc_pdu *pdu,
-                                      struct dcerpc_iovec *iov, int *offset,
-                                      void *ptr)
-{
-        return dcerpc_carray_coder("ConnectionInfo1", dce, pdu, iov, offset,
-                                   dcerpc_get_size_is(pdu), ptr,
-                                   sizeof(struct srvsvc_CONNECTION_INFO_1),
-                                   srvsvc_CONNECTION_INFO_1_STRUCT_coder);
-}
-
-/*
- * typedef struct _CONNECT_INFO_1_CONTAINER {
- *       DWORD EntriesRead;
- *       [size_is(EntriesRead)] LPCONNECTION_INFO_1 Buffer;
- * } CONNECT_INFO_1_CONTAINER;
- */
-int
-srvsvc_CONNECT_INFO_1_CONTAINER_coder(char *name, struct dcerpc_context *dce,
-                                      struct dcerpc_pdu *pdu,
-                                      struct dcerpc_iovec *iov, int *offset,
-                                      void *ptr)
-{
-        struct srvsvc_CONNECT_INFO_1_CONTAINER *ctr = ptr;
-
-        if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &ctr->EntriesRead)) {
-                return -1;
-        }
-        if (ctr->EntriesRead) {
-                dcerpc_set_size_is(pdu, ctr->EntriesRead);
-        }
-        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && ctr->EntriesRead) {
-                if (ctr->connection_info_1 == NULL) {
-                        size_t esize = sizeof(struct srvsvc_CONNECTION_INFO_1);
-
-                        if (ctr->EntriesRead > SIZE_MAX / esize) {
-                                return -1;
-                        }
-                        ctr->connection_info_1 = dcerpc_alloc_data(pdu,
-                                (size_t)ctr->EntriesRead * esize);
-                        if (ctr->connection_info_1 == NULL) {
-                                return -1;
-                        }
-                }
-        }
-        if (dcerpc_ptr_coder("ConnectionInfo1", dce, pdu, iov, offset, ctr->connection_info_1,
-                             PTR_UNIQUE, srvsvc_CONNECTION_INFO_1_carray_coder)) {
-                return -1;
-        }
-
-        return 0;
-}
-
-/*
- * typedef [switch_type(DWORD)] union _CONNECT_ENUM_UNION {
- * [case(0)] CONNECT_INFO_0_CONTAINER* Level0;
- * [case(1)] CONNECT_INFO_1_CONTAINER* Level1;
- * } CONNECT_ENUM_UNION;
- */
-static int
-srvsvc_CONNECT_ENUM_UNION_coder(char *name, struct dcerpc_context *dce,
-                                struct dcerpc_pdu *pdu,
-                                struct dcerpc_iovec *iov, int *offset,
-                                void *ptr)
-{
-        union srvsvc_CONNECT_ENUM_UNION *info = ptr;
-
-        switch (dcerpc_get_switch_is(pdu)) {
-        case 0:
-                if (dcerpc_ptr_coder("ConnectInfo0Container", dce, pdu, iov, offset, &info->Level0,
-                                     PTR_UNIQUE, srvsvc_CONNECT_INFO_0_CONTAINER_coder)) {
-                        return -1;
-                }
-                break;
-        case 1:
-                if (dcerpc_ptr_coder("ConnectInfo1Container", dce, pdu, iov, offset, &info->Level1,
-                                     PTR_UNIQUE, srvsvc_CONNECT_INFO_1_CONTAINER_coder)) {
-                        return -1;
-                }
-                break;
-        default:
-                return -1;
-        };
-
-        return 0;
-}
-
-/*
- * typedef struct _CONNECT_ENUM_STRUCT {
- *       DWORD Level;
- *       [switch_is(Level)] CONNECT_ENUM_UNION ConnectInfo;
- * } CONNECT_ENUM_STRUCT, *PCONNECT_ENUM_STRUCT, *LPCONNECT_ENUM_STRUCT;
- */
-int
-srvsvc_CONNECT_ENUM_STRUCT_coder(char *name, struct dcerpc_context *dce,
-                                 struct dcerpc_pdu *pdu,
-                                 struct dcerpc_iovec *iov, int *offset,
-                                 void *ptr)
-{
-        struct srvsvc_CONNECT_ENUM_STRUCT *ces = ptr;
-
-        if (dcerpc_uint32_coder("Level", dce, pdu, iov, offset, &ces->Level)) {
-                return -1;
-        }
-
-        if (dcerpc_union_coder("ConnectInfo", dce, pdu, iov, offset,
-                               &ces->Level, &ces->ConnectEnum,
-                               srvsvc_CONNECT_ENUM_UNION_coder)) {
-                return -1;
-        }
-
-        return 0;
-}
-
-int
-srvsvc_CONNECT_ENUM_STRUCT_struct_coder(char *name, struct dcerpc_context *dce,
-                                        struct dcerpc_pdu *pdu,
-                                        struct dcerpc_iovec *iov, int *offset,
-                                        void *ptr)
-{
-        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
-                                   srvsvc_CONNECT_ENUM_STRUCT_coder);
-}
-
 /*****************
- * Function: 0x08
- * NET_API_STATUS NetrConnectionEnum (
- *   [in,string,unique] SRVSVC_HANDLE ServerName,
- *   [in,string,unique] WCHAR * Qualifier,
- *   [in,out] LPCONNECT_ENUM_STRUCT InfoStruct,
- *   [in] DWORD PreferedMaximumLength,
- *   [out] DWORD * TotalEntries,
- *   [in,out,unique] DWORD * ResumeHandle
- * );
- */
+ * Function: 0x08  NetrConnectionEnum  (SRVSVC_NETRCONNECTIONENUM)
+ *****************/
 int
 srvsvc_NetrConnectionEnum_req_coder(char *name, struct dcerpc_context *dce,
-                                    struct dcerpc_pdu *pdu,
-                                    struct dcerpc_iovec *iov, int *offset,
-                                    void *ptr)
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
         struct srvsvc_NetrConnectionEnum_req *req = ptr;
 
-        if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+        (void)name;
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&
+            req->ServerName == NULL) {
+                if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, NULL,
+                                     PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                        return -1;
+                }
+        } else if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
+                                    PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("Qualifier", dce, pdu, iov, offset, &req->Qualifier,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&
+            req->Qualifier == NULL) {
+                if (dcerpc_ptr_coder("Qualifier", dce, pdu, iov, offset, NULL,
+                                     PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                        return -1;
+                }
+        } else if (dcerpc_ptr_coder("Qualifier", dce, pdu, iov, offset, &req->Qualifier,
+                                    PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("InfoStruct", dce, pdu, iov, offset, &req->ces,
+        if (dcerpc_ptr_coder("InfoStruct", dce, pdu, iov, offset, &req->InfoStruct,
                              PTR_REF, srvsvc_CONNECT_ENUM_STRUCT_struct_coder)) {
                 return -1;
         }
@@ -2117,21 +2965,22 @@ srvsvc_NetrConnectionEnum_req_coder(char *name, struct dcerpc_context *dce,
 
 int
 srvsvc_NetrConnectionEnum_rep_coder(char *name, struct dcerpc_context *dce,
-                                    struct dcerpc_pdu *pdu,
-                                    struct dcerpc_iovec *iov, int *offset,
-                                    void *ptr)
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
         struct srvsvc_NetrConnectionEnum_rep *rep = ptr;
 
-        if (dcerpc_ptr_coder("InfoStruct", dce, pdu, iov, offset, &rep->ces,
+        (void)name;
+        if (dcerpc_ptr_coder("InfoStruct", dce, pdu, iov, offset, &rep->InfoStruct,
                              PTR_REF, srvsvc_CONNECT_ENUM_STRUCT_coder)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("TotalEntries", dce, pdu, iov, offset, &rep->total_entries,
+        if (dcerpc_ptr_coder("TotalEntries", dce, pdu, iov, offset, &rep->TotalEntries,
                              PTR_REF, dcerpc_uint32_coder)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("ResumeHandle", dce, pdu, iov, offset, &rep->resume_handle,
+        if (dcerpc_ptr_coder("ResumeHandle", dce, pdu, iov, offset, &rep->ResumeHandle,
                              PTR_UNIQUE, dcerpc_uint32_coder)) {
                 return -1;
         }
@@ -2142,324 +2991,49 @@ srvsvc_NetrConnectionEnum_rep_coder(char *name, struct dcerpc_context *dce,
         return 0;
 }
 
-/*
- * typedef struct _FILE_INFO_2 {
- *       DWORD fi2_id;
- * } FILE_INFO_2, *PFILE_INFO_2, *LPFILE_INFO_2;
- */
-int
-srvsvc_FILE_INFO_2_coder(char *name, struct dcerpc_context *dce,
-                         struct dcerpc_pdu *pdu,
-                         struct dcerpc_iovec *iov, int *offset,
-                         void *ptr)
-{
-        struct srvsvc_FILE_INFO_2 *fi = ptr;
-
-        if (dcerpc_uint32_coder("Id", dce, pdu, iov, offset, &fi->id)) {
-                return -1;
-        }
-        return 0;
-}
-
-int
-srvsvc_FILE_INFO_2_STRUCT_coder(char *name, struct dcerpc_context *dce,
-                                struct dcerpc_pdu *pdu,
-                                struct dcerpc_iovec *iov, int *offset,
-                                void *ptr)
-{
-        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
-                                   srvsvc_FILE_INFO_2_coder);
-}
-
-/*
- *       [size_is(EntriesRead)] LPFILE_INFO_2 Buffer;
- */
-static int
-srvsvc_FILE_INFO_2_carray_coder(char *name, struct dcerpc_context *dce,
-                                struct dcerpc_pdu *pdu,
-                                struct dcerpc_iovec *iov, int *offset,
-                                void *ptr)
-{
-        return dcerpc_carray_coder("FileInfo2", dce, pdu, iov, offset,
-                                   dcerpc_get_size_is(pdu), ptr,
-                                   sizeof(struct srvsvc_FILE_INFO_2),
-                                   srvsvc_FILE_INFO_2_coder);
-}
-
-/*
- * typedef struct _FILE_INFO_2_CONTAINER {
- *       DWORD EntriesRead;
- *       [size_is(EntriesRead)] LPFILE_INFO_2 Buffer;
- * } FILE_INFO_2_CONTAINER;
- */
-int
-srvsvc_FILE_INFO_2_CONTAINER_coder(char *name, struct dcerpc_context *dce,
-                                   struct dcerpc_pdu *pdu,
-                                   struct dcerpc_iovec *iov, int *offset,
-                                   void *ptr)
-{
-        struct srvsvc_FILE_INFO_2_CONTAINER *ctr = ptr;
-
-        if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &ctr->EntriesRead)) {
-                return -1;
-        }
-        if (ctr->EntriesRead) {
-                dcerpc_set_size_is(pdu, ctr->EntriesRead);
-        }
-        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && ctr->EntriesRead) {
-                if (ctr->file_info_2 == NULL) {
-                        size_t esize = sizeof(struct srvsvc_FILE_INFO_2);
-
-                        if (ctr->EntriesRead > SIZE_MAX / esize) {
-                                return -1;
-                        }
-                        ctr->file_info_2 = dcerpc_alloc_data(pdu,
-                                (size_t)ctr->EntriesRead * esize);
-                        if (ctr->file_info_2 == NULL) {
-                                return -1;
-                        }
-                }
-        }
-        if (dcerpc_ptr_coder("FileInfo2", dce, pdu, iov, offset, ctr->file_info_2,
-                             PTR_UNIQUE, srvsvc_FILE_INFO_2_carray_coder)) {
-                return -1;
-        }
-
-        return 0;
-}
-
-/*
- * typedef struct _FILE_INFO_3 {
- *       DWORD fi3_id;
- *       DWORD fi3_permissions;
- *       DWORD fi3_num_locks;
- *       [string] wchar_t *fi3_pathname;
- *       [string] wchar_t *fi3_username;
- * } FILE_INFO_3, *PFILE_INFO_3, *LPFILE_INFO_3;
- */
-int
-srvsvc_FILE_INFO_3_coder(char *name, struct dcerpc_context *dce,
-                         struct dcerpc_pdu *pdu,
-                         struct dcerpc_iovec *iov, int *offset,
-                         void *ptr)
-{
-        struct srvsvc_FILE_INFO_3 *fi = ptr;
-
-        if (dcerpc_uint32_coder("Id", dce, pdu, iov, offset, &fi->id)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder_pp("Permissions", dce, pdu, iov, offset,
-                                   &fi->permissions, &file_perm_pp)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("NumLocks", dce, pdu, iov, offset, &fi->num_locks)) {
-                return -1;
-        }
-        if (dcerpc_ptr_coder("PathName", dce, pdu, iov, offset, &fi->pathname,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
-                return -1;
-        }
-        if (dcerpc_ptr_coder("UserName", dce, pdu, iov, offset, &fi->username,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
-                return -1;
-        }
-        return 0;
-}
-
-int
-srvsvc_FILE_INFO_3_STRUCT_coder(char *name, struct dcerpc_context *dce,
-                                struct dcerpc_pdu *pdu,
-                                struct dcerpc_iovec *iov, int *offset,
-                                void *ptr)
-{
-        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
-                                   srvsvc_FILE_INFO_3_coder);
-}
-
-/*
- *       [size_is(EntriesRead)] LPFILE_INFO_3 Buffer;
- */
-static int
-srvsvc_FILE_INFO_3_carray_coder(char *name, struct dcerpc_context *dce,
-                                struct dcerpc_pdu *pdu,
-                                struct dcerpc_iovec *iov, int *offset,
-                                void *ptr)
-{
-        return dcerpc_carray_coder("FileInfo3", dce, pdu, iov, offset,
-                                   dcerpc_get_size_is(pdu), ptr,
-                                   sizeof(struct srvsvc_FILE_INFO_3),
-                                   srvsvc_FILE_INFO_3_STRUCT_coder);
-}
-
-/*
- * typedef struct _FILE_INFO_3_CONTAINER {
- *       DWORD EntriesRead;
- *       [size_is(EntriesRead)] LPFILE_INFO_3 Buffer;
- * } FILE_INFO_3_CONTAINER;
- */
-int
-srvsvc_FILE_INFO_3_CONTAINER_coder(char *name, struct dcerpc_context *dce,
-                                   struct dcerpc_pdu *pdu,
-                                   struct dcerpc_iovec *iov, int *offset,
-                                   void *ptr)
-{
-        struct srvsvc_FILE_INFO_3_CONTAINER *ctr = ptr;
-
-        if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &ctr->EntriesRead)) {
-                return -1;
-        }
-        if (ctr->EntriesRead) {
-                dcerpc_set_size_is(pdu, ctr->EntriesRead);
-        }
-        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && ctr->EntriesRead) {
-                if (ctr->file_info_3 == NULL) {
-                        size_t esize = sizeof(struct srvsvc_FILE_INFO_3);
-
-                        if (ctr->EntriesRead > SIZE_MAX / esize) {
-                                return -1;
-                        }
-                        ctr->file_info_3 = dcerpc_alloc_data(pdu,
-                                (size_t)ctr->EntriesRead * esize);
-                        if (ctr->file_info_3 == NULL) {
-                                return -1;
-                        }
-                }
-        }
-        if (dcerpc_ptr_coder("FileInfo3", dce, pdu, iov, offset, ctr->file_info_3,
-                             PTR_UNIQUE, srvsvc_FILE_INFO_3_carray_coder)) {
-                return -1;
-        }
-
-        return 0;
-}
-
-/*
- * typedef [switch_type(DWORD)] union _FILE_ENUM_UNION {
- * [case(2)] FILE_INFO_2_CONTAINER* Level2;
- * [case(3)] FILE_INFO_3_CONTAINER* Level3;
- * } FILE_ENUM_UNION;
- */
-static int
-srvsvc_FILE_ENUM_UNION_coder(char *name, struct dcerpc_context *dce,
-                             struct dcerpc_pdu *pdu,
-                             struct dcerpc_iovec *iov, int *offset,
-                             void *ptr)
-{
-        union srvsvc_FILE_ENUM_UNION *info = ptr;
-
-        switch (dcerpc_get_switch_is(pdu)) {
-        case 2:
-                if (dcerpc_ptr_coder("FileInfo2Container", dce, pdu, iov, offset, &info->Level2,
-                                     PTR_UNIQUE, srvsvc_FILE_INFO_2_CONTAINER_coder)) {
-                        return -1;
-                }
-                break;
-        case 3:
-                if (dcerpc_ptr_coder("FileInfo3Container", dce, pdu, iov, offset, &info->Level3,
-                                     PTR_UNIQUE, srvsvc_FILE_INFO_3_CONTAINER_coder)) {
-                        return -1;
-                }
-                break;
-        default:
-                /*
-                 * During the NDR conformance pass the discriminant is not
-                 * read yet (switch_is stays 0). Levels for this union are
-                 * only 2 and 3, so tolerate unknown switch on the CR pass.
-                 */
-                if (dcerpc_get_cr(pdu)) {
-                        return 0;
-                }
-                return -1;
-        };
-
-        return 0;
-}
-
-/*
- * typedef struct _FILE_ENUM_STRUCT {
- *       DWORD Level;
- *       [switch_is(Level)] FILE_ENUM_UNION FileInfo;
- * } FILE_ENUM_STRUCT, *PFILE_ENUM_STRUCT, *LPFILE_ENUM_STRUCT;
- */
-int
-srvsvc_FILE_ENUM_STRUCT_coder(char *name, struct dcerpc_context *dce,
-                              struct dcerpc_pdu *pdu,
-                              struct dcerpc_iovec *iov, int *offset,
-                              void *ptr)
-{
-        struct srvsvc_FILE_ENUM_STRUCT *fes = ptr;
-
-        if (dcerpc_uint32_coder("Level", dce, pdu, iov, offset, &fes->Level)) {
-                return -1;
-        }
-
-        if (dcerpc_union_coder("FileInfo", dce, pdu, iov, offset,
-                               &fes->Level, &fes->FileInfo,
-                               srvsvc_FILE_ENUM_UNION_coder)) {
-                return -1;
-        }
-
-        return 0;
-}
-
-int
-srvsvc_FILE_ENUM_STRUCT_struct_coder(char *name, struct dcerpc_context *dce,
-                                     struct dcerpc_pdu *pdu,
-                                     struct dcerpc_iovec *iov, int *offset,
-                                     void *ptr)
-{
-        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
-                                   srvsvc_FILE_ENUM_STRUCT_coder);
-}
-
 /*****************
- * Function: 0x09
- * NET_API_STATUS NetrFileEnum (
- *   [in,string,unique] SRVSVC_HANDLE ServerName,
- *   [in,string,unique] WCHAR * BasePath,
- *   [in,string,unique] WCHAR * UserName,
- *   [in,out] PFILE_ENUM_STRUCT InfoStruct,
- *   [in] DWORD PreferedMaximumLength,
- *   [out] DWORD * TotalEntries,
- *   [in,out,unique] DWORD * ResumeHandle
- * );
- */
+ * Function: 0x09  NetrFileEnum  (SRVSVC_NETRFILEENUM)
+ *****************/
 int
 srvsvc_NetrFileEnum_req_coder(char *name, struct dcerpc_context *dce,
-                              struct dcerpc_pdu *pdu,
-                              struct dcerpc_iovec *iov, int *offset,
-                              void *ptr)
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
         struct srvsvc_NetrFileEnum_req *req = ptr;
-        void *basepath_ptr = &req->BasePath;
-        void *username_ptr = &req->UserName;
 
-        if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
-                return -1;
-        }
-        /*
-         * BasePath/UserName are [unique]. On encode, a NULL char* must be
-         * sent as a null referent (not an empty string). On decode, always
-         * pass the address of the char* so a non-null referent can be stored.
-         */
-        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
-                if (req->BasePath == NULL) {
-                        basepath_ptr = NULL;
+        (void)name;
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&
+            req->ServerName == NULL) {
+                if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, NULL,
+                                     PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                        return -1;
                 }
-                if (req->UserName == NULL) {
-                        username_ptr = NULL;
+        } else if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
+                                    PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&
+            req->BasePath == NULL) {
+                if (dcerpc_ptr_coder("BasePath", dce, pdu, iov, offset, NULL,
+                                     PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                        return -1;
                 }
-        }
-        if (dcerpc_ptr_coder("BasePath", dce, pdu, iov, offset, basepath_ptr,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+        } else if (dcerpc_ptr_coder("BasePath", dce, pdu, iov, offset, &req->BasePath,
+                                    PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("UserName", dce, pdu, iov, offset, username_ptr,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&
+            req->UserName == NULL) {
+                if (dcerpc_ptr_coder("UserName", dce, pdu, iov, offset, NULL,
+                                     PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                        return -1;
+                }
+        } else if (dcerpc_ptr_coder("UserName", dce, pdu, iov, offset, &req->UserName,
+                                    PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("InfoStruct", dce, pdu, iov, offset, &req->fes,
+        if (dcerpc_ptr_coder("InfoStruct", dce, pdu, iov, offset, &req->InfoStruct,
                              PTR_REF, srvsvc_FILE_ENUM_STRUCT_struct_coder)) {
                 return -1;
         }
@@ -2477,21 +3051,22 @@ srvsvc_NetrFileEnum_req_coder(char *name, struct dcerpc_context *dce,
 
 int
 srvsvc_NetrFileEnum_rep_coder(char *name, struct dcerpc_context *dce,
-                              struct dcerpc_pdu *pdu,
-                              struct dcerpc_iovec *iov, int *offset,
-                              void *ptr)
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
         struct srvsvc_NetrFileEnum_rep *rep = ptr;
 
-        if (dcerpc_ptr_coder("InfoStruct", dce, pdu, iov, offset, &rep->fes,
+        (void)name;
+        if (dcerpc_ptr_coder("InfoStruct", dce, pdu, iov, offset, &rep->InfoStruct,
                              PTR_REF, srvsvc_FILE_ENUM_STRUCT_coder)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("TotalEntries", dce, pdu, iov, offset, &rep->total_entries,
+        if (dcerpc_ptr_coder("TotalEntries", dce, pdu, iov, offset, &rep->TotalEntries,
                              PTR_REF, dcerpc_uint32_coder)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("ResumeHandle", dce, pdu, iov, offset, &rep->resume_handle,
+        if (dcerpc_ptr_coder("ResumeHandle", dce, pdu, iov, offset, &rep->ResumeHandle,
                              PTR_UNIQUE, dcerpc_uint32_coder)) {
                 return -1;
         }
@@ -2502,106 +3077,57 @@ srvsvc_NetrFileEnum_rep_coder(char *name, struct dcerpc_context *dce,
         return 0;
 }
 
-/*
- * typedef [switch_type(unsigned long)] union _FILE_INFO {
- *   [case(2)] LPFILE_INFO_2 FileInfo2;
- *   [case(3)] LPFILE_INFO_3 FileInfo3;
- * } FILE_INFO, *PFILE_INFO, *LPFILE_INFO;
- */
-static int
-srvsvc_FILE_INFO_coder(char *name, struct dcerpc_context *dce,
-                       struct dcerpc_pdu *pdu,
-                       struct dcerpc_iovec *iov, int *offset,
-                       void *ptr)
-{
-        union srvsvc_FILE_INFO *info = ptr;
-
-        switch (dcerpc_get_switch_is(pdu)) {
-        case 2:
-                if (dcerpc_ptr_coder("FileInfo2", dce, pdu, iov, offset, &info->FileInfo2,
-                                     PTR_UNIQUE, srvsvc_FILE_INFO_2_STRUCT_coder)) {
-                        return -1;
-                }
-                break;
-        case 3:
-                if (dcerpc_ptr_coder("FileInfo3", dce, pdu, iov, offset, &info->FileInfo3,
-                                     PTR_UNIQUE, srvsvc_FILE_INFO_3_STRUCT_coder)) {
-                        return -1;
-                }
-                break;
-        default:
-                if (dcerpc_get_cr(pdu)) {
-                        return 0;
-                }
-                return -1;
-        };
-
-        return 0;
-}
-
-static int
-srvsvc_FILE_INFO_STRUCT_coder(char *name, struct dcerpc_context *dce,
-                              struct dcerpc_pdu *pdu,
-                              struct dcerpc_iovec *iov, int *offset,
-                              void *ptr)
-{
-        uint32_t Level = dcerpc_get_switch_is(pdu);
-
-        if (dcerpc_union_coder("InfoStruct", dce, pdu, iov, offset,
-                               &Level, ptr,
-                               srvsvc_FILE_INFO_coder)) {
-                return -1;
-        }
-
-        return 0;
-}
-
 /*****************
- * Function: 0x0a
- * NET_API_STATUS NetrFileGetInfo (
- *   [in,string,unique] SRVSVC_HANDLE ServerName,
- *   [in] DWORD FileId,
- *   [in] DWORD Level,
- *   [out, switch_is(Level)] LPFILE_INFO InfoStruct
- * );
- */
+ * Function: 0x0a  NetrFileGetInfo  (SRVSVC_NETRFILEGETINFO)
+ *****************/
 int
 srvsvc_NetrFileGetInfo_req_coder(char *name, struct dcerpc_context *dce,
-                                 struct dcerpc_pdu *pdu,
-                                 struct dcerpc_iovec *iov, int *offset,
-                                 void *ptr)
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
         struct srvsvc_NetrFileGetInfo_req *req = ptr;
 
-        if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+        (void)name;
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&
+            req->ServerName == NULL) {
+                if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, NULL,
+                                     PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                        return -1;
+                }
+        } else if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
+                                    PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("FileId", dce, pdu, iov, offset, &req->FileId)) {
+        if (dcerpc_ptr_coder("FileId", dce, pdu, iov, offset, &req->FileId,
+                             PTR_REF, dcerpc_uint32_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Level", dce, pdu, iov, offset, &req->Level)) {
+        if (dcerpc_ptr_coder("Level", dce, pdu, iov, offset, &req->Level,
+                             PTR_REF, dcerpc_uint32_coder)) {
                 return -1;
         }
-        dcerpc_set_switch_is(pdu, req->Level);
 
         return 0;
 }
 
 int
 srvsvc_NetrFileGetInfo_rep_coder(char *name, struct dcerpc_context *dce,
-                                 struct dcerpc_pdu *pdu,
-                                 struct dcerpc_iovec *iov, int *offset,
-                                 void *ptr)
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
         struct srvsvc_NetrFileGetInfo_rep *rep = ptr;
-        /* There is no Level in the reply so we must reference it from the request */
+        /* the discriminant is only in the request */
         struct srvsvc_NetrFileGetInfo_req *req = dcerpc_get_request(pdu);
 
+        (void)name;
+        if (req == NULL) {
+                return -1;
+        }
         dcerpc_set_switch_is(pdu, req->Level);
-
         if (dcerpc_ptr_coder("InfoStruct", dce, pdu, iov, offset, &rep->InfoStruct,
-                             PTR_REF, srvsvc_FILE_INFO_STRUCT_coder)) {
+                             PTR_REF, srvsvc_FILE_INFO_switch_coder)) {
                 return -1;
         }
         if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
@@ -2612,25 +3138,29 @@ srvsvc_NetrFileGetInfo_rep_coder(char *name, struct dcerpc_context *dce,
 }
 
 /*****************
- * Function: 0x0b
- * NET_API_STATUS NetrFileClose (
- *   [in,string,unique] SRVSVC_HANDLE ServerName,
- *   [in] DWORD FileId
- * );
- */
+ * Function: 0x0b  NetrFileClose  (SRVSVC_NETRFILECLOSE)
+ *****************/
 int
 srvsvc_NetrFileClose_req_coder(char *name, struct dcerpc_context *dce,
-                               struct dcerpc_pdu *pdu,
-                               struct dcerpc_iovec *iov, int *offset,
-                               void *ptr)
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
         struct srvsvc_NetrFileClose_req *req = ptr;
 
-        if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+        (void)name;
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&
+            req->ServerName == NULL) {
+                if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, NULL,
+                                     PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                        return -1;
+                }
+        } else if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
+                                    PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("FileId", dce, pdu, iov, offset, &req->FileId)) {
+        if (dcerpc_ptr_coder("FileId", dce, pdu, iov, offset, &req->FileId,
+                             PTR_REF, dcerpc_uint32_coder)) {
                 return -1;
         }
 
@@ -2639,12 +3169,13 @@ srvsvc_NetrFileClose_req_coder(char *name, struct dcerpc_context *dce,
 
 int
 srvsvc_NetrFileClose_rep_coder(char *name, struct dcerpc_context *dce,
-                               struct dcerpc_pdu *pdu,
-                               struct dcerpc_iovec *iov, int *offset,
-                               void *ptr)
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
         struct srvsvc_NetrFileClose_rep *rep = ptr;
 
+        (void)name;
         if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
                 return -1;
         }
@@ -2652,683 +3183,49 @@ srvsvc_NetrFileClose_rep_coder(char *name, struct dcerpc_context *dce,
         return 0;
 }
 
-/*
- * typedef struct _SESSION_INFO_0 {
- *       [string] wchar_t *sesi0_cname;
- * } SESSION_INFO_0, *PSESSION_INFO_0, *LPSESSION_INFO_0;
- */
-int
-srvsvc_SESSION_INFO_0_coder(char *name, struct dcerpc_context *dce,
-                            struct dcerpc_pdu *pdu,
-                            struct dcerpc_iovec *iov, int *offset,
-                            void *ptr)
-{
-        struct srvsvc_SESSION_INFO_0 *si = ptr;
-
-        if (dcerpc_ptr_coder("CName", dce, pdu, iov, offset, &si->cname,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
-                return -1;
-        }
-        return 0;
-}
-
-int
-srvsvc_SESSION_INFO_0_STRUCT_coder(char *name, struct dcerpc_context *dce,
-                                   struct dcerpc_pdu *pdu,
-                                   struct dcerpc_iovec *iov, int *offset,
-                                   void *ptr)
-{
-        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
-                                   srvsvc_SESSION_INFO_0_coder);
-}
-
-/*
- *       [size_is(EntriesRead)] LPSESSION_INFO_0 Buffer;
- */
-static int
-srvsvc_SESSION_INFO_0_carray_coder(char *name, struct dcerpc_context *dce,
-                                   struct dcerpc_pdu *pdu,
-                                   struct dcerpc_iovec *iov, int *offset,
-                                   void *ptr)
-{
-        return dcerpc_carray_coder("SessionInfo0", dce, pdu, iov, offset,
-                                   dcerpc_get_size_is(pdu), ptr,
-                                   sizeof(struct srvsvc_SESSION_INFO_0),
-                                   srvsvc_SESSION_INFO_0_STRUCT_coder);
-}
-
-/*
- * typedef struct _SESSION_INFO_0_CONTAINER {
- *       DWORD EntriesRead;
- *       [size_is(EntriesRead)] LPSESSION_INFO_0 Buffer;
- * } SESSION_INFO_0_CONTAINER;
- */
-int
-srvsvc_SESSION_INFO_0_CONTAINER_coder(char *name, struct dcerpc_context *dce,
-                                      struct dcerpc_pdu *pdu,
-                                      struct dcerpc_iovec *iov, int *offset,
-                                      void *ptr)
-{
-        struct srvsvc_SESSION_INFO_0_CONTAINER *ctr = ptr;
-
-        if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &ctr->EntriesRead)) {
-                return -1;
-        }
-        if (ctr->EntriesRead) {
-                dcerpc_set_size_is(pdu, ctr->EntriesRead);
-        }
-        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && ctr->EntriesRead) {
-                if (ctr->session_info_0 == NULL) {
-                        size_t esize = sizeof(struct srvsvc_SESSION_INFO_0);
-
-                        if (ctr->EntriesRead > SIZE_MAX / esize) {
-                                return -1;
-                        }
-                        ctr->session_info_0 = dcerpc_alloc_data(pdu,
-                                (size_t)ctr->EntriesRead * esize);
-                        if (ctr->session_info_0 == NULL) {
-                                return -1;
-                        }
-                }
-        }
-        if (dcerpc_ptr_coder("SessionInfo0", dce, pdu, iov, offset, ctr->session_info_0,
-                             PTR_UNIQUE, srvsvc_SESSION_INFO_0_carray_coder)) {
-                return -1;
-        }
-
-        return 0;
-}
-
-/*
- * typedef struct _SESSION_INFO_1 {
- *       [string] wchar_t *sesi1_cname;
- *       [string] wchar_t *sesi1_username;
- *       DWORD sesi1_num_opens;
- *       DWORD sesi1_time;
- *       DWORD sesi1_idle_time;
- *       DWORD sesi1_user_flags;
- * } SESSION_INFO_1, *PSESSION_INFO_1, *LPSESSION_INFO_1;
- */
-int
-srvsvc_SESSION_INFO_1_coder(char *name, struct dcerpc_context *dce,
-                            struct dcerpc_pdu *pdu,
-                            struct dcerpc_iovec *iov, int *offset,
-                            void *ptr)
-{
-        struct srvsvc_SESSION_INFO_1 *si = ptr;
-
-        if (dcerpc_ptr_coder("CName", dce, pdu, iov, offset, &si->cname,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
-                return -1;
-        }
-        if (dcerpc_ptr_coder("UserName", dce, pdu, iov, offset, &si->username,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("NumOpens", dce, pdu, iov, offset, &si->num_opens)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("Time", dce, pdu, iov, offset, &si->time)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("IdleTime", dce, pdu, iov, offset, &si->idle_time)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder_pp("UserFlags", dce, pdu, iov, offset,
-                                   &si->user_flags, &sess_user_flags_pp)) {
-                return -1;
-        }
-        return 0;
-}
-
-int
-srvsvc_SESSION_INFO_1_STRUCT_coder(char *name, struct dcerpc_context *dce,
-                                   struct dcerpc_pdu *pdu,
-                                   struct dcerpc_iovec *iov, int *offset,
-                                   void *ptr)
-{
-        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
-                                   srvsvc_SESSION_INFO_1_coder);
-}
-
-/*
- *       [size_is(EntriesRead)] LPSESSION_INFO_1 Buffer;
- */
-static int
-srvsvc_SESSION_INFO_1_carray_coder(char *name, struct dcerpc_context *dce,
-                                   struct dcerpc_pdu *pdu,
-                                   struct dcerpc_iovec *iov, int *offset,
-                                   void *ptr)
-{
-        return dcerpc_carray_coder("SessionInfo1", dce, pdu, iov, offset,
-                                   dcerpc_get_size_is(pdu), ptr,
-                                   sizeof(struct srvsvc_SESSION_INFO_1),
-                                   srvsvc_SESSION_INFO_1_STRUCT_coder);
-}
-
-/*
- * typedef struct _SESSION_INFO_1_CONTAINER {
- *       DWORD EntriesRead;
- *       [size_is(EntriesRead)] LPSESSION_INFO_1 Buffer;
- * } SESSION_INFO_1_CONTAINER;
- */
-int
-srvsvc_SESSION_INFO_1_CONTAINER_coder(char *name, struct dcerpc_context *dce,
-                                      struct dcerpc_pdu *pdu,
-                                      struct dcerpc_iovec *iov, int *offset,
-                                      void *ptr)
-{
-        struct srvsvc_SESSION_INFO_1_CONTAINER *ctr = ptr;
-
-        if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &ctr->EntriesRead)) {
-                return -1;
-        }
-        if (ctr->EntriesRead) {
-                dcerpc_set_size_is(pdu, ctr->EntriesRead);
-        }
-        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && ctr->EntriesRead) {
-                if (ctr->session_info_1 == NULL) {
-                        size_t esize = sizeof(struct srvsvc_SESSION_INFO_1);
-
-                        if (ctr->EntriesRead > SIZE_MAX / esize) {
-                                return -1;
-                        }
-                        ctr->session_info_1 = dcerpc_alloc_data(pdu,
-                                (size_t)ctr->EntriesRead * esize);
-                        if (ctr->session_info_1 == NULL) {
-                                return -1;
-                        }
-                }
-        }
-        if (dcerpc_ptr_coder("SessionInfo1", dce, pdu, iov, offset, ctr->session_info_1,
-                             PTR_UNIQUE, srvsvc_SESSION_INFO_1_carray_coder)) {
-                return -1;
-        }
-
-        return 0;
-}
-
-/*
- * typedef struct _SESSION_INFO_2 {
- *       [string] wchar_t *sesi2_cname;
- *       [string] wchar_t *sesi2_username;
- *       DWORD sesi2_num_opens;
- *       DWORD sesi2_time;
- *       DWORD sesi2_idle_time;
- *       DWORD sesi2_user_flags;
- *       [string] wchar_t *sesi2_cltype_name;
- * } SESSION_INFO_2, *PSESSION_INFO_2, *LPSESSION_INFO_2;
- */
-int
-srvsvc_SESSION_INFO_2_coder(char *name, struct dcerpc_context *dce,
-                            struct dcerpc_pdu *pdu,
-                            struct dcerpc_iovec *iov, int *offset,
-                            void *ptr)
-{
-        struct srvsvc_SESSION_INFO_2 *si = ptr;
-
-        if (dcerpc_ptr_coder("CName", dce, pdu, iov, offset, &si->cname,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
-                return -1;
-        }
-        if (dcerpc_ptr_coder("UserName", dce, pdu, iov, offset, &si->username,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("NumOpens", dce, pdu, iov, offset, &si->num_opens)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("Time", dce, pdu, iov, offset, &si->time)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("IdleTime", dce, pdu, iov, offset, &si->idle_time)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder_pp("UserFlags", dce, pdu, iov, offset,
-                                   &si->user_flags, &sess_user_flags_pp)) {
-                return -1;
-        }
-        if (dcerpc_ptr_coder("ClTypeName", dce, pdu, iov, offset, &si->cltype_name,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
-                return -1;
-        }
-        return 0;
-}
-
-int
-srvsvc_SESSION_INFO_2_STRUCT_coder(char *name, struct dcerpc_context *dce,
-                                   struct dcerpc_pdu *pdu,
-                                   struct dcerpc_iovec *iov, int *offset,
-                                   void *ptr)
-{
-        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
-                                   srvsvc_SESSION_INFO_2_coder);
-}
-
-/*
- *       [size_is(EntriesRead)] LPSESSION_INFO_2 Buffer;
- */
-static int
-srvsvc_SESSION_INFO_2_carray_coder(char *name, struct dcerpc_context *dce,
-                                   struct dcerpc_pdu *pdu,
-                                   struct dcerpc_iovec *iov, int *offset,
-                                   void *ptr)
-{
-        return dcerpc_carray_coder("SessionInfo2", dce, pdu, iov, offset,
-                                   dcerpc_get_size_is(pdu), ptr,
-                                   sizeof(struct srvsvc_SESSION_INFO_2),
-                                   srvsvc_SESSION_INFO_2_STRUCT_coder);
-}
-
-/*
- * typedef struct _SESSION_INFO_2_CONTAINER {
- *       DWORD EntriesRead;
- *       [size_is(EntriesRead)] LPSESSION_INFO_2 Buffer;
- * } SESSION_INFO_2_CONTAINER;
- */
-int
-srvsvc_SESSION_INFO_2_CONTAINER_coder(char *name, struct dcerpc_context *dce,
-                                      struct dcerpc_pdu *pdu,
-                                      struct dcerpc_iovec *iov, int *offset,
-                                      void *ptr)
-{
-        struct srvsvc_SESSION_INFO_2_CONTAINER *ctr = ptr;
-
-        if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &ctr->EntriesRead)) {
-                return -1;
-        }
-        if (ctr->EntriesRead) {
-                dcerpc_set_size_is(pdu, ctr->EntriesRead);
-        }
-        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && ctr->EntriesRead) {
-                if (ctr->session_info_2 == NULL) {
-                        size_t esize = sizeof(struct srvsvc_SESSION_INFO_2);
-
-                        if (ctr->EntriesRead > SIZE_MAX / esize) {
-                                return -1;
-                        }
-                        ctr->session_info_2 = dcerpc_alloc_data(pdu,
-                                (size_t)ctr->EntriesRead * esize);
-                        if (ctr->session_info_2 == NULL) {
-                                return -1;
-                        }
-                }
-        }
-        if (dcerpc_ptr_coder("SessionInfo2", dce, pdu, iov, offset, ctr->session_info_2,
-                             PTR_UNIQUE, srvsvc_SESSION_INFO_2_carray_coder)) {
-                return -1;
-        }
-
-        return 0;
-}
-
-/*
- * typedef struct _SESSION_INFO_10 {
- *       [string] wchar_t *sesi10_cname;
- *       [string] wchar_t *sesi10_username;
- *       DWORD sesi10_time;
- *       DWORD sesi10_idle_time;
- * } SESSION_INFO_10, *PSESSION_INFO_10, *LPSESSION_INFO_10;
- */
-int
-srvsvc_SESSION_INFO_10_coder(char *name, struct dcerpc_context *dce,
-                             struct dcerpc_pdu *pdu,
-                             struct dcerpc_iovec *iov, int *offset,
-                             void *ptr)
-{
-        struct srvsvc_SESSION_INFO_10 *si = ptr;
-
-        if (dcerpc_ptr_coder("CName", dce, pdu, iov, offset, &si->cname,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
-                return -1;
-        }
-        if (dcerpc_ptr_coder("UserName", dce, pdu, iov, offset, &si->username,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("Time", dce, pdu, iov, offset, &si->time)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("IdleTime", dce, pdu, iov, offset, &si->idle_time)) {
-                return -1;
-        }
-        return 0;
-}
-
-int
-srvsvc_SESSION_INFO_10_STRUCT_coder(char *name, struct dcerpc_context *dce,
-                                    struct dcerpc_pdu *pdu,
-                                    struct dcerpc_iovec *iov, int *offset,
-                                    void *ptr)
-{
-        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
-                                   srvsvc_SESSION_INFO_10_coder);
-}
-
-/*
- *       [size_is(EntriesRead)] LPSESSION_INFO_10 Buffer;
- */
-static int
-srvsvc_SESSION_INFO_10_carray_coder(char *name, struct dcerpc_context *dce,
-                                    struct dcerpc_pdu *pdu,
-                                    struct dcerpc_iovec *iov, int *offset,
-                                    void *ptr)
-{
-        return dcerpc_carray_coder("SessionInfo10", dce, pdu, iov, offset,
-                                   dcerpc_get_size_is(pdu), ptr,
-                                   sizeof(struct srvsvc_SESSION_INFO_10),
-                                   srvsvc_SESSION_INFO_10_STRUCT_coder);
-}
-
-/*
- * typedef struct _SESSION_INFO_10_CONTAINER {
- *       DWORD EntriesRead;
- *       [size_is(EntriesRead)] LPSESSION_INFO_10 Buffer;
- * } SESSION_INFO_10_CONTAINER;
- */
-int
-srvsvc_SESSION_INFO_10_CONTAINER_coder(char *name, struct dcerpc_context *dce,
-                                       struct dcerpc_pdu *pdu,
-                                       struct dcerpc_iovec *iov, int *offset,
-                                       void *ptr)
-{
-        struct srvsvc_SESSION_INFO_10_CONTAINER *ctr = ptr;
-
-        if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &ctr->EntriesRead)) {
-                return -1;
-        }
-        if (ctr->EntriesRead) {
-                dcerpc_set_size_is(pdu, ctr->EntriesRead);
-        }
-        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && ctr->EntriesRead) {
-                if (ctr->session_info_10 == NULL) {
-                        size_t esize = sizeof(struct srvsvc_SESSION_INFO_10);
-
-                        if (ctr->EntriesRead > SIZE_MAX / esize) {
-                                return -1;
-                        }
-                        ctr->session_info_10 = dcerpc_alloc_data(pdu,
-                                (size_t)ctr->EntriesRead * esize);
-                        if (ctr->session_info_10 == NULL) {
-                                return -1;
-                        }
-                }
-        }
-        if (dcerpc_ptr_coder("SessionInfo10", dce, pdu, iov, offset, ctr->session_info_10,
-                             PTR_UNIQUE, srvsvc_SESSION_INFO_10_carray_coder)) {
-                return -1;
-        }
-
-        return 0;
-}
-
-/*
- * typedef struct _SESSION_INFO_502 {
- *       [string] wchar_t *sesi502_cname;
- *       [string] wchar_t *sesi502_username;
- *       DWORD sesi502_num_opens;
- *       DWORD sesi502_time;
- *       DWORD sesi502_idle_time;
- *       DWORD sesi502_user_flags;
- *       [string] wchar_t *sesi502_cltype_name;
- *       [string] wchar_t *sesi502_transport;
- * } SESSION_INFO_502, *PSESSION_INFO_502, *LPSESSION_INFO_502;
- */
-int
-srvsvc_SESSION_INFO_502_coder(char *name, struct dcerpc_context *dce,
-                              struct dcerpc_pdu *pdu,
-                              struct dcerpc_iovec *iov, int *offset,
-                              void *ptr)
-{
-        struct srvsvc_SESSION_INFO_502 *si = ptr;
-
-        if (dcerpc_ptr_coder("CName", dce, pdu, iov, offset, &si->cname,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
-                return -1;
-        }
-        if (dcerpc_ptr_coder("UserName", dce, pdu, iov, offset, &si->username,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("NumOpens", dce, pdu, iov, offset, &si->num_opens)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("Time", dce, pdu, iov, offset, &si->time)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("IdleTime", dce, pdu, iov, offset, &si->idle_time)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder_pp("UserFlags", dce, pdu, iov, offset,
-                                   &si->user_flags, &sess_user_flags_pp)) {
-                return -1;
-        }
-        if (dcerpc_ptr_coder("ClTypeName", dce, pdu, iov, offset, &si->cltype_name,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
-                return -1;
-        }
-        if (dcerpc_ptr_coder("Transport", dce, pdu, iov, offset, &si->transport,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
-                return -1;
-        }
-        return 0;
-}
-
-int
-srvsvc_SESSION_INFO_502_STRUCT_coder(char *name, struct dcerpc_context *dce,
-                                     struct dcerpc_pdu *pdu,
-                                     struct dcerpc_iovec *iov, int *offset,
-                                     void *ptr)
-{
-        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
-                                   srvsvc_SESSION_INFO_502_coder);
-}
-
-/*
- *       [size_is(EntriesRead)] LPSESSION_INFO_502 Buffer;
- */
-static int
-srvsvc_SESSION_INFO_502_carray_coder(char *name, struct dcerpc_context *dce,
-                                     struct dcerpc_pdu *pdu,
-                                     struct dcerpc_iovec *iov, int *offset,
-                                     void *ptr)
-{
-        return dcerpc_carray_coder("SessionInfo502", dce, pdu, iov, offset,
-                                   dcerpc_get_size_is(pdu), ptr,
-                                   sizeof(struct srvsvc_SESSION_INFO_502),
-                                   srvsvc_SESSION_INFO_502_STRUCT_coder);
-}
-
-/*
- * typedef struct _SESSION_INFO_502_CONTAINER {
- *       DWORD EntriesRead;
- *       [size_is(EntriesRead)] LPSESSION_INFO_502 Buffer;
- * } SESSION_INFO_502_CONTAINER;
- */
-int
-srvsvc_SESSION_INFO_502_CONTAINER_coder(char *name, struct dcerpc_context *dce,
-                                        struct dcerpc_pdu *pdu,
-                                        struct dcerpc_iovec *iov, int *offset,
-                                        void *ptr)
-{
-        struct srvsvc_SESSION_INFO_502_CONTAINER *ctr = ptr;
-
-        if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &ctr->EntriesRead)) {
-                return -1;
-        }
-        if (ctr->EntriesRead) {
-                dcerpc_set_size_is(pdu, ctr->EntriesRead);
-        }
-        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && ctr->EntriesRead) {
-                if (ctr->session_info_502 == NULL) {
-                        size_t esize = sizeof(struct srvsvc_SESSION_INFO_502);
-
-                        if (ctr->EntriesRead > SIZE_MAX / esize) {
-                                return -1;
-                        }
-                        ctr->session_info_502 = dcerpc_alloc_data(pdu,
-                                (size_t)ctr->EntriesRead * esize);
-                        if (ctr->session_info_502 == NULL) {
-                                return -1;
-                        }
-                }
-        }
-        if (dcerpc_ptr_coder("SessionInfo502", dce, pdu, iov, offset, ctr->session_info_502,
-                             PTR_UNIQUE, srvsvc_SESSION_INFO_502_carray_coder)) {
-                return -1;
-        }
-
-        return 0;
-}
-
-/*
- * typedef [switch_type(DWORD)] union _SESSION_ENUM_UNION {
- * [case(0)] SESSION_INFO_0_CONTAINER* Level0;
- * [case(1)] SESSION_INFO_1_CONTAINER* Level1;
- * [case(2)] SESSION_INFO_2_CONTAINER* Level2;
- * [case(10)] SESSION_INFO_10_CONTAINER* Level10;
- * [case(502)] SESSION_INFO_502_CONTAINER* Level502;
- * } SESSION_ENUM_UNION;
- */
-static int
-srvsvc_SESSION_ENUM_UNION_coder(char *name, struct dcerpc_context *dce,
-                                struct dcerpc_pdu *pdu,
-                                struct dcerpc_iovec *iov, int *offset,
-                                void *ptr)
-{
-        union srvsvc_SESSION_ENUM_UNION *info = ptr;
-
-        switch (dcerpc_get_switch_is(pdu)) {
-        case 0:
-                if (dcerpc_ptr_coder("SessionInfo0Container", dce, pdu, iov, offset, &info->Level0,
-                                     PTR_UNIQUE, srvsvc_SESSION_INFO_0_CONTAINER_coder)) {
-                        return -1;
-                }
-                break;
-        case 1:
-                if (dcerpc_ptr_coder("SessionInfo1Container", dce, pdu, iov, offset, &info->Level1,
-                                     PTR_UNIQUE, srvsvc_SESSION_INFO_1_CONTAINER_coder)) {
-                        return -1;
-                }
-                break;
-        case 2:
-                if (dcerpc_ptr_coder("SessionInfo2Container", dce, pdu, iov, offset, &info->Level2,
-                                     PTR_UNIQUE, srvsvc_SESSION_INFO_2_CONTAINER_coder)) {
-                        return -1;
-                }
-                break;
-        case 10:
-                if (dcerpc_ptr_coder("SessionInfo10Container", dce, pdu, iov, offset, &info->Level10,
-                                     PTR_UNIQUE, srvsvc_SESSION_INFO_10_CONTAINER_coder)) {
-                        return -1;
-                }
-                break;
-        case 502:
-                if (dcerpc_ptr_coder("SessionInfo502Container", dce, pdu, iov, offset, &info->Level502,
-                                     PTR_UNIQUE, srvsvc_SESSION_INFO_502_CONTAINER_coder)) {
-                        return -1;
-                }
-                break;
-        default:
-                /*
-                 * During the NDR conformance pass the discriminant is not
-                 * read yet (switch_is stays 0). Levels include non-zero
-                 * values (10, 502), so tolerate unknown switch on the CR pass.
-                 */
-                if (dcerpc_get_cr(pdu)) {
-                        return 0;
-                }
-                return -1;
-        };
-
-        return 0;
-}
-
-/*
- * typedef struct _SESSION_ENUM_STRUCT {
- *       DWORD Level;
- *       [switch_is(Level)] SESSION_ENUM_UNION SessionInfo;
- * } SESSION_ENUM_STRUCT, *PSESSION_ENUM_STRUCT, *LPSESSION_ENUM_STRUCT;
- */
-int
-srvsvc_SESSION_ENUM_STRUCT_coder(char *name, struct dcerpc_context *dce,
-                                 struct dcerpc_pdu *pdu,
-                                 struct dcerpc_iovec *iov, int *offset,
-                                 void *ptr)
-{
-        struct srvsvc_SESSION_ENUM_STRUCT *ses = ptr;
-
-        if (dcerpc_uint32_coder("Level", dce, pdu, iov, offset, &ses->Level)) {
-                return -1;
-        }
-
-        if (dcerpc_union_coder("SessionInfo", dce, pdu, iov, offset,
-                               &ses->Level, &ses->SessionInfo,
-                               srvsvc_SESSION_ENUM_UNION_coder)) {
-                return -1;
-        }
-
-        return 0;
-}
-
-int
-srvsvc_SESSION_ENUM_STRUCT_struct_coder(char *name, struct dcerpc_context *dce,
-                                        struct dcerpc_pdu *pdu,
-                                        struct dcerpc_iovec *iov, int *offset,
-                                        void *ptr)
-{
-        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
-                                   srvsvc_SESSION_ENUM_STRUCT_coder);
-}
-
 /*****************
- * Function: 0x0c
- * NET_API_STATUS NetrSessionEnum (
- *   [in,string,unique] SRVSVC_HANDLE ServerName,
- *   [in,string,unique] WCHAR * ClientName,
- *   [in,string,unique] WCHAR * UserName,
- *   [in,out] PSESSION_ENUM_STRUCT InfoStruct,
- *   [in] DWORD PreferedMaximumLength,
- *   [out] DWORD * TotalEntries,
- *   [in,out,unique] DWORD * ResumeHandle
- * );
- */
+ * Function: 0x0c  NetrSessionEnum  (SRVSVC_NETRSESSIONENUM)
+ *****************/
 int
 srvsvc_NetrSessionEnum_req_coder(char *name, struct dcerpc_context *dce,
-                                 struct dcerpc_pdu *pdu,
-                                 struct dcerpc_iovec *iov, int *offset,
-                                 void *ptr)
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
         struct srvsvc_NetrSessionEnum_req *req = ptr;
-        void *clientname_ptr = &req->ClientName;
-        void *username_ptr = &req->UserName;
 
-        if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
-                return -1;
-        }
-        /*
-         * ClientName/UserName are [unique]. On encode, a NULL char* must be
-         * sent as a null referent (not an empty string). On decode, always
-         * pass the address of the char* so a non-null referent can be stored.
-         */
-        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
-                if (req->ClientName == NULL) {
-                        clientname_ptr = NULL;
+        (void)name;
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&
+            req->ServerName == NULL) {
+                if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, NULL,
+                                     PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                        return -1;
                 }
-                if (req->UserName == NULL) {
-                        username_ptr = NULL;
+        } else if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
+                                    PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&
+            req->ClientName == NULL) {
+                if (dcerpc_ptr_coder("ClientName", dce, pdu, iov, offset, NULL,
+                                     PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                        return -1;
                 }
-        }
-        if (dcerpc_ptr_coder("ClientName", dce, pdu, iov, offset, clientname_ptr,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+        } else if (dcerpc_ptr_coder("ClientName", dce, pdu, iov, offset, &req->ClientName,
+                                    PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("UserName", dce, pdu, iov, offset, username_ptr,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&
+            req->UserName == NULL) {
+                if (dcerpc_ptr_coder("UserName", dce, pdu, iov, offset, NULL,
+                                     PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                        return -1;
+                }
+        } else if (dcerpc_ptr_coder("UserName", dce, pdu, iov, offset, &req->UserName,
+                                    PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("InfoStruct", dce, pdu, iov, offset, &req->ses,
+        if (dcerpc_ptr_coder("InfoStruct", dce, pdu, iov, offset, &req->InfoStruct,
                              PTR_REF, srvsvc_SESSION_ENUM_STRUCT_struct_coder)) {
                 return -1;
         }
@@ -3346,21 +3243,22 @@ srvsvc_NetrSessionEnum_req_coder(char *name, struct dcerpc_context *dce,
 
 int
 srvsvc_NetrSessionEnum_rep_coder(char *name, struct dcerpc_context *dce,
-                                 struct dcerpc_pdu *pdu,
-                                 struct dcerpc_iovec *iov, int *offset,
-                                 void *ptr)
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
         struct srvsvc_NetrSessionEnum_rep *rep = ptr;
 
-        if (dcerpc_ptr_coder("InfoStruct", dce, pdu, iov, offset, &rep->ses,
+        (void)name;
+        if (dcerpc_ptr_coder("InfoStruct", dce, pdu, iov, offset, &rep->InfoStruct,
                              PTR_REF, srvsvc_SESSION_ENUM_STRUCT_coder)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("TotalEntries", dce, pdu, iov, offset, &rep->total_entries,
+        if (dcerpc_ptr_coder("TotalEntries", dce, pdu, iov, offset, &rep->TotalEntries,
                              PTR_REF, dcerpc_uint32_coder)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("ResumeHandle", dce, pdu, iov, offset, &rep->resume_handle,
+        if (dcerpc_ptr_coder("ResumeHandle", dce, pdu, iov, offset, &rep->ResumeHandle,
                              PTR_UNIQUE, dcerpc_uint32_coder)) {
                 return -1;
         }
@@ -3372,46 +3270,45 @@ srvsvc_NetrSessionEnum_rep_coder(char *name, struct dcerpc_context *dce,
 }
 
 /*****************
- * Function: 0x0d
- * NET_API_STATUS NetrSessionDel (
- *   [in,string,unique] SRVSVC_HANDLE ServerName,
- *   [in,string,unique] WCHAR * ClientName,
- *   [in,string,unique] WCHAR * UserName
- * );
- */
+ * Function: 0x0d  NetrSessionDel  (SRVSVC_NETRSESSIONDEL)
+ *****************/
 int
 srvsvc_NetrSessionDel_req_coder(char *name, struct dcerpc_context *dce,
-                                struct dcerpc_pdu *pdu,
-                                struct dcerpc_iovec *iov, int *offset,
-                                void *ptr)
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
         struct srvsvc_NetrSessionDel_req *req = ptr;
-        void *clientname_ptr = &req->ClientName;
-        void *username_ptr = &req->UserName;
 
-        if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+        (void)name;
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&
+            req->ServerName == NULL) {
+                if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, NULL,
+                                     PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                        return -1;
+                }
+        } else if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
+                                    PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        /*
-         * ClientName/UserName are [unique]. On encode, a NULL char* must be
-         * sent as a null referent (not an empty string). On decode, always
-         * pass the address of the char* so a non-null referent can be stored.
-         */
-        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
-                if (req->ClientName == NULL) {
-                        clientname_ptr = NULL;
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&
+            req->ClientName == NULL) {
+                if (dcerpc_ptr_coder("ClientName", dce, pdu, iov, offset, NULL,
+                                     PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                        return -1;
                 }
-                if (req->UserName == NULL) {
-                        username_ptr = NULL;
-                }
-        }
-        if (dcerpc_ptr_coder("ClientName", dce, pdu, iov, offset, clientname_ptr,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+        } else if (dcerpc_ptr_coder("ClientName", dce, pdu, iov, offset, &req->ClientName,
+                                    PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("UserName", dce, pdu, iov, offset, username_ptr,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&
+            req->UserName == NULL) {
+                if (dcerpc_ptr_coder("UserName", dce, pdu, iov, offset, NULL,
+                                     PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                        return -1;
+                }
+        } else if (dcerpc_ptr_coder("UserName", dce, pdu, iov, offset, &req->UserName,
+                                    PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
 
@@ -3420,12 +3317,13 @@ srvsvc_NetrSessionDel_req_coder(char *name, struct dcerpc_context *dce,
 
 int
 srvsvc_NetrSessionDel_rep_coder(char *name, struct dcerpc_context *dce,
-                                struct dcerpc_pdu *pdu,
-                                struct dcerpc_iovec *iov, int *offset,
-                                void *ptr)
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
         struct srvsvc_NetrSessionDel_rep *rep = ptr;
 
+        (void)name;
         if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
                 return -1;
         }

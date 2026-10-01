@@ -8,4 +8,4 @@ NetrFileEnum: Request
 ---
 NetrFileClose: Request
   ServerName: \\WIN16-1
-  FileId: @Id@
+  FileId: @fi3_id@

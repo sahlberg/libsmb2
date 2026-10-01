@@ -8,5 +8,5 @@ NetrFileEnum: Request
 ---
 NetrFileGetInfo: Request
   ServerName: \\WIN16-1
-  FileId: @Id@
+  FileId: @fi3_id@
   Level: 3
