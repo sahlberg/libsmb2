@@ -56,24 +56,24 @@ void si_cb(struct dcerpc_context *dce, int status,
                        strerror(-status), dcerpc_get_error(dce));
                 exit(10);
         }
-        printf("%-20s %-20s", rep->InfoStruct.ShareInfo1.shi1_netname,
-               rep->InfoStruct.ShareInfo1.shi1_remark);
-        if ((rep->InfoStruct.ShareInfo1.shi1_type & 3) == SRVSVC_STYPE_DISKTREE) {
+        printf("%-20s %-20s", rep->InfoStruct.ShareInfo1.netname,
+               rep->InfoStruct.ShareInfo1.remark);
+        if ((rep->InfoStruct.ShareInfo1.type & 3) == SRVSVC_STYPE_DISKTREE) {
                         printf(" DISKTREE");
         }
-        if ((rep->InfoStruct.ShareInfo1.shi1_type & 3) == SRVSVC_STYPE_PRINTQ) {
+        if ((rep->InfoStruct.ShareInfo1.type & 3) == SRVSVC_STYPE_PRINTQ) {
                 printf(" PRINTQ");
         }
-        if ((rep->InfoStruct.ShareInfo1.shi1_type & 3) == SRVSVC_STYPE_DEVICE) {
+        if ((rep->InfoStruct.ShareInfo1.type & 3) == SRVSVC_STYPE_DEVICE) {
                 printf(" DEVICE");
         }
-        if ((rep->InfoStruct.ShareInfo1.shi1_type & 3) == SRVSVC_STYPE_IPC) {
+        if ((rep->InfoStruct.ShareInfo1.type & 3) == SRVSVC_STYPE_IPC) {
                 printf(" IPC");
         }
-        if (rep->InfoStruct.ShareInfo1.shi1_type & SRVSVC_STYPE_TEMPORARY) {
+        if (rep->InfoStruct.ShareInfo1.type & SRVSVC_STYPE_TEMPORARY) {
                 printf(" TEMPORARY");
         }
-        if (rep->InfoStruct.ShareInfo1.shi1_type & SRVSVC_STYPE_SPECIAL) {
+        if (rep->InfoStruct.ShareInfo1.type & SRVSVC_STYPE_SPECIAL) {
                 printf(" HIDDEN");
         }
 

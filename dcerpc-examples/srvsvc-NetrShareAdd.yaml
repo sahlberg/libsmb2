@@ -3,7 +3,7 @@ NetrShareAdd: Request
   Level: SHARE_INFO_1
   InfoStruct:
     ShareInfo1:
-      shi1_netname: NEW-SNAP
-      shi1_type: STYPE_DISKTREE
-      shi1_remark: Boogaloo
+      netname: NEW-SNAP
+      type: STYPE_DISKTREE
+      remark: Boogaloo
   ParmErr: 5

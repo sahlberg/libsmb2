@@ -162,7 +162,7 @@ enum srvsvc_PLATFORM_ID {
 #define SRVSVC_SV_TYPE_DOMAIN_ENUM       0x80000000U
 
 struct srvsvc_CONNECTION_INFO_0 {
-        uint32_t coni0_id;
+        uint32_t id;
 };
 
 struct srvsvc_CONNECT_INFO_0_CONTAINER {
@@ -171,13 +171,13 @@ struct srvsvc_CONNECT_INFO_0_CONTAINER {
 };
 
 struct srvsvc_CONNECTION_INFO_1 {
-        uint32_t coni1_id;
-        uint32_t coni1_type;
-        uint32_t coni1_num_opens;
-        uint32_t coni1_num_users;
-        uint32_t coni1_time;
-        char * coni1_username;
-        char * coni1_netname;
+        uint32_t id;
+        uint32_t type;
+        uint32_t num_opens;
+        uint32_t num_users;
+        uint32_t time;
+        char * username;
+        char * netname;
 };
 
 struct srvsvc_CONNECT_INFO_1_CONTAINER {
@@ -196,7 +196,7 @@ struct srvsvc_CONNECT_ENUM_STRUCT {
 };
 
 struct srvsvc_FILE_INFO_2 {
-        uint32_t fi2_id;
+        uint32_t id;
 };
 
 struct srvsvc_FILE_INFO_2_CONTAINER {
@@ -205,11 +205,11 @@ struct srvsvc_FILE_INFO_2_CONTAINER {
 };
 
 struct srvsvc_FILE_INFO_3 {
-        uint32_t fi3_id;
-        uint32_t fi3_permissions;
-        uint32_t fi3_num_locks;
-        char * fi3_pathname;
-        char * fi3_username;
+        uint32_t id;
+        uint32_t permissions;
+        uint32_t num_locks;
+        char * pathname;
+        char * username;
 };
 
 struct srvsvc_FILE_INFO_3_CONTAINER {
@@ -233,7 +233,7 @@ union srvsvc_FILE_INFO {
 };
 
 struct srvsvc_SESSION_INFO_0 {
-        char * sesi0_cname;
+        char * cname;
 };
 
 struct srvsvc_SESSION_INFO_0_CONTAINER {
@@ -242,12 +242,12 @@ struct srvsvc_SESSION_INFO_0_CONTAINER {
 };
 
 struct srvsvc_SESSION_INFO_1 {
-        char * sesi1_cname;
-        char * sesi1_username;
-        uint32_t sesi1_num_opens;
-        uint32_t sesi1_time;
-        uint32_t sesi1_idle_time;
-        uint32_t sesi1_user_flags;
+        char * cname;
+        char * username;
+        uint32_t num_opens;
+        uint32_t time;
+        uint32_t idle_time;
+        uint32_t user_flags;
 };
 
 struct srvsvc_SESSION_INFO_1_CONTAINER {
@@ -256,13 +256,13 @@ struct srvsvc_SESSION_INFO_1_CONTAINER {
 };
 
 struct srvsvc_SESSION_INFO_2 {
-        char * sesi2_cname;
-        char * sesi2_username;
-        uint32_t sesi2_num_opens;
-        uint32_t sesi2_time;
-        uint32_t sesi2_idle_time;
-        uint32_t sesi2_user_flags;
-        char * sesi2_cltype_name;
+        char * cname;
+        char * username;
+        uint32_t num_opens;
+        uint32_t time;
+        uint32_t idle_time;
+        uint32_t user_flags;
+        char * cltype_name;
 };
 
 struct srvsvc_SESSION_INFO_2_CONTAINER {
@@ -271,10 +271,10 @@ struct srvsvc_SESSION_INFO_2_CONTAINER {
 };
 
 struct srvsvc_SESSION_INFO_10 {
-        char * sesi10_cname;
-        char * sesi10_username;
-        uint32_t sesi10_time;
-        uint32_t sesi10_idle_time;
+        char * cname;
+        char * username;
+        uint32_t time;
+        uint32_t idle_time;
 };
 
 struct srvsvc_SESSION_INFO_10_CONTAINER {
@@ -283,14 +283,14 @@ struct srvsvc_SESSION_INFO_10_CONTAINER {
 };
 
 struct srvsvc_SESSION_INFO_502 {
-        char * sesi502_cname;
-        char * sesi502_username;
-        uint32_t sesi502_num_opens;
-        uint32_t sesi502_time;
-        uint32_t sesi502_idle_time;
-        uint32_t sesi502_user_flags;
-        char * sesi502_cltype_name;
-        char * sesi502_transport;
+        char * cname;
+        char * username;
+        uint32_t num_opens;
+        uint32_t time;
+        uint32_t idle_time;
+        uint32_t user_flags;
+        char * cltype_name;
+        char * transport;
 };
 
 struct srvsvc_SESSION_INFO_502_CONTAINER {
@@ -312,7 +312,7 @@ struct srvsvc_SESSION_ENUM_STRUCT {
 };
 
 struct srvsvc_SHARE_INFO_0 {
-        char * shi0_netname;
+        char * netname;
 };
 
 struct srvsvc_SHARE_INFO_0_CONTAINER {
@@ -321,9 +321,9 @@ struct srvsvc_SHARE_INFO_0_CONTAINER {
 };
 
 struct srvsvc_SHARE_INFO_1 {
-        char * shi1_netname;
-        uint32_t shi1_type;
-        char * shi1_remark;
+        char * netname;
+        uint32_t type;
+        char * remark;
 };
 
 struct srvsvc_SHARE_INFO_1_CONTAINER {
@@ -332,14 +332,14 @@ struct srvsvc_SHARE_INFO_1_CONTAINER {
 };
 
 struct srvsvc_SHARE_INFO_2 {
-        char * shi2_netname;
-        uint32_t shi2_type;
-        char * shi2_remark;
-        uint32_t shi2_permissions;
-        uint32_t shi2_max_uses;
-        uint32_t shi2_current_uses;
-        char * shi2_path;
-        char * shi2_passwd;
+        char * netname;
+        uint32_t type;
+        char * remark;
+        uint32_t permissions;
+        uint32_t max_uses;
+        uint32_t current_uses;
+        char * path;
+        char * passwd;
 };
 
 struct srvsvc_SHARE_INFO_2_CONTAINER {
@@ -348,10 +348,10 @@ struct srvsvc_SHARE_INFO_2_CONTAINER {
 };
 
 struct srvsvc_SHARE_INFO_501 {
-        char * shi501_netname;
-        uint32_t shi501_type;
-        char * shi501_remark;
-        uint32_t shi501_flags;
+        char * netname;
+        uint32_t type;
+        char * remark;
+        uint32_t flags;
 };
 
 struct srvsvc_SHARE_INFO_501_CONTAINER {
@@ -360,16 +360,16 @@ struct srvsvc_SHARE_INFO_501_CONTAINER {
 };
 
 struct srvsvc_SHARE_INFO_502_I {
-        char * shi502_netname;
-        uint32_t shi502_type;
-        char * shi502_remark;
-        uint32_t shi502_permissions;
-        uint32_t shi502_max_uses;
-        uint32_t shi502_current_uses;
-        char * shi502_path;
-        char * shi502_passwd;
-        uint32_t shi502_reserved;
-        SECURITY_DESCRIPTOR * shi502_security_descriptor;
+        char * netname;
+        uint32_t type;
+        char * remark;
+        uint32_t permissions;
+        uint32_t max_uses;
+        uint32_t current_uses;
+        char * path;
+        char * passwd;
+        uint32_t reserved;
+        SECURITY_DESCRIPTOR * security_descriptor;
 };
 
 struct srvsvc_SHARE_INFO_502_CONTAINER {
@@ -378,17 +378,17 @@ struct srvsvc_SHARE_INFO_502_CONTAINER {
 };
 
 struct srvsvc_SHARE_INFO_503_I {
-        char * shi503_netname;
-        uint32_t shi503_type;
-        char * shi503_remark;
-        uint32_t shi503_permissions;
-        uint32_t shi503_max_uses;
-        uint32_t shi503_current_uses;
-        char * shi503_path;
-        char * shi503_passwd;
-        char * shi503_servername;
-        uint32_t shi503_reserved;
-        SECURITY_DESCRIPTOR * shi503_security_descriptor;
+        char * netname;
+        uint32_t type;
+        char * remark;
+        uint32_t permissions;
+        uint32_t max_uses;
+        uint32_t current_uses;
+        char * path;
+        char * passwd;
+        char * servername;
+        uint32_t reserved;
+        SECURITY_DESCRIPTOR * security_descriptor;
 };
 
 struct srvsvc_SHARE_INFO_503_CONTAINER {
@@ -397,20 +397,20 @@ struct srvsvc_SHARE_INFO_503_CONTAINER {
 };
 
 struct srvsvc_SHARE_INFO_1004 {
-        char * shi1004_remark;
+        char * remark;
 };
 
 struct srvsvc_SHARE_INFO_1005 {
-        uint32_t shi1005_flags;
+        uint32_t flags;
 };
 
 struct srvsvc_SHARE_INFO_1006 {
-        uint32_t shi1006_max_uses;
+        uint32_t max_uses;
 };
 
 struct srvsvc_SHARE_INFO_1501_I {
-        uint32_t shi1501_reserved;
-        SECURITY_DESCRIPTOR * shi1501_security_descriptor;
+        uint32_t reserved;
+        SECURITY_DESCRIPTOR * security_descriptor;
 };
 
 union srvsvc_SHARE_ENUM_UNION {
@@ -441,116 +441,116 @@ union srvsvc_SHARE_INFO {
 };
 
 struct srvsvc_SERVER_INFO_100 {
-        uint32_t sv100_platform_id;
-        char * sv100_name;
+        uint32_t platform_id;
+        char * name;
 };
 
 struct srvsvc_SERVER_INFO_101 {
-        uint32_t sv101_platform_id;
-        char * sv101_name;
-        uint32_t sv101_version_major;
-        uint32_t sv101_version_minor;
-        uint32_t sv101_type;
-        char * sv101_comment;
+        uint32_t platform_id;
+        char * name;
+        uint32_t version_major;
+        uint32_t version_minor;
+        uint32_t type;
+        char * comment;
 };
 
 struct srvsvc_SERVER_INFO_102 {
-        uint32_t sv102_platform_id;
-        char * sv102_name;
-        uint32_t sv102_version_major;
-        uint32_t sv102_version_minor;
-        uint32_t sv102_type;
-        char * sv102_comment;
-        uint32_t sv102_users;
-        int32_t sv102_disc;
-        int32_t sv102_hidden;
-        uint32_t sv102_announce;
-        uint32_t sv102_anndelta;
-        uint32_t sv102_licenses;
-        char * sv102_userpath;
+        uint32_t platform_id;
+        char * name;
+        uint32_t version_major;
+        uint32_t version_minor;
+        uint32_t type;
+        char * comment;
+        uint32_t users;
+        int32_t disc;
+        int32_t hidden;
+        uint32_t announce;
+        uint32_t anndelta;
+        uint32_t licenses;
+        char * userpath;
 };
 
 struct srvsvc_SERVER_INFO_103 {
-        uint32_t sv103_platform_id;
-        char * sv103_name;
-        uint32_t sv103_version_major;
-        uint32_t sv103_version_minor;
-        uint32_t sv103_type;
-        char * sv103_comment;
-        uint32_t sv103_users;
-        int32_t sv103_disc;
-        int32_t sv103_hidden;
-        uint32_t sv103_announce;
-        uint32_t sv103_anndelta;
-        uint32_t sv103_licenses;
-        char * sv103_userpath;
-        uint32_t sv103_capabilities;
+        uint32_t platform_id;
+        char * name;
+        uint32_t version_major;
+        uint32_t version_minor;
+        uint32_t type;
+        char * comment;
+        uint32_t users;
+        int32_t disc;
+        int32_t hidden;
+        uint32_t announce;
+        uint32_t anndelta;
+        uint32_t licenses;
+        char * userpath;
+        uint32_t capabilities;
 };
 
 struct srvsvc_SERVER_INFO_502 {
-        uint32_t sv502_sessopens;
-        uint32_t sv502_sessvcs;
-        uint32_t sv502_opensearch;
-        uint32_t sv502_sizreqbuf;
-        uint32_t sv502_initworkitems;
-        uint32_t sv502_maxworkitems;
-        uint32_t sv502_rawworkitems;
-        uint32_t sv502_irpstacksize;
-        uint32_t sv502_maxrawbuflen;
-        uint32_t sv502_sessusers;
-        uint32_t sv502_sessconns;
-        uint32_t sv502_maxpagedmemoryusage;
-        uint32_t sv502_maxnonpagedmemoryusage;
-        int32_t sv502_enablesoftcompat;
-        int32_t sv502_enableforcedlogoff;
-        int32_t sv502_timesource;
-        int32_t sv502_acceptdownlevelapis;
-        int32_t sv502_lmannounce;
+        uint32_t sessopens;
+        uint32_t sessvcs;
+        uint32_t opensearch;
+        uint32_t sizreqbuf;
+        uint32_t initworkitems;
+        uint32_t maxworkitems;
+        uint32_t rawworkitems;
+        uint32_t irpstacksize;
+        uint32_t maxrawbuflen;
+        uint32_t sessusers;
+        uint32_t sessconns;
+        uint32_t maxpagedmemoryusage;
+        uint32_t maxnonpagedmemoryusage;
+        int32_t enablesoftcompat;
+        int32_t enableforcedlogoff;
+        int32_t timesource;
+        int32_t acceptdownlevelapis;
+        int32_t lmannounce;
 };
 
 struct srvsvc_SERVER_INFO_503 {
-        uint32_t sv503_sessopens;
-        uint32_t sv503_sessvcs;
-        uint32_t sv503_opensearch;
-        uint32_t sv503_sizreqbuf;
-        uint32_t sv503_initworkitems;
-        uint32_t sv503_maxworkitems;
-        uint32_t sv503_rawworkitems;
-        uint32_t sv503_irpstacksize;
-        uint32_t sv503_maxrawbuflen;
-        uint32_t sv503_sessusers;
-        uint32_t sv503_sessconns;
-        uint32_t sv503_maxpagedmemoryusage;
-        uint32_t sv503_maxnonpagedmemoryusage;
-        int32_t sv503_enablesoftcompat;
-        int32_t sv503_enableforcedlogoff;
-        int32_t sv503_timesource;
-        int32_t sv503_acceptdownlevelapis;
-        int32_t sv503_lmannounce;
-        char * sv503_domain;
-        uint32_t sv503_maxcopyreadlen;
-        uint32_t sv503_maxcopywritelen;
-        uint32_t sv503_minkeepsearch;
-        uint32_t sv503_maxkeepsearch;
-        uint32_t sv503_minkeepcomplsearch;
-        uint32_t sv503_maxkeepcomplsearch;
-        uint32_t sv503_threadcountadd;
-        uint32_t sv503_numblockthreads;
-        uint32_t sv503_scavtimeout;
-        uint32_t sv503_minrcvqueue;
-        uint32_t sv503_minfreeworkitems;
-        uint32_t sv503_xactmemsize;
-        uint32_t sv503_threadpriority;
-        uint32_t sv503_maxmpxct;
-        uint32_t sv503_oplockbreakwait;
-        uint32_t sv503_oplockbreakresponsewait;
-        int32_t sv503_enableoplocks;
-        int32_t sv503_enableoplockforceclose;
-        int32_t sv503_enablefcbopens;
-        int32_t sv503_enableraw;
-        int32_t sv503_enablesharednetdrives;
-        uint32_t sv503_minfreeconnections;
-        uint32_t sv503_maxfreeconnections;
+        uint32_t sessopens;
+        uint32_t sessvcs;
+        uint32_t opensearch;
+        uint32_t sizreqbuf;
+        uint32_t initworkitems;
+        uint32_t maxworkitems;
+        uint32_t rawworkitems;
+        uint32_t irpstacksize;
+        uint32_t maxrawbuflen;
+        uint32_t sessusers;
+        uint32_t sessconns;
+        uint32_t maxpagedmemoryusage;
+        uint32_t maxnonpagedmemoryusage;
+        int32_t enablesoftcompat;
+        int32_t enableforcedlogoff;
+        int32_t timesource;
+        int32_t acceptdownlevelapis;
+        int32_t lmannounce;
+        char * domain;
+        uint32_t maxcopyreadlen;
+        uint32_t maxcopywritelen;
+        uint32_t minkeepsearch;
+        uint32_t maxkeepsearch;
+        uint32_t minkeepcomplsearch;
+        uint32_t maxkeepcomplsearch;
+        uint32_t threadcountadd;
+        uint32_t numblockthreads;
+        uint32_t scavtimeout;
+        uint32_t minrcvqueue;
+        uint32_t minfreeworkitems;
+        uint32_t xactmemsize;
+        uint32_t threadpriority;
+        uint32_t maxmpxct;
+        uint32_t oplockbreakwait;
+        uint32_t oplockbreakresponsewait;
+        int32_t enableoplocks;
+        int32_t enableoplockforceclose;
+        int32_t enablefcbopens;
+        int32_t enableraw;
+        int32_t enablesharednetdrives;
+        uint32_t minfreeconnections;
+        uint32_t maxfreeconnections;
 };
 
 union srvsvc_SERVER_INFO {
@@ -563,38 +563,38 @@ union srvsvc_SERVER_INFO {
 };
 
 struct srvsvc_STAT_SERVER_0 {
-        uint32_t sts0_start;
-        uint32_t sts0_fopens;
-        uint32_t sts0_devopens;
-        uint32_t sts0_jobsqueued;
-        uint32_t sts0_sopens;
-        uint32_t sts0_stimedout;
-        uint32_t sts0_serrorout;
-        uint32_t sts0_pwerrors;
-        uint32_t sts0_permerrors;
-        uint32_t sts0_syserrors;
-        uint32_t sts0_bytessent_low;
-        uint32_t sts0_bytessent_high;
-        uint32_t sts0_bytesrcvd_low;
-        uint32_t sts0_bytesrcvd_high;
-        uint32_t sts0_avresponse;
-        uint32_t sts0_reqbufneed;
-        uint32_t sts0_bigbufneed;
+        uint32_t start;
+        uint32_t fopens;
+        uint32_t devopens;
+        uint32_t jobsqueued;
+        uint32_t sopens;
+        uint32_t stimedout;
+        uint32_t serrorout;
+        uint32_t pwerrors;
+        uint32_t permerrors;
+        uint32_t syserrors;
+        uint32_t bytessent_low;
+        uint32_t bytessent_high;
+        uint32_t bytesrcvd_low;
+        uint32_t bytesrcvd_high;
+        uint32_t avresponse;
+        uint32_t reqbufneed;
+        uint32_t bigbufneed;
 };
 
 struct srvsvc_TIME_OF_DAY_INFO {
-        uint32_t tod_elapsedt;
-        uint32_t tod_msecs;
-        uint32_t tod_hours;
-        uint32_t tod_mins;
-        uint32_t tod_secs;
-        uint32_t tod_hunds;
-        int32_t tod_timezone;
-        uint32_t tod_tinterval;
-        uint32_t tod_day;
-        uint32_t tod_month;
-        uint32_t tod_year;
-        uint32_t tod_weekday;
+        uint32_t elapsedt;
+        uint32_t msecs;
+        uint32_t hours;
+        uint32_t mins;
+        uint32_t secs;
+        uint32_t hunds;
+        int32_t timezone;
+        uint32_t tinterval;
+        uint32_t day;
+        uint32_t month;
+        uint32_t year;
+        uint32_t weekday;
 };
 
 struct srvsvc_NetrConnectionEnum_req {

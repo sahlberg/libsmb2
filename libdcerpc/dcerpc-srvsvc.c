@@ -636,7 +636,7 @@ srvsvc_CONNECTION_INFO_0_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_CONNECTION_INFO_0 *s = ptr;
 
         (void)name;
-        if (dcerpc_uint32_coder("coni0_id", dce, pdu, iov, offset, &s->coni0_id)) {
+        if (dcerpc_uint32_coder("id", dce, pdu, iov, offset, &s->id)) {
                 return -1;
         }
 
@@ -708,26 +708,26 @@ srvsvc_CONNECTION_INFO_1_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_CONNECTION_INFO_1 *s = ptr;
 
         (void)name;
-        if (dcerpc_uint32_coder("coni1_id", dce, pdu, iov, offset, &s->coni1_id)) {
+        if (dcerpc_uint32_coder("id", dce, pdu, iov, offset, &s->id)) {
                 return -1;
         }
-        if (srvsvc_SHARE_TYPE_coder("coni1_type", dce, pdu, iov, offset, &s->coni1_type)) {
+        if (srvsvc_SHARE_TYPE_coder("type", dce, pdu, iov, offset, &s->type)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("coni1_num_opens", dce, pdu, iov, offset, &s->coni1_num_opens)) {
+        if (dcerpc_uint32_coder("num_opens", dce, pdu, iov, offset, &s->num_opens)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("coni1_num_users", dce, pdu, iov, offset, &s->coni1_num_users)) {
+        if (dcerpc_uint32_coder("num_users", dce, pdu, iov, offset, &s->num_users)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("coni1_time", dce, pdu, iov, offset, &s->coni1_time)) {
+        if (dcerpc_uint32_coder("time", dce, pdu, iov, offset, &s->time)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("coni1_username", dce, pdu, iov, offset, &s->coni1_username,
+        if (dcerpc_ptr_coder("username", dce, pdu, iov, offset, &s->username,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("coni1_netname", dce, pdu, iov, offset, &s->coni1_netname,
+        if (dcerpc_ptr_coder("netname", dce, pdu, iov, offset, &s->netname,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
@@ -864,7 +864,7 @@ srvsvc_FILE_INFO_2_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_FILE_INFO_2 *s = ptr;
 
         (void)name;
-        if (dcerpc_uint32_coder("fi2_id", dce, pdu, iov, offset, &s->fi2_id)) {
+        if (dcerpc_uint32_coder("id", dce, pdu, iov, offset, &s->id)) {
                 return -1;
         }
 
@@ -936,20 +936,20 @@ srvsvc_FILE_INFO_3_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_FILE_INFO_3 *s = ptr;
 
         (void)name;
-        if (dcerpc_uint32_coder("fi3_id", dce, pdu, iov, offset, &s->fi3_id)) {
+        if (dcerpc_uint32_coder("id", dce, pdu, iov, offset, &s->id)) {
                 return -1;
         }
-        if (srvsvc_FILE_PERMISSIONS_coder("fi3_permissions", dce, pdu, iov, offset, &s->fi3_permissions)) {
+        if (srvsvc_FILE_PERMISSIONS_coder("permissions", dce, pdu, iov, offset, &s->permissions)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("fi3_num_locks", dce, pdu, iov, offset, &s->fi3_num_locks)) {
+        if (dcerpc_uint32_coder("num_locks", dce, pdu, iov, offset, &s->num_locks)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("fi3_pathname", dce, pdu, iov, offset, &s->fi3_pathname,
+        if (dcerpc_ptr_coder("pathname", dce, pdu, iov, offset, &s->pathname,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("fi3_username", dce, pdu, iov, offset, &s->fi3_username,
+        if (dcerpc_ptr_coder("username", dce, pdu, iov, offset, &s->username,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
@@ -1132,7 +1132,7 @@ srvsvc_SESSION_INFO_0_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_SESSION_INFO_0 *s = ptr;
 
         (void)name;
-        if (dcerpc_ptr_coder("sesi0_cname", dce, pdu, iov, offset, &s->sesi0_cname,
+        if (dcerpc_ptr_coder("cname", dce, pdu, iov, offset, &s->cname,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
@@ -1205,24 +1205,24 @@ srvsvc_SESSION_INFO_1_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_SESSION_INFO_1 *s = ptr;
 
         (void)name;
-        if (dcerpc_ptr_coder("sesi1_cname", dce, pdu, iov, offset, &s->sesi1_cname,
+        if (dcerpc_ptr_coder("cname", dce, pdu, iov, offset, &s->cname,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("sesi1_username", dce, pdu, iov, offset, &s->sesi1_username,
+        if (dcerpc_ptr_coder("username", dce, pdu, iov, offset, &s->username,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sesi1_num_opens", dce, pdu, iov, offset, &s->sesi1_num_opens)) {
+        if (dcerpc_uint32_coder("num_opens", dce, pdu, iov, offset, &s->num_opens)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sesi1_time", dce, pdu, iov, offset, &s->sesi1_time)) {
+        if (dcerpc_uint32_coder("time", dce, pdu, iov, offset, &s->time)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sesi1_idle_time", dce, pdu, iov, offset, &s->sesi1_idle_time)) {
+        if (dcerpc_uint32_coder("idle_time", dce, pdu, iov, offset, &s->idle_time)) {
                 return -1;
         }
-        if (srvsvc_SESSION_USER_FLAGS_coder("sesi1_user_flags", dce, pdu, iov, offset, &s->sesi1_user_flags)) {
+        if (srvsvc_SESSION_USER_FLAGS_coder("user_flags", dce, pdu, iov, offset, &s->user_flags)) {
                 return -1;
         }
 
@@ -1294,27 +1294,27 @@ srvsvc_SESSION_INFO_2_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_SESSION_INFO_2 *s = ptr;
 
         (void)name;
-        if (dcerpc_ptr_coder("sesi2_cname", dce, pdu, iov, offset, &s->sesi2_cname,
+        if (dcerpc_ptr_coder("cname", dce, pdu, iov, offset, &s->cname,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("sesi2_username", dce, pdu, iov, offset, &s->sesi2_username,
+        if (dcerpc_ptr_coder("username", dce, pdu, iov, offset, &s->username,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sesi2_num_opens", dce, pdu, iov, offset, &s->sesi2_num_opens)) {
+        if (dcerpc_uint32_coder("num_opens", dce, pdu, iov, offset, &s->num_opens)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sesi2_time", dce, pdu, iov, offset, &s->sesi2_time)) {
+        if (dcerpc_uint32_coder("time", dce, pdu, iov, offset, &s->time)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sesi2_idle_time", dce, pdu, iov, offset, &s->sesi2_idle_time)) {
+        if (dcerpc_uint32_coder("idle_time", dce, pdu, iov, offset, &s->idle_time)) {
                 return -1;
         }
-        if (srvsvc_SESSION_USER_FLAGS_coder("sesi2_user_flags", dce, pdu, iov, offset, &s->sesi2_user_flags)) {
+        if (srvsvc_SESSION_USER_FLAGS_coder("user_flags", dce, pdu, iov, offset, &s->user_flags)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("sesi2_cltype_name", dce, pdu, iov, offset, &s->sesi2_cltype_name,
+        if (dcerpc_ptr_coder("cltype_name", dce, pdu, iov, offset, &s->cltype_name,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
@@ -1387,18 +1387,18 @@ srvsvc_SESSION_INFO_10_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_SESSION_INFO_10 *s = ptr;
 
         (void)name;
-        if (dcerpc_ptr_coder("sesi10_cname", dce, pdu, iov, offset, &s->sesi10_cname,
+        if (dcerpc_ptr_coder("cname", dce, pdu, iov, offset, &s->cname,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("sesi10_username", dce, pdu, iov, offset, &s->sesi10_username,
+        if (dcerpc_ptr_coder("username", dce, pdu, iov, offset, &s->username,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sesi10_time", dce, pdu, iov, offset, &s->sesi10_time)) {
+        if (dcerpc_uint32_coder("time", dce, pdu, iov, offset, &s->time)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sesi10_idle_time", dce, pdu, iov, offset, &s->sesi10_idle_time)) {
+        if (dcerpc_uint32_coder("idle_time", dce, pdu, iov, offset, &s->idle_time)) {
                 return -1;
         }
 
@@ -1470,31 +1470,31 @@ srvsvc_SESSION_INFO_502_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_SESSION_INFO_502 *s = ptr;
 
         (void)name;
-        if (dcerpc_ptr_coder("sesi502_cname", dce, pdu, iov, offset, &s->sesi502_cname,
+        if (dcerpc_ptr_coder("cname", dce, pdu, iov, offset, &s->cname,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("sesi502_username", dce, pdu, iov, offset, &s->sesi502_username,
+        if (dcerpc_ptr_coder("username", dce, pdu, iov, offset, &s->username,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sesi502_num_opens", dce, pdu, iov, offset, &s->sesi502_num_opens)) {
+        if (dcerpc_uint32_coder("num_opens", dce, pdu, iov, offset, &s->num_opens)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sesi502_time", dce, pdu, iov, offset, &s->sesi502_time)) {
+        if (dcerpc_uint32_coder("time", dce, pdu, iov, offset, &s->time)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sesi502_idle_time", dce, pdu, iov, offset, &s->sesi502_idle_time)) {
+        if (dcerpc_uint32_coder("idle_time", dce, pdu, iov, offset, &s->idle_time)) {
                 return -1;
         }
-        if (srvsvc_SESSION_USER_FLAGS_coder("sesi502_user_flags", dce, pdu, iov, offset, &s->sesi502_user_flags)) {
+        if (srvsvc_SESSION_USER_FLAGS_coder("user_flags", dce, pdu, iov, offset, &s->user_flags)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("sesi502_cltype_name", dce, pdu, iov, offset, &s->sesi502_cltype_name,
+        if (dcerpc_ptr_coder("cltype_name", dce, pdu, iov, offset, &s->cltype_name,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("sesi502_transport", dce, pdu, iov, offset, &s->sesi502_transport,
+        if (dcerpc_ptr_coder("transport", dce, pdu, iov, offset, &s->transport,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
@@ -1649,7 +1649,7 @@ srvsvc_SHARE_INFO_0_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_SHARE_INFO_0 *s = ptr;
 
         (void)name;
-        if (dcerpc_ptr_coder("shi0_netname", dce, pdu, iov, offset, &s->shi0_netname,
+        if (dcerpc_ptr_coder("netname", dce, pdu, iov, offset, &s->netname,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
@@ -1722,14 +1722,14 @@ srvsvc_SHARE_INFO_1_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_SHARE_INFO_1 *s = ptr;
 
         (void)name;
-        if (dcerpc_ptr_coder("shi1_netname", dce, pdu, iov, offset, &s->shi1_netname,
+        if (dcerpc_ptr_coder("netname", dce, pdu, iov, offset, &s->netname,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (srvsvc_SHARE_TYPE_coder("shi1_type", dce, pdu, iov, offset, &s->shi1_type)) {
+        if (srvsvc_SHARE_TYPE_coder("type", dce, pdu, iov, offset, &s->type)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("shi1_remark", dce, pdu, iov, offset, &s->shi1_remark,
+        if (dcerpc_ptr_coder("remark", dce, pdu, iov, offset, &s->remark,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
@@ -1802,31 +1802,31 @@ srvsvc_SHARE_INFO_2_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_SHARE_INFO_2 *s = ptr;
 
         (void)name;
-        if (dcerpc_ptr_coder("shi2_netname", dce, pdu, iov, offset, &s->shi2_netname,
+        if (dcerpc_ptr_coder("netname", dce, pdu, iov, offset, &s->netname,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (srvsvc_SHARE_TYPE_coder("shi2_type", dce, pdu, iov, offset, &s->shi2_type)) {
+        if (srvsvc_SHARE_TYPE_coder("type", dce, pdu, iov, offset, &s->type)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("shi2_remark", dce, pdu, iov, offset, &s->shi2_remark,
+        if (dcerpc_ptr_coder("remark", dce, pdu, iov, offset, &s->remark,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (srvsvc_SHARE_PERMISSIONS_coder("shi2_permissions", dce, pdu, iov, offset, &s->shi2_permissions)) {
+        if (srvsvc_SHARE_PERMISSIONS_coder("permissions", dce, pdu, iov, offset, &s->permissions)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("shi2_max_uses", dce, pdu, iov, offset, &s->shi2_max_uses)) {
+        if (dcerpc_uint32_coder("max_uses", dce, pdu, iov, offset, &s->max_uses)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("shi2_current_uses", dce, pdu, iov, offset, &s->shi2_current_uses)) {
+        if (dcerpc_uint32_coder("current_uses", dce, pdu, iov, offset, &s->current_uses)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("shi2_path", dce, pdu, iov, offset, &s->shi2_path,
+        if (dcerpc_ptr_coder("path", dce, pdu, iov, offset, &s->path,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("shi2_passwd", dce, pdu, iov, offset, &s->shi2_passwd,
+        if (dcerpc_ptr_coder("passwd", dce, pdu, iov, offset, &s->passwd,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
@@ -1899,18 +1899,18 @@ srvsvc_SHARE_INFO_501_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_SHARE_INFO_501 *s = ptr;
 
         (void)name;
-        if (dcerpc_ptr_coder("shi501_netname", dce, pdu, iov, offset, &s->shi501_netname,
+        if (dcerpc_ptr_coder("netname", dce, pdu, iov, offset, &s->netname,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (srvsvc_SHARE_TYPE_coder("shi501_type", dce, pdu, iov, offset, &s->shi501_type)) {
+        if (srvsvc_SHARE_TYPE_coder("type", dce, pdu, iov, offset, &s->type)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("shi501_remark", dce, pdu, iov, offset, &s->shi501_remark,
+        if (dcerpc_ptr_coder("remark", dce, pdu, iov, offset, &s->remark,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (srvsvc_SHARE_FLAGS_coder("shi501_flags", dce, pdu, iov, offset, &s->shi501_flags)) {
+        if (srvsvc_SHARE_FLAGS_coder("flags", dce, pdu, iov, offset, &s->flags)) {
                 return -1;
         }
 
@@ -1982,41 +1982,41 @@ srvsvc_SHARE_INFO_502_I_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_SHARE_INFO_502_I *s = ptr;
 
         (void)name;
-        if (dcerpc_ptr_coder("shi502_netname", dce, pdu, iov, offset, &s->shi502_netname,
+        if (dcerpc_ptr_coder("netname", dce, pdu, iov, offset, &s->netname,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (srvsvc_SHARE_TYPE_coder("shi502_type", dce, pdu, iov, offset, &s->shi502_type)) {
+        if (srvsvc_SHARE_TYPE_coder("type", dce, pdu, iov, offset, &s->type)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("shi502_remark", dce, pdu, iov, offset, &s->shi502_remark,
+        if (dcerpc_ptr_coder("remark", dce, pdu, iov, offset, &s->remark,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (srvsvc_SHARE_PERMISSIONS_coder("shi502_permissions", dce, pdu, iov, offset, &s->shi502_permissions)) {
+        if (srvsvc_SHARE_PERMISSIONS_coder("permissions", dce, pdu, iov, offset, &s->permissions)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("shi502_max_uses", dce, pdu, iov, offset, &s->shi502_max_uses)) {
+        if (dcerpc_uint32_coder("max_uses", dce, pdu, iov, offset, &s->max_uses)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("shi502_current_uses", dce, pdu, iov, offset, &s->shi502_current_uses)) {
+        if (dcerpc_uint32_coder("current_uses", dce, pdu, iov, offset, &s->current_uses)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("shi502_path", dce, pdu, iov, offset, &s->shi502_path,
+        if (dcerpc_ptr_coder("path", dce, pdu, iov, offset, &s->path,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("shi502_passwd", dce, pdu, iov, offset, &s->shi502_passwd,
+        if (dcerpc_ptr_coder("passwd", dce, pdu, iov, offset, &s->passwd,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_blob_len_coder("shi502_reserved", dce, pdu, iov, offset,
-                                  &s->shi502_reserved, s->shi502_security_descriptor,
+        if (dcerpc_blob_len_coder("reserved", dce, pdu, iov, offset,
+                                  &s->reserved, s->security_descriptor,
                                   dcerpc_SECURITY_DESCRIPTOR_coder)) {
                 return -1;
         }
-        if (dcerpc_blob_coder("shi502_security_descriptor", dce, pdu, iov, offset,
-                              s->shi502_reserved, &s->shi502_security_descriptor,
+        if (dcerpc_blob_coder("security_descriptor", dce, pdu, iov, offset,
+                              s->reserved, &s->security_descriptor,
                               sizeof(SECURITY_DESCRIPTOR),
                               dcerpc_SECURITY_DESCRIPTOR_coder)) {
                 return -1;
@@ -2090,45 +2090,45 @@ srvsvc_SHARE_INFO_503_I_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_SHARE_INFO_503_I *s = ptr;
 
         (void)name;
-        if (dcerpc_ptr_coder("shi503_netname", dce, pdu, iov, offset, &s->shi503_netname,
+        if (dcerpc_ptr_coder("netname", dce, pdu, iov, offset, &s->netname,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (srvsvc_SHARE_TYPE_coder("shi503_type", dce, pdu, iov, offset, &s->shi503_type)) {
+        if (srvsvc_SHARE_TYPE_coder("type", dce, pdu, iov, offset, &s->type)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("shi503_remark", dce, pdu, iov, offset, &s->shi503_remark,
+        if (dcerpc_ptr_coder("remark", dce, pdu, iov, offset, &s->remark,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (srvsvc_SHARE_PERMISSIONS_coder("shi503_permissions", dce, pdu, iov, offset, &s->shi503_permissions)) {
+        if (srvsvc_SHARE_PERMISSIONS_coder("permissions", dce, pdu, iov, offset, &s->permissions)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("shi503_max_uses", dce, pdu, iov, offset, &s->shi503_max_uses)) {
+        if (dcerpc_uint32_coder("max_uses", dce, pdu, iov, offset, &s->max_uses)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("shi503_current_uses", dce, pdu, iov, offset, &s->shi503_current_uses)) {
+        if (dcerpc_uint32_coder("current_uses", dce, pdu, iov, offset, &s->current_uses)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("shi503_path", dce, pdu, iov, offset, &s->shi503_path,
+        if (dcerpc_ptr_coder("path", dce, pdu, iov, offset, &s->path,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("shi503_passwd", dce, pdu, iov, offset, &s->shi503_passwd,
+        if (dcerpc_ptr_coder("passwd", dce, pdu, iov, offset, &s->passwd,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("shi503_servername", dce, pdu, iov, offset, &s->shi503_servername,
+        if (dcerpc_ptr_coder("servername", dce, pdu, iov, offset, &s->servername,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_blob_len_coder("shi503_reserved", dce, pdu, iov, offset,
-                                  &s->shi503_reserved, s->shi503_security_descriptor,
+        if (dcerpc_blob_len_coder("reserved", dce, pdu, iov, offset,
+                                  &s->reserved, s->security_descriptor,
                                   dcerpc_SECURITY_DESCRIPTOR_coder)) {
                 return -1;
         }
-        if (dcerpc_blob_coder("shi503_security_descriptor", dce, pdu, iov, offset,
-                              s->shi503_reserved, &s->shi503_security_descriptor,
+        if (dcerpc_blob_coder("security_descriptor", dce, pdu, iov, offset,
+                              s->reserved, &s->security_descriptor,
                               sizeof(SECURITY_DESCRIPTOR),
                               dcerpc_SECURITY_DESCRIPTOR_coder)) {
                 return -1;
@@ -2202,7 +2202,7 @@ srvsvc_SHARE_INFO_1004_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_SHARE_INFO_1004 *s = ptr;
 
         (void)name;
-        if (dcerpc_ptr_coder("shi1004_remark", dce, pdu, iov, offset, &s->shi1004_remark,
+        if (dcerpc_ptr_coder("remark", dce, pdu, iov, offset, &s->remark,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
@@ -2229,7 +2229,7 @@ srvsvc_SHARE_INFO_1005_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_SHARE_INFO_1005 *s = ptr;
 
         (void)name;
-        if (srvsvc_SHARE_FLAGS_coder("shi1005_flags", dce, pdu, iov, offset, &s->shi1005_flags)) {
+        if (srvsvc_SHARE_FLAGS_coder("flags", dce, pdu, iov, offset, &s->flags)) {
                 return -1;
         }
 
@@ -2255,7 +2255,7 @@ srvsvc_SHARE_INFO_1006_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_SHARE_INFO_1006 *s = ptr;
 
         (void)name;
-        if (dcerpc_uint32_coder("shi1006_max_uses", dce, pdu, iov, offset, &s->shi1006_max_uses)) {
+        if (dcerpc_uint32_coder("max_uses", dce, pdu, iov, offset, &s->max_uses)) {
                 return -1;
         }
 
@@ -2281,13 +2281,13 @@ srvsvc_SHARE_INFO_1501_I_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_SHARE_INFO_1501_I *s = ptr;
 
         (void)name;
-        if (dcerpc_blob_len_coder("shi1501_reserved", dce, pdu, iov, offset,
-                                  &s->shi1501_reserved, s->shi1501_security_descriptor,
+        if (dcerpc_blob_len_coder("reserved", dce, pdu, iov, offset,
+                                  &s->reserved, s->security_descriptor,
                                   dcerpc_SECURITY_DESCRIPTOR_coder)) {
                 return -1;
         }
-        if (dcerpc_blob_coder("shi1501_security_descriptor", dce, pdu, iov, offset,
-                              s->shi1501_reserved, &s->shi1501_security_descriptor,
+        if (dcerpc_blob_coder("security_descriptor", dce, pdu, iov, offset,
+                              s->reserved, &s->security_descriptor,
                               sizeof(SECURITY_DESCRIPTOR),
                               dcerpc_SECURITY_DESCRIPTOR_coder)) {
                 return -1;
@@ -2497,10 +2497,10 @@ srvsvc_SERVER_INFO_100_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_SERVER_INFO_100 *s = ptr;
 
         (void)name;
-        if (srvsvc_PLATFORM_ID_coder("sv100_platform_id", dce, pdu, iov, offset, &s->sv100_platform_id)) {
+        if (srvsvc_PLATFORM_ID_coder("platform_id", dce, pdu, iov, offset, &s->platform_id)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("sv100_name", dce, pdu, iov, offset, &s->sv100_name,
+        if (dcerpc_ptr_coder("name", dce, pdu, iov, offset, &s->name,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
@@ -2527,23 +2527,23 @@ srvsvc_SERVER_INFO_101_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_SERVER_INFO_101 *s = ptr;
 
         (void)name;
-        if (srvsvc_PLATFORM_ID_coder("sv101_platform_id", dce, pdu, iov, offset, &s->sv101_platform_id)) {
+        if (srvsvc_PLATFORM_ID_coder("platform_id", dce, pdu, iov, offset, &s->platform_id)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("sv101_name", dce, pdu, iov, offset, &s->sv101_name,
+        if (dcerpc_ptr_coder("name", dce, pdu, iov, offset, &s->name,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv101_version_major", dce, pdu, iov, offset, &s->sv101_version_major)) {
+        if (dcerpc_uint32_coder("version_major", dce, pdu, iov, offset, &s->version_major)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv101_version_minor", dce, pdu, iov, offset, &s->sv101_version_minor)) {
+        if (dcerpc_uint32_coder("version_minor", dce, pdu, iov, offset, &s->version_minor)) {
                 return -1;
         }
-        if (srvsvc_SV_TYPE_coder("sv101_type", dce, pdu, iov, offset, &s->sv101_type)) {
+        if (srvsvc_SV_TYPE_coder("type", dce, pdu, iov, offset, &s->type)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("sv101_comment", dce, pdu, iov, offset, &s->sv101_comment,
+        if (dcerpc_ptr_coder("comment", dce, pdu, iov, offset, &s->comment,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
@@ -2570,45 +2570,45 @@ srvsvc_SERVER_INFO_102_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_SERVER_INFO_102 *s = ptr;
 
         (void)name;
-        if (srvsvc_PLATFORM_ID_coder("sv102_platform_id", dce, pdu, iov, offset, &s->sv102_platform_id)) {
+        if (srvsvc_PLATFORM_ID_coder("platform_id", dce, pdu, iov, offset, &s->platform_id)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("sv102_name", dce, pdu, iov, offset, &s->sv102_name,
+        if (dcerpc_ptr_coder("name", dce, pdu, iov, offset, &s->name,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv102_version_major", dce, pdu, iov, offset, &s->sv102_version_major)) {
+        if (dcerpc_uint32_coder("version_major", dce, pdu, iov, offset, &s->version_major)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv102_version_minor", dce, pdu, iov, offset, &s->sv102_version_minor)) {
+        if (dcerpc_uint32_coder("version_minor", dce, pdu, iov, offset, &s->version_minor)) {
                 return -1;
         }
-        if (srvsvc_SV_TYPE_coder("sv102_type", dce, pdu, iov, offset, &s->sv102_type)) {
+        if (srvsvc_SV_TYPE_coder("type", dce, pdu, iov, offset, &s->type)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("sv102_comment", dce, pdu, iov, offset, &s->sv102_comment,
+        if (dcerpc_ptr_coder("comment", dce, pdu, iov, offset, &s->comment,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv102_users", dce, pdu, iov, offset, &s->sv102_users)) {
+        if (dcerpc_uint32_coder("users", dce, pdu, iov, offset, &s->users)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv102_disc", dce, pdu, iov, offset, &s->sv102_disc)) {
+        if (dcerpc_uint32_coder("disc", dce, pdu, iov, offset, &s->disc)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv102_hidden", dce, pdu, iov, offset, &s->sv102_hidden)) {
+        if (dcerpc_uint32_coder("hidden", dce, pdu, iov, offset, &s->hidden)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv102_announce", dce, pdu, iov, offset, &s->sv102_announce)) {
+        if (dcerpc_uint32_coder("announce", dce, pdu, iov, offset, &s->announce)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv102_anndelta", dce, pdu, iov, offset, &s->sv102_anndelta)) {
+        if (dcerpc_uint32_coder("anndelta", dce, pdu, iov, offset, &s->anndelta)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv102_licenses", dce, pdu, iov, offset, &s->sv102_licenses)) {
+        if (dcerpc_uint32_coder("licenses", dce, pdu, iov, offset, &s->licenses)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("sv102_userpath", dce, pdu, iov, offset, &s->sv102_userpath,
+        if (dcerpc_ptr_coder("userpath", dce, pdu, iov, offset, &s->userpath,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
@@ -2635,49 +2635,49 @@ srvsvc_SERVER_INFO_103_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_SERVER_INFO_103 *s = ptr;
 
         (void)name;
-        if (srvsvc_PLATFORM_ID_coder("sv103_platform_id", dce, pdu, iov, offset, &s->sv103_platform_id)) {
+        if (srvsvc_PLATFORM_ID_coder("platform_id", dce, pdu, iov, offset, &s->platform_id)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("sv103_name", dce, pdu, iov, offset, &s->sv103_name,
+        if (dcerpc_ptr_coder("name", dce, pdu, iov, offset, &s->name,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv103_version_major", dce, pdu, iov, offset, &s->sv103_version_major)) {
+        if (dcerpc_uint32_coder("version_major", dce, pdu, iov, offset, &s->version_major)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv103_version_minor", dce, pdu, iov, offset, &s->sv103_version_minor)) {
+        if (dcerpc_uint32_coder("version_minor", dce, pdu, iov, offset, &s->version_minor)) {
                 return -1;
         }
-        if (srvsvc_SV_TYPE_coder("sv103_type", dce, pdu, iov, offset, &s->sv103_type)) {
+        if (srvsvc_SV_TYPE_coder("type", dce, pdu, iov, offset, &s->type)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("sv103_comment", dce, pdu, iov, offset, &s->sv103_comment,
+        if (dcerpc_ptr_coder("comment", dce, pdu, iov, offset, &s->comment,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv103_users", dce, pdu, iov, offset, &s->sv103_users)) {
+        if (dcerpc_uint32_coder("users", dce, pdu, iov, offset, &s->users)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv103_disc", dce, pdu, iov, offset, &s->sv103_disc)) {
+        if (dcerpc_uint32_coder("disc", dce, pdu, iov, offset, &s->disc)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv103_hidden", dce, pdu, iov, offset, &s->sv103_hidden)) {
+        if (dcerpc_uint32_coder("hidden", dce, pdu, iov, offset, &s->hidden)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv103_announce", dce, pdu, iov, offset, &s->sv103_announce)) {
+        if (dcerpc_uint32_coder("announce", dce, pdu, iov, offset, &s->announce)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv103_anndelta", dce, pdu, iov, offset, &s->sv103_anndelta)) {
+        if (dcerpc_uint32_coder("anndelta", dce, pdu, iov, offset, &s->anndelta)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv103_licenses", dce, pdu, iov, offset, &s->sv103_licenses)) {
+        if (dcerpc_uint32_coder("licenses", dce, pdu, iov, offset, &s->licenses)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("sv103_userpath", dce, pdu, iov, offset, &s->sv103_userpath,
+        if (dcerpc_ptr_coder("userpath", dce, pdu, iov, offset, &s->userpath,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv103_capabilities", dce, pdu, iov, offset, &s->sv103_capabilities)) {
+        if (dcerpc_uint32_coder("capabilities", dce, pdu, iov, offset, &s->capabilities)) {
                 return -1;
         }
 
@@ -2703,58 +2703,58 @@ srvsvc_SERVER_INFO_502_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_SERVER_INFO_502 *s = ptr;
 
         (void)name;
-        if (dcerpc_uint32_coder("sv502_sessopens", dce, pdu, iov, offset, &s->sv502_sessopens)) {
+        if (dcerpc_uint32_coder("sessopens", dce, pdu, iov, offset, &s->sessopens)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv502_sessvcs", dce, pdu, iov, offset, &s->sv502_sessvcs)) {
+        if (dcerpc_uint32_coder("sessvcs", dce, pdu, iov, offset, &s->sessvcs)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv502_opensearch", dce, pdu, iov, offset, &s->sv502_opensearch)) {
+        if (dcerpc_uint32_coder("opensearch", dce, pdu, iov, offset, &s->opensearch)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv502_sizreqbuf", dce, pdu, iov, offset, &s->sv502_sizreqbuf)) {
+        if (dcerpc_uint32_coder("sizreqbuf", dce, pdu, iov, offset, &s->sizreqbuf)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv502_initworkitems", dce, pdu, iov, offset, &s->sv502_initworkitems)) {
+        if (dcerpc_uint32_coder("initworkitems", dce, pdu, iov, offset, &s->initworkitems)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv502_maxworkitems", dce, pdu, iov, offset, &s->sv502_maxworkitems)) {
+        if (dcerpc_uint32_coder("maxworkitems", dce, pdu, iov, offset, &s->maxworkitems)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv502_rawworkitems", dce, pdu, iov, offset, &s->sv502_rawworkitems)) {
+        if (dcerpc_uint32_coder("rawworkitems", dce, pdu, iov, offset, &s->rawworkitems)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv502_irpstacksize", dce, pdu, iov, offset, &s->sv502_irpstacksize)) {
+        if (dcerpc_uint32_coder("irpstacksize", dce, pdu, iov, offset, &s->irpstacksize)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv502_maxrawbuflen", dce, pdu, iov, offset, &s->sv502_maxrawbuflen)) {
+        if (dcerpc_uint32_coder("maxrawbuflen", dce, pdu, iov, offset, &s->maxrawbuflen)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv502_sessusers", dce, pdu, iov, offset, &s->sv502_sessusers)) {
+        if (dcerpc_uint32_coder("sessusers", dce, pdu, iov, offset, &s->sessusers)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv502_sessconns", dce, pdu, iov, offset, &s->sv502_sessconns)) {
+        if (dcerpc_uint32_coder("sessconns", dce, pdu, iov, offset, &s->sessconns)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv502_maxpagedmemoryusage", dce, pdu, iov, offset, &s->sv502_maxpagedmemoryusage)) {
+        if (dcerpc_uint32_coder("maxpagedmemoryusage", dce, pdu, iov, offset, &s->maxpagedmemoryusage)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv502_maxnonpagedmemoryusage", dce, pdu, iov, offset, &s->sv502_maxnonpagedmemoryusage)) {
+        if (dcerpc_uint32_coder("maxnonpagedmemoryusage", dce, pdu, iov, offset, &s->maxnonpagedmemoryusage)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv502_enablesoftcompat", dce, pdu, iov, offset, &s->sv502_enablesoftcompat)) {
+        if (dcerpc_uint32_coder("enablesoftcompat", dce, pdu, iov, offset, &s->enablesoftcompat)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv502_enableforcedlogoff", dce, pdu, iov, offset, &s->sv502_enableforcedlogoff)) {
+        if (dcerpc_uint32_coder("enableforcedlogoff", dce, pdu, iov, offset, &s->enableforcedlogoff)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv502_timesource", dce, pdu, iov, offset, &s->sv502_timesource)) {
+        if (dcerpc_uint32_coder("timesource", dce, pdu, iov, offset, &s->timesource)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv502_acceptdownlevelapis", dce, pdu, iov, offset, &s->sv502_acceptdownlevelapis)) {
+        if (dcerpc_uint32_coder("acceptdownlevelapis", dce, pdu, iov, offset, &s->acceptdownlevelapis)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv502_lmannounce", dce, pdu, iov, offset, &s->sv502_lmannounce)) {
+        if (dcerpc_uint32_coder("lmannounce", dce, pdu, iov, offset, &s->lmannounce)) {
                 return -1;
         }
 
@@ -2780,131 +2780,131 @@ srvsvc_SERVER_INFO_503_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_SERVER_INFO_503 *s = ptr;
 
         (void)name;
-        if (dcerpc_uint32_coder("sv503_sessopens", dce, pdu, iov, offset, &s->sv503_sessopens)) {
+        if (dcerpc_uint32_coder("sessopens", dce, pdu, iov, offset, &s->sessopens)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_sessvcs", dce, pdu, iov, offset, &s->sv503_sessvcs)) {
+        if (dcerpc_uint32_coder("sessvcs", dce, pdu, iov, offset, &s->sessvcs)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_opensearch", dce, pdu, iov, offset, &s->sv503_opensearch)) {
+        if (dcerpc_uint32_coder("opensearch", dce, pdu, iov, offset, &s->opensearch)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_sizreqbuf", dce, pdu, iov, offset, &s->sv503_sizreqbuf)) {
+        if (dcerpc_uint32_coder("sizreqbuf", dce, pdu, iov, offset, &s->sizreqbuf)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_initworkitems", dce, pdu, iov, offset, &s->sv503_initworkitems)) {
+        if (dcerpc_uint32_coder("initworkitems", dce, pdu, iov, offset, &s->initworkitems)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_maxworkitems", dce, pdu, iov, offset, &s->sv503_maxworkitems)) {
+        if (dcerpc_uint32_coder("maxworkitems", dce, pdu, iov, offset, &s->maxworkitems)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_rawworkitems", dce, pdu, iov, offset, &s->sv503_rawworkitems)) {
+        if (dcerpc_uint32_coder("rawworkitems", dce, pdu, iov, offset, &s->rawworkitems)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_irpstacksize", dce, pdu, iov, offset, &s->sv503_irpstacksize)) {
+        if (dcerpc_uint32_coder("irpstacksize", dce, pdu, iov, offset, &s->irpstacksize)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_maxrawbuflen", dce, pdu, iov, offset, &s->sv503_maxrawbuflen)) {
+        if (dcerpc_uint32_coder("maxrawbuflen", dce, pdu, iov, offset, &s->maxrawbuflen)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_sessusers", dce, pdu, iov, offset, &s->sv503_sessusers)) {
+        if (dcerpc_uint32_coder("sessusers", dce, pdu, iov, offset, &s->sessusers)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_sessconns", dce, pdu, iov, offset, &s->sv503_sessconns)) {
+        if (dcerpc_uint32_coder("sessconns", dce, pdu, iov, offset, &s->sessconns)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_maxpagedmemoryusage", dce, pdu, iov, offset, &s->sv503_maxpagedmemoryusage)) {
+        if (dcerpc_uint32_coder("maxpagedmemoryusage", dce, pdu, iov, offset, &s->maxpagedmemoryusage)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_maxnonpagedmemoryusage", dce, pdu, iov, offset, &s->sv503_maxnonpagedmemoryusage)) {
+        if (dcerpc_uint32_coder("maxnonpagedmemoryusage", dce, pdu, iov, offset, &s->maxnonpagedmemoryusage)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_enablesoftcompat", dce, pdu, iov, offset, &s->sv503_enablesoftcompat)) {
+        if (dcerpc_uint32_coder("enablesoftcompat", dce, pdu, iov, offset, &s->enablesoftcompat)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_enableforcedlogoff", dce, pdu, iov, offset, &s->sv503_enableforcedlogoff)) {
+        if (dcerpc_uint32_coder("enableforcedlogoff", dce, pdu, iov, offset, &s->enableforcedlogoff)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_timesource", dce, pdu, iov, offset, &s->sv503_timesource)) {
+        if (dcerpc_uint32_coder("timesource", dce, pdu, iov, offset, &s->timesource)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_acceptdownlevelapis", dce, pdu, iov, offset, &s->sv503_acceptdownlevelapis)) {
+        if (dcerpc_uint32_coder("acceptdownlevelapis", dce, pdu, iov, offset, &s->acceptdownlevelapis)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_lmannounce", dce, pdu, iov, offset, &s->sv503_lmannounce)) {
+        if (dcerpc_uint32_coder("lmannounce", dce, pdu, iov, offset, &s->lmannounce)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("sv503_domain", dce, pdu, iov, offset, &s->sv503_domain,
+        if (dcerpc_ptr_coder("domain", dce, pdu, iov, offset, &s->domain,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_maxcopyreadlen", dce, pdu, iov, offset, &s->sv503_maxcopyreadlen)) {
+        if (dcerpc_uint32_coder("maxcopyreadlen", dce, pdu, iov, offset, &s->maxcopyreadlen)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_maxcopywritelen", dce, pdu, iov, offset, &s->sv503_maxcopywritelen)) {
+        if (dcerpc_uint32_coder("maxcopywritelen", dce, pdu, iov, offset, &s->maxcopywritelen)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_minkeepsearch", dce, pdu, iov, offset, &s->sv503_minkeepsearch)) {
+        if (dcerpc_uint32_coder("minkeepsearch", dce, pdu, iov, offset, &s->minkeepsearch)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_maxkeepsearch", dce, pdu, iov, offset, &s->sv503_maxkeepsearch)) {
+        if (dcerpc_uint32_coder("maxkeepsearch", dce, pdu, iov, offset, &s->maxkeepsearch)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_minkeepcomplsearch", dce, pdu, iov, offset, &s->sv503_minkeepcomplsearch)) {
+        if (dcerpc_uint32_coder("minkeepcomplsearch", dce, pdu, iov, offset, &s->minkeepcomplsearch)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_maxkeepcomplsearch", dce, pdu, iov, offset, &s->sv503_maxkeepcomplsearch)) {
+        if (dcerpc_uint32_coder("maxkeepcomplsearch", dce, pdu, iov, offset, &s->maxkeepcomplsearch)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_threadcountadd", dce, pdu, iov, offset, &s->sv503_threadcountadd)) {
+        if (dcerpc_uint32_coder("threadcountadd", dce, pdu, iov, offset, &s->threadcountadd)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_numblockthreads", dce, pdu, iov, offset, &s->sv503_numblockthreads)) {
+        if (dcerpc_uint32_coder("numblockthreads", dce, pdu, iov, offset, &s->numblockthreads)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_scavtimeout", dce, pdu, iov, offset, &s->sv503_scavtimeout)) {
+        if (dcerpc_uint32_coder("scavtimeout", dce, pdu, iov, offset, &s->scavtimeout)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_minrcvqueue", dce, pdu, iov, offset, &s->sv503_minrcvqueue)) {
+        if (dcerpc_uint32_coder("minrcvqueue", dce, pdu, iov, offset, &s->minrcvqueue)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_minfreeworkitems", dce, pdu, iov, offset, &s->sv503_minfreeworkitems)) {
+        if (dcerpc_uint32_coder("minfreeworkitems", dce, pdu, iov, offset, &s->minfreeworkitems)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_xactmemsize", dce, pdu, iov, offset, &s->sv503_xactmemsize)) {
+        if (dcerpc_uint32_coder("xactmemsize", dce, pdu, iov, offset, &s->xactmemsize)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_threadpriority", dce, pdu, iov, offset, &s->sv503_threadpriority)) {
+        if (dcerpc_uint32_coder("threadpriority", dce, pdu, iov, offset, &s->threadpriority)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_maxmpxct", dce, pdu, iov, offset, &s->sv503_maxmpxct)) {
+        if (dcerpc_uint32_coder("maxmpxct", dce, pdu, iov, offset, &s->maxmpxct)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_oplockbreakwait", dce, pdu, iov, offset, &s->sv503_oplockbreakwait)) {
+        if (dcerpc_uint32_coder("oplockbreakwait", dce, pdu, iov, offset, &s->oplockbreakwait)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_oplockbreakresponsewait", dce, pdu, iov, offset, &s->sv503_oplockbreakresponsewait)) {
+        if (dcerpc_uint32_coder("oplockbreakresponsewait", dce, pdu, iov, offset, &s->oplockbreakresponsewait)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_enableoplocks", dce, pdu, iov, offset, &s->sv503_enableoplocks)) {
+        if (dcerpc_uint32_coder("enableoplocks", dce, pdu, iov, offset, &s->enableoplocks)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_enableoplockforceclose", dce, pdu, iov, offset, &s->sv503_enableoplockforceclose)) {
+        if (dcerpc_uint32_coder("enableoplockforceclose", dce, pdu, iov, offset, &s->enableoplockforceclose)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_enablefcbopens", dce, pdu, iov, offset, &s->sv503_enablefcbopens)) {
+        if (dcerpc_uint32_coder("enablefcbopens", dce, pdu, iov, offset, &s->enablefcbopens)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_enableraw", dce, pdu, iov, offset, &s->sv503_enableraw)) {
+        if (dcerpc_uint32_coder("enableraw", dce, pdu, iov, offset, &s->enableraw)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_enablesharednetdrives", dce, pdu, iov, offset, &s->sv503_enablesharednetdrives)) {
+        if (dcerpc_uint32_coder("enablesharednetdrives", dce, pdu, iov, offset, &s->enablesharednetdrives)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_minfreeconnections", dce, pdu, iov, offset, &s->sv503_minfreeconnections)) {
+        if (dcerpc_uint32_coder("minfreeconnections", dce, pdu, iov, offset, &s->minfreeconnections)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv503_maxfreeconnections", dce, pdu, iov, offset, &s->sv503_maxfreeconnections)) {
+        if (dcerpc_uint32_coder("maxfreeconnections", dce, pdu, iov, offset, &s->maxfreeconnections)) {
                 return -1;
         }
 
@@ -3000,55 +3000,55 @@ srvsvc_STAT_SERVER_0_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_STAT_SERVER_0 *s = ptr;
 
         (void)name;
-        if (dcerpc_uint32_coder("sts0_start", dce, pdu, iov, offset, &s->sts0_start)) {
+        if (dcerpc_uint32_coder("start", dce, pdu, iov, offset, &s->start)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sts0_fopens", dce, pdu, iov, offset, &s->sts0_fopens)) {
+        if (dcerpc_uint32_coder("fopens", dce, pdu, iov, offset, &s->fopens)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sts0_devopens", dce, pdu, iov, offset, &s->sts0_devopens)) {
+        if (dcerpc_uint32_coder("devopens", dce, pdu, iov, offset, &s->devopens)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sts0_jobsqueued", dce, pdu, iov, offset, &s->sts0_jobsqueued)) {
+        if (dcerpc_uint32_coder("jobsqueued", dce, pdu, iov, offset, &s->jobsqueued)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sts0_sopens", dce, pdu, iov, offset, &s->sts0_sopens)) {
+        if (dcerpc_uint32_coder("sopens", dce, pdu, iov, offset, &s->sopens)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sts0_stimedout", dce, pdu, iov, offset, &s->sts0_stimedout)) {
+        if (dcerpc_uint32_coder("stimedout", dce, pdu, iov, offset, &s->stimedout)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sts0_serrorout", dce, pdu, iov, offset, &s->sts0_serrorout)) {
+        if (dcerpc_uint32_coder("serrorout", dce, pdu, iov, offset, &s->serrorout)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sts0_pwerrors", dce, pdu, iov, offset, &s->sts0_pwerrors)) {
+        if (dcerpc_uint32_coder("pwerrors", dce, pdu, iov, offset, &s->pwerrors)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sts0_permerrors", dce, pdu, iov, offset, &s->sts0_permerrors)) {
+        if (dcerpc_uint32_coder("permerrors", dce, pdu, iov, offset, &s->permerrors)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sts0_syserrors", dce, pdu, iov, offset, &s->sts0_syserrors)) {
+        if (dcerpc_uint32_coder("syserrors", dce, pdu, iov, offset, &s->syserrors)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sts0_bytessent_low", dce, pdu, iov, offset, &s->sts0_bytessent_low)) {
+        if (dcerpc_uint32_coder("bytessent_low", dce, pdu, iov, offset, &s->bytessent_low)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sts0_bytessent_high", dce, pdu, iov, offset, &s->sts0_bytessent_high)) {
+        if (dcerpc_uint32_coder("bytessent_high", dce, pdu, iov, offset, &s->bytessent_high)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sts0_bytesrcvd_low", dce, pdu, iov, offset, &s->sts0_bytesrcvd_low)) {
+        if (dcerpc_uint32_coder("bytesrcvd_low", dce, pdu, iov, offset, &s->bytesrcvd_low)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sts0_bytesrcvd_high", dce, pdu, iov, offset, &s->sts0_bytesrcvd_high)) {
+        if (dcerpc_uint32_coder("bytesrcvd_high", dce, pdu, iov, offset, &s->bytesrcvd_high)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sts0_avresponse", dce, pdu, iov, offset, &s->sts0_avresponse)) {
+        if (dcerpc_uint32_coder("avresponse", dce, pdu, iov, offset, &s->avresponse)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sts0_reqbufneed", dce, pdu, iov, offset, &s->sts0_reqbufneed)) {
+        if (dcerpc_uint32_coder("reqbufneed", dce, pdu, iov, offset, &s->reqbufneed)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sts0_bigbufneed", dce, pdu, iov, offset, &s->sts0_bigbufneed)) {
+        if (dcerpc_uint32_coder("bigbufneed", dce, pdu, iov, offset, &s->bigbufneed)) {
                 return -1;
         }
 
@@ -3074,40 +3074,40 @@ srvsvc_TIME_OF_DAY_INFO_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_TIME_OF_DAY_INFO *s = ptr;
 
         (void)name;
-        if (dcerpc_uint32_coder("tod_elapsedt", dce, pdu, iov, offset, &s->tod_elapsedt)) {
+        if (dcerpc_uint32_coder("elapsedt", dce, pdu, iov, offset, &s->elapsedt)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("tod_msecs", dce, pdu, iov, offset, &s->tod_msecs)) {
+        if (dcerpc_uint32_coder("msecs", dce, pdu, iov, offset, &s->msecs)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("tod_hours", dce, pdu, iov, offset, &s->tod_hours)) {
+        if (dcerpc_uint32_coder("hours", dce, pdu, iov, offset, &s->hours)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("tod_mins", dce, pdu, iov, offset, &s->tod_mins)) {
+        if (dcerpc_uint32_coder("mins", dce, pdu, iov, offset, &s->mins)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("tod_secs", dce, pdu, iov, offset, &s->tod_secs)) {
+        if (dcerpc_uint32_coder("secs", dce, pdu, iov, offset, &s->secs)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("tod_hunds", dce, pdu, iov, offset, &s->tod_hunds)) {
+        if (dcerpc_uint32_coder("hunds", dce, pdu, iov, offset, &s->hunds)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("tod_timezone", dce, pdu, iov, offset, &s->tod_timezone)) {
+        if (dcerpc_uint32_coder("timezone", dce, pdu, iov, offset, &s->timezone)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("tod_tinterval", dce, pdu, iov, offset, &s->tod_tinterval)) {
+        if (dcerpc_uint32_coder("tinterval", dce, pdu, iov, offset, &s->tinterval)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("tod_day", dce, pdu, iov, offset, &s->tod_day)) {
+        if (dcerpc_uint32_coder("day", dce, pdu, iov, offset, &s->day)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("tod_month", dce, pdu, iov, offset, &s->tod_month)) {
+        if (dcerpc_uint32_coder("month", dce, pdu, iov, offset, &s->month)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("tod_year", dce, pdu, iov, offset, &s->tod_year)) {
+        if (dcerpc_uint32_coder("year", dce, pdu, iov, offset, &s->year)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("tod_weekday", dce, pdu, iov, offset, &s->tod_weekday)) {
+        if (dcerpc_uint32_coder("weekday", dce, pdu, iov, offset, &s->weekday)) {
                 return -1;
         }
 
