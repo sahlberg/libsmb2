@@ -665,9 +665,7 @@ srvsvc_CONNECT_INFO_0_CONTAINER_coder(char *name, struct dcerpc_context *dce,
         if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &s->EntriesRead)) {
                 return -1;
         }
-        if (s->EntriesRead) {
-                dcerpc_set_size_is(pdu, s->EntriesRead);
-        }
+        dcerpc_set_size_is(pdu, s->EntriesRead);
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && s->EntriesRead) {
                 if (s->Buffer == NULL) {
                         size_t esize = sizeof(struct srvsvc_CONNECTION_INFO_0);
@@ -681,7 +679,9 @@ srvsvc_CONNECT_INFO_0_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                         }
                 }
         }
-        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset, s->Buffer,
+        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset,
+                             (dcerpc_pdu_direction(pdu) == DCERPC_DECODE &&
+                              s->Buffer == NULL) ? (void *)&s->Buffer : (void *)s->Buffer,
                              PTR_UNIQUE, srvsvc_CONNECTION_INFO_0_carray_coder)) {
                 return -1;
         }
@@ -757,9 +757,7 @@ srvsvc_CONNECT_INFO_1_CONTAINER_coder(char *name, struct dcerpc_context *dce,
         if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &s->EntriesRead)) {
                 return -1;
         }
-        if (s->EntriesRead) {
-                dcerpc_set_size_is(pdu, s->EntriesRead);
-        }
+        dcerpc_set_size_is(pdu, s->EntriesRead);
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && s->EntriesRead) {
                 if (s->Buffer == NULL) {
                         size_t esize = sizeof(struct srvsvc_CONNECTION_INFO_1);
@@ -773,7 +771,9 @@ srvsvc_CONNECT_INFO_1_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                         }
                 }
         }
-        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset, s->Buffer,
+        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset,
+                             (dcerpc_pdu_direction(pdu) == DCERPC_DECODE &&
+                              s->Buffer == NULL) ? (void *)&s->Buffer : (void *)s->Buffer,
                              PTR_UNIQUE, srvsvc_CONNECTION_INFO_1_carray_coder)) {
                 return -1;
         }
@@ -893,9 +893,7 @@ srvsvc_FILE_INFO_2_CONTAINER_coder(char *name, struct dcerpc_context *dce,
         if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &s->EntriesRead)) {
                 return -1;
         }
-        if (s->EntriesRead) {
-                dcerpc_set_size_is(pdu, s->EntriesRead);
-        }
+        dcerpc_set_size_is(pdu, s->EntriesRead);
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && s->EntriesRead) {
                 if (s->Buffer == NULL) {
                         size_t esize = sizeof(struct srvsvc_FILE_INFO_2);
@@ -909,7 +907,9 @@ srvsvc_FILE_INFO_2_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                         }
                 }
         }
-        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset, s->Buffer,
+        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset,
+                             (dcerpc_pdu_direction(pdu) == DCERPC_DECODE &&
+                              s->Buffer == NULL) ? (void *)&s->Buffer : (void *)s->Buffer,
                              PTR_UNIQUE, srvsvc_FILE_INFO_2_carray_coder)) {
                 return -1;
         }
@@ -979,9 +979,7 @@ srvsvc_FILE_INFO_3_CONTAINER_coder(char *name, struct dcerpc_context *dce,
         if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &s->EntriesRead)) {
                 return -1;
         }
-        if (s->EntriesRead) {
-                dcerpc_set_size_is(pdu, s->EntriesRead);
-        }
+        dcerpc_set_size_is(pdu, s->EntriesRead);
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && s->EntriesRead) {
                 if (s->Buffer == NULL) {
                         size_t esize = sizeof(struct srvsvc_FILE_INFO_3);
@@ -995,7 +993,9 @@ srvsvc_FILE_INFO_3_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                         }
                 }
         }
-        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset, s->Buffer,
+        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset,
+                             (dcerpc_pdu_direction(pdu) == DCERPC_DECODE &&
+                              s->Buffer == NULL) ? (void *)&s->Buffer : (void *)s->Buffer,
                              PTR_UNIQUE, srvsvc_FILE_INFO_3_carray_coder)) {
                 return -1;
         }
@@ -1162,9 +1162,7 @@ srvsvc_SESSION_INFO_0_CONTAINER_coder(char *name, struct dcerpc_context *dce,
         if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &s->EntriesRead)) {
                 return -1;
         }
-        if (s->EntriesRead) {
-                dcerpc_set_size_is(pdu, s->EntriesRead);
-        }
+        dcerpc_set_size_is(pdu, s->EntriesRead);
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && s->EntriesRead) {
                 if (s->Buffer == NULL) {
                         size_t esize = sizeof(struct srvsvc_SESSION_INFO_0);
@@ -1178,7 +1176,9 @@ srvsvc_SESSION_INFO_0_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                         }
                 }
         }
-        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset, s->Buffer,
+        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset,
+                             (dcerpc_pdu_direction(pdu) == DCERPC_DECODE &&
+                              s->Buffer == NULL) ? (void *)&s->Buffer : (void *)s->Buffer,
                              PTR_UNIQUE, srvsvc_SESSION_INFO_0_carray_coder)) {
                 return -1;
         }
@@ -1251,9 +1251,7 @@ srvsvc_SESSION_INFO_1_CONTAINER_coder(char *name, struct dcerpc_context *dce,
         if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &s->EntriesRead)) {
                 return -1;
         }
-        if (s->EntriesRead) {
-                dcerpc_set_size_is(pdu, s->EntriesRead);
-        }
+        dcerpc_set_size_is(pdu, s->EntriesRead);
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && s->EntriesRead) {
                 if (s->Buffer == NULL) {
                         size_t esize = sizeof(struct srvsvc_SESSION_INFO_1);
@@ -1267,7 +1265,9 @@ srvsvc_SESSION_INFO_1_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                         }
                 }
         }
-        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset, s->Buffer,
+        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset,
+                             (dcerpc_pdu_direction(pdu) == DCERPC_DECODE &&
+                              s->Buffer == NULL) ? (void *)&s->Buffer : (void *)s->Buffer,
                              PTR_UNIQUE, srvsvc_SESSION_INFO_1_carray_coder)) {
                 return -1;
         }
@@ -1344,9 +1344,7 @@ srvsvc_SESSION_INFO_2_CONTAINER_coder(char *name, struct dcerpc_context *dce,
         if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &s->EntriesRead)) {
                 return -1;
         }
-        if (s->EntriesRead) {
-                dcerpc_set_size_is(pdu, s->EntriesRead);
-        }
+        dcerpc_set_size_is(pdu, s->EntriesRead);
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && s->EntriesRead) {
                 if (s->Buffer == NULL) {
                         size_t esize = sizeof(struct srvsvc_SESSION_INFO_2);
@@ -1360,7 +1358,9 @@ srvsvc_SESSION_INFO_2_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                         }
                 }
         }
-        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset, s->Buffer,
+        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset,
+                             (dcerpc_pdu_direction(pdu) == DCERPC_DECODE &&
+                              s->Buffer == NULL) ? (void *)&s->Buffer : (void *)s->Buffer,
                              PTR_UNIQUE, srvsvc_SESSION_INFO_2_carray_coder)) {
                 return -1;
         }
@@ -1427,9 +1427,7 @@ srvsvc_SESSION_INFO_10_CONTAINER_coder(char *name, struct dcerpc_context *dce,
         if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &s->EntriesRead)) {
                 return -1;
         }
-        if (s->EntriesRead) {
-                dcerpc_set_size_is(pdu, s->EntriesRead);
-        }
+        dcerpc_set_size_is(pdu, s->EntriesRead);
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && s->EntriesRead) {
                 if (s->Buffer == NULL) {
                         size_t esize = sizeof(struct srvsvc_SESSION_INFO_10);
@@ -1443,7 +1441,9 @@ srvsvc_SESSION_INFO_10_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                         }
                 }
         }
-        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset, s->Buffer,
+        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset,
+                             (dcerpc_pdu_direction(pdu) == DCERPC_DECODE &&
+                              s->Buffer == NULL) ? (void *)&s->Buffer : (void *)s->Buffer,
                              PTR_UNIQUE, srvsvc_SESSION_INFO_10_carray_coder)) {
                 return -1;
         }
@@ -1524,9 +1524,7 @@ srvsvc_SESSION_INFO_502_CONTAINER_coder(char *name, struct dcerpc_context *dce,
         if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &s->EntriesRead)) {
                 return -1;
         }
-        if (s->EntriesRead) {
-                dcerpc_set_size_is(pdu, s->EntriesRead);
-        }
+        dcerpc_set_size_is(pdu, s->EntriesRead);
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && s->EntriesRead) {
                 if (s->Buffer == NULL) {
                         size_t esize = sizeof(struct srvsvc_SESSION_INFO_502);
@@ -1540,7 +1538,9 @@ srvsvc_SESSION_INFO_502_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                         }
                 }
         }
-        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset, s->Buffer,
+        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset,
+                             (dcerpc_pdu_direction(pdu) == DCERPC_DECODE &&
+                              s->Buffer == NULL) ? (void *)&s->Buffer : (void *)s->Buffer,
                              PTR_UNIQUE, srvsvc_SESSION_INFO_502_carray_coder)) {
                 return -1;
         }
@@ -1679,9 +1679,7 @@ srvsvc_SHARE_INFO_0_CONTAINER_coder(char *name, struct dcerpc_context *dce,
         if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &s->EntriesRead)) {
                 return -1;
         }
-        if (s->EntriesRead) {
-                dcerpc_set_size_is(pdu, s->EntriesRead);
-        }
+        dcerpc_set_size_is(pdu, s->EntriesRead);
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && s->EntriesRead) {
                 if (s->Buffer == NULL) {
                         size_t esize = sizeof(struct srvsvc_SHARE_INFO_0);
@@ -1695,7 +1693,9 @@ srvsvc_SHARE_INFO_0_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                         }
                 }
         }
-        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset, s->Buffer,
+        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset,
+                             (dcerpc_pdu_direction(pdu) == DCERPC_DECODE &&
+                              s->Buffer == NULL) ? (void *)&s->Buffer : (void *)s->Buffer,
                              PTR_UNIQUE, srvsvc_SHARE_INFO_0_carray_coder)) {
                 return -1;
         }
@@ -1759,9 +1759,7 @@ srvsvc_SHARE_INFO_1_CONTAINER_coder(char *name, struct dcerpc_context *dce,
         if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &s->EntriesRead)) {
                 return -1;
         }
-        if (s->EntriesRead) {
-                dcerpc_set_size_is(pdu, s->EntriesRead);
-        }
+        dcerpc_set_size_is(pdu, s->EntriesRead);
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && s->EntriesRead) {
                 if (s->Buffer == NULL) {
                         size_t esize = sizeof(struct srvsvc_SHARE_INFO_1);
@@ -1775,7 +1773,9 @@ srvsvc_SHARE_INFO_1_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                         }
                 }
         }
-        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset, s->Buffer,
+        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset,
+                             (dcerpc_pdu_direction(pdu) == DCERPC_DECODE &&
+                              s->Buffer == NULL) ? (void *)&s->Buffer : (void *)s->Buffer,
                              PTR_UNIQUE, srvsvc_SHARE_INFO_1_carray_coder)) {
                 return -1;
         }
@@ -1856,9 +1856,7 @@ srvsvc_SHARE_INFO_2_CONTAINER_coder(char *name, struct dcerpc_context *dce,
         if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &s->EntriesRead)) {
                 return -1;
         }
-        if (s->EntriesRead) {
-                dcerpc_set_size_is(pdu, s->EntriesRead);
-        }
+        dcerpc_set_size_is(pdu, s->EntriesRead);
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && s->EntriesRead) {
                 if (s->Buffer == NULL) {
                         size_t esize = sizeof(struct srvsvc_SHARE_INFO_2);
@@ -1872,7 +1870,9 @@ srvsvc_SHARE_INFO_2_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                         }
                 }
         }
-        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset, s->Buffer,
+        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset,
+                             (dcerpc_pdu_direction(pdu) == DCERPC_DECODE &&
+                              s->Buffer == NULL) ? (void *)&s->Buffer : (void *)s->Buffer,
                              PTR_UNIQUE, srvsvc_SHARE_INFO_2_carray_coder)) {
                 return -1;
         }
@@ -1939,9 +1939,7 @@ srvsvc_SHARE_INFO_501_CONTAINER_coder(char *name, struct dcerpc_context *dce,
         if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &s->EntriesRead)) {
                 return -1;
         }
-        if (s->EntriesRead) {
-                dcerpc_set_size_is(pdu, s->EntriesRead);
-        }
+        dcerpc_set_size_is(pdu, s->EntriesRead);
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && s->EntriesRead) {
                 if (s->Buffer == NULL) {
                         size_t esize = sizeof(struct srvsvc_SHARE_INFO_501);
@@ -1955,7 +1953,9 @@ srvsvc_SHARE_INFO_501_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                         }
                 }
         }
-        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset, s->Buffer,
+        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset,
+                             (dcerpc_pdu_direction(pdu) == DCERPC_DECODE &&
+                              s->Buffer == NULL) ? (void *)&s->Buffer : (void *)s->Buffer,
                              PTR_UNIQUE, srvsvc_SHARE_INFO_501_carray_coder)) {
                 return -1;
         }
@@ -2047,9 +2047,7 @@ srvsvc_SHARE_INFO_502_CONTAINER_coder(char *name, struct dcerpc_context *dce,
         if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &s->EntriesRead)) {
                 return -1;
         }
-        if (s->EntriesRead) {
-                dcerpc_set_size_is(pdu, s->EntriesRead);
-        }
+        dcerpc_set_size_is(pdu, s->EntriesRead);
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && s->EntriesRead) {
                 if (s->Buffer == NULL) {
                         size_t esize = sizeof(struct srvsvc_SHARE_INFO_502_I);
@@ -2063,7 +2061,9 @@ srvsvc_SHARE_INFO_502_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                         }
                 }
         }
-        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset, s->Buffer,
+        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset,
+                             (dcerpc_pdu_direction(pdu) == DCERPC_DECODE &&
+                              s->Buffer == NULL) ? (void *)&s->Buffer : (void *)s->Buffer,
                              PTR_UNIQUE, srvsvc_SHARE_INFO_502_I_carray_coder)) {
                 return -1;
         }
@@ -2159,9 +2159,7 @@ srvsvc_SHARE_INFO_503_CONTAINER_coder(char *name, struct dcerpc_context *dce,
         if (dcerpc_uint32_coder("EntriesRead", dce, pdu, iov, offset, &s->EntriesRead)) {
                 return -1;
         }
-        if (s->EntriesRead) {
-                dcerpc_set_size_is(pdu, s->EntriesRead);
-        }
+        dcerpc_set_size_is(pdu, s->EntriesRead);
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && s->EntriesRead) {
                 if (s->Buffer == NULL) {
                         size_t esize = sizeof(struct srvsvc_SHARE_INFO_503_I);
@@ -2175,7 +2173,9 @@ srvsvc_SHARE_INFO_503_CONTAINER_coder(char *name, struct dcerpc_context *dce,
                         }
                 }
         }
-        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset, s->Buffer,
+        if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, offset,
+                             (dcerpc_pdu_direction(pdu) == DCERPC_DECODE &&
+                              s->Buffer == NULL) ? (void *)&s->Buffer : (void *)s->Buffer,
                              PTR_UNIQUE, srvsvc_SHARE_INFO_503_I_carray_coder)) {
                 return -1;
         }
@@ -3182,7 +3182,7 @@ srvsvc_NetrConnectionEnum_rep_coder(char *name, struct dcerpc_context *dce,
 
         (void)name;
         if (dcerpc_ptr_coder("InfoStruct", dce, pdu, iov, offset, &rep->InfoStruct,
-                             PTR_REF, srvsvc_CONNECT_ENUM_STRUCT_coder)) {
+                             PTR_REF, srvsvc_CONNECT_ENUM_STRUCT_struct_coder)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("TotalEntries", dce, pdu, iov, offset, &rep->TotalEntries,
@@ -3268,7 +3268,7 @@ srvsvc_NetrFileEnum_rep_coder(char *name, struct dcerpc_context *dce,
 
         (void)name;
         if (dcerpc_ptr_coder("InfoStruct", dce, pdu, iov, offset, &rep->InfoStruct,
-                             PTR_REF, srvsvc_FILE_ENUM_STRUCT_coder)) {
+                             PTR_REF, srvsvc_FILE_ENUM_STRUCT_struct_coder)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("TotalEntries", dce, pdu, iov, offset, &rep->TotalEntries,
@@ -3460,7 +3460,7 @@ srvsvc_NetrSessionEnum_rep_coder(char *name, struct dcerpc_context *dce,
 
         (void)name;
         if (dcerpc_ptr_coder("InfoStruct", dce, pdu, iov, offset, &rep->InfoStruct,
-                             PTR_REF, srvsvc_SESSION_ENUM_STRUCT_coder)) {
+                             PTR_REF, srvsvc_SESSION_ENUM_STRUCT_struct_coder)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("TotalEntries", dce, pdu, iov, offset, &rep->TotalEntries,
@@ -3647,7 +3647,7 @@ srvsvc_NetrShareEnum_rep_coder(char *name, struct dcerpc_context *dce,
 
         (void)name;
         if (dcerpc_ptr_coder("InfoStruct", dce, pdu, iov, offset, &rep->InfoStruct,
-                             PTR_REF, srvsvc_SHARE_ENUM_STRUCT_coder)) {
+                             PTR_REF, srvsvc_SHARE_ENUM_STRUCT_struct_coder)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("TotalEntries", dce, pdu, iov, offset, &rep->TotalEntries,
