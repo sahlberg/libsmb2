@@ -93,13 +93,9 @@ struct lsa_LSAPR_OBJECT_ATTRIBUTES {
         struct lsa_SECURITY_QUALITY_OF_SERVICE * SecurityQualityOfService;
 };
 
-struct lsa_LSAPR_SID_INFORMATION {
-        RPC_SID * Sid;
-};
-
 struct lsa_LSAPR_SID_ENUM_BUFFER {
         uint32_t Entries;
-        struct lsa_LSAPR_SID_INFORMATION * SidInfo;
+        RPC_SID ** SidInfo;
 };
 
 struct lsa_LSAPR_TRUST_INFORMATION {
@@ -248,13 +244,6 @@ int lsa_LSAPR_OBJECT_ATTRIBUTES_coder(char *name, struct dcerpc_context *dce,
                 struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
                 int *offset, void *ptr);
 int lsa_LSAPR_OBJECT_ATTRIBUTES_struct_coder(char *name, struct dcerpc_context *dce,
-                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
-                int *offset, void *ptr);
-
-int lsa_LSAPR_SID_INFORMATION_coder(char *name, struct dcerpc_context *dce,
-                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
-                int *offset, void *ptr);
-int lsa_LSAPR_SID_INFORMATION_struct_coder(char *name, struct dcerpc_context *dce,
                 struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
                 int *offset, void *ptr);
 

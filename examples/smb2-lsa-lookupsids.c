@@ -124,7 +124,7 @@ void op_cb(struct dcerpc_context *dce, int status,
 {
         struct lsa_OpenPolicy2_rep *rep = command_data;
         struct lsa_LookupSids2_req ls_req;
-        struct lsa_LSAPR_SID_INFORMATION si[2];
+        RPC_SID *sids[2];
         RPC_SID *sid;
         int num_sids;
 
@@ -153,10 +153,10 @@ void op_cb(struct dcerpc_context *dce, int status,
         sid->SubAuthority[1] = 544;
 
         num_sids = 2;
-        si[0].Sid = sid;
-        si[1].Sid = sid;
+        sids[0] = sid;
+        sids[1] = sid;
         ls_req.SidEnumBuffer.Entries = num_sids;
-        ls_req.SidEnumBuffer.SidInfo = si;
+        ls_req.SidEnumBuffer.SidInfo = sids;
 
         ls_req.TranslatedNames.Entries = 0;
         ls_req.TranslatedNames.Names = NULL;

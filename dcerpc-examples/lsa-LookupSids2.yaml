@@ -12,8 +12,8 @@ LookupSids2: Request
   SidEnumBuffer:
     Entries: 2
     SidInfo:
-      - Sid: S-1-5-32-544
-      - Sid: S-1-5-32-544
+      - S-1-5-32-544
+      - S-1-5-32-544
   TranslatedNames:
     Entries: 0
   LookupLevel: LsapLookupWksta

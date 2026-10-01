@@ -63,7 +63,22 @@ p_syntax_id_t lsa_interface = {
         {LSA_UUID}, 0, 0
 };
 
-int lsa_LSAPR_SID_INFORMATION_coder(char *name, struct dcerpc_context *dce,
+static int lsa_uint8_t_ptr_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+static int lsa_STRING_ptr_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+static int lsa_LSAPR_SECURITY_DESCRIPTOR_ptr_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+static int lsa_SECURITY_QUALITY_OF_SERVICE_ptr_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+static int lsa_RPC_SID_ptr_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+static int lsa_RPC_SID_pelem_coder(char *name, struct dcerpc_context *dce,
                 struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
                 int *offset, void *ptr);
 int lsa_LSAPR_TRUST_INFORMATION_coder(char *name, struct dcerpc_context *dce,
@@ -77,15 +92,15 @@ int lsa_LSAPR_TRANSLATED_SID_EX_coder(char *name, struct dcerpc_context *dce,
                 int *offset, void *ptr);
 
 static int
-lsa_LSAPR_SID_INFORMATION_carray_coder(char *name, struct dcerpc_context *dce,
+lsa_RPC_SID_ptr_carray_coder(char *name, struct dcerpc_context *dce,
                      struct dcerpc_pdu *pdu,
                      struct dcerpc_iovec *iov, int *offset,
                      void *ptr)
 {
-        return dcerpc_carray_coder(name, dce, pdu, iov, offset,
+        return dcerpc_scalar_carray_coder(name, dce, pdu, iov, offset,
                                    dcerpc_get_size_is(pdu), ptr,
-                                   sizeof(struct lsa_LSAPR_SID_INFORMATION),
-                                   lsa_LSAPR_SID_INFORMATION_coder);
+                                   sizeof(RPC_SID *),
+                                   lsa_RPC_SID_pelem_coder);
 }
 
 static int
@@ -219,6 +234,20 @@ lsa_RPC_SID_ptr_coder(char *name, struct dcerpc_context *dce,
                 }
         }
         return dcerpc_sid_coder(name, dce, pdu, iov, offset, *pp);
+}
+
+static int
+lsa_RPC_SID_pelem_coder(char *name, struct dcerpc_context *dce,
+                     struct dcerpc_pdu *pdu,
+                     struct dcerpc_iovec *iov, int *offset,
+                     void *ptr)
+{
+        RPC_SID **pp = ptr;
+
+        return dcerpc_ptr_coder(name, dce, pdu, iov, offset,
+                                (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&
+                                 *pp == NULL) ? NULL : (void *)pp,
+                                PTR_UNIQUE, lsa_RPC_SID_ptr_coder);
 }
 
 static int
@@ -508,35 +537,6 @@ lsa_LSAPR_OBJECT_ATTRIBUTES_struct_coder(char *name, struct dcerpc_context *dce,
 }
 
 int
-lsa_LSAPR_SID_INFORMATION_coder(char *name, struct dcerpc_context *dce,
-                struct dcerpc_pdu *pdu,
-                struct dcerpc_iovec *iov, int *offset,
-                void *ptr)
-{
-        struct lsa_LSAPR_SID_INFORMATION *s = ptr;
-
-        (void)name;
-        if (dcerpc_ptr_coder("Sid", dce, pdu, iov, offset,
-                             (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&
-                              s->Sid == NULL) ? NULL : &s->Sid,
-                             PTR_UNIQUE, lsa_RPC_SID_ptr_coder)) {
-                return -1;
-        }
-
-        return 0;
-}
-
-int
-lsa_LSAPR_SID_INFORMATION_struct_coder(char *name, struct dcerpc_context *dce,
-                struct dcerpc_pdu *pdu,
-                struct dcerpc_iovec *iov, int *offset,
-                void *ptr)
-{
-        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
-                                   lsa_LSAPR_SID_INFORMATION_coder);
-}
-
-int
 lsa_LSAPR_SID_ENUM_BUFFER_coder(char *name, struct dcerpc_context *dce,
                 struct dcerpc_pdu *pdu,
                 struct dcerpc_iovec *iov, int *offset,
@@ -551,7 +551,7 @@ lsa_LSAPR_SID_ENUM_BUFFER_coder(char *name, struct dcerpc_context *dce,
         dcerpc_set_size_is(pdu, s->Entries);
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && s->Entries) {
                 if (s->SidInfo == NULL) {
-                        size_t esize = sizeof(struct lsa_LSAPR_SID_INFORMATION);
+                        size_t esize = sizeof(RPC_SID *);
                         if (s->Entries > SIZE_MAX / esize) {
                                 return -1;
                         }
@@ -565,7 +565,7 @@ lsa_LSAPR_SID_ENUM_BUFFER_coder(char *name, struct dcerpc_context *dce,
         if (dcerpc_ptr_coder("SidInfo", dce, pdu, iov, offset,
                              (dcerpc_pdu_direction(pdu) == DCERPC_DECODE &&
                               s->SidInfo == NULL) ? (void *)&s->SidInfo : (void *)s->SidInfo,
-                             PTR_UNIQUE, lsa_LSAPR_SID_INFORMATION_carray_coder)) {
+                             PTR_UNIQUE, lsa_RPC_SID_ptr_carray_coder)) {
                 return -1;
         }
 
