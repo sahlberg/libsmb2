@@ -207,6 +207,13 @@ int dcerpc_SYSTEM_SCOPED_POLICY_ID_ACE_coder(char *name,
  *   AceCount (2) Sbz2 (2)
  *   followed by AceCount ACE records
  *
+ * dcerpc_ACL_coder() codes only this packet form, as found inside a
+ * self-relative SECURITY_DESCRIPTOR. On NDR it is always little-endian,
+ * regardless of the PDU data representation. It does not produce the RPC
+ * representation of 2.4.5.1, which is just the 8-byte header with no ACEs
+ * and follows the PDU byte order. Add a separate coder for that if an
+ * interface ever marshals a PACL directly.
+ *
  * Sbz1, Sbz2, and AclSize are wire-only (omitted from YAML/JSON; AclSize is
  * derived from the ACE bodies). AceCount is present in text encodings so
  * the Aces array can be allocated on decode.
@@ -249,6 +256,16 @@ int dcerpc_ACL_coder(char *name, struct dcerpc_context *dce,
  * C / YAML / JSON use a logical absolute layout with optional pointers.
  * Offsets and Sbz1 are wire-only. SE_SELF_RELATIVE is set on NDR encode.
  * SE_DACL_PRESENT / SE_SACL_PRESENT are set when Dacl / Sacl are non-NULL.
+ *
+ * dcerpc_SECURITY_DESCRIPTOR_coder() codes only this self-relative packet
+ * form. On NDR it is always little-endian, regardless of the PDU data
+ * representation. It does not produce the RPC representation of 2.4.6.1
+ * (Owner/Group/Sacl/Dacl as NDR pointers). Interfaces carry security
+ * descriptors as byte blobs holding the self-relative form instead, e.g.
+ * srvsvc SHARE_INFO_502, LSAPR_SR_SECURITY_DESCRIPTOR,
+ * SAMPR_SR_SECURITY_DESCRIPTOR and winreg RPC_SECURITY_DESCRIPTOR. The
+ * pointer-based LSAPR_SECURITY_DESCRIPTOR in LSAPR_OBJECT_ATTRIBUTES is
+ * LSA-specific, ignored by the server and always sent as NULL.
  */
 #define SE_OWNER_DEFAULTED              0x0001
 #define SE_GROUP_DEFAULTED              0x0002

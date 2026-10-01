@@ -362,7 +362,7 @@ struct dcerpc_coders {
         dcerpc_coder_pp  uint32_coder_pp;
         dcerpc_coder     uint64_coder;
         dcerpc_coder     uuid_coder;
-        dcerpc_coder     sid_coder;
+        dcerpc_coder     sid_coder;     /* in dcerpc-dtyp.c, full build only */
         dcerpc_coder     utf16_coder;
         dcerpc_coder     utf16z_coder;
         dcerpc_coder_cdr struct_coder;
@@ -373,6 +373,76 @@ struct dcerpc_coders {
         dcerpc_coder     bytes_coder;
         dcerpc_coder     varying_bytes_coder;
 };
+
+struct dcerpc_coders ndr_coders;
+#ifdef HAVE_DCERPC_FULL
+struct dcerpc_coders yaml_coders;
+struct dcerpc_coders json_coders;
+#endif /*HAVE_DCERPC_FULL*/
+
+/*
+ * Every encoding must implement every slot in struct dcerpc_coders.
+ * Returns the name of the first missing slot, or NULL if the table is
+ * complete. When adding a new slot to struct dcerpc_coders, add it here too.
+ */
+static const char *
+dcerpc_coders_missing(const struct dcerpc_coders *coders)
+{
+#define CHECK_CODER(f) if (coders->f == NULL) return #f
+        CHECK_CODER(uint8_coder);
+        CHECK_CODER(uint16_coder);
+        CHECK_CODER(uint16_coder_pp);
+        CHECK_CODER(uint32_coder);
+        CHECK_CODER(uint32_coder_pp);
+        CHECK_CODER(uint64_coder);
+        CHECK_CODER(uuid_coder);
+#ifdef HAVE_DCERPC_FULL
+        CHECK_CODER(sid_coder);
+#endif /*HAVE_DCERPC_FULL*/
+        CHECK_CODER(utf16_coder);
+        CHECK_CODER(utf16z_coder);
+        CHECK_CODER(struct_coder);
+        CHECK_CODER(do_coder);
+        CHECK_CODER(union_coder);
+        CHECK_CODER(carray_coder);
+        CHECK_CODER(ptr_coder);
+        CHECK_CODER(bytes_coder);
+        CHECK_CODER(varying_bytes_coder);
+#undef CHECK_CODER
+        return NULL;
+}
+
+/*
+ * Verify that every compiled-in encoding implements every coder, so that
+ * an incomplete table for a new encoding fails at context creation rather
+ * than deep inside an encode/decode.
+ */
+static int
+dcerpc_check_coders(struct smb2_context *smb2)
+{
+        static const struct {
+                const char *name;
+                const struct dcerpc_coders *coders;
+        } tables[] = {
+                { "NDR", &ndr_coders },
+#ifdef HAVE_DCERPC_FULL
+                { "YAML", &yaml_coders },
+                { "JSON", &json_coders },
+#endif /*HAVE_DCERPC_FULL*/
+        };
+        const char *missing;
+        size_t i;
+
+        for (i = 0; i < sizeof(tables) / sizeof(tables[0]); i++) {
+                missing = dcerpc_coders_missing(tables[i].coders);
+                if (missing) {
+                        smb2_set_error(smb2, "DCERPC %s encoding has no %s",
+                                       tables[i].name, missing);
+                        return -1;
+                }
+        }
+        return 0;
+}
 
 struct dcerpc_pdu {
         struct dcerpc_pending pending;
@@ -430,6 +500,13 @@ struct dcerpc_pdu {
          */
         int is_conformance_run;
         int max_alignment;
+
+        /*
+         * Nesting depth of packet-form (MS-DTYP 2.4.x) data being coded.
+         * While non-zero, NDR primitives are little-endian regardless of
+         * the data representation in packed_drep.
+         */
+        int packet_form;
 
         uint32_t size_is; /* Passing size_is() value through a pointer */
         int switch_is; /* Passing switch_is() value through a pointer */
@@ -547,6 +624,18 @@ dcerpc_set_uint8(struct dcerpc_context *ctx, struct dcerpc_iovec *iov,
         return 0;
 }
 
+/*
+ * Byte order for multi-byte NDR primitives: the PDU's data representation,
+ * except inside packet-form data (see dcerpc_pdu_packet_form_begin()),
+ * which is always little-endian.
+ */
+static int
+dcerpc_pdu_little_endian(struct dcerpc_pdu *pdu)
+{
+        return pdu->packet_form ||
+                (pdu->hdr.packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN);
+}
+
 static int
 dcerpc_set_uint16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                   struct dcerpc_iovec *iov, int *offset, uint16_t value)
@@ -556,7 +645,7 @@ dcerpc_set_uint16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         if (*offset + sizeof(uint16_t) > iov->len) {
                 return -1;
         }
-        if (!(pdu->hdr.packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN)) {
+        if (!dcerpc_pdu_little_endian(pdu)) {
                 *(uint16_t *)(void *)(iov->buf + *offset) = htobe16(value);
         } else {
                 *(uint16_t *)(void *)(iov->buf + *offset) = htole16(value);
@@ -575,7 +664,7 @@ dcerpc_set_uint32(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         if (*offset + sizeof(uint32_t) > iov->len) {
                 return -1;
         }
-        if (!(pdu->hdr.packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN)) {
+        if (!dcerpc_pdu_little_endian(pdu)) {
                 *(uint32_t *)(void *)(iov->buf + *offset) = htobe32(value);
         } else {
                 *(uint32_t *)(void *)(iov->buf + *offset) = htole32(value);
@@ -593,7 +682,7 @@ dcerpc_set_uint64(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         if (*offset + sizeof(uint64_t) > iov->len) {
                 return -1;
         }
-        if (!(pdu->hdr.packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN)) {
+        if (!dcerpc_pdu_little_endian(pdu)) {
                 *(uint64_t *)(void *)(iov->buf + *offset) = htobe64(value);
         } else {
                 *(uint64_t *)(void *)(iov->buf + *offset) = htole64(value);
@@ -625,7 +714,7 @@ dcerpc_get_uint16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         if (*offset + sizeof(uint16_t) > iov->len) {
                 return -1;
         }
-        if (!(pdu->hdr.packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN)) {
+        if (!dcerpc_pdu_little_endian(pdu)) {
                 val = be16toh(*(uint16_t *)(void *)(iov->buf + *offset));
         } else {
                 val = le16toh(*(uint16_t *)(void *)(iov->buf + *offset));
@@ -647,7 +736,7 @@ dcerpc_get_uint32(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 return -1;
         }
         
-        if (!(pdu->hdr.packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN)) {
+        if (!dcerpc_pdu_little_endian(pdu)) {
                 val = be32toh(*(uint32_t *)(void *)(iov->buf + *offset));
         } else {
                 val = le32toh(*(uint32_t *)(void *)(iov->buf + *offset));
@@ -668,7 +757,7 @@ dcerpc_get_uint64(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         if (*offset + sizeof(uint64_t) > iov->len) {
                 return -1;
         }
-        if (!(pdu->hdr.packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN)) {
+        if (!dcerpc_pdu_little_endian(pdu)) {
                 val = be64toh(*(uint64_t *)(void *)(iov->buf + *offset));
         } else {
                 val = le64toh(*(uint64_t *)(void *)(iov->buf + *offset));
@@ -727,6 +816,10 @@ struct dcerpc_context *
 dcerpc_create_context(struct smb2_context *smb2)
 {
         struct dcerpc_context *ctx;
+
+        if (dcerpc_check_coders(smb2)) {
+                return NULL;
+        }
 
         ctx = calloc(1, sizeof(struct dcerpc_context));
         if (ctx == NULL) {
@@ -969,12 +1062,6 @@ dcerpc_free_pdu(struct dcerpc_context *dce _U_, struct dcerpc_pdu *pdu)
         free(pdu);
 }
 
-struct dcerpc_coders ndr_coders;
-#ifdef HAVE_DCERPC_FULL
-struct dcerpc_coders yaml_coders;
-struct dcerpc_coders json_coders;
-#endif /*HAVE_DCERPC_FULL*/
-
 struct dcerpc_pdu *
 dcerpc_allocate_pdu(struct dcerpc_context *dce, enum dcerpc_encoding encoding,
                     int direction, int payload_size)
@@ -1087,6 +1174,7 @@ dcerpc_uuid_coder(char *name, struct dcerpc_context *ctx,
         return -1;
 }
 
+#ifdef HAVE_DCERPC_FULL
 int
 dcerpc_sid_coder(char *name, struct dcerpc_context *ctx,
                  struct dcerpc_pdu *pdu,
@@ -1098,6 +1186,7 @@ dcerpc_sid_coder(char *name, struct dcerpc_context *ctx,
         }
         return -1;
 }
+#endif /*HAVE_DCERPC_FULL*/
 
 int
 dcerpc_uint8_coder(char *name, struct dcerpc_context *ctx,
@@ -2976,6 +3065,26 @@ dcerpc_pdu_raise_max_alignment(struct dcerpc_pdu *pdu, int alignment)
         }
 }
 
+#ifdef HAVE_DCERPC_FULL
+/*
+ * Packet-form structures such as self-relative SECURITY_DESCRIPTORs, ACLs
+ * and ACEs are defined as little-endian byte layouts, not as NDR, so they
+ * must not follow a big-endian data representation. Coders for them bracket
+ * their work with begin/end; the calls nest.
+ */
+void
+dcerpc_pdu_packet_form_begin(struct dcerpc_pdu *pdu)
+{
+        pdu->packet_form++;
+}
+
+void
+dcerpc_pdu_packet_form_end(struct dcerpc_pdu *pdu)
+{
+        pdu->packet_form--;
+}
+#endif /* HAVE_DCERPC_FULL */
+
 int
 dcerpc_align_3264(struct dcerpc_context *ctx, int offset)
 {
@@ -3769,53 +3878,6 @@ ndr_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         return 0;
 }        
 
-/*
- * typedef struct _RPC_SID {
- *      unsigned char Revision;
- *      unsigned char SubAuthorityCount;
- *      byte IdentifierAuthority[6];
- *      [size_is(SubAuthorityCount)] uint32_t SubAuthority[];
- * } RPC_SID, *PRPC_SID, *PSID;
- */
-static int
-ndr_sid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-              struct dcerpc_iovec *iov, int *offset, void *ptr)
-{
-        RPC_SID *sid = ptr;
-        uint64_t count;
-        int i;
-
-        count = sid->SubAuthorityCount;
-        if (ndr_uint3264_coder("", ctx, pdu, iov, offset, &count)) {
-                return -1;
-        }
-        if (count > MAXSUBAUTH) {
-                return -1;
-        }
-
-        if (ndr_uint8_coder("Revision", ctx, pdu, iov, offset, &sid->Revision)) {
-                return -1;
-        }
-        if (ndr_uint8_coder("SubAuthorityCount", ctx, pdu, iov, offset, &sid->SubAuthorityCount)) {
-                return -1;
-        }
-        if (sid->SubAuthorityCount != count) {
-                return -1;
-        }
-        for (i = 0; i < 6; i++) {
-                if (ndr_uint8_coder("IdentifierAuthority", ctx, pdu, iov, offset, &sid->IdentifierAuthority[i])) {
-                        return -1;
-                }
-        }
-        for (i = 0; i < count; i++) {
-                if (ndr_uint32_coder("Subauthority", ctx, pdu, iov, offset, &sid->SubAuthority[i])) {
-                        return -1;
-                }
-        }
-
-        return 0;
-}
-
 static int
 ndr_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
              struct dcerpc_iovec *iov,
@@ -4387,7 +4449,9 @@ struct dcerpc_coders ndr_coders = {
         .uint32_coder_pp = ndr_uint32_coder_pp,
         .uint64_coder    = ndr_uint64_coder,
         .uuid_coder      = ndr_uuid_coder,
+#ifdef HAVE_DCERPC_FULL
         .sid_coder       = ndr_sid_coder,
+#endif /*HAVE_DCERPC_FULL*/
         .utf16_coder     = ndr_utf16_coder,
         .utf16z_coder    = ndr_utf16z_coder,
         .struct_coder    = ndr_struct_coder,
@@ -4401,126 +4465,6 @@ struct dcerpc_coders ndr_coders = {
 
 
 #ifdef HAVE_DCERPC_FULL
-/*
- * Text (YAML/JSON) representation of an RPC_SID is the standard SID
- * string form:
- *   S-<revision>-<identifier-authority>-<subauth0>-<subauth1>-...
- * e.g. S-1-5-32-544
- *
- * Identifier authority is a big-endian 48-bit value. If it fits in 32 bits
- * it is written in decimal; otherwise as a 0x-prefixed hex value (Windows
- * ConvertSidToStringSid rules).
- */
-static int
-sid_from_string(char *name, const char *str, RPC_SID *sid)
-{
-        const char *p = str;
-        char *end;
-        unsigned long rev;
-        unsigned long long ia;
-        uint32_t sub[MAXSUBAUTH];
-        int count = 0;
-        int i;
-
-        if (p == NULL || (p[0] != 'S' && p[0] != 's') || p[1] != '-') {
-                printf("Failed to parse SID value for %s: %s\n",
-                       name, str ? str : "(null)");
-                return -1;
-        }
-        p += 2;
-
-        rev = strtoul(p, &end, 10);
-        if (end == p || *end != '-' || rev > 255) {
-                printf("Failed to parse SID revision for %s: %s\n",
-                       name, str);
-                return -1;
-        }
-        p = end + 1;
-
-        if (p[0] == '0' && (p[1] == 'x' || p[1] == 'X')) {
-                ia = strtoull(p, &end, 16);
-        } else {
-                ia = strtoull(p, &end, 10);
-        }
-        if (end == p) {
-                printf("Failed to parse SID authority for %s: %s\n",
-                       name, str);
-                return -1;
-        }
-        p = end;
-
-        while (*p == '-') {
-                unsigned long sa;
-
-                p++;
-                if (count >= MAXSUBAUTH) {
-                        printf("Too many SID subauthorities for %s: %s\n",
-                               name, str);
-                        return -1;
-                }
-                sa = strtoul(p, &end, 10);
-                if (end == p) {
-                        printf("Failed to parse SID subauthority for %s: %s\n",
-                               name, str);
-                        return -1;
-                }
-                sub[count++] = (uint32_t)sa;
-                p = end;
-        }
-        if (*p != '\0') {
-                printf("Failed to parse SID value for %s: %s\n",
-                       name, str);
-                return -1;
-        }
-
-        sid->Revision = (uint8_t)rev;
-        sid->SubAuthorityCount = (uint8_t)count;
-        for (i = 0; i < 6; i++) {
-                sid->IdentifierAuthority[i] =
-                        (uint8_t)((ia >> (8 * (5 - i))) & 0xff);
-        }
-        for (i = 0; i < count; i++) {
-                sid->SubAuthority[i] = sub[i];
-        }
-        return 0;
-}
-
-static int
-sid_to_string(char *name, const RPC_SID *sid, char *sidstr, size_t size)
-{
-        uint64_t ia = 0;
-        int len;
-        int i;
-
-        for (i = 0; i < 6; i++) {
-                ia = (ia << 8) | sid->IdentifierAuthority[i];
-        }
-
-        if (ia <= 0xffffffffULL) {
-                len = snprintf(sidstr, size, "S-%u-%llu",
-                               sid->Revision, (unsigned long long)ia);
-        } else {
-                len = snprintf(sidstr, size, "S-%u-0x%llx",
-                               sid->Revision, (unsigned long long)ia);
-        }
-        if (len < 0 || (size_t)len >= size) {
-                printf("Failed to format SID for %s\n", name);
-                return -1;
-        }
-        for (i = 0; i < sid->SubAuthorityCount; i++) {
-                int n;
-
-                n = snprintf(sidstr + len, size - (size_t)len,
-                             "-%u", sid->SubAuthority[i]);
-                if (n < 0 || (size_t)len + (size_t)n >= size) {
-                        printf("Failed to format SID for %s\n", name);
-                        return -1;
-                }
-                len += n;
-        }
-        return 0;
-}
-
 /*
  * JSON Coders
  */
@@ -5050,41 +4994,6 @@ json_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                         return -1;
                 }
                 if (json_append_quoted(iov, offset, uuidstr) < 0) {
-                        return -1;
-                }
-                return 0;
-        }
-}
-
-static int
-json_sid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-               struct dcerpc_iovec *iov, int *offset, void *ptr)
-{
-        RPC_SID *sid = ptr;
-        char sidstr[256];
-
-        if (pdu->direction == DCERPC_DECODE) {
-                char *val;
-
-                if (json_expect_key(pdu, iov, offset, name) < 0) {
-                        return -1;
-                }
-                if (json_parse_string(iov, offset, &val) < 0) {
-                        return -1;
-                }
-                return sid_from_string(name, val, sid);
-        } else {
-                if (sid_to_string(name, sid, sidstr, sizeof(sidstr))) {
-                        return -1;
-                }
-                json_sep(pdu, iov, offset);
-                if (json_append_quoted(iov, offset, name) < 0) {
-                        return -1;
-                }
-                if (json_append(iov, offset, ": ") < 0) {
-                        return -1;
-                }
-                if (json_append_quoted(iov, offset, sidstr) < 0) {
                         return -1;
                 }
                 return 0;
@@ -5798,40 +5707,6 @@ yaml_uuid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                         return -1;
                 }
                 if (dcerpc_text_printf(ctx, iov, offset, "%s: %08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x\n", name, uuid->v1, uuid->v2, uuid->v3, uuid->v4[0], uuid->v4[1], uuid->v4[2], uuid->v4[3], uuid->v4[4], uuid->v4[5], uuid->v4[6], uuid->v4[7])) {
-                        return -1;
-                }
-                return 0;
-        }
-}
-
-static int
-yaml_sid_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-               struct dcerpc_iovec *iov, int *offset, void *ptr)
-{
-        RPC_SID *sid = ptr;
-        char sidstr[256];
-
-        if (pdu->direction == DCERPC_DECODE) {
-                yaml_next_kv(pdu, iov, offset);
-                if (strcmp(pdu->yaml_key, name)) {
-                        printf("Wrong YAML key encountered for sid. Expected %s but got %s\n",
-                               name, pdu->yaml_key);
-                        return -1;
-                }
-                pdu->yaml_key = NULL;
-                if (sid_from_string(name, pdu->yaml_val, sid)) {
-                        return -1;
-                }
-                yaml_next_kv(pdu, iov, offset);
-                return 0;
-        } else {
-                if (sid_to_string(name, sid, sidstr, sizeof(sidstr))) {
-                        return -1;
-                }
-                if (yaml_print_preamble(ctx, pdu, iov, offset)) {
-                        return -1;
-                }
-                if (dcerpc_text_printf(ctx, iov, offset, "%s: %s\n", name, sidstr)) {
                         return -1;
                 }
                 return 0;

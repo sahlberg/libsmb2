@@ -750,6 +750,9 @@ void dcerpc_pdu_clear_yaml_key(struct dcerpc_pdu *pdu);
 char *dcerpc_pdu_json_key(struct dcerpc_pdu *pdu);
 int dcerpc_json_next_key(struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
                          int *offset);
+/* MS-DTYP packet-form data is always little-endian; calls nest. */
+void dcerpc_pdu_packet_form_begin(struct dcerpc_pdu *pdu);
+void dcerpc_pdu_packet_form_end(struct dcerpc_pdu *pdu);
 #endif
 
 struct connect_data;                                           /* defined in libsmb2.c */
