@@ -62,7 +62,7 @@ void print_sid(RPC_SID *sid)
 void cl_cb(struct dcerpc_context *dce, int status,
            void *command_data, void *cb_data)
 {
-        struct lsa_close_rep *rep = command_data;
+        struct lsa_Close_rep *rep = command_data;
         
         if (status) {
                 dcerpc_free_data(dce, rep);
@@ -77,8 +77,8 @@ void cl_cb(struct dcerpc_context *dce, int status,
 void ls_cb(struct dcerpc_context *dce, int status,
                 void *command_data, void *cb_data)
 {
-        struct lsa_lookupsids2_rep *rep = command_data;
-        struct lsa_close_req cl_req;
+        struct lsa_LookupSids2_rep *rep = command_data;
+        struct lsa_Close_req cl_req;
         int i;
 
         if (status) {
@@ -93,7 +93,9 @@ void ls_cb(struct dcerpc_context *dce, int status,
         printf("   MaxEntries:%d\n", rep->ReferencedDomains.MaxEntries);
         for(i = 0; i < rep->ReferencedDomains.Entries; i++) {
                 printf("   Name:%s SID:", rep->ReferencedDomains.Domains[i].Name);
-                print_sid(&rep->ReferencedDomains.Domains[i].Sid);
+                if (rep->ReferencedDomains.Domains[i].Sid) {
+                        print_sid(rep->ReferencedDomains.Domains[i].Sid);
+                }
                 printf("\n");
         }
         printf("TranslatedNames\n");
@@ -109,7 +111,7 @@ void ls_cb(struct dcerpc_context *dce, int status,
                               LSA_CLOSE,
                               lsa_Close_req_coder, &cl_req,
                               lsa_Close_rep_coder,
-                              sizeof(struct lsa_close_rep),
+                              sizeof(struct lsa_Close_rep),
                               cl_cb, NULL) != 0) {
                 printf("dcerpc_call_async failed with %s\n",
                        dcerpc_get_error(dce));
@@ -120,9 +122,10 @@ void ls_cb(struct dcerpc_context *dce, int status,
 void op_cb(struct dcerpc_context *dce, int status,
                 void *command_data, void *cb_data)
 {
-        struct lsa_openpolicy2_rep *rep = command_data;
-        struct lsa_lookupsids2_req ls_req;
-        RPC_SID *sid, *sids;
+        struct lsa_OpenPolicy2_rep *rep = command_data;
+        struct lsa_LookupSids2_req ls_req;
+        struct lsa_LSAPR_SID_INFORMATION si[2];
+        RPC_SID *sid;
         int num_sids;
 
         if (status) {
@@ -134,6 +137,7 @@ void op_cb(struct dcerpc_context *dce, int status,
 
         memcpy(&PolicyHandle, &rep->PolicyHandle,
                sizeof(struct dcerpc_context_handle));
+        memset(&ls_req, 0, sizeof(ls_req));
         memcpy(&ls_req.PolicyHandle, &PolicyHandle,
                sizeof(struct dcerpc_context_handle));
 
@@ -149,39 +153,34 @@ void op_cb(struct dcerpc_context *dce, int status,
         sid->SubAuthority[1] = 544;
 
         num_sids = 2;
-        sids = malloc(num_sids * sizeof(RPC_SID));
-        if (sids == NULL) {
-                printf("failed to allocate SIDs\n");
-                exit(10);
-        }
+        si[0].Sid = sid;
+        si[1].Sid = sid;
         ls_req.SidEnumBuffer.Entries = num_sids;
-        ls_req.SidEnumBuffer.SidInfo = sids;
-        ls_req.SidEnumBuffer.SidInfo[0] = *sid;
-        ls_req.SidEnumBuffer.SidInfo[1] = *sid;
+        ls_req.SidEnumBuffer.SidInfo = si;
 
         ls_req.TranslatedNames.Entries = 0;
         ls_req.TranslatedNames.Names = NULL;
-        ls_req.LookupLevel = LsapLookupWksta;
+        ls_req.LookupLevel = LSA_LsapLookupWksta;
+        ls_req.ClientRevision = 2;
 
         dcerpc_free_data(dce, rep);
         if (dcerpc_call_async(dce,
                               LSA_LOOKUPSIDS2,
                               lsa_LookupSids2_req_coder, &ls_req,
                               lsa_LookupSids2_rep_coder,
-                              sizeof(struct lsa_lookupsids2_rep),
+                              sizeof(struct lsa_LookupSids2_rep),
                               ls_cb, NULL) != 0) {
                 printf("dcerpc_call_async failed with %s\n",
                        dcerpc_get_error(dce));
                 exit(10);
         }
         free(sid);
-        free(sids);
 }
 
 void co_cb(struct dcerpc_context *dce, int status,
            void *command_data, void *cb_data)
 {
-        struct lsa_openpolicy2_req op_req;
+        struct lsa_OpenPolicy2_req op_req;
         struct smb2_url *url = cb_data;
 
         if (status != SMB2_STATUS_SUCCESS) {
@@ -190,6 +189,7 @@ void co_cb(struct dcerpc_context *dce, int status,
                 exit(10);
         }
 
+        memset(&op_req, 0, sizeof(op_req));
         op_req.SystemName = malloc(strlen(url->server) + 3);
         if (op_req.SystemName == NULL) {
                 printf("failed to allocate SystemName\n");
@@ -205,7 +205,7 @@ void co_cb(struct dcerpc_context *dce, int status,
                               LSA_OPENPOLICY2,
                               lsa_OpenPolicy2_req_coder, &op_req,
                               lsa_OpenPolicy2_rep_coder,
-                              sizeof(struct lsa_openpolicy2_rep),
+                              sizeof(struct lsa_OpenPolicy2_rep),
                               op_cb, NULL) != 0) {
                 printf("dcerpc_call_async failed with %s\n",
                        dcerpc_get_error(dce));

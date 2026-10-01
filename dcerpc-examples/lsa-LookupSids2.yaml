@@ -3,19 +3,20 @@ OpenPolicy2: Request
   ObjectAttributes:
     Length: 24
     Attributes: 0
-  DesiredAccess: 0x801
+  DesiredAccess: POLICY_VIEW_LOCAL_INFORMATION | POLICY_LOOKUP_NAMES
 ---
 LookupSids2: Request
-  ContextHandleAttributes: 0
-  UUID: @UUID:-1@
-  SIDS:
+  PolicyHandle:
+    ContextHandleAttributes: 0
+    UUID: @UUID:-1@
+  SidEnumBuffer:
     Entries: 2
-    SIDS:
-      - SID: S-1-5-32-544
-      - SID: S-1-5-32-544
-  Entries: 0
-  TranslatedNameEx:
-  LookupLevel: 1
+    SidInfo:
+      - Sid: S-1-5-32-544
+      - Sid: S-1-5-32-544
+  TranslatedNames:
+    Entries: 0
+  LookupLevel: LsapLookupWksta
   MappedCount: 0
   LookupOptions: 0
   ClientRevision: 2
