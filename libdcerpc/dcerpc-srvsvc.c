@@ -3444,31 +3444,26 @@ srvsvc_NetrSessionDel_rep_coder(char *name, struct dcerpc_context *dce,
 }
 
 /*****************
- * Function: 0x0e
- * NET_API_STATUS NetrShareAdd (
- * [in,string,unique] SRVSVC_HANDLE ServerName,
- * [in] DWORD Level,
- * [in, switch_is(Level)] LPSHARE_INFO InfoStruct,
- * [in,out,unique] DWORD * ParmErr
- *);
- */
+ * Function: 0x0e  NetrShareAdd  (SRVSVC_NETRSHAREADD)
+ *****************/
 int
 srvsvc_NetrShareAdd_req_coder(char *name, struct dcerpc_context *dce,
-                              struct dcerpc_pdu *pdu,
-                              struct dcerpc_iovec *iov, int *offset,
-                              void *ptr)
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
         struct srvsvc_NetrShareAdd_req *req = ptr;
 
+        (void)name;
         if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Level", dce, pdu, iov, offset, &req->Level)) {
+        if (dcerpc_ptr_coder("Level", dce, pdu, iov, offset, &req->Level,
+                             PTR_REF, dcerpc_uint32_coder)) {
                 return -1;
         }
         dcerpc_set_switch_is(pdu, req->Level);
-
         if (dcerpc_ptr_coder("InfoStruct", dce, pdu, iov, offset, &req->InfoStruct,
                              PTR_REF, srvsvc_SHARE_INFO_switch_coder)) {
                 return -1;
@@ -3483,12 +3478,13 @@ srvsvc_NetrShareAdd_req_coder(char *name, struct dcerpc_context *dce,
 
 int
 srvsvc_NetrShareAdd_rep_coder(char *name, struct dcerpc_context *dce,
-                              struct dcerpc_pdu *pdu,
-                              struct dcerpc_iovec *iov, int *offset,
-                              void *ptr)
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
         struct srvsvc_NetrShareAdd_rep *rep = ptr;
 
+        (void)name;
         if (dcerpc_ptr_coder("ParmErr", dce, pdu, iov, offset, &rep->ParmErr,
                              PTR_UNIQUE, dcerpc_uint32_coder)) {
                 return -1;

@@ -822,7 +822,7 @@ struct srvsvc_NetrSessionDel_rep {
 };
 
 struct srvsvc_NetrShareAdd_req {
-        char *ServerName;
+        char * ServerName;
         uint32_t Level;
         union srvsvc_SHARE_INFO InfoStruct;
         uint32_t ParmErr;
@@ -830,7 +830,6 @@ struct srvsvc_NetrShareAdd_req {
 
 struct srvsvc_NetrShareAdd_rep {
         uint32_t ParmErr;
-
         uint32_t status;
 };
         
