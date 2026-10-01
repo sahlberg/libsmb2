@@ -70,93 +70,14 @@ p_syntax_id_t srvsvc_interface = {
         {SRVSVC_UUID}, 3, 0
 };
 
-/* MS-SRVS 2.2.2.7 Software Type Flags (SERVER_INFO_* .type / SV_TYPE_*) */
-static struct dcerpc_uint32_pretty_printer server_type_pp = {
-        .fmt = "0x%08x",
-        .bitfields = {
-                { "WORKSTATION",       SRVSVC_SV_TYPE_WORKSTATION,
-                  SRVSVC_SV_TYPE_WORKSTATION },
-                { "SERVER",            SRVSVC_SV_TYPE_SERVER,
-                  SRVSVC_SV_TYPE_SERVER },
-                { "SQLSERVER",         SRVSVC_SV_TYPE_SQLSERVER,
-                  SRVSVC_SV_TYPE_SQLSERVER },
-                { "DOMAIN_CTRL",       SRVSVC_SV_TYPE_DOMAIN_CTRL,
-                  SRVSVC_SV_TYPE_DOMAIN_CTRL },
-                { "DOMAIN_BAKCTRL",    SRVSVC_SV_TYPE_DOMAIN_BAKCTRL,
-                  SRVSVC_SV_TYPE_DOMAIN_BAKCTRL },
-                { "TIME_SOURCE",       SRVSVC_SV_TYPE_TIME_SOURCE,
-                  SRVSVC_SV_TYPE_TIME_SOURCE },
-                { "AFP",               SRVSVC_SV_TYPE_AFP,
-                  SRVSVC_SV_TYPE_AFP },
-                { "NOVELL",            SRVSVC_SV_TYPE_NOVELL,
-                  SRVSVC_SV_TYPE_NOVELL },
-                { "DOMAIN_MEMBER",     SRVSVC_SV_TYPE_DOMAIN_MEMBER,
-                  SRVSVC_SV_TYPE_DOMAIN_MEMBER },
-                { "PRINTQ_SERVER",     SRVSVC_SV_TYPE_PRINTQ_SERVER,
-                  SRVSVC_SV_TYPE_PRINTQ_SERVER },
-                { "DIALIN_SERVER",     SRVSVC_SV_TYPE_DIALIN_SERVER,
-                  SRVSVC_SV_TYPE_DIALIN_SERVER },
-                { "XENIX_SERVER",      SRVSVC_SV_TYPE_XENIX_SERVER,
-                  SRVSVC_SV_TYPE_XENIX_SERVER },
-                { "NT",                SRVSVC_SV_TYPE_NT,
-                  SRVSVC_SV_TYPE_NT },
-                { "WFW",               SRVSVC_SV_TYPE_WFW,
-                  SRVSVC_SV_TYPE_WFW },
-                { "SERVER_MFPN",       SRVSVC_SV_TYPE_SERVER_MFPN,
-                  SRVSVC_SV_TYPE_SERVER_MFPN },
-                { "SERVER_NT",         SRVSVC_SV_TYPE_SERVER_NT,
-                  SRVSVC_SV_TYPE_SERVER_NT },
-                { "POTENTIAL_BROWSER", SRVSVC_SV_TYPE_POTENTIAL_BROWSER,
-                  SRVSVC_SV_TYPE_POTENTIAL_BROWSER },
-                { "BACKUP_BROWSER",    SRVSVC_SV_TYPE_BACKUP_BROWSER,
-                  SRVSVC_SV_TYPE_BACKUP_BROWSER },
-                { "MASTER_BROWSER",    SRVSVC_SV_TYPE_MASTER_BROWSER,
-                  SRVSVC_SV_TYPE_MASTER_BROWSER },
-                { "DOMAIN_MASTER",     SRVSVC_SV_TYPE_DOMAIN_MASTER,
-                  SRVSVC_SV_TYPE_DOMAIN_MASTER },
-                { "WINDOWS",           SRVSVC_SV_TYPE_WINDOWS,
-                  SRVSVC_SV_TYPE_WINDOWS },
-                { "DFS",               SRVSVC_SV_TYPE_DFS,
-                  SRVSVC_SV_TYPE_DFS },
-                { "CLUSTER_NT",        SRVSVC_SV_TYPE_CLUSTER_NT,
-                  SRVSVC_SV_TYPE_CLUSTER_NT },
-                { "TERMINALSERVER",    SRVSVC_SV_TYPE_TERMINALSERVER,
-                  SRVSVC_SV_TYPE_TERMINALSERVER },
-                { "CLUSTER_VS_NT",     SRVSVC_SV_TYPE_CLUSTER_VS_NT,
-                  SRVSVC_SV_TYPE_CLUSTER_VS_NT },
-                { "DCE",               SRVSVC_SV_TYPE_DCE,
-                  SRVSVC_SV_TYPE_DCE },
-                { "ALTERNATE_XPORT",   SRVSVC_SV_TYPE_ALTERNATE_XPORT,
-                  SRVSVC_SV_TYPE_ALTERNATE_XPORT },
-                { "LOCAL_LIST_ONLY",   SRVSVC_SV_TYPE_LOCAL_LIST_ONLY,
-                  SRVSVC_SV_TYPE_LOCAL_LIST_ONLY },
-                { "DOMAIN_ENUM",       SRVSVC_SV_TYPE_DOMAIN_ENUM,
-                  SRVSVC_SV_TYPE_DOMAIN_ENUM },
-                { NULL, 0, 0},
-        },
-};
-
-/* PLATFORM_ID_* (SERVER_INFO_*.platform_id) — enum, exact match */
-static struct dcerpc_uint32_pretty_printer platform_id_pp = {
-        .fmt = "%u",
-        .bitfields = {
-                { "PLATFORM_ID_DOS", 0xffffffff, SRVSVC_PLATFORM_ID_DOS },
-                { "PLATFORM_ID_OS2", 0xffffffff, SRVSVC_PLATFORM_ID_OS2 },
-                { "PLATFORM_ID_NT",  0xffffffff, SRVSVC_PLATFORM_ID_NT },
-                { "PLATFORM_ID_OSF", 0xffffffff, SRVSVC_PLATFORM_ID_OSF },
-                { "PLATFORM_ID_VMS", 0xffffffff, SRVSVC_PLATFORM_ID_VMS },
-                { NULL, 0, 0},
-        },
-};
-
 /*
  * SRVSVC BEGIN:  DEFINITIONS FROM SRVSVC.IDL
  * [MS-SRVS].pdf
  */
 
 /*
- * Types for the connection, file, session and share calls: generated from
- * the [MS-SRVS] IDL; field names follow the IDL.
+ * Types for the connection, file, session, share and server calls:
+ * generated from the [MS-SRVS] IDL; field names follow the IDL.
  */
 int srvsvc_CONNECTION_INFO_0_coder(char *name, struct dcerpc_context *dce,
                 struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
@@ -2245,674 +2166,640 @@ srvsvc_SHARE_INFO_switch_coder(char *name, struct dcerpc_context *dce,
                                   srvsvc_SHARE_INFO_coder);
 }
 
-/*
- * typedef struct _SERVER_INFO_100 {
- *   DWORD sv100_platform_id;
- *  [string] wchar_t* sv100_name;
- * } SERVER_INFO_100, *PSERVER_INFO_100, *LPSERVER_INFO_100;
- */
 int
 srvsvc_SERVER_INFO_100_coder(char *name, struct dcerpc_context *dce,
-                             struct dcerpc_pdu *pdu,
-                             struct dcerpc_iovec *iov, int *offset,
-                             void *ptr)
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
-        struct srvsvc_SERVER_INFO_100 *si100 = ptr;
+        struct srvsvc_SERVER_INFO_100 *s = ptr;
 
-        if (dcerpc_uint32_coder_pp("Platform_Id", dce, pdu, iov, offset,
-                                   &si100->platform_id, &platform_id_pp)) {
+        (void)name;
+        if (dcerpc_uint32_coder("sv100_platform_id", dce, pdu, iov, offset, &s->sv100_platform_id)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("Name", dce, pdu, iov, offset, &si100->name,
+        if (dcerpc_ptr_coder("sv100_name", dce, pdu, iov, offset, &s->sv100_name,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
+
         return 0;
 }
 
 int
-srvsvc_SERVER_INFO_100_STRUCT_coder(char *name, struct dcerpc_context *dce,
-                                    struct dcerpc_pdu *pdu,
-                                    struct dcerpc_iovec *iov, int *offset,
-                                    void *ptr)
+srvsvc_SERVER_INFO_100_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
-        return  dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
-                                    srvsvc_SERVER_INFO_100_coder);
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_SERVER_INFO_100_coder);
 }
 
-
-/*
- * typedef struct _SERVER_INFO_101 {
- *   DWORD sv101_platform_id;
- *   [string] wchar_t* sv101_name;
- *   DWORD sv101_version_major;
- *   DWORD sv101_version_minor;
- *   DWORD sv101_type;
- *   [string] wchar_t * sv101_comment;
- * } SERVER_INFO_101, *PSERVER_INFO_101, *LPSERVER_INFO_101;
- */
 int
 srvsvc_SERVER_INFO_101_coder(char *name, struct dcerpc_context *dce,
-                             struct dcerpc_pdu *pdu,
-                             struct dcerpc_iovec *iov, int *offset,
-                             void *ptr)
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
-        struct srvsvc_SERVER_INFO_101 *si101 = ptr;
+        struct srvsvc_SERVER_INFO_101 *s = ptr;
 
-        if (dcerpc_uint32_coder_pp("Platform_Id", dce, pdu, iov, offset,
-                                   &si101->platform_id, &platform_id_pp)) {
+        (void)name;
+        if (dcerpc_uint32_coder("sv101_platform_id", dce, pdu, iov, offset, &s->sv101_platform_id)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("Name", dce, pdu, iov, offset, &si101->name,
+        if (dcerpc_ptr_coder("sv101_name", dce, pdu, iov, offset, &s->sv101_name,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Version_Major", dce, pdu, iov, offset, &si101->version_major)) {
+        if (dcerpc_uint32_coder("sv101_version_major", dce, pdu, iov, offset, &s->sv101_version_major)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Version_Minor", dce, pdu, iov, offset, &si101->version_minor)) {
+        if (dcerpc_uint32_coder("sv101_version_minor", dce, pdu, iov, offset, &s->sv101_version_minor)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder_pp("Type", dce, pdu, iov, offset, &si101->type,
-                                   &server_type_pp)) {
+        if (dcerpc_uint32_coder("sv101_type", dce, pdu, iov, offset, &s->sv101_type)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("Comment", dce, pdu, iov, offset, &si101->comment,
+        if (dcerpc_ptr_coder("sv101_comment", dce, pdu, iov, offset, &s->sv101_comment,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
+
         return 0;
 }
 
 int
-srvsvc_SERVER_INFO_101_STRUCT_coder(char *name, struct dcerpc_context *dce,
-                                    struct dcerpc_pdu *pdu,
-                                    struct dcerpc_iovec *iov, int *offset,
-                                    void *ptr)
+srvsvc_SERVER_INFO_101_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
-        return  dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
-                                    srvsvc_SERVER_INFO_101_coder);
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_SERVER_INFO_101_coder);
 }
 
-/*
- * typedef struct _SERVER_INFO_102 {
- *    DWORD sv102_platform_id;
- *    [string] wchar_t * sv102_name;
- *    DWORD sv102_version_major;
- *    DWORD sv102_version_minor;
- *    DWORD sv102_type;
- *    [string] wchar_t * sv102_comment;
- *    DWORD sv102_users;
- *    long sv102_disc;
- *    int sv102_hidden;
- *    DWORD sv102_announce;
- *    DWORD sv102_anndelta;
- *    DWORD sv102_licenses;
- *    [string] wchar_t * sv102_userpath;
- *    } SERVER_INFO_102, *PSERVER_INFO_102, *LPSERVER_INFO_102;
- */
 int
 srvsvc_SERVER_INFO_102_coder(char *name, struct dcerpc_context *dce,
-                             struct dcerpc_pdu *pdu,
-                             struct dcerpc_iovec *iov, int *offset,
-                             void *ptr)
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
-        struct srvsvc_SERVER_INFO_102 *si102 = ptr;
+        struct srvsvc_SERVER_INFO_102 *s = ptr;
 
-        if (dcerpc_uint32_coder_pp("Platform_Id", dce, pdu, iov, offset,
-                                   &si102->platform_id, &platform_id_pp)) {
+        (void)name;
+        if (dcerpc_uint32_coder("sv102_platform_id", dce, pdu, iov, offset, &s->sv102_platform_id)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("Name", dce, pdu, iov, offset, &si102->name,
+        if (dcerpc_ptr_coder("sv102_name", dce, pdu, iov, offset, &s->sv102_name,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Version_Major", dce, pdu, iov, offset, &si102->version_major)) {
+        if (dcerpc_uint32_coder("sv102_version_major", dce, pdu, iov, offset, &s->sv102_version_major)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Version_Minor", dce, pdu, iov, offset, &si102->version_minor)) {
+        if (dcerpc_uint32_coder("sv102_version_minor", dce, pdu, iov, offset, &s->sv102_version_minor)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder_pp("Type", dce, pdu, iov, offset, &si102->type,
-                                   &server_type_pp)) {
+        if (dcerpc_uint32_coder("sv102_type", dce, pdu, iov, offset, &s->sv102_type)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("Comment", dce, pdu, iov, offset, &si102->comment,
+        if (dcerpc_ptr_coder("sv102_comment", dce, pdu, iov, offset, &s->sv102_comment,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Users", dce, pdu, iov, offset, &si102->users)) {
+        if (dcerpc_uint32_coder("sv102_users", dce, pdu, iov, offset, &s->sv102_users)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Disc", dce, pdu, iov, offset, &si102->disc)) {
+        if (dcerpc_uint32_coder("sv102_disc", dce, pdu, iov, offset, &s->sv102_disc)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Hidden", dce, pdu, iov, offset, &si102->hidden)) {
+        if (dcerpc_uint32_coder("sv102_hidden", dce, pdu, iov, offset, &s->sv102_hidden)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Announce", dce, pdu, iov, offset, &si102->announce)) {
+        if (dcerpc_uint32_coder("sv102_announce", dce, pdu, iov, offset, &s->sv102_announce)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Anndelta", dce, pdu, iov, offset, &si102->anndelta)) {
+        if (dcerpc_uint32_coder("sv102_anndelta", dce, pdu, iov, offset, &s->sv102_anndelta)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Licenses", dce, pdu, iov, offset, &si102->licenses)) {
+        if (dcerpc_uint32_coder("sv102_licenses", dce, pdu, iov, offset, &s->sv102_licenses)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("UserPath", dce, pdu, iov, offset, &si102->userpath,
+        if (dcerpc_ptr_coder("sv102_userpath", dce, pdu, iov, offset, &s->sv102_userpath,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
+
         return 0;
 }
 
 int
-srvsvc_SERVER_INFO_102_STRUCT_coder(char *name, struct dcerpc_context *dce,
-                                    struct dcerpc_pdu *pdu,
-                                    struct dcerpc_iovec *iov, int *offset,
-                                    void *ptr)
+srvsvc_SERVER_INFO_102_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
-        return  dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
-                                    srvsvc_SERVER_INFO_102_coder);
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_SERVER_INFO_102_coder);
 }
 
-/*
- * typedef struct _SERVER_INFO_103 {
- *    DWORD sv103_platform_id;
- *    [string] wchar_t * sv103_name;
- *    DWORD sv103_version_major;
- *    DWORD sv103_version_minor;
- *    DWORD sv103_type;
- *    [string] wchar_t * sv103_comment;
- *    DWORD sv103_users;
- *    long sv103_disc;
- *    int sv103_hidden;
- *    DWORD sv103_announce;
- *    DWORD sv103_anndelta;
- *    DWORD sv103_licenses;
- *    [string] wchar_t * sv103_userpath;
- *    DWORD sv103_capabilities;
- *    } SERVER_INFO_103, *PSERVER_INFO_103, *LPSERVER_INFO_103;
- */
 int
 srvsvc_SERVER_INFO_103_coder(char *name, struct dcerpc_context *dce,
-                             struct dcerpc_pdu *pdu,
-                             struct dcerpc_iovec *iov, int *offset,
-                             void *ptr)
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
-        struct srvsvc_SERVER_INFO_103 *si103 = ptr;
+        struct srvsvc_SERVER_INFO_103 *s = ptr;
 
-        if (dcerpc_uint32_coder_pp("Platform_Id", dce, pdu, iov, offset,
-                                   &si103->platform_id, &platform_id_pp)) {
+        (void)name;
+        if (dcerpc_uint32_coder("sv103_platform_id", dce, pdu, iov, offset, &s->sv103_platform_id)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("Name", dce, pdu, iov, offset, &si103->name,
+        if (dcerpc_ptr_coder("sv103_name", dce, pdu, iov, offset, &s->sv103_name,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Version_Major", dce, pdu, iov, offset, &si103->version_major)) {
+        if (dcerpc_uint32_coder("sv103_version_major", dce, pdu, iov, offset, &s->sv103_version_major)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Version_Minor", dce, pdu, iov, offset, &si103->version_minor)) {
+        if (dcerpc_uint32_coder("sv103_version_minor", dce, pdu, iov, offset, &s->sv103_version_minor)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder_pp("Type", dce, pdu, iov, offset, &si103->type,
-                                   &server_type_pp)) {
+        if (dcerpc_uint32_coder("sv103_type", dce, pdu, iov, offset, &s->sv103_type)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("Comment", dce, pdu, iov, offset, &si103->comment,
+        if (dcerpc_ptr_coder("sv103_comment", dce, pdu, iov, offset, &s->sv103_comment,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Users", dce, pdu, iov, offset, &si103->users)) {
+        if (dcerpc_uint32_coder("sv103_users", dce, pdu, iov, offset, &s->sv103_users)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Disc", dce, pdu, iov, offset, &si103->disc)) {
+        if (dcerpc_uint32_coder("sv103_disc", dce, pdu, iov, offset, &s->sv103_disc)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Hidden", dce, pdu, iov, offset, &si103->hidden)) {
+        if (dcerpc_uint32_coder("sv103_hidden", dce, pdu, iov, offset, &s->sv103_hidden)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Announce", dce, pdu, iov, offset, &si103->announce)) {
+        if (dcerpc_uint32_coder("sv103_announce", dce, pdu, iov, offset, &s->sv103_announce)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Anndelta", dce, pdu, iov, offset, &si103->anndelta)) {
+        if (dcerpc_uint32_coder("sv103_anndelta", dce, pdu, iov, offset, &s->sv103_anndelta)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Licenses", dce, pdu, iov, offset, &si103->licenses)) {
+        if (dcerpc_uint32_coder("sv103_licenses", dce, pdu, iov, offset, &s->sv103_licenses)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("UserPath", dce, pdu, iov, offset, &si103->userpath,
+        if (dcerpc_ptr_coder("sv103_userpath", dce, pdu, iov, offset, &s->sv103_userpath,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Capabilities", dce, pdu, iov, offset, &si103->capabilities)) {
+        if (dcerpc_uint32_coder("sv103_capabilities", dce, pdu, iov, offset, &s->sv103_capabilities)) {
                 return -1;
         }
+
         return 0;
 }
 
 int
-srvsvc_SERVER_INFO_103_STRUCT_coder(char *name, struct dcerpc_context *dce,
-                                    struct dcerpc_pdu *pdu,
-                                    struct dcerpc_iovec *iov, int *offset,
-                                    void *ptr)
+srvsvc_SERVER_INFO_103_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
-        return  dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
-                                    srvsvc_SERVER_INFO_103_coder);
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_SERVER_INFO_103_coder);
 }
 
-/*
- * typedef struct _SERVER_INFO_502 {
- *   DWORD sv502_sessopens;
- *   DWORD sv502_sessvcs;
- *   DWORD sv502_opensearch;
- *   DWORD sv502_sizreqbuf;
- *   DWORD sv502_initworkitems;
- *   DWORD sv502_maxworkitems;
- *   DWORD sv502_rawworkitems;
- *   DWORD sv502_irpstacksize;
- *   DWORD sv502_maxrawbuflen;
- *   DWORD sv502_sessusers;
- *   DWORD sv502_sessconns;
- *   DWORD sv502_maxpagedmemoryusage;
- *   DWORD sv502_maxnonpagedmemoryusage;
- *   int sv502_enablesoftcompat;
- *   int sv502_enableforcedlogoff;
- *   int sv502_timesource;
- *   int sv502_acceptdownlevelapis;
- *   int sv502_lmannounce;
- * } SERVER_INFO_502, *PSERVER_INFO_502, *LPSERVER_INFO_502;
- */
 int
 srvsvc_SERVER_INFO_502_coder(char *name, struct dcerpc_context *dce,
-                             struct dcerpc_pdu *pdu,
-                             struct dcerpc_iovec *iov, int *offset,
-                             void *ptr)
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
-        struct srvsvc_SERVER_INFO_502 *si502 = ptr;
+        struct srvsvc_SERVER_INFO_502 *s = ptr;
 
-        if (dcerpc_uint32_coder("sessopens", dce, pdu, iov, offset, &si502->sessopens)) {
+        (void)name;
+        if (dcerpc_uint32_coder("sv502_sessopens", dce, pdu, iov, offset, &s->sv502_sessopens)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sessvcs", dce, pdu, iov, offset, &si502->sessvcs)) {
+        if (dcerpc_uint32_coder("sv502_sessvcs", dce, pdu, iov, offset, &s->sv502_sessvcs)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("opensearch", dce, pdu, iov, offset, &si502->opensearch)) {
+        if (dcerpc_uint32_coder("sv502_opensearch", dce, pdu, iov, offset, &s->sv502_opensearch)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sizreqbuf", dce, pdu, iov, offset, &si502->sizreqbuf)) {
+        if (dcerpc_uint32_coder("sv502_sizreqbuf", dce, pdu, iov, offset, &s->sv502_sizreqbuf)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("initworkitems", dce, pdu, iov, offset, &si502->initworkitems)) {
+        if (dcerpc_uint32_coder("sv502_initworkitems", dce, pdu, iov, offset, &s->sv502_initworkitems)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("maxworkitems", dce, pdu, iov, offset, &si502->maxworkitems)) {
+        if (dcerpc_uint32_coder("sv502_maxworkitems", dce, pdu, iov, offset, &s->sv502_maxworkitems)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("rawworkitems", dce, pdu, iov, offset, &si502->rawworkitems)) {
+        if (dcerpc_uint32_coder("sv502_rawworkitems", dce, pdu, iov, offset, &s->sv502_rawworkitems)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("irpstacksize", dce, pdu, iov, offset, &si502->irpstacksize)) {
+        if (dcerpc_uint32_coder("sv502_irpstacksize", dce, pdu, iov, offset, &s->sv502_irpstacksize)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("maxrawbuflen", dce, pdu, iov, offset, &si502->maxrawbuflen)) {
+        if (dcerpc_uint32_coder("sv502_maxrawbuflen", dce, pdu, iov, offset, &s->sv502_maxrawbuflen)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sessusers", dce, pdu, iov, offset, &si502->sessusers)) {
+        if (dcerpc_uint32_coder("sv502_sessusers", dce, pdu, iov, offset, &s->sv502_sessusers)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sessconns", dce, pdu, iov, offset, &si502->sessconns)) {
+        if (dcerpc_uint32_coder("sv502_sessconns", dce, pdu, iov, offset, &s->sv502_sessconns)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("maxpagedmemoryusage", dce, pdu, iov, offset, &si502->maxpagedmemoryusage)) {
+        if (dcerpc_uint32_coder("sv502_maxpagedmemoryusage", dce, pdu, iov, offset, &s->sv502_maxpagedmemoryusage)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("maxnonpagedmemoryusage", dce, pdu, iov, offset, &si502->maxnonpagedmemoryusage)) {
+        if (dcerpc_uint32_coder("sv502_maxnonpagedmemoryusage", dce, pdu, iov, offset, &s->sv502_maxnonpagedmemoryusage)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("enablesoftcompat", dce, pdu, iov, offset, &si502->enablesoftcompat)) {
+        if (dcerpc_uint32_coder("sv502_enablesoftcompat", dce, pdu, iov, offset, &s->sv502_enablesoftcompat)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("enableforcedlogoff", dce, pdu, iov, offset, &si502->enableforcedlogoff)) {
+        if (dcerpc_uint32_coder("sv502_enableforcedlogoff", dce, pdu, iov, offset, &s->sv502_enableforcedlogoff)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("timesource", dce, pdu, iov, offset, &si502->timesource)) {
+        if (dcerpc_uint32_coder("sv502_timesource", dce, pdu, iov, offset, &s->sv502_timesource)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("acceptdownlevelapis", dce, pdu, iov, offset, &si502->acceptdownlevelapis)) {
+        if (dcerpc_uint32_coder("sv502_acceptdownlevelapis", dce, pdu, iov, offset, &s->sv502_acceptdownlevelapis)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("lmannounce", dce, pdu, iov, offset, &si502->lmannounce)) {
+        if (dcerpc_uint32_coder("sv502_lmannounce", dce, pdu, iov, offset, &s->sv502_lmannounce)) {
                 return -1;
         }
+
         return 0;
 }
 
 int
-srvsvc_SERVER_INFO_502_STRUCT_coder(char *name, struct dcerpc_context *dce,
-                                    struct dcerpc_pdu *pdu,
-                                    struct dcerpc_iovec *iov, int *offset,
-                                    void *ptr)
+srvsvc_SERVER_INFO_502_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
-        return  dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
-                                    srvsvc_SERVER_INFO_502_coder);
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_SERVER_INFO_502_coder);
 }
 
-/*
- * typedef struct _SERVER_INFO_503 {
- *   DWORD sv503_sessopens;
- *   DWORD sv503_sessvcs;
- *   DWORD sv503_opensearch;
- *   DWORD sv503_sizreqbuf;
- *   DWORD sv503_initworkitems;
- *   DWORD sv503_maxworkitems;
- *   DWORD sv503_rawworkitems;
- *   DWORD sv503_irpstacksize;
- *   DWORD sv503_maxrawbuflen;
- *   DWORD sv503_sessusers;
- *   DWORD sv503_sessconns;
- *   DWORD sv503_maxpagedmemoryusage;
- *   DWORD sv503_maxnonpagedmemoryusage;
- *   int sv503_enablesoftcompat;
- *   int sv503_enableforcedlogoff;
- *   int sv503_timesource;
- *   int sv503_acceptdownlevelapis;
- *   int sv503_lmannounce;
- *   [string] wchar_t* sv503_domain;
- *   DWORD sv503_maxcopyreadlen;
- *   DWORD sv503_maxcopywritelen;
- *   DWORD sv503_minkeepsearch;
- *   DWORD sv503_maxkeepsearch;
- *   DWORD sv503_minkeepcomplsearch;
- *   DWORD sv503_maxkeepcomplsearch;
- *   DWORD sv503_threadcountadd;
- *   DWORD sv503_numblockthreads;
- *   DWORD sv503_scavtimeout;
- *   DWORD sv503_minrcvqueue;
- *   DWORD sv503_minfreeworkitems;
- *   DWORD sv503_xactmemsize;
- *   DWORD sv503_threadpriority;
- *   DWORD sv503_maxmpxct;
- *   DWORD sv503_oplockbreakwait;
- *   DWORD sv503_oplockbreakresponsewait;
- *   int sv503_enableoplocks;
- *   int sv503_enableoplockforceclose;
- *   int sv503_enablefcbopens;
- *   int sv503_enableraw;
- *   int sv503_enablesharednetdrives;
- *   DWORD sv503_minfreeconnections;
- *   DWORD sv503_maxfreeconnections;
- * } SERVER_INFO_503, *PSERVER_INFO_503, *LPSERVER_INFO_503;
- */
 int
 srvsvc_SERVER_INFO_503_coder(char *name, struct dcerpc_context *dce,
-                             struct dcerpc_pdu *pdu,
-                             struct dcerpc_iovec *iov, int *offset,
-                             void *ptr)
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
-        struct srvsvc_SERVER_INFO_503 *si503 = ptr;
+        struct srvsvc_SERVER_INFO_503 *s = ptr;
 
-        if (dcerpc_uint32_coder("sessopens", dce, pdu, iov, offset, &si503->sessopens)) {
+        (void)name;
+        if (dcerpc_uint32_coder("sv503_sessopens", dce, pdu, iov, offset, &s->sv503_sessopens)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sessvcs", dce, pdu, iov, offset, &si503->sessvcs)) {
+        if (dcerpc_uint32_coder("sv503_sessvcs", dce, pdu, iov, offset, &s->sv503_sessvcs)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("opensearch", dce, pdu, iov, offset, &si503->opensearch)) {
+        if (dcerpc_uint32_coder("sv503_opensearch", dce, pdu, iov, offset, &s->sv503_opensearch)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sizreqbuf", dce, pdu, iov, offset, &si503->sizreqbuf)) {
+        if (dcerpc_uint32_coder("sv503_sizreqbuf", dce, pdu, iov, offset, &s->sv503_sizreqbuf)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("initworkitems", dce, pdu, iov, offset, &si503->initworkitems)) {
+        if (dcerpc_uint32_coder("sv503_initworkitems", dce, pdu, iov, offset, &s->sv503_initworkitems)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("maxworkitems", dce, pdu, iov, offset, &si503->maxworkitems)) {
+        if (dcerpc_uint32_coder("sv503_maxworkitems", dce, pdu, iov, offset, &s->sv503_maxworkitems)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("rawworkitems", dce, pdu, iov, offset, &si503->rawworkitems)) {
+        if (dcerpc_uint32_coder("sv503_rawworkitems", dce, pdu, iov, offset, &s->sv503_rawworkitems)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("irpstacksize", dce, pdu, iov, offset, &si503->irpstacksize)) {
+        if (dcerpc_uint32_coder("sv503_irpstacksize", dce, pdu, iov, offset, &s->sv503_irpstacksize)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("maxrawbuflen", dce, pdu, iov, offset, &si503->maxrawbuflen)) {
+        if (dcerpc_uint32_coder("sv503_maxrawbuflen", dce, pdu, iov, offset, &s->sv503_maxrawbuflen)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sessusers", dce, pdu, iov, offset, &si503->sessusers)) {
+        if (dcerpc_uint32_coder("sv503_sessusers", dce, pdu, iov, offset, &s->sv503_sessusers)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sessconns", dce, pdu, iov, offset, &si503->sessconns)) {
+        if (dcerpc_uint32_coder("sv503_sessconns", dce, pdu, iov, offset, &s->sv503_sessconns)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("maxpagedmemoryusage", dce, pdu, iov, offset, &si503->maxpagedmemoryusage)) {
+        if (dcerpc_uint32_coder("sv503_maxpagedmemoryusage", dce, pdu, iov, offset, &s->sv503_maxpagedmemoryusage)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("maxnonpagedmemoryusage", dce, pdu, iov, offset, &si503->maxnonpagedmemoryusage)) {
+        if (dcerpc_uint32_coder("sv503_maxnonpagedmemoryusage", dce, pdu, iov, offset, &s->sv503_maxnonpagedmemoryusage)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("enablesoftcompat", dce, pdu, iov, offset, &si503->enablesoftcompat)) {
+        if (dcerpc_uint32_coder("sv503_enablesoftcompat", dce, pdu, iov, offset, &s->sv503_enablesoftcompat)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("enableforcedlogoff", dce, pdu, iov, offset, &si503->enableforcedlogoff)) {
+        if (dcerpc_uint32_coder("sv503_enableforcedlogoff", dce, pdu, iov, offset, &s->sv503_enableforcedlogoff)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("timesource", dce, pdu, iov, offset, &si503->timesource)) {
+        if (dcerpc_uint32_coder("sv503_timesource", dce, pdu, iov, offset, &s->sv503_timesource)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("acceptdownlevelapis", dce, pdu, iov, offset, &si503->acceptdownlevelapis)) {
+        if (dcerpc_uint32_coder("sv503_acceptdownlevelapis", dce, pdu, iov, offset, &s->sv503_acceptdownlevelapis)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("lmannounce", dce, pdu, iov, offset, &si503->lmannounce)) {
+        if (dcerpc_uint32_coder("sv503_lmannounce", dce, pdu, iov, offset, &s->sv503_lmannounce)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("domain", dce, pdu, iov, offset, &si503->domain,
+        if (dcerpc_ptr_coder("sv503_domain", dce, pdu, iov, offset, &s->sv503_domain,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("maxcopyreadlen", dce, pdu, iov, offset, &si503->maxcopyreadlen)) {
+        if (dcerpc_uint32_coder("sv503_maxcopyreadlen", dce, pdu, iov, offset, &s->sv503_maxcopyreadlen)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("maxcopywritelen", dce, pdu, iov, offset, &si503->maxcopywritelen)) {
+        if (dcerpc_uint32_coder("sv503_maxcopywritelen", dce, pdu, iov, offset, &s->sv503_maxcopywritelen)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("minkeepsearch", dce, pdu, iov, offset, &si503->minkeepsearch)) {
+        if (dcerpc_uint32_coder("sv503_minkeepsearch", dce, pdu, iov, offset, &s->sv503_minkeepsearch)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("maxkeepsearch", dce, pdu, iov, offset, &si503->maxkeepsearch)) {
+        if (dcerpc_uint32_coder("sv503_maxkeepsearch", dce, pdu, iov, offset, &s->sv503_maxkeepsearch)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("minkeepcomplsearch", dce, pdu, iov, offset, &si503->minkeepcomplsearch)) {
+        if (dcerpc_uint32_coder("sv503_minkeepcomplsearch", dce, pdu, iov, offset, &s->sv503_minkeepcomplsearch)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("maxkeepcomplsearch", dce, pdu, iov, offset, &si503->maxkeepcomplsearch)) {
+        if (dcerpc_uint32_coder("sv503_maxkeepcomplsearch", dce, pdu, iov, offset, &s->sv503_maxkeepcomplsearch)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("threadcountadd", dce, pdu, iov, offset, &si503->threadcountadd)) {
+        if (dcerpc_uint32_coder("sv503_threadcountadd", dce, pdu, iov, offset, &s->sv503_threadcountadd)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("numblockthreads", dce, pdu, iov, offset, &si503->numblockthreads)) {
+        if (dcerpc_uint32_coder("sv503_numblockthreads", dce, pdu, iov, offset, &s->sv503_numblockthreads)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("scavtimeout", dce, pdu, iov, offset, &si503->scavtimeout)) {
+        if (dcerpc_uint32_coder("sv503_scavtimeout", dce, pdu, iov, offset, &s->sv503_scavtimeout)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("minrcvqueue", dce, pdu, iov, offset, &si503->minrcvqueue)) {
+        if (dcerpc_uint32_coder("sv503_minrcvqueue", dce, pdu, iov, offset, &s->sv503_minrcvqueue)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("minfreeworkitems", dce, pdu, iov, offset, &si503->minfreeworkitems)) {
+        if (dcerpc_uint32_coder("sv503_minfreeworkitems", dce, pdu, iov, offset, &s->sv503_minfreeworkitems)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("xactmemsize", dce, pdu, iov, offset, &si503->xactmemsize)) {
+        if (dcerpc_uint32_coder("sv503_xactmemsize", dce, pdu, iov, offset, &s->sv503_xactmemsize)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("threadpriority", dce, pdu, iov, offset, &si503->threadpriority)) {
+        if (dcerpc_uint32_coder("sv503_threadpriority", dce, pdu, iov, offset, &s->sv503_threadpriority)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("maxmpxct", dce, pdu, iov, offset, &si503->maxmpxct)) {
+        if (dcerpc_uint32_coder("sv503_maxmpxct", dce, pdu, iov, offset, &s->sv503_maxmpxct)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("oplockbreakwait", dce, pdu, iov, offset, &si503->oplockbreakwait)) {
+        if (dcerpc_uint32_coder("sv503_oplockbreakwait", dce, pdu, iov, offset, &s->sv503_oplockbreakwait)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("oplockbreakresponsewait", dce, pdu, iov, offset, &si503->oplockbreakresponsewait)) {
+        if (dcerpc_uint32_coder("sv503_oplockbreakresponsewait", dce, pdu, iov, offset, &s->sv503_oplockbreakresponsewait)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("enableoplocks", dce, pdu, iov, offset, &si503->enableoplocks)) {
+        if (dcerpc_uint32_coder("sv503_enableoplocks", dce, pdu, iov, offset, &s->sv503_enableoplocks)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("enableoplockforceclose", dce, pdu, iov, offset, &si503->enableoplockforceclose)) {
+        if (dcerpc_uint32_coder("sv503_enableoplockforceclose", dce, pdu, iov, offset, &s->sv503_enableoplockforceclose)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("enablefcbopens", dce, pdu, iov, offset, &si503->enablefcbopens)) {
+        if (dcerpc_uint32_coder("sv503_enablefcbopens", dce, pdu, iov, offset, &s->sv503_enablefcbopens)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("enableraw", dce, pdu, iov, offset, &si503->enableraw)) {
+        if (dcerpc_uint32_coder("sv503_enableraw", dce, pdu, iov, offset, &s->sv503_enableraw)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("enablesharednetdrives", dce, pdu, iov, offset, &si503->enablesharednetdrives)) {
+        if (dcerpc_uint32_coder("sv503_enablesharednetdrives", dce, pdu, iov, offset, &s->sv503_enablesharednetdrives)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("minfreeconnections", dce, pdu, iov, offset, &si503->minfreeconnections)) {
+        if (dcerpc_uint32_coder("sv503_minfreeconnections", dce, pdu, iov, offset, &s->sv503_minfreeconnections)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("maxfreeconnections", dce, pdu, iov, offset, &si503->maxfreeconnections)) {
+        if (dcerpc_uint32_coder("sv503_maxfreeconnections", dce, pdu, iov, offset, &s->sv503_maxfreeconnections)) {
                 return -1;
         }
+
         return 0;
 }
 
 int
-srvsvc_SERVER_INFO_503_STRUCT_coder(char *name, struct dcerpc_context *dce,
-                                    struct dcerpc_pdu *pdu,
-                                    struct dcerpc_iovec *iov, int *offset,
-                                    void *ptr)
+srvsvc_SERVER_INFO_503_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
-        return  dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
-                                    srvsvc_SERVER_INFO_503_coder);
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_SERVER_INFO_503_coder);
 }
 
-/*
- * typedef [switch_type(unsigned long)] union _SERVER_INFO {
- *   [case(100)]  LPSERVER_INFO_100 ServerInfo100;
- *   [case(101)]  LPSERVER_INFO_101 ServerInfo101;
- *   [case(102)]  LPSERVER_INFO_102 ServerInfo102;
- *   [case(103)]  LPSERVER_INFO_103 ServerInfo103;
- *   [case(502)]  LPSERVER_INFO_502 ServerInfo502;
- *   [case(503)]  LPSERVER_INFO_503 ServerInfo503;
- *   [case(599)]  LPSERVER_INFO_599 ServerInfo599;
- *   [case(1005)] LPSERVER_INFO_1005 ServerInfo1005;
- *   [case(1107)] LPSERVER_INFO_1107 ServerInfo1107;
- *   [case(1010)] LPSERVER_INFO_1010 ServerInfo1010;
- *   [case(1016)] LPSERVER_INFO_1016 ServerInfo1016;
- *   [case(1017)] LPSERVER_INFO_1017 ServerInfo1017;
- *   [case(1018)] LPSERVER_INFO_1018 ServerInfo1018;
- *   [case(1501)] LPSERVER_INFO_1501 ServerInfo1501;
- *   [case(1502)] LPSERVER_INFO_1502 ServerInfo1502;
- *   [case(1503)] LPSERVER_INFO_1503 ServerInfo1503;
- *   [case(1506)] LPSERVER_INFO_1506 ServerInfo1506;
- *   [case(1510)] LPSERVER_INFO_1510 ServerInfo1510;
- *   [case(1511)] LPSERVER_INFO_1511 ServerInfo1511;
- *   [case(1512)] LPSERVER_INFO_1512 ServerInfo1512;
- *   [case(1513)] LPSERVER_INFO_1513 ServerInfo1513;
- *   [case(1514)] LPSERVER_INFO_1514 ServerInfo1514;
- *   [case(1515)] LPSERVER_INFO_1515 ServerInfo1515;
- *   [case(1516)] LPSERVER_INFO_1516 ServerInfo1516;
- *   [case(1518)] LPSERVER_INFO_1518 ServerInfo1518;
- *   [case(1523)] LPSERVER_INFO_1523 ServerInfo1523;
- *   [case(1528)] LPSERVER_INFO_1528 ServerInfo1528;
- *   [case(1529)] LPSERVER_INFO_1529 ServerInfo1529;
- *   [case(1530)] LPSERVER_INFO_1530 ServerInfo1530;
- *   [case(1533)] LPSERVER_INFO_1533 ServerInfo1533;
- *   [case(1534)] LPSERVER_INFO_1534 ServerInfo1534;
- *   [case(1535)] LPSERVER_INFO_1535 ServerInfo1535;
- *   [case(1536)] LPSERVER_INFO_1536 ServerInfo1536;
- *   [case(1538)] LPSERVER_INFO_1538 ServerInfo1538;
- *   [case(1539)] LPSERVER_INFO_1539 ServerInfo1539;
- *   [case(1540)] LPSERVER_INFO_1540 ServerInfo1540;
- *   [case(1541)] LPSERVER_INFO_1541 ServerInfo1541;
- *   [case(1542)] LPSERVER_INFO_1542 ServerInfo1542;
- *   [case(1543)] LPSERVER_INFO_1543 ServerInfo1543;
- *   [case(1544)] LPSERVER_INFO_1544 ServerInfo1544;
- *   [case(1545)] LPSERVER_INFO_1545 ServerInfo1545;
- *   [case(1546)] LPSERVER_INFO_1546 ServerInfo1546;
- *   [case(1547)] LPSERVER_INFO_1547 ServerInfo1547;
- *   [case(1548)] LPSERVER_INFO_1548 ServerInfo1548;
- *   [case(1549)] LPSERVER_INFO_1549 ServerInfo1549;
- *   [case(1550)] LPSERVER_INFO_1550 ServerInfo1550;
- *   [case(1552)] LPSERVER_INFO_1552 ServerInfo1552;
- *   [case(1553)] LPSERVER_INFO_1553 ServerInfo1553;
- *   [case(1554)] LPSERVER_INFO_1554 ServerInfo1554;
- *   [case(1555)] LPSERVER_INFO_1555 ServerInfo1555;
- *   [case(1556)] LPSERVER_INFO_1556 ServerInfo1556;
- * } SERVER_INFO, *PSERVER_INFO, *LPSERVER_INFO;
- */
-static int
+int
 srvsvc_SERVER_INFO_coder(char *name, struct dcerpc_context *dce,
-                         struct dcerpc_pdu *pdu,
-                         struct dcerpc_iovec *iov, int *offset,
-                         void *ptr)
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
-        union srvsvc_SERVER_INFO *info = ptr;
+        union srvsvc_SERVER_INFO *u = ptr;
 
+        (void)name;
         switch (dcerpc_get_switch_is(pdu)) {
         case 100:
-                if (dcerpc_ptr_coder("ServerInfo100", dce, pdu, iov, offset, &info->ServerInfo100,
-                                     PTR_UNIQUE, srvsvc_SERVER_INFO_100_STRUCT_coder)) {
+                if (dcerpc_ptr_coder("ServerInfo100", dce, pdu, iov, offset, &u->ServerInfo100,
+                                     PTR_UNIQUE, srvsvc_SERVER_INFO_100_struct_coder)) {
                         return -1;
                 }
                 break;
         case 101:
-                if (dcerpc_ptr_coder("ServerInfo101", dce, pdu, iov, offset, &info->ServerInfo101,
-                                     PTR_UNIQUE, srvsvc_SERVER_INFO_101_STRUCT_coder)) {
+                if (dcerpc_ptr_coder("ServerInfo101", dce, pdu, iov, offset, &u->ServerInfo101,
+                                     PTR_UNIQUE, srvsvc_SERVER_INFO_101_struct_coder)) {
                         return -1;
                 }
                 break;
         case 102:
-                if (dcerpc_ptr_coder("ServerInfo102", dce, pdu, iov, offset, &info->ServerInfo102,
-                                     PTR_UNIQUE, srvsvc_SERVER_INFO_102_STRUCT_coder)) {
+                if (dcerpc_ptr_coder("ServerInfo102", dce, pdu, iov, offset, &u->ServerInfo102,
+                                     PTR_UNIQUE, srvsvc_SERVER_INFO_102_struct_coder)) {
                         return -1;
                 }
                 break;
         case 103:
-                if (dcerpc_ptr_coder("ServerInfo103", dce, pdu, iov, offset, &info->ServerInfo103,
-                                     PTR_UNIQUE, srvsvc_SERVER_INFO_103_STRUCT_coder)) {
+                if (dcerpc_ptr_coder("ServerInfo103", dce, pdu, iov, offset, &u->ServerInfo103,
+                                     PTR_UNIQUE, srvsvc_SERVER_INFO_103_struct_coder)) {
                         return -1;
                 }
                 break;
         case 502:
-                if (dcerpc_ptr_coder("ServerInfo502", dce, pdu, iov, offset, &info->ServerInfo502,
-                                     PTR_UNIQUE, srvsvc_SERVER_INFO_502_STRUCT_coder)) {
+                if (dcerpc_ptr_coder("ServerInfo502", dce, pdu, iov, offset, &u->ServerInfo502,
+                                     PTR_UNIQUE, srvsvc_SERVER_INFO_502_struct_coder)) {
                         return -1;
                 }
                 break;
         case 503:
-                if (dcerpc_ptr_coder("ServerInfo503", dce, pdu, iov, offset, &info->ServerInfo503,
-                                     PTR_UNIQUE, srvsvc_SERVER_INFO_503_STRUCT_coder)) {
+                if (dcerpc_ptr_coder("ServerInfo503", dce, pdu, iov, offset, &u->ServerInfo503,
+                                     PTR_UNIQUE, srvsvc_SERVER_INFO_503_struct_coder)) {
                         return -1;
                 }
                 break;
         default:
+                /* NDR conformance pass: the discriminant is not read yet */
+                if (dcerpc_pdu_is_conformance_run(pdu)) {
+                        return 0;
+                }
                 return -1;
-        };
+        }
 
         return 0;
 }
 
-static int
-srvsvc_SERVER_INFO_STRUCT_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
-                                struct dcerpc_iovec *iov, int *offset,
-                                void *ptr)
+/* The union as a [switch_is] parameter: discriminant from switch_is */
+int
+srvsvc_SERVER_INFO_switch_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
-        uint32_t Level = dcerpc_get_switch_is(pdu);
+        uint32_t level = dcerpc_get_switch_is(pdu);
 
-        if (dcerpc_union_coder("InfoStruct", dce, pdu, iov, offset,
-                               &Level, ptr,
-                               srvsvc_SERVER_INFO_coder)) {
+        return dcerpc_union_coder(name, dce, pdu, iov, offset, &level, ptr,
+                                  srvsvc_SERVER_INFO_coder);
+}
+
+int
+srvsvc_STAT_SERVER_0_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        struct srvsvc_STAT_SERVER_0 *s = ptr;
+
+        (void)name;
+        if (dcerpc_uint32_coder("sts0_start", dce, pdu, iov, offset, &s->sts0_start)) {
                 return -1;
         }
+        if (dcerpc_uint32_coder("sts0_fopens", dce, pdu, iov, offset, &s->sts0_fopens)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("sts0_devopens", dce, pdu, iov, offset, &s->sts0_devopens)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("sts0_jobsqueued", dce, pdu, iov, offset, &s->sts0_jobsqueued)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("sts0_sopens", dce, pdu, iov, offset, &s->sts0_sopens)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("sts0_stimedout", dce, pdu, iov, offset, &s->sts0_stimedout)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("sts0_serrorout", dce, pdu, iov, offset, &s->sts0_serrorout)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("sts0_pwerrors", dce, pdu, iov, offset, &s->sts0_pwerrors)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("sts0_permerrors", dce, pdu, iov, offset, &s->sts0_permerrors)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("sts0_syserrors", dce, pdu, iov, offset, &s->sts0_syserrors)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("sts0_bytessent_low", dce, pdu, iov, offset, &s->sts0_bytessent_low)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("sts0_bytessent_high", dce, pdu, iov, offset, &s->sts0_bytessent_high)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("sts0_bytesrcvd_low", dce, pdu, iov, offset, &s->sts0_bytesrcvd_low)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("sts0_bytesrcvd_high", dce, pdu, iov, offset, &s->sts0_bytesrcvd_high)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("sts0_avresponse", dce, pdu, iov, offset, &s->sts0_avresponse)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("sts0_reqbufneed", dce, pdu, iov, offset, &s->sts0_reqbufneed)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("sts0_bigbufneed", dce, pdu, iov, offset, &s->sts0_bigbufneed)) {
+                return -1;
+        }
+
         return 0;
+}
+
+int
+srvsvc_STAT_SERVER_0_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_STAT_SERVER_0_coder);
+}
+
+int
+srvsvc_TIME_OF_DAY_INFO_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        struct srvsvc_TIME_OF_DAY_INFO *s = ptr;
+
+        (void)name;
+        if (dcerpc_uint32_coder("tod_elapsedt", dce, pdu, iov, offset, &s->tod_elapsedt)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("tod_msecs", dce, pdu, iov, offset, &s->tod_msecs)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("tod_hours", dce, pdu, iov, offset, &s->tod_hours)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("tod_mins", dce, pdu, iov, offset, &s->tod_mins)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("tod_secs", dce, pdu, iov, offset, &s->tod_secs)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("tod_hunds", dce, pdu, iov, offset, &s->tod_hunds)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("tod_timezone", dce, pdu, iov, offset, &s->tod_timezone)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("tod_tinterval", dce, pdu, iov, offset, &s->tod_tinterval)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("tod_day", dce, pdu, iov, offset, &s->tod_day)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("tod_month", dce, pdu, iov, offset, &s->tod_month)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("tod_year", dce, pdu, iov, offset, &s->tod_year)) {
+                return -1;
+        }
+        if (dcerpc_uint32_coder("tod_weekday", dce, pdu, iov, offset, &s->tod_weekday)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_TIME_OF_DAY_INFO_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
+                                   srvsvc_TIME_OF_DAY_INFO_coder);
 }
 
 /*****************
@@ -3687,45 +3574,53 @@ srvsvc_NetrShareCheck_rep_coder(char *name, struct dcerpc_context *dce,
         return 0;
 }
 
-/***********
- * NetrServerGetInfo (
- *   [in,string,unique] SRVSVC_HANDLE ServerName,
- *   [in] DWORD Level,
- *   [out, switch_is(Level)] LPSERVER_INFO InfoStruct
- *);
-*/
-int srvsvc_NetrServerGetInfo_req_coder(char *name, struct dcerpc_context *dce,
-                                       struct dcerpc_pdu *pdu,
-                                       struct dcerpc_iovec *iov, int *offset,
-                                       void *ptr)
+/*****************
+ * Function: 0x15  NetrServerGetInfo  (SRVSVC_NETRSERVERGETINFO)
+ *****************/
+int
+srvsvc_NetrServerGetInfo_req_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
         struct srvsvc_NetrServerGetInfo_req *req = ptr;
 
-        if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+        (void)name;
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&
+            req->ServerName == NULL) {
+                if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, NULL,
+                                     PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                        return -1;
+                }
+        } else if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
+                                    PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Level", dce, pdu, iov, offset, &req->Level)) {
+        if (dcerpc_ptr_coder("Level", dce, pdu, iov, offset, &req->Level,
+                             PTR_REF, dcerpc_uint32_coder)) {
                 return -1;
         }
-        dcerpc_set_switch_is(pdu, req->Level);
 
         return 0;
 }
-        
-int srvsvc_NetrServerGetInfo_rep_coder(char *name, struct dcerpc_context *dce,
-                                       struct dcerpc_pdu *pdu,
-                                       struct dcerpc_iovec *iov, int *offset,
-                                       void *ptr)
+
+int
+srvsvc_NetrServerGetInfo_rep_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
         struct srvsvc_NetrServerGetInfo_rep *rep = ptr;
-        /* There is no Level in the reply so we must reference it from the request */
+        /* the discriminant is only in the request */
         struct srvsvc_NetrServerGetInfo_req *req = dcerpc_get_request(pdu);
 
+        (void)name;
+        if (req == NULL) {
+                return -1;
+        }
         dcerpc_set_switch_is(pdu, req->Level);
-
         if (dcerpc_ptr_coder("InfoStruct", dce, pdu, iov, offset, &rep->InfoStruct,
-                             PTR_REF, srvsvc_SERVER_INFO_STRUCT_coder)) {
+                             PTR_REF, srvsvc_SERVER_INFO_switch_coder)) {
                 return -1;
         }
         if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
@@ -3736,36 +3631,37 @@ int srvsvc_NetrServerGetInfo_rep_coder(char *name, struct dcerpc_context *dce,
 }
 
 /*****************
- * Function: 0x16
- * NET_API_STATUS NetrServerSetInfo (
- *   [in,string,unique] SRVSVC_HANDLE ServerName,
- *   [in] DWORD Level,
- *   [in, switch_is(Level)] LPSERVER_INFO ServerInfo,
- *   [in,out,unique] DWORD * ParmError
- * );
- */
+ * Function: 0x16  NetrServerSetInfo  (SRVSVC_NETRSERVERSETINFO)
+ *****************/
 int
 srvsvc_NetrServerSetInfo_req_coder(char *name, struct dcerpc_context *dce,
-                                   struct dcerpc_pdu *pdu,
-                                   struct dcerpc_iovec *iov, int *offset,
-                                   void *ptr)
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
         struct srvsvc_NetrServerSetInfo_req *req = ptr;
 
-        if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+        (void)name;
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&
+            req->ServerName == NULL) {
+                if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, NULL,
+                                     PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                        return -1;
+                }
+        } else if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
+                                    PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Level", dce, pdu, iov, offset, &req->Level)) {
+        if (dcerpc_ptr_coder("Level", dce, pdu, iov, offset, &req->Level,
+                             PTR_REF, dcerpc_uint32_coder)) {
                 return -1;
         }
         dcerpc_set_switch_is(pdu, req->Level);
-
-        if (dcerpc_ptr_coder("InfoStruct", dce, pdu, iov, offset, &req->InfoStruct,
-                             PTR_REF, srvsvc_SERVER_INFO_STRUCT_coder)) {
+        if (dcerpc_ptr_coder("ServerInfo", dce, pdu, iov, offset, &req->ServerInfo,
+                             PTR_REF, srvsvc_SERVER_INFO_switch_coder)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("ParmErr", dce, pdu, iov, offset, &req->ParmErr,
+        if (dcerpc_ptr_coder("ParmError", dce, pdu, iov, offset, &req->ParmError,
                              PTR_UNIQUE, dcerpc_uint32_coder)) {
                 return -1;
         }
@@ -3775,13 +3671,14 @@ srvsvc_NetrServerSetInfo_req_coder(char *name, struct dcerpc_context *dce,
 
 int
 srvsvc_NetrServerSetInfo_rep_coder(char *name, struct dcerpc_context *dce,
-                                   struct dcerpc_pdu *pdu,
-                                   struct dcerpc_iovec *iov, int *offset,
-                                   void *ptr)
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
         struct srvsvc_NetrServerSetInfo_rep *rep = ptr;
 
-        if (dcerpc_ptr_coder("ParmErr", dce, pdu, iov, offset, &rep->ParmErr,
+        (void)name;
+        if (dcerpc_ptr_coder("ParmError", dce, pdu, iov, offset, &rep->ParmError,
                              PTR_UNIQUE, dcerpc_uint32_coder)) {
                 return -1;
         }
@@ -4100,139 +3997,44 @@ srvsvc_NetrServerDiskEnum_rep_coder(char *name, struct dcerpc_context *dce,
         return 0;
 }
 
-/*
- * typedef struct _STAT_SERVER_0 {
- *   DWORD sts0_start;
- *   DWORD sts0_fopens;
- *   DWORD sts0_devopens;
- *   DWORD sts0_jobsqueued;
- *   DWORD sts0_sopens;
- *   DWORD sts0_stimedout;
- *   DWORD sts0_serrorout;
- *   DWORD sts0_pwerrors;
- *   DWORD sts0_permerrors;
- *   DWORD sts0_syserrors;
- *   DWORD sts0_bytessent_low;
- *   DWORD sts0_bytessent_high;
- *   DWORD sts0_bytesrcvd_low;
- *   DWORD sts0_bytesrcvd_high;
- *   DWORD sts0_avresponse;
- *   DWORD sts0_reqbufneed;
- *   DWORD sts0_bigbufneed;
- * } STAT_SERVER_0, *PSTAT_SERVER_0, *LPSTAT_SERVER_0;
- */
-int
-srvsvc_STAT_SERVER_0_coder(char *name, struct dcerpc_context *dce,
-                           struct dcerpc_pdu *pdu,
-                           struct dcerpc_iovec *iov, int *offset,
-                           void *ptr)
-{
-        struct srvsvc_STAT_SERVER_0 *st = ptr;
-
-        if (dcerpc_uint32_coder("Start", dce, pdu, iov, offset, &st->start)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("Fopens", dce, pdu, iov, offset, &st->fopens)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("Devopens", dce, pdu, iov, offset, &st->devopens)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("Jobsqueued", dce, pdu, iov, offset, &st->jobsqueued)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("Sopens", dce, pdu, iov, offset, &st->sopens)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("Stimedout", dce, pdu, iov, offset, &st->stimedout)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("Serrorout", dce, pdu, iov, offset, &st->serrorout)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("Pwerrors", dce, pdu, iov, offset, &st->pwerrors)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("Permerrors", dce, pdu, iov, offset, &st->permerrors)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("Syserrors", dce, pdu, iov, offset, &st->syserrors)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("BytessentLow", dce, pdu, iov, offset, &st->bytessent_low)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("BytessentHigh", dce, pdu, iov, offset, &st->bytessent_high)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("BytesrcvdLow", dce, pdu, iov, offset, &st->bytesrcvd_low)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("BytesrcvdHigh", dce, pdu, iov, offset, &st->bytesrcvd_high)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("Avresponse", dce, pdu, iov, offset, &st->avresponse)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("Reqbufneed", dce, pdu, iov, offset, &st->reqbufneed)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("Bigbufneed", dce, pdu, iov, offset, &st->bigbufneed)) {
-                return -1;
-        }
-        return 0;
-}
-
-int
-srvsvc_STAT_SERVER_0_STRUCT_coder(char *name, struct dcerpc_context *dce,
-                                  struct dcerpc_pdu *pdu,
-                                  struct dcerpc_iovec *iov, int *offset,
-                                  void *ptr)
-{
-        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
-                                   srvsvc_STAT_SERVER_0_coder);
-}
-
 /*****************
- * Function: 0x18
- * NET_API_STATUS NetrServerStatisticsGet (
- *   [in,string,unique] SRVSVC_HANDLE ServerName,
- *   [in,string,unique] WCHAR * Service,
- *   [in] DWORD Level,
- *   [in] DWORD Options,
- *   [out] LPSTAT_SERVER_0 * InfoStruct
- * );
- */
+ * Function: 0x18  NetrServerStatisticsGet  (SRVSVC_NETRSERVERSTATISTICSGET)
+ *****************/
 int
 srvsvc_NetrServerStatisticsGet_req_coder(char *name, struct dcerpc_context *dce,
-                                         struct dcerpc_pdu *pdu,
-                                         struct dcerpc_iovec *iov, int *offset,
-                                         void *ptr)
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
         struct srvsvc_NetrServerStatisticsGet_req *req = ptr;
-        void *service_ptr = &req->Service;
 
-        if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
-                return -1;
-        }
-        /*
-         * Service is [unique]. On encode, a NULL char* must be sent as a
-         * null referent. On decode, always pass the address of the char*.
-         */
-        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
-                if (req->Service == NULL) {
-                        service_ptr = NULL;
+        (void)name;
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&
+            req->ServerName == NULL) {
+                if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, NULL,
+                                     PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                        return -1;
                 }
-        }
-        if (dcerpc_ptr_coder("Service", dce, pdu, iov, offset, service_ptr,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+        } else if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
+                                    PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Level", dce, pdu, iov, offset, &req->Level)) {
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&
+            req->Service == NULL) {
+                if (dcerpc_ptr_coder("Service", dce, pdu, iov, offset, NULL,
+                                     PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                        return -1;
+                }
+        } else if (dcerpc_ptr_coder("Service", dce, pdu, iov, offset, &req->Service,
+                                    PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Options", dce, pdu, iov, offset, &req->Options)) {
+        if (dcerpc_ptr_coder("Level", dce, pdu, iov, offset, &req->Level,
+                             PTR_REF, dcerpc_uint32_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("Options", dce, pdu, iov, offset, &req->Options,
+                             PTR_REF, dcerpc_uint32_coder)) {
                 return -1;
         }
 
@@ -4241,14 +4043,15 @@ srvsvc_NetrServerStatisticsGet_req_coder(char *name, struct dcerpc_context *dce,
 
 int
 srvsvc_NetrServerStatisticsGet_rep_coder(char *name, struct dcerpc_context *dce,
-                                         struct dcerpc_pdu *pdu,
-                                         struct dcerpc_iovec *iov, int *offset,
-                                         void *ptr)
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
         struct srvsvc_NetrServerStatisticsGet_rep *rep = ptr;
 
+        (void)name;
         if (dcerpc_ptr_coder("InfoStruct", dce, pdu, iov, offset, &rep->InfoStruct,
-                             PTR_UNIQUE, srvsvc_STAT_SERVER_0_STRUCT_coder)) {
+                             PTR_UNIQUE, srvsvc_STAT_SERVER_0_struct_coder)) {
                 return -1;
         }
         if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
@@ -4258,105 +4061,26 @@ srvsvc_NetrServerStatisticsGet_rep_coder(char *name, struct dcerpc_context *dce,
         return 0;
 }
 
-/*
- * typedef struct _TIME_OF_DAY_INFO {
- *   DWORD tod_elapsedt;
- *   DWORD tod_msecs;
- *   DWORD tod_hours;
- *   DWORD tod_mins;
- *   DWORD tod_secs;
- *   DWORD tod_hunds;
- *   long  tod_timezone;
- *   DWORD tod_tinterval;
- *   DWORD tod_day;
- *   DWORD tod_month;
- *   DWORD tod_year;
- *   DWORD tod_weekday;
- * } TIME_OF_DAY_INFO, *PTIME_OF_DAY_INFO, *LPTIME_OF_DAY_INFO;
- */
-int
-srvsvc_TIME_OF_DAY_INFO_coder(char *name, struct dcerpc_context *dce,
-                              struct dcerpc_pdu *pdu,
-                              struct dcerpc_iovec *iov, int *offset,
-                              void *ptr)
-{
-        struct srvsvc_TIME_OF_DAY_INFO *tod = ptr;
-        /* Not named "timezone": that shadows the POSIX global of
-         * the same name declared by <time.h> on some platforms. */
-        uint32_t tz = 0;
-
-        if (dcerpc_uint32_coder("Elapsedt", dce, pdu, iov, offset, &tod->elapsedt)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("Msecs", dce, pdu, iov, offset, &tod->msecs)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("Hours", dce, pdu, iov, offset, &tod->hours)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("Mins", dce, pdu, iov, offset, &tod->mins)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("Secs", dce, pdu, iov, offset, &tod->secs)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("Hunds", dce, pdu, iov, offset, &tod->hunds)) {
-                return -1;
-        }
-        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
-                tz = (uint32_t)tod->timezone;
-        }
-        if (dcerpc_uint32_coder("Timezone", dce, pdu, iov, offset, &tz)) {
-                return -1;
-        }
-        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && !dcerpc_get_cr(pdu)) {
-                tod->timezone = (int32_t)tz;
-        }
-        if (dcerpc_uint32_coder("Tinterval", dce, pdu, iov, offset, &tod->tinterval)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("Day", dce, pdu, iov, offset, &tod->day)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("Month", dce, pdu, iov, offset, &tod->month)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("Year", dce, pdu, iov, offset, &tod->year)) {
-                return -1;
-        }
-        if (dcerpc_uint32_coder("Weekday", dce, pdu, iov, offset, &tod->weekday)) {
-                return -1;
-        }
-        return 0;
-}
-
-int
-srvsvc_TIME_OF_DAY_INFO_STRUCT_coder(char *name, struct dcerpc_context *dce,
-                                     struct dcerpc_pdu *pdu,
-                                     struct dcerpc_iovec *iov, int *offset,
-                                     void *ptr)
-{
-        return dcerpc_struct_coder(name, dce, pdu, iov, offset, ptr,
-                                   srvsvc_TIME_OF_DAY_INFO_coder);
-}
-
 /*****************
- * Function: 0x1c
- * NET_API_STATUS NetrRemoteTOD (
- *   [in,string,unique] SRVSVC_HANDLE ServerName,
- *   [out] LPTIME_OF_DAY_INFO * BufferPtr
- * );
- */
+ * Function: 0x1c  NetrRemoteTOD  (SRVSVC_NETRREMOTETOD)
+ *****************/
 int
 srvsvc_NetrRemoteTOD_req_coder(char *name, struct dcerpc_context *dce,
-                               struct dcerpc_pdu *pdu,
-                               struct dcerpc_iovec *iov, int *offset,
-                               void *ptr)
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
         struct srvsvc_NetrRemoteTOD_req *req = ptr;
 
-        if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+        (void)name;
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&
+            req->ServerName == NULL) {
+                if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, NULL,
+                                     PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                        return -1;
+                }
+        } else if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
+                                    PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
 
@@ -4365,14 +4089,15 @@ srvsvc_NetrRemoteTOD_req_coder(char *name, struct dcerpc_context *dce,
 
 int
 srvsvc_NetrRemoteTOD_rep_coder(char *name, struct dcerpc_context *dce,
-                               struct dcerpc_pdu *pdu,
-                               struct dcerpc_iovec *iov, int *offset,
-                               void *ptr)
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
         struct srvsvc_NetrRemoteTOD_rep *rep = ptr;
 
+        (void)name;
         if (dcerpc_ptr_coder("BufferPtr", dce, pdu, iov, offset, &rep->BufferPtr,
-                             PTR_UNIQUE, srvsvc_TIME_OF_DAY_INFO_STRUCT_coder)) {
+                             PTR_UNIQUE, srvsvc_TIME_OF_DAY_INFO_struct_coder)) {
                 return -1;
         }
         if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
@@ -4381,7 +4106,6 @@ srvsvc_NetrRemoteTOD_rep_coder(char *name, struct dcerpc_context *dce,
 
         return 0;
 }
-
 
 /*
  * typedef struct _SERVER_TRANSPORT_INFO_3 {

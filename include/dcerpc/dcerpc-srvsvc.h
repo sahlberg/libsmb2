@@ -399,118 +399,118 @@ int srvsvc_SHARE_INFO_switch_coder(char *name, struct dcerpc_context *dce,
                 int *offset, void *ptr);
 
 struct srvsvc_SERVER_INFO_100 {
-        uint32_t platform_id;
-        char *name;
+        uint32_t sv100_platform_id;
+        char * sv100_name;
 };
 
 struct srvsvc_SERVER_INFO_101 {
-        uint32_t platform_id;
-        char *name;
-        uint32_t version_major;
-        uint32_t version_minor;
-        uint32_t type;
-        char *comment;
+        uint32_t sv101_platform_id;
+        char * sv101_name;
+        uint32_t sv101_version_major;
+        uint32_t sv101_version_minor;
+        uint32_t sv101_type;
+        char * sv101_comment;
 };
-        
+
 struct srvsvc_SERVER_INFO_102 {
-        uint32_t platform_id;
-        char *name;
-        uint32_t version_major;
-        uint32_t version_minor;
-        uint32_t type;
-        char *comment;
-        uint32_t users;
-        uint32_t disc;
-        uint32_t hidden;
-        uint32_t announce;
-        uint32_t anndelta;
-        uint32_t licenses;
-        char *userpath;
+        uint32_t sv102_platform_id;
+        char * sv102_name;
+        uint32_t sv102_version_major;
+        uint32_t sv102_version_minor;
+        uint32_t sv102_type;
+        char * sv102_comment;
+        uint32_t sv102_users;
+        int32_t sv102_disc;
+        int32_t sv102_hidden;
+        uint32_t sv102_announce;
+        uint32_t sv102_anndelta;
+        uint32_t sv102_licenses;
+        char * sv102_userpath;
 };
-        
+
 struct srvsvc_SERVER_INFO_103 {
-        uint32_t platform_id;
-        char *name;
-        uint32_t version_major;
-        uint32_t version_minor;
-        uint32_t type;
-        char *comment;
-        uint32_t users;
-        uint32_t disc;
-        uint32_t hidden;
-        uint32_t announce;
-        uint32_t anndelta;
-        uint32_t licenses;
-        char *userpath;
-        uint32_t capabilities;
+        uint32_t sv103_platform_id;
+        char * sv103_name;
+        uint32_t sv103_version_major;
+        uint32_t sv103_version_minor;
+        uint32_t sv103_type;
+        char * sv103_comment;
+        uint32_t sv103_users;
+        int32_t sv103_disc;
+        int32_t sv103_hidden;
+        uint32_t sv103_announce;
+        uint32_t sv103_anndelta;
+        uint32_t sv103_licenses;
+        char * sv103_userpath;
+        uint32_t sv103_capabilities;
 };
 
 struct srvsvc_SERVER_INFO_502 {
-        uint32_t sessopens;
-        uint32_t sessvcs;
-        uint32_t opensearch;
-        uint32_t sizreqbuf;
-        uint32_t initworkitems;
-        uint32_t maxworkitems;
-        uint32_t rawworkitems;
-        uint32_t irpstacksize;
-        uint32_t maxrawbuflen;
-        uint32_t sessusers;
-        uint32_t sessconns;
-        uint32_t maxpagedmemoryusage;
-        uint32_t maxnonpagedmemoryusage;
-        uint32_t enablesoftcompat;
-        uint32_t enableforcedlogoff;
-        uint32_t timesource;
-        uint32_t acceptdownlevelapis;
-        uint32_t lmannounce;
+        uint32_t sv502_sessopens;
+        uint32_t sv502_sessvcs;
+        uint32_t sv502_opensearch;
+        uint32_t sv502_sizreqbuf;
+        uint32_t sv502_initworkitems;
+        uint32_t sv502_maxworkitems;
+        uint32_t sv502_rawworkitems;
+        uint32_t sv502_irpstacksize;
+        uint32_t sv502_maxrawbuflen;
+        uint32_t sv502_sessusers;
+        uint32_t sv502_sessconns;
+        uint32_t sv502_maxpagedmemoryusage;
+        uint32_t sv502_maxnonpagedmemoryusage;
+        int32_t sv502_enablesoftcompat;
+        int32_t sv502_enableforcedlogoff;
+        int32_t sv502_timesource;
+        int32_t sv502_acceptdownlevelapis;
+        int32_t sv502_lmannounce;
 };
 
 struct srvsvc_SERVER_INFO_503 {
-        uint32_t sessopens;
-        uint32_t sessvcs;
-        uint32_t opensearch;
-        uint32_t sizreqbuf;
-        uint32_t initworkitems;
-        uint32_t maxworkitems;
-        uint32_t rawworkitems;
-        uint32_t irpstacksize;
-        uint32_t maxrawbuflen;
-        uint32_t sessusers;
-        uint32_t sessconns;
-        uint32_t maxpagedmemoryusage;
-        uint32_t maxnonpagedmemoryusage;
-        uint32_t enablesoftcompat;
-        uint32_t enableforcedlogoff;
-        uint32_t timesource;
-        uint32_t acceptdownlevelapis;
-        uint32_t lmannounce;
-        char *domain;
-        uint32_t maxcopyreadlen;
-        uint32_t maxcopywritelen;
-        uint32_t minkeepsearch;
-        uint32_t maxkeepsearch;
-        uint32_t minkeepcomplsearch;
-        uint32_t maxkeepcomplsearch;
-        uint32_t threadcountadd;
-        uint32_t numblockthreads;
-        uint32_t scavtimeout;
-        uint32_t minrcvqueue;
-        uint32_t minfreeworkitems;
-        uint32_t xactmemsize;
-        uint32_t threadpriority;
-        uint32_t maxmpxct;
-        uint32_t oplockbreakwait;
-        uint32_t oplockbreakresponsewait;
-        uint32_t enableoplocks;
-        uint32_t enableoplockforceclose;
-        uint32_t enablefcbopens;
-        uint32_t enableraw;
-        uint32_t enablesharednetdrives;
-        uint32_t minfreeconnections;
-        uint32_t maxfreeconnections;
+        uint32_t sv503_sessopens;
+        uint32_t sv503_sessvcs;
+        uint32_t sv503_opensearch;
+        uint32_t sv503_sizreqbuf;
+        uint32_t sv503_initworkitems;
+        uint32_t sv503_maxworkitems;
+        uint32_t sv503_rawworkitems;
+        uint32_t sv503_irpstacksize;
+        uint32_t sv503_maxrawbuflen;
+        uint32_t sv503_sessusers;
+        uint32_t sv503_sessconns;
+        uint32_t sv503_maxpagedmemoryusage;
+        uint32_t sv503_maxnonpagedmemoryusage;
+        int32_t sv503_enablesoftcompat;
+        int32_t sv503_enableforcedlogoff;
+        int32_t sv503_timesource;
+        int32_t sv503_acceptdownlevelapis;
+        int32_t sv503_lmannounce;
+        char * sv503_domain;
+        uint32_t sv503_maxcopyreadlen;
+        uint32_t sv503_maxcopywritelen;
+        uint32_t sv503_minkeepsearch;
+        uint32_t sv503_maxkeepsearch;
+        uint32_t sv503_minkeepcomplsearch;
+        uint32_t sv503_maxkeepcomplsearch;
+        uint32_t sv503_threadcountadd;
+        uint32_t sv503_numblockthreads;
+        uint32_t sv503_scavtimeout;
+        uint32_t sv503_minrcvqueue;
+        uint32_t sv503_minfreeworkitems;
+        uint32_t sv503_xactmemsize;
+        uint32_t sv503_threadpriority;
+        uint32_t sv503_maxmpxct;
+        uint32_t sv503_oplockbreakwait;
+        uint32_t sv503_oplockbreakresponsewait;
+        int32_t sv503_enableoplocks;
+        int32_t sv503_enableoplockforceclose;
+        int32_t sv503_enablefcbopens;
+        int32_t sv503_enableraw;
+        int32_t sv503_enablesharednetdrives;
+        uint32_t sv503_minfreeconnections;
+        uint32_t sv503_maxfreeconnections;
 };
-        
+
 union srvsvc_SERVER_INFO {
         struct srvsvc_SERVER_INFO_100 ServerInfo100;
         struct srvsvc_SERVER_INFO_101 ServerInfo101;
@@ -519,7 +519,56 @@ union srvsvc_SERVER_INFO {
         struct srvsvc_SERVER_INFO_502 ServerInfo502;
         struct srvsvc_SERVER_INFO_503 ServerInfo503;
 };
-        
+
+int srvsvc_SERVER_INFO_100_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SERVER_INFO_100_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_SERVER_INFO_101_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SERVER_INFO_101_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_SERVER_INFO_102_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SERVER_INFO_102_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_SERVER_INFO_103_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SERVER_INFO_103_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_SERVER_INFO_502_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SERVER_INFO_502_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_SERVER_INFO_503_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SERVER_INFO_503_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_SERVER_INFO_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SERVER_INFO_switch_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
 /*
  * NetrConnectionEnum, NetrFileEnum, NetrFileGetInfo, NetrFileClose,
  * NetrSessionEnum and NetrSessionDel: generated from the [MS-SRVS] IDL.
@@ -984,7 +1033,6 @@ int srvsvc_NetrSessionDel_rep_coder(char *name, struct dcerpc_context *dce,
                 struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
                 int *offset, void *ptr);
 
-
 struct srvsvc_NetrShareAdd_req {
         char * ServerName;
         uint32_t Level;
@@ -1041,26 +1089,24 @@ struct srvsvc_NetrShareCheck_rep {
 };
 
 struct srvsvc_NetrServerGetInfo_req {
-        char *ServerName;
+        char * ServerName;
         uint32_t Level;
 };
 
 struct srvsvc_NetrServerGetInfo_rep {
         union srvsvc_SERVER_INFO InfoStruct;
-
         uint32_t status;
 };
 
 struct srvsvc_NetrServerSetInfo_req {
-        char *ServerName;
+        char * ServerName;
         uint32_t Level;
-        union srvsvc_SERVER_INFO InfoStruct;
-        uint32_t ParmErr;
+        union srvsvc_SERVER_INFO ServerInfo;
+        uint32_t ParmError;
 };
 
 struct srvsvc_NetrServerSetInfo_rep {
-        uint32_t ParmErr;
-
+        uint32_t ParmError;
         uint32_t status;
 };
 
@@ -1107,39 +1153,41 @@ struct srvsvc_NetrServerDiskEnum_rep {
  * STAT_SERVER_0 / NetrServerStatisticsGet
  */
 struct srvsvc_STAT_SERVER_0 {
-        uint32_t start;
-        uint32_t fopens;
-        uint32_t devopens;
-        uint32_t jobsqueued;
-        uint32_t sopens;
-        uint32_t stimedout;
-        uint32_t serrorout;
-        uint32_t pwerrors;
-        uint32_t permerrors;
-        uint32_t syserrors;
-        uint32_t bytessent_low;
-        uint32_t bytessent_high;
-        uint32_t bytesrcvd_low;
-        uint32_t bytesrcvd_high;
-        uint32_t avresponse;
-        uint32_t reqbufneed;
-        uint32_t bigbufneed;
+        uint32_t sts0_start;
+        uint32_t sts0_fopens;
+        uint32_t sts0_devopens;
+        uint32_t sts0_jobsqueued;
+        uint32_t sts0_sopens;
+        uint32_t sts0_stimedout;
+        uint32_t sts0_serrorout;
+        uint32_t sts0_pwerrors;
+        uint32_t sts0_permerrors;
+        uint32_t sts0_syserrors;
+        uint32_t sts0_bytessent_low;
+        uint32_t sts0_bytessent_high;
+        uint32_t sts0_bytesrcvd_low;
+        uint32_t sts0_bytesrcvd_high;
+        uint32_t sts0_avresponse;
+        uint32_t sts0_reqbufneed;
+        uint32_t sts0_bigbufneed;
 };
-int srvsvc_STAT_SERVER_0_coder(char *name, struct dcerpc_context *ctx,
-                               struct dcerpc_pdu *pdu,
-                               struct dcerpc_iovec *iov, int *offset,
-                               void *ptr);
+
+int srvsvc_STAT_SERVER_0_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_STAT_SERVER_0_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
 
 struct srvsvc_NetrServerStatisticsGet_req {
-        char *ServerName;
-        char *Service;
+        char * ServerName;
+        char * Service;
         uint32_t Level;
         uint32_t Options;
 };
 
 struct srvsvc_NetrServerStatisticsGet_rep {
         struct srvsvc_STAT_SERVER_0 InfoStruct;
-
         uint32_t status;
 };
 
@@ -1147,31 +1195,33 @@ struct srvsvc_NetrServerStatisticsGet_rep {
  * TIME_OF_DAY_INFO / NetrRemoteTOD
  */
 struct srvsvc_TIME_OF_DAY_INFO {
-        uint32_t elapsedt;
-        uint32_t msecs;
-        uint32_t hours;
-        uint32_t mins;
-        uint32_t secs;
-        uint32_t hunds;
-        int32_t timezone;       /* minutes from UTC (signed) */
-        uint32_t tinterval;
-        uint32_t day;
-        uint32_t month;
-        uint32_t year;
-        uint32_t weekday;
+        uint32_t tod_elapsedt;
+        uint32_t tod_msecs;
+        uint32_t tod_hours;
+        uint32_t tod_mins;
+        uint32_t tod_secs;
+        uint32_t tod_hunds;
+        int32_t tod_timezone;
+        uint32_t tod_tinterval;
+        uint32_t tod_day;
+        uint32_t tod_month;
+        uint32_t tod_year;
+        uint32_t tod_weekday;
 };
-int srvsvc_TIME_OF_DAY_INFO_coder(char *name, struct dcerpc_context *ctx,
-                                  struct dcerpc_pdu *pdu,
-                                  struct dcerpc_iovec *iov, int *offset,
-                                  void *ptr);
+
+int srvsvc_TIME_OF_DAY_INFO_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_TIME_OF_DAY_INFO_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
 
 struct srvsvc_NetrRemoteTOD_req {
-        char *ServerName;
+        char * ServerName;
 };
 
 struct srvsvc_NetrRemoteTOD_rep {
         struct srvsvc_TIME_OF_DAY_INFO BufferPtr;
-
         uint32_t status;
 };
 
