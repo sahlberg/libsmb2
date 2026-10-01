@@ -76,8 +76,9 @@ p_syntax_id_t srvsvc_interface = {
  */
 
 /*
- * Types for the connection, file, session, share and server calls:
- * generated from the [MS-SRVS] IDL; field names follow the IDL.
+ * Everything from here to srvsvc_procs[] is generated from the [MS-SRVS]
+ * IDL (with local additions for info levels, flags and constants);
+ * field names follow the IDL.
  */
 int srvsvc_CONNECTION_INFO_0_coder(char *name, struct dcerpc_context *dce,
                 struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
@@ -305,6 +306,344 @@ srvsvc_SHARE_INFO_503_I_carray_coder(char *name, struct dcerpc_context *dce,
                                    srvsvc_SHARE_INFO_503_I_coder);
 }
 
+/* CONNECTION_INFO_LEVEL: NDR uint32; YAML/JSON show the value names */
+static struct dcerpc_uint32_pretty_printer srvsvc_CONNECTION_INFO_LEVEL_pp = {
+        .fmt = "%u",
+        .bitfields = {
+                { "CONNECTION_INFO_0", 0xffffffff, SRVSVC_CONNECTION_INFO_0 },
+                { "CONNECTION_INFO_1", 0xffffffff, SRVSVC_CONNECTION_INFO_1 },
+                { NULL, 0, 0 },
+        },
+};
+
+int
+srvsvc_CONNECTION_INFO_LEVEL_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        return dcerpc_uint32_coder_pp(name, dce, pdu, iov, offset, ptr,
+                                      &srvsvc_CONNECTION_INFO_LEVEL_pp);
+}
+
+/* FILE_INFO_LEVEL: NDR uint32; YAML/JSON show the value names */
+static struct dcerpc_uint32_pretty_printer srvsvc_FILE_INFO_LEVEL_pp = {
+        .fmt = "%u",
+        .bitfields = {
+                { "FILE_INFO_2", 0xffffffff, SRVSVC_FILE_INFO_2 },
+                { "FILE_INFO_3", 0xffffffff, SRVSVC_FILE_INFO_3 },
+                { NULL, 0, 0 },
+        },
+};
+
+int
+srvsvc_FILE_INFO_LEVEL_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        return dcerpc_uint32_coder_pp(name, dce, pdu, iov, offset, ptr,
+                                      &srvsvc_FILE_INFO_LEVEL_pp);
+}
+
+/* SESSION_INFO_LEVEL: NDR uint32; YAML/JSON show the value names */
+static struct dcerpc_uint32_pretty_printer srvsvc_SESSION_INFO_LEVEL_pp = {
+        .fmt = "%u",
+        .bitfields = {
+                { "SESSION_INFO_0", 0xffffffff, SRVSVC_SESSION_INFO_0 },
+                { "SESSION_INFO_1", 0xffffffff, SRVSVC_SESSION_INFO_1 },
+                { "SESSION_INFO_2", 0xffffffff, SRVSVC_SESSION_INFO_2 },
+                { "SESSION_INFO_10", 0xffffffff, SRVSVC_SESSION_INFO_10 },
+                { "SESSION_INFO_502", 0xffffffff, SRVSVC_SESSION_INFO_502 },
+                { NULL, 0, 0 },
+        },
+};
+
+int
+srvsvc_SESSION_INFO_LEVEL_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        return dcerpc_uint32_coder_pp(name, dce, pdu, iov, offset, ptr,
+                                      &srvsvc_SESSION_INFO_LEVEL_pp);
+}
+
+/* SHARE_INFO_LEVEL: NDR uint32; YAML/JSON show the value names */
+static struct dcerpc_uint32_pretty_printer srvsvc_SHARE_INFO_LEVEL_pp = {
+        .fmt = "%u",
+        .bitfields = {
+                { "SHARE_INFO_0", 0xffffffff, SRVSVC_SHARE_INFO_0 },
+                { "SHARE_INFO_1", 0xffffffff, SRVSVC_SHARE_INFO_1 },
+                { "SHARE_INFO_2", 0xffffffff, SRVSVC_SHARE_INFO_2 },
+                { "SHARE_INFO_501", 0xffffffff, SRVSVC_SHARE_INFO_501 },
+                { "SHARE_INFO_502", 0xffffffff, SRVSVC_SHARE_INFO_502 },
+                { "SHARE_INFO_503", 0xffffffff, SRVSVC_SHARE_INFO_503 },
+                { "SHARE_INFO_1004", 0xffffffff, SRVSVC_SHARE_INFO_1004 },
+                { "SHARE_INFO_1005", 0xffffffff, SRVSVC_SHARE_INFO_1005 },
+                { "SHARE_INFO_1006", 0xffffffff, SRVSVC_SHARE_INFO_1006 },
+                { "SHARE_INFO_1501", 0xffffffff, SRVSVC_SHARE_INFO_1501 },
+                { NULL, 0, 0 },
+        },
+};
+
+int
+srvsvc_SHARE_INFO_LEVEL_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        return dcerpc_uint32_coder_pp(name, dce, pdu, iov, offset, ptr,
+                                      &srvsvc_SHARE_INFO_LEVEL_pp);
+}
+
+/* SERVER_INFO_LEVEL: NDR uint32; YAML/JSON show the value names */
+static struct dcerpc_uint32_pretty_printer srvsvc_SERVER_INFO_LEVEL_pp = {
+        .fmt = "%u",
+        .bitfields = {
+                { "SERVER_INFO_100", 0xffffffff, SRVSVC_SERVER_INFO_100 },
+                { "SERVER_INFO_101", 0xffffffff, SRVSVC_SERVER_INFO_101 },
+                { "SERVER_INFO_102", 0xffffffff, SRVSVC_SERVER_INFO_102 },
+                { "SERVER_INFO_103", 0xffffffff, SRVSVC_SERVER_INFO_103 },
+                { "SERVER_INFO_502", 0xffffffff, SRVSVC_SERVER_INFO_502 },
+                { "SERVER_INFO_503", 0xffffffff, SRVSVC_SERVER_INFO_503 },
+                { NULL, 0, 0 },
+        },
+};
+
+int
+srvsvc_SERVER_INFO_LEVEL_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        return dcerpc_uint32_coder_pp(name, dce, pdu, iov, offset, ptr,
+                                      &srvsvc_SERVER_INFO_LEVEL_pp);
+}
+
+/* STAT_SERVER_LEVEL: NDR uint32; YAML/JSON show the value names */
+static struct dcerpc_uint32_pretty_printer srvsvc_STAT_SERVER_LEVEL_pp = {
+        .fmt = "%u",
+        .bitfields = {
+                { "STAT_SERVER_0", 0xffffffff, SRVSVC_STAT_SERVER_0 },
+                { NULL, 0, 0 },
+        },
+};
+
+int
+srvsvc_STAT_SERVER_LEVEL_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        return dcerpc_uint32_coder_pp(name, dce, pdu, iov, offset, ptr,
+                                      &srvsvc_STAT_SERVER_LEVEL_pp);
+}
+
+/* SHARE_TYPE: NDR uint32; YAML/JSON show the flag names */
+static struct dcerpc_uint32_pretty_printer srvsvc_SHARE_TYPE_pp = {
+        .fmt = "0x%08x",
+        .bitfields = {
+                { "STYPE_DISKTREE", 0x00000003, SRVSVC_STYPE_DISKTREE },
+                { "STYPE_PRINTQ", 0x00000003, SRVSVC_STYPE_PRINTQ },
+                { "STYPE_DEVICE", 0x00000003, SRVSVC_STYPE_DEVICE },
+                { "STYPE_IPC", 0x00000003, SRVSVC_STYPE_IPC },
+                { "STYPE_CLUSTER_FS", SRVSVC_STYPE_CLUSTER_FS, SRVSVC_STYPE_CLUSTER_FS },
+                { "STYPE_CLUSTER_SOFS", SRVSVC_STYPE_CLUSTER_SOFS, SRVSVC_STYPE_CLUSTER_SOFS },
+                { "STYPE_CLUSTER_DFS", SRVSVC_STYPE_CLUSTER_DFS, SRVSVC_STYPE_CLUSTER_DFS },
+                { "STYPE_TEMPORARY", SRVSVC_STYPE_TEMPORARY, SRVSVC_STYPE_TEMPORARY },
+                { "STYPE_SPECIAL", SRVSVC_STYPE_SPECIAL, SRVSVC_STYPE_SPECIAL },
+                { NULL, 0, 0 },
+        },
+};
+
+int
+srvsvc_SHARE_TYPE_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        return dcerpc_uint32_coder_pp(name, dce, pdu, iov, offset, ptr,
+                                      &srvsvc_SHARE_TYPE_pp);
+}
+
+/* SHARE_PERMISSIONS: NDR uint32; YAML/JSON show the flag names */
+static struct dcerpc_uint32_pretty_printer srvsvc_SHARE_PERMISSIONS_pp = {
+        .fmt = "0x%08x",
+        .bitfields = {
+                { "ACCESS_READ", SRVSVC_ACCESS_READ, SRVSVC_ACCESS_READ },
+                { "ACCESS_WRITE", SRVSVC_ACCESS_WRITE, SRVSVC_ACCESS_WRITE },
+                { "ACCESS_CREATE", SRVSVC_ACCESS_CREATE, SRVSVC_ACCESS_CREATE },
+                { "ACCESS_EXEC", SRVSVC_ACCESS_EXEC, SRVSVC_ACCESS_EXEC },
+                { "ACCESS_DELETE", SRVSVC_ACCESS_DELETE, SRVSVC_ACCESS_DELETE },
+                { "ACCESS_ATRIB", SRVSVC_ACCESS_ATRIB, SRVSVC_ACCESS_ATRIB },
+                { "ACCESS_PERM", SRVSVC_ACCESS_PERM, SRVSVC_ACCESS_PERM },
+                { NULL, 0, 0 },
+        },
+};
+
+int
+srvsvc_SHARE_PERMISSIONS_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        return dcerpc_uint32_coder_pp(name, dce, pdu, iov, offset, ptr,
+                                      &srvsvc_SHARE_PERMISSIONS_pp);
+}
+
+/* SHARE_FLAGS: NDR uint32; YAML/JSON show the flag names */
+static struct dcerpc_uint32_pretty_printer srvsvc_SHARE_FLAGS_pp = {
+        .fmt = "0x%08x",
+        .bitfields = {
+                { "SHI1005_FLAGS_DFS", SRVSVC_SHI1005_FLAGS_DFS, SRVSVC_SHI1005_FLAGS_DFS },
+                { "SHI1005_FLAGS_DFS_ROOT", SRVSVC_SHI1005_FLAGS_DFS_ROOT, SRVSVC_SHI1005_FLAGS_DFS_ROOT },
+                { "CSC_CACHE_MANUAL_REINT", 0x00000030, SRVSVC_CSC_CACHE_MANUAL_REINT },
+                { "CSC_CACHE_AUTO_REINT", 0x00000030, SRVSVC_CSC_CACHE_AUTO_REINT },
+                { "CSC_CACHE_VDO", 0x00000030, SRVSVC_CSC_CACHE_VDO },
+                { "CSC_CACHE_NONE", 0x00000030, SRVSVC_CSC_CACHE_NONE },
+                { "SHI1005_FLAGS_RESTRICT_EXCLUSIVE_OPENS", SRVSVC_SHI1005_FLAGS_RESTRICT_EXCLUSIVE_OPENS, SRVSVC_SHI1005_FLAGS_RESTRICT_EXCLUSIVE_OPENS },
+                { "SHI1005_FLAGS_FORCE_SHARED_DELETE", SRVSVC_SHI1005_FLAGS_FORCE_SHARED_DELETE, SRVSVC_SHI1005_FLAGS_FORCE_SHARED_DELETE },
+                { "SHI1005_FLAGS_ALLOW_NAMESPACE_CACHING", SRVSVC_SHI1005_FLAGS_ALLOW_NAMESPACE_CACHING, SRVSVC_SHI1005_FLAGS_ALLOW_NAMESPACE_CACHING },
+                { "SHI1005_FLAGS_ACCESS_BASED_DIRECTORY_ENUM", SRVSVC_SHI1005_FLAGS_ACCESS_BASED_DIRECTORY_ENUM, SRVSVC_SHI1005_FLAGS_ACCESS_BASED_DIRECTORY_ENUM },
+                { "SHI1005_FLAGS_FORCE_LEVELII_OPLOCK", SRVSVC_SHI1005_FLAGS_FORCE_LEVELII_OPLOCK, SRVSVC_SHI1005_FLAGS_FORCE_LEVELII_OPLOCK },
+                { "SHI1005_FLAGS_ENABLE_HASH", SRVSVC_SHI1005_FLAGS_ENABLE_HASH, SRVSVC_SHI1005_FLAGS_ENABLE_HASH },
+                { "SHI1005_FLAGS_ENABLE_CA", SRVSVC_SHI1005_FLAGS_ENABLE_CA, SRVSVC_SHI1005_FLAGS_ENABLE_CA },
+                { "SHI1005_FLAGS_ENCRYPT_DATA", SRVSVC_SHI1005_FLAGS_ENCRYPT_DATA, SRVSVC_SHI1005_FLAGS_ENCRYPT_DATA },
+                { "SHI1005_FLAGS_RESERVED", SRVSVC_SHI1005_FLAGS_RESERVED, SRVSVC_SHI1005_FLAGS_RESERVED },
+                { "SHI1005_FLAGS_DISABLE_CLIENT_BUFFERING", SRVSVC_SHI1005_FLAGS_DISABLE_CLIENT_BUFFERING, SRVSVC_SHI1005_FLAGS_DISABLE_CLIENT_BUFFERING },
+                { "SHI1005_FLAGS_IDENTITY_REMOTING", SRVSVC_SHI1005_FLAGS_IDENTITY_REMOTING, SRVSVC_SHI1005_FLAGS_IDENTITY_REMOTING },
+                { "SHI1005_FLAGS_CLUSTER_MANAGED", SRVSVC_SHI1005_FLAGS_CLUSTER_MANAGED, SRVSVC_SHI1005_FLAGS_CLUSTER_MANAGED },
+                { "SHI1005_FLAGS_COMPRESS_DATA", SRVSVC_SHI1005_FLAGS_COMPRESS_DATA, SRVSVC_SHI1005_FLAGS_COMPRESS_DATA },
+                { NULL, 0, 0 },
+        },
+};
+
+int
+srvsvc_SHARE_FLAGS_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        return dcerpc_uint32_coder_pp(name, dce, pdu, iov, offset, ptr,
+                                      &srvsvc_SHARE_FLAGS_pp);
+}
+
+/* FILE_PERMISSIONS: NDR uint32; YAML/JSON show the flag names */
+static struct dcerpc_uint32_pretty_printer srvsvc_FILE_PERMISSIONS_pp = {
+        .fmt = "0x%08x",
+        .bitfields = {
+                { "PERM_FILE_READ", SRVSVC_PERM_FILE_READ, SRVSVC_PERM_FILE_READ },
+                { "PERM_FILE_WRITE", SRVSVC_PERM_FILE_WRITE, SRVSVC_PERM_FILE_WRITE },
+                { "PERM_FILE_CREATE", SRVSVC_PERM_FILE_CREATE, SRVSVC_PERM_FILE_CREATE },
+                { "ACCESS_EXEC", SRVSVC_ACCESS_EXEC, SRVSVC_ACCESS_EXEC },
+                { "ACCESS_DELETE", SRVSVC_ACCESS_DELETE, SRVSVC_ACCESS_DELETE },
+                { "ACCESS_ATRIB", SRVSVC_ACCESS_ATRIB, SRVSVC_ACCESS_ATRIB },
+                { "ACCESS_PERM", SRVSVC_ACCESS_PERM, SRVSVC_ACCESS_PERM },
+                { NULL, 0, 0 },
+        },
+};
+
+int
+srvsvc_FILE_PERMISSIONS_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        return dcerpc_uint32_coder_pp(name, dce, pdu, iov, offset, ptr,
+                                      &srvsvc_FILE_PERMISSIONS_pp);
+}
+
+/* SESSION_USER_FLAGS: NDR uint32; YAML/JSON show the flag names */
+static struct dcerpc_uint32_pretty_printer srvsvc_SESSION_USER_FLAGS_pp = {
+        .fmt = "0x%08x",
+        .bitfields = {
+                { "SESS_GUEST", SRVSVC_SESS_GUEST, SRVSVC_SESS_GUEST },
+                { "SESS_NOENCRYPTION", SRVSVC_SESS_NOENCRYPTION, SRVSVC_SESS_NOENCRYPTION },
+                { NULL, 0, 0 },
+        },
+};
+
+int
+srvsvc_SESSION_USER_FLAGS_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        return dcerpc_uint32_coder_pp(name, dce, pdu, iov, offset, ptr,
+                                      &srvsvc_SESSION_USER_FLAGS_pp);
+}
+
+/* PLATFORM_ID: NDR uint32; YAML/JSON show the value names */
+static struct dcerpc_uint32_pretty_printer srvsvc_PLATFORM_ID_pp = {
+        .fmt = "%u",
+        .bitfields = {
+                { "PLATFORM_ID_DOS", 0xffffffff, SRVSVC_PLATFORM_ID_DOS },
+                { "PLATFORM_ID_OS2", 0xffffffff, SRVSVC_PLATFORM_ID_OS2 },
+                { "PLATFORM_ID_NT", 0xffffffff, SRVSVC_PLATFORM_ID_NT },
+                { "PLATFORM_ID_OSF", 0xffffffff, SRVSVC_PLATFORM_ID_OSF },
+                { "PLATFORM_ID_VMS", 0xffffffff, SRVSVC_PLATFORM_ID_VMS },
+                { NULL, 0, 0 },
+        },
+};
+
+int
+srvsvc_PLATFORM_ID_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        return dcerpc_uint32_coder_pp(name, dce, pdu, iov, offset, ptr,
+                                      &srvsvc_PLATFORM_ID_pp);
+}
+
+/* SV_TYPE: NDR uint32; YAML/JSON show the flag names */
+static struct dcerpc_uint32_pretty_printer srvsvc_SV_TYPE_pp = {
+        .fmt = "0x%08x",
+        .bitfields = {
+                { "SV_TYPE_WORKSTATION", SRVSVC_SV_TYPE_WORKSTATION, SRVSVC_SV_TYPE_WORKSTATION },
+                { "SV_TYPE_SERVER", SRVSVC_SV_TYPE_SERVER, SRVSVC_SV_TYPE_SERVER },
+                { "SV_TYPE_SQLSERVER", SRVSVC_SV_TYPE_SQLSERVER, SRVSVC_SV_TYPE_SQLSERVER },
+                { "SV_TYPE_DOMAIN_CTRL", SRVSVC_SV_TYPE_DOMAIN_CTRL, SRVSVC_SV_TYPE_DOMAIN_CTRL },
+                { "SV_TYPE_DOMAIN_BAKCTRL", SRVSVC_SV_TYPE_DOMAIN_BAKCTRL, SRVSVC_SV_TYPE_DOMAIN_BAKCTRL },
+                { "SV_TYPE_TIME_SOURCE", SRVSVC_SV_TYPE_TIME_SOURCE, SRVSVC_SV_TYPE_TIME_SOURCE },
+                { "SV_TYPE_AFP", SRVSVC_SV_TYPE_AFP, SRVSVC_SV_TYPE_AFP },
+                { "SV_TYPE_NOVELL", SRVSVC_SV_TYPE_NOVELL, SRVSVC_SV_TYPE_NOVELL },
+                { "SV_TYPE_DOMAIN_MEMBER", SRVSVC_SV_TYPE_DOMAIN_MEMBER, SRVSVC_SV_TYPE_DOMAIN_MEMBER },
+                { "SV_TYPE_PRINTQ_SERVER", SRVSVC_SV_TYPE_PRINTQ_SERVER, SRVSVC_SV_TYPE_PRINTQ_SERVER },
+                { "SV_TYPE_DIALIN_SERVER", SRVSVC_SV_TYPE_DIALIN_SERVER, SRVSVC_SV_TYPE_DIALIN_SERVER },
+                { "SV_TYPE_XENIX_SERVER", SRVSVC_SV_TYPE_XENIX_SERVER, SRVSVC_SV_TYPE_XENIX_SERVER },
+                { "SV_TYPE_NT", SRVSVC_SV_TYPE_NT, SRVSVC_SV_TYPE_NT },
+                { "SV_TYPE_WFW", SRVSVC_SV_TYPE_WFW, SRVSVC_SV_TYPE_WFW },
+                { "SV_TYPE_SERVER_MFPN", SRVSVC_SV_TYPE_SERVER_MFPN, SRVSVC_SV_TYPE_SERVER_MFPN },
+                { "SV_TYPE_SERVER_NT", SRVSVC_SV_TYPE_SERVER_NT, SRVSVC_SV_TYPE_SERVER_NT },
+                { "SV_TYPE_POTENTIAL_BROWSER", SRVSVC_SV_TYPE_POTENTIAL_BROWSER, SRVSVC_SV_TYPE_POTENTIAL_BROWSER },
+                { "SV_TYPE_BACKUP_BROWSER", SRVSVC_SV_TYPE_BACKUP_BROWSER, SRVSVC_SV_TYPE_BACKUP_BROWSER },
+                { "SV_TYPE_MASTER_BROWSER", SRVSVC_SV_TYPE_MASTER_BROWSER, SRVSVC_SV_TYPE_MASTER_BROWSER },
+                { "SV_TYPE_DOMAIN_MASTER", SRVSVC_SV_TYPE_DOMAIN_MASTER, SRVSVC_SV_TYPE_DOMAIN_MASTER },
+                { "SV_TYPE_WINDOWS", SRVSVC_SV_TYPE_WINDOWS, SRVSVC_SV_TYPE_WINDOWS },
+                { "SV_TYPE_DFS", SRVSVC_SV_TYPE_DFS, SRVSVC_SV_TYPE_DFS },
+                { "SV_TYPE_CLUSTER_NT", SRVSVC_SV_TYPE_CLUSTER_NT, SRVSVC_SV_TYPE_CLUSTER_NT },
+                { "SV_TYPE_TERMINALSERVER", SRVSVC_SV_TYPE_TERMINALSERVER, SRVSVC_SV_TYPE_TERMINALSERVER },
+                { "SV_TYPE_CLUSTER_VS_NT", SRVSVC_SV_TYPE_CLUSTER_VS_NT, SRVSVC_SV_TYPE_CLUSTER_VS_NT },
+                { "SV_TYPE_DCE", SRVSVC_SV_TYPE_DCE, SRVSVC_SV_TYPE_DCE },
+                { "SV_TYPE_ALTERNATE_XPORT", SRVSVC_SV_TYPE_ALTERNATE_XPORT, SRVSVC_SV_TYPE_ALTERNATE_XPORT },
+                { "SV_TYPE_LOCAL_LIST_ONLY", SRVSVC_SV_TYPE_LOCAL_LIST_ONLY, SRVSVC_SV_TYPE_LOCAL_LIST_ONLY },
+                { "SV_TYPE_DOMAIN_ENUM", SRVSVC_SV_TYPE_DOMAIN_ENUM, SRVSVC_SV_TYPE_DOMAIN_ENUM },
+                { NULL, 0, 0 },
+        },
+};
+
+int
+srvsvc_SV_TYPE_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        return dcerpc_uint32_coder_pp(name, dce, pdu, iov, offset, ptr,
+                                      &srvsvc_SV_TYPE_pp);
+}
+
 int
 srvsvc_CONNECTION_INFO_0_coder(char *name, struct dcerpc_context *dce,
                 struct dcerpc_pdu *pdu,
@@ -389,7 +728,7 @@ srvsvc_CONNECTION_INFO_1_coder(char *name, struct dcerpc_context *dce,
         if (dcerpc_uint32_coder("coni1_id", dce, pdu, iov, offset, &s->coni1_id)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("coni1_type", dce, pdu, iov, offset, &s->coni1_type)) {
+        if (srvsvc_SHARE_TYPE_coder("coni1_type", dce, pdu, iov, offset, &s->coni1_type)) {
                 return -1;
         }
         if (dcerpc_uint32_coder("coni1_num_opens", dce, pdu, iov, offset, &s->coni1_num_opens)) {
@@ -479,13 +818,13 @@ srvsvc_CONNECT_ENUM_UNION_coder(char *name, struct dcerpc_context *dce,
 
         (void)name;
         switch (dcerpc_get_switch_is(pdu)) {
-        case 0:
+        case SRVSVC_CONNECTION_INFO_0:
                 if (dcerpc_ptr_coder("Level0", dce, pdu, iov, offset, &u->Level0,
                                      PTR_UNIQUE, srvsvc_CONNECT_INFO_0_CONTAINER_struct_coder)) {
                         return -1;
                 }
                 break;
-        case 1:
+        case SRVSVC_CONNECTION_INFO_1:
                 if (dcerpc_ptr_coder("Level1", dce, pdu, iov, offset, &u->Level1,
                                      PTR_UNIQUE, srvsvc_CONNECT_INFO_1_CONTAINER_struct_coder)) {
                         return -1;
@@ -511,7 +850,7 @@ srvsvc_CONNECT_ENUM_STRUCT_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_CONNECT_ENUM_STRUCT *s = ptr;
 
         (void)name;
-        if (dcerpc_uint32_coder("Level", dce, pdu, iov, offset, &s->Level)) {
+        if (srvsvc_CONNECTION_INFO_LEVEL_coder("Level", dce, pdu, iov, offset, &s->Level)) {
                 return -1;
         }
         if (dcerpc_union_coder("ConnectInfo", dce, pdu, iov, offset,
@@ -617,7 +956,7 @@ srvsvc_FILE_INFO_3_coder(char *name, struct dcerpc_context *dce,
         if (dcerpc_uint32_coder("fi3_id", dce, pdu, iov, offset, &s->fi3_id)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("fi3_permissions", dce, pdu, iov, offset, &s->fi3_permissions)) {
+        if (srvsvc_FILE_PERMISSIONS_coder("fi3_permissions", dce, pdu, iov, offset, &s->fi3_permissions)) {
                 return -1;
         }
         if (dcerpc_uint32_coder("fi3_num_locks", dce, pdu, iov, offset, &s->fi3_num_locks)) {
@@ -701,13 +1040,13 @@ srvsvc_FILE_ENUM_UNION_coder(char *name, struct dcerpc_context *dce,
 
         (void)name;
         switch (dcerpc_get_switch_is(pdu)) {
-        case 2:
+        case SRVSVC_FILE_INFO_2:
                 if (dcerpc_ptr_coder("Level2", dce, pdu, iov, offset, &u->Level2,
                                      PTR_UNIQUE, srvsvc_FILE_INFO_2_CONTAINER_struct_coder)) {
                         return -1;
                 }
                 break;
-        case 3:
+        case SRVSVC_FILE_INFO_3:
                 if (dcerpc_ptr_coder("Level3", dce, pdu, iov, offset, &u->Level3,
                                      PTR_UNIQUE, srvsvc_FILE_INFO_3_CONTAINER_struct_coder)) {
                         return -1;
@@ -733,7 +1072,7 @@ srvsvc_FILE_ENUM_STRUCT_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_FILE_ENUM_STRUCT *s = ptr;
 
         (void)name;
-        if (dcerpc_uint32_coder("Level", dce, pdu, iov, offset, &s->Level)) {
+        if (srvsvc_FILE_INFO_LEVEL_coder("Level", dce, pdu, iov, offset, &s->Level)) {
                 return -1;
         }
         if (dcerpc_union_coder("FileInfo", dce, pdu, iov, offset,
@@ -765,13 +1104,13 @@ srvsvc_FILE_INFO_coder(char *name, struct dcerpc_context *dce,
 
         (void)name;
         switch (dcerpc_get_switch_is(pdu)) {
-        case 2:
+        case SRVSVC_FILE_INFO_2:
                 if (dcerpc_ptr_coder("FileInfo2", dce, pdu, iov, offset, &u->FileInfo2,
                                      PTR_UNIQUE, srvsvc_FILE_INFO_2_struct_coder)) {
                         return -1;
                 }
                 break;
-        case 3:
+        case SRVSVC_FILE_INFO_3:
                 if (dcerpc_ptr_coder("FileInfo3", dce, pdu, iov, offset, &u->FileInfo3,
                                      PTR_UNIQUE, srvsvc_FILE_INFO_3_struct_coder)) {
                         return -1;
@@ -900,7 +1239,7 @@ srvsvc_SESSION_INFO_1_coder(char *name, struct dcerpc_context *dce,
         if (dcerpc_uint32_coder("sesi1_idle_time", dce, pdu, iov, offset, &s->sesi1_idle_time)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sesi1_user_flags", dce, pdu, iov, offset, &s->sesi1_user_flags)) {
+        if (srvsvc_SESSION_USER_FLAGS_coder("sesi1_user_flags", dce, pdu, iov, offset, &s->sesi1_user_flags)) {
                 return -1;
         }
 
@@ -989,7 +1328,7 @@ srvsvc_SESSION_INFO_2_coder(char *name, struct dcerpc_context *dce,
         if (dcerpc_uint32_coder("sesi2_idle_time", dce, pdu, iov, offset, &s->sesi2_idle_time)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sesi2_user_flags", dce, pdu, iov, offset, &s->sesi2_user_flags)) {
+        if (srvsvc_SESSION_USER_FLAGS_coder("sesi2_user_flags", dce, pdu, iov, offset, &s->sesi2_user_flags)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("sesi2_cltype_name", dce, pdu, iov, offset, &s->sesi2_cltype_name,
@@ -1165,7 +1504,7 @@ srvsvc_SESSION_INFO_502_coder(char *name, struct dcerpc_context *dce,
         if (dcerpc_uint32_coder("sesi502_idle_time", dce, pdu, iov, offset, &s->sesi502_idle_time)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sesi502_user_flags", dce, pdu, iov, offset, &s->sesi502_user_flags)) {
+        if (srvsvc_SESSION_USER_FLAGS_coder("sesi502_user_flags", dce, pdu, iov, offset, &s->sesi502_user_flags)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("sesi502_cltype_name", dce, pdu, iov, offset, &s->sesi502_cltype_name,
@@ -1246,31 +1585,31 @@ srvsvc_SESSION_ENUM_UNION_coder(char *name, struct dcerpc_context *dce,
 
         (void)name;
         switch (dcerpc_get_switch_is(pdu)) {
-        case 0:
+        case SRVSVC_SESSION_INFO_0:
                 if (dcerpc_ptr_coder("Level0", dce, pdu, iov, offset, &u->Level0,
                                      PTR_UNIQUE, srvsvc_SESSION_INFO_0_CONTAINER_struct_coder)) {
                         return -1;
                 }
                 break;
-        case 1:
+        case SRVSVC_SESSION_INFO_1:
                 if (dcerpc_ptr_coder("Level1", dce, pdu, iov, offset, &u->Level1,
                                      PTR_UNIQUE, srvsvc_SESSION_INFO_1_CONTAINER_struct_coder)) {
                         return -1;
                 }
                 break;
-        case 2:
+        case SRVSVC_SESSION_INFO_2:
                 if (dcerpc_ptr_coder("Level2", dce, pdu, iov, offset, &u->Level2,
                                      PTR_UNIQUE, srvsvc_SESSION_INFO_2_CONTAINER_struct_coder)) {
                         return -1;
                 }
                 break;
-        case 10:
+        case SRVSVC_SESSION_INFO_10:
                 if (dcerpc_ptr_coder("Level10", dce, pdu, iov, offset, &u->Level10,
                                      PTR_UNIQUE, srvsvc_SESSION_INFO_10_CONTAINER_struct_coder)) {
                         return -1;
                 }
                 break;
-        case 502:
+        case SRVSVC_SESSION_INFO_502:
                 if (dcerpc_ptr_coder("Level502", dce, pdu, iov, offset, &u->Level502,
                                      PTR_UNIQUE, srvsvc_SESSION_INFO_502_CONTAINER_struct_coder)) {
                         return -1;
@@ -1296,7 +1635,7 @@ srvsvc_SESSION_ENUM_STRUCT_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_SESSION_ENUM_STRUCT *s = ptr;
 
         (void)name;
-        if (dcerpc_uint32_coder("Level", dce, pdu, iov, offset, &s->Level)) {
+        if (srvsvc_SESSION_INFO_LEVEL_coder("Level", dce, pdu, iov, offset, &s->Level)) {
                 return -1;
         }
         if (dcerpc_union_coder("SessionInfo", dce, pdu, iov, offset,
@@ -1404,7 +1743,7 @@ srvsvc_SHARE_INFO_1_coder(char *name, struct dcerpc_context *dce,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("shi1_type", dce, pdu, iov, offset, &s->shi1_type)) {
+        if (srvsvc_SHARE_TYPE_coder("shi1_type", dce, pdu, iov, offset, &s->shi1_type)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("shi1_remark", dce, pdu, iov, offset, &s->shi1_remark,
@@ -1484,14 +1823,14 @@ srvsvc_SHARE_INFO_2_coder(char *name, struct dcerpc_context *dce,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("shi2_type", dce, pdu, iov, offset, &s->shi2_type)) {
+        if (srvsvc_SHARE_TYPE_coder("shi2_type", dce, pdu, iov, offset, &s->shi2_type)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("shi2_remark", dce, pdu, iov, offset, &s->shi2_remark,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("shi2_permissions", dce, pdu, iov, offset, &s->shi2_permissions)) {
+        if (srvsvc_SHARE_PERMISSIONS_coder("shi2_permissions", dce, pdu, iov, offset, &s->shi2_permissions)) {
                 return -1;
         }
         if (dcerpc_uint32_coder("shi2_max_uses", dce, pdu, iov, offset, &s->shi2_max_uses)) {
@@ -1581,14 +1920,14 @@ srvsvc_SHARE_INFO_501_coder(char *name, struct dcerpc_context *dce,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("shi501_type", dce, pdu, iov, offset, &s->shi501_type)) {
+        if (srvsvc_SHARE_TYPE_coder("shi501_type", dce, pdu, iov, offset, &s->shi501_type)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("shi501_remark", dce, pdu, iov, offset, &s->shi501_remark,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("shi501_flags", dce, pdu, iov, offset, &s->shi501_flags)) {
+        if (srvsvc_SHARE_FLAGS_coder("shi501_flags", dce, pdu, iov, offset, &s->shi501_flags)) {
                 return -1;
         }
 
@@ -1664,14 +2003,14 @@ srvsvc_SHARE_INFO_502_I_coder(char *name, struct dcerpc_context *dce,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("shi502_type", dce, pdu, iov, offset, &s->shi502_type)) {
+        if (srvsvc_SHARE_TYPE_coder("shi502_type", dce, pdu, iov, offset, &s->shi502_type)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("shi502_remark", dce, pdu, iov, offset, &s->shi502_remark,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("shi502_permissions", dce, pdu, iov, offset, &s->shi502_permissions)) {
+        if (srvsvc_SHARE_PERMISSIONS_coder("shi502_permissions", dce, pdu, iov, offset, &s->shi502_permissions)) {
                 return -1;
         }
         if (dcerpc_uint32_coder("shi502_max_uses", dce, pdu, iov, offset, &s->shi502_max_uses)) {
@@ -1772,14 +2111,14 @@ srvsvc_SHARE_INFO_503_I_coder(char *name, struct dcerpc_context *dce,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("shi503_type", dce, pdu, iov, offset, &s->shi503_type)) {
+        if (srvsvc_SHARE_TYPE_coder("shi503_type", dce, pdu, iov, offset, &s->shi503_type)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("shi503_remark", dce, pdu, iov, offset, &s->shi503_remark,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("shi503_permissions", dce, pdu, iov, offset, &s->shi503_permissions)) {
+        if (srvsvc_SHARE_PERMISSIONS_coder("shi503_permissions", dce, pdu, iov, offset, &s->shi503_permissions)) {
                 return -1;
         }
         if (dcerpc_uint32_coder("shi503_max_uses", dce, pdu, iov, offset, &s->shi503_max_uses)) {
@@ -1907,7 +2246,7 @@ srvsvc_SHARE_INFO_1005_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_SHARE_INFO_1005 *s = ptr;
 
         (void)name;
-        if (dcerpc_uint32_coder("shi1005_flags", dce, pdu, iov, offset, &s->shi1005_flags)) {
+        if (srvsvc_SHARE_FLAGS_coder("shi1005_flags", dce, pdu, iov, offset, &s->shi1005_flags)) {
                 return -1;
         }
 
@@ -1994,37 +2333,37 @@ srvsvc_SHARE_ENUM_UNION_coder(char *name, struct dcerpc_context *dce,
 
         (void)name;
         switch (dcerpc_get_switch_is(pdu)) {
-        case 0:
+        case SRVSVC_SHARE_INFO_0:
                 if (dcerpc_ptr_coder("Level0", dce, pdu, iov, offset, &u->Level0,
                                      PTR_UNIQUE, srvsvc_SHARE_INFO_0_CONTAINER_struct_coder)) {
                         return -1;
                 }
                 break;
-        case 1:
+        case SRVSVC_SHARE_INFO_1:
                 if (dcerpc_ptr_coder("Level1", dce, pdu, iov, offset, &u->Level1,
                                      PTR_UNIQUE, srvsvc_SHARE_INFO_1_CONTAINER_struct_coder)) {
                         return -1;
                 }
                 break;
-        case 2:
+        case SRVSVC_SHARE_INFO_2:
                 if (dcerpc_ptr_coder("Level2", dce, pdu, iov, offset, &u->Level2,
                                      PTR_UNIQUE, srvsvc_SHARE_INFO_2_CONTAINER_struct_coder)) {
                         return -1;
                 }
                 break;
-        case 501:
+        case SRVSVC_SHARE_INFO_501:
                 if (dcerpc_ptr_coder("Level501", dce, pdu, iov, offset, &u->Level501,
                                      PTR_UNIQUE, srvsvc_SHARE_INFO_501_CONTAINER_struct_coder)) {
                         return -1;
                 }
                 break;
-        case 502:
+        case SRVSVC_SHARE_INFO_502:
                 if (dcerpc_ptr_coder("Level502", dce, pdu, iov, offset, &u->Level502,
                                      PTR_UNIQUE, srvsvc_SHARE_INFO_502_CONTAINER_struct_coder)) {
                         return -1;
                 }
                 break;
-        case 503:
+        case SRVSVC_SHARE_INFO_503:
                 if (dcerpc_ptr_coder("Level503", dce, pdu, iov, offset, &u->Level503,
                                      PTR_UNIQUE, srvsvc_SHARE_INFO_503_CONTAINER_struct_coder)) {
                         return -1;
@@ -2050,7 +2389,7 @@ srvsvc_SHARE_ENUM_STRUCT_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_SHARE_ENUM_STRUCT *s = ptr;
 
         (void)name;
-        if (dcerpc_uint32_coder("Level", dce, pdu, iov, offset, &s->Level)) {
+        if (srvsvc_SHARE_INFO_LEVEL_coder("Level", dce, pdu, iov, offset, &s->Level)) {
                 return -1;
         }
         if (dcerpc_union_coder("ShareInfo", dce, pdu, iov, offset,
@@ -2082,61 +2421,61 @@ srvsvc_SHARE_INFO_coder(char *name, struct dcerpc_context *dce,
 
         (void)name;
         switch (dcerpc_get_switch_is(pdu)) {
-        case 0:
+        case SRVSVC_SHARE_INFO_0:
                 if (dcerpc_ptr_coder("ShareInfo0", dce, pdu, iov, offset, &u->ShareInfo0,
                                      PTR_UNIQUE, srvsvc_SHARE_INFO_0_struct_coder)) {
                         return -1;
                 }
                 break;
-        case 1:
+        case SRVSVC_SHARE_INFO_1:
                 if (dcerpc_ptr_coder("ShareInfo1", dce, pdu, iov, offset, &u->ShareInfo1,
                                      PTR_UNIQUE, srvsvc_SHARE_INFO_1_struct_coder)) {
                         return -1;
                 }
                 break;
-        case 2:
+        case SRVSVC_SHARE_INFO_2:
                 if (dcerpc_ptr_coder("ShareInfo2", dce, pdu, iov, offset, &u->ShareInfo2,
                                      PTR_UNIQUE, srvsvc_SHARE_INFO_2_struct_coder)) {
                         return -1;
                 }
                 break;
-        case 502:
+        case SRVSVC_SHARE_INFO_502:
                 if (dcerpc_ptr_coder("ShareInfo502", dce, pdu, iov, offset, &u->ShareInfo502,
                                      PTR_UNIQUE, srvsvc_SHARE_INFO_502_I_struct_coder)) {
                         return -1;
                 }
                 break;
-        case 1004:
+        case SRVSVC_SHARE_INFO_1004:
                 if (dcerpc_ptr_coder("ShareInfo1004", dce, pdu, iov, offset, &u->ShareInfo1004,
                                      PTR_UNIQUE, srvsvc_SHARE_INFO_1004_struct_coder)) {
                         return -1;
                 }
                 break;
-        case 1006:
+        case SRVSVC_SHARE_INFO_1006:
                 if (dcerpc_ptr_coder("ShareInfo1006", dce, pdu, iov, offset, &u->ShareInfo1006,
                                      PTR_UNIQUE, srvsvc_SHARE_INFO_1006_struct_coder)) {
                         return -1;
                 }
                 break;
-        case 1501:
+        case SRVSVC_SHARE_INFO_1501:
                 if (dcerpc_ptr_coder("ShareInfo1501", dce, pdu, iov, offset, &u->ShareInfo1501,
                                      PTR_UNIQUE, srvsvc_SHARE_INFO_1501_I_struct_coder)) {
                         return -1;
                 }
                 break;
-        case 1005:
+        case SRVSVC_SHARE_INFO_1005:
                 if (dcerpc_ptr_coder("ShareInfo1005", dce, pdu, iov, offset, &u->ShareInfo1005,
                                      PTR_UNIQUE, srvsvc_SHARE_INFO_1005_struct_coder)) {
                         return -1;
                 }
                 break;
-        case 501:
+        case SRVSVC_SHARE_INFO_501:
                 if (dcerpc_ptr_coder("ShareInfo501", dce, pdu, iov, offset, &u->ShareInfo501,
                                      PTR_UNIQUE, srvsvc_SHARE_INFO_501_struct_coder)) {
                         return -1;
                 }
                 break;
-        case 503:
+        case SRVSVC_SHARE_INFO_503:
                 if (dcerpc_ptr_coder("ShareInfo503", dce, pdu, iov, offset, &u->ShareInfo503,
                                      PTR_UNIQUE, srvsvc_SHARE_INFO_503_I_struct_coder)) {
                         return -1;
@@ -2175,7 +2514,7 @@ srvsvc_SERVER_INFO_100_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_SERVER_INFO_100 *s = ptr;
 
         (void)name;
-        if (dcerpc_uint32_coder("sv100_platform_id", dce, pdu, iov, offset, &s->sv100_platform_id)) {
+        if (srvsvc_PLATFORM_ID_coder("sv100_platform_id", dce, pdu, iov, offset, &s->sv100_platform_id)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("sv100_name", dce, pdu, iov, offset, &s->sv100_name,
@@ -2205,7 +2544,7 @@ srvsvc_SERVER_INFO_101_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_SERVER_INFO_101 *s = ptr;
 
         (void)name;
-        if (dcerpc_uint32_coder("sv101_platform_id", dce, pdu, iov, offset, &s->sv101_platform_id)) {
+        if (srvsvc_PLATFORM_ID_coder("sv101_platform_id", dce, pdu, iov, offset, &s->sv101_platform_id)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("sv101_name", dce, pdu, iov, offset, &s->sv101_name,
@@ -2218,7 +2557,7 @@ srvsvc_SERVER_INFO_101_coder(char *name, struct dcerpc_context *dce,
         if (dcerpc_uint32_coder("sv101_version_minor", dce, pdu, iov, offset, &s->sv101_version_minor)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv101_type", dce, pdu, iov, offset, &s->sv101_type)) {
+        if (srvsvc_SV_TYPE_coder("sv101_type", dce, pdu, iov, offset, &s->sv101_type)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("sv101_comment", dce, pdu, iov, offset, &s->sv101_comment,
@@ -2248,7 +2587,7 @@ srvsvc_SERVER_INFO_102_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_SERVER_INFO_102 *s = ptr;
 
         (void)name;
-        if (dcerpc_uint32_coder("sv102_platform_id", dce, pdu, iov, offset, &s->sv102_platform_id)) {
+        if (srvsvc_PLATFORM_ID_coder("sv102_platform_id", dce, pdu, iov, offset, &s->sv102_platform_id)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("sv102_name", dce, pdu, iov, offset, &s->sv102_name,
@@ -2261,7 +2600,7 @@ srvsvc_SERVER_INFO_102_coder(char *name, struct dcerpc_context *dce,
         if (dcerpc_uint32_coder("sv102_version_minor", dce, pdu, iov, offset, &s->sv102_version_minor)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv102_type", dce, pdu, iov, offset, &s->sv102_type)) {
+        if (srvsvc_SV_TYPE_coder("sv102_type", dce, pdu, iov, offset, &s->sv102_type)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("sv102_comment", dce, pdu, iov, offset, &s->sv102_comment,
@@ -2313,7 +2652,7 @@ srvsvc_SERVER_INFO_103_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_SERVER_INFO_103 *s = ptr;
 
         (void)name;
-        if (dcerpc_uint32_coder("sv103_platform_id", dce, pdu, iov, offset, &s->sv103_platform_id)) {
+        if (srvsvc_PLATFORM_ID_coder("sv103_platform_id", dce, pdu, iov, offset, &s->sv103_platform_id)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("sv103_name", dce, pdu, iov, offset, &s->sv103_name,
@@ -2326,7 +2665,7 @@ srvsvc_SERVER_INFO_103_coder(char *name, struct dcerpc_context *dce,
         if (dcerpc_uint32_coder("sv103_version_minor", dce, pdu, iov, offset, &s->sv103_version_minor)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("sv103_type", dce, pdu, iov, offset, &s->sv103_type)) {
+        if (srvsvc_SV_TYPE_coder("sv103_type", dce, pdu, iov, offset, &s->sv103_type)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("sv103_comment", dce, pdu, iov, offset, &s->sv103_comment,
@@ -2609,37 +2948,37 @@ srvsvc_SERVER_INFO_coder(char *name, struct dcerpc_context *dce,
 
         (void)name;
         switch (dcerpc_get_switch_is(pdu)) {
-        case 100:
+        case SRVSVC_SERVER_INFO_100:
                 if (dcerpc_ptr_coder("ServerInfo100", dce, pdu, iov, offset, &u->ServerInfo100,
                                      PTR_UNIQUE, srvsvc_SERVER_INFO_100_struct_coder)) {
                         return -1;
                 }
                 break;
-        case 101:
+        case SRVSVC_SERVER_INFO_101:
                 if (dcerpc_ptr_coder("ServerInfo101", dce, pdu, iov, offset, &u->ServerInfo101,
                                      PTR_UNIQUE, srvsvc_SERVER_INFO_101_struct_coder)) {
                         return -1;
                 }
                 break;
-        case 102:
+        case SRVSVC_SERVER_INFO_102:
                 if (dcerpc_ptr_coder("ServerInfo102", dce, pdu, iov, offset, &u->ServerInfo102,
                                      PTR_UNIQUE, srvsvc_SERVER_INFO_102_struct_coder)) {
                         return -1;
                 }
                 break;
-        case 103:
+        case SRVSVC_SERVER_INFO_103:
                 if (dcerpc_ptr_coder("ServerInfo103", dce, pdu, iov, offset, &u->ServerInfo103,
                                      PTR_UNIQUE, srvsvc_SERVER_INFO_103_struct_coder)) {
                         return -1;
                 }
                 break;
-        case 502:
+        case SRVSVC_SERVER_INFO_502:
                 if (dcerpc_ptr_coder("ServerInfo502", dce, pdu, iov, offset, &u->ServerInfo502,
                                      PTR_UNIQUE, srvsvc_SERVER_INFO_502_struct_coder)) {
                         return -1;
                 }
                 break;
-        case 503:
+        case SRVSVC_SERVER_INFO_503:
                 if (dcerpc_ptr_coder("ServerInfo503", dce, pdu, iov, offset, &u->ServerInfo503,
                                      PTR_UNIQUE, srvsvc_SERVER_INFO_503_struct_coder)) {
                         return -1;
@@ -2991,7 +3330,7 @@ srvsvc_NetrFileGetInfo_req_coder(char *name, struct dcerpc_context *dce,
                 return -1;
         }
         if (dcerpc_ptr_coder("Level", dce, pdu, iov, offset, &req->Level,
-                             PTR_REF, dcerpc_uint32_coder)) {
+                             PTR_REF, srvsvc_FILE_INFO_LEVEL_coder)) {
                 return -1;
         }
 
@@ -3230,12 +3569,18 @@ srvsvc_NetrShareAdd_req_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_NetrShareAdd_req *req = ptr;
 
         (void)name;
-        if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&
+            req->ServerName == NULL) {
+                if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, NULL,
+                                     PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                        return -1;
+                }
+        } else if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
+                                    PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("Level", dce, pdu, iov, offset, &req->Level,
-                             PTR_REF, dcerpc_uint32_coder)) {
+                             PTR_REF, srvsvc_SHARE_INFO_LEVEL_coder)) {
                 return -1;
         }
         dcerpc_set_switch_is(pdu, req->Level);
@@ -3283,8 +3628,14 @@ srvsvc_NetrShareEnum_req_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_NetrShareEnum_req *req = ptr;
 
         (void)name;
-        if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&
+            req->ServerName == NULL) {
+                if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, NULL,
+                                     PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                        return -1;
+                }
+        } else if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
+                                    PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("InfoStruct", dce, pdu, iov, offset, &req->InfoStruct,
@@ -3343,8 +3694,14 @@ srvsvc_NetrShareGetInfo_req_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_NetrShareGetInfo_req *req = ptr;
 
         (void)name;
-        if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&
+            req->ServerName == NULL) {
+                if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, NULL,
+                                     PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                        return -1;
+                }
+        } else if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
+                                    PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("NetName", dce, pdu, iov, offset, &req->NetName,
@@ -3352,7 +3709,7 @@ srvsvc_NetrShareGetInfo_req_coder(char *name, struct dcerpc_context *dce,
                 return -1;
         }
         if (dcerpc_ptr_coder("Level", dce, pdu, iov, offset, &req->Level,
-                             PTR_REF, dcerpc_uint32_coder)) {
+                             PTR_REF, srvsvc_SHARE_INFO_LEVEL_coder)) {
                 return -1;
         }
 
@@ -3397,8 +3754,14 @@ srvsvc_NetrShareSetInfo_req_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_NetrShareSetInfo_req *req = ptr;
 
         (void)name;
-        if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&
+            req->ServerName == NULL) {
+                if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, NULL,
+                                     PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                        return -1;
+                }
+        } else if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
+                                    PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("NetName", dce, pdu, iov, offset, &req->NetName,
@@ -3406,7 +3769,7 @@ srvsvc_NetrShareSetInfo_req_coder(char *name, struct dcerpc_context *dce,
                 return -1;
         }
         if (dcerpc_ptr_coder("Level", dce, pdu, iov, offset, &req->Level,
-                             PTR_REF, dcerpc_uint32_coder)) {
+                             PTR_REF, srvsvc_SHARE_INFO_LEVEL_coder)) {
                 return -1;
         }
         dcerpc_set_switch_is(pdu, req->Level);
@@ -3454,8 +3817,14 @@ srvsvc_NetrShareDel_req_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_NetrShareDel_req *req = ptr;
 
         (void)name;
-        if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&
+            req->ServerName == NULL) {
+                if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, NULL,
+                                     PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                        return -1;
+                }
+        } else if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
+                                    PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("NetName", dce, pdu, iov, offset, &req->NetName,
@@ -3498,8 +3867,14 @@ srvsvc_NetrShareDelSticky_req_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_NetrShareDelSticky_req *req = ptr;
 
         (void)name;
-        if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&
+            req->ServerName == NULL) {
+                if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, NULL,
+                                     PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                        return -1;
+                }
+        } else if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
+                                    PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("NetName", dce, pdu, iov, offset, &req->NetName,
@@ -3542,8 +3917,14 @@ srvsvc_NetrShareCheck_req_coder(char *name, struct dcerpc_context *dce,
         struct srvsvc_NetrShareCheck_req *req = ptr;
 
         (void)name;
-        if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
-                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&
+            req->ServerName == NULL) {
+                if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, NULL,
+                                     PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                        return -1;
+                }
+        } else if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
+                                    PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("Device", dce, pdu, iov, offset, &req->Device,
@@ -3597,7 +3978,7 @@ srvsvc_NetrServerGetInfo_req_coder(char *name, struct dcerpc_context *dce,
                 return -1;
         }
         if (dcerpc_ptr_coder("Level", dce, pdu, iov, offset, &req->Level,
-                             PTR_REF, dcerpc_uint32_coder)) {
+                             PTR_REF, srvsvc_SERVER_INFO_LEVEL_coder)) {
                 return -1;
         }
 
@@ -3653,7 +4034,7 @@ srvsvc_NetrServerSetInfo_req_coder(char *name, struct dcerpc_context *dce,
                 return -1;
         }
         if (dcerpc_ptr_coder("Level", dce, pdu, iov, offset, &req->Level,
-                             PTR_REF, dcerpc_uint32_coder)) {
+                             PTR_REF, srvsvc_SERVER_INFO_LEVEL_coder)) {
                 return -1;
         }
         dcerpc_set_switch_is(pdu, req->Level);
@@ -3722,7 +4103,7 @@ srvsvc_NetrServerStatisticsGet_req_coder(char *name, struct dcerpc_context *dce,
                 return -1;
         }
         if (dcerpc_ptr_coder("Level", dce, pdu, iov, offset, &req->Level,
-                             PTR_REF, dcerpc_uint32_coder)) {
+                             PTR_REF, srvsvc_STAT_SERVER_LEVEL_coder)) {
                 return -1;
         }
         if (dcerpc_ptr_coder("Options", dce, pdu, iov, offset, &req->Options,

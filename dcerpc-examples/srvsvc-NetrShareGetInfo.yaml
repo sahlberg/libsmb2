@@ -1,6 +1,6 @@
 NetrShareGetInfo: Request
   ServerName: \\win16-1
   NetName: Share
-  Level: 502
+  Level: SHARE_INFO_502
 
 

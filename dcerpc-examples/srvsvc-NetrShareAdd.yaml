@@ -1,9 +1,9 @@
 NetrShareAdd: Request
   ServerName: \\10.10.10.11
-  Level: 1
+  Level: SHARE_INFO_1
   InfoStruct:
     ShareInfo1:
       shi1_netname: NEW-SNAP
-      shi1_type: 0
+      shi1_type: STYPE_DISKTREE
       shi1_remark: Boogaloo
   ParmErr: 5

@@ -1,5 +1,5 @@
 NetrServerStatisticsGet: Request
   ServerName: \\WIN16-1
   Service: LanmanServer
-  Level: 0
+  Level: STAT_SERVER_0
   Options: 0

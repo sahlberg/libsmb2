@@ -1,7 +1,7 @@
 NetrFileEnum: Request
   ServerName: \\WIN16-1
   InfoStruct:
-    Level: 3
+    Level: FILE_INFO_3
     FileInfo:
   PreferedMaximumLength: 0xffffffff
   ResumeHandle: 0
@@ -9,4 +9,4 @@ NetrFileEnum: Request
 NetrFileGetInfo: Request
   ServerName: \\WIN16-1
   FileId: @fi3_id@
-  Level: 3
+  Level: FILE_INFO_3
