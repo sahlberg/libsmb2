@@ -1693,12 +1693,13 @@ action_edit_value(void)
                    sel->value_text ? sel->value_text : "");
         draw_ui();
 
+        /* Long current values are cut short to fit the prompt line. */
         if (type == REG_DWORD) {
                 snprintf(prompt, sizeof(prompt),
-                         "New DWORD [%s]: ", hint[0] ? hint : "0");
+                         "New DWORD [%.200s]: ", hint[0] ? hint : "0");
         } else {
                 snprintf(prompt, sizeof(prompt),
-                         "New string [%s]: ", hint);
+                         "New string [%.200s]: ", hint);
         }
         if (prompt_string(prompt, databuf, sizeof(databuf)) != 0) {
                 set_status("Edit cancelled");
