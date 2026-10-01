@@ -835,16 +835,15 @@ struct srvsvc_NetrShareAdd_rep {
 };
         
 struct srvsvc_NetrShareSetInfo_req {
-        char *ServerName;
-        char *NetName;
+        char * ServerName;
+        char * NetName;
         uint32_t Level;
-        union srvsvc_SHARE_INFO InfoStruct;
+        union srvsvc_SHARE_INFO ShareInfo;
         uint32_t ParmErr;
 };
 
 struct srvsvc_NetrShareSetInfo_rep {
         uint32_t ParmErr;
-
         uint32_t status;
 };
 

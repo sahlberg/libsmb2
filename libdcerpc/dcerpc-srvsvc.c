@@ -3614,39 +3614,32 @@ srvsvc_NetrShareGetInfo_rep_coder(char *name, struct dcerpc_context *dce,
         return 0;
 }
 
-/******************
- * Function: 0x11
- * NET_API_STATUS NetrShareSetInfo (
- * [in,string,unique] SRVSVC_HANDLE ServerName,
- * [in,string] WCHAR * NetName,
- * [in] DWORD Level,
- * [in, switch_is(Level)] LPSHARE_INFO ShareInfo,
- * [in,out,unique] DWORD * ParmErr
- * );
-*/
+/*****************
+ * Function: 0x11  NetrShareSetInfo  (SRVSVC_NETRSHARESETINFO)
+ *****************/
 int
 srvsvc_NetrShareSetInfo_req_coder(char *name, struct dcerpc_context *dce,
-                                  struct dcerpc_pdu *pdu,
-                                  struct dcerpc_iovec *iov, int *offset,
-                                  void *ptr)
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
         struct srvsvc_NetrShareSetInfo_req *req = ptr;
 
+        (void)name;
         if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("NetName", dce, pdu, iov, offset,
-                             discard_const(&req->NetName),
+        if (dcerpc_ptr_coder("NetName", dce, pdu, iov, offset, &req->NetName,
                              PTR_REF, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Level", dce, pdu, iov, offset, &req->Level)) {
+        if (dcerpc_ptr_coder("Level", dce, pdu, iov, offset, &req->Level,
+                             PTR_REF, dcerpc_uint32_coder)) {
                 return -1;
         }
         dcerpc_set_switch_is(pdu, req->Level);
-
-        if (dcerpc_ptr_coder("InfoStruct", dce, pdu, iov, offset, &req->InfoStruct,
+        if (dcerpc_ptr_coder("ShareInfo", dce, pdu, iov, offset, &req->ShareInfo,
                              PTR_REF, srvsvc_SHARE_INFO_switch_coder)) {
                 return -1;
         }
@@ -3660,12 +3653,13 @@ srvsvc_NetrShareSetInfo_req_coder(char *name, struct dcerpc_context *dce,
 
 int
 srvsvc_NetrShareSetInfo_rep_coder(char *name, struct dcerpc_context *dce,
-                                  struct dcerpc_pdu *pdu,
-                                  struct dcerpc_iovec *iov, int *offset,
-                                  void *ptr)
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
         struct srvsvc_NetrShareSetInfo_rep *rep = ptr;
 
+        (void)name;
         if (dcerpc_ptr_coder("ParmErr", dce, pdu, iov, offset, &rep->ParmErr,
                              PTR_UNIQUE, dcerpc_uint32_coder)) {
                 return -1;

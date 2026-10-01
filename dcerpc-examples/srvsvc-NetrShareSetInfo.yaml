@@ -2,7 +2,7 @@ NetrShareSetInfo: Request
   ServerName: \\10.10.10.11
   NetName: SNAP-1
   Level: 1
-  InfoStruct:
+  ShareInfo:
     ShareInfo1: 
       shi1_netname: SNAP-1
       shi1_type: 0
