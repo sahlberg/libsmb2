@@ -30,8 +30,9 @@ extern "C" {
 #define SRVSVC_SHARE_TYPE_HIDDEN     0x80000000 /* STYPE_SPECIAL */
 
 /*
- * NetrShareEnum: SHARE_ENUM_STRUCT and SHARE_INFO levels 0, 1, 2, 501, 502
- * and 503, generated from the [MS-SRVS] IDL. Field names follow the IDL.
+ * NetrShareEnum and NetrShareGetInfo: SHARE_INFO levels 0, 1, 2, 501, 502,
+ * 503, 1004, 1005, 1006 and 1501, SHARE_ENUM_STRUCT and the SHARE_INFO
+ * union, generated from the [MS-SRVS] IDL. Field names follow the IDL.
  */
 struct srvsvc_SHARE_INFO_0 {
         char * shi0_netname;
@@ -118,6 +119,23 @@ struct srvsvc_SHARE_INFO_503_CONTAINER {
         struct srvsvc_SHARE_INFO_503_I * Buffer;
 };
 
+struct srvsvc_SHARE_INFO_1004 {
+        char * shi1004_remark;
+};
+
+struct srvsvc_SHARE_INFO_1005 {
+        uint32_t shi1005_flags;
+};
+
+struct srvsvc_SHARE_INFO_1006 {
+        uint32_t shi1006_max_uses;
+};
+
+struct srvsvc_SHARE_INFO_1501_I {
+        uint32_t shi1501_reserved;
+        SECURITY_DESCRIPTOR * shi1501_security_descriptor;
+};
+
 union srvsvc_SHARE_ENUM_UNION {
         struct srvsvc_SHARE_INFO_0_CONTAINER Level0;
         struct srvsvc_SHARE_INFO_1_CONTAINER Level1;
@@ -132,6 +150,19 @@ struct srvsvc_SHARE_ENUM_STRUCT {
         union srvsvc_SHARE_ENUM_UNION ShareInfo;
 };
 
+union srvsvc_SHARE_INFO {
+        struct srvsvc_SHARE_INFO_0 ShareInfo0;
+        struct srvsvc_SHARE_INFO_1 ShareInfo1;
+        struct srvsvc_SHARE_INFO_2 ShareInfo2;
+        struct srvsvc_SHARE_INFO_502_I ShareInfo502;
+        struct srvsvc_SHARE_INFO_1004 ShareInfo1004;
+        struct srvsvc_SHARE_INFO_1006 ShareInfo1006;
+        struct srvsvc_SHARE_INFO_1501_I ShareInfo1501;
+        struct srvsvc_SHARE_INFO_1005 ShareInfo1005;
+        struct srvsvc_SHARE_INFO_501 ShareInfo501;
+        struct srvsvc_SHARE_INFO_503_I ShareInfo503;
+};
+
 struct srvsvc_NetrShareEnum_req {
         char * ServerName;
         struct srvsvc_SHARE_ENUM_STRUCT InfoStruct;
@@ -143,6 +174,17 @@ struct srvsvc_NetrShareEnum_rep {
         struct srvsvc_SHARE_ENUM_STRUCT InfoStruct;
         uint32_t TotalEntries;
         uint32_t ResumeHandle;
+        uint32_t status;
+};
+
+struct srvsvc_NetrShareGetInfo_req {
+        char * ServerName;
+        char * NetName;
+        uint32_t Level;
+};
+
+struct srvsvc_NetrShareGetInfo_rep {
+        union srvsvc_SHARE_INFO InfoStruct;
         uint32_t status;
 };
 
@@ -310,6 +352,34 @@ int srvsvc_SHARE_INFO_503_CONTAINER_struct_coder(char *name, struct dcerpc_conte
                 struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
                 int *offset, void *ptr);
 
+int srvsvc_SHARE_INFO_1004_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SHARE_INFO_1004_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_SHARE_INFO_1005_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SHARE_INFO_1005_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_SHARE_INFO_1006_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SHARE_INFO_1006_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_SHARE_INFO_1501_I_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SHARE_INFO_1501_I_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
 int srvsvc_SHARE_ENUM_UNION_coder(char *name, struct dcerpc_context *dce,
                 struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
                 int *offset, void *ptr);
@@ -321,12 +391,12 @@ int srvsvc_SHARE_ENUM_STRUCT_struct_coder(char *name, struct dcerpc_context *dce
                 struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
                 int *offset, void *ptr);
 
-union srvsvc_SHARE_INFO {
-        struct srvsvc_SHARE_INFO_0 ShareInfo0;
-        struct srvsvc_SHARE_INFO_1 ShareInfo1;
-        struct srvsvc_SHARE_INFO_2 ShareInfo2;
-        struct srvsvc_SHARE_INFO_502_I ShareInfo502;
-};
+int srvsvc_SHARE_INFO_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SHARE_INFO_switch_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
 
 struct srvsvc_SERVER_INFO_100 {
         uint32_t platform_id;
@@ -764,18 +834,6 @@ struct srvsvc_NetrShareAdd_rep {
         uint32_t status;
 };
         
-struct srvsvc_NetrShareGetInfo_req {
-        char *ServerName;
-        char *NetName;
-        uint32_t Level;
-};
-
-struct srvsvc_NetrShareGetInfo_rep {
-        union srvsvc_SHARE_INFO InfoStruct;
-
-        uint32_t status;
-};
-
 struct srvsvc_NetrShareSetInfo_req {
         char *ServerName;
         char *NetName;
