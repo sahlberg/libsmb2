@@ -2766,6 +2766,8 @@ smb2_open_cb(struct smb2_context *smb2, int status,
         dcerpc_untrack(dce, &data->pending);
 
         if (status != SMB2_STATUS_SUCCESS) {
+                smb2_set_error(smb2, "Failed to open pipe %s: %s",
+                               dce->path, nterror_to_str(status));
                 data->cb(dce, -nterror_to_errno(status),
                          NULL, data->cb_data);
                 free(data);
