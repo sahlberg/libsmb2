@@ -35,15 +35,89 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 int is_finished;
 struct srvsvc_NetrShareGetInfo_req *si_req;
 char *server;
-int level;
+int level = 1;
 
 int usage(void)
 {
         fprintf(stderr, "Usage:\n"
                 "smb2-share-info [-l level] <smb2-url>\n\n"
+                "level: SHARE_INFO level, default 1\n"
                 "URL format: "
                 "smb://[<domain;][<username>@]<host>[:<port>]/share\n");
         exit(1);
+}
+
+/*
+ * One line per share: name, and for the levels that carry them the remark
+ * and the share type.
+ */
+static void
+print_share(int lvl, union srvsvc_SHARE_INFO *si)
+{
+        const char *netname = NULL, *remark = NULL;
+        uint32_t type = 0;
+        int has_type = 1;
+
+        switch (lvl) {
+        case SRVSVC_SHARE_INFO_0:
+                netname = si->ShareInfo0.netname;
+                has_type = 0;
+                break;
+        case SRVSVC_SHARE_INFO_1:
+                netname = si->ShareInfo1.netname;
+                remark = si->ShareInfo1.remark;
+                type = si->ShareInfo1.type;
+                break;
+        case SRVSVC_SHARE_INFO_2:
+                netname = si->ShareInfo2.netname;
+                remark = si->ShareInfo2.remark;
+                type = si->ShareInfo2.type;
+                break;
+        case SRVSVC_SHARE_INFO_501:
+                netname = si->ShareInfo501.netname;
+                remark = si->ShareInfo501.remark;
+                type = si->ShareInfo501.type;
+                break;
+        case SRVSVC_SHARE_INFO_502:
+                netname = si->ShareInfo502.netname;
+                remark = si->ShareInfo502.remark;
+                type = si->ShareInfo502.type;
+                break;
+        case SRVSVC_SHARE_INFO_503:
+                netname = si->ShareInfo503.netname;
+                remark = si->ShareInfo503.remark;
+                type = si->ShareInfo503.type;
+                break;
+        default:
+                /* other levels have no name; see the YAML below */
+                return;
+        }
+        if (!has_type) {
+                printf("%s\n", netname ? netname : "");
+                return;
+        }
+        printf("%-20s %-20s", netname ? netname : "", remark ? remark : "");
+        switch (type & 3) {
+        case SRVSVC_STYPE_DISKTREE:
+                printf(" DISKTREE");
+                break;
+        case SRVSVC_STYPE_PRINTQ:
+                printf(" PRINTQ");
+                break;
+        case SRVSVC_STYPE_DEVICE:
+                printf(" DEVICE");
+                break;
+        case SRVSVC_STYPE_IPC:
+                printf(" IPC");
+                break;
+        }
+        if (type & SRVSVC_STYPE_TEMPORARY) {
+                printf(" TEMPORARY");
+        }
+        if (type & SRVSVC_STYPE_SPECIAL) {
+                printf(" HIDDEN");
+        }
+        printf("\n");
 }
 
 void si_cb(struct dcerpc_context *dce, int status,
@@ -56,28 +130,7 @@ void si_cb(struct dcerpc_context *dce, int status,
                        strerror(-status), dcerpc_get_error(dce));
                 exit(10);
         }
-        printf("%-20s %-20s", rep->InfoStruct.ShareInfo1.netname,
-               rep->InfoStruct.ShareInfo1.remark);
-        if ((rep->InfoStruct.ShareInfo1.type & 3) == SRVSVC_STYPE_DISKTREE) {
-                        printf(" DISKTREE");
-        }
-        if ((rep->InfoStruct.ShareInfo1.type & 3) == SRVSVC_STYPE_PRINTQ) {
-                printf(" PRINTQ");
-        }
-        if ((rep->InfoStruct.ShareInfo1.type & 3) == SRVSVC_STYPE_DEVICE) {
-                printf(" DEVICE");
-        }
-        if ((rep->InfoStruct.ShareInfo1.type & 3) == SRVSVC_STYPE_IPC) {
-                printf(" IPC");
-        }
-        if (rep->InfoStruct.ShareInfo1.type & SRVSVC_STYPE_TEMPORARY) {
-                printf(" TEMPORARY");
-        }
-        if (rep->InfoStruct.ShareInfo1.type & SRVSVC_STYPE_SPECIAL) {
-                printf(" HIDDEN");
-        }
-
-        printf("\n");
+        print_share(level, &rep->InfoStruct);
 
 
         struct smb2_context *smb2 = dcerpc_get_smb2_context(dce);
@@ -98,7 +151,7 @@ void si_cb(struct dcerpc_context *dce, int status,
         offset = 0;
         iov.len = 65536;
         iov.buf = buf;
-        if (dcerpc_do_coder("NetrShareGetInfo: Request", dce, yaml_pdu, &iov, &offset, si_req, srvsvc_NetrShareGetInfo_req_coder)) {
+        if (dcerpc_do_coder("NetrShareGetInfo", dce, yaml_pdu, &iov, &offset, si_req, srvsvc_NetrShareGetInfo_req_coder)) {
                 printf("Failed to encode REQ as YAML\n");
                 exit(10);
         }
@@ -112,7 +165,7 @@ void si_cb(struct dcerpc_context *dce, int status,
         iov.buf = buf;
         /* We need to reference req->Level from the reply */
         dcerpc_set_request(yaml_pdu, si_req);
-        if (dcerpc_do_coder("NetrShareGetInfo: Response", dce, yaml_pdu, &iov, &offset, rep, srvsvc_NetrShareGetInfo_rep_coder)) {
+        if (dcerpc_do_coder("NetrShareGetInfo", dce, yaml_pdu, &iov, &offset, rep, srvsvc_NetrShareGetInfo_rep_coder)) {
                 printf("Failed to encode REP as YAML\n");
                 exit(10);
         }
