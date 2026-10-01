@@ -29,74 +29,120 @@ extern "C" {
 #define SRVSVC_SHARE_TYPE_TEMPORARY  0x40000000
 #define SRVSVC_SHARE_TYPE_HIDDEN     0x80000000 /* STYPE_SPECIAL */
 
+/*
+ * NetrShareEnum: SHARE_ENUM_STRUCT and SHARE_INFO levels 0, 1, 2, 501, 502
+ * and 503, generated from the [MS-SRVS] IDL. Field names follow the IDL.
+ */
 struct srvsvc_SHARE_INFO_0 {
-        char *netname;
+        char * shi0_netname;
 };
 
 struct srvsvc_SHARE_INFO_0_CONTAINER {
         uint32_t EntriesRead;
-        struct srvsvc_SHARE_INFO_0 *share_info_0;
+        struct srvsvc_SHARE_INFO_0 * Buffer;
 };
 
 struct srvsvc_SHARE_INFO_1 {
-        char *netname;
-        uint32_t type;
-        char *remark;
+        char * shi1_netname;
+        uint32_t shi1_type;
+        char * shi1_remark;
 };
 
 struct srvsvc_SHARE_INFO_1_CONTAINER {
         uint32_t EntriesRead;
-        struct srvsvc_SHARE_INFO_1 *share_info_1;
+        struct srvsvc_SHARE_INFO_1 * Buffer;
 };
 
 struct srvsvc_SHARE_INFO_2 {
-        char *netname;
-        uint32_t type;
-        char *remark;
-        uint32_t permissions;
-        uint32_t max_users;
-        uint32_t current_users;
-        char *path;
-        char *passwd;
+        char * shi2_netname;
+        uint32_t shi2_type;
+        char * shi2_remark;
+        uint32_t shi2_permissions;
+        uint32_t shi2_max_uses;
+        uint32_t shi2_current_uses;
+        char * shi2_path;
+        char * shi2_passwd;
 };
 
 struct srvsvc_SHARE_INFO_2_CONTAINER {
         uint32_t EntriesRead;
-        struct srvsvc_SHARE_INFO_2 *share_info_2;
+        struct srvsvc_SHARE_INFO_2 * Buffer;
 };
 
-/* Defined below (needs MS-DTYP SECURITY_DESCRIPTOR). */
-struct srvsvc_SHARE_INFO_502;
+struct srvsvc_SHARE_INFO_501 {
+        char * shi501_netname;
+        uint32_t shi501_type;
+        char * shi501_remark;
+        uint32_t shi501_flags;
+};
+
+struct srvsvc_SHARE_INFO_501_CONTAINER {
+        uint32_t EntriesRead;
+        struct srvsvc_SHARE_INFO_501 * Buffer;
+};
+
+struct srvsvc_SHARE_INFO_502_I {
+        char * shi502_netname;
+        uint32_t shi502_type;
+        char * shi502_remark;
+        uint32_t shi502_permissions;
+        uint32_t shi502_max_uses;
+        uint32_t shi502_current_uses;
+        char * shi502_path;
+        char * shi502_passwd;
+        uint32_t shi502_reserved;
+        SECURITY_DESCRIPTOR * shi502_security_descriptor;
+};
 
 struct srvsvc_SHARE_INFO_502_CONTAINER {
         uint32_t EntriesRead;
-        struct srvsvc_SHARE_INFO_502 *share_info_502;
+        struct srvsvc_SHARE_INFO_502_I * Buffer;
+};
+
+struct srvsvc_SHARE_INFO_503_I {
+        char * shi503_netname;
+        uint32_t shi503_type;
+        char * shi503_remark;
+        uint32_t shi503_permissions;
+        uint32_t shi503_max_uses;
+        uint32_t shi503_current_uses;
+        char * shi503_path;
+        char * shi503_passwd;
+        char * shi503_servername;
+        uint32_t shi503_reserved;
+        SECURITY_DESCRIPTOR * shi503_security_descriptor;
+};
+
+struct srvsvc_SHARE_INFO_503_CONTAINER {
+        uint32_t EntriesRead;
+        struct srvsvc_SHARE_INFO_503_I * Buffer;
 };
 
 union srvsvc_SHARE_ENUM_UNION {
         struct srvsvc_SHARE_INFO_0_CONTAINER Level0;
         struct srvsvc_SHARE_INFO_1_CONTAINER Level1;
         struct srvsvc_SHARE_INFO_2_CONTAINER Level2;
+        struct srvsvc_SHARE_INFO_501_CONTAINER Level501;
         struct srvsvc_SHARE_INFO_502_CONTAINER Level502;
+        struct srvsvc_SHARE_INFO_503_CONTAINER Level503;
 };
 
 struct srvsvc_SHARE_ENUM_STRUCT {
         uint32_t Level;
-        union srvsvc_SHARE_ENUM_UNION ShareEnum;
+        union srvsvc_SHARE_ENUM_UNION ShareInfo;
 };
 
 struct srvsvc_NetrShareEnum_req {
-        char *ServerName;
-        struct srvsvc_SHARE_ENUM_STRUCT ses;
+        char * ServerName;
+        struct srvsvc_SHARE_ENUM_STRUCT InfoStruct;
         uint32_t PreferedMaximumLength;
         uint32_t ResumeHandle;
 };
 
 struct srvsvc_NetrShareEnum_rep {
-        struct srvsvc_SHARE_ENUM_STRUCT ses;
-        uint32_t total_entries;
-        uint32_t resume_handle;
-
+        struct srvsvc_SHARE_ENUM_STRUCT InfoStruct;
+        uint32_t TotalEntries;
+        uint32_t ResumeHandle;
         uint32_t status;
 };
 
@@ -180,65 +226,106 @@ struct dcerpc_pdu;
 #define SRVSVC_SV_TYPE_LOCAL_LIST_ONLY    0x40000000
 #define SRVSVC_SV_TYPE_DOMAIN_ENUM        0x80000000
 
-int srvsvc_SHARE_INFO_0_coder(char *name, struct dcerpc_context *ctx,
-                              struct dcerpc_pdu *pdu,
-                              struct dcerpc_iovec *iov, int *offset,
-                              void *ptr);
+int srvsvc_SHARE_INFO_0_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SHARE_INFO_0_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
 
-int srvsvc_SHARE_INFO_1_coder(char *name, struct dcerpc_context *ctx,
-                              struct dcerpc_pdu *pdu,
-                              struct dcerpc_iovec *iov, int *offset,
-                              void *ptr);
+int srvsvc_SHARE_INFO_0_CONTAINER_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SHARE_INFO_0_CONTAINER_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_SHARE_INFO_1_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SHARE_INFO_1_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
 
 int srvsvc_SHARE_INFO_1_CONTAINER_coder(char *name, struct dcerpc_context *dce,
-                                        struct dcerpc_pdu *pdu,
-                                        struct dcerpc_iovec *iov, int *offset,
-                                        void *ptr);
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SHARE_INFO_1_CONTAINER_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
 
-int srvsvc_SHARE_INFO_2_coder(char *name, struct dcerpc_context *ctx,
-                              struct dcerpc_pdu *pdu,
-                              struct dcerpc_iovec *iov, int *offset,
-                              void *ptr);
+int srvsvc_SHARE_INFO_2_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SHARE_INFO_2_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
 
 int srvsvc_SHARE_INFO_2_CONTAINER_coder(char *name, struct dcerpc_context *dce,
-                                        struct dcerpc_pdu *pdu,
-                                        struct dcerpc_iovec *iov, int *offset,
-                                        void *ptr);
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SHARE_INFO_2_CONTAINER_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
 
-/*
- * MS-SRVS SHARE_INFO_502_I
- *
- * Same fields as level 2, plus a self-relative SECURITY_DESCRIPTOR.
- * On the wire the SD is [size_is(reserved)] unsigned char*; reserved is
- * wire-only and derived from the SD on encode. YAML/JSON expose
- * SecurityDescriptor as a nested structured object.
- */
-struct srvsvc_SHARE_INFO_502 {
-        char *netname;
-        uint32_t type;
-        char *remark;
-        uint32_t permissions;
-        uint32_t max_users;
-        uint32_t current_users;
-        char *path;
-        char *passwd;
-        SECURITY_DESCRIPTOR *security_descriptor;
-};
-int srvsvc_SHARE_INFO_502_coder(char *name, struct dcerpc_context *ctx,
-                                struct dcerpc_pdu *pdu,
-                                struct dcerpc_iovec *iov, int *offset,
-                                void *ptr);
+int srvsvc_SHARE_INFO_501_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SHARE_INFO_501_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_SHARE_INFO_501_CONTAINER_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SHARE_INFO_501_CONTAINER_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_SHARE_INFO_502_I_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SHARE_INFO_502_I_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
 
 int srvsvc_SHARE_INFO_502_CONTAINER_coder(char *name, struct dcerpc_context *dce,
-                                          struct dcerpc_pdu *pdu,
-                                          struct dcerpc_iovec *iov, int *offset,
-                                          void *ptr);
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SHARE_INFO_502_CONTAINER_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_SHARE_INFO_503_I_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SHARE_INFO_503_I_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_SHARE_INFO_503_CONTAINER_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SHARE_INFO_503_CONTAINER_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_SHARE_ENUM_UNION_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+int srvsvc_SHARE_ENUM_STRUCT_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_SHARE_ENUM_STRUCT_struct_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
 
 union srvsvc_SHARE_INFO {
         struct srvsvc_SHARE_INFO_0 ShareInfo0;
         struct srvsvc_SHARE_INFO_1 ShareInfo1;
         struct srvsvc_SHARE_INFO_2 ShareInfo2;
-        struct srvsvc_SHARE_INFO_502 ShareInfo502;
+        struct srvsvc_SHARE_INFO_502_I ShareInfo502;
 };
 
 struct srvsvc_SERVER_INFO_100 {

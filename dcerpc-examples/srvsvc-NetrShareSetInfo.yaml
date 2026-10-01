@@ -4,8 +4,8 @@ NetrShareSetInfo: Request
   Level: 1
   InfoStruct:
     ShareInfo1: 
-      NetName: SNAP-1
-      Type: 0
-      Remark: New Comment
+      shi1_netname: SNAP-1
+      shi1_type: 0
+      shi1_remark: New Comment
   ParmErr: 3
 
