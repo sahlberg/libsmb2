@@ -1,4 +1,11 @@
+OpenPolicy2: Request
+  SystemName: \\10.10.10.11
+  ObjectAttributes:
+    Length: 24
+    Attributes: 0
+  DesiredAccess: 0x801
+---
 Close: Request
   PolicyHandle:
     ContextHandleAttributes: 0
-    UUID: ec93703e-ca71-4dd8-b48d-49488dc27fce
+    UUID: @UUID@

@@ -471,7 +471,8 @@ void si_cb(struct dcerpc_context *dce, int status,
 void do_request(struct dcerpc_context *dce)
 {
         int i;
-        char *name;
+        char *name, *end;
+        size_t len;
         struct rpc_cb_data *rpc_cb_data;
 
         /*
@@ -492,13 +493,36 @@ void do_request(struct dcerpc_context *dce)
                 exit(9);
         }
         
-        /* Find the name of the procedure */
-        name = (char *)&opdata[idx].iov.buf[opdata[idx].offset];
-        while (opdata[idx].offset < opdata[idx].iov.len && opdata[idx].iov.buf[opdata[idx].offset] != ':') {
-                opdata[idx].offset++;
+        /*
+         * Find the name of the procedure: the key on the first line that is
+         * neither blank nor a # comment (the YAML decoder skips those too).
+         */
+        name = (char *)opdata[idx].iov.buf;
+        end = name + opdata[idx].iov.len;
+        while (name < end && *name != '\0') {
+                char *p = name;
+
+                while (p < end && (*p == ' ' || *p == '\t' || *p == '\r')) {
+                        p++;
+                }
+                if (p < end && (*p == '\n' || *p == '#')) {
+                        while (p < end && *p != '\n' && *p != '\0') {
+                                p++;
+                        }
+                        name = p < end && *p == '\n' ? p + 1 : p;
+                        continue;
+                }
+                name = p;
+                break;
+        }
+        len = 0;
+        while (name + len < end && name[len] != ':' && name[len] != '\n' &&
+               name[len] != '\0') {
+                len++;
         }
         for (i = 0; service->procs[i].name; i++) {
-                if (!strncmp(name, service->procs[i].name, opdata[idx].offset)) {
+                if (strlen(service->procs[i].name) == len &&
+                    !strncmp(name, service->procs[i].name, len)) {
                         rpc_cb_data->proc = &service->procs[i];
                         break;
                 }
@@ -506,7 +530,8 @@ void do_request(struct dcerpc_context *dce)
         opdata[idx].offset = 0;
 
         if (rpc_cb_data->proc == NULL) {
-                printf("Could not find a procedure with the name %s\n", name);
+                printf("Could not find a procedure with the name %.*s\n",
+                       (int)len, name);
                 exit(9);
         }
 
@@ -539,12 +564,15 @@ void do_request(struct dcerpc_context *dce)
         }
 }
 
+static const char *service_name;
+
 void co_cb(struct dcerpc_context *dce, int status,
            void *command_data, void *cb_data)
 {
         if (status != SMB2_STATUS_SUCCESS) {
-                printf("failed to connect to SRVSVC (%s) %s\n",
-                       strerror(-status), dcerpc_get_error(dce));
+                printf("failed to connect to %s (%s) %s\n",
+                       service_name, strerror(-status),
+                       dcerpc_get_error(dce));
                 exit(10);
         }
 
@@ -732,6 +760,7 @@ int main(int argc, char *argv[])
                 exit(10);
         }
         
+        service_name = url->path;
         if (dcerpc_connect_context_async(dce, url->path, service->interface,
                        co_cb, NULL) != 0) {
 		printf("Failed to connect dce context. %s\n",
