@@ -4656,6 +4656,15 @@ dcerpc_blob_coder(char *name, struct dcerpc_context *dce,
  *   }
  */
 
+/* Shared with YAML: pretty-printed uint32 values as "NAME | NAME | 0x10" */
+static int text_print_pp_value(struct dcerpc_context *ctx,
+                               struct dcerpc_iovec *iov, int *offset,
+                               struct dcerpc_uint32_pretty_printer *pp,
+                               uint32_t value);
+static int text_parse_pp_value(char *str,
+                               struct dcerpc_uint32_pretty_printer *pp,
+                               uint32_t *out);
+
 static void
 json_write_indent(struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov, int *offset)
 {
@@ -4958,6 +4967,50 @@ json_parse_ulong(struct dcerpc_iovec *iov, int *offset, unsigned long *out)
         return 0;
 }
 
+/*
+ * A value with a pretty printer is a JSON string of names, e.g.
+ * "STYPE_IPC | STYPE_SPECIAL"; a plain number is accepted too.
+ */
+static int
+json_parse_pp_value(struct dcerpc_iovec *iov, int *offset,
+                    struct dcerpc_uint32_pretty_printer *pp,
+                    unsigned long *out)
+{
+        char *str;
+        uint32_t v;
+
+        json_skip_ws(iov, offset);
+        if (pp == NULL || *offset >= (int)iov->len ||
+            iov->buf[*offset] != '"') {
+                return json_parse_ulong(iov, offset, out);
+        }
+        if (json_parse_string(iov, offset, &str) < 0) {
+                return -1;
+        }
+        if (text_parse_pp_value(str, pp, &v)) {
+                return -1;
+        }
+        *out = v;
+        return 0;
+}
+
+static int
+json_print_pp_value(struct dcerpc_context *ctx, struct dcerpc_iovec *iov,
+                    int *offset, struct dcerpc_uint32_pretty_printer *pp,
+                    uint32_t value)
+{
+        if (pp == NULL) {
+                return dcerpc_text_printf(ctx, iov, offset, "%u", value);
+        }
+        if (dcerpc_text_printf(ctx, iov, offset, "\"")) {
+                return -1;
+        }
+        if (text_print_pp_value(ctx, iov, offset, pp, value)) {
+                return -1;
+        }
+        return dcerpc_text_printf(ctx, iov, offset, "\"");
+}
+
 static int
 json_uint8_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                  struct dcerpc_iovec *iov, int *offset, void *ptr)
@@ -4996,14 +5049,12 @@ _json_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pd
                 if (json_expect_key(pdu, iov, offset, name) < 0) {
                         return -1;
                 }
-                if (json_parse_ulong(iov, offset, &v) < 0) {
+                if (json_parse_pp_value(iov, offset, pp, &v) < 0) {
                         return -1;
                 }
                 *(uint16_t *)ptr = (uint16_t)v;
                 return 0;
         } else {
-                char *fmt = pp ? pp->fmt : "%u";
-
                 json_sep(pdu, iov, offset);
                 if (json_append_quoted(iov, offset, name) < 0) {
                         return -1;
@@ -5011,7 +5062,8 @@ _json_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pd
                 if (dcerpc_text_printf(ctx, iov, offset, ": ")) {
                         return -1;
                 }
-                if (dcerpc_text_printf(ctx, iov, offset, fmt, *(uint16_t *)ptr)) {
+                if (json_print_pp_value(ctx, iov, offset, pp,
+                                        *(uint16_t *)ptr)) {
                         return -1;
                 }
                 return 0;
@@ -5044,14 +5096,12 @@ _json_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pd
                 if (json_expect_key(pdu, iov, offset, name) < 0) {
                         return -1;
                 }
-                if (json_parse_ulong(iov, offset, &v) < 0) {
+                if (json_parse_pp_value(iov, offset, pp, &v) < 0) {
                         return -1;
                 }
                 *(uint32_t *)ptr = v;
                 return 0;
         } else {
-                char *fmt = pp ? pp->fmt : "%u";
-
                 json_sep(pdu, iov, offset);
                 if (json_append_quoted(iov, offset, name) < 0) {
                         return -1;
@@ -5059,7 +5109,8 @@ _json_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pd
                 if (dcerpc_text_printf(ctx, iov, offset, ": ")) {
                         return -1;
                 }
-                if (dcerpc_text_printf(ctx, iov, offset, fmt, *(uint32_t *)ptr)) {
+                if (json_print_pp_value(ctx, iov, offset, pp,
+                                        *(uint32_t *)ptr)) {
                         return -1;
                 }
                 return 0;
@@ -5612,7 +5663,7 @@ yaml_uint8_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
  * with pp->fmt. If nothing matches the plain number is printed.
  */
 static int
-yaml_print_pp_value(struct dcerpc_context *ctx, struct dcerpc_iovec *iov,
+text_print_pp_value(struct dcerpc_context *ctx, struct dcerpc_iovec *iov,
                     int *offset, struct dcerpc_uint32_pretty_printer *pp,
                     uint32_t value)
 {
@@ -5644,12 +5695,12 @@ yaml_print_pp_value(struct dcerpc_context *ctx, struct dcerpc_iovec *iov,
 }
 
 /*
- * Parse a value written by yaml_print_pp_value(): a '|' separated list
+ * Parse a value written by text_print_pp_value(): a '|' separated list
  * of bitfield names and/or numbers that are OR'ed together. A plain
  * number is the degenerate case.
  */
 static int
-yaml_parse_pp_value(char *str, struct dcerpc_uint32_pretty_printer *pp,
+text_parse_pp_value(char *str, struct dcerpc_uint32_pretty_printer *pp,
                     uint32_t *out)
 {
         char *tok, *next, *end;
@@ -5709,7 +5760,7 @@ _yaml_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pd
                         return -1;
                 }
                 pdu->yaml_key = NULL;
-                if (yaml_parse_pp_value(pdu->yaml_val, pp, &v)) {
+                if (text_parse_pp_value(pdu->yaml_val, pp, &v)) {
                         return -1;
                 }
                 *(uint16_t *)ptr = (uint16_t)v;
@@ -5722,7 +5773,7 @@ _yaml_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pd
                 if (dcerpc_text_printf(ctx, iov, offset, "%s: ", name)) {
                         return -1;
                 }
-                if (yaml_print_pp_value(ctx, iov, offset, pp,
+                if (text_print_pp_value(ctx, iov, offset, pp,
                                         *(uint16_t *)ptr)) {
                         return -1;
                 }
@@ -5764,7 +5815,7 @@ _yaml_uint32_coder(char *name, struct dcerpc_context *ctx,
                         return -1;
                 }
                 pdu->yaml_key = NULL;
-                if (yaml_parse_pp_value(pdu->yaml_val, pp, &v)) {
+                if (text_parse_pp_value(pdu->yaml_val, pp, &v)) {
                         return -1;
                 }
                 *(uint32_t *)ptr = v;
@@ -5777,7 +5828,7 @@ _yaml_uint32_coder(char *name, struct dcerpc_context *ctx,
                 if (dcerpc_text_printf(ctx, iov, offset, "%s: ", name)) {
                         return -1;
                 }
-                if (yaml_print_pp_value(ctx, iov, offset, pp,
+                if (text_print_pp_value(ctx, iov, offset, pp,
                                         *(uint32_t *)ptr)) {
                         return -1;
                 }
