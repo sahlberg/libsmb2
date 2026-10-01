@@ -847,24 +847,32 @@ struct srvsvc_NetrShareSetInfo_rep {
 };
 
 struct srvsvc_NetrShareDel_req {
-        char *ServerName;
-        char *NetName;
+        char * ServerName;
+        char * NetName;
         uint32_t Reserved;
 };
 
 struct srvsvc_NetrShareDel_rep {
+        uint32_t status;
+};
 
+struct srvsvc_NetrShareDelSticky_req {
+        char * ServerName;
+        char * NetName;
+        uint32_t Reserved;
+};
+
+struct srvsvc_NetrShareDelSticky_rep {
         uint32_t status;
 };
 
 struct srvsvc_NetrShareCheck_req {
-        char *ServerName;
-        char *Device;
+        char * ServerName;
+        char * Device;
 };
 
 struct srvsvc_NetrShareCheck_rep {
         uint32_t Type;
-
         uint32_t status;
 };
 
@@ -1125,14 +1133,6 @@ int srvsvc_NetrShareSetInfo_req_coder(char *name, struct dcerpc_context *ctx,
                                       struct dcerpc_pdu *pdu,
                                       struct dcerpc_iovec *iov, int *offset,
                                       void *ptr);
-int srvsvc_NetrShareDel_req_coder(char *name, struct dcerpc_context *ctx,
-                                  struct dcerpc_pdu *pdu,
-                                  struct dcerpc_iovec *iov, int *offset,
-                                  void *ptr);
-int srvsvc_NetrShareDel_rep_coder(char *name, struct dcerpc_context *dce,
-                                  struct dcerpc_pdu *pdu,
-                                  struct dcerpc_iovec *iov, int *offset,
-                                  void *ptr);
 int srvsvc_NetrServerGetInfo_req_coder(char *name, struct dcerpc_context *ctx,
                                        struct dcerpc_pdu *pdu,
                                        struct dcerpc_iovec *iov, int *offset,
@@ -1183,6 +1183,30 @@ int srvsvc_NetrServerTransportEnum_rep_coder(char *name,
                                              struct dcerpc_pdu *pdu,
                                              struct dcerpc_iovec *iov,
                                              int *offset, void *ptr);
+
+/* NetrShareDel opnum 0x12 (SRVSVC_NETRSHAREDEL) */
+int srvsvc_NetrShareDel_req_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_NetrShareDel_rep_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+/* NetrShareDelSticky opnum 0x13 (SRVSVC_NETRSHAREDELSTICKY) */
+int srvsvc_NetrShareDelSticky_req_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_NetrShareDelSticky_rep_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+
+/* NetrShareCheck opnum 0x14 (SRVSVC_NETRSHARECHECK) */
+int srvsvc_NetrShareCheck_req_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
+int srvsvc_NetrShareCheck_rep_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, void *ptr);
 
 extern struct dcerpc_procedure srvsvc_procs[];
         

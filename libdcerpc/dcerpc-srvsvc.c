@@ -190,16 +190,6 @@ static struct dcerpc_uint32_pretty_printer sess_user_flags_pp = {
         },
 };
 
-/* For [out] DWORD *Type via ptr_coder (NetrShareCheck) */
-static int
-share_type_uint32_coder(char *name, struct dcerpc_context *dce,
-                        struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
-                        int *offset, void *ptr)
-{
-        return dcerpc_uint32_coder_pp(name, dce, pdu, iov, offset, ptr,
-                                      &share_type_pp);
-}
-
 /*
  * SRVSVC BEGIN:  DEFINITIONS FROM SRVSVC.IDL
  * [MS-SRVS].pdf
@@ -3667,45 +3657,43 @@ srvsvc_NetrShareSetInfo_rep_coder(char *name, struct dcerpc_context *dce,
         return 0;
 }
 
-/******************
- * Function: 0x12
- * NET_API_STATUS NetrShareDel (
- * [in,string,unique] SRVSVC_HANDLE ServerName,
- * [in,string] WCHAR *NetName,
- * [in] DWORD reserved
- * );
- */
+/*****************
+ * Function: 0x12  NetrShareDel  (SRVSVC_NETRSHAREDEL)
+ *****************/
 int
 srvsvc_NetrShareDel_req_coder(char *name, struct dcerpc_context *dce,
-                              struct dcerpc_pdu *pdu,
-                              struct dcerpc_iovec *iov, int *offset,
-                              void *ptr)
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
         struct srvsvc_NetrShareDel_req *req = ptr;
 
+        (void)name;
         if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("NetName", dce, pdu, iov, offset,
-                             discard_const(&req->NetName),
+        if (dcerpc_ptr_coder("NetName", dce, pdu, iov, offset, &req->NetName,
                              PTR_REF, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("Reserved", dce, pdu, iov, offset, &req->Reserved)) {
+        if (dcerpc_ptr_coder("Reserved", dce, pdu, iov, offset, &req->Reserved,
+                             PTR_REF, dcerpc_uint32_coder)) {
                 return -1;
         }
+
         return 0;
 }
 
 int
 srvsvc_NetrShareDel_rep_coder(char *name, struct dcerpc_context *dce,
-                              struct dcerpc_pdu *pdu,
-                              struct dcerpc_iovec *iov, int *offset,
-                              void *ptr)
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
         struct srvsvc_NetrShareDel_rep *rep = ptr;
 
+        (void)name;
         if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
                 return -1;
         }
@@ -3713,47 +3701,87 @@ srvsvc_NetrShareDel_rep_coder(char *name, struct dcerpc_context *dce,
         return 0;
 }
 
-/******************
- * Function: 0x13
- * NET_API_STATUS NetrShareCheck (
- * [in,string,unique] SRVSVC_HANDLE ServerName,
- * [in,string] WCHAR *Device,
- * [out] DWORD Type
- * );
- */
+/*****************
+ * Function: 0x13  NetrShareDelSticky  (SRVSVC_NETRSHAREDELSTICKY)
+ *****************/
 int
-srvsvc_NetrShareCheck_req_coder(char *name, struct dcerpc_context *dce,
-                              struct dcerpc_pdu *pdu,
-                              struct dcerpc_iovec *iov, int *offset,
-                              void *ptr)
+srvsvc_NetrShareDelSticky_req_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
-        struct srvsvc_NetrShareCheck_req *req = ptr;
+        struct srvsvc_NetrShareDelSticky_req *req = ptr;
 
+        (void)name;
         if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
                              PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
-        if (dcerpc_ptr_coder("Device", dce, pdu, iov, offset,
-                             discard_const(&req->Device),
+        if (dcerpc_ptr_coder("NetName", dce, pdu, iov, offset, &req->NetName,
                              PTR_REF, dcerpc_utf16z_coder)) {
                 return -1;
         }
+        if (dcerpc_ptr_coder("Reserved", dce, pdu, iov, offset, &req->Reserved,
+                             PTR_REF, dcerpc_uint32_coder)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+int
+srvsvc_NetrShareDelSticky_rep_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        struct srvsvc_NetrShareDelSticky_rep *rep = ptr;
+
+        (void)name;
+        if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
+                return -1;
+        }
+
+        return 0;
+}
+
+/*****************
+ * Function: 0x14  NetrShareCheck  (SRVSVC_NETRSHARECHECK)
+ *****************/
+int
+srvsvc_NetrShareCheck_req_coder(char *name, struct dcerpc_context *dce,
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
+{
+        struct srvsvc_NetrShareCheck_req *req = ptr;
+
+        (void)name;
+        if (dcerpc_ptr_coder("ServerName", dce, pdu, iov, offset, &req->ServerName,
+                             PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+        if (dcerpc_ptr_coder("Device", dce, pdu, iov, offset, &req->Device,
+                             PTR_REF, dcerpc_utf16z_coder)) {
+                return -1;
+        }
+
         return 0;
 }
 
 int
 srvsvc_NetrShareCheck_rep_coder(char *name, struct dcerpc_context *dce,
-                                struct dcerpc_pdu *pdu,
-                                struct dcerpc_iovec *iov, int *offset,
-                                void *ptr)
+                struct dcerpc_pdu *pdu,
+                struct dcerpc_iovec *iov, int *offset,
+                void *ptr)
 {
         struct srvsvc_NetrShareCheck_rep *rep = ptr;
 
+        (void)name;
         if (dcerpc_ptr_coder("Type", dce, pdu, iov, offset, &rep->Type,
-                             PTR_REF, share_type_uint32_coder)) {
+                             PTR_REF, dcerpc_uint32_coder)) {
                 return -1;
         }
-
         if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {
                 return -1;
         }
@@ -4863,8 +4891,8 @@ struct dcerpc_procedure srvsvc_procs[] = {
          srvsvc_NetrShareDel_rep_coder, sizeof(struct srvsvc_NetrShareDel_rep),
         },
         {SRVSVC_NETRSHAREDELSTICKY, "NetrShareDelSticky",
-         srvsvc_NetrShareDel_req_coder, sizeof(struct srvsvc_NetrShareDel_req),
-         srvsvc_NetrShareDel_rep_coder, sizeof(struct srvsvc_NetrShareDel_rep),
+         srvsvc_NetrShareDelSticky_req_coder, sizeof(struct srvsvc_NetrShareDelSticky_req),
+         srvsvc_NetrShareDelSticky_rep_coder, sizeof(struct srvsvc_NetrShareDelSticky_rep),
         },
         {SRVSVC_NETRSHARECHECK, "NetrShareCheck",
          srvsvc_NetrShareCheck_req_coder, sizeof(struct srvsvc_NetrShareCheck_req),
