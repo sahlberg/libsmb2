@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Install dependencies
       run: |
         sudo apt update
@@ -28,7 +28,7 @@ jobs:
     runs-on: windows-2022
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: CMake configure
       run: |
         cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release
@@ -47,7 +47,7 @@ jobs:
         apk add cmake build-base git zip gawk python3 py3-pip bash
 
     - name: git checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Compile PS2 EE Side
       run: |
@@ -72,7 +72,7 @@ jobs:
     container: vitasdk/vitasdk:latest
     steps:
     - name: git checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Compile VITA
       run: |
@@ -85,7 +85,7 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Set env vars
       id: slug
@@ -109,7 +109,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
     - name: git checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         fetch-depth: 0
 
@@ -138,7 +138,7 @@ jobs:
     container: devkitpro/devkita64:latest
     steps:
     - name: git checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Compile Nintendo Switch
       run: |
@@ -151,7 +151,7 @@ jobs:
     container: devkitpro/devkitarm:latest
     steps:
     - name: git checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Compile Nintendo 3DS
       run: |
@@ -164,7 +164,7 @@ jobs:
     container: devkitpro/devkitppc:latest
     steps:
     - name: git checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Compile Nintendo WII
       run: |
@@ -177,7 +177,7 @@ jobs:
     container: devkitpro/devkitppc:latest
     steps:
     - name: git checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Compile Nintendo Gamecube
       run: |
@@ -190,7 +190,7 @@ jobs:
     container: devkitpro/devkitppc:latest
     steps:
     - name: git checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Compile WII-U
       run: |
@@ -203,7 +203,7 @@ jobs:
     container: devkitpro/devkitarm:latest
     steps:
     - name: git checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Compile NDS ARM9
       run: |
@@ -219,7 +219,7 @@ jobs:
     # fails non-interactively on a sudoers conffile prompt. The Amiga
     # makefiles only need the toolchain already in the container.
     - name: git checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Compile AMIGA OS3
       run: |
@@ -235,7 +235,7 @@ jobs:
     steps:
     # No apt install/upgrade: same as Amiga OS3 (sid + sudoers prompt).
     - name: git checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Compile AMIGA OS
       run: |
@@ -255,7 +255,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Install dependencies
       run: |
         sudo apt update
