@@ -1,0 +1,23 @@
+# Example /etc/dcerpcd/passwd
+#
+# Loaded via dcerpc_read_yaml_file() + passwd.idl (PASSWD root).
+# Full-line and trailing # comments are allowed. Blank lines are ignored.
+#
+# Security: the live file must be a regular file owned by the process euid
+# with mode 0600 (dcerpcd refuses anything else).
+#
+# NTLMSSP users listed here must also exist as local accounts (getpwnam).
+# count must match the number of list items under entry.
+
+PASSWD:
+  # Number of user entries that follow (size_is for the entry array).
+  count: 2
+
+  entry:
+    # One list item per NTLM user.
+    - user: alice
+      password: secret
+
+    # password: none is a valid value (literal string, not a special token).
+    - user: bob
+      password: none

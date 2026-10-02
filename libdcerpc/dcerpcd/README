@@ -1,0 +1,137 @@
+DCE/RPC runtime
+===============
+This is an example of a full DCE/RPC runtime that allows building DCE/RPC
+services as standalone services that runs as separate processes.
+
+It contains a master DCE/RPC daemon that contains a built-in EPM.
+This server also provides a unix domain socket where separate standalone
+services can connect and register with the master daemon.
+Once registered, those services are reachable through a IPC$ named pipe
+on the master server.
+
+It has boilerplate and tooling to build completely standalone services
+running as separate processes and which can be started, stopped at runtime.
+
+axpy is an example service that implements a new protocol "AXPY" as a
+standalone service.
+
+IDL files can be compiled into a shared library containing the coders for
+all the types in the idl and then loaded into the libdcerpc
+"./utils/dcerpc" tool. This allows the dcerpc tool to parse and understand
+YAML descriptions of requests for that protocol and send to the service.
+
+Example:
+./utils/dcerpc -c dcerpcd/axpy/axpy_coder.so \
+    'smb://127.0.0.1:4455/IPC$/axpy?sec=ntlmssp' <<EOF
+compute: Request
+  x: 5
+  y: 7
+EOF
+
+YAML:
+---
+compute: Response
+  y: 17
+  result: The result is: 17
+  Status: 0   
+
+
+
+Authentication
+--------------
+NTLM and Kereberos is supported.
+
+For NTLM the usernames must map to a local user with the same name.
+
+For kerberos, the incoming SPN, of the form <username>/fqdn@REALM
+is mapped straight to <username> locally.
+
+Other mappings are planned for later.
+
+
+idl-compiler
+------------
+dcerpcd uses libdcerpc's python based idl-compiler, ../idlcomp.py.
+This compiler can compile a fairly large subset of DCE/RPC, at least
+as much as is required to compile virtually all interfaces that MS uses
+for their services so it should be complete enough for your use-cases too.
+If not, let me know and I will expand it.
+
+The compiler generates coders (encoders/decoders) for the data structures
+and supports NDR/YAML/JSON as the encoding format.
+
+NDR is used for the PDUs exchanged with a client, while the other two encodings
+are useful if you want to write data to a local file to later read back.
+Those usecase could be configuration files or just any kind of data store
+where you want it to be human readable and human editable.
+
+Some protocols carry an encoded structure inside a plain byte array, for
+example a self-relative security descriptor in srvsvc SHARE_INFO_502. The
+blob() attribute tells idlcomp what such a byte array holds:
+
+  uint32_t reserved;
+  [size_is(reserved),blob(SECURITY_DESCRIPTOR)] uint8_t *security_descriptor;
+
+The NDR wire format is unchanged (length + unique pointer to the bytes), but
+the C field becomes a SECURITY_DESCRIPTOR *, the length is filled in on
+encode, and YAML/JSON show the decoded structure instead of raw bytes (the
+length field is omitted there). The types blob() accepts are listed in
+BLOB_TYPES in idlcomp.py; any libdcerpc type with a coder can be added there.
+
+dcerpcd itself uses two data-only IDL files for its local YAML files:
+
+  config.idl   → CONFIG root (port, krb5, keytab, hostname, domain)
+  passwd.idl   → PASSWD root (count + entry[] of user/password)
+
+They are compiled by the Makefile into config_coder.c / passwd_coder.c and
+loaded at runtime with dcerpc_read_yaml_file(). Example shapes:
+
+  CONFIG:
+    port: 445
+    krb5: 1
+    keytab: /etc/krb5.keytab
+
+  PASSWD:
+    count: 1
+    entry:
+      - user: alice
+        password: secret
+
+Full-line and trailing # comments are allowed in these YAML files.
+The passwd file must be mode 0600 and owned by the process euid.
+
+If the idl contains an endpoint description block, like this:
+[
+  uuid(d5d385d6-90b4-421b-89fb-5a08ca755dee),
+  version(1.0),
+  helpstring("A * X plus Y"),
+  endpoint("ncacn_np:[\\pipe\\axpy]"),
+  pointer_default(unique)
+]
+
+Then the idl compiler will also generate the required code to connect and
+register with the master dcerpcd server and generate a stub.c where you can
+fill in what the actual functions should do.
+
+
+Access control
+--------------
+If you want access control based on the user that sent the request
+you have to run the service as root. In that case the service will
+switch to the uid that the authenticated user mapped to locally
+before the stub is called.
+
+
+services
+--------
+Services are generated mostly automatically by the idl compiler.
+See axpy/ and axpy/README for an example service.
+
+
+libdcerpc interfaces
+--------------------
+The Windows interfaces (srvsvc, wkssvc, winreg, lsa, epm) are client-side
+coders in libdcerpc, generated from ../<iface>/<iface>.idl. dcerpcd
+serves only its endpoint mapper (with libdcerpc's epm coders: ept_lookup,
+ept_map and ept_lookup_handle_free) and the external services registered
+with it.

@@ -1,0 +1,14 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
+
+typedef enum {
+    BASE_HEX = 1,
+    BASE_DEC = 2,
+    BASE_OCT = 3
+} int_bases;
+
+typedef struct {
+	uint32_t a;
+	enum int_bases base;
+	[string] uint16_t *prefix;
+} CONFIG;
+

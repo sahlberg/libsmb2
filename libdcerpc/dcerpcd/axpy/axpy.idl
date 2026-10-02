@@ -1,0 +1,40 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
+/*
+ * axpy — "A * X plus Y" example DCE/RPC service for dcerpcd.
+ *
+ * Modelled on the BLAS level-1 AXPY routine:  y := a*x + y
+ *
+ * The scalar 'a' and the output formatting come from config.idl (CONFIG).
+ * The client supplies x and y; y is [in,out] and is updated in place,
+ * exactly like the y vector in BLAS. A formatted UTF-16 presentation of
+ * the updated y (base/prefix from CONFIG) and a WERROR status are also
+ * returned.
+ */
+
+[
+  uuid(d5d385d6-90b4-421b-89fb-5a08ca755dee),
+  version(1.0),
+  helpstring("A * X plus Y"),
+  endpoint("ncacn_np:[\\pipe\\axpy]"),
+  pointer_default(unique)
+]
+interface axpy
+{
+
+/*
+ * Compute y := a*x + y using the scalar a from server CONFIG.
+ *
+ *   [in]     x       — input operand
+ *   [in,out] y       — accumulator; returned as a*x + y
+ *   [out]    result  — UTF-16 presentation of the updated y
+ *                      (prefix + value in CONFIG.base)
+ *   status           — WERROR (0 = success)
+ */
+	[opnum(0x00)]
+	WERROR compute(
+		[in] uint32_t x,
+		[in,out,ref] uint32_t *y,
+		[out,unique,string,charset(UTF16)] uint16_t *result
+	);
+
+}

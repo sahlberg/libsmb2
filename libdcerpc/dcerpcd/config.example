@@ -1,0 +1,21 @@
+# Example /etc/dcerpcd/config
+#
+# Loaded via dcerpc_read_yaml_file() + config.idl (CONFIG root).
+# Full-line and trailing # comments are allowed. Blank lines are ignored.
+# port and krb5 are required; keytab, hostname, and domain may be omitted.
+
+CONFIG:
+  # SMB listen port (445 needs root or CAP_NET_BIND_SERVICE).
+  port: 445
+
+  # Kerberos / GSSAPI via SPNEGO: 1 = enable, 0 = NTLMSSP only.
+  # Default when this file is absent is enable (1).
+  krb5: 0
+
+  # Optional server keytab for cifs/<hostname>. Omit to use process
+  # default GSS acceptor credentials.
+  keytab: /etc/krb5.keytab
+
+  # Optional SMB server identity / SPN host part and realm/workgroup.
+  hostname: fileserver.fqdn
+  domain: EXAMPLE.COM

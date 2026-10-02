@@ -1,0 +1,26 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
+/*
+ * dcerpcd runtime configuration (data-only IDL → YAML via dcerpc_read_yaml_file).
+ *
+ * File format:
+ *   CONFIG:
+ *     port: 445
+ *     krb5: 1
+ *     keytab: /etc/krb5.keytab
+ *     hostname: fileserver
+ *     domain: EXAMPLE.COM
+ *
+ * port and krb5 are required. keytab, hostname, and domain are optional
+ * (unique string pointers; omit the key to leave unset).
+ * krb5: 0 = disable Kerberos/GSSAPI, 1 = enable (default when file absent).
+ *
+ * Full-line and trailing # comments are allowed (see yaml_next_kv).
+ */
+
+typedef struct {
+	uint32_t port;
+	uint32_t krb5;
+	[string,charset(UTF16)] uint16_t *keytab;
+	[string,charset(UTF16)] uint16_t *hostname;
+	[string,charset(UTF16)] uint16_t *domain;
+} CONFIG;
