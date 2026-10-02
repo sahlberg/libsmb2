@@ -57,7 +57,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #define ERROR_NO_MORE_ITEMS     0x00000103
 
 /* Read + write + DELETE so CreateKey / DeleteKey work on opened handles */
-#define WINREG_WALK_ACCESS      (KEY_READ | KEY_WRITE | WINREG_DELETE)
+#define WINREG_WALK_ACCESS      (WINREG_KEY_READ | WINREG_KEY_WRITE | \
+                                 WINREG_DELETE)
 
 #define MAX_VISIBLE  8192
 #define STATUS_LEN   256
@@ -180,16 +181,16 @@ static const char *
 reg_type_name(uint32_t type)
 {
         switch (type) {
-        case REG_NONE:       return "REG_NONE";
-        case REG_SZ:         return "REG_SZ";
-        case REG_EXPAND_SZ:  return "REG_EXPAND_SZ";
-        case REG_BINARY:     return "REG_BINARY";
-        case REG_DWORD:      return "REG_DWORD";
-        case REG_DWORD_BIG_ENDIAN: return "REG_DWORD_BE";
-        case REG_LINK:       return "REG_LINK";
-        case REG_MULTI_SZ:   return "REG_MULTI_SZ";
-        case REG_QWORD:      return "REG_QWORD";
-        default:             return "REG_UNKNOWN";
+        case WINREG_REG_NONE:             return "REG_NONE";
+        case WINREG_REG_SZ:               return "REG_SZ";
+        case WINREG_REG_EXPAND_SZ:        return "REG_EXPAND_SZ";
+        case WINREG_REG_BINARY:           return "REG_BINARY";
+        case WINREG_REG_DWORD:            return "REG_DWORD";
+        case WINREG_REG_DWORD_BIG_ENDIAN: return "REG_DWORD_BE";
+        case WINREG_REG_LINK:             return "REG_LINK";
+        case WINREG_REG_MULTI_SZ:         return "REG_MULTI_SZ";
+        case WINREG_REG_QWORD:            return "REG_QWORD";
+        default:                          return "REG_UNKNOWN";
         }
 }
 
@@ -232,8 +233,8 @@ format_reg_value(uint32_t type, const uint8_t *data, uint32_t len)
         char buf[512];
 
         switch (type) {
-        case REG_SZ:
-        case REG_EXPAND_SZ: {
+        case WINREG_REG_SZ:
+        case WINREG_REG_EXPAND_SZ: {
                 char *s = utf16le_to_utf8(data, len);
                 char *out;
 
@@ -247,7 +248,7 @@ format_reg_value(uint32_t type, const uint8_t *data, uint32_t len)
                 free(s);
                 return out;
         }
-        case REG_DWORD:
+        case WINREG_REG_DWORD:
                 if (len >= 4 && data) {
                         uint32_t v = (uint32_t)data[0] |
                                 ((uint32_t)data[1] << 8) |
@@ -257,7 +258,7 @@ format_reg_value(uint32_t type, const uint8_t *data, uint32_t len)
                         return strdup(buf);
                 }
                 return strdup("(short)");
-        case REG_DWORD_BIG_ENDIAN:
+        case WINREG_REG_DWORD_BIG_ENDIAN:
                 if (len >= 4 && data) {
                         uint32_t v = ((uint32_t)data[0] << 24) |
                                 ((uint32_t)data[1] << 16) |
@@ -267,7 +268,7 @@ format_reg_value(uint32_t type, const uint8_t *data, uint32_t len)
                         return strdup(buf);
                 }
                 return strdup("(short)");
-        case REG_QWORD:
+        case WINREG_REG_QWORD:
                 if (len >= 8 && data) {
                         uint64_t v = 0;
                         int i;
@@ -278,7 +279,7 @@ format_reg_value(uint32_t type, const uint8_t *data, uint32_t len)
                         return strdup(buf);
                 }
                 return strdup("(short)");
-        case REG_MULTI_SZ: {
+        case WINREG_REG_MULTI_SZ: {
                 uint32_t off = 0;
                 char *acc = strdup("{");
                 int first = 1;
@@ -531,18 +532,13 @@ node_load_children(struct node *n)
 
         /* Values first */
         for (index = 0; ; index++) {
-                uint32_t data_len;
                 struct node *c;
 
                 memset(&vreq, 0, sizeof(vreq));
                 memcpy(&vreq.hKey, &n->hKey, sizeof(vreq.hKey));
                 vreq.dwIndex = index;
-                vreq.lpValueName = NULL;
-                vreq.lpValueName_max_length = 0;
-                vreq.type = 0;
                 vreq.lpData = valbuf;
-                vreq.cbData = VALUE_DATA_BUF;
-                vreq.cbLen = 0;
+                vreq.lpcbData = VALUE_DATA_BUF;
 
                 if (rpc_call(WINREG_BASEREGENUMVALUE,
                              winreg_BaseRegEnumValue_req_coder, &vreq,
@@ -568,9 +564,9 @@ node_load_children(struct node *n)
                         dcerpc_free_data(g_dce, vrep);
                         break;
                 }
-                data_len = vrep->cbLen ? vrep->cbLen : vrep->cbData;
-                c = node_new_value(vrep->lpValueName, n->depth + 1, n,
-                                   vrep->type, vrep->lpData, data_len);
+                c = node_new_value(vrep->lpValueNameOut, n->depth + 1, n,
+                                   vrep->lpType, vrep->lpData,
+                                   vrep->lpcbLen);
                 dcerpc_free_data(g_dce, vrep);
                 if (c == NULL || node_add_child(n, c) != 0) {
                         node_free(c);
@@ -590,11 +586,6 @@ node_load_children(struct node *n)
                 memset(&kreq, 0, sizeof(kreq));
                 memcpy(&kreq.hKey, &n->hKey, sizeof(kreq.hKey));
                 kreq.dwIndex = index;
-                kreq.lpName = NULL;
-                kreq.lpName_max_length = 0;
-                kreq.lpClass = NULL;
-                kreq.lpClass_max_length = 0;
-                kreq.lpftLastWriteTime = NULL;
 
                 if (rpc_call(WINREG_BASEREGENUMKEY,
                              winreg_BaseRegEnumKey_req_coder, &kreq,
@@ -618,7 +609,7 @@ node_load_children(struct node *n)
                         dcerpc_free_data(g_dce, krep);
                         break;
                 }
-                nm = krep->lpName ? krep->lpName : "";
+                nm = krep->lpNameOut ? krep->lpNameOut : "";
                 c = node_new(nm, n->depth + 1, n);
                 dcerpc_free_data(g_dce, krep);
                 if (c == NULL || node_add_child(n, c) != 0) {
@@ -817,12 +808,12 @@ static int
 open_hive_root(int opnum, dcerpc_coder req_coder, dcerpc_coder rep_coder,
                int rep_size, const char *label, struct node **out)
 {
-        struct winreg_OpenRootKey_req req;
-        struct winreg_OpenRootKey_rep *rep;
+        /* the Open* calls all have the same request and reply */
+        struct winreg_OpenLocalMachine_req req;
+        struct winreg_OpenLocalMachine_rep *rep;
         struct node *n;
 
         memset(&req, 0, sizeof(req));
-        req.ServerName = NULL;
         req.samDesired = WINREG_WALK_ACCESS;
         if (rpc_call(opnum, req_coder, &req, rep_coder, rep_size,
                      (void **)&rep) != 0) {
@@ -1104,9 +1095,8 @@ create_subkey(struct node *parent, const char *name)
         memcpy(&req.hKey, &parent->hKey, sizeof(req.hKey));
         req.lpSubKey = (char *)name;
         req.lpClass = empty_class;
-        req.dwOptions = REG_OPTION_NON_VOLATILE;
+        req.dwOptions = WINREG_REG_OPTION_NON_VOLATILE;
         req.samDesired = WINREG_WALK_ACCESS;
-        req.disposition = 0;
 
         if (rpc_call(WINREG_BASEREGCREATEKEY,
                      winreg_BaseRegCreateKey_req_coder, &req,
@@ -1124,7 +1114,7 @@ create_subkey(struct node *parent, const char *name)
         /* We only needed the create; drop the new handle. */
         close_handle_only(&rep->phkResult);
 
-        if (rep->disposition == REG_CREATED_NEW_KEY) {
+        if (rep->lpdwDisposition == WINREG_REG_CREATED_NEW_KEY) {
                 set_status("Created key %s\\%s", parent->name, name);
         } else {
                 set_status("Key already exists: %s\\%s", parent->name, name);
@@ -1364,7 +1354,7 @@ static int
 encode_value_data(uint32_t type, const char *databuf,
                   uint8_t **data, uint32_t *data_len, uint8_t dword_buf[4])
 {
-        if (type == REG_DWORD) {
+        if (type == WINREG_REG_DWORD) {
                 uint32_t v;
 
                 if (parse_dword(databuf, &v) != 0) {
@@ -1379,7 +1369,7 @@ encode_value_data(uint32_t type, const char *databuf,
                 *data_len = 4;
                 return 0;
         }
-        if (type == REG_SZ || type == REG_EXPAND_SZ) {
+        if (type == WINREG_REG_SZ || type == WINREG_REG_EXPAND_SZ) {
                 if (utf8_to_reg_sz(databuf, data, data_len) != 0) {
                         set_status("Failed to encode string");
                         return -1;
@@ -1436,7 +1426,7 @@ action_create_value(void)
         char name[256];
         char typebuf[32];
         char databuf[512];
-        uint32_t type = REG_SZ;
+        uint32_t type = WINREG_REG_SZ;
         uint8_t *data = NULL;
         uint32_t data_len = 0;
         uint8_t dword_buf[4];
@@ -1488,20 +1478,20 @@ action_create_value(void)
                 typebuf[1] = '\0';
         }
         if (typebuf[0] == 'd' || typebuf[0] == 'D') {
-                type = REG_DWORD;
+                type = WINREG_REG_DWORD;
         } else {
-                type = REG_SZ;
+                type = WINREG_REG_SZ;
         }
 
         draw_ui();
-        if (prompt_string(type == REG_DWORD ?
+        if (prompt_string(type == WINREG_REG_DWORD ?
                           "DWORD value (dec or 0xhex): " :
                           "String value: ",
                           databuf, sizeof(databuf)) != 0) {
                 set_status("Create cancelled");
                 return;
         }
-        if (type == REG_DWORD && databuf[0] == '\0') {
+        if (type == WINREG_REG_DWORD && databuf[0] == '\0') {
                 set_status("Value data required for DWORD");
                 return;
         }
@@ -1510,12 +1500,12 @@ action_create_value(void)
                 return;
         }
         if (do_set_value(parent, name, type, data, data_len) != 0) {
-                if (type == REG_SZ || type == REG_EXPAND_SZ) {
+                if (type == WINREG_REG_SZ || type == WINREG_REG_EXPAND_SZ) {
                         free(data);
                 }
                 return;
         }
-        if (type == REG_SZ || type == REG_EXPAND_SZ) {
+        if (type == WINREG_REG_SZ || type == WINREG_REG_EXPAND_SZ) {
                 free(data);
         }
 }
@@ -1532,7 +1522,8 @@ current_value_hint(struct node *val, char *buf, size_t buflen)
         size_t len;
 
         buf[0] = '\0';
-        if (val->reg_type == REG_SZ || val->reg_type == REG_EXPAND_SZ) {
+        if (val->reg_type == WINREG_REG_SZ ||
+            val->reg_type == WINREG_REG_EXPAND_SZ) {
                 if (vt[0] == '"' && strlen(vt) >= 2) {
                         len = strlen(vt);
                         if (vt[len - 1] == '"') {
@@ -1549,8 +1540,8 @@ current_value_hint(struct node *val, char *buf, size_t buflen)
                 snprintf(buf, buflen, "%s", vt);
                 return;
         }
-        if (val->reg_type == REG_DWORD ||
-            val->reg_type == REG_DWORD_BIG_ENDIAN) {
+        if (val->reg_type == WINREG_REG_DWORD ||
+            val->reg_type == WINREG_REG_DWORD_BIG_ENDIAN) {
                 /* value_text like "0x00000001 (1)" — take first token */
                 size_t i;
 
@@ -1666,17 +1657,17 @@ action_edit_value(void)
         }
 
         type = sel->reg_type;
-        if (type != REG_SZ && type != REG_EXPAND_SZ &&
-            type != REG_DWORD && type != REG_DWORD_BIG_ENDIAN) {
+        if (type != WINREG_REG_SZ && type != WINREG_REG_EXPAND_SZ &&
+            type != WINREG_REG_DWORD && type != WINREG_REG_DWORD_BIG_ENDIAN) {
                 set_status("Edit supports REG_SZ and REG_DWORD only");
                 return;
         }
         /* Treat big-endian DWORD as little-endian on rewrite */
-        if (type == REG_DWORD_BIG_ENDIAN) {
-                type = REG_DWORD;
+        if (type == WINREG_REG_DWORD_BIG_ENDIAN) {
+                type = WINREG_REG_DWORD;
         }
-        if (type == REG_EXPAND_SZ) {
-                type = REG_SZ;
+        if (type == WINREG_REG_EXPAND_SZ) {
+                type = WINREG_REG_SZ;
         }
 
         if (strcmp(sel->name, "(Default)") == 0) {
@@ -1694,7 +1685,7 @@ action_edit_value(void)
         draw_ui();
 
         /* Long current values are cut short to fit the prompt line. */
-        if (type == REG_DWORD) {
+        if (type == WINREG_REG_DWORD) {
                 snprintf(prompt, sizeof(prompt),
                          "New DWORD [%.200s]: ", hint[0] ? hint : "0");
         } else {
@@ -1705,7 +1696,7 @@ action_edit_value(void)
                 set_status("Edit cancelled");
                 return;
         }
-        if (type == REG_DWORD && databuf[0] == '\0') {
+        if (type == WINREG_REG_DWORD && databuf[0] == '\0') {
                 set_status("Edit cancelled");
                 return;
         }
@@ -1720,7 +1711,7 @@ action_edit_value(void)
                                   sel->value_text,
                                   new_text ? new_text : databuf)) {
                 free(new_text);
-                if (type == REG_SZ || type == REG_EXPAND_SZ) {
+                if (type == WINREG_REG_SZ || type == WINREG_REG_EXPAND_SZ) {
                         free(data);
                 }
                 set_status("Edit cancelled");
@@ -1729,12 +1720,12 @@ action_edit_value(void)
         free(new_text);
 
         if (do_set_value(parent, name_ptr, type, data, data_len) != 0) {
-                if (type == REG_SZ || type == REG_EXPAND_SZ) {
+                if (type == WINREG_REG_SZ || type == WINREG_REG_EXPAND_SZ) {
                         free(data);
                 }
                 return;
         }
-        if (type == REG_SZ || type == REG_EXPAND_SZ) {
+        if (type == WINREG_REG_SZ || type == WINREG_REG_EXPAND_SZ) {
                 free(data);
         }
 }

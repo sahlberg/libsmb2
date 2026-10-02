@@ -5,7 +5,7 @@ BaseRegQueryInfoKey: Request
   hKey:
     ContextHandleAttributes: 0
     UUID: @UUID@
-  lpClass:
+  lpClassIn:
 ---
 BaseRegCloseKey: Request
   hKey:

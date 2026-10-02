@@ -6,7 +6,7 @@ BaseRegEnumKey: Request
     ContextHandleAttributes: 0
     UUID: @UUID@
   dwIndex: 0
-  lpName:
+  lpNameIn:
 ---
 BaseRegCloseKey: Request
   hKey:

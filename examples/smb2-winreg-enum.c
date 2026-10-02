@@ -58,7 +58,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #define ERROR_NO_MORE_ITEMS     0x00000103
 
 /* SamDesired for walking: read + enumerate */
-#define WINREG_WALK_ACCESS      (KEY_READ)
+#define WINREG_WALK_ACCESS      (WINREG_KEY_READ)
 
 #define WALK_PHASE_VALUES  0
 #define WALK_PHASE_KEYS    1
@@ -126,16 +126,16 @@ static const char *
 reg_type_name(uint32_t type)
 {
         switch (type) {
-        case REG_NONE:       return "REG_NONE";
-        case REG_SZ:         return "REG_SZ";
-        case REG_EXPAND_SZ:  return "REG_EXPAND_SZ";
-        case REG_BINARY:     return "REG_BINARY";
-        case REG_DWORD:      return "REG_DWORD";
-        case REG_DWORD_BIG_ENDIAN: return "REG_DWORD_BE";
-        case REG_LINK:       return "REG_LINK";
-        case REG_MULTI_SZ:   return "REG_MULTI_SZ";
-        case REG_QWORD:      return "REG_QWORD";
-        default:             return "REG_UNKNOWN";
+        case WINREG_REG_NONE:             return "REG_NONE";
+        case WINREG_REG_SZ:               return "REG_SZ";
+        case WINREG_REG_EXPAND_SZ:        return "REG_EXPAND_SZ";
+        case WINREG_REG_BINARY:           return "REG_BINARY";
+        case WINREG_REG_DWORD:            return "REG_DWORD";
+        case WINREG_REG_DWORD_BIG_ENDIAN: return "REG_DWORD_BE";
+        case WINREG_REG_LINK:             return "REG_LINK";
+        case WINREG_REG_MULTI_SZ:         return "REG_MULTI_SZ";
+        case WINREG_REG_QWORD:            return "REG_QWORD";
+        default:                          return "REG_UNKNOWN";
         }
 }
 
@@ -184,15 +184,15 @@ print_value(int depth, const char *name, uint32_t type,
         printf("%s (%s) = ", nm, reg_type_name(type));
 
         switch (type) {
-        case REG_SZ:
-        case REG_EXPAND_SZ: {
+        case WINREG_REG_SZ:
+        case WINREG_REG_EXPAND_SZ: {
                 char *s = utf16le_to_utf8(data, len);
 
                 printf("\"%s\"\n", s ? s : "");
                 free(s);
                 break;
         }
-        case REG_DWORD:
+        case WINREG_REG_DWORD:
                 if (len >= 4 && data) {
                         uint32_t v = (uint32_t)data[0] |
                                 ((uint32_t)data[1] << 8) |
@@ -203,7 +203,7 @@ print_value(int depth, const char *name, uint32_t type,
                         printf("(short)\n");
                 }
                 break;
-        case REG_DWORD_BIG_ENDIAN:
+        case WINREG_REG_DWORD_BIG_ENDIAN:
                 if (len >= 4 && data) {
                         uint32_t v = ((uint32_t)data[0] << 24) |
                                 ((uint32_t)data[1] << 16) |
@@ -214,7 +214,7 @@ print_value(int depth, const char *name, uint32_t type,
                         printf("(short)\n");
                 }
                 break;
-        case REG_QWORD:
+        case WINREG_REG_QWORD:
                 if (len >= 8 && data) {
                         uint64_t v = 0;
                         int i;
@@ -226,7 +226,7 @@ print_value(int depth, const char *name, uint32_t type,
                         printf("(short)\n");
                 }
                 break;
-        case REG_MULTI_SZ: {
+        case WINREG_REG_MULTI_SZ: {
                 uint32_t off = 0;
                 int first = 1;
 
@@ -438,7 +438,6 @@ ev_cb(struct dcerpc_context *dce, int status,
 {
         struct winreg_BaseRegEnumValue_rep *rep = command_data;
         struct walk *w = cb_data;
-        uint32_t data_len;
 
         if (status) {
                 dcerpc_free_data(dce, rep);
@@ -481,12 +480,11 @@ ev_cb(struct dcerpc_context *dce, int status,
                 return;
         }
 
-        data_len = rep->cbLen ? rep->cbLen : rep->cbData;
         print_value(w->depth,
-                    rep->lpValueName,
-                    rep->type,
+                    rep->lpValueNameOut,
+                    rep->lpType,
                     rep->lpData,
-                    data_len);
+                    rep->lpcbLen);
         dcerpc_free_data(dce, rep);
         w->index++;
         walk_enum_values(w);
@@ -500,12 +498,8 @@ walk_enum_values(struct walk *w)
         memset(&req, 0, sizeof(req));
         memcpy(&req.hKey, &w->hKey, sizeof(req.hKey));
         req.dwIndex = w->index;
-        req.lpValueName = NULL;
-        req.lpValueName_max_length = 0;
-        req.type = 0;
         req.lpData = w->valbuf;
-        req.cbData = VALUE_DATA_BUF;
-        req.cbLen = 0;
+        req.lpcbData = VALUE_DATA_BUF;
 
         if (dcerpc_call_async(g_dce,
                               WINREG_BASEREGENUMVALUE,
@@ -552,7 +546,7 @@ en_cb(struct dcerpc_context *dce, int status,
                 return;
         }
 
-        name = rep->lpName ? rep->lpName : "";
+        name = rep->lpNameOut ? rep->lpNameOut : "";
         /*
          * Advance index before open so when we resume this walk after the
          * child closes we request the next sibling.
@@ -570,11 +564,6 @@ walk_enum_keys(struct walk *w)
         memset(&req, 0, sizeof(req));
         memcpy(&req.hKey, &w->hKey, sizeof(req.hKey));
         req.dwIndex = w->index;
-        req.lpName = NULL;
-        req.lpName_max_length = 0; /* coder default 1024 */
-        req.lpClass = NULL;
-        req.lpClass_max_length = 0;
-        req.lpftLastWriteTime = NULL;
 
         if (dcerpc_call_async(g_dce,
                               WINREG_BASEREGENUMKEY,
@@ -602,7 +591,8 @@ static void
 open_root_cb(struct dcerpc_context *dce, int status,
              void *command_data, void *cb_data)
 {
-        struct winreg_OpenRootKey_rep *rep = command_data;
+        /* the Open* calls all have the same reply */
+        struct winreg_OpenLocalMachine_rep *rep = command_data;
         const char *label = cb_data;
         struct walk *root;
 
@@ -627,14 +617,14 @@ open_root_cb(struct dcerpc_context *dce, int status,
 static void
 open_next_hive(void)
 {
-        struct winreg_OpenRootKey_req req;
+        /* the Open* calls all take the same request */
+        struct winreg_OpenLocalMachine_req req;
         int opnum;
         dcerpc_coder req_coder, rep_coder;
         int rep_size;
         const char *label;
 
         memset(&req, 0, sizeof(req));
-        req.ServerName = NULL;
         req.samDesired = WINREG_WALK_ACCESS;
 
         switch (g_next_hive) {
