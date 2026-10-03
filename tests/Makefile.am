@@ -9,11 +9,6 @@ noinst_PROGRAMS = prog_ls prog_mkdir prog_rmdir prog_cat \
 	prog_setsd prog_ssc prog_unrelated_compound
 noinst_PROGRAMS += metastat-0202-censored
 
-if BUILD_LIBDCERPC
-noinst_PROGRAMS += smb2-dcerpc-coder-test
-smb2_dcerpc_coder_test_LDADD = ../libdcerpc/libdcerpc.la ../lib/libsmb2.la
-endif
-
 EXTRA_PROGRAMS = ld_sockerr
 CLEANFILES = ld_sockerr.o ld_sockerr.so
 

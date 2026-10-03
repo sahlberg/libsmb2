@@ -1,0 +1,313 @@
+/* -*-  mode:c; tab-width:8; c-basic-offset:8; indent-tabs-mode:nil;  -*- */
+/*
+   Copyright (C) 2020 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
+#include <inttypes.h>
+#include <poll.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
+
+#include <smb2/smb2.h>
+#include <smb2/libsmb2.h>
+#include <smb2/libsmb2-raw.h>
+#include <dcerpc/dcerpc.h>
+#include <dcerpc/dcerpc-srvsvc.h>
+
+#ifndef discard_const
+#define discard_const(ptr) ((void *)((intptr_t)(ptr)))
+#endif
+
+int is_finished;
+struct srvsvc_NetrShareGetInfo_req *si_req;
+char *server;
+int level = 1;
+
+int usage(void)
+{
+        fprintf(stderr, "Usage:\n"
+                "smb2-share-info [-l level] <smb2-url>\n\n"
+                "level: SHARE_INFO level, default 1\n"
+                "URL format: "
+                "smb://[<domain;][<username>@]<host>[:<port>]/share\n");
+        exit(1);
+}
+
+/*
+ * One line per share: name, and for the levels that carry them the remark
+ * and the share type.
+ */
+static void
+print_share(int lvl, union srvsvc_SHARE_INFO *si)
+{
+        const char *netname = NULL, *remark = NULL;
+        uint32_t type = 0;
+        int has_type = 1;
+
+        switch (lvl) {
+        case SRVSVC_SHARE_INFO_0:
+                netname = si->ShareInfo0.netname;
+                has_type = 0;
+                break;
+        case SRVSVC_SHARE_INFO_1:
+                netname = si->ShareInfo1.netname;
+                remark = si->ShareInfo1.remark;
+                type = si->ShareInfo1.type;
+                break;
+        case SRVSVC_SHARE_INFO_2:
+                netname = si->ShareInfo2.netname;
+                remark = si->ShareInfo2.remark;
+                type = si->ShareInfo2.type;
+                break;
+        case SRVSVC_SHARE_INFO_501:
+                netname = si->ShareInfo501.netname;
+                remark = si->ShareInfo501.remark;
+                type = si->ShareInfo501.type;
+                break;
+        case SRVSVC_SHARE_INFO_502:
+                netname = si->ShareInfo502.netname;
+                remark = si->ShareInfo502.remark;
+                type = si->ShareInfo502.type;
+                break;
+        case SRVSVC_SHARE_INFO_503:
+                netname = si->ShareInfo503.netname;
+                remark = si->ShareInfo503.remark;
+                type = si->ShareInfo503.type;
+                break;
+        default:
+                /* other levels have no name; see the YAML below */
+                return;
+        }
+        if (!has_type) {
+                printf("%s\n", netname ? netname : "");
+                return;
+        }
+        printf("%-20s %-20s", netname ? netname : "", remark ? remark : "");
+        switch (type & 3) {
+        case SRVSVC_STYPE_DISKTREE:
+                printf(" DISKTREE");
+                break;
+        case SRVSVC_STYPE_PRINTQ:
+                printf(" PRINTQ");
+                break;
+        case SRVSVC_STYPE_DEVICE:
+                printf(" DEVICE");
+                break;
+        case SRVSVC_STYPE_IPC:
+                printf(" IPC");
+                break;
+        }
+        if (type & SRVSVC_STYPE_TEMPORARY) {
+                printf(" TEMPORARY");
+        }
+        if (type & SRVSVC_STYPE_SPECIAL) {
+                printf(" HIDDEN");
+        }
+        printf("\n");
+}
+
+void si_cb(struct dcerpc_context *dce, int status,
+                void *command_data, void *cb_data)
+{
+        struct srvsvc_NetrShareGetInfo_rep *rep = command_data;
+
+        if (status) {
+                printf("failed to get info for share (%s) %s\n",
+                       strerror(-status), dcerpc_get_error(dce));
+                exit(10);
+        }
+        print_share(level, &rep->InfoStruct);
+
+
+        struct smb2_context *smb2 = dcerpc_get_smb2_context(dce);
+        struct dcerpc_pdu *yaml_pdu;
+        struct dcerpc_iovec iov;
+        static unsigned char buf[65536];
+        int offset = 0;
+
+        dce = dcerpc_create_context(smb2);
+        if (dce == NULL) {
+		printf("Failed to create dce context. %s\n",
+                       smb2_get_error(smb2));
+		exit(10);
+        }
+        printf("YAML:\n");
+        printf("---\n");
+        yaml_pdu = dcerpc_allocate_pdu(dce, ENCODING_YAML, DCERPC_ENCODE, sizeof(struct srvsvc_NetrShareGetInfo_req));
+        offset = 0;
+        iov.len = 65536;
+        iov.buf = buf;
+        if (dcerpc_do_coder("NetrShareGetInfo", dce, yaml_pdu, &iov, &offset, si_req, srvsvc_NetrShareGetInfo_req_coder)) {
+                printf("Failed to encode REQ as YAML\n");
+                exit(10);
+        }
+        printf("%s\n", iov.buf);
+        dcerpc_free_pdu(dce, yaml_pdu);
+        
+        printf("---\n");
+        yaml_pdu = dcerpc_allocate_pdu(dce, ENCODING_YAML, DCERPC_ENCODE, sizeof(struct srvsvc_NetrShareGetInfo_rep));
+        offset = 0;
+        iov.len = 65536;
+        iov.buf = buf;
+        /* We need to reference req->Level from the reply */
+        dcerpc_set_request(yaml_pdu, si_req);
+        if (dcerpc_do_coder("NetrShareGetInfo", dce, yaml_pdu, &iov, &offset, rep, srvsvc_NetrShareGetInfo_rep_coder)) {
+                printf("Failed to encode REP as YAML\n");
+                exit(10);
+        }
+        printf("%s\n", iov.buf);
+        dcerpc_free_pdu(dce, yaml_pdu);
+
+        
+        dcerpc_free_data(dce, rep);
+        dcerpc_destroy_context(dce);
+        free(server);
+        free(cb_data);  /* si_req */
+
+        is_finished = 1;
+}
+
+void co_cb(struct dcerpc_context *dce, int status,
+           void *command_data, void *cb_data)
+{
+        struct smb2_url *url = cb_data;
+
+        if (status != SMB2_STATUS_SUCCESS) {
+                printf("failed to connect to SRVSVC (%s) %s\n",
+                       strerror(-status), dcerpc_get_error(dce));
+                exit(10);
+        }
+
+        si_req = calloc(1, sizeof(struct srvsvc_NetrShareGetInfo_req));
+        if (si_req == NULL) {
+                printf("failed to allocate srvsvc_NetrShareGetInfo_req\n");
+                exit(10);
+        }
+
+        server = malloc(strlen(url->server) + 3);
+        if (server == NULL) {
+                printf("failed to allocate ServerName\n");
+                exit(10);
+        }
+        sprintf(server, "\\\\%s", url->server);
+        si_req->ServerName = server;
+        si_req->NetName = (char *)url->share;
+        si_req->Level = level;
+
+        if (dcerpc_call_async(dce,
+                              SRVSVC_NETRSHAREGETINFO,
+                              srvsvc_NetrShareGetInfo_req_coder, si_req,
+                              srvsvc_NetrShareGetInfo_rep_coder,
+                              sizeof(struct srvsvc_NetrShareGetInfo_rep),
+                              si_cb, si_req) != 0) {
+                printf("dcerpc_call_async failed with %s\n",
+                       dcerpc_get_error(dce));
+                free(si_req);
+                exit(10);
+        }
+}
+
+int main(int argc, char *argv[])
+{
+        struct smb2_context *smb2;
+        struct dcerpc_context *dce;
+        struct smb2_url *url;
+	struct pollfd pfd;
+        int opt;
+
+        while ((opt = getopt(argc, argv, "l:")) != -1) {
+                switch (opt) {
+                case 'l':
+                        level = atoi(optarg);
+                        break;
+                default: /* '?' */
+                        usage();
+                }
+        }
+
+        if (optind >= argc) {
+                usage();
+        }
+
+	smb2 = smb2_init_context();
+        if (smb2 == NULL) {
+                fprintf(stderr, "Failed to init context\n");
+                exit(0);
+        }
+
+        url = smb2_parse_url(smb2, argv[optind]);
+        if (url == NULL) {
+                fprintf(stderr, "Failed to parse url: %s\n",
+                        smb2_get_error(smb2));
+                exit(0);
+        }
+        if (url->user) {
+                smb2_set_user(smb2, url->user);
+        }
+        if (url->domain) {
+                smb2_set_domain(smb2, url->domain);
+        }
+
+        smb2_set_security_mode(smb2, SMB2_NEGOTIATE_SIGNING_ENABLED);
+
+        if (smb2_connect_share(smb2, url->server, "IPC$", NULL) < 0) {
+		printf("Failed to connect to IPC$. %s\n",
+                       smb2_get_error(smb2));
+		exit(10);
+        }
+
+        dce = dcerpc_create_context(smb2);
+        if (dce == NULL) {
+		printf("Failed to create dce context. %s\n",
+                       smb2_get_error(smb2));
+		exit(10);
+        }
+
+        if (dcerpc_connect_context_async(dce, "srvsvc", &srvsvc_interface,
+                       co_cb, url) != 0) {
+		printf("Failed to connect dce context. %s\n",
+                       smb2_get_error(smb2));
+		exit(10);
+        }
+
+        while (!is_finished) {
+		pfd.fd = smb2_get_fd(smb2);
+		pfd.events = smb2_which_events(smb2);
+
+		if (poll(&pfd, 1, 1000) < 0) {
+			printf("Poll failed");
+			exit(10);
+		}
+                if (pfd.revents == 0) {
+                        continue;
+                }
+		if (smb2_service(smb2, pfd.revents) < 0) {
+			printf("smb2_service failed with : %s\n",
+                               smb2_get_error(smb2));
+			break;
+		}
+	}
+
+        dcerpc_destroy_context(dce);
+        smb2_disconnect_share(smb2);
+        smb2_destroy_url(url);
+        smb2_destroy_context(smb2);
+        
+	return 0;
+}

@@ -13,11 +13,16 @@ Source: libsmb2-%{version}.tar.gz
 
 Provides: lib = %{version}
 
+BuildRequires: gcc, make, autoconf, automake, libtool
+BuildRequires: krb5-devel
+
 Prefix: /usr
 BuildRoot: %{_tmppath}/%{name}-%{version}-root
 
 %description
-Libsmb2 is a SMB2/3 client library
+Libsmb2 is a SMB2/3 client library.
+
+This package also contains the smb2-ls and smb2-cp utilities.
 
 #######################################################################
 
@@ -47,7 +52,8 @@ libtoolize -c -f -i
 automake --add-missing
 
 
-CFLAGS="$RPM_OPT_FLAGS $EXTRA -O2 -D_GNU_SOURCE" %configure
+CFLAGS="$RPM_OPT_FLAGS $EXTRA -O2 -D_GNU_SOURCE" %configure --disable-libdcerpc
+make %{?_smp_mflags}
 
 %install
 # Clean up in case there is trash left from a previous build
@@ -60,6 +66,9 @@ make DESTDIR=$RPM_BUILD_ROOT install
 # Remove "*.old" files
 find $RPM_BUILD_ROOT -name "*.old" -exec rm -f {} \;
 
+# Do not ship libtool archives
+find $RPM_BUILD_ROOT -name "*.la" -exec rm -f {} \;
+
 %clean
 rm -rf $RPM_BUILD_ROOT
 
@@ -71,15 +80,17 @@ rm -rf $RPM_BUILD_ROOT
 %files
 %defattr(-,root,root)
 
-%{_libdir}/libsmb2.so*
-%{_libdir}/libdcerpc.so*
+%{_libdir}/libsmb2.so.*
+%{_bindir}/smb2-cp
+%{_bindir}/smb2-ls
 
 %package devel
 Summary: Development libraries for LibSMB2
 Group: Development
+Requires: %{name} = %{epoch}:%{version}-%{release}
 
 %description devel
-development libraries for LibSMB2 and libdcerpc
+development libraries for LibSMB2
 
 %files devel
 %defattr(-,root,root)
@@ -88,16 +99,9 @@ development libraries for LibSMB2 and libdcerpc
 %{_includedir}/smb2/libsmb2-raw.h
 %{_includedir}/smb2/smb2.h
 %{_includedir}/smb2/smb2-errors.h
-%{_includedir}/dcerpc/dcerpc.h
-%{_includedir}/dcerpc/dcerpc-dtyp.h
-%{_includedir}/dcerpc/dcerpc-lsa.h
-%{_includedir}/dcerpc/dcerpc-srvsvc.h
-%{_includedir}/dcerpc/dcerpc-wkssvc.h
-%{_includedir}/dcerpc/dcerpc-winreg.h
+%{_libdir}/libsmb2.so
 %{_libdir}/libsmb2.a
-%{_libdir}/libdcerpc.a
 %{_libdir}/pkgconfig/libsmb2.pc
-%{_libdir}/pkgconfig/libdcerpc.pc
 
 %changelog
 * Mon Dec 16 2024 : Version 6.1.0

@@ -11,7 +11,9 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 
 #include <inttypes.h>
 #include <stdint.h>
@@ -34,53 +36,62 @@ int usage(void)
         exit(1);
 }
 
-void print_shares(struct srvsvc_NetrShareEnum_rep *rep)
+static void print_share_type(uint32_t type)
 {
-        int i;
+        if ((type & 3) == SMB2_SHARE_TYPE_DISKTREE) {
+                printf(" DISKTREE");
+        }
+        if ((type & 3) == SMB2_SHARE_TYPE_PRINTQ) {
+                printf(" PRINTQ");
+        }
+        if ((type & 3) == SMB2_SHARE_TYPE_DEVICE) {
+                printf(" DEVICE");
+        }
+        if ((type & 3) == SMB2_SHARE_TYPE_IPC) {
+                printf(" IPC");
+        }
+        if (type & SMB2_SHARE_TYPE_TEMPORARY) {
+                printf(" TEMPORARY");
+        }
+        if (type & SMB2_SHARE_TYPE_HIDDEN) {
+                printf(" HIDDEN");
+        }
+}
 
-        switch (rep->ses.Level) {
-        case SHARE_INFO_0:
-                printf("Number of shares:%d\n", rep->ses.ShareEnum.Level0.EntriesRead);
-                for (i = 0; i < rep->ses.ShareEnum.Level0.EntriesRead; i++) {
-                        printf("%-20s\n", rep->ses.ShareEnum.Level0.share_info_0[i].netname);
-                }
-                break;
-        case SHARE_INFO_1:
-                printf("Number of shares:%d\n", rep->ses.ShareEnum.Level1.EntriesRead);
-                for (i = 0; i < rep->ses.ShareEnum.Level1.EntriesRead; i++) {
-                        printf("%-20s %-20s", rep->ses.ShareEnum.Level1.share_info_1[i].netname,
-                               rep->ses.ShareEnum.Level1.share_info_1[i].remark);
-                        if ((rep->ses.ShareEnum.Level1.share_info_1[i].type & 3) == SRVSVC_SHARE_TYPE_DISKTREE) {
-                                printf(" DISKTREE");
-                        }
-                        if ((rep->ses.ShareEnum.Level1.share_info_1[i].type & 3) == SRVSVC_SHARE_TYPE_PRINTQ) {
-                                printf(" PRINTQ");
-                        }
-                        if ((rep->ses.ShareEnum.Level1.share_info_1[i].type & 3) == SRVSVC_SHARE_TYPE_DEVICE) {
-                                printf(" DEVICE");
-                        }
-                        if ((rep->ses.ShareEnum.Level1.share_info_1[i].type & 3) == SRVSVC_SHARE_TYPE_IPC) {
-                                printf(" IPC");
-                        }
-                        if (rep->ses.ShareEnum.Level1.share_info_1[i].type & SRVSVC_SHARE_TYPE_TEMPORARY) {
-                                printf(" TEMPORARY");
-                        }
-                        if (rep->ses.ShareEnum.Level1.share_info_1[i].type & SRVSVC_SHARE_TYPE_HIDDEN) {
-                                printf(" HIDDEN");
-                        }
+void print_shares(struct smb2_share_enum_reply *rep)
+{
+        uint32_t i;
+
+        printf("Number of shares:%d\n", rep->entries_read);
+        for (i = 0; i < rep->entries_read; i++) {
+                switch (rep->level) {
+                case SMB2_SHARE_INFO_0:
+                        printf("%-20s\n", rep->share_info.info_0[i].netname);
+                        break;
+                case SMB2_SHARE_INFO_1:
+                        printf("%-20s %-20s", rep->share_info.info_1[i].netname,
+                               rep->share_info.info_1[i].remark);
+                        print_share_type(rep->share_info.info_1[i].type);
                         printf("\n");
+                        break;
+                case SMB2_SHARE_INFO_2:
+                        printf("%-20s %-20s", rep->share_info.info_2[i].netname,
+                               rep->share_info.info_2[i].remark);
+                        print_share_type(rep->share_info.info_2[i].type);
+                        printf(" %s\n", rep->share_info.info_2[i].path ?
+                               rep->share_info.info_2[i].path : "");
+                        break;
                 }
-                break;
         }
 }
 
 
 int main(int argc, char *argv[])
 {
-        struct srvsvc_NetrShareEnum_rep *rep;
+        struct smb2_share_enum_reply *rep;
         struct smb2_context *smb2;
         struct smb2_url *url;
-        int opt, level = SHARE_INFO_0;
+        int opt, level = SMB2_SHARE_INFO_0;
 
         while ((opt = getopt(argc, argv, "l:")) != -1) {
                 switch (opt) {
@@ -103,11 +114,12 @@ int main(int argc, char *argv[])
         }
 
         switch (level) {
-        case SHARE_INFO_0:
-        case SHARE_INFO_1:
+        case SMB2_SHARE_INFO_0:
+        case SMB2_SHARE_INFO_1:
+        case SMB2_SHARE_INFO_2:
                 break;
         default:
-                fprintf(stderr, "level must be 0/1\n");
+                fprintf(stderr, "level must be 0/1/2\n");
                 exit(0);
         }
 

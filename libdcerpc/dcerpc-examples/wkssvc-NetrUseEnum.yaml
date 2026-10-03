@@ -1,0 +1,13 @@
+# NetrUseEnum lists the workstation's own connections to SMB servers.
+# Windows servers expose it remotely but intend it only for local callers
+# ([MS-WKST] 3.2.4.10, product behavior note <51>), and in practice reject
+# remote calls with DCERPC FAULT status=0x00000005 (access denied), even for
+# Administrators. Use this example against a server that allows remote
+# NetrUseEnum, or locally.
+NetrUseEnum: Request
+  ServerName: \\WIN16-1
+  InfoStruct:
+    Level: 1
+    UseInfo:
+  PreferedMaximumLength: 0xffffffff
+  ResumeHandle: 0

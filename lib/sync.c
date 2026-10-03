@@ -1158,10 +1158,11 @@ static void sync_share_enum_cb(struct smb2_context *smb2, int status,
 /*
  * Send SRVSVC ShareEnum call to the server
  */
-struct srvsvc_NetrShareEnum_rep *
-smb2_share_enum_sync(struct smb2_context *smb2, enum SHARE_INFO_enum level)
+struct smb2_share_enum_reply *
+smb2_share_enum_sync(struct smb2_context *smb2,
+                     enum smb2_share_info_level level)
 {
-        struct srvsvc_NetrShareEnum_rep *rep = NULL;
+        struct smb2_share_enum_reply *rep = NULL;
         struct sync_cb_data *cb_data;
         int rc = 0;
 
@@ -1187,6 +1188,15 @@ smb2_share_enum_sync(struct smb2_context *smb2, enum SHARE_INFO_enum level)
 	}
 
         rep = cb_data->ptr;
+        if (cb_data->status != 0) {
+                /* a WERROR from the server still comes with a reply */
+                if (rep != NULL) {
+                        smb2_set_error(smb2, "NetrShareEnum failed with "
+                                       "WERROR 0x%08x", cb_data->status);
+                        smb2_free_data(smb2, rep);
+                }
+                rep = NULL;
+        }
 
  out:
         free(cb_data);

@@ -1,3 +1,45 @@
+# libdcerpc can be built on its own against an installed libsmb2
+# (found with pkg-config), or as a subdirectory of the libsmb2 tree
+# where it links the in-tree smb2 target.
+set(LIBDCERPC_VERSION 1.0.0)
+set(LIBDCERPC_SOVERSION 1)
+
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+  cmake_minimum_required(VERSION 3.10)
+  project(libdcerpc VERSION ${LIBDCERPC_VERSION} LANGUAGES C)
+
+  if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    message(FATAL_ERROR "libdcerpc is only supported on Linux")
+  endif()
+
+  option(BUILD_SHARED_LIBS "Build shared libraries" ON)
+  option(ENABLE_EXAMPLES "Build example programs" OFF)
+  option(ENABLE_UTILS "Build and install the utilities" ON)
+
+  include(GNUInstallDirs)
+  set(INSTALL_BIN_DIR "${CMAKE_INSTALL_FULL_BINDIR}")
+  set(INSTALL_LIB_DIR "${CMAKE_INSTALL_FULL_LIBDIR}")
+  set(INSTALL_INC_DIR "${CMAKE_INSTALL_FULL_INCLUDEDIR}")
+  set(INSTALL_PKGCONFIG_DIR "${CMAKE_INSTALL_FULL_LIBDIR}/pkgconfig")
+
+  find_package(PkgConfig REQUIRED)
+  pkg_check_modules(LIBSMB2 REQUIRED IMPORTED_TARGET libsmb2>=7.0.0)
+  set(LIBDCERPC_SMB2 PkgConfig::LIBSMB2)
+else()
+  set(INSTALL_BIN_DIR "${CMAKE_INSTALL_PREFIX}/bin")
+  set(LIBDCERPC_SMB2 smb2)
+endif()
+
+include(CheckIncludeFile)
+foreach(HDR arpa/inet.h fcntl.h inttypes.h netinet/in.h poll.h stdint.h
+            stdlib.h string.h sys/poll.h sys/socket.h sys/stat.h
+            sys/types.h sys/unistd.h unistd.h)
+  string(TOUPPER "HAVE_${HDR}" VAR)
+  string(REGEX REPLACE "[/.]" "_" VAR "${VAR}")
+  check_include_file(${HDR} ${VAR})
+endforeach()
+configure_file(config.h.cmake ${CMAKE_CURRENT_BINARY_DIR}/config.h)
+
 set(DCERPC_LIB_SOURCES
     dcerpc.c
     dcerpc-srvsvc.c
@@ -6,40 +48,35 @@ set(DCERPC_LIB_SOURCES
     dcerpc-wkssvc.c
     dcerpc-winreg.c
     dcerpc-epm.c
+    dcerpc-private.h
 )
 
-set(INCLUDE_PATH ../include)
-set(DCERPC_INCLUDE "${INCLUDE_PATH}/dcerpc")
-set(DCERPC_HEADERS
-    ${DCERPC_INCLUDE}/dcerpc-dtyp.h
-    ${DCERPC_INCLUDE}/dcerpc-lsa.h
-    ${DCERPC_INCLUDE}/dcerpc-srvsvc.h
-    ${DCERPC_INCLUDE}/dcerpc-wkssvc.h
-    ${DCERPC_INCLUDE}/dcerpc-winreg.h
-    ${DCERPC_INCLUDE}/dcerpc-epm.h
-    ${DCERPC_INCLUDE}/dcerpc.h
-)
+add_library(dcerpc ${DCERPC_LIB_SOURCES})
+target_compile_definitions(dcerpc PRIVATE HAVE_CONFIG_H _FILE_OFFSET_BITS=64
+                                  "_U_=__attribute__((unused))")
+target_include_directories(dcerpc
+    PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
+# Our config.h must win over libsmb2's when built in the libsmb2 tree.
+target_include_directories(dcerpc BEFORE PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_link_libraries(dcerpc PUBLIC ${LIBDCERPC_SMB2})
+set_target_properties(dcerpc PROPERTIES
+                      VERSION ${LIBDCERPC_VERSION}
+                      SOVERSION ${LIBDCERPC_SOVERSION}
+                      OUTPUT_NAME dcerpc)
 
-if(NOT ESP_PLATFORM AND NOT PICO_BOARD AND NOT (IOP AND BUILD_IRX))
-  if(ENABLE_LIBDCERPC)
-    add_library(dcerpc ${DCERPC_LIB_SOURCES} ${DCERPC_HEADERS})
-    target_compile_definitions(dcerpc PRIVATE HAVE_DCERPC_FULL=1)
-    if(NOT MSVC)
-      target_compile_definitions(dcerpc PRIVATE "_U_=__attribute__((unused))")
-    else()
-      target_compile_definitions(dcerpc PRIVATE "_U_=")
-    endif()
-    target_link_libraries(dcerpc PUBLIC smb2 ${core_DEPENDS} ${CORE_LIBRARIES})
-    target_include_directories(dcerpc PUBLIC ${INCLUDE_PATH}
-                                     PRIVATE ../lib)
-    set_target_properties(dcerpc PROPERTIES
-                               VERSION ${PROJECT_VERSION}
-                               SOVERSION 1
-                               OUTPUT_NAME dcerpc)
+install(TARGETS dcerpc EXPORT dcerpc
+        RUNTIME DESTINATION ${INSTALL_BIN_DIR}
+        ARCHIVE DESTINATION ${INSTALL_LIB_DIR}
+        LIBRARY DESTINATION ${INSTALL_LIB_DIR})
+install(DIRECTORY include/dcerpc DESTINATION ${INSTALL_INC_DIR})
 
-    install(TARGETS dcerpc EXPORT dcerpc
-                         RUNTIME DESTINATION bin
-                         ARCHIVE DESTINATION lib${LIB_SUFFIX}
-                         LIBRARY DESTINATION lib${LIB_SUFFIX})
-  endif()
+configure_file(libdcerpc.pc.cmake ${CMAKE_CURRENT_BINARY_DIR}/libdcerpc.pc @ONLY)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libdcerpc.pc
+        DESTINATION ${INSTALL_PKGCONFIG_DIR})
+
+if(ENABLE_UTILS)
+  add_subdirectory(utils)
+endif()
+if(ENABLE_EXAMPLES)
+  add_subdirectory(examples)
 endif()

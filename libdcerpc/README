@@ -1,0 +1,51 @@
+libdcerpc is a DCE/RPC client library. It uses libsmb2 named pipes as
+transport and implements NDR32/NDR64 as well as YAML and JSON coders for
+the srvsvc, lsarpc, winreg, wkssvc and epm interfaces.
+
+libdcerpc is distributed under the 2-Clause BSD licence. See COPYING.
+
+  Link with:  -ldcerpc -lsmb2
+  pkg-config: libdcerpc
+
+Public headers are installed under <dcerpc/>.
+
+Platforms
+=========
+libdcerpc is Linux only for now. It can not be built on Windows since its
+symbols collide with Microsoft's own RPC libraries.
+
+Releases
+========
+libdcerpc lives in the libsmb2 git repository, in the libdcerpc/
+directory, but has its own version, soname and releases. Releases are
+tagged libdcerpc-<version>. A release tarball contains only this
+directory and builds against an installed libsmb2 (>= 7.0.0).
+
+Building
+========
+Standalone, against an installed libsmb2 found with pkg-config:
+
+  autoreconf -fi
+  ./configure [--enable-examples]
+  make
+  make install
+
+or with CMake:
+
+  cmake [-DENABLE_EXAMPLES=ON] [-DENABLE_UTILS=OFF] <srcdir>
+  make
+  make install
+
+From the libsmb2 tree, libdcerpc is built together with libsmb2 against
+the uninstalled library (disable with ./configure --disable-libdcerpc or
+cmake -DENABLE_LIBDCERPC=OFF).
+
+RPMs are built with packaging/RPM/makerpms.sh. It needs a libdcerpc-*
+tag and libsmb2-devel installed.
+
+Utilities
+=========
+dcerpc      : send DCE/RPC requests described as YAML or JSON
+              (see dcerpc-examples/)
+epm-enum    : list the endpoints registered with the endpoint mapper
+winreg-tui  : browse a remote registry (needs ncurses)

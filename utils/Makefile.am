@@ -1,4 +1,4 @@
-noinst_PROGRAMS = smb2-cp smb2-ls
+bin_PROGRAMS = smb2-cp smb2-ls
 
 AM_CPPFLAGS = \
 	-I$(abs_top_srcdir)/include \

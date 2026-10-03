@@ -1,0 +1,7 @@
+NetrSessionEnum: Request
+  ServerName: \\WIN16-1
+  InfoStruct:
+    Level: SESSION_INFO_1
+    SessionInfo:
+  PreferedMaximumLength: 0xffffffff
+  ResumeHandle: 0

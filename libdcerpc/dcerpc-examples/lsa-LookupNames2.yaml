@@ -1,0 +1,27 @@
+OpenPolicy2: Request
+  SystemName: \\WIN16-1
+  ObjectAttributes:
+    Length: 24
+    Attributes: 0
+  DesiredAccess: POLICY_VIEW_LOCAL_INFORMATION | POLICY_LOOKUP_NAMES
+---
+LookupNames2: Request
+  PolicyHandle:
+    ContextHandleAttributes: 0
+    UUID: @UUID:-1@
+  Count: 3
+  Names:
+    - sahlberg
+    - Administrator
+    - UserDoesNotExist
+  TranslatedSids:
+    Entries: 0
+  LookupLevel: LsapLookupWksta
+  MappedCount: 0
+  LookupOptions: 0
+  ClientRevision: 2
+---
+Close: Request
+  PolicyHandle:
+    ContextHandleAttributes: 0
+    UUID: @UUID:-2@

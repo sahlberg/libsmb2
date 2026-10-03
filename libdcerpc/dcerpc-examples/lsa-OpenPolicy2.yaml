@@ -1,0 +1,6 @@
+OpenPolicy2: Request
+  SystemName: \\10.10.10.11
+  ObjectAttributes:
+    Length: 24
+    Attributes: 0
+  DesiredAccess: POLICY_VIEW_LOCAL_INFORMATION | POLICY_LOOKUP_NAMES

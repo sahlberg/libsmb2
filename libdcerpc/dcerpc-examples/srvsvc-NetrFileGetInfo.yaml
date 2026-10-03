@@ -1,0 +1,12 @@
+NetrFileEnum: Request
+  ServerName: \\WIN16-1
+  InfoStruct:
+    Level: FILE_INFO_3
+    FileInfo:
+  PreferedMaximumLength: 0xffffffff
+  ResumeHandle: 0
+---
+NetrFileGetInfo: Request
+  ServerName: \\WIN16-1
+  FileId: @id@
+  Level: FILE_INFO_3
