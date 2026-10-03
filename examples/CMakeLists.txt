@@ -18,6 +18,17 @@ set(SOURCES smb2-cat-async
             smb2-server-sync
             smb2-notify
             smb2-set-security-info
+            smb2-compound
+            smb2-link-sync)
+
+set(DCERPC_SOURCES smb2-share-enum
+            dcerpc
+            smb2-lsa-lookupsids
+            smb2-share-info
+            smb2-winreg-enum
+            winreg-tui
+            epm-srvsvc
+            epm-enum
             smb2-link-sync
             smb2-share-enum)
 

@@ -19,7 +19,8 @@ noinst_PROGRAMS = smb2-cat-async smb2-cat-sync \
 	smb2-CMD-FIND	\
 	smb2-server-sync \
 	smb2-notify \
-	smb2-set-security-info
+	smb2-set-security-info \
+	smb2-compound
 
 noinst_PROGRAMS += smb2-share-enum
 
@@ -54,3 +55,4 @@ smb2_CMD_FIND_LDADD = $(COMMON_LIBS)
 smb2_server_sync_LDADD = $(COMMON_LIBS)
 smb2_notify_LDADD = $(COMMON_LIBS)
 smb2_set_security_info_LDADD = $(COMMON_LIBS)
+smb2_compound_LDADD = $(COMMON_LIBS)
