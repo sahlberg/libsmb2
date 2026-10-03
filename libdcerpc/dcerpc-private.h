@@ -23,6 +23,11 @@ int dcerpc_get_cr(struct dcerpc_pdu *pdu);
 
 int dcerpc_align_3264(struct dcerpc_context *ctx, int offset);
 
+/* RPC_SID coder for all non-NDR encodings */
+int text_sid_coder(char *name, struct dcerpc_context *dce,
+                   struct dcerpc_pdu *pdu,
+                   struct dcerpc_iovec *iov, int *offset, void *ptr);
+
 /* YAML/JSON helpers */
 char *dcerpc_pdu_yaml_key(struct dcerpc_pdu *pdu);
 char *dcerpc_pdu_yaml_val(struct dcerpc_pdu *pdu);

@@ -366,12 +366,7 @@ struct dcerpc_coders {
         dcerpc_coder_pp  uint32_coder_pp;
         dcerpc_coder     uint64_coder;
         dcerpc_coder     uuid_coder;
-        dcerpc_coder     sid_coder;     /* in dcerpc-dtyp.c, full build only */
-        dcerpc_coder     utf16_coder;
-        dcerpc_coder     utf16z_coder;
-        /* MS-DTYP RPC_UNICODE_STRING, C char *; z: NUL-terminated Buffer */
-        dcerpc_coder     unicode_string_coder;
-        dcerpc_coder     unicode_stringz_coder;
+        dcerpc_coder     sid_coder;
         dcerpc_coder_cdr struct_coder;
         dcerpc_coder_cdr do_coder;
         dcerpc_coder_union union_coder;
@@ -381,6 +376,17 @@ struct dcerpc_coders {
         dcerpc_coder_ptr ptr_coder;
         dcerpc_coder     bytes_coder;
         dcerpc_coder     varying_bytes_coder;
+        /* Strings. MS IDLs use two wire formats for strings, each with
+         * a plain and a NUL-terminated (z) flavour:
+         *   utf16/utf16z:                   [string] wchar_t *
+         *   unicode_string/unicode_stringz: MS-DTYP RPC_UNICODE_STRING
+         * All four are char * (UTF-8) in C. Only NDR distinguishes them;
+         * for every other encoding (YAML, JSON) they are the same coder.
+         */
+        dcerpc_coder     utf16_coder;
+        dcerpc_coder     utf16z_coder;
+        dcerpc_coder     unicode_string_coder;
+        dcerpc_coder     unicode_stringz_coder;
 };
 
 struct dcerpc_coders ndr_coders;
@@ -592,9 +598,6 @@ static int yaml_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_
 static int yaml_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                      struct dcerpc_iovec *iov, int *offset,
                      void *ptr);
-static int yaml_utf16z_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                     struct dcerpc_iovec *iov, int *offset,
-                     void *ptr);
 
 /*
  * JSON
@@ -607,9 +610,6 @@ static int json_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_
                           struct dcerpc_iovec *iov, int *offset, void *ptr,
                           enum ptr_type type, dcerpc_coder coder);
 static int json_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                            struct dcerpc_iovec *iov, int *offset,
-                            void *ptr);
-static int json_utf16z_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                             struct dcerpc_iovec *iov, int *offset,
                             void *ptr);
 
@@ -3207,7 +3207,7 @@ dcerpc_context_handle_coder(char *name, struct dcerpc_context *dce,
  * _ndr_utf16z_coder.
  *
  * Represented in C as char * (UTF-8). ptr is char **.
- * NDR form; YAML/JSON show only the string (yaml/json_unicode_string_coder).
+ * NDR form; YAML/JSON show only the string (yaml/json_utf16_coder).
  */
 static int
 _ndr_RPC_UNICODE_STRING_coder(char *name, struct dcerpc_context *dce,
@@ -5579,14 +5579,6 @@ json_varying_bytes_coder(char *name, struct dcerpc_context *ctx,
 }
 
 static int
-json_utf16z_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                 struct dcerpc_iovec *iov, int *offset,
-                 void *ptr)
-{
-        return json_utf16_coder(name, ctx, pdu, iov, offset, ptr);
-}
-
-static int
 json_carray_coder(char *name, struct dcerpc_context *ctx,
                   struct dcerpc_pdu *pdu,
                   struct dcerpc_iovec *iov, int *offset,
@@ -5796,14 +5788,6 @@ json_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
  * RPC_UNICODE_STRING (plain and NUL-terminated): text encodings show only
  * the string; Length/MaximumLength are NDR-only.
  */
-static int
-json_unicode_string_coder(char *name, struct dcerpc_context *ctx,
-                          struct dcerpc_pdu *pdu,
-                          struct dcerpc_iovec *iov, int *offset, void *ptr)
-{
-        return json_utf16_coder(name, ctx, pdu, iov, offset, ptr);
-}
-
 struct dcerpc_coders json_coders = {
         .uint8_coder     = json_uint8_coder,
         .uint16_coder    = json_uint16_coder,
@@ -5812,11 +5796,11 @@ struct dcerpc_coders json_coders = {
         .uint32_coder_pp = json_uint32_coder_pp,
         .uint64_coder    = json_uint64_coder,
         .uuid_coder      = json_uuid_coder,
-        .sid_coder       = json_sid_coder,
+        .sid_coder       = text_sid_coder,
         .utf16_coder     = json_utf16_coder,
-        .utf16z_coder    = json_utf16z_coder,
-        .unicode_string_coder  = json_unicode_string_coder,
-        .unicode_stringz_coder = json_unicode_string_coder,
+        .utf16z_coder    = json_utf16_coder,
+        .unicode_string_coder  = json_utf16_coder,
+        .unicode_stringz_coder = json_utf16_coder,
         .struct_coder    = json_struct_coder,
         .do_coder        = json_do_coder,
         .union_coder     = json_union_coder,
@@ -6247,14 +6231,6 @@ yaml_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         return -1;
 }
 
-static int
-yaml_utf16z_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                 struct dcerpc_iovec *iov, int *offset,
-                 void *ptr)
-{
-        return yaml_utf16_coder(name, ctx, pdu, iov, offset, ptr);
-}
-
 static int yaml_bytes_coder(char *name, struct dcerpc_context *ctx,
                             struct dcerpc_pdu *pdu,
                             struct dcerpc_iovec *iov, int *offset, void *ptr);
@@ -6449,14 +6425,6 @@ yaml_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
  * RPC_UNICODE_STRING (plain and NUL-terminated): text encodings show only
  * the string; Length/MaximumLength are NDR-only.
  */
-static int
-yaml_unicode_string_coder(char *name, struct dcerpc_context *ctx,
-                          struct dcerpc_pdu *pdu,
-                          struct dcerpc_iovec *iov, int *offset, void *ptr)
-{
-        return yaml_utf16_coder(name, ctx, pdu, iov, offset, ptr);
-}
-
 struct dcerpc_coders yaml_coders = {
         .uint8_coder     = yaml_uint8_coder,
         .uint16_coder    = yaml_uint16_coder,
@@ -6465,11 +6433,11 @@ struct dcerpc_coders yaml_coders = {
         .uint32_coder_pp = yaml_uint32_coder_pp,
         .uint64_coder    = yaml_uint64_coder,
         .uuid_coder      = yaml_uuid_coder,
-        .sid_coder       = yaml_sid_coder,
+        .sid_coder       = text_sid_coder,
         .utf16_coder     = yaml_utf16_coder,
-        .utf16z_coder    = yaml_utf16z_coder,
-        .unicode_string_coder  = yaml_unicode_string_coder,
-        .unicode_stringz_coder = yaml_unicode_string_coder,
+        .utf16z_coder    = yaml_utf16_coder,
+        .unicode_string_coder  = yaml_utf16_coder,
+        .unicode_stringz_coder = yaml_utf16_coder,
         .struct_coder    = yaml_struct_coder,
         .do_coder        = yaml_do_coder,
         .union_coder     = yaml_union_coder,

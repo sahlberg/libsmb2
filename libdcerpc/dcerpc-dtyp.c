@@ -455,9 +455,10 @@ sid_to_string(char *name, const RPC_SID *sid, char *sidstr, size_t size)
 
 /*
  * Text (YAML/JSON) RPC_SID: the S-R-I-... string, carried as a plain
- * string value by the encoding's string coder.
+ * string value by the encoding's string coder. Used as the sid_coder
+ * of every non-NDR encoding.
  */
-static int
+int
 text_sid_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                struct dcerpc_iovec *iov, int *offset, void *ptr)
 {
@@ -475,23 +476,6 @@ text_sid_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                 return -1;
         }
         return dcerpc_utf16_coder(name, dce, pdu, iov, offset, &str);
-}
-
-/*
- * Per-encoding RPC_SID coders, referenced from the coder tables in dcerpc.c.
- */
-int
-json_sid_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
-               struct dcerpc_iovec *iov, int *offset, void *ptr)
-{
-        return text_sid_coder(name, dce, pdu, iov, offset, ptr);
-}
-
-int
-yaml_sid_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
-               struct dcerpc_iovec *iov, int *offset, void *ptr)
-{
-        return text_sid_coder(name, dce, pdu, iov, offset, ptr);
 }
 
 /*

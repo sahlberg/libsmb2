@@ -348,14 +348,6 @@ int ndr_sid_coder(char *name, struct dcerpc_context *dce,
                   struct dcerpc_pdu *pdu,
                   struct dcerpc_iovec *iov, int *offset,
                   void *ptr);
-int json_sid_coder(char *name, struct dcerpc_context *dce,
-                   struct dcerpc_pdu *pdu,
-                   struct dcerpc_iovec *iov, int *offset,
-                   void *ptr);
-int yaml_sid_coder(char *name, struct dcerpc_context *dce,
-                   struct dcerpc_pdu *pdu,
-                   struct dcerpc_iovec *iov, int *offset,
-                   void *ptr);
 
 int dcerpc_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                      struct dcerpc_iovec *iov, int *offset, void *ptr,
