@@ -54,13 +54,12 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <sys/socket.h>
 #endif
 
-#include "compat.h"
 
-#include "smb2.h"
-#include "libsmb2.h"
+#include <smb2/smb2.h>
+#include <smb2/libsmb2.h>
 #include <dcerpc/dcerpc.h>
 #include <dcerpc/dcerpc-epm.h>
-#include "libsmb2-raw.h"
+#include <smb2/libsmb2-raw.h>
 #include "dcerpc-private.h"
 
 /* MS-RPCE / C706: uuid(e1af8308-5d1f-11c9-91a4-08002b14a0fa), version(3.0) */

@@ -50,7 +50,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <sys/unistd.h>
 #endif
 
-#include "portable-endian.h"
+#include <endian.h>
 #include <errno.h>
 #ifdef HAVE_INTTYPES_H
 #include <inttypes.h>
@@ -61,7 +61,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #endif
 #endif
 
-#include "compat.h"
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -76,8 +75,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #else
 #include <sys/fcntl.h>
 #endif
-#include "smb2.h"
-#include "libsmb2.h"
+#include <smb2/smb2.h>
+#include <smb2/libsmb2.h>
 #include <dcerpc/dcerpc.h>
 #include <dcerpc/dcerpc-dtyp.h>
 #include <dcerpc/dcerpc-srvsvc.h>
@@ -85,7 +84,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <dcerpc/dcerpc-wkssvc.h>
 #include <dcerpc/dcerpc-winreg.h>
 #include <dcerpc/dcerpc-epm.h>
-#include "libsmb2-raw.h"
+#include <smb2/libsmb2-raw.h>
 #include "dcerpc-private.h"
 
 struct dcerpc_service *dcerpc_services = NULL;

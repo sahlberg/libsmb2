@@ -17,9 +17,9 @@ This is the licence that applies to the libsmb2 library and its use.
 
 The libdcerpc directory and DCE/RPC headers
 ===========================================
-The DCE/RPC library (libdcerpc/) and the DCE/RPC public headers
-(include/smb2/libsmb2-dcerpc*.h) are licenced under the 2-Clause BSD
-License.
+The DCE/RPC library, i.e. everything under the libdcerpc/ directory
+including its headers, utilities and examples, is licenced under the
+2-Clause BSD License. See libdcerpc/COPYING.
 
 To avoid any confusion, every source file also contain a licence boilerplate.
 

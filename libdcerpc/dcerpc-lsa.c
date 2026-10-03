@@ -46,14 +46,13 @@
 #include <errno.h>
 #include <stdio.h>
 
-#include "compat.h"
 
-#include "smb2.h"
-#include "libsmb2.h"
+#include <smb2/smb2.h>
+#include <smb2/libsmb2.h>
 #include <dcerpc/dcerpc.h>
 #include <dcerpc/dcerpc-dtyp.h>
 #include <dcerpc/dcerpc-lsa.h>
-#include "libsmb2-raw.h"
+#include <smb2/libsmb2-raw.h>
 #include "dcerpc-private.h"
 
 #define LSA_UUID    0x12345778, 0x1234, 0xabcd, {0xef, 0x00, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab}

@@ -46,14 +46,13 @@
 #include <errno.h>
 #include <stdio.h>
 
-#include "compat.h"
 
-#include "smb2.h"
-#include "libsmb2.h"
+#include <smb2/smb2.h>
+#include <smb2/libsmb2.h>
 #include <dcerpc/dcerpc.h>
 #include <dcerpc/dcerpc-dtyp.h>
 #include <dcerpc/dcerpc-srvsvc.h>
-#include "libsmb2-raw.h"
+#include <smb2/libsmb2-raw.h>
 #include "dcerpc-private.h"
 
 #define SRVSVC_UUID    0x4b324fc8, 0x1670, 0x01d3, {0x12, 0x78, 0x5a, 0x47, 0xbf, 0x6e, 0xe1, 0x88}

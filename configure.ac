@@ -25,10 +25,6 @@ AC_ARG_ENABLE([examples],
 AM_CONDITIONAL([ENABLE_EXAMPLES],
                [test "$enable_examples" = "yes"])
 
-dnl  Full DCE/RPC is built as a separate library (libdcerpc) that depends on
-dnl  libsmb2 for transport. libsmb2 keeps only NetrShareEnum levels 0/1/2
-dnl  with libsmb2_-prefixed internal symbols.
-
 AC_ARG_WITH([libkrb5],
             [AS_HELP_STRING([--without-libkrb5],
                             [Do not link with libkrb5 and use builtin
@@ -121,33 +117,37 @@ case $host in
     ;;
 esac
 AM_CONDITIONAL([HAVE_WIN32], [test "${SYS}" = "mingw32"])
+dnl  libdcerpc (full DCE/RPC) is a separate project in the libdcerpc/
+dnl  subdirectory with its own configure, version and releases. It is
+dnl  Linux only for now, and can never be built on Windows since its
+dnl  symbols collide with Microsoft RPC. When enabled, it is configured
+dnl  against this uninstalled libsmb2.
 AC_ARG_ENABLE([libdcerpc],
               [AS_HELP_STRING([--disable-libdcerpc],
-                              [Do not build libdcerpc and the utilities that use it])])
+                              [Do not build libdcerpc (Linux only)])])
 
-dnl  libdcerpc symbols collide with Microsoft RPC; never build it on Windows.
-AS_IF([test "${SYS}" = "mingw32"], [
+case $host in
+  *linux*)
+    ;;
+  *)
+    AS_IF([test "x$enable_libdcerpc" = "xyes"], [
+        AC_MSG_ERROR([libdcerpc is only supported on Linux])
+    ])
     enable_libdcerpc=no
-    AC_MSG_NOTICE([Windows: libdcerpc disabled (symbol collisions with Microsoft RPC)])
-], [test "x$enable_libdcerpc" = "xno"], [
-    AC_MSG_NOTICE([libdcerpc disabled])
-], [
+    ;;
+esac
+AS_IF([test "x$enable_libdcerpc" != "xno"], [
     AC_MSG_NOTICE([Build libdcerpc (full DCE/RPC interfaces)])
+    smb2_abs_srcdir=`cd "$srcdir" && pwd`
+    ac_configure_args="$ac_configure_args 'LIBSMB2_CFLAGS=-I$smb2_abs_srcdir/include' 'LIBSMB2_LIBS=$ac_pwd/lib/libsmb2.la'"
+    AC_CONFIG_SUBDIRS([libdcerpc])
+], [
+    AC_MSG_NOTICE([libdcerpc disabled])
 ])
 AM_CONDITIONAL([BUILD_LIBDCERPC], [test "x$enable_libdcerpc" != "xno"])
 AC_SUBST([LIBSOCKET])
 
 AC_CHECK_LIB([dl], [dlsym], [], [AC_MSG_ERROR([dlsym not found, libdl is required])])
-
-dnl  ncurses is optional; without it the winreg-tui utility is not built.
-have_ncurses=no
-AC_CHECK_HEADERS([ncurses.h], [
-    AC_CHECK_LIB([ncurses], [initscr], [have_ncurses=yes])
-])
-AM_CONDITIONAL([HAVE_NCURSES], [test "$have_ncurses" = "yes"])
-AS_IF([test "$have_ncurses" != "yes"], [
-    AC_MSG_NOTICE([ncurses not found: winreg-tui will not be built])
-])
 
 dnl  CommonCrypto.framework is not always reachable on Apple platforms
 dnl  (e.g. a toolchain that doesn't see Apple's framework headers at
@@ -263,10 +263,9 @@ AC_CONFIG_FILES([
     examples/Makefile
     include/Makefile
     lib/Makefile
-    libdcerpc/Makefile
     tests/Makefile
     utils/Makefile
 ])
 
-AC_CONFIG_FILES([libsmb2.pc libdcerpc.pc])
+AC_CONFIG_FILES([libsmb2.pc])
 AC_OUTPUT

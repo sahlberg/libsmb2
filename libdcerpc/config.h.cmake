@@ -1,0 +1,14 @@
+#cmakedefine HAVE_ARPA_INET_H
+#cmakedefine HAVE_FCNTL_H
+#cmakedefine HAVE_INTTYPES_H
+#cmakedefine HAVE_NETINET_IN_H
+#cmakedefine HAVE_POLL_H
+#cmakedefine HAVE_STDINT_H
+#cmakedefine HAVE_STDLIB_H
+#cmakedefine HAVE_STRING_H
+#cmakedefine HAVE_SYS_POLL_H
+#cmakedefine HAVE_SYS_SOCKET_H
+#cmakedefine HAVE_SYS_STAT_H
+#cmakedefine HAVE_SYS_TYPES_H
+#cmakedefine HAVE_SYS_UNISTD_H
+#cmakedefine HAVE_UNISTD_H

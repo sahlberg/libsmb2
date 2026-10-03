@@ -1,7 +1,3 @@
-# Build libdcerpc and its utilities by default.
-# "rpmbuild --without dcerpc" builds only libsmb2 and libsmb2-devel.
-%bcond_without dcerpc
-
 Name: libsmb2
 Summary: SMB2/3 client library
 Vendor: Ronnie Sahlberg
@@ -19,9 +15,6 @@ Provides: lib = %{version}
 
 BuildRequires: gcc, make, autoconf, automake, libtool
 BuildRequires: krb5-devel
-%if %{with dcerpc}
-BuildRequires: ncurses-devel
-%endif
 
 Prefix: /usr
 BuildRoot: %{_tmppath}/%{name}-%{version}-root
@@ -59,7 +52,7 @@ libtoolize -c -f -i
 automake --add-missing
 
 
-CFLAGS="$RPM_OPT_FLAGS $EXTRA -O2 -D_GNU_SOURCE" %configure %{!?with_dcerpc:--disable-libdcerpc}
+CFLAGS="$RPM_OPT_FLAGS $EXTRA -O2 -D_GNU_SOURCE" %configure --disable-libdcerpc
 make %{?_smp_mflags}
 
 %install
@@ -109,48 +102,6 @@ development libraries for LibSMB2
 %{_libdir}/libsmb2.so
 %{_libdir}/libsmb2.a
 %{_libdir}/pkgconfig/libsmb2.pc
-
-%if %{with dcerpc}
-%package -n libdcerpc
-Summary: DCE/RPC client library using libsmb2 as transport
-Group: System Environment/Libraries
-Requires: %{name} = %{epoch}:%{version}-%{release}
-
-%description -n libdcerpc
-Libdcerpc is a DCE/RPC client library implementing SRVSVC, LSA, WKSSVC,
-WINREG and EPM, using libsmb2 named pipes as transport.
-
-This package also contains the dcerpc, epm-enum and winreg-tui utilities.
-
-%files -n libdcerpc
-%defattr(-,root,root)
-%{_libdir}/libdcerpc.so.*
-%{_bindir}/dcerpc
-%{_bindir}/epm-enum
-%{_bindir}/winreg-tui
-
-%package -n libdcerpc-devel
-Summary: Development libraries for libdcerpc
-Group: Development
-Requires: libdcerpc = %{epoch}:%{version}-%{release}
-Requires: %{name}-devel = %{epoch}:%{version}-%{release}
-
-%description -n libdcerpc-devel
-development libraries for libdcerpc
-
-%files -n libdcerpc-devel
-%defattr(-,root,root)
-%{_includedir}/dcerpc/dcerpc.h
-%{_includedir}/dcerpc/dcerpc-dtyp.h
-%{_includedir}/dcerpc/dcerpc-epm.h
-%{_includedir}/dcerpc/dcerpc-lsa.h
-%{_includedir}/dcerpc/dcerpc-srvsvc.h
-%{_includedir}/dcerpc/dcerpc-wkssvc.h
-%{_includedir}/dcerpc/dcerpc-winreg.h
-%{_libdir}/libdcerpc.so
-%{_libdir}/libdcerpc.a
-%{_libdir}/pkgconfig/libdcerpc.pc
-%endif
 
 %changelog
 * Mon Dec 16 2024 : Version 6.1.0

@@ -44,13 +44,12 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <errno.h>
 #include <stdio.h>
 
-#include "compat.h"
 
-#include "smb2.h"
-#include "libsmb2.h"
+#include <smb2/smb2.h>
+#include <smb2/libsmb2.h>
 #include <dcerpc/dcerpc.h>
 #include <dcerpc/dcerpc-dtyp.h>
-#include "libsmb2-raw.h"
+#include <smb2/libsmb2-raw.h>
 #include "dcerpc-private.h"
 
 unsigned char NT_SID_AUTHORITY[6] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x05 };
