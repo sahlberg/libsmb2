@@ -22,14 +22,11 @@ noinst_PROGRAMS = smb2-cat-async smb2-cat-sync \
 	smb2-set-security-info
 
 if BUILD_LIBDCERPC
-noinst_PROGRAMS += dcerpc \
-	smb2-share-enum \
+noinst_PROGRAMS += smb2-share-enum \
 	smb2-lsa-lookupsids \
 	smb2-share-info \
 	smb2-winreg-enum \
-	winreg-tui \
-	epm-srvsvc \
-	epm-enum
+	epm-srvsvc
 endif
 
 AM_CPPFLAGS = \
@@ -42,14 +39,11 @@ COMMON_LIBS = ../lib/libsmb2.la
 DCERPC_LIBS = ../libdcerpc/libdcerpc.la ../lib/libsmb2.la
 
 if BUILD_LIBDCERPC
-dcerpc_LDADD = $(DCERPC_LIBS)
 smb2_lsa_lookupsids_LDADD = $(DCERPC_LIBS)
 smb2_share_enum_LDADD = $(DCERPC_LIBS)
 smb2_share_info_LDADD = $(DCERPC_LIBS)
 smb2_winreg_enum_LDADD = $(DCERPC_LIBS)
-winreg_tui_LDADD = $(DCERPC_LIBS) -lncurses
 epm_srvsvc_LDADD = $(DCERPC_LIBS)
-epm_enum_LDADD = $(DCERPC_LIBS)
 endif
 smb2_cat_async_LDADD = $(COMMON_LIBS)
 smb2_cat_sync_LDADD = $(COMMON_LIBS)

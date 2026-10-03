@@ -57,6 +57,7 @@ endif()
       option(BUILD_SHARED_LIBS "Build shared libraries" ON)
     endif()
       option(ENABLE_EXAMPLES "Build example programs" OFF)
+      option(ENABLE_UTILS "Build and install the utilities" OFF)
       option(ENABLE_LIBKRB5 "Enable libkrb5 support" ON)
       option(ENABLE_GSSAPI "Enable gssapi support" ON)
       list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
@@ -272,6 +273,10 @@ endif()
 
     if(ENABLE_EXAMPLES)
       add_subdirectory(examples)
+    endif()
+
+    if(ENABLE_UTILS)
+      add_subdirectory(utils)
     endif()
 
   # The packaging and install rules below need PROJECT_VERSION and the

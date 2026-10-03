@@ -121,16 +121,33 @@ case $host in
     ;;
 esac
 AM_CONDITIONAL([HAVE_WIN32], [test "${SYS}" = "mingw32"])
+AC_ARG_ENABLE([libdcerpc],
+              [AS_HELP_STRING([--disable-libdcerpc],
+                              [Do not build libdcerpc and the utilities that use it])])
+
 dnl  libdcerpc symbols collide with Microsoft RPC; never build it on Windows.
-AM_CONDITIONAL([BUILD_LIBDCERPC], [test "${SYS}" != "mingw32"])
 AS_IF([test "${SYS}" = "mingw32"], [
+    enable_libdcerpc=no
     AC_MSG_NOTICE([Windows: libdcerpc disabled (symbol collisions with Microsoft RPC)])
+], [test "x$enable_libdcerpc" = "xno"], [
+    AC_MSG_NOTICE([libdcerpc disabled])
 ], [
     AC_MSG_NOTICE([Build libdcerpc (full DCE/RPC interfaces)])
 ])
+AM_CONDITIONAL([BUILD_LIBDCERPC], [test "x$enable_libdcerpc" != "xno"])
 AC_SUBST([LIBSOCKET])
 
 AC_CHECK_LIB([dl], [dlsym], [], [AC_MSG_ERROR([dlsym not found, libdl is required])])
+
+dnl  ncurses is optional; without it the winreg-tui utility is not built.
+have_ncurses=no
+AC_CHECK_HEADERS([ncurses.h], [
+    AC_CHECK_LIB([ncurses], [initscr], [have_ncurses=yes])
+])
+AM_CONDITIONAL([HAVE_NCURSES], [test "$have_ncurses" = "yes"])
+AS_IF([test "$have_ncurses" != "yes"], [
+    AC_MSG_NOTICE([ncurses not found: winreg-tui will not be built])
+])
 
 dnl  CommonCrypto.framework is not always reachable on Apple platforms
 dnl  (e.g. a toolchain that doesn't see Apple's framework headers at

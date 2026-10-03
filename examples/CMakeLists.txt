@@ -21,13 +21,10 @@ set(SOURCES smb2-cat-async
             smb2-link-sync)
 
 set(DCERPC_SOURCES smb2-share-enum
-            dcerpc
             smb2-lsa-lookupsids
             smb2-share-info
             smb2-winreg-enum
-            winreg-tui
-            epm-srvsvc
-            epm-enum)
+            epm-srvsvc)
 
 foreach(TARGET ${SOURCES})
   add_executable(${TARGET} ${TARGET}.c)
@@ -42,14 +39,8 @@ endforeach()
 
 if(ENABLE_LIBDCERPC AND TARGET dcerpc)
   foreach(SRC ${DCERPC_SOURCES})
-    # The target name "dcerpc" belongs to the library; the binary keeps it.
-    if(SRC STREQUAL "dcerpc")
-      set(TARGET dcerpc-tool)
-    else()
-      set(TARGET ${SRC})
-    endif()
+    set(TARGET ${SRC})
     add_executable(${TARGET} ${SRC}.c)
-    set_target_properties(${TARGET} PROPERTIES OUTPUT_NAME ${SRC})
     target_link_libraries(${TARGET} dcerpc smb2 ${CORE_LIBRARIES})
     add_dependencies(${TARGET} dcerpc smb2)
     if(WIN32 AND BUILD_SHARED_LIBS)
@@ -60,14 +51,6 @@ if(ENABLE_LIBDCERPC AND TARGET dcerpc)
                 $<TARGET_FILE:dcerpc> $<TARGET_FILE_DIR:${TARGET}>)
     endif()
   endforeach()
-
-  target_link_libraries(dcerpc-tool ${CMAKE_DL_LIBS})
-
-  find_package(Curses)
-  if(CURSES_FOUND)
-    target_link_libraries(winreg-tui ${CURSES_LIBRARIES})
-    target_include_directories(winreg-tui PRIVATE ${CURSES_INCLUDE_DIRS})
-  endif()
 endif()
 
 if(NOT MSVC)

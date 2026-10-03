@@ -1,3 +1,7 @@
+# Build libdcerpc and its utilities by default.
+# "rpmbuild --without dcerpc" builds only libsmb2 and libsmb2-devel.
+%bcond_without dcerpc
+
 Name: libsmb2
 Summary: SMB2/3 client library
 Vendor: Ronnie Sahlberg
@@ -13,11 +17,19 @@ Source: libsmb2-%{version}.tar.gz
 
 Provides: lib = %{version}
 
+BuildRequires: gcc, make, autoconf, automake, libtool
+BuildRequires: krb5-devel
+%if %{with dcerpc}
+BuildRequires: ncurses-devel
+%endif
+
 Prefix: /usr
 BuildRoot: %{_tmppath}/%{name}-%{version}-root
 
 %description
-Libsmb2 is a SMB2/3 client library
+Libsmb2 is a SMB2/3 client library.
+
+This package also contains the smb2-ls and smb2-cp utilities.
 
 #######################################################################
 
@@ -47,7 +59,8 @@ libtoolize -c -f -i
 automake --add-missing
 
 
-CFLAGS="$RPM_OPT_FLAGS $EXTRA -O2 -D_GNU_SOURCE" %configure
+CFLAGS="$RPM_OPT_FLAGS $EXTRA -O2 -D_GNU_SOURCE" %configure %{!?with_dcerpc:--disable-libdcerpc}
+make %{?_smp_mflags}
 
 %install
 # Clean up in case there is trash left from a previous build
@@ -60,6 +73,9 @@ make DESTDIR=$RPM_BUILD_ROOT install
 # Remove "*.old" files
 find $RPM_BUILD_ROOT -name "*.old" -exec rm -f {} \;
 
+# Do not ship libtool archives
+find $RPM_BUILD_ROOT -name "*.la" -exec rm -f {} \;
+
 %clean
 rm -rf $RPM_BUILD_ROOT
 
@@ -71,15 +87,17 @@ rm -rf $RPM_BUILD_ROOT
 %files
 %defattr(-,root,root)
 
-%{_libdir}/libsmb2.so*
-%{_libdir}/libdcerpc.so*
+%{_libdir}/libsmb2.so.*
+%{_bindir}/smb2-cp
+%{_bindir}/smb2-ls
 
 %package devel
 Summary: Development libraries for LibSMB2
 Group: Development
+Requires: %{name} = %{epoch}:%{version}-%{release}
 
 %description devel
-development libraries for LibSMB2 and libdcerpc
+development libraries for LibSMB2
 
 %files devel
 %defattr(-,root,root)
@@ -88,16 +106,51 @@ development libraries for LibSMB2 and libdcerpc
 %{_includedir}/smb2/libsmb2-raw.h
 %{_includedir}/smb2/smb2.h
 %{_includedir}/smb2/smb2-errors.h
+%{_libdir}/libsmb2.so
+%{_libdir}/libsmb2.a
+%{_libdir}/pkgconfig/libsmb2.pc
+
+%if %{with dcerpc}
+%package -n libdcerpc
+Summary: DCE/RPC client library using libsmb2 as transport
+Group: System Environment/Libraries
+Requires: %{name} = %{epoch}:%{version}-%{release}
+
+%description -n libdcerpc
+Libdcerpc is a DCE/RPC client library implementing SRVSVC, LSA, WKSSVC,
+WINREG and EPM, using libsmb2 named pipes as transport.
+
+This package also contains the dcerpc, epm-enum and winreg-tui utilities.
+
+%files -n libdcerpc
+%defattr(-,root,root)
+%{_libdir}/libdcerpc.so.*
+%{_bindir}/dcerpc
+%{_bindir}/epm-enum
+%{_bindir}/winreg-tui
+
+%package -n libdcerpc-devel
+Summary: Development libraries for libdcerpc
+Group: Development
+Requires: libdcerpc = %{epoch}:%{version}-%{release}
+Requires: %{name}-devel = %{epoch}:%{version}-%{release}
+
+%description -n libdcerpc-devel
+development libraries for libdcerpc
+
+%files -n libdcerpc-devel
+%defattr(-,root,root)
 %{_includedir}/dcerpc/dcerpc.h
 %{_includedir}/dcerpc/dcerpc-dtyp.h
+%{_includedir}/dcerpc/dcerpc-epm.h
 %{_includedir}/dcerpc/dcerpc-lsa.h
 %{_includedir}/dcerpc/dcerpc-srvsvc.h
 %{_includedir}/dcerpc/dcerpc-wkssvc.h
 %{_includedir}/dcerpc/dcerpc-winreg.h
-%{_libdir}/libsmb2.a
+%{_libdir}/libdcerpc.so
 %{_libdir}/libdcerpc.a
-%{_libdir}/pkgconfig/libsmb2.pc
 %{_libdir}/pkgconfig/libdcerpc.pc
+%endif
 
 %changelog
 * Mon Dec 16 2024 : Version 6.1.0
