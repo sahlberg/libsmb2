@@ -375,6 +375,23 @@ void smb2_get_libsmb2Version(struct smb2_libversion *smb2_ver);
 uint16_t smb2_get_dialect(struct smb2_context *smb2);
 
 /*
+ * Gets the NDR transfer syntax selected with the ndr3264/ndr32/ndr64
+ * URL arguments, for use by DCE/RPC layers such as libdcerpc.
+ *  0 : offer both NDR32 and NDR64 (default)
+ *  1 : NDR32 only
+ *  2 : NDR64 only
+ */
+int smb2_get_ndr(struct smb2_context *smb2);
+
+/*
+ * Gets the DCE/RPC data representation selected with the le/be URL
+ * arguments.
+ *  0 : little endian (default)
+ *  1 : big endian
+ */
+int smb2_get_endianness(struct smb2_context *smb2);
+
+/*
  * Set the security mode for the connection.
  * This is a combination of the flags SMB2_NEGOTIATE_SIGNING_ENABLED
  * and  SMB2_NEGOTIATE_SIGNING_REQUIRED

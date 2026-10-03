@@ -86,7 +86,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <dcerpc/dcerpc-winreg.h>
 #include <dcerpc/dcerpc-epm.h>
 #include "libsmb2-raw.h"
-#include "libsmb2-private.h"
 #include "dcerpc-private.h"
 
 struct dcerpc_service *dcerpc_services = NULL;
@@ -922,7 +921,7 @@ dcerpc_connect_context_async(struct dcerpc_context *dce, const char *path,
         }
         dce->syntax = syntax;
         dce->packed_drep[0] = DCERPC_DR_ASCII;
-        if (!dce->smb2->endianness) {
+        if (!smb2_get_endianness(dce->smb2)) {
                 dce->packed_drep[0] |= DCERPC_DR_LITTLE_ENDIAN;
         }
 
@@ -2407,10 +2406,15 @@ dcerpc_call_async(struct dcerpc_context *dce,
 
 /*
  * Sync wait helper (same pattern as lib/sync.c wait_for_reply).
- * Uses struct sync_cb_data from libsmb2-private.h.
  */
+struct dcerpc_sync_cb_data {
+        int is_finished;
+        int status;
+        void *ptr;
+};
+
 static int
-dcerpc_wait_for_reply(struct smb2_context *smb2, struct sync_cb_data *cb_data)
+dcerpc_wait_for_reply(struct smb2_context *smb2, struct dcerpc_sync_cb_data *cb_data)
 {
         while (!cb_data->is_finished) {
                 struct pollfd pfd;
@@ -2439,7 +2443,7 @@ static void
 dcerpc_call_sync_cb(struct dcerpc_context *dce, int status,
                     void *command_data, void *cb_data)
 {
-        struct sync_cb_data *scb = cb_data;
+        struct dcerpc_sync_cb_data *scb = cb_data;
 
         (void)dce;
         scb->status = status;
@@ -2454,7 +2458,7 @@ dcerpc_call(struct dcerpc_context *dce,
             dcerpc_coder rep_coder, int decode_size)
 {
         struct smb2_context *smb2;
-        struct sync_cb_data *scb;
+        struct dcerpc_sync_cb_data *scb;
         void *rep = NULL;
         int rc;
 
@@ -2510,7 +2514,7 @@ dcerpc_connect_context(struct dcerpc_context *dce, const char *path,
                        p_syntax_id_t *syntax)
 {
         struct smb2_context *smb2;
-        struct sync_cb_data *scb;
+        struct dcerpc_sync_cb_data *scb;
         int rc;
 
         if (dce == NULL) {
@@ -2618,7 +2622,7 @@ smb2_bind_cb(struct smb2_context *smb2, int status,
                         continue;
                 }
 
-                switch (smb2->ndr) {
+                switch (smb2_get_ndr(smb2)) {
                 case 0:
                         dce->tctx_id = i;
                         break;
@@ -2667,7 +2671,7 @@ dcerpc_bind_async(struct dcerpc_context *dce, dcerpc_cb cb,
         pdu->bind.max_xmit_frag = 32768;
         pdu->bind.max_recv_frag = 32768;
         pdu->bind.assoc_group_id = 0;
-        pdu->bind.n_context_elem = dce->smb2->ndr ? 1 : 2;
+        pdu->bind.n_context_elem = smb2_get_ndr(dce->smb2) ? 1 : 2;
         pdu->bind.p_cont_elem = dcerpc_alloc_data(pdu,
                      pdu->bind.n_context_elem * sizeof(struct p_cont_elem_t));
         if (pdu->bind.p_cont_elem == NULL) {
@@ -2676,7 +2680,7 @@ dcerpc_bind_async(struct dcerpc_context *dce, dcerpc_cb cb,
                 return -ENOMEM;
         }
         pce = pdu->bind.p_cont_elem;
-        if (dce->smb2->ndr == 0 || dce->smb2->ndr == 1) {
+        if (smb2_get_ndr(dce->smb2) == 0 || smb2_get_ndr(dce->smb2) == 1) {
                 pce->p_cont_id = 0;
                 pce->n_transfer_syn = 1;
                 pce->abstract_syntax = dce->syntax;
@@ -2690,7 +2694,7 @@ dcerpc_bind_async(struct dcerpc_context *dce, dcerpc_cb cb,
                 pce->transfer_syntaxes[0] = &ndr32_syntax;
                 pce++;
         }
-        if (dce->smb2->ndr == 0 || dce->smb2->ndr == 2) {
+        if (smb2_get_ndr(dce->smb2) == 0 || smb2_get_ndr(dce->smb2) == 2) {
                 pce->p_cont_id = 1;
                 pce->n_transfer_syn = 1;
                 pce->abstract_syntax = dce->syntax;

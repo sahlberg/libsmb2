@@ -5,6 +5,10 @@
 #ifndef _DCERPC_PRIVATE_H_
 #define _DCERPC_PRIVATE_H_
 
+#ifndef discard_const
+#define discard_const(ptr) ((void *)((intptr_t)(ptr)))
+#endif
+
 struct dcerpc_context;
 struct dcerpc_iovec;
 int dcerpc_set_uint8(struct dcerpc_context *ctx, struct dcerpc_iovec *iov,

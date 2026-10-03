@@ -660,6 +660,16 @@ uint16_t smb2_get_dialect(struct smb2_context *smb2)
         return smb2->dialect;
 }
 
+int smb2_get_ndr(struct smb2_context *smb2)
+{
+        return smb2->ndr;
+}
+
+int smb2_get_endianness(struct smb2_context *smb2)
+{
+        return smb2->endianness;
+}
+
 void smb2_set_security_mode(struct smb2_context *smb2, uint16_t security_mode)
 {
         smb2->security_mode = security_mode;

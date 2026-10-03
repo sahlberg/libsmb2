@@ -85,6 +85,7 @@ smb2_get_client_guid
 smb2_get_compound_pdu
 smb2_get_dialect
 smb2_get_domain
+smb2_get_endianness
 smb2_get_error
 smb2_get_fd
 smb2_get_fds
@@ -93,6 +94,7 @@ smb2_get_last_request_message_id
 smb2_get_last_reply_message_id
 smb2_get_max_read_size
 smb2_get_max_write_size
+smb2_get_ndr
 smb2_get_nterror
 smb2_get_opaque
 smb2_get_passthrough

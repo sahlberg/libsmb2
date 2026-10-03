@@ -61,7 +61,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <dcerpc/dcerpc-srvsvc.h>
 #include <dcerpc/dcerpc-wkssvc.h>
 #include "libsmb2-raw.h"
-#include "libsmb2-private.h"
 #include "dcerpc-private.h"
 
 /* MS-WKST: uuid(6bffd098-a112-3610-9833-46c3f87e345a), version(1.0) */
