@@ -445,7 +445,7 @@ read_more_data:
                  * exhaustion vector, before we act on it.
                  */
                 if (smb2->spl < SMB2_HEADER_SIZE ||
-                    smb2->spl > SMB2_MAX_PDU_SIZE) {
+                    smb2->spl > SMB2_RECV_PDU_CAP) {
                         smb2_set_error(smb2, "Invalid session packet length "
                                        "%u in PDU", smb2->spl);
                         return -1;
@@ -459,6 +459,53 @@ read_more_data:
                 goto read_more_data;
         case SMB2_RECV_HEADER:
                 if (!memcmp(smb2->in.iov[smb2->in.niov - 1].buf, smb3tfrm, 4)) {
+                        if (!smb2_is_server(smb2)) {
+                                /*
+                                 * validate the transform header before
+                                 * allocating for its payload. All three
+                                 * fields are covered by the AEAD tag, but
+                                 * the tag only proves the server produced
+                                 * them, not that they belong to this
+                                 * session or describe this message.
+                                 */
+                                const uint8_t *th = smb2->in.iov[smb2->in.niov - 1].buf;
+                                uint32_t orig_size;
+                                uint16_t th_flags;
+                                uint64_t th_session;
+
+                                memcpy(&orig_size, &th[36], 4);
+                                orig_size = le32toh(orig_size);
+                                memcpy(&th_flags, &th[42], 2);
+                                th_flags = le16toh(th_flags);
+                                memcpy(&th_session, &th[44], 8);
+                                th_session = le64toh(th_session);
+                                if (!smb2->enc_keys_ready) {
+                                        smb2_set_error(smb2, "Transform header "
+                                                       "received before the "
+                                                       "encryption keys exist");
+                                        return -1;
+                                }
+                                if (th_flags != 0x0001) {
+                                        smb2_set_error(smb2, "Transform header "
+                                                       "flags 0x%04x are not "
+                                                       "'encrypted'", th_flags);
+                                        return -1;
+                                }
+                                if (th_session != smb2->session_id) {
+                                        smb2_set_error(smb2, "Transform header "
+                                                       "for another session");
+                                        return -1;
+                                }
+                                if (smb2->spl < 52 ||
+                                    orig_size != smb2->spl - 52 ||
+                                    orig_size < SMB2_HEADER_SIZE) {
+                                        smb2_set_error(smb2, "Transform header "
+                                                       "OriginalMessageSize %u "
+                                                       "does not match its "
+                                                       "payload", orig_size);
+                                        return -1;
+                                }
+                        }
                         /*
                          * We have already read SMB2_HEADER_SIZE bytes, of
                          * which the first 52 are the transform header and the
@@ -491,6 +538,24 @@ read_more_data:
                                &smb2->in.iov[smb2->in.niov - 2].buf[52], 12);
                         smb2->recv_state = SMB2_RECV_TRFM;
                         goto read_more_data;
+                }
+                /*
+                 * once the session has encryption keys and sealing is
+                 * in effect, a PDU that was not unwrapped from an
+                 * authenticated transform (smb2->enc is only set while the
+                 * decrypted payload is being parsed) is refused here, before
+                 * the header is decoded: before credits are granted,
+                 * interim/async state is recorded, a request is matched or
+                 * any callback runs. NEGOTIATE and SESSION_SETUP replies
+                 * pass only because the keys do not exist yet, not because
+                 * of their command code. Signing is not a substitute: a
+                 * signed plaintext reply is refused too.
+                 */
+                if (!smb2_is_server(smb2) && smb2->seal &&
+                    smb2->enc_keys_ready && smb2->enc == NULL) {
+                        smb2_set_error(smb2, "Unencrypted PDU received on an "
+                                       "encrypted session");
+                        return -1;
                 }
                 if (smb2_decode_header(smb2, &smb2->in.iov[smb2->in.niov - 1],
                                        &smb2->hdr) != 0) {
@@ -662,7 +727,7 @@ read_more_data:
                                         if (!has_xfrmhdr) {
                                                 len += SMB2_SPL_SIZE;
                                         }
-                                        if (len < 0 || len > SMB2_MAX_PDU_SIZE) {
+                                        if (len < 0 || len > SMB2_RECV_PDU_CAP) {
                                                 smb2_set_error(smb2, "no matching PDU found");
                                                 return -1;
                                         }

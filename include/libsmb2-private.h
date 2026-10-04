@@ -221,6 +221,11 @@ struct smb2_context {
         uint8_t seal:1;
         int8_t seal_requested;
         uint8_t sign:1;
+        /* set once session setup has derived the encryption keys
+         * (SMB 3.x). From then on, while seal is in effect, every PDU
+         * the client accepts must have arrived inside an authenticated
+         * transform. Cleared by smb2_close_context(). */
+        uint8_t enc_keys_ready:1;
         uint8_t signing_key[SMB2_KEY_SIZE];
         uint8_t serverin_key[SMB2_KEY_SIZE];
         uint8_t serverout_key[SMB2_KEY_SIZE];
@@ -323,6 +328,20 @@ typedef void (*smb2_free_payload)(struct smb2_context *smb2, void *payload);
 
 
 #define SMB2_MAX_PDU_SIZE 16*1024*1024
+
+/* receive cap, checked against every peer-supplied length (SPL,
+ * transform OriginalMessageSize, decrypted length, unmatched-reply skip)
+ * before anything is allocated for it. Optional receive policy, not a tuned
+ * budget: it assumes the caller never asks for a response larger than
+ * 1 MiB of payload (READ / QUERY_DIRECTORY output lengths) and that
+ * headers, fixed parts and the 52-byte transform header fit in 64 KiB.
+ * Larger legitimate responses are refused (fail closed). */
+#ifndef SMB2_RECV_PDU_CAP
+#define SMB2_RECV_PDU_CAP (1024 * 1024 + 64 * 1024)
+#endif
+#if SMB2_RECV_PDU_CAP > SMB2_MAX_PDU_SIZE
+#error "SMB2_RECV_PDU_CAP must not exceed SMB2_MAX_PDU_SIZE"
+#endif
 
 struct smb2_pdu {
         struct smb2_pdu *next;

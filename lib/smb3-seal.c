@@ -155,7 +155,7 @@ smb3_do_decrypt_pdu(struct smb2_context *smb2)
                  * needs the same sanity check the on-the-wire SPL gets.
                  */
                 if (smb2->enc_len < SMB2_HEADER_SIZE ||
-                    smb2->enc_len > SMB2_MAX_PDU_SIZE) {
+                    smb2->enc_len > SMB2_RECV_PDU_CAP) {
                         smb2_set_error(smb2, "Invalid decrypted PDU length %zu",
                                        smb2->enc_len);
                         free(smb2->enc);
