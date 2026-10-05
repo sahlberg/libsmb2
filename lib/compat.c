@@ -635,6 +635,8 @@ int poll(struct pollfd *fds, unsigned int nfds, int timo)
                 toptr = &timeout;
                 timeout.tv_sec = (unsigned)timo / 1000;
                 timeout.tv_usec = ((unsigned)timo % 1000) * 1000;
+        } else {
+                toptr = NULL;
         }
 
 #else
@@ -664,8 +666,12 @@ int poll(struct pollfd *fds, unsigned int nfds, int timo)
                         revents |= POLLIN;
                 if(events & POLLOUT && FD_ISSET(fd, &ofds))
                         revents |= POLLOUT;
-                if(FD_ISSET(fd, &efds))
-                        revents |= POLLHUP;
+                /* On BSD-style stacks the except set signals out-of-band
+                 * data, not hang-up. Hang-up shows up as readable with
+                 * recv() returning 0.
+                 */
+                if(events & POLLPRI && FD_ISSET(fd, &efds))
+                        revents |= POLLPRI;
                 if (revents) {
                         fds[i].revents = revents;
                         rc++;
