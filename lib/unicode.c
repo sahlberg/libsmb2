@@ -59,10 +59,13 @@
 static int
 l1(char c)
 {
+        /* Work on the byte as unsigned: shifting a negative (signed) char
+         * left is undefined behaviour. Same eight-bit classification. */
+        unsigned char u = (unsigned char)c;
         int i = 0;
-        while (c & 0x80) {
+        while (u & 0x80) {
                 i++;
-                c <<= 1;
+                u = (unsigned char)(u << 1);
         }
         return i;
 }
