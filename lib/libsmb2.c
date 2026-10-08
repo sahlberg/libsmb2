@@ -194,6 +194,7 @@ smb2_close_context(struct smb2_context *smb2)
 
         smb2->message_id = 0;
         smb2->session_id = 0;
+        smb2->enc_keys_ready = 0;
         smb2->tree_id_top = 0;
         smb2->tree_id_cur = 0;
         smb2->tree_id[0] = 0xdeadbeef;
@@ -852,6 +853,10 @@ session_setup_cb(struct smb2_context *smb2, int status,
                 }
 
                 smb2_create_signing_key(smb2);
+                if (smb2->dialect >= SMB2_VERSION_0300) {
+                        /* serverout_key now exists; see socket.c */
+                        smb2->enc_keys_ready = 1;
+                }
 
                 /*
                  * This is the final leg of session setup, the first message
