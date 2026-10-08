@@ -52,6 +52,39 @@ int usage(void)
         exit(1);
 }
 
+/*
+ * This example builds against both the current share-enum API and the
+ * one in libsmb2 6.2 and earlier, and can be used as a guide when
+ * migrating. LIBSMB2_SRVSVC_V2 is defined by libsmb2.h when the new API
+ * is available.
+ *
+ * libsmb2 <= 6.2                       current
+ * ---------------------------------    ---------------------------------
+ * enum SHARE_INFO_enum                 enum smb2_share_info_level
+ * SHARE_INFO_0, SHARE_INFO_1           SMB2_SHARE_INFO_0/_1/_2
+ * SHARE_TYPE_*                         SMB2_SHARE_TYPE_*
+ * struct srvsvc_NetrShareEnum_rep      struct smb2_share_enum_reply
+ * rep->ses.ShareInfo.LevelN            rep->entries_read
+ *     .EntriesRead
+ * rep->ses.ShareInfo.LevelN            rep->share_info.info_N[i]
+ *     .Buffer->share_info_N[i]
+ * netname.utf8, remark.utf8            netname, remark (char *)
+ * status != 0 is an error              status < 0 : -errno, no reply
+ *                                      status > 0 : WERROR from the
+ *                                                   server, reply must
+ *                                                   still be freed
+ */
+#ifndef LIBSMB2_SRVSVC_V2
+#define SMB2_SHARE_INFO_0          SHARE_INFO_0
+#define SMB2_SHARE_INFO_1          SHARE_INFO_1
+#define SMB2_SHARE_TYPE_DISKTREE   SHARE_TYPE_DISKTREE
+#define SMB2_SHARE_TYPE_PRINTQ     SHARE_TYPE_PRINTQ
+#define SMB2_SHARE_TYPE_DEVICE     SHARE_TYPE_DEVICE
+#define SMB2_SHARE_TYPE_IPC        SHARE_TYPE_IPC
+#define SMB2_SHARE_TYPE_TEMPORARY  SHARE_TYPE_TEMPORARY
+#define SMB2_SHARE_TYPE_HIDDEN     SHARE_TYPE_HIDDEN
+#endif
+
 static void print_share_type(uint32_t type)
 {
         if ((type & 3) == SMB2_SHARE_TYPE_DISKTREE) {
@@ -74,15 +107,22 @@ static void print_share_type(uint32_t type)
         }
 }
 
+#ifdef LIBSMB2_SRVSVC_V2
 void se_cb(struct smb2_context *smb2, int status,
                 void *command_data, void *private_data)
 {
         struct smb2_share_enum_reply *rep = command_data;
         uint32_t i;
 
-        if (status) {
+        if (status < 0) {
                 printf("failed to enumerate shares (%s) %s\n",
                        strerror(-status), smb2_get_error(smb2));
+                exit(10);
+        }
+        if (status > 0) {
+                printf("server failed to enumerate shares, "
+                       "WERROR 0x%08x\n", status);
+                smb2_free_data(smb2, rep);
                 exit(10);
         }
 
@@ -112,6 +152,45 @@ void se_cb(struct smb2_context *smb2, int status,
 
         is_finished = 1;
 }
+#else /* libsmb2 <= 6.2 */
+void se_cb(struct smb2_context *smb2, int status,
+                void *command_data, void *private_data)
+{
+        struct srvsvc_NetrShareEnum_rep *rep = command_data;
+        uint32_t i;
+
+        if (status) {
+                printf("failed to enumerate shares (%s) %s\n",
+                       strerror(-status), smb2_get_error(smb2));
+                exit(10);
+        }
+
+        switch (level) {
+        case SMB2_SHARE_INFO_0:
+                printf("Number of shares:%d\n",
+                       rep->ses.ShareInfo.Level0.EntriesRead);
+                for (i = 0; i < rep->ses.ShareInfo.Level0.EntriesRead; i++) {
+                        printf("%-20s\n", rep->ses.ShareInfo.Level0.Buffer->share_info_0[i].netname.utf8);
+                }
+                break;
+        case SMB2_SHARE_INFO_1:
+                printf("Number of shares:%d\n",
+                       rep->ses.ShareInfo.Level1.EntriesRead);
+                for (i = 0; i < rep->ses.ShareInfo.Level1.EntriesRead; i++) {
+                        printf("%-20s %-20s",
+                               rep->ses.ShareInfo.Level1.Buffer->share_info_1[i].netname.utf8,
+                               rep->ses.ShareInfo.Level1.Buffer->share_info_1[i].remark.utf8);
+                        print_share_type(rep->ses.ShareInfo.Level1.Buffer->share_info_1[i].type);
+                        printf("\n");
+                }
+                break;
+        }
+
+        smb2_free_data(smb2, rep);
+
+        is_finished = 1;
+}
+#endif
 
 int main(int argc, char *argv[])
 {
@@ -143,10 +222,16 @@ int main(int argc, char *argv[])
         switch (level) {
         case SMB2_SHARE_INFO_0:
         case SMB2_SHARE_INFO_1:
+#ifdef LIBSMB2_SRVSVC_V2
         case SMB2_SHARE_INFO_2:
+#endif
                 break;
         default:
+#ifdef LIBSMB2_SRVSVC_V2
                 fprintf(stderr, "level must be 0/1/2\n");
+#else
+                fprintf(stderr, "level must be 0/1\n");
+#endif
                 exit(0);
         }
 
