@@ -200,6 +200,8 @@ struct smb2_context {
         uint8_t seal:1;
         int8_t seal_requested;
         uint8_t sign:1;
+        /* SMB3 encryption keys derived; sealed clients refuse plaintext from here on */
+        uint8_t enc_keys_ready:1;
         uint8_t signing_key[SMB2_KEY_SIZE];
         uint8_t serverin_key[SMB2_KEY_SIZE];
         uint8_t serverout_key[SMB2_KEY_SIZE];
@@ -302,6 +304,22 @@ typedef void (*smb2_free_payload)(struct smb2_context *smb2, void *payload);
 
 
 #define SMB2_MAX_PDU_SIZE 16*1024*1024
+
+/* headroom over the negotiated read/write size for headers and the transform header */
+#define SMB2_RECV_PDU_SLACK (64 * 1024)
+
+/* cap peer-supplied PDU lengths to the negotiated read/write size, never above SMB2_MAX_PDU_SIZE */
+static inline uint32_t
+smb2_recv_pdu_cap(const struct smb2_context *smb2)
+{
+        uint32_t max = smb2->max_read_size > smb2->max_write_size ?
+                smb2->max_read_size : smb2->max_write_size;
+
+        if (max == 0 || max > SMB2_MAX_PDU_SIZE - SMB2_RECV_PDU_SLACK) {
+                return SMB2_MAX_PDU_SIZE;
+        }
+        return max + SMB2_RECV_PDU_SLACK;
+}
 
 struct smb2_pdu {
         struct smb2_pdu *next;
