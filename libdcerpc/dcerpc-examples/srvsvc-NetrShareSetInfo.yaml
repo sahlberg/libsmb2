@@ -4,8 +4,8 @@ NetrShareSetInfo: Request
   Level: SHARE_INFO_1
   ShareInfo:
     ShareInfo1: 
-      netname: SNAP-1
-      type: STYPE_DISKTREE
-      remark: New Comment
+      NetName: SNAP-1
+      Type: STYPE_DISKTREE
+      Remark: New Comment
   ParmErr: 3
 

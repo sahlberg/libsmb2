@@ -245,6 +245,10 @@ int dcerpc_open_async(struct dcerpc_context *dce, dcerpc_cb cb, void *cb_data);
  *
  * On error, command_data is NULL; there is nothing to free for the reply.
  * Request-side buffers supplied by the caller are never part of this tree.
+ *
+ * req must stay valid until cb is called: decoding the reply reads [in]
+ * values from it, such as the level of a GetInfo reply's union or the
+ * size_is() of an [out] array.
  */
 int dcerpc_call_async(struct dcerpc_context *dce,
                       int opnum,
@@ -302,6 +306,9 @@ void *dcerpc_alloc_data(struct dcerpc_pdu *pdu, size_t size);
 
 void dcerpc_set_size_is(struct dcerpc_pdu *pdu, uint32_t size_is);
 uint32_t dcerpc_get_size_is(struct dcerpc_pdu *pdu);
+/* length_is() of a conformant-varying array, as size_is() */
+void dcerpc_set_length_is(struct dcerpc_pdu *pdu, uint32_t length_is);
+uint32_t dcerpc_get_length_is(struct dcerpc_pdu *pdu);
 void dcerpc_set_switch_is(struct dcerpc_pdu *pdu, int switch_is);
 int dcerpc_get_switch_is(struct dcerpc_pdu *pdu);
 /*
@@ -359,6 +366,14 @@ int dcerpc_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pd
 int dcerpc_uint16_coder_pp(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                            struct dcerpc_iovec *iov, int *offset, void *ptr,
                            struct dcerpc_uint32_pretty_printer *pp);
+/*
+ * An enum without [v1_enum]: 16 bits in NDR32, 32 bits in NDR64. ptr is a
+ * uint16_t *. YAML/JSON as dcerpc_uint16_coder_pp.
+ */
+int dcerpc_enum16_coder(char *name, struct dcerpc_context *ctx,
+                        struct dcerpc_pdu *pdu,
+                        struct dcerpc_iovec *iov, int *offset, void *ptr,
+                        struct dcerpc_uint32_pretty_printer *pp);
 int dcerpc_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                         struct dcerpc_iovec *iov, int *offset, void *ptr);
 int dcerpc_uint32_coder_pp(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
@@ -374,6 +389,16 @@ int dcerpc_carray_coder(char *name, struct dcerpc_context *ctx,
                         struct dcerpc_pdu *pdu,
                         struct dcerpc_iovec *iov, int *offset,
                         uint32_t num, void *ptr, int elem_size, dcerpc_coder coder);
+/*
+ * Conformant-varying array of max_count elements of which num are sent
+ * ([size_is(max_count), length_is(num)]). YAML/JSON show the num elements
+ * as dcerpc_carray_coder() does.
+ */
+int dcerpc_cvarray_coder(char *name, struct dcerpc_context *ctx,
+                         struct dcerpc_pdu *pdu,
+                         struct dcerpc_iovec *iov, int *offset,
+                         uint32_t max_count, uint32_t num, void *ptr,
+                         int elem_size, dcerpc_coder coder);
 /*
  * Like dcerpc_carray_coder() for an array of plain values (integers,
  * strings, SIDs, ...): NDR is identical; YAML/JSON show a list of bare
@@ -391,6 +416,25 @@ int dcerpc_struct_coder(char *name, struct dcerpc_context *ctx,
                         struct dcerpc_pdu *pdu,
                         struct dcerpc_iovec *iov, int *offset,
                         void *ptr, dcerpc_coder coder);
+/*
+ * A structure with its NDR alignment known: idlcomp passes the alignment of
+ * the structure's largest member for NDR32 and NDR64. NDR aligns the start
+ * to it, and NDR64 also pads the end; YAML/JSON as dcerpc_struct_coder.
+ */
+int dcerpc_aligned_struct_coder(char *name, struct dcerpc_context *ctx,
+                                struct dcerpc_pdu *pdu,
+                                struct dcerpc_iovec *iov, int *offset,
+                                void *ptr, dcerpc_coder coder,
+                                int ndr32_align, int ndr64_align);
+/*
+ * A structure as an array element: NDR as dcerpc_aligned_struct_coder,
+ * YAML/JSON code its members directly (not nested under a key).
+ */
+int dcerpc_aligned_element_coder(char *name, struct dcerpc_context *ctx,
+                                 struct dcerpc_pdu *pdu,
+                                 struct dcerpc_iovec *iov, int *offset,
+                                 void *ptr, dcerpc_coder coder,
+                                 int ndr32_align, int ndr64_align);
 int dcerpc_context_handle_coder(char *name, struct dcerpc_context *dce,
                                 struct dcerpc_pdu *pdu,
                                 struct dcerpc_iovec *iov, int *offset,
@@ -479,6 +523,57 @@ int dcerpc_RPC_UNICODE_STRINGz_coder(char *name, struct dcerpc_context *dce,
                                      void *ptr);
 /* MS-RRP name for the NUL-terminated form */
 #define dcerpc_RRP_UNICODE_STRING_coder dcerpc_RPC_UNICODE_STRINGz_coder
+
+/*
+ * Endpoint mapper built-in types (C706 Appendix O), used by epm/epm.idl
+ * as twr_t and EPM_ANNOTATION and coded in dcerpc-epm.c, and helpers to
+ * parse protocol towers. The interface itself, and its
+ * constants (EPM_PROTOCOL_*, EPM_STATUS_*), are in <dcerpc/epm.h>.
+ */
+/*
+ * twr_t — opaque protocol tower (C706).
+ * typedef struct {
+ *     unsigned32 tower_length;
+ *     [size_is(tower_length)] byte tower_octet_string[];
+ * } twr_t, *twr_p_t;
+ *
+ * A conformant structure: in NDR its max_count comes first. Its NDR
+ * alignment is 4 (the hoisted max_count is not a member).
+ */
+struct epm_twr_t {
+        uint32_t TowerLength;
+        uint8_t *TowerOctetString;
+};
+
+/* twr_t: the members, without the YAML/JSON nesting or NDR alignment */
+int dcerpc_epm_twr_coder(char *name, struct dcerpc_context *dce,
+                         struct dcerpc_pdu *pdu,
+                         struct dcerpc_iovec *iov, int *offset,
+                         void *ptr);
+/* twr_t as a structure: what epm.idl's twr_t built-in type codes with */
+int dcerpc_epm_twr_struct_coder(char *name, struct dcerpc_context *dce,
+                                struct dcerpc_pdu *pdu,
+                                struct dcerpc_iovec *iov, int *offset,
+                                void *ptr);
+/*
+ * [string] char annotation[64]: a fixed-size varying string (offset and
+ * actual_count, then the characters; no max_count). ptr is a char **.
+ */
+int dcerpc_epm_annotation_coder(char *name, struct dcerpc_context *dce,
+                                struct dcerpc_pdu *pdu,
+                                struct dcerpc_iovec *iov, int *offset,
+                                void *ptr);
+
+/*
+ * Parse a tower returned by ept_Map / ept_Lookup.
+ * On success for ncacn_np: *pipe_out is malloc'd pipe path (e.g. "\\pipe\\...").
+ * On success for ncacn_ip_tcp: *port_out is set; *ipv4_out is malloc'd dotted IP.
+ * Returns 0 on success, -1 if the tower is not a recognized layout.
+ */
+int dcerpc_epm_tower_get_ncacn_np(const struct epm_twr_t *twr,
+                                  char **pipe_out, char **host_out);
+int dcerpc_epm_tower_get_ncacn_ip_tcp(const struct epm_twr_t *twr,
+                                      char **ipv4_out, uint16_t *port_out);
 
 #ifdef __cplusplus
 }

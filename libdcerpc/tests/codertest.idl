@@ -1,0 +1,56 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
+
+/*
+ * A test-only interface for the coder tests: NDR layouts that the real
+ * interfaces do not exercise. It is never served or sent anywhere; the
+ * known-good NDR in codertest-coder-test.c is derived from the NDR rules.
+ * Add types and operations here for new coder tests.
+ */
+
+[
+  uuid(6c6e8b0e-5d1f-4c1b-9e2a-0d6b6c4f7a10),
+  version(1.0),
+  helpstring("libdcerpc coder tests"),
+  pointer_default(unique)
+]
+interface codertest
+{
+
+/*
+ * An embedded structure whose size is not a multiple of its alignment:
+ * NDR64 pads TAIL_INNER to 16 bytes, so After is at offset 16 (NDR32: 9).
+ */
+typedef struct {
+	hyper Big;
+	uint8_t Small;
+} TAIL_INNER;
+
+typedef struct {
+	TAIL_INNER Inner;
+	uint8_t After;
+} TAIL_OUTER;
+
+/*
+ * An embedded structure whose first member is smaller than its alignment:
+ * HEAD_INNER is 4-aligned, so Short is at offset 4, not 2.
+ */
+typedef struct {
+	uint16_t Short;
+	uint32_t Long;
+} HEAD_INNER;
+
+typedef struct {
+	uint8_t Before;
+	HEAD_INNER Inner;
+} HEAD_OUTER;
+
+	[opnum(0x00)]
+	WERROR EmbeddedTail(
+		[in,ref] TAIL_OUTER *Outer
+	);
+
+	[opnum(0x01)]
+	WERROR EmbeddedHead(
+		[in,ref] HEAD_OUTER *Outer
+	);
+}

@@ -5,6 +5,11 @@ noinst_PROGRAMS = epm-srvsvc \
 
 AM_CPPFLAGS = \
 	-I$(top_srcdir)/include \
+	-I$(top_builddir)/srvsvc \
+	-I$(top_builddir)/wkssvc \
+	-I$(top_builddir)/winreg \
+	-I$(top_builddir)/lsa \
+	-I$(top_builddir)/epm \
 	$(LIBSMB2_CFLAGS) \
 	"-D_U_=__attribute__((unused))" \
 	-Wall -Werror

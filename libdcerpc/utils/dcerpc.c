@@ -30,7 +30,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <smb2/libsmb2.h>
 #include <smb2/libsmb2-raw.h>
 #include <dcerpc/dcerpc.h>
-#include <dcerpc/dcerpc-srvsvc.h>
+#include <dcerpc/srvsvc.h>
 
 #ifndef discard_const
 #define discard_const(ptr) ((void *)((intptr_t)(ptr)))
@@ -49,7 +49,7 @@ struct opdata {
         struct dcerpc_iovec iov;        
         int offset;
 };
-#define MAXOPDATA 16
+#define MAXOPDATA 64
 struct opdata opdata[MAXOPDATA];
 
 struct rpc_cb_data {

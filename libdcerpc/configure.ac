@@ -33,6 +33,12 @@ dnl  libdcerpc uses libsmb2 as its transport. When built as part of the
 dnl  libsmb2 tree the parent configure passes LIBSMB2_CFLAGS and
 dnl  LIBSMB2_LIBS pointing at the uninstalled libsmb2, which makes
 dnl  PKG_CHECK_MODULES skip the pkg-config lookup.
+dnl  The srvsvc coders are generated from IDL by idlcomp.py.
+AC_PATH_PROG([PYTHON3], [python3])
+AS_IF([test -z "$PYTHON3"], [
+    AC_MSG_ERROR([python3 is required to generate the IDL coders])
+])
+
 PKG_PROG_PKG_CONFIG
 PKG_CHECK_MODULES([LIBSMB2], [libsmb2 >= 7.0.0])
 
@@ -77,6 +83,11 @@ AC_CONFIG_FILES([
     Makefile
     examples/Makefile
     include/Makefile
+    srvsvc/Makefile
+    wkssvc/Makefile
+    winreg/Makefile
+    lsa/Makefile
+    epm/Makefile
     tests/Makefile
     utils/Makefile
     libdcerpc.pc

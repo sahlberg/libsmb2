@@ -28,7 +28,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <smb2/libsmb2.h>
 #include <smb2/libsmb2-raw.h>
 #include <dcerpc/dcerpc.h>
-#include <dcerpc/dcerpc-srvsvc.h>
+#include <dcerpc/srvsvc.h>
 
 #ifndef discard_const
 #define discard_const(ptr) ((void *)((intptr_t)(ptr)))
@@ -62,33 +62,33 @@ print_share(int lvl, union srvsvc_SHARE_INFO *si)
 
         switch (lvl) {
         case SRVSVC_SHARE_INFO_0:
-                netname = si->ShareInfo0.netname;
+                netname = si->ShareInfo0.NetName;
                 has_type = 0;
                 break;
         case SRVSVC_SHARE_INFO_1:
-                netname = si->ShareInfo1.netname;
-                remark = si->ShareInfo1.remark;
-                type = si->ShareInfo1.type;
+                netname = si->ShareInfo1.NetName;
+                remark = si->ShareInfo1.Remark;
+                type = si->ShareInfo1.Type;
                 break;
         case SRVSVC_SHARE_INFO_2:
-                netname = si->ShareInfo2.netname;
-                remark = si->ShareInfo2.remark;
-                type = si->ShareInfo2.type;
+                netname = si->ShareInfo2.NetName;
+                remark = si->ShareInfo2.Remark;
+                type = si->ShareInfo2.Type;
                 break;
         case SRVSVC_SHARE_INFO_501:
-                netname = si->ShareInfo501.netname;
-                remark = si->ShareInfo501.remark;
-                type = si->ShareInfo501.type;
+                netname = si->ShareInfo501.NetName;
+                remark = si->ShareInfo501.Remark;
+                type = si->ShareInfo501.Type;
                 break;
         case SRVSVC_SHARE_INFO_502:
-                netname = si->ShareInfo502.netname;
-                remark = si->ShareInfo502.remark;
-                type = si->ShareInfo502.type;
+                netname = si->ShareInfo502.NetName;
+                remark = si->ShareInfo502.Remark;
+                type = si->ShareInfo502.Type;
                 break;
         case SRVSVC_SHARE_INFO_503:
-                netname = si->ShareInfo503.netname;
-                remark = si->ShareInfo503.remark;
-                type = si->ShareInfo503.type;
+                netname = si->ShareInfo503.NetName;
+                remark = si->ShareInfo503.Remark;
+                type = si->ShareInfo503.Type;
                 break;
         default:
                 /* other levels have no name; see the YAML below */

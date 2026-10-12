@@ -1,0 +1,122 @@
+/* -*-  mode:c; tab-width:8; c-basic-offset:8; indent-tabs-mode:nil;  -*- */
+/*
+   Copyright (C) 2026 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
+/*
+ * Coder tests for NDR layouts that the real interfaces do not exercise,
+ * using the test-only interface in codertest.idl. See coder-test.h for
+ * the tests run per case.
+ *
+ * The known-good NDR here is derived from the NDR rules ([C706] 14,
+ * [MS-RPCE] 2.2.5), not captured from a server: nothing implements this
+ * interface. Every flavor, NDR64 big-endian included, has a known-good
+ * stub.
+ */
+
+#include <stdint.h>
+#include <stddef.h>
+
+#include <dcerpc/dcerpc.h>
+
+#include "codertest_coder.h"
+#include "coder-test.h"
+
+/*
+ * EmbeddedTail: TAIL_OUTER { TAIL_INNER { hyper Big; uint8 Small; } Inner;
+ *                            uint8 After; }
+ * Big = 0x0102030405060708, Small = 0x11, After = 0x22.
+ *
+ * Both structures are 8-aligned (Big). NDR32 does not pad structures at
+ * the end, so After follows Small at offset 9. NDR64 pads TAIL_INNER to a
+ * multiple of 8 (16 bytes), putting After at offset 16, and pads
+ * TAIL_OUTER to 24 bytes.
+ */
+static const uint8_t embedded_tail_ndr32_le[] = {
+        0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        0x11, 0x22,
+};
+static const uint8_t embedded_tail_ndr32_be[] = {
+        0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+        0x11, 0x22,
+};
+static const uint8_t embedded_tail_ndr64_le[] = {
+        0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        0x11, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x22, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+};
+static const uint8_t embedded_tail_ndr64_be[] = {
+        0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+        0x11, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x22, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+};
+
+/*
+ * EmbeddedHead: HEAD_OUTER { uint8 Before; HEAD_INNER { uint16 Short;
+ *                            uint32 Long; } Inner; }
+ * Before = 0x33, Short = 0x4455, Long = 0x66778899.
+ *
+ * HEAD_INNER is 4-aligned (Long), so it starts at offset 4 although its
+ * first member is a uint16: Short at 4, Long at 8. 12 bytes is a multiple
+ * of 4, so NDR64 adds no padding and both transfer syntaxes agree.
+ */
+static const uint8_t embedded_head_le[] = {
+        0x33, 0x00, 0x00, 0x00, 0x55, 0x44, 0x00, 0x00,
+        0x99, 0x88, 0x77, 0x66,
+};
+static const uint8_t embedded_head_be[] = {
+        0x33, 0x00, 0x00, 0x00, 0x44, 0x55, 0x00, 0x00,
+        0x66, 0x77, 0x88, 0x99,
+};
+
+/* Known-good YAML */
+static const char embedded_tail_yaml[] =
+        "EmbeddedTail: Request\n"
+        "  Outer: \n"
+        "    Inner: \n"
+        "      Big: 72623859790382856\n"
+        "      Small: 17\n"
+        "    After: 34\n";
+
+static const char embedded_head_yaml[] =
+        "EmbeddedHead: Request\n"
+        "  Outer: \n"
+        "    Before: 51\n"
+        "    Inner: \n"
+        "      Short: 17493\n"
+        "      Long: 1719109785\n";
+
+#define BLOB(b) { b, sizeof(b) }
+
+static const struct test_case test_cases[] = {
+        { "EmbeddedTail request: NDR64 trailing padding of an embedded structure",
+          "EmbeddedTail",
+          codertest_EmbeddedTail_req_coder,
+          sizeof(struct codertest_EmbeddedTail_req),
+          NULL, embedded_tail_yaml,
+          { BLOB(embedded_tail_ndr32_le), BLOB(embedded_tail_ndr32_be),
+            BLOB(embedded_tail_ndr64_le), BLOB(embedded_tail_ndr64_be) },
+          0, NULL },
+        { "EmbeddedHead request: start alignment of an embedded structure",
+          "EmbeddedHead",
+          codertest_EmbeddedHead_req_coder,
+          sizeof(struct codertest_EmbeddedHead_req),
+          NULL, embedded_head_yaml,
+          { BLOB(embedded_head_le), BLOB(embedded_head_be),
+            BLOB(embedded_head_le), BLOB(embedded_head_be) },
+          0, NULL },
+};
+
+int main(void)
+{
+        return run_coder_tests(test_cases,
+                               sizeof(test_cases) / sizeof(test_cases[0]));
+}

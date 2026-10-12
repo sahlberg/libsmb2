@@ -1,0 +1,206 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
+
+/*
+ * Local Security Authority: the LsarClose, LsarOpenPolicy2,
+ * LsarLookupSids2 and LsarLookupNames2 calls from [MS-LSAD] / [MS-LSAT].
+ * Function names drop the "Lsar" prefix.
+ */
+[
+  uuid(12345778-1234-abcd-ef00-0123456789ab),
+  version(0.0),
+  helpstring("Local Security Authority"),
+  endpoint("ncacn_np:[\\pipe\\lsarpc]"),
+  pointer_default(unique)
+]
+interface lsa
+{
+
+typedef [context_handle] void *LSAPR_HANDLE;
+
+/* Policy object access rights (DesiredAccess), [MS-LSAD] 2.2.1.1.2 */
+typedef [bitmap32bit] bitmap {
+	POLICY_VIEW_LOCAL_INFORMATION   = 0x00000001,
+	POLICY_VIEW_AUDIT_INFORMATION   = 0x00000002,
+	POLICY_GET_PRIVATE_INFORMATION  = 0x00000004,
+	POLICY_TRUST_ADMIN              = 0x00000008,
+	POLICY_CREATE_ACCOUNT           = 0x00000010,
+	POLICY_CREATE_SECRET            = 0x00000020,
+	POLICY_CREATE_PRIVILEGE         = 0x00000040,
+	POLICY_SET_DEFAULT_QUOTA_LIMITS = 0x00000080,
+	POLICY_SET_AUDIT_REQUIREMENTS   = 0x00000100,
+	POLICY_AUDIT_LOG_ADMIN          = 0x00000200,
+	POLICY_SERVER_ADMIN             = 0x00000400,
+	POLICY_LOOKUP_NAMES             = 0x00000800,
+	POLICY_NOTIFICATION             = 0x00001000
+} POLICY_ACCESS_MASK;
+
+/*
+ * [MS-LSAT] 2.2.13: a plain (not [v1_enum]) enum, so 16 bits in NDR32.
+ * Where it is used, a 16-bit Use plus padding and a 32-bit one have the
+ * same layout; only the value in a big-endian NDR32 stub differs.
+ */
+typedef enum {
+	SidTypeUser = 1,
+	SidTypeGroup = 2,
+	SidTypeDomain = 3,
+	SidTypeAlias = 4,
+	SidTypeWellKnownGroup = 5,
+	SidTypeDeletedAccount = 6,
+	SidTypeInvalid = 7,
+	SidTypeUnknown = 8,
+	SidTypeComputer = 9,
+	SidTypeLabel = 10,
+	SidTypeLogonSession = 11
+} SID_NAME_USE;
+
+/*
+ * [MS-LSAT] 2.2.16: a plain (not [v1_enum]) enum, so 16 bits in NDR32.
+ * Windows rejects a 32-bit LookupLevel in a big-endian request.
+ */
+typedef enum {
+	LsapLookupWksta = 1,
+	LsapLookupPDC = 2,
+	LsapLookupTDL = 3,
+	LsapLookupGC = 4,
+	LsapLookupXForestReferral = 5,
+	LsapLookupXForestResolve = 6,
+	LsapLookupRODCReferralToFullDC = 7
+} LSAP_LOOKUP_LEVEL;
+
+/*
+ * LSAPR_OBJECT_ATTRIBUTES ([MS-LSAD] 2.2.9) and the types it points to.
+ * For LsarOpenPolicy2 all the pointers are NULL.
+ */
+typedef struct {
+	uint16_t Length;
+	uint16_t MaximumLength;
+	[size_is(MaximumLength), length_is(Length)] uint8_t *Buffer;
+} STRING, *PSTRING;
+
+typedef struct {
+	[range(0,262144)] uint32_t Length;
+	[size_is(Length),blob(SECURITY_DESCRIPTOR)] uint8_t *SecurityDescriptor;
+} LSAPR_SECURITY_DESCRIPTOR, *PLSAPR_SECURITY_DESCRIPTOR;
+
+typedef enum {
+	SecurityAnonymous = 0,
+	SecurityIdentification = 1,
+	SecurityImpersonation = 2,
+	SecurityDelegation = 3
+} SECURITY_IMPERSONATION_LEVEL;
+
+typedef struct {
+	uint32_t Length;
+	SECURITY_IMPERSONATION_LEVEL ImpersonationLevel;
+	uint8_t ContextTrackingMode;
+	uint8_t EffectiveOnly;
+} SECURITY_QUALITY_OF_SERVICE, *PSECURITY_QUALITY_OF_SERVICE;
+
+typedef struct {
+	uint32_t Length;
+	uint8_t *RootDirectory;
+	PSTRING ObjectName;
+	uint32_t Attributes;
+	PLSAPR_SECURITY_DESCRIPTOR SecurityDescriptor;
+	PSECURITY_QUALITY_OF_SERVICE SecurityQualityOfService;
+} LSAPR_OBJECT_ATTRIBUTES, *PLSAPR_OBJECT_ATTRIBUTES;
+
+/*
+ * [MS-LSAT] 2.2.18. SidInfo is an array of LSAPR_SID_INFORMATION
+ * ({ PRPC_SID Sid; }, 2.2.17) there; an array of SID pointers is the same
+ * on the wire and is a plain list of SIDs in YAML/JSON.
+ */
+typedef struct {
+	[range(0,20480)] uint32_t Entries;
+	[size_is(Entries)] RPC_SID **SidInfo;
+} LSAPR_SID_ENUM_BUFFER, *PLSAPR_SID_ENUM_BUFFER;
+
+/* [MS-LSAT] 2.2.11, 2.2.12 */
+typedef struct {
+	RPC_UNICODE_STRING Name;
+	RPC_SID *Sid;
+} LSAPR_TRUST_INFORMATION, *PLSAPR_TRUST_INFORMATION;
+
+typedef struct {
+	uint32_t Entries;
+	[size_is(Entries)] PLSAPR_TRUST_INFORMATION Domains;
+	uint32_t MaxEntries;
+} LSAPR_REFERENCED_DOMAIN_LIST, *PLSAPR_REFERENCED_DOMAIN_LIST;
+
+/* [MS-LSAT] 2.2.21, 2.2.22 */
+typedef struct {
+	SID_NAME_USE Use;
+	RPC_UNICODE_STRING Name;
+	long DomainIndex;
+	uint32_t Flags;
+} LSAPR_TRANSLATED_NAME_EX, *PLSAPR_TRANSLATED_NAME_EX;
+
+typedef struct {
+	[range(0,20480)] uint32_t Entries;
+	[size_is(Entries)] PLSAPR_TRANSLATED_NAME_EX Names;
+} LSAPR_TRANSLATED_NAMES_EX, *PLSAPR_TRANSLATED_NAMES_EX;
+
+/* [MS-LSAT] 2.2.19, 2.2.20 */
+typedef struct {
+	SID_NAME_USE Use;
+	uint32_t RelativeId;
+	long DomainIndex;
+	uint32_t Flags;
+} LSAPR_TRANSLATED_SID_EX, *PLSAPR_TRANSLATED_SID_EX;
+
+typedef struct {
+	[range(0,1000)] uint32_t Entries;
+	[size_is(Entries)] PLSAPR_TRANSLATED_SID_EX Sids;
+} LSAPR_TRANSLATED_SIDS_EX, *PLSAPR_TRANSLATED_SIDS_EX;
+
+/*
+ * Function: 0x00  (LsarClose)
+ */
+	[opnum(0x00)]
+	NTSTATUS Close(
+		[in,out] LSAPR_HANDLE *PolicyHandle
+	);
+
+/*
+ * Function: 0x2c  (LsarOpenPolicy2)
+ */
+	[opnum(0x2c)]
+	NTSTATUS OpenPolicy2(
+		[in,unique,string,charset(UTF16)] uint16_t *SystemName,
+		[in] PLSAPR_OBJECT_ATTRIBUTES ObjectAttributes,
+		[in] POLICY_ACCESS_MASK DesiredAccess,
+		[out] LSAPR_HANDLE *PolicyHandle
+	);
+
+/*
+ * Function: 0x39  (LsarLookupSids2)
+ */
+	[opnum(0x39)]
+	NTSTATUS LookupSids2(
+		[in] LSAPR_HANDLE PolicyHandle,
+		[in] PLSAPR_SID_ENUM_BUFFER SidEnumBuffer,
+		[out] PLSAPR_REFERENCED_DOMAIN_LIST *ReferencedDomains,
+		[in,out] PLSAPR_TRANSLATED_NAMES_EX TranslatedNames,
+		[in] LSAP_LOOKUP_LEVEL LookupLevel,
+		[in,out,ref] uint32_t *MappedCount,
+		[in] uint32_t LookupOptions,
+		[in] uint32_t ClientRevision
+	);
+
+/*
+ * Function: 0x3a  (LsarLookupNames2)
+ */
+	[opnum(0x3a)]
+	NTSTATUS LookupNames2(
+		[in] LSAPR_HANDLE PolicyHandle,
+		[in,range(0,1000)] uint32_t Count,
+		[in,size_is(Count)] RPC_UNICODE_STRING *Names,
+		[out] PLSAPR_REFERENCED_DOMAIN_LIST *ReferencedDomains,
+		[in,out] PLSAPR_TRANSLATED_SIDS_EX TranslatedSids,
+		[in] LSAP_LOOKUP_LEVEL LookupLevel,
+		[in,out,ref] uint32_t *MappedCount,
+		[in] uint32_t LookupOptions,
+		[in] uint32_t ClientRevision
+	);
+
+}

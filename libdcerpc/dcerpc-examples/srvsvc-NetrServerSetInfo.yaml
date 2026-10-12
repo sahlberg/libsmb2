@@ -3,10 +3,10 @@ NetrServerSetInfo: Request
   Level: SERVER_INFO_101
   ServerInfo:
     ServerInfo101:
-      platform_id: PLATFORM_ID_NT
-      name: WIN16-1
-      version_major: 10
-      version_minor: 0
-      type: 0
-      comment: Updated comment
+      PlatformId: PLATFORM_ID_NT
+      Name: WIN16-1
+      VersionMajor: 10
+      VersionMinor: 0
+      Type: 0
+      Comment: Updated comment
   ParmError: 0

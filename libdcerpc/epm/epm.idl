@@ -1,0 +1,116 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
+
+/*
+ * Endpoint Mapper (ept), C706 Appendix O / [MS-RPCE] 2.2.1.2: the calls
+ * clients use to find an endpoint (ept_lookup, ept_map and
+ * ept_lookup_handle_free). The management calls (ept_insert, ept_delete,
+ * ept_inq_object, ept_mgmt_delete) are not declared.
+ *
+ * twr_t (a conformant structure) and EPM_ANNOTATION (C706's
+ * [string] char annotation[64]) are libdcerpc built-in types, coded in
+ * dcerpc-epm.c and declared in <dcerpc/dcerpc.h> with helpers to parse
+ * towers.
+ */
+
+[
+  uuid(e1af8308-5d1f-11c9-91a4-08002b14a0fa),
+  version(3.0),
+  helpstring("Endpoint Mapper"),
+  endpoint("ncacn_np:[\\pipe\\epmapper]"),
+  pointer_default(unique)
+]
+interface epm
+{
+
+typedef [context_handle] void *ept_lookup_handle_t;
+
+/* Status values (C706 / Samba) */
+const uint32_t STATUS_OK                 = 0x00000000;
+const uint32_t STATUS_CANT_PERFORM_OP    = 0x000006d8;
+const uint32_t STATUS_NO_MEMORY          = 0x16c9a012;
+const uint32_t STATUS_NO_MORE_ENTRIES    = 0x16c9a0d6;
+
+/* Protocol identifiers used in tower floors (C706 Appendix I) */
+const uint8_t PROTOCOL_TCP        = 0x07;
+const uint8_t PROTOCOL_UDP        = 0x08;
+const uint8_t PROTOCOL_IP         = 0x09;
+const uint8_t PROTOCOL_NCADG      = 0x0a;
+const uint8_t PROTOCOL_NCACN      = 0x0b;
+const uint8_t PROTOCOL_NCALRPC    = 0x0c;
+const uint8_t PROTOCOL_UUID       = 0x0d;
+const uint8_t PROTOCOL_SMB        = 0x0f;
+const uint8_t PROTOCOL_NAMED_PIPE = 0x10;
+const uint8_t PROTOCOL_NETBIOS    = 0x11;
+const uint8_t PROTOCOL_HTTP       = 0x1f;
+
+/* The size of EPM_ANNOTATION, including its NUL */
+const uint32_t MAX_ANNOTATION_SIZE = 64;
+
+typedef uuid_t *uuid_p_t;
+typedef twr_t *twr_p_t;
+
+/* ept_lookup inquiry_type */
+typedef [v1_enum] enum {
+	RPC_C_EP_ALL_ELTS      = 0,
+	RPC_C_EP_MATCH_BY_IF   = 1,
+	RPC_C_EP_MATCH_BY_OBJ  = 2,
+	RPC_C_EP_MATCH_BY_BOTH = 3
+} INQUIRY_TYPE;
+
+/* ept_lookup vers_option */
+typedef [v1_enum] enum {
+	RPC_C_VERS_ALL        = 0,
+	RPC_C_VERS_COMPATIBLE = 1,
+	RPC_C_VERS_EXACT      = 2,
+	RPC_C_VERS_MAJOR_ONLY = 3,
+	RPC_C_VERS_UPTO       = 4
+} VERS_OPTION;
+
+typedef struct {
+	uuid_t Uuid;
+	uint16_t VersMajor;
+	uint16_t VersMinor;
+} rpc_if_id, *rpc_if_id_p_t;
+
+typedef struct {
+	uuid_t Object;
+	twr_p_t Tower;
+	EPM_ANNOTATION Annotation;
+} entry_t;
+
+/*
+ * Function: 0x02  (ept_lookup)
+ */
+	[opnum(0x02)]
+	error_status_t Lookup(
+		[in] INQUIRY_TYPE InquiryType,
+		[in,unique] uuid_p_t Object,
+		[in,unique] rpc_if_id_p_t InterfaceId,
+		[in] VERS_OPTION VersOption,
+		[in,out] ept_lookup_handle_t *EntryHandle,
+		[in] uint32_t MaxEnts,
+		[out,ref] uint32_t *NumEnts,
+		[out,length_is(*NumEnts),size_is(MaxEnts)] entry_t Entries[]
+	);
+
+/*
+ * Function: 0x03  (ept_map)
+ */
+	[opnum(0x03)]
+	error_status_t Map(
+		[in,unique] uuid_p_t Object,
+		[in,unique] twr_p_t MapTower,
+		[in,out] ept_lookup_handle_t *EntryHandle,
+		[in] uint32_t MaxTowers,
+		[out,ref] uint32_t *NumTowers,
+		[out,length_is(*NumTowers),size_is(MaxTowers)] twr_p_t Towers[]
+	);
+
+/*
+ * Function: 0x04  (ept_lookup_handle_free)
+ */
+	[opnum(0x04)]
+	error_status_t LookupHandleFree(
+		[in,out] ept_lookup_handle_t *EntryHandle
+	);
+}

@@ -27,7 +27,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <smb2/libsmb2.h>
 #include <smb2/libsmb2-raw.h>
 #include <dcerpc/dcerpc.h>
-#include <dcerpc/dcerpc-lsa.h>
+#include <dcerpc/lsa.h>
 
 #ifndef discard_const
 #define discard_const(ptr) ((void *)((intptr_t)(ptr)))

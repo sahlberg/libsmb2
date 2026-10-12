@@ -42,22 +42,64 @@ configure_file(config.h.cmake ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
 set(DCERPC_LIB_SOURCES
     dcerpc.c
-    dcerpc-srvsvc.c
     dcerpc-dtyp.c
-    dcerpc-lsa.c
-    dcerpc-wkssvc.c
-    dcerpc-winreg.c
     dcerpc-epm.c
     dcerpc-private.h
 )
+
+# Interfaces whose coders and public header dcerpc/<iface>.h are
+# generated from <iface>/<iface>.idl. The <iface>_* syms are kept in the
+# source tree and must match the IDL; "make -C <iface> update" in an
+# autotools build rewrites them.
+set(DCERPC_IDL_IFACES srvsvc wkssvc winreg lsa epm)
+
+find_program(PYTHON3 python3)
+if(NOT PYTHON3)
+  message(FATAL_ERROR "python3 is required to generate the IDL coders")
+endif()
+
+function(dcerpc_idl IFACE)
+  set(GEN ${CMAKE_CURRENT_BINARY_DIR}/${IFACE})
+  add_custom_command(
+    OUTPUT ${GEN}/${IFACE}.c ${GEN}/dcerpc/${IFACE}.h
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${GEN}/dcerpc
+    COMMAND ${CMAKE_COMMAND} -E copy
+            ${CMAKE_CURRENT_SOURCE_DIR}/libdcerpc.syms ${GEN}/${IFACE}.syms
+    COMMAND ${PYTHON3} ${CMAKE_CURRENT_SOURCE_DIR}/idlcomp.py
+            ${CMAKE_CURRENT_SOURCE_DIR}/${IFACE}/${IFACE}.idl --libdcerpc
+            -o ${GEN}/${IFACE}.c.tmp
+            --header ${GEN}/dcerpc/${IFACE}.h
+            --update-syms ${GEN}/${IFACE}.syms
+    COMMAND ${CMAKE_COMMAND} -E compare_files ${GEN}/${IFACE}.syms
+            ${CMAKE_CURRENT_SOURCE_DIR}/libdcerpc.syms
+    COMMAND ${CMAKE_COMMAND} -E rename ${GEN}/${IFACE}.c.tmp ${GEN}/${IFACE}.c
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/idlcomp.py
+            ${CMAKE_CURRENT_SOURCE_DIR}/${IFACE}/${IFACE}.idl
+            ${CMAKE_CURRENT_SOURCE_DIR}/libdcerpc.syms
+    COMMENT "Generating ${IFACE} coders from ${IFACE}.idl"
+    VERBATIM)
+endfunction()
+
+set(DCERPC_IDL_INCLUDES)
+set(DCERPC_IDL_HEADERS)
+foreach(IFACE ${DCERPC_IDL_IFACES})
+  dcerpc_idl(${IFACE})
+  set(GEN ${CMAKE_CURRENT_BINARY_DIR}/${IFACE})
+  list(APPEND DCERPC_LIB_SOURCES ${GEN}/${IFACE}.c ${GEN}/dcerpc/${IFACE}.h)
+  list(APPEND DCERPC_IDL_INCLUDES $<BUILD_INTERFACE:${GEN}>)
+  list(APPEND DCERPC_IDL_HEADERS ${GEN}/dcerpc/${IFACE}.h)
+endforeach()
 
 add_library(dcerpc ${DCERPC_LIB_SOURCES})
 target_compile_definitions(dcerpc PRIVATE HAVE_CONFIG_H _FILE_OFFSET_BITS=64
                                   "_U_=__attribute__((unused))")
 target_include_directories(dcerpc
-    PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
+    PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+           ${DCERPC_IDL_INCLUDES})
 # Our config.h must win over libsmb2's when built in the libsmb2 tree.
 target_include_directories(dcerpc BEFORE PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+# For dcerpc-private.h in the generated <iface>/<iface>.c.
+target_include_directories(dcerpc PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(dcerpc PUBLIC ${LIBDCERPC_SMB2})
 set_target_properties(dcerpc PROPERTIES
                       VERSION ${LIBDCERPC_VERSION}
@@ -69,6 +111,7 @@ install(TARGETS dcerpc EXPORT dcerpc
         ARCHIVE DESTINATION ${INSTALL_LIB_DIR}
         LIBRARY DESTINATION ${INSTALL_LIB_DIR})
 install(DIRECTORY include/dcerpc DESTINATION ${INSTALL_INC_DIR})
+install(FILES ${DCERPC_IDL_HEADERS} DESTINATION ${INSTALL_INC_DIR}/dcerpc)
 
 configure_file(libdcerpc.pc.cmake ${CMAKE_CURRENT_BINARY_DIR}/libdcerpc.pc @ONLY)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libdcerpc.pc
@@ -80,3 +123,6 @@ endif()
 if(ENABLE_EXAMPLES)
   add_subdirectory(examples)
 endif()
+
+enable_testing()
+add_subdirectory(tests)

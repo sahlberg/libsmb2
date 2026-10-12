@@ -1006,6 +1006,27 @@ sd_ndr_encode(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
         *offset = base + 20;
         pos = *offset;
 
+        /*
+         * Same order as Windows writes self-relative descriptors (SACL,
+         * DACL, Owner, Group), so a descriptor from Windows re-encodes
+         * byte for byte.
+         */
+        if (sd->Sacl) {
+                off_sacl = (uint32_t)(pos - base);
+                *offset = pos;
+                if (acl_fields_coder("Sacl", dce, pdu, iov, offset, sd->Sacl)) {
+                        return -1;
+                }
+                pos = *offset;
+        }
+        if (sd->Dacl) {
+                off_dacl = (uint32_t)(pos - base);
+                *offset = pos;
+                if (acl_fields_coder("Dacl", dce, pdu, iov, offset, sd->Dacl)) {
+                        return -1;
+                }
+                pos = *offset;
+        }
         if (sd->Owner) {
                 off_owner = (uint32_t)(pos - base);
                 *offset = pos;
@@ -1020,22 +1041,6 @@ sd_ndr_encode(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                 *offset = pos;
                 if (ndr_packet_sid_coder("Group", dce, pdu, iov, offset,
                                          sd->Group)) {
-                        return -1;
-                }
-                pos = *offset;
-        }
-        if (sd->Sacl) {
-                off_sacl = (uint32_t)(pos - base);
-                *offset = pos;
-                if (acl_fields_coder("Sacl", dce, pdu, iov, offset, sd->Sacl)) {
-                        return -1;
-                }
-                pos = *offset;
-        }
-        if (sd->Dacl) {
-                off_dacl = (uint32_t)(pos - base);
-                *offset = pos;
-                if (acl_fields_coder("Dacl", dce, pdu, iov, offset, sd->Dacl)) {
                         return -1;
                 }
                 pos = *offset;

@@ -1,0 +1,276 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
+
+/*
+ * Windows Remote Registry Protocol [MS-RRP]: the predefined-key Open*
+ * calls and the key/value calls libdcerpc's clients use.
+ */
+[
+  uuid(338cd001-2244-31f1-aaaa-900038001003),
+  version(1.0),
+  helpstring("Windows Remote Registry"),
+  endpoint("ncacn_np:[\\pipe\\winreg]"),
+  pointer_default(unique)
+]
+interface winreg
+{
+
+typedef [context_handle] void *RPC_HKEY;
+
+/*
+ * [MS-RRP] 2.2.2: a pointer to a single WCHAR that SHOULD be NULL and is
+ * ignored by the server.
+ */
+typedef uint16_t *PREGISTRY_SERVER_NAME;
+
+/* REGSAM ([MS-RRP] 2.2.3): key access rights plus the standard rights */
+typedef [bitmap32bit] bitmap {
+	KEY_QUERY_VALUE        = 0x00000001,
+	KEY_SET_VALUE          = 0x00000002,
+	KEY_CREATE_SUB_KEY     = 0x00000004,
+	KEY_ENUMERATE_SUB_KEYS = 0x00000008,
+	KEY_NOTIFY             = 0x00000010,
+	KEY_CREATE_LINK        = 0x00000020,
+	KEY_WOW64_64KEY        = 0x00000100,
+	KEY_WOW64_32KEY        = 0x00000200,
+	DELETE                 = 0x00010000,
+	READ_CONTROL           = 0x00020000,
+	WRITE_DAC              = 0x00040000,
+	WRITE_OWNER            = 0x00080000,
+	SYNCHRONIZE            = 0x00100000,
+	KEY_READ               = 0x00020019,
+	KEY_WRITE              = 0x00020006,
+	KEY_ALL_ACCESS         = 0x000f003f
+} REGSAM;
+
+/* dwOptions of BaseRegCreateKey and BaseRegOpenKey ([MS-RRP] 3.1.5.7) */
+typedef [bitmap32bit] bitmap {
+	[mask(0xffffffff)] REG_OPTION_NON_VOLATILE = 0x00000000,
+	REG_OPTION_VOLATILE       = 0x00000001,
+	REG_OPTION_CREATE_LINK    = 0x00000002,
+	REG_OPTION_BACKUP_RESTORE = 0x00000004,
+	REG_OPTION_OPEN_LINK      = 0x00000008
+} REG_OPTIONS;
+
+/* lpdwDisposition of BaseRegCreateKey ([MS-RRP] 3.1.5.7) */
+typedef [v1_enum] enum {
+	REG_CREATED_NEW_KEY     = 1,
+	REG_OPENED_EXISTING_KEY = 2
+} REG_DISPOSITION;
+
+/* Value types ([MS-RRP] 3.1.1.5) */
+typedef [v1_enum] enum {
+	REG_NONE                       = 0,
+	REG_SZ                         = 1,
+	REG_EXPAND_SZ                  = 2,
+	REG_BINARY                     = 3,
+	REG_DWORD                      = 4,
+	REG_DWORD_BIG_ENDIAN           = 5,
+	REG_LINK                       = 6,
+	REG_MULTI_SZ                   = 7,
+	REG_RESOURCE_LIST              = 8,
+	REG_FULL_RESOURCE_DESCRIPTOR   = 9,
+	REG_RESOURCE_REQUIREMENTS_LIST = 10,
+	REG_QWORD                      = 11
+} REG_VALUE_TYPE;
+
+/* [MS-DTYP] 2.3.3 */
+typedef struct {
+	uint32_t dwLowDateTime;
+	uint32_t dwHighDateTime;
+} FILETIME, *PFILETIME;
+
+/* [MS-RRP] 2.2.8, 2.2.7 */
+typedef struct {
+	[size_is(cbInSecurityDescriptor), length_is(cbOutSecurityDescriptor)] uint8_t *lpSecurityDescriptor;
+	uint32_t cbInSecurityDescriptor;
+	uint32_t cbOutSecurityDescriptor;
+} RPC_SECURITY_DESCRIPTOR;
+
+typedef struct {
+	uint32_t nLength;
+	RPC_SECURITY_DESCRIPTOR RpcSecurityDescriptor;
+	uint8_t bInheritHandle;
+} RPC_SECURITY_ATTRIBUTES, *PRPC_SECURITY_ATTRIBUTES;
+
+/*
+ * [MS-RRP] declares some [out] strings as RPC_UNICODE_STRING
+ * (BaseRegEnumKey lplpClassOut, BaseRegEnumValue lpValueNameOut,
+ * BaseRegQueryInfoKey lpClassOut), but Windows NUL-terminates every string
+ * it returns and counts the NUL in Length, so all of them are
+ * RRP_UNICODE_STRING here.
+ */
+
+/*
+ * Function: 0x00  (OpenClassesRoot)
+ */
+	[opnum(0x00)]
+	WERROR OpenClassesRoot(
+		[in,unique] PREGISTRY_SERVER_NAME ServerName,
+		[in] REGSAM samDesired,
+		[out] RPC_HKEY *phKey
+	);
+
+/*
+ * Function: 0x01  (OpenCurrentUser)
+ */
+	[opnum(0x01)]
+	WERROR OpenCurrentUser(
+		[in,unique] PREGISTRY_SERVER_NAME ServerName,
+		[in] REGSAM samDesired,
+		[out] RPC_HKEY *phKey
+	);
+
+/*
+ * Function: 0x02  (OpenLocalMachine)
+ */
+	[opnum(0x02)]
+	WERROR OpenLocalMachine(
+		[in,unique] PREGISTRY_SERVER_NAME ServerName,
+		[in] REGSAM samDesired,
+		[out] RPC_HKEY *phKey
+	);
+
+/*
+ * Function: 0x04  (OpenUsers)
+ */
+	[opnum(0x04)]
+	WERROR OpenUsers(
+		[in,unique] PREGISTRY_SERVER_NAME ServerName,
+		[in] REGSAM samDesired,
+		[out] RPC_HKEY *phKey
+	);
+
+/*
+ * Function: 0x05  (BaseRegCloseKey)
+ */
+	[opnum(0x05)]
+	WERROR BaseRegCloseKey(
+		[in,out] RPC_HKEY *hKey
+	);
+
+/*
+ * Function: 0x06  (BaseRegCreateKey)
+ */
+	[opnum(0x06)]
+	WERROR BaseRegCreateKey(
+		[in] RPC_HKEY hKey,
+		[in] RRP_UNICODE_STRING *lpSubKey,
+		[in] RRP_UNICODE_STRING *lpClass,
+		[in] REG_OPTIONS dwOptions,
+		[in] REGSAM samDesired,
+		[in,unique] PRPC_SECURITY_ATTRIBUTES lpSecurityAttributes,
+		[out] RPC_HKEY *phkResult,
+		[in,out,unique] REG_DISPOSITION *lpdwDisposition
+	);
+
+/*
+ * Function: 0x07  (BaseRegDeleteKey)
+ */
+	[opnum(0x07)]
+	WERROR BaseRegDeleteKey(
+		[in] RPC_HKEY hKey,
+		[in] RRP_UNICODE_STRING *lpSubKey
+	);
+
+/*
+ * Function: 0x08  (BaseRegDeleteValue)
+ */
+	[opnum(0x08)]
+	WERROR BaseRegDeleteValue(
+		[in] RPC_HKEY hKey,
+		[in] RRP_UNICODE_STRING *lpValueName
+	);
+
+/*
+ * Function: 0x09  (BaseRegEnumKey)
+ *
+ * lpNameIn and lpClassIn only announce the size of the client's buffers:
+ * their Length MUST be 0 and only MaximumLength matters, so they are sent
+ * as empty RPC_UNICODE_STRINGs (an empty RRP_UNICODE_STRING would carry a
+ * NUL) with MaximumLength from [max_length].
+ */
+	[opnum(0x09)]
+	WERROR BaseRegEnumKey(
+		[in] RPC_HKEY hKey,
+		[in] uint32_t dwIndex,
+		[in,max_length(1024)] RPC_UNICODE_STRING *lpNameIn,
+		[out] RRP_UNICODE_STRING *lpNameOut,
+		[in,unique,max_length(128)] RPC_UNICODE_STRING *lpClassIn,
+		[out] RRP_UNICODE_STRING **lplpClassOut,
+		[in,out,unique] PFILETIME lpftLastWriteTime
+	);
+
+/*
+ * Function: 0x0a  (BaseRegEnumValue)
+ *
+ * lpValueNameIn announces the name buffer like BaseRegEnumKey's lpNameIn.
+ * [MS-RRP] sizes lpData with size_is(lpcbData ? *lpcbData : 0) and
+ * length_is(lpcbLen ? *lpcbLen : 0); lpcbData and lpcbLen are always sent.
+ */
+	[opnum(0x0a)]
+	WERROR BaseRegEnumValue(
+		[in] RPC_HKEY hKey,
+		[in] uint32_t dwIndex,
+		[in,max_length(1024)] RPC_UNICODE_STRING *lpValueNameIn,
+		[out] RRP_UNICODE_STRING *lpValueNameOut,
+		[in,out,unique] REG_VALUE_TYPE *lpType,
+		[in,out,unique,size_is(lpcbData),length_is(lpcbLen)] uint8_t *lpData,
+		[in,out,unique] uint32_t *lpcbData,
+		[in,out,unique] uint32_t *lpcbLen
+	);
+
+/*
+ * Function: 0x0f  (BaseRegOpenKey)
+ */
+	[opnum(0x0f)]
+	WERROR BaseRegOpenKey(
+		[in] RPC_HKEY hKey,
+		[in] RRP_UNICODE_STRING *lpSubKey,
+		[in] REG_OPTIONS dwOptions,
+		[in] REGSAM samDesired,
+		[out] RPC_HKEY *phkResult
+	);
+
+/*
+ * Function: 0x10  (BaseRegQueryInfoKey)
+ *
+ * lpClassIn announces the class buffer like BaseRegEnumKey's lpClassIn.
+ */
+	[opnum(0x10)]
+	WERROR BaseRegQueryInfoKey(
+		[in] RPC_HKEY hKey,
+		[in,max_length(128)] RPC_UNICODE_STRING *lpClassIn,
+		[out] RRP_UNICODE_STRING *lpClassOut,
+		[out,ref] uint32_t *lpcSubKeys,
+		[out,ref] uint32_t *lpcbMaxSubKeyLen,
+		[out,ref] uint32_t *lpcbMaxClassLen,
+		[out,ref] uint32_t *lpcValues,
+		[out,ref] uint32_t *lpcbMaxValueNameLen,
+		[out,ref] uint32_t *lpcbMaxValueLen,
+		[out,ref] uint32_t *lpcbSecurityDescriptor,
+		[out] PFILETIME lpftLastWriteTime
+	);
+
+/*
+ * Function: 0x16  (BaseRegSetValue)
+ */
+	[opnum(0x16)]
+	WERROR BaseRegSetValue(
+		[in] RPC_HKEY hKey,
+		[in] RRP_UNICODE_STRING *lpValueName,
+		[in] REG_VALUE_TYPE dwType,
+		[in,size_is(cbData)] uint8_t *lpData,
+		[in] uint32_t cbData
+	);
+
+/*
+ * Function: 0x1b  (OpenCurrentConfig)
+ */
+	[opnum(0x1b)]
+	WERROR OpenCurrentConfig(
+		[in,unique] PREGISTRY_SERVER_NAME ServerName,
+		[in] REGSAM samDesired,
+		[out] RPC_HKEY *phKey
+	);
+
+}

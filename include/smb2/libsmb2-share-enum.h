@@ -26,7 +26,7 @@ extern "C" {
 /*
  * Share enumeration (srvsvc NetrShareEnum) provided by libsmb2 itself.
  * Only levels 0, 1 and 2 are supported. Full srvsvc support is in
- * libdcerpc (dcerpc/dcerpc-srvsvc.h); its srvsvc_* types are separate.
+ * libdcerpc (dcerpc/srvsvc.h); its srvsvc_* types are separate.
  */
 
 /* smb2_share_info_N.type: the low 2 bits are the share type (STYPE_*) */

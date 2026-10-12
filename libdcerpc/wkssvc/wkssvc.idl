@@ -1,0 +1,359 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
+
+[
+  uuid(6bffd098-a112-3610-9833-46c3f87e345a),
+  version(1.0),
+  helpstring("Workstation Service"),
+  endpoint("ncacn_np:[\\pipe\\wkssvc]"),
+  pointer_default(unique)
+]
+interface wkssvc
+{
+
+/*
+ * WKSSVC_IDENTIFY_HANDLE / WKSSVC_IMPERSONATE_HANDLE — server UNC name,
+ * unique UTF-16 string pointer ([MS-WKST] 2.2.2.1, 2.2.2.2)
+ */
+typedef [string,charset(UTF16)] uint16_t *WKSSVC_IDENTIFY_HANDLE;
+typedef [string,charset(UTF16)] uint16_t *WKSSVC_IMPERSONATE_HANDLE;
+
+/*
+ * Local additions: [MS-WKST] documents these values in prose or uses bare
+ * numbers. Declaring them here gives C constants (WKSSVC_<NAME>) and
+ * readable YAML/JSON. The wire format is unchanged (all are DWORDs).
+ */
+
+/* Info levels */
+typedef [v1_enum] enum {
+	WKSTA_INFO_100 = 100,
+	WKSTA_INFO_101 = 101,
+	WKSTA_INFO_102 = 102,
+	WKSTA_INFO_502 = 502
+} WKSTA_INFO_LEVEL;
+
+typedef [v1_enum] enum {
+	WKSTA_USER_INFO_0 = 0,
+	WKSTA_USER_INFO_1 = 1
+} WKSTA_USER_INFO_LEVEL;
+
+typedef [v1_enum] enum {
+	USE_INFO_0 = 0,
+	USE_INFO_1 = 1,
+	USE_INFO_2 = 2
+} USE_INFO_LEVEL;
+
+typedef [v1_enum] enum {
+	STAT_WORKSTATION_0 = 0
+} STAT_WORKSTATION_LEVEL;
+
+/* Platform id (wki10x_platform_id), same values as [MS-SRVS] 2.2.4.40 */
+typedef [v1_enum] enum {
+	PLATFORM_ID_DOS = 300,
+	PLATFORM_ID_OS2 = 400,
+	PLATFORM_ID_NT  = 500,
+	PLATFORM_ID_OSF = 600,
+	PLATFORM_ID_VMS = 700
+} PLATFORM_ID;
+
+/* Connection status (ui1/ui2_status), [MS-WKST] 2.2.5.23 */
+typedef [v1_enum] enum {
+	USE_OK       = 0,
+	USE_PAUSED   = 1,
+	USE_SESSLOST = 2,
+	USE_NETERR   = 3,
+	USE_CONN     = 4,
+	USE_RECONN   = 5
+} USE_STATUS;
+
+/* Local device type (ui1/ui2_asg_type), [MS-WKST] 2.2.5.23 */
+typedef [v1_enum] enum {
+	USE_DISKDEV  = 0,
+	USE_SPOOLDEV = 1,
+	USE_CHARDEV  = 2,
+	USE_IPC      = 3,
+	USE_WILDCARD = 0xffffffff
+} USE_ASG_TYPE;
+
+/*
+ * Workstation information (NetrWkstaGetInfo, NetrWkstaSetInfo)
+ *
+ * typedef struct _WKSTA_INFO_100 {
+ *     unsigned long wki100_platform_id;
+ *     [string] wchar_t *wki100_computername;
+ *     [string] wchar_t *wki100_langroup;
+ *     unsigned long wki100_ver_major;
+ *     unsigned long wki100_ver_minor;
+ * } WKSTA_INFO_100;
+ */
+typedef struct {
+	PLATFORM_ID PlatformId;
+	[string,charset(UTF16)] uint16_t *ComputerName;
+	[string,charset(UTF16)] uint16_t *LanGroup;
+	uint32_t VerMajor;
+	uint32_t VerMinor;
+} WKSTA_INFO_100, *LPWKSTA_INFO_100;
+
+typedef struct {
+	PLATFORM_ID PlatformId;
+	[string,charset(UTF16)] uint16_t *ComputerName;
+	[string,charset(UTF16)] uint16_t *LanGroup;
+	uint32_t VerMajor;
+	uint32_t VerMinor;
+	[string,charset(UTF16)] uint16_t *LanRoot;
+} WKSTA_INFO_101, *LPWKSTA_INFO_101;
+
+typedef struct {
+	PLATFORM_ID PlatformId;
+	[string,charset(UTF16)] uint16_t *ComputerName;
+	[string,charset(UTF16)] uint16_t *LanGroup;
+	uint32_t VerMajor;
+	uint32_t VerMinor;
+	[string,charset(UTF16)] uint16_t *LanRoot;
+	uint32_t LoggedOnUsers;
+} WKSTA_INFO_102, *LPWKSTA_INFO_102;
+
+/* [MS-WKST] 2.2.5.4 */
+typedef struct {
+	uint32_t CharWait;
+	uint32_t CollectionTime;
+	uint32_t MaximumCollectionCount;
+	uint32_t KeepConn;
+	uint32_t MaxCmds;
+	uint32_t SessTimeout;
+	uint32_t SizCharBuf;
+	uint32_t MaxThreads;
+	uint32_t LockQuota;
+	uint32_t LockIncrement;
+	uint32_t LockMaximum;
+	uint32_t PipeIncrement;
+	uint32_t PipeMaximum;
+	uint32_t CacheFileTimeout;
+	uint32_t DormantFileLimit;
+	uint32_t ReadAheadThroughput;
+	uint32_t NumMailslotBuffers;
+	uint32_t NumSrvAnnounceBuffers;
+	uint32_t MaxIllegalDatagramEvents;
+	uint32_t IllegalDatagramEventResetFrequency;
+	uint32_t LogElectionPackets;
+	uint32_t UseOpportunisticLocking;
+	uint32_t UseUnlockBehind;
+	uint32_t UseCloseBehind;
+	uint32_t BufNamedPipes;
+	uint32_t UseLockReadUnlock;
+	uint32_t UtilizeNtCaching;
+	uint32_t UseRawRead;
+	uint32_t UseRawWrite;
+	uint32_t UseWriteRawData;
+	uint32_t UseEncryption;
+	uint32_t BufFilesDenyWrite;
+	uint32_t BufReadOnlyFiles;
+	uint32_t ForceCoreCreateMode;
+	uint32_t Use512ByteMaxTransfer;
+} WKSTA_INFO_502, *LPWKSTA_INFO_502;
+
+typedef [switch_type(WKSTA_INFO_LEVEL)] union {
+	[case(WKSTA_INFO_100)] LPWKSTA_INFO_100 WkstaInfo100;
+	[case(WKSTA_INFO_101)] LPWKSTA_INFO_101 WkstaInfo101;
+	[case(WKSTA_INFO_102)] LPWKSTA_INFO_102 WkstaInfo102;
+	[case(WKSTA_INFO_502)] LPWKSTA_INFO_502 WkstaInfo502;
+} WKSTA_INFO, *LPWKSTA_INFO;
+
+/*
+ * Logged-on users (NetrWkstaUserEnum)
+ */
+typedef struct {
+	[string,charset(UTF16)] uint16_t *UserName;
+} WKSTA_USER_INFO_0, *LPWKSTA_USER_INFO_0;
+
+typedef struct {
+	uint32_t EntriesRead;
+	[size_is(EntriesRead)] LPWKSTA_USER_INFO_0 Buffer;
+} WKSTA_USER_INFO_0_CONTAINER, *LPWKSTA_USER_INFO_0_CONTAINER;
+
+typedef struct {
+	[string,charset(UTF16)] uint16_t *UserName;
+	[string,charset(UTF16)] uint16_t *LogonDomain;
+	[string,charset(UTF16)] uint16_t *OthDomains;
+	[string,charset(UTF16)] uint16_t *LogonServer;
+} WKSTA_USER_INFO_1, *LPWKSTA_USER_INFO_1;
+
+typedef struct {
+	uint32_t EntriesRead;
+	[size_is(EntriesRead)] LPWKSTA_USER_INFO_1 Buffer;
+} WKSTA_USER_INFO_1_CONTAINER, *LPWKSTA_USER_INFO_1_CONTAINER;
+
+typedef [switch_type(WKSTA_USER_INFO_LEVEL)] union {
+	[case(WKSTA_USER_INFO_0)] LPWKSTA_USER_INFO_0_CONTAINER Level0;
+	[case(WKSTA_USER_INFO_1)] LPWKSTA_USER_INFO_1_CONTAINER Level1;
+} WKSTA_USER_ENUM_UNION;
+
+typedef struct {
+	WKSTA_USER_INFO_LEVEL Level;
+	[switch_is(Level)] WKSTA_USER_ENUM_UNION WkstaUserInfo;
+} WKSTA_USER_ENUM_STRUCT, *LPWKSTA_USER_ENUM_STRUCT;
+
+/*
+ * Connections to remote resources (NetrUseEnum)
+ */
+typedef struct {
+	[string,charset(UTF16)] uint16_t *Local;
+	[string,charset(UTF16)] uint16_t *Remote;
+} USE_INFO_0, *LPUSE_INFO_0;
+
+typedef struct {
+	uint32_t EntriesRead;
+	[size_is(EntriesRead)] LPUSE_INFO_0 Buffer;
+} USE_INFO_0_CONTAINER, *LPUSE_INFO_0_CONTAINER;
+
+typedef struct {
+	[string,charset(UTF16)] uint16_t *Local;
+	[string,charset(UTF16)] uint16_t *Remote;
+	[string,charset(UTF16)] uint16_t *Password;
+	USE_STATUS Status;
+	USE_ASG_TYPE AsgType;
+	uint32_t RefCount;
+	uint32_t UseCount;
+} USE_INFO_1, *LPUSE_INFO_1;
+
+typedef struct {
+	uint32_t EntriesRead;
+	[size_is(EntriesRead)] LPUSE_INFO_1 Buffer;
+} USE_INFO_1_CONTAINER, *LPUSE_INFO_1_CONTAINER;
+
+typedef struct {
+	[string,charset(UTF16)] uint16_t *Local;
+	[string,charset(UTF16)] uint16_t *Remote;
+	[string,charset(UTF16)] uint16_t *Password;
+	USE_STATUS Status;
+	USE_ASG_TYPE AsgType;
+	uint32_t RefCount;
+	uint32_t UseCount;
+	[string,charset(UTF16)] uint16_t *UserName;
+	[string,charset(UTF16)] uint16_t *DomainName;
+} USE_INFO_2, *LPUSE_INFO_2;
+
+typedef struct {
+	uint32_t EntriesRead;
+	[size_is(EntriesRead)] LPUSE_INFO_2 Buffer;
+} USE_INFO_2_CONTAINER, *LPUSE_INFO_2_CONTAINER;
+
+typedef [switch_type(USE_INFO_LEVEL)] union {
+	[case(USE_INFO_0)] LPUSE_INFO_0_CONTAINER Level0;
+	[case(USE_INFO_1)] LPUSE_INFO_1_CONTAINER Level1;
+	[case(USE_INFO_2)] LPUSE_INFO_2_CONTAINER Level2;
+} USE_ENUM_UNION;
+
+typedef struct {
+	USE_INFO_LEVEL Level;
+	[switch_is(Level)] USE_ENUM_UNION UseInfo;
+} USE_ENUM_STRUCT, *LPUSE_ENUM_STRUCT;
+
+/*
+ * Workstation statistics (NetrWorkstationStatisticsGet), [MS-WKST] 2.2.5.11.
+ * The LARGE_INTEGER members are 64-bit hypers on the wire.
+ */
+typedef struct {
+	hyper StatisticsStartTime;
+	hyper BytesReceived;
+	hyper SmbsReceived;
+	hyper PagingReadBytesRequested;
+	hyper NonPagingReadBytesRequested;
+	hyper CacheReadBytesRequested;
+	hyper NetworkReadBytesRequested;
+	hyper BytesTransmitted;
+	hyper SmbsTransmitted;
+	hyper PagingWriteBytesRequested;
+	hyper NonPagingWriteBytesRequested;
+	hyper CacheWriteBytesRequested;
+	hyper NetworkWriteBytesRequested;
+	uint32_t InitiallyFailedOperations;
+	uint32_t FailedCompletionOperations;
+	uint32_t ReadOperations;
+	uint32_t RandomReadOperations;
+	uint32_t ReadSmbs;
+	uint32_t LargeReadSmbs;
+	uint32_t SmallReadSmbs;
+	uint32_t WriteOperations;
+	uint32_t RandomWriteOperations;
+	uint32_t WriteSmbs;
+	uint32_t LargeWriteSmbs;
+	uint32_t SmallWriteSmbs;
+	uint32_t RawReadsDenied;
+	uint32_t RawWritesDenied;
+	uint32_t NetworkErrors;
+	uint32_t Sessions;
+	uint32_t FailedSessions;
+	uint32_t Reconnects;
+	uint32_t CoreConnects;
+	uint32_t Lanman20Connects;
+	uint32_t Lanman21Connects;
+	uint32_t LanmanNtConnects;
+	uint32_t ServerDisconnects;
+	uint32_t HungSessions;
+	uint32_t UseCount;
+	uint32_t FailedUseCount;
+	uint32_t CurrentCommands;
+} STAT_WORKSTATION_0, *LPSTAT_WORKSTATION_0;
+
+/*
+ * Function: 0x00  (NetrWkstaGetInfo)
+ */
+	[opnum(0x00)]
+	WERROR NetrWkstaGetInfo(
+		[in,unique] WKSSVC_IDENTIFY_HANDLE ServerName,
+		[in] WKSTA_INFO_LEVEL Level,
+		[out,switch_is(Level)] LPWKSTA_INFO WkstaInfo
+	);
+
+/*
+ * Function: 0x01  (NetrWkstaSetInfo)
+ */
+	[opnum(0x01)]
+	WERROR NetrWkstaSetInfo(
+		[in,unique] WKSSVC_IDENTIFY_HANDLE ServerName,
+		[in] WKSTA_INFO_LEVEL Level,
+		[in,switch_is(Level)] LPWKSTA_INFO WkstaInfo,
+		[in,out,unique] uint32_t *ErrorParameter
+	);
+
+/*
+ * Function: 0x02  (NetrWkstaUserEnum)
+ *
+ * PreferredMaximumLength is spelled correctly here, unlike NetrUseEnum's
+ * PreferedMaximumLength; both follow [MS-WKST].
+ */
+	[opnum(0x02)]
+	WERROR NetrWkstaUserEnum(
+		[in,unique] WKSSVC_IDENTIFY_HANDLE ServerName,
+		[in,out,ref] LPWKSTA_USER_ENUM_STRUCT UserInfo,
+		[in] uint32_t PreferredMaximumLength,
+		[out,ref] uint32_t *TotalEntries,
+		[in,out,unique] uint32_t *ResumeHandle
+	);
+
+/*
+ * Function: 0x0b  (NetrUseEnum)
+ *
+ * Explicit opnum keeps 0x0b without declaring ops 0x03–0x0a.
+ */
+	[opnum(0x0b)]
+	WERROR NetrUseEnum(
+		[in,unique] WKSSVC_IMPERSONATE_HANDLE ServerName,
+		[in,out,ref] LPUSE_ENUM_STRUCT InfoStruct,
+		[in] uint32_t PreferedMaximumLength,
+		[out,ref] uint32_t *TotalEntries,
+		[in,out,unique] uint32_t *ResumeHandle
+	);
+
+/*
+ * Function: 0x0d  (NetrWorkstationStatisticsGet)
+ */
+	[opnum(0x0d)]
+	WERROR NetrWorkstationStatisticsGet(
+		[in,unique] WKSSVC_IDENTIFY_HANDLE ServerName,
+		[in,unique,string,charset(UTF16)] uint16_t *ServiceName,
+		[in] STAT_WORKSTATION_LEVEL Level,
+		[in] uint32_t Options,
+		[out,ref] LPSTAT_WORKSTATION_0 *Buffer
+	);
+}

@@ -39,7 +39,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <smb2/libsmb2.h>
 #include <smb2/libsmb2-raw.h>
 #include <dcerpc/dcerpc.h>
-#include <dcerpc/dcerpc-epm.h>
+#include <dcerpc/epm.h>
 
 #define MAX_ENTS 64
 
@@ -75,7 +75,7 @@ print_tower(const struct epm_twr_t *twr)
         char *pipe = NULL, *host = NULL, *ipv4 = NULL;
         uint16_t port = 0;
 
-        if (epm_tower_get_ncacn_np(twr, &pipe, &host) == 0) {
+        if (dcerpc_epm_tower_get_ncacn_np(twr, &pipe, &host) == 0) {
                 printf("    transport: ncacn_np\n");
                 printf("    pipe:      %s\n", pipe ? pipe : "");
                 printf("    host:      %s\n", host ? host : "");
@@ -83,7 +83,7 @@ print_tower(const struct epm_twr_t *twr)
                 free(host);
                 return;
         }
-        if (epm_tower_get_ncacn_ip_tcp(twr, &ipv4, &port) == 0) {
+        if (dcerpc_epm_tower_get_ncacn_ip_tcp(twr, &ipv4, &port) == 0) {
                 printf("    transport: ncacn_ip_tcp\n");
                 printf("    address:   %s\n", ipv4 ? ipv4 : "");
                 printf("    port:      %u\n", (unsigned)port);
@@ -91,7 +91,7 @@ print_tower(const struct epm_twr_t *twr)
                 return;
         }
         printf("    transport: (unrecognized tower, %u octets)\n",
-               twr->tower_length);
+               twr->TowerLength);
 }
 
 static int
@@ -142,8 +142,8 @@ finish_or_free_handle(struct dcerpc_context *dce)
         }
 
         memset(&free_req, 0, sizeof(free_req));
-        free_req.entry_handle = entry_handle;
-        if (dcerpc_call_async(dce, EPM_LOOKUP_HANDLE_FREE,
+        free_req.EntryHandle = entry_handle;
+        if (dcerpc_call_async(dce, EPM_LOOKUPHANDLEFREE,
                               epm_LookupHandleFree_req_coder, &free_req,
                               epm_LookupHandleFree_rep_coder,
                               sizeof(struct epm_LookupHandleFree_rep),
@@ -157,19 +157,20 @@ finish_or_free_handle(struct dcerpc_context *dce)
 static int
 send_lookup(struct dcerpc_context *dce)
 {
-        struct epm_Lookup_req req;
+        /* read again when the reply is decoded (size_is(MaxEnts)) */
+        static struct epm_Lookup_req req;
+        static struct epm_rpc_if_id iid;
 
         memset(&req, 0, sizeof(req));
-        req.inquiry_type = RPC_C_EP_MATCH_BY_IF;
-        req.object_null = 1;
-        req.interface_id.uuid = srvsvc_interface.uuid;
-        req.interface_id.vers_major = srvsvc_interface.vers;
-        req.interface_id.vers_minor = srvsvc_interface.vers_minor;
-        req.interface_id_null = 0;
-        req.vers_option = RPC_C_VERS_ALL;
-        req.max_ents = MAX_ENTS;
+        req.InquiryType = EPM_RPC_C_EP_MATCH_BY_IF;
+        iid.Uuid = srvsvc_interface.uuid;
+        iid.VersMajor = srvsvc_interface.vers;
+        iid.VersMinor = srvsvc_interface.vers_minor;
+        req.InterfaceId = &iid;
+        req.VersOption = EPM_RPC_C_VERS_ALL;
+        req.MaxEnts = MAX_ENTS;
         if (have_entry_handle) {
-                req.entry_handle = entry_handle;
+                req.EntryHandle = entry_handle;
         }
 
         if (dcerpc_call_async(dce, EPM_LOOKUP,
@@ -203,29 +204,29 @@ lookup_cb(struct dcerpc_context *dce, int status,
                 return;
         }
 
-        if (rep->status != EPMAPPER_STATUS_OK &&
-            rep->status != EPMAPPER_STATUS_NO_MORE_ENTRIES) {
+        if (rep->status != EPM_STATUS_OK &&
+            rep->status != EPM_STATUS_NO_MORE_ENTRIES) {
                 fprintf(stderr, "ept_Lookup status 0x%08x\n", rep->status);
                 dcerpc_free_data(dce, rep);
                 finish_or_free_handle(dce);
                 return;
         }
 
-        entry_handle = rep->entry_handle;
+        entry_handle = rep->EntryHandle;
         have_entry_handle = 1;
 
-        for (i = 0; i < rep->num_ents; i++) {
-                struct epm_entry_t *e = &rep->entries[i];
+        for (i = 0; i < rep->NumEnts; i++) {
+                struct epm_entry_t *e = &rep->Entries[i];
 
                 total_printed++;
                 printf("Endpoint %d\n", total_printed);
                 printf("  object:     ");
-                print_uuid(&e->object);
+                print_uuid(&e->Object);
                 printf("\n");
                 printf("  annotation: %s\n",
-                       e->annotation ? e->annotation : "");
-                if (!e->tower_null && e->tower.tower_octet_string) {
-                        print_tower(&e->tower);
+                       e->Annotation ? e->Annotation : "");
+                if (e->Tower && e->Tower->TowerOctetString) {
+                        print_tower(e->Tower);
                 } else {
                         printf("    tower:     (null)\n");
                 }
@@ -233,9 +234,9 @@ lookup_cb(struct dcerpc_context *dce, int status,
         }
 
         /* More entries available? */
-        if (rep->num_ents == MAX_ENTS &&
-            rep->status == EPMAPPER_STATUS_OK &&
-            !handle_is_null(&rep->entry_handle)) {
+        if (rep->NumEnts == MAX_ENTS &&
+            rep->status == EPM_STATUS_OK &&
+            !handle_is_null(&rep->EntryHandle)) {
                 dcerpc_free_data(dce, rep);
                 if (send_lookup(dce) != 0) {
                         is_finished = 1;

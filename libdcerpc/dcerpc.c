@@ -79,11 +79,11 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <smb2/libsmb2.h>
 #include <dcerpc/dcerpc.h>
 #include <dcerpc/dcerpc-dtyp.h>
-#include <dcerpc/dcerpc-srvsvc.h>
-#include <dcerpc/dcerpc-lsa.h>
-#include <dcerpc/dcerpc-wkssvc.h>
-#include <dcerpc/dcerpc-winreg.h>
-#include <dcerpc/dcerpc-epm.h>
+#include <dcerpc/srvsvc.h>
+#include <dcerpc/lsa.h>
+#include <dcerpc/wkssvc.h>
+#include <dcerpc/winreg.h>
+#include <dcerpc/epm.h>
 #include <smb2/libsmb2-raw.h>
 #include "dcerpc-private.h"
 
@@ -159,11 +159,13 @@ struct dcerpc_deferred_pointer {
         dcerpc_coder coder;
         void *ptr;
         /*
-         * size_is/switch_is in effect when the pointer was queued. The
-         * referent is coded later, after sibling and nested coders may
-         * have changed them, so they are restored before coding it.
+         * size_is/length_is/switch_is in effect when the pointer was
+         * queued. The referent is coded later, after sibling and nested
+         * coders may have changed them, so they are restored before
+         * coding it.
          */
         uint32_t size_is;
+        uint32_t length_is;
         int switch_is;
 };
 
@@ -521,6 +523,7 @@ struct dcerpc_pdu {
         int packet_form;
 
         uint32_t size_is; /* Passing size_is() value through a pointer */
+        uint32_t length_is; /* and length_is() */
         int switch_is; /* Passing switch_is() value through a pointer */
         /*
          * Override for RPC_UNICODE_STRING MaximumLength (bytes) and the
@@ -1207,6 +1210,36 @@ int dcerpc_uint16_coder_pp(char *name, struct dcerpc_context *ctx, struct dcerpc
         return -1;
 }
 
+/*
+ * An enum without [v1_enum]: NDR32 codes it as 16 bits, but NDR64 codes
+ * every enum as 32 bits ([MS-RPCE] 2.2.5.2.2). ptr is a uint16_t *; a
+ * decoded value that does not fit is an error. YAML/JSON as
+ * dcerpc_uint16_coder_pp.
+ */
+int dcerpc_enum16_coder(char *name, struct dcerpc_context *ctx,
+                        struct dcerpc_pdu *pdu,
+                        struct dcerpc_iovec *iov, int *offset, void *ptr,
+                        struct dcerpc_uint32_pretty_printer *pp)
+{
+        uint32_t v;
+
+        if (pdu->encoding != ENCODING_NDR || !ctx->tctx_id) {
+                return dcerpc_uint16_coder_pp(name, ctx, pdu, iov, offset,
+                                              ptr, pp);
+        }
+        v = *(uint16_t *)ptr;
+        if (ndr_uint32_coder(name, ctx, pdu, iov, offset, &v)) {
+                return -1;
+        }
+        if (pdu->direction == DCERPC_DECODE && !pdu->is_conformance_run) {
+                if (v > UINT16_MAX) {
+                        return -1;
+                }
+                *(uint16_t *)ptr = (uint16_t)v;
+        }
+        return 0;
+}
+
 int
 dcerpc_carray_coder(char *name, struct dcerpc_context *ctx,
                  struct dcerpc_pdu *pdu,
@@ -1288,6 +1321,59 @@ int dcerpc_struct_coder(char *name, struct dcerpc_context *ctx,
         return -1;
 }
 
+/*
+ * An array element that is a structure: in NDR aligned (and in NDR64
+ * padded) as dcerpc_aligned_struct_coder does; in YAML/JSON its members
+ * are coded directly, as list items are not nested under a key.
+ */
+int dcerpc_aligned_element_coder(char *name, struct dcerpc_context *ctx,
+                                 struct dcerpc_pdu *pdu,
+                                 struct dcerpc_iovec *iov, int *offset,
+                                 void *ptr, dcerpc_coder coder,
+                                 int ndr32_align, int ndr64_align)
+{
+        if (pdu->encoding != ENCODING_NDR) {
+                return coder(name, ctx, pdu, iov, offset, ptr);
+        }
+        return dcerpc_aligned_struct_coder(name, ctx, pdu, iov, offset, ptr,
+                                           coder, ndr32_align, ndr64_align);
+}
+
+/*
+ * A structure whose NDR alignment is known statically (idlcomp computes it
+ * from the member types): ndr32_align/ndr64_align for NDR32/NDR64. In NDR
+ * the structure starts at that alignment and NDR64 pads its end to it
+ * ([MS-RPCE] 2.2.5.3.4.1). YAML/JSON are the same as dcerpc_struct_coder.
+ */
+int dcerpc_aligned_struct_coder(char *name, struct dcerpc_context *ctx,
+                                struct dcerpc_pdu *pdu,
+                                struct dcerpc_iovec *iov, int *offset,
+                                void *ptr, dcerpc_coder coder,
+                                int ndr32_align, int ndr64_align)
+{
+        int align;
+
+        if (pdu->encoding != ENCODING_NDR) {
+                return dcerpc_struct_coder(name, ctx, pdu, iov, offset, ptr,
+                                           coder);
+        }
+        align = ctx->tctx_id ? ndr64_align : ndr32_align;
+        if (pdu->is_conformance_run) {
+                if (pdu->max_alignment < align) {
+                        pdu->max_alignment = align;
+                }
+                return coder(name, ctx, pdu, iov, offset, ptr);
+        }
+        *offset = (*offset + (align - 1)) & ~(align - 1);
+        if (coder(name, ctx, pdu, iov, offset, ptr)) {
+                return -1;
+        }
+        if (ctx->tctx_id) {
+                *offset = (*offset + (align - 1)) & ~(align - 1);
+        }
+        return 0;
+}
+
 int
 dcerpc_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                  struct dcerpc_iovec *iov, int *offset, void *ptr,
@@ -1330,6 +1416,9 @@ dcerpc_header_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                     struct dcerpc_iovec *iov, int *offset,
                     struct dcerpc_header *hdr)
 {
+        uint8_t saved_drep;
+        int rc = 0;
+
         /* Major Version */
         if (dcerpc_uint8_coder("RpcVersion", ctx, pdu, iov, offset, &hdr->rpc_vers)) {
                 return -1;
@@ -1361,21 +1450,49 @@ dcerpc_header_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 return -1;
         }
 
+        /*
+         * The rest of the header is in the byte order of this header's
+         * DREP. When peeking at a reply fragment header (hdr is not
+         * pdu->hdr), pdu->hdr still holds the request's DREP, and a server
+         * may answer in a different byte order (Windows always replies
+         * little-endian), so use the decoded DREP for these fields.
+         */
+        saved_drep = pdu->hdr.packed_drep[0];
+        pdu->hdr.packed_drep[0] = hdr->packed_drep[0];
+
         /* Fragment len */
-        if (dcerpc_uint16_coder("FragmentLength", ctx, pdu, iov, offset, &hdr->frag_length)) {
-                return -1;
+        if (dcerpc_uint16_coder("FragmentLength", ctx, pdu, iov, offset, &hdr->frag_length) ||
+            /* Auth len */
+            dcerpc_uint16_coder("AuthLength", ctx, pdu, iov, offset, &hdr->auth_length) ||
+            /* Call id */
+            dcerpc_uint32_coder("CallId", ctx, pdu, iov, offset, &hdr->call_id)) {
+                rc = -1;
         }
 
-        /* Auth len */
-        if (dcerpc_uint16_coder("AuthLength", ctx, pdu, iov, offset, &hdr->auth_length)) {
+        if (hdr != &pdu->hdr) {
+                pdu->hdr.packed_drep[0] = saved_drep;
+        }
+        return rc;
+}
+
+/*
+ * p_syntax_id_t.if_version is a single u_int32 with the major version in
+ * the low 16 bits and the minor version in the high 16 bits, so it must be
+ * coded as one 32-bit value to come out right in big-endian PDUs.
+ */
+static int
+dcerpc_syntax_version_coder(char *name, struct dcerpc_context *ctx,
+                            struct dcerpc_pdu *pdu,
+                            struct dcerpc_iovec *iov, int *offset,
+                            p_syntax_id_t *syntax)
+{
+        uint32_t v = syntax->vers | ((uint32_t)syntax->vers_minor << 16);
+
+        if (dcerpc_uint32_coder(name, ctx, pdu, iov, offset, &v)) {
                 return -1;
         }
-
-        /* Call id */
-        if (dcerpc_uint32_coder("CallId", ctx, pdu, iov, offset, &hdr->call_id)) {
-                return -1;
-        }
-
+        syntax->vers = v & 0xffff;
+        syntax->vers_minor = v >> 16;
         return 0;
 }
 
@@ -1423,10 +1540,7 @@ dcerpc_bind_coder(struct dcerpc_context *ctx,
                 if (dcerpc_uuid_coder("SyntaxUUID", ctx, pdu, iov, offset, &pdu->bind.p_cont_elem[i].abstract_syntax->uuid)) {
                         return -1;
                 }
-                if (dcerpc_uint16_coder("AbstractSyntax", ctx, pdu, iov, offset, &pdu->bind.p_cont_elem[i].abstract_syntax->vers)) {
-                        return -1;
-                }
-                if (dcerpc_uint16_coder("VersMinor", ctx, pdu, iov, offset, &pdu->bind.p_cont_elem[i].abstract_syntax->vers_minor)) {
+                if (dcerpc_syntax_version_coder("AbstractSyntaxVersion", ctx, pdu, iov, offset, pdu->bind.p_cont_elem[i].abstract_syntax)) {
                         return -1;
                 }
                 //qqq TODO allocate transfer_syntaxes on decode
@@ -1434,10 +1548,7 @@ dcerpc_bind_coder(struct dcerpc_context *ctx,
                         if (dcerpc_uuid_coder("TransferSyntax", ctx, pdu, iov, offset, &pdu->bind.p_cont_elem[i].transfer_syntaxes[j]->uuid)) {
                                 return -1;
                         }
-                        if (dcerpc_uint16_coder("Version", ctx, pdu, iov, offset, &pdu->bind.p_cont_elem[i].transfer_syntaxes[j]->vers)) {
-                                return -1;
-                        }
-                        if (dcerpc_uint16_coder("VersionMinor", ctx, pdu, iov, offset, &pdu->bind.p_cont_elem[i].transfer_syntaxes[j]->vers_minor)) {
+                        if (dcerpc_syntax_version_coder("TransferSyntaxVersion", ctx, pdu, iov, offset, pdu->bind.p_cont_elem[i].transfer_syntaxes[j])) {
                                 return -1;
                         }
                 }
@@ -2016,6 +2127,8 @@ dcerpc_finish_call_from_reasm(struct dcerpc_context *dce,
 
                 if (iov.len >= 28) {
                         fo = 24;
+                        /* in the FAULT PDU's own byte order */
+                        pdu->hdr.packed_drep[0] = iov.buf[4];
                         if (dcerpc_get_uint32(dce, pdu, &iov, &fo,
                                               &fault_status)) {
                                 fault_status = 0;
@@ -3131,6 +3244,16 @@ uint32_t dcerpc_get_size_is(struct dcerpc_pdu *pdu)
         return pdu->size_is;
 }
 
+void dcerpc_set_length_is(struct dcerpc_pdu *pdu, uint32_t length_is)
+{
+        pdu->length_is = length_is;
+}
+
+uint32_t dcerpc_get_length_is(struct dcerpc_pdu *pdu)
+{
+        return pdu->length_is;
+}
+
 void dcerpc_set_switch_is(struct dcerpc_pdu *pdu, int switch_is)
 {
         pdu->switch_is = switch_is;
@@ -3732,6 +3855,27 @@ ndr_uint8_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
 }
 
 /*
+ * A conformance or variance value of a byte array: 32 bits in NDR32, 64
+ * bits in NDR64. Values above 32 bits are rejected on decode.
+ */
+static int
+ndr_count_coder(char *name, struct dcerpc_context *ctx,
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                int *offset, uint32_t *count)
+{
+        uint64_t v = *count;
+
+        if (ndr_uint3264_coder(name, ctx, pdu, iov, offset, &v)) {
+                return -1;
+        }
+        if (v > UINT32_MAX) {
+                return -1;
+        }
+        *count = (uint32_t)v;
+        return 0;
+}
+
+/*
  * [size_is(len)] byte data[] — conformant byte array.
  * Wire: max_count, then max_count bytes. ptr is struct dcerpc_bytes *.
  */
@@ -3752,7 +3896,7 @@ ndr_bytes_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         } else {
                 max_count = 0;
         }
-        if (ndr_uint32_coder("MaxCount", ctx, pdu, iov, offset, &max_count)) {
+        if (ndr_count_coder("MaxCount", ctx, pdu, iov, offset, &max_count)) {
                 return -1;
         }
         if (pdu->direction == DCERPC_DECODE) {
@@ -3814,13 +3958,9 @@ ndr_varying_bytes_coder(char *name, struct dcerpc_context *ctx,
                 max_count = 0;
                 actual = 0;
         }
-        if (ndr_uint32_coder("MaxCount", ctx, pdu, iov, offset, &max_count)) {
-                return -1;
-        }
-        if (ndr_uint32_coder("Offset", ctx, pdu, iov, offset, &arr_offset)) {
-                return -1;
-        }
-        if (ndr_uint32_coder("ActualCount", ctx, pdu, iov, offset, &actual)) {
+        if (ndr_count_coder("MaxCount", ctx, pdu, iov, offset, &max_count) ||
+            ndr_count_coder("Offset", ctx, pdu, iov, offset, &arr_offset) ||
+            ndr_count_coder("ActualCount", ctx, pdu, iov, offset, &actual)) {
                 return -1;
         }
         if (pdu->direction == DCERPC_DECODE) {
@@ -3954,6 +4094,7 @@ ndr_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
              dcerpc_coder coder)
 {
         uint32_t size_is = pdu->size_is;
+        uint32_t length_is = pdu->length_is;
         int switch_is = pdu->switch_is;
 
         pdu->max_alignment = 1;
@@ -3968,6 +4109,7 @@ ndr_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
          * may have changed size_is/switch_is.
          */
         pdu->size_is = size_is;
+        pdu->length_is = length_is;
         pdu->switch_is = switch_is;
         pdu->is_conformance_run = 0;
         if (coder(name, ctx, pdu, iov, offset, ptr)) {
@@ -4259,6 +4401,7 @@ dcerpc_add_deferred_pointer(struct dcerpc_context *ctx,
         pdu->ptrs[pdu->max_ptr].coder = coder;
         pdu->ptrs[pdu->max_ptr].ptr = ptr;
         pdu->ptrs[pdu->max_ptr].size_is = pdu->size_is;
+        pdu->ptrs[pdu->max_ptr].length_is = pdu->length_is;
         pdu->ptrs[pdu->max_ptr].switch_is = pdu->switch_is;
         pdu->max_ptr++;
         return 0;
@@ -4277,6 +4420,7 @@ dcerpc_process_deferred_pointers(struct dcerpc_context *ctx,
                 idx = pdu->cur_ptr++;
                 dp = &pdu->ptrs[idx];
                 pdu->size_is = dp->size_is;
+                pdu->length_is = dp->length_is;
                 pdu->switch_is = dp->switch_is;
                 if (ndr_do_coder("DEFERRED", ctx, pdu, iov, offset, dp->ptr, dp->coder)) {
                         return -1;
@@ -4508,6 +4652,66 @@ ndr_carray_coder(char *name, struct dcerpc_context *ctx,
         }
 
         return 0;
+}
+
+/*
+ * Conformant-varying array: max_count is conformance (coded in the
+ * conformance run, so hoisted like a conformant array's), offset and
+ * actual_count are variance and precede the elements, which are the
+ * first num of max_count. On decode max_count must equal the expected
+ * size_is and actual_count the expected length_is.
+ */
+static int
+ndr_cvarray_coder(char *name, struct dcerpc_context *ctx,
+                  struct dcerpc_pdu *pdu,
+                  struct dcerpc_iovec *iov, int *offset,
+                  uint32_t max_count, uint32_t num, void *ptr,
+                  int elem_size, dcerpc_coder coder)
+{
+        uint8_t *data = ptr;
+        uint64_t p = max_count;
+        uint64_t off = 0;
+        uint64_t actual = num;
+        uint32_t i;
+
+        if (num > max_count) {
+                return -1;
+        }
+        if (ndr_conformance_coder(ctx, pdu, iov, offset, &p)) {
+                return -1;
+        }
+        if (p != max_count) {
+                return -1;
+        }
+        if (ndr_uint3264_coder("Offset", ctx, pdu, iov, offset, &off) ||
+            ndr_uint3264_coder("ActualCount", ctx, pdu, iov, offset,
+                               &actual)) {
+                return -1;
+        }
+        if (!pdu->is_conformance_run && (off != 0 || actual != num)) {
+                return -1;
+        }
+        for (i = 0; i < num; i++) {
+                if (coder(name, ctx, pdu, iov, offset, &data[i * elem_size])) {
+                        return -1;
+                }
+        }
+        return 0;
+}
+
+int
+dcerpc_cvarray_coder(char *name, struct dcerpc_context *ctx,
+                     struct dcerpc_pdu *pdu,
+                     struct dcerpc_iovec *iov, int *offset,
+                     uint32_t max_count, uint32_t num, void *ptr,
+                     int elem_size, dcerpc_coder coder)
+{
+        if (pdu->encoding != ENCODING_NDR) {
+                return dcerpc_carray_coder(name, ctx, pdu, iov, offset, num,
+                                           ptr, elem_size, coder);
+        }
+        return ndr_cvarray_coder(name, ctx, pdu, iov, offset, max_count, num,
+                                 ptr, elem_size, coder);
 }
 
 int
