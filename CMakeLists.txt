@@ -57,11 +57,14 @@ endif()
       option(BUILD_SHARED_LIBS "Build shared libraries" ON)
     endif()
       option(ENABLE_EXAMPLES "Build example programs" OFF)
-      # The utilities use POSIX headers and do not build with MSVC.
-      if(WIN32)
-        set(ENABLE_UTILS_DEFAULT OFF)
-      else()
+      # The utilities need a hosted POSIX system (poll.h, a full libc), so
+      # only build them by default there: not on Windows, the consoles or
+      # the embedded targets.
+      if(CMAKE_SYSTEM_NAME MATCHES "^(Linux|Darwin|.*BSD|DragonFly|SunOS|Solaris|Android)$"
+         AND NOT PS4 AND NOT PICO_BOARD)
         set(ENABLE_UTILS_DEFAULT ON)
+      else()
+        set(ENABLE_UTILS_DEFAULT OFF)
       endif()
       option(ENABLE_UTILS "Build and install the utilities" ${ENABLE_UTILS_DEFAULT})
       option(ENABLE_LIBKRB5 "Enable libkrb5 support" ON)
