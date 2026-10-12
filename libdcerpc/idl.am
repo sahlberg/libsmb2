@@ -1,10 +1,11 @@
 # Rules for an interface whose coders are generated from IDL by
 # idlcomp.py. Included by <iface>/Makefile.am after it sets IFACE and
-# lists $(IFACE).c (literally) in its nodist sources.
+# lists $(IFACE)_coder.c (literally) in its nodist sources.
 #
-# idlcomp writes $(IFACE).c and the public header dcerpc/$(IFACE).h. The
-# header is generated under dcerpc/ so that <dcerpc/$(IFACE).h> resolves
-# with -I$(top_builddir)/$(IFACE).
+# idlcomp writes $(IFACE)_coder.c and the public header
+# dcerpc/$(IFACE).h. The header is generated under dcerpc/ so that
+# <dcerpc/$(IFACE).h> resolves with -I$(top_builddir)/$(IFACE). The
+# _coder suffix leaves <iface>.c free for hand-written service code.
 #
 # The $(IFACE)_* lines of libdcerpc.syms are generated too, but are kept
 # in the source tree. The build fails if they no longer match the IDL;
@@ -17,37 +18,37 @@ SYMS = $(top_srcdir)/libdcerpc.syms
 dcerpcdir = $(includedir)/dcerpc
 nodist_dcerpc_HEADERS = dcerpc/$(IFACE).h
 
-BUILT_SOURCES = $(IFACE).c dcerpc/$(IFACE).h
+BUILT_SOURCES = $(IFACE)_coder.c dcerpc/$(IFACE).h
 
 # The .c is written under a temporary name and only renamed once the
 # checked-in syms are known to match, so a failed check is retried on
 # the next make.
-$(IFACE).c: $(IFACE_IDL) $(top_srcdir)/idlcomp.py $(SYMS)
+$(IFACE)_coder.c: $(IFACE_IDL) $(top_srcdir)/idlcomp.py $(SYMS)
 	$(MKDIR_P) dcerpc
 	cp $(SYMS) $(IFACE).syms
 	chmod u+w $(IFACE).syms
-	$(IDLCOMP) $(IFACE_IDL) --libdcerpc -o $(IFACE).c.tmp \
+	$(IDLCOMP) $(IFACE_IDL) --libdcerpc -o $(IFACE)_coder.c.tmp \
 		--header dcerpc/$(IFACE).h --update-syms $(IFACE).syms
 	@if ! cmp -s $(IFACE).syms $(SYMS); then \
 		echo "error: $(SYMS) does not match $(IFACE_IDL);" \
 		     "run 'make -C $(IFACE) update'" >&2; \
-		rm -f $(IFACE).c.tmp; \
+		rm -f $(IFACE)_coder.c.tmp; \
 		exit 1; \
 	fi
-	mv $(IFACE).c.tmp $@
+	mv $(IFACE)_coder.c.tmp $@
 
 # Both files come from the one idlcomp run; regenerate if only the
 # header is missing.
-dcerpc/$(IFACE).h: $(IFACE).c
-	@test -f $@ || { rm -f $(IFACE).c; \
-		$(MAKE) $(AM_MAKEFLAGS) $(IFACE).c; }
+dcerpc/$(IFACE).h: $(IFACE)_coder.c
+	@test -f $@ || { rm -f $(IFACE)_coder.c; \
+		$(MAKE) $(AM_MAKEFLAGS) $(IFACE)_coder.c; }
 
 # Rewrite the checked-in syms from the IDL.
 update:
 	$(MKDIR_P) dcerpc
-	$(IDLCOMP) $(IFACE_IDL) --libdcerpc -o $(IFACE).c \
+	$(IDLCOMP) $(IFACE_IDL) --libdcerpc -o $(IFACE)_coder.c \
 		--header dcerpc/$(IFACE).h --update-syms $(SYMS)
 
 .PHONY: update
 
-CLEANFILES = $(IFACE).c $(IFACE).c.tmp dcerpc/$(IFACE).h $(IFACE).syms
+CLEANFILES = $(IFACE)_coder.c $(IFACE)_coder.c.tmp dcerpc/$(IFACE).h $(IFACE).syms

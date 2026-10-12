@@ -10,7 +10,7 @@ libwinreg_la_CPPFLAGS = -I$(top_srcdir) \
 			"-D_U_=__attribute__((unused))"
 libwinreg_la_CFLAGS = $(WARN_CFLAGS)
 
-nodist_libwinreg_la_SOURCES = winreg.c
+nodist_libwinreg_la_SOURCES = winreg_coder.c
 
 include $(top_srcdir)/idl.am
 

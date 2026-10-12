@@ -10,7 +10,7 @@ libsrvsvc_la_CPPFLAGS = -I$(top_srcdir) \
 			"-D_U_=__attribute__((unused))"
 libsrvsvc_la_CFLAGS = $(WARN_CFLAGS)
 
-nodist_libsrvsvc_la_SOURCES = srvsvc.c
+nodist_libsrvsvc_la_SOURCES = srvsvc_coder.c
 
 include $(top_srcdir)/idl.am
 

@@ -61,18 +61,18 @@ endif()
 function(dcerpc_idl IFACE)
   set(GEN ${CMAKE_CURRENT_BINARY_DIR}/${IFACE})
   add_custom_command(
-    OUTPUT ${GEN}/${IFACE}.c ${GEN}/dcerpc/${IFACE}.h
+    OUTPUT ${GEN}/${IFACE}_coder.c ${GEN}/dcerpc/${IFACE}.h
     COMMAND ${CMAKE_COMMAND} -E make_directory ${GEN}/dcerpc
     COMMAND ${CMAKE_COMMAND} -E copy
             ${CMAKE_CURRENT_SOURCE_DIR}/libdcerpc.syms ${GEN}/${IFACE}.syms
     COMMAND ${PYTHON3} ${CMAKE_CURRENT_SOURCE_DIR}/idlcomp.py
             ${CMAKE_CURRENT_SOURCE_DIR}/${IFACE}/${IFACE}.idl --libdcerpc
-            -o ${GEN}/${IFACE}.c.tmp
+            -o ${GEN}/${IFACE}_coder.c.tmp
             --header ${GEN}/dcerpc/${IFACE}.h
             --update-syms ${GEN}/${IFACE}.syms
     COMMAND ${CMAKE_COMMAND} -E compare_files ${GEN}/${IFACE}.syms
             ${CMAKE_CURRENT_SOURCE_DIR}/libdcerpc.syms
-    COMMAND ${CMAKE_COMMAND} -E rename ${GEN}/${IFACE}.c.tmp ${GEN}/${IFACE}.c
+    COMMAND ${CMAKE_COMMAND} -E rename ${GEN}/${IFACE}_coder.c.tmp ${GEN}/${IFACE}_coder.c
     DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/idlcomp.py
             ${CMAKE_CURRENT_SOURCE_DIR}/${IFACE}/${IFACE}.idl
             ${CMAKE_CURRENT_SOURCE_DIR}/libdcerpc.syms
@@ -85,7 +85,7 @@ set(DCERPC_IDL_HEADERS)
 foreach(IFACE ${DCERPC_IDL_IFACES})
   dcerpc_idl(${IFACE})
   set(GEN ${CMAKE_CURRENT_BINARY_DIR}/${IFACE})
-  list(APPEND DCERPC_LIB_SOURCES ${GEN}/${IFACE}.c ${GEN}/dcerpc/${IFACE}.h)
+  list(APPEND DCERPC_LIB_SOURCES ${GEN}/${IFACE}_coder.c ${GEN}/dcerpc/${IFACE}.h)
   list(APPEND DCERPC_IDL_INCLUDES $<BUILD_INTERFACE:${GEN}>)
   list(APPEND DCERPC_IDL_HEADERS ${GEN}/dcerpc/${IFACE}.h)
 endforeach()

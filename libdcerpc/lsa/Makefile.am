@@ -10,7 +10,7 @@ liblsa_la_CPPFLAGS = -I$(top_srcdir) \
 			"-D_U_=__attribute__((unused))"
 liblsa_la_CFLAGS = $(WARN_CFLAGS)
 
-nodist_liblsa_la_SOURCES = lsa.c
+nodist_liblsa_la_SOURCES = lsa_coder.c
 
 include $(top_srcdir)/idl.am
 

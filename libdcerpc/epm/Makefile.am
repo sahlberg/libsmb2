@@ -10,7 +10,7 @@ libepm_la_CPPFLAGS = -I$(top_srcdir) \
 			"-D_U_=__attribute__((unused))"
 libepm_la_CFLAGS = $(WARN_CFLAGS)
 
-nodist_libepm_la_SOURCES = epm.c
+nodist_libepm_la_SOURCES = epm_coder.c
 
 include $(top_srcdir)/idl.am
 

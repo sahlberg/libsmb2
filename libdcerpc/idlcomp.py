@@ -104,7 +104,7 @@ Usage:
   (also writes axpy_stubs.c skeleton next to the coder)
 
   python3 idlcomp.py srvsvc/srvsvc.idl --libdcerpc \\
-      -o ../libdcerpc/srvsvc/srvsvc.c \\
+      -o ../libdcerpc/srvsvc/srvsvc_coder.c \\
       --header ../libdcerpc/srvsvc/dcerpc/srvsvc.h \\
       --server-header srvsvc/srvsvc_server.h \\
       --update-syms ../libdcerpc/libdcerpc.syms
@@ -2057,7 +2057,7 @@ def gen_enum_coder(env: TypeEnv, t: TypeDef) -> str:
     lines.append('        .fmt = "%u",')
     lines.append("        .bitfields = {")
     for m in t.enum_members:
-        # Exclusive match (same pattern as PLATFORM_ID_* in srvsvc/srvsvc.c).
+        # Exclusive match (same pattern as PLATFORM_ID_* in srvsvc/srvsvc_coder.c).
         lines.append(
             f'                {{ "{m.name}", {mask}, ({wtype}){env.const_name(m.name)} }},'
         )
