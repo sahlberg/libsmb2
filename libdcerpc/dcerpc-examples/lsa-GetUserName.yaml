@@ -1,0 +1,6 @@
+# The name of the user making the call. UserName and DomainName are sent
+# empty and come back with the user and its domain.
+GetUserName: Request
+  SystemName: \\10.10.10.11
+  UserName:
+  DomainName:

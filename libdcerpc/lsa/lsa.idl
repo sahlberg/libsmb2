@@ -1,8 +1,11 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 /*
- * Local Security Authority: the LsarClose, LsarOpenPolicy2,
- * LsarLookupSids2 and LsarLookupNames2 calls from [MS-LSAD] / [MS-LSAT].
+ * Local Security Authority: the LsarClose, LsarOpenPolicy,
+ * LsarQueryInformationPolicy, LsarEnumerateTrustedDomains,
+ * LsarLookupNames, LsarLookupSids, LsarOpenPolicy2, LsarGetUserName,
+ * LsarQueryInformationPolicy2, LsarLookupSids2, LsarLookupNames2 and
+ * LsarLookupNames3 calls from [MS-LSAD] / [MS-LSAT].
  * Function names drop the "Lsar" prefix.
  */
 [
@@ -153,12 +156,260 @@ typedef struct {
 	[size_is(Entries)] PLSAPR_TRANSLATED_SID_EX Sids;
 } LSAPR_TRANSLATED_SIDS_EX, *PLSAPR_TRANSLATED_SIDS_EX;
 
+/* [MS-LSAT] 2.2.14, 2.2.15 */
+typedef struct {
+	SID_NAME_USE Use;
+	uint32_t RelativeId;
+	long DomainIndex;
+} LSA_TRANSLATED_SID, *PLSA_TRANSLATED_SID;
+
+typedef struct {
+	[range(0,1000)] uint32_t Entries;
+	[size_is(Entries)] PLSA_TRANSLATED_SID Sids;
+} LSAPR_TRANSLATED_SIDS, *PLSAPR_TRANSLATED_SIDS;
+
+/* [MS-LSAT] 2.2.19, 2.2.20 */
+typedef struct {
+	SID_NAME_USE Use;
+	RPC_UNICODE_STRING Name;
+	long DomainIndex;
+} LSAPR_TRANSLATED_NAME, *PLSAPR_TRANSLATED_NAME;
+
+typedef struct {
+	[range(0,20480)] uint32_t Entries;
+	[size_is(Entries)] PLSAPR_TRANSLATED_NAME Names;
+} LSAPR_TRANSLATED_NAMES, *PLSAPR_TRANSLATED_NAMES;
+
+/* [MS-LSAT] 2.2.25, 2.2.26 */
+typedef struct {
+	SID_NAME_USE Use;
+	RPC_SID *Sid;
+	long DomainIndex;
+	uint32_t Flags;
+} LSAPR_TRANSLATED_SID_EX2, *PLSAPR_TRANSLATED_SID_EX2;
+
+typedef struct {
+	[range(0,1000)] uint32_t Entries;
+	[size_is(Entries)] PLSAPR_TRANSLATED_SID_EX2 Sids;
+} LSAPR_TRANSLATED_SIDS_EX2, *PLSAPR_TRANSLATED_SIDS_EX2;
+
+/*
+ * LsarGetUserName has [in,out] PRPC_UNICODE_STRING *UserName and
+ * [in,out,unique] PRPC_UNICODE_STRING *DomainName: a pointer to a unique
+ * pointer to the string. A structure holding just the unique pointer is
+ * the same on the wire, and lets both levels be NULL.
+ */
+typedef struct {
+	RPC_UNICODE_STRING *Name;
+} LSAPR_UNICODE_STRING_PTR, *PLSAPR_UNICODE_STRING_PTR;
+
+/* [MS-LSAD] 2.2.7.20 */
+typedef struct {
+	uint32_t EntriesRead;
+	[size_is(EntriesRead)] PLSAPR_TRUST_INFORMATION Information;
+} LSAPR_TRUSTED_ENUM_BUFFER, *PLSAPR_TRUSTED_ENUM_BUFFER;
+
+/*
+ * [MS-LSAD] 2.2.4.1: a plain (not [v1_enum]) enum, so 16 bits in NDR32,
+ * and so is the discriminant of LSAPR_POLICY_INFORMATION.
+ */
+typedef enum {
+	PolicyAuditLogInformation = 1,
+	PolicyAuditEventsInformation = 2,
+	PolicyPrimaryDomainInformation = 3,
+	PolicyPdAccountInformation = 4,
+	PolicyAccountDomainInformation = 5,
+	PolicyLsaServerRoleInformation = 6,
+	PolicyReplicaSourceInformation = 7,
+	PolicyInformationNotUsedOnWire = 8,
+	PolicyModificationInformation = 9,
+	PolicyAuditFullSetInformation = 10,
+	PolicyAuditFullQueryInformation = 11,
+	PolicyDnsDomainInformation = 12,
+	PolicyDnsDomainInformationInt = 13,
+	PolicyLocalAccountDomainInformation = 14,
+	PolicyMachineAccountInformation = 15
+} POLICY_INFORMATION_CLASS;
+
+/* [MS-LSAD] 2.2.4.3 */
+typedef struct {
+	uint32_t AuditLogPercentFull;
+	uint32_t MaximumLogSize;
+	hyper AuditRetentionPeriod;
+	uint8_t AuditLogFullShutdownInProgress;
+	hyper TimeToShutdown;
+	uint32_t NextAuditRecordId;
+} POLICY_AUDIT_LOG_INFO;
+
+/* [MS-LSAD] 2.2.4.4 */
+typedef struct {
+	uint8_t AuditingMode;
+	[size_is(MaximumAuditEventCount)] uint32_t *EventAuditingOptions;
+	[range(0,1000)] uint32_t MaximumAuditEventCount;
+} LSAPR_POLICY_AUDIT_EVENTS_INFO;
+
+/* [MS-LSAD] 2.2.4.5, 2.2.4.6 */
+typedef struct {
+	RPC_UNICODE_STRING Name;
+	RPC_SID *Sid;
+} LSAPR_POLICY_PRIMARY_DOM_INFO;
+
+typedef struct {
+	RPC_UNICODE_STRING DomainName;
+	RPC_SID *DomainSid;
+} LSAPR_POLICY_ACCOUNT_DOM_INFO;
+
+/* [MS-LSAD] 2.2.4.7 */
+typedef struct {
+	RPC_UNICODE_STRING Name;
+} LSAPR_POLICY_PD_ACCOUNT_INFO;
+
+/* [MS-LSAD] 2.2.4.8: a plain enum */
+typedef enum {
+	PolicyServerRoleBackup = 2,
+	PolicyServerRolePrimary = 3
+} POLICY_LSA_SERVER_ROLE;
+
+typedef struct {
+	POLICY_LSA_SERVER_ROLE LsaServerRole;
+} POLICY_LSA_SERVER_ROLE_INFO;
+
+/* [MS-LSAD] 2.2.4.9 */
+typedef struct {
+	RPC_UNICODE_STRING ReplicaSource;
+	RPC_UNICODE_STRING ReplicaAccountName;
+} LSAPR_POLICY_REPLICA_SRCE_INFO;
+
+/* [MS-LSAD] 2.2.4.10 */
+typedef struct {
+	hyper ModifiedId;
+	hyper DatabaseCreationTime;
+} POLICY_MODIFICATION_INFO;
+
+/* [MS-LSAD] 2.2.4.11, 2.2.4.12 */
+typedef struct {
+	uint8_t ShutDownOnFull;
+} POLICY_AUDIT_FULL_SET_INFO;
+
+typedef struct {
+	uint8_t ShutDownOnFull;
+	uint8_t LogIsFull;
+} POLICY_AUDIT_FULL_QUERY_INFO;
+
+/* [MS-LSAD] 2.2.4.13 */
+typedef struct {
+	RPC_UNICODE_STRING Name;
+	RPC_UNICODE_STRING DnsDomainName;
+	RPC_UNICODE_STRING DnsForestName;
+	uuid_t DomainGuid;
+	RPC_SID *Sid;
+} LSAPR_POLICY_DNS_DOMAIN_INFO;
+
+/* [MS-LSAD] 2.2.4.15 */
+typedef struct {
+	uint32_t Rid;
+	RPC_SID *Sid;
+} LSAPR_POLICY_MACHINE_ACCT_INFO;
+
+/* [MS-LSAD] 2.2.4.2 */
+typedef [switch_type(POLICY_INFORMATION_CLASS)] union {
+	[case(PolicyAuditLogInformation)]
+		POLICY_AUDIT_LOG_INFO PolicyAuditLogInfo;
+	[case(PolicyAuditEventsInformation)]
+		LSAPR_POLICY_AUDIT_EVENTS_INFO PolicyAuditEventsInfo;
+	[case(PolicyPrimaryDomainInformation)]
+		LSAPR_POLICY_PRIMARY_DOM_INFO PolicyPrimaryDomainInfo;
+	[case(PolicyAccountDomainInformation)]
+		LSAPR_POLICY_ACCOUNT_DOM_INFO PolicyAccountDomainInfo;
+	[case(PolicyPdAccountInformation)]
+		LSAPR_POLICY_PD_ACCOUNT_INFO PolicyPdAccountInfo;
+	[case(PolicyLsaServerRoleInformation)]
+		POLICY_LSA_SERVER_ROLE_INFO PolicyServerRoleInfo;
+	[case(PolicyReplicaSourceInformation)]
+		LSAPR_POLICY_REPLICA_SRCE_INFO PolicyReplicaSourceInfo;
+	[case(PolicyModificationInformation)]
+		POLICY_MODIFICATION_INFO PolicyModificationInfo;
+	[case(PolicyAuditFullSetInformation)]
+		POLICY_AUDIT_FULL_SET_INFO PolicyAuditFullSetInfo;
+	[case(PolicyAuditFullQueryInformation)]
+		POLICY_AUDIT_FULL_QUERY_INFO PolicyAuditFullQueryInfo;
+	[case(PolicyDnsDomainInformation)]
+		LSAPR_POLICY_DNS_DOMAIN_INFO PolicyDnsDomainInfo;
+	[case(PolicyDnsDomainInformationInt)]
+		LSAPR_POLICY_DNS_DOMAIN_INFO PolicyDnsDomainInfoInt;
+	[case(PolicyLocalAccountDomainInformation)]
+		LSAPR_POLICY_ACCOUNT_DOM_INFO PolicyLocalAccountDomainInfo;
+	[case(PolicyMachineAccountInformation)]
+		LSAPR_POLICY_MACHINE_ACCT_INFO PolicyMachineAccountInfo;
+} LSAPR_POLICY_INFORMATION, *PLSAPR_POLICY_INFORMATION;
+
 /*
  * Function: 0x00  (LsarClose)
  */
 	[opnum(0x00)]
 	NTSTATUS Close(
 		[in,out] LSAPR_HANDLE *PolicyHandle
+	);
+
+/*
+ * Function: 0x06  (LsarOpenPolicy)
+ * SystemName points to a single wide character, not a string, and is
+ * ignored by the server.
+ */
+	[opnum(0x06)]
+	NTSTATUS OpenPolicy(
+		[in,unique] uint16_t *SystemName,
+		[in] PLSAPR_OBJECT_ATTRIBUTES ObjectAttributes,
+		[in] POLICY_ACCESS_MASK DesiredAccess,
+		[out] LSAPR_HANDLE *PolicyHandle
+	);
+
+/*
+ * Function: 0x07  (LsarQueryInformationPolicy)
+ */
+	[opnum(0x07)]
+	NTSTATUS QueryInformationPolicy(
+		[in] LSAPR_HANDLE PolicyHandle,
+		[in] POLICY_INFORMATION_CLASS InformationClass,
+		[out,switch_is(InformationClass)] PLSAPR_POLICY_INFORMATION *PolicyInformation
+	);
+
+/*
+ * Function: 0x0d  (LsarEnumerateTrustedDomains)
+ */
+	[opnum(0x0d)]
+	NTSTATUS EnumerateTrustedDomains(
+		[in] LSAPR_HANDLE PolicyHandle,
+		[in,out,ref] uint32_t *EnumerationContext,
+		[out] PLSAPR_TRUSTED_ENUM_BUFFER EnumerationBuffer,
+		[in] uint32_t PreferedMaximumLength
+	);
+
+/*
+ * Function: 0x0e  (LsarLookupNames)
+ */
+	[opnum(0x0e)]
+	NTSTATUS LookupNames(
+		[in] LSAPR_HANDLE PolicyHandle,
+		[in,range(0,1000)] uint32_t Count,
+		[in,size_is(Count)] RPC_UNICODE_STRING *Names,
+		[out] PLSAPR_REFERENCED_DOMAIN_LIST *ReferencedDomains,
+		[in,out] PLSAPR_TRANSLATED_SIDS TranslatedSids,
+		[in] LSAP_LOOKUP_LEVEL LookupLevel,
+		[in,out,ref] uint32_t *MappedCount
+	);
+
+/*
+ * Function: 0x0f  (LsarLookupSids)
+ */
+	[opnum(0x0f)]
+	NTSTATUS LookupSids(
+		[in] LSAPR_HANDLE PolicyHandle,
+		[in] PLSAPR_SID_ENUM_BUFFER SidEnumBuffer,
+		[out] PLSAPR_REFERENCED_DOMAIN_LIST *ReferencedDomains,
+		[in,out] PLSAPR_TRANSLATED_NAMES TranslatedNames,
+		[in] LSAP_LOOKUP_LEVEL LookupLevel,
+		[in,out,ref] uint32_t *MappedCount
 	);
 
 /*
@@ -170,6 +421,26 @@ typedef struct {
 		[in] PLSAPR_OBJECT_ATTRIBUTES ObjectAttributes,
 		[in] POLICY_ACCESS_MASK DesiredAccess,
 		[out] LSAPR_HANDLE *PolicyHandle
+	);
+
+/*
+ * Function: 0x2d  (LsarGetUserName)
+ */
+	[opnum(0x2d)]
+	NTSTATUS GetUserName(
+		[in,unique,string,charset(UTF16)] uint16_t *SystemName,
+		[in,out,ref] LSAPR_UNICODE_STRING_PTR *UserName,
+		[in,out,unique] LSAPR_UNICODE_STRING_PTR *DomainName
+	);
+
+/*
+ * Function: 0x2e  (LsarQueryInformationPolicy2)
+ */
+	[opnum(0x2e)]
+	NTSTATUS QueryInformationPolicy2(
+		[in] LSAPR_HANDLE PolicyHandle,
+		[in] POLICY_INFORMATION_CLASS InformationClass,
+		[out,switch_is(InformationClass)] PLSAPR_POLICY_INFORMATION *PolicyInformation
 	);
 
 /*
@@ -197,6 +468,22 @@ typedef struct {
 		[in,size_is(Count)] RPC_UNICODE_STRING *Names,
 		[out] PLSAPR_REFERENCED_DOMAIN_LIST *ReferencedDomains,
 		[in,out] PLSAPR_TRANSLATED_SIDS_EX TranslatedSids,
+		[in] LSAP_LOOKUP_LEVEL LookupLevel,
+		[in,out,ref] uint32_t *MappedCount,
+		[in] uint32_t LookupOptions,
+		[in] uint32_t ClientRevision
+	);
+
+/*
+ * Function: 0x44  (LsarLookupNames3)
+ */
+	[opnum(0x44)]
+	NTSTATUS LookupNames3(
+		[in] LSAPR_HANDLE PolicyHandle,
+		[in,range(0,1000)] uint32_t Count,
+		[in,size_is(Count)] RPC_UNICODE_STRING *Names,
+		[out] PLSAPR_REFERENCED_DOMAIN_LIST *ReferencedDomains,
+		[in,out] PLSAPR_TRANSLATED_SIDS_EX2 TranslatedSids,
 		[in] LSAP_LOOKUP_LEVEL LookupLevel,
 		[in,out,ref] uint32_t *MappedCount,
 		[in] uint32_t LookupOptions,
