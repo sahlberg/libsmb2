@@ -35,6 +35,15 @@ Supported:
   - [case(NAME)] may name an enum member instead of a number
   - typedef struct { fields } Name, *LPName;
   - typedef [switch_type(...)] union { [case(n)] T field; } Name;
+    an arm is a pointer to a structure (LP*) or the structure itself; a
+    plain enum switch_type gives a 16-bit discriminant in NDR32
+    (dcerpc_union_enum16_coder), a [v1_enum] one a 32-bit one
+  - [out,switch_is(x)] PUNION *param: a pointer to a unique pointer to a
+    union, e.g. LsarQueryInformationPolicy's PolicyInformation; the C field
+    is a union pointer, NULL for a NULL referent
+  - a [size_is(n)] pointer field whose n is a later field of the struct
+    (LSAPR_POLICY_AUDIT_EVENTS_INFO): NDR keeps the wire order and sizes
+    the deferred array once n is known, YAML/JSON show n first
   - field types: enum Name, or bare Name for a prior typedef enum
   - functions with [opnum(N)], [in]/out], [unique]/ref], [size_is], [switch_is]
     (a union parameter's switch_is may name another parameter; for an [out]
@@ -1380,6 +1389,94 @@ def gen_req_rep_structs(env: TypeEnv) -> str:
     return "\n".join(lines)
 
 
+def forward_size_fields(t: TypeDef) -> Dict[str, Field]:
+    """
+    Pointer fields whose [size_is] names a later field of the struct, as
+    {pointer field name: size field}, e.g. LSAPR_POLICY_AUDIT_EVENTS_INFO's
+    EventAuditingOptions sized by the MaximumAuditEventCount after it.
+    """
+    out: Dict[str, Field] = {}
+    names = [f.name for f in t.fields]
+    for i, f in enumerate(t.fields):
+        sz = attr_arg(f.attrs, "size_is")
+        if sz in names and names.index(sz) > i and \
+                attr_arg(f.attrs, "length_is") is None:
+            out[f.name] = t.fields[names.index(sz)]
+    return out
+
+
+def forward_size_helper_name(env: TypeEnv, t: TypeDef, f: Field) -> str:
+    return f"{env.prefix}_{t.name}_{f.name}_deferred_coder"
+
+
+def gen_forward_size_helpers(env: TypeEnv, t: TypeDef) -> List[str]:
+    """
+    For each forward-sized pointer field: the coder NDR queues for its
+    referent. It gets the structure, not the field, as by the time NDR
+    codes the deferred referent the size field after the pointer is known.
+    """
+    lines: List[str] = []
+    for fname, szf in forward_size_fields(t).items():
+        f = next(x for x in t.fields if x.name == fname)
+        body = gen_field_coder_stmts(env, f, "s")
+        # keep the size and allocation lines, then call the array coder on
+        # the field itself instead of queueing it again
+        cut = next(i for i, l in enumerate(body) if "dcerpc_ptr_coder" in l)
+        elem = array_elem(env, f)
+        lines.append(f"/* {f.name} is sized by the {szf.name} after it */")
+        lines.append("static int")
+        lines.append(
+            f"{forward_size_helper_name(env, t, f)}(char *name, struct dcerpc_context *dce,\n"
+            f"                struct dcerpc_pdu *pdu,\n"
+            f"                struct dcerpc_iovec *iov,\n"
+            f"                void *ptr)"
+        )
+        lines.append("{")
+        lines.append(f"        {env.c_struct_name(t.name)} *s = ptr;")
+        lines.append("")
+        lines.extend(body[:cut])
+        lines.append(
+            f"        return {env.carray_coder_name(elem)}(name, dce, pdu, iov,\n"
+            f"                s->{f.name} ? (void *)s->{f.name} : (void *)&s->{f.name});"
+        )
+        lines.append("}")
+        lines.append("")
+    return lines
+
+
+def indent_lines(lines: List[str], extra: str) -> List[str]:
+    return ["\n".join(extra + x if x else x for x in l.split("\n")) for l in lines]
+
+
+def union_coder_fn(env: TypeEnv, union_name: str) -> str:
+    """
+    dcerpc_union_coder, or dcerpc_union_enum16_coder for a union whose
+    switch_type is a plain enum: that discriminant is 16 bits in NDR32.
+    """
+    td = env.types.get(union_name)
+    sw = attr_arg(td.attrs, "switch_type") if td is not None else None
+    st = env.types.get(sw) if sw else None
+    if st is not None and st.kind == "enum" and not env.is_u32_enum(sw):
+        return "dcerpc_union_enum16_coder"
+    return "dcerpc_union_coder"
+
+
+def param_double_ptr_union(env: TypeEnv, p: Param) -> Optional[str]:
+    """
+    For "[out,switch_is(x)] PUNION *Info" return the union type name. As
+    with param_double_ptr the outer pointer is [ref] and the inner one
+    unique; the C field holds the union by value.
+    """
+    if p.stars != 1 or p.type_name not in env.ptr_to_base:
+        return None
+    if attr_arg(p.attrs, "switch_is") is None:
+        return None
+    base = env.ptr_to_base[p.type_name]
+    if base in env.types and env.types[base].kind == "union":
+        return base
+    return None
+
+
 def param_double_ptr(env: TypeEnv, p: Param) -> Optional[str]:
     """
     For a parameter like "[out] LPSTAT_SERVER_0 *InfoStruct" return the
@@ -1400,6 +1497,9 @@ def c_param_field_type(env: TypeEnv, p: Param) -> str:
     dbl = param_double_ptr(env, p)
     if dbl is not None:
         return env.c_struct_name(dbl)
+    dbl = param_double_ptr_union(env, p)
+    if dbl is not None:
+        return c_ptr(env.c_union_name(dbl))
     if byte_array_param(env, p):
         return "uint8_t *"
     pt = nullable_param(env, p)
@@ -1593,6 +1693,12 @@ def gen_prototypes(env: TypeEnv) -> str:
                     f"                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,\n"
                     f"                void *ptr);"
                 )
+            if t.kind == "union" and t.name in double_ptr_unions(env):
+                lines.append(
+                    f"int {env.prefix}_{t.name}_switch_ptr_coder(char *name, struct dcerpc_context *dce,\n"
+                    f"                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,\n"
+                    f"                void *ptr);"
+                )
             lines.append("")
 
     if has_iface:
@@ -1731,9 +1837,10 @@ def enum_align(env: "TypeEnv", tname: str) -> Tuple[int, int]:
 
 def union_arm_align(env: "TypeEnv", f: "Field") -> Tuple[int, int]:
     """Mirrors gen_union_case_stmts."""
-    tname, _ = env.resolve_pointee(f.type_name, f.stars)
+    tname, stars = env.resolve_pointee(f.type_name, f.stars)
     if tname in env.types and env.types[tname].kind == "struct":
-        return PTR_ALIGN
+        # an arm that is a structure itself, or a pointer to one
+        return struct_align(env, tname) if stars == 0 else PTR_ALIGN
     if env.is_string_type(f.type_name, f.stars, f.attrs):
         return PTR_ALIGN
     if env.is_enum(tname):
@@ -1743,10 +1850,30 @@ def union_arm_align(env: "TypeEnv", f: "Field") -> Tuple[int, int]:
     raise SystemExit(f"error: no NDR alignment for union arm {f.name}")
 
 
-def union_align(env: "TypeEnv", uname: str) -> Tuple[int, int]:
-    """The discriminant is coded as a 32/64-bit value, then the arm."""
+def union_arms_align(env: "TypeEnv", uname: str) -> Tuple[int, int]:
+    """The largest alignment of the arms of a union."""
     t = env.types[uname]
+    return max_align(*[union_arm_align(env, f) for f in t.fields])
+
+
+def union_align(env: "TypeEnv", uname: str) -> Tuple[int, int]:
+    """
+    The discriminant, then the arm: a 32/64-bit discriminant, or a plain
+    enum one (dcerpc_union_enum16_coder) that is 16 bits in NDR32.
+    """
+    t = env.types[uname]
+    if union_coder_fn(env, uname) == "dcerpc_union_enum16_coder":
+        return max_align(enum_align(env, attr_arg(t.attrs, "switch_type")),
+                         union_arms_align(env, uname))
     return max_align(PTR_ALIGN, *[union_arm_align(env, f) for f in t.fields])
+
+
+def union_coder_args(env: "TypeEnv", uname: str) -> str:
+    """Extra arguments of the union coder for uname: the arm alignment."""
+    if union_coder_fn(env, uname) == "dcerpc_union_enum16_coder":
+        a32, a64 = union_arms_align(env, uname)
+        return f", {a32}, {a64}"
+    return ""
 
 
 def field_align(env: "TypeEnv", f: "Field") -> Tuple[int, int]:
@@ -1887,10 +2014,12 @@ def gen_field_coder_stmts(
     # switch_is union field
     if switch_is is not None:
         ut = tname
+        ufn = union_coder_fn(env, ut)
+        pad = " " * (len(ufn) + 5)
         lines.append(
-            f'{indent}if (dcerpc_union_coder("{disp}", dce, pdu, iov,\n'
-            f"{indent}                       &{var}->{switch_is}, &{var}->{f.name},\n"
-            f"{indent}                       {env.coder_name(ut)})) {{\n"
+            f'{indent}if ({ufn}("{disp}", dce, pdu, iov,\n'
+            f"{indent}{pad}&{var}->{switch_is}, &{var}->{f.name},\n"
+            f"{indent}{pad}{env.coder_name(ut)}{union_coder_args(env, ut)})) {{\n"
             f"{indent}        return -1;\n"
             f"{indent}}}"
         )
@@ -1935,6 +2064,16 @@ def gen_union_case_stmts(env: TypeEnv, f: Field, var: str, indent: str) -> List[
     lines: List[str] = []
     tname, stars = env.resolve_pointee(f.type_name, f.stars)
     disp = f.name
+    # union arms that are a structure (not a pointer to one) are coded in
+    # place, e.g. LSAPR_POLICY_INFORMATION
+    if tname in env.types and env.types[tname].kind == "struct" and stars == 0:
+        lines.append(
+            f'{indent}if ({env.struct_coder_name(tname)}("{disp}", dce, pdu, iov,\n'
+            f"{indent}        &{var}->{f.name})) {{\n"
+            f"{indent}        return -1;\n"
+            f"{indent}}}"
+        )
+        return lines
     # union arms that are LP* containers: unique pointer to embedded struct.
     # The _struct_coder wrapper gives the arm its own key in YAML/JSON
     # (ShareInfo: Level0: ...), which the union readers expect; NDR is the
@@ -2278,6 +2417,9 @@ def gen_type_coders(env: TypeEnv) -> str:
             lines.append(gen_enum_coder(env, t))
             continue
         if t.kind == "struct":
+            fwd = forward_size_fields(t)
+            fwd_sizes = {szf.name for szf in fwd.values()}
+            lines.extend(gen_forward_size_helpers(env, t))
             lines.append("int")
             lines.append(
                 f"{env.coder_name(t.name)}(char *name, struct dcerpc_context *dce,\n"
@@ -2311,6 +2453,25 @@ def gen_type_coders(env: TypeEnv) -> str:
                         f"                return -1;\n"
                         f"        }}"
                     )
+                elif f.name in fwd:
+                    # YAML/JSON need the size before the list; NDR keeps
+                    # the wire order and codes the referent later
+                    szf = fwd[f.name]
+                    lines.append("        if (dcerpc_pdu_encoding(pdu) != ENCODING_NDR) {")
+                    lines.extend(indent_lines(gen_field_coder_stmts(env, szf, "s"), "        "))
+                    lines.extend(indent_lines(gen_field_coder_stmts(env, f, "s"), "        "))
+                    lines.append(
+                        f'        }} else if (dcerpc_ptr_coder("{f.name}", dce, pdu, iov,\n'
+                        f"                         (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&\n"
+                        f"                          s->{f.name} == NULL) ? NULL : (void *)s,\n"
+                        f"                         PTR_UNIQUE, {forward_size_helper_name(env, t, f)})) {{\n"
+                        f"                return -1;\n"
+                        f"        }}"
+                    )
+                elif f.name in fwd_sizes:
+                    lines.append("        if (dcerpc_pdu_encoding(pdu) == ENCODING_NDR) {")
+                    lines.extend(indent_lines(gen_field_coder_stmts(env, f, "s"), "        "))
+                    lines.append("        }")
                 else:
                     lines.extend(gen_field_coder_stmts(env, f, "s"))
             lines.append("")
@@ -2348,12 +2509,35 @@ def gen_type_coders(env: TypeEnv) -> str:
             lines.append("{")
             lines.append("        uint32_t level = dcerpc_get_switch_is(pdu);")
             lines.append("")
+            ufn = union_coder_fn(env, t.name)
             lines.append(
-                f"        return dcerpc_union_coder(name, dce, pdu, iov, &level, ptr,\n"
-                f"                                  {env.coder_name(t.name)});"
+                f"        return {ufn}(name, dce, pdu, iov, &level, ptr,\n"
+                f"                {' ' * len(ufn)}{env.coder_name(t.name)}"
+                f"{union_coder_args(env, t.name)});"
             )
             lines.append("}")
             lines.append("")
+            if t.name in double_ptr_unions(env):
+                lines.append("/* A unique pointer to the union: NULL encodes a NULL referent */")
+                lines.append("int")
+                lines.append(
+                    f"{env.prefix}_{t.name}_switch_ptr_coder(char *name, struct dcerpc_context *dce,\n"
+                    f"                struct dcerpc_pdu *pdu,\n"
+                    f"                struct dcerpc_iovec *iov,\n"
+                    f"                void *ptr)"
+                )
+                lines.append("{")
+                lines.append(f"        {env.c_union_name(t.name)} **pp = ptr;")
+                lines.append("")
+                lines.append("        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && *pp == NULL) {")
+                lines.append("                *pp = dcerpc_alloc_data(pdu, sizeof(**pp));")
+                lines.append("                if (*pp == NULL) {")
+                lines.append("                        return -1;")
+                lines.append("                }")
+                lines.append("        }")
+                lines.append(f"        return {env.prefix}_{t.name}_switch_coder(name, dce, pdu, iov, *pp);")
+                lines.append("}")
+                lines.append("")
         elif t.kind == "union":
             lines.extend(gen_union_coder(env, t))
 
@@ -2415,10 +2599,24 @@ def switched_param_unions(env: TypeEnv) -> List[str]:
     for fn in env.iface.functions:
         for p in fn.params:
             tname, _ = env.resolve_pointee(p.type_name, p.stars)
+            dbl = param_double_ptr_union(env, p)
+            if dbl is not None:
+                tname = dbl
             if (tname in env.types and env.types[tname].kind == "union" and
                     attr_arg(p.attrs, "switch_is") is not None and
                     tname not in out):
                 out.append(tname)
+    return out
+
+
+def double_ptr_unions(env: TypeEnv) -> List[str]:
+    """Unions behind an [out,switch_is] PUNION * parameter."""
+    out: List[str] = []
+    for fn in env.iface.functions:
+        for p in fn.params:
+            dbl = param_double_ptr_union(env, p)
+            if dbl is not None and dbl not in out:
+                out.append(dbl)
     return out
 
 
@@ -2453,6 +2651,22 @@ def gen_param_coder(env: TypeEnv, p: Param, var: str, indent: str = "        ",
         lines.append(
             f'{indent}if (dcerpc_ptr_coder("{disp}", dce, pdu, iov, &{var}->{p.name},\n'
             f"{indent}                     PTR_UNIQUE, {env.struct_coder_name(dbl)})) {{\n"
+            f"{indent}        return -1;\n"
+            f"{indent}}}"
+        )
+        return lines
+
+    # [ref] pointer to a unique pointer to a switched union
+    dbl = param_double_ptr_union(env, p)
+    if dbl is not None:
+        if fn is None:
+            raise SystemExit(f"error: union parameter {p.name} needs switch_is")
+        lines.append(f"{indent}dcerpc_set_switch_is(pdu, {switch_source(fn, p, var)});")
+        lines.append(
+            f'{indent}if (dcerpc_ptr_coder("{disp}", dce, pdu, iov,\n'
+            f"{indent}                     (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&\n"
+            f"{indent}                      {var}->{p.name} == NULL) ? NULL : &{var}->{p.name},\n"
+            f"{indent}                     PTR_UNIQUE, {env.prefix}_{dbl}_switch_ptr_coder)) {{\n"
             f"{indent}        return -1;\n"
             f"{indent}}}"
         )

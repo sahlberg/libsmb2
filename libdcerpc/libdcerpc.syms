@@ -78,6 +78,7 @@ dcerpc_uint32_coder
 dcerpc_uint32_coder_pp
 dcerpc_uint64_coder
 dcerpc_union_coder
+dcerpc_union_enum16_coder
 dcerpc_utf16_coder
 dcerpc_varying_bytes_coder
 dcerpc_utf16z_coder

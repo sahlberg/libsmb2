@@ -1500,6 +1500,59 @@ int dcerpc_union_coder(char *name, struct dcerpc_context *ctx,
         return -1;
 }
 
+/*
+ * A union whose discriminant is a plain enum (switch_type is not a
+ * [v1_enum]): in NDR the discriminant is 16 bits in NDR32 and 32 bits in
+ * NDR64, like any plain enum (dcerpc_enum16_coder), and the arm that
+ * follows is aligned to ndr32_align/ndr64_align, the largest alignment of
+ * all the arms. YAML/JSON are the same as dcerpc_union_coder.
+ */
+int dcerpc_union_enum16_coder(char *name, struct dcerpc_context *ctx,
+                              struct dcerpc_pdu *pdu,
+                              struct dcerpc_iovec *iov,
+                              uint32_t *switch_is, void *ptr,
+                              dcerpc_coder coder,
+                              int ndr32_align, int ndr64_align)
+{
+        uint16_t level;
+        int max_alignment;
+
+        if (pdu->encoding != ENCODING_NDR) {
+                return dcerpc_union_coder(name, ctx, pdu, iov, switch_is,
+                                          ptr, coder);
+        }
+        if (*switch_is > UINT16_MAX) {
+                return -1;
+        }
+        level = (uint16_t)*switch_is;
+        if (dcerpc_enum16_coder("", ctx, pdu, iov, &level, NULL)) {
+                return -1;
+        }
+        *switch_is = level;
+
+        dcerpc_set_switch_is(pdu, level);
+        if (!pdu->is_conformance_run &&
+            dcerpc_iov_align(pdu, iov, pdu->ndr64 ? ndr64_align : ndr32_align)) {
+                return -1;
+        }
+        /*
+         * NDR32 aligns the discriminant to its own size and only the arm
+         * to the arms' alignment, so the arm must not raise the alignment
+         * the union starts at (Windows' LsarQueryInformationPolicy replies
+         * have the 16-bit discriminant right after the pointer and the
+         * arm 8-aligned). NDR64 aligns the whole union to its largest
+         * alignment.
+         */
+        max_alignment = pdu->max_alignment;
+        if (coder(name, ctx, pdu, iov, ptr)) {
+                return -1;
+        }
+        if (pdu->is_conformance_run && !pdu->ndr64) {
+                pdu->max_alignment = max_alignment;
+        }
+        return 0;
+}
+
 int dcerpc_struct_coder(char *name, struct dcerpc_context *ctx,
                         struct dcerpc_pdu *pdu,
                         struct dcerpc_iovec *iov,
@@ -3617,6 +3670,19 @@ _ndr_RPC_UNICODE_STRING_coder(char *name, struct dcerpc_context *dce,
          * and the utf16 coder encodes an empty (or single-NUL) array.
          */
         buffer_coder = nult ? dcerpc_utf16z_coder : dcerpc_utf16_coder;
+        /*
+         * An empty plain RPC_UNICODE_STRING that announces no receive
+         * buffer has a NULL Buffer, as Windows sends it (Length and
+         * MaximumLength 0).
+         */
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE && !nult &&
+            maxlen == 0) {
+                if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, NULL,
+                                     PTR_UNIQUE, buffer_coder)) {
+                        return -1;
+                }
+                return 0;
+        }
         if (dcerpc_ptr_coder("Buffer", dce, pdu, iov, ptr,
                              PTR_UNIQUE, buffer_coder)) {
                 return -1;
