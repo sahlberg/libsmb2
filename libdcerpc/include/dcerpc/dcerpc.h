@@ -31,6 +31,7 @@ struct dcerpc_pdu;
 
 /* Opaque; full definition in smb2/libsmb2.h. */
 struct smb2_context;
+struct dcerpc_utf16_buf;
 
 /*
  * Buffer descriptor for NDR/YAML/JSON encode/decode.
@@ -146,7 +147,7 @@ struct dcerpc_utf16 {
         uint32_t offset;          /* internal use only */
         uint32_t actual_count;    /* internal use only */
 
-        struct smb2_utf16 *utf16; /* internal use only */
+        struct dcerpc_utf16_buf *utf16; /* internal use only */
         
         const char *utf8;
 };

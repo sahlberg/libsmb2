@@ -46,6 +46,7 @@ set(DCERPC_LIB_SOURCES
     dcerpc.c
     dcerpc-dtyp.c
     dcerpc-epm.c
+    dcerpc-unicode.c
     dcerpc-private.h
 )
 

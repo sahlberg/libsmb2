@@ -4315,9 +4315,9 @@ ndr_encode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         /* Conformance part */
         if (pdu->is_conformance_run) {
                 if (s->utf8) {
-                        s->utf16 = smb2_utf8_to_utf16(s->utf8);
+                        s->utf16 = dcerpc_utf8_to_utf16(s->utf8);
                 } else {
-                        s->utf16 = smb2_utf8_to_utf16("");
+                        s->utf16 = dcerpc_utf8_to_utf16("");
                 }
                 if (s->utf16 == NULL) {
                         return -1;
@@ -4447,11 +4447,11 @@ ndr_decode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                                 return -1;
                         }
                 }
-                tmp = smb2_utf16_to_utf8(units, (size_t)s->actual_count);
+                tmp = dcerpc_utf16_to_utf8(units, (size_t)s->actual_count);
                 free(units);
                 iov->offset = start;
         } else {
-                tmp = smb2_utf16_to_utf8((uint16_t *)(void *)(&iov->buf[iov->offset]), (size_t)s->actual_count);
+                tmp = dcerpc_utf16_to_utf8((uint16_t *)(void *)(&iov->buf[iov->offset]), (size_t)s->actual_count);
         }
         if (tmp == NULL) {
                 return -1;

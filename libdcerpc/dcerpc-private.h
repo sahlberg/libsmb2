@@ -9,6 +9,17 @@
 #define discard_const(ptr) ((void *)((intptr_t)(ptr)))
 #endif
 
+/* A UTF-16LE string; val[] holds len code units in little-endian order */
+struct dcerpc_utf16_buf {
+        int len;
+        uint16_t val[1];
+};
+
+/* NULL if utf8 is not valid UTF-8. Release with free(). */
+struct dcerpc_utf16_buf *dcerpc_utf8_to_utf16(const char *utf8);
+/* Unpaired surrogates become U+FFFD. Release with free(). */
+char *dcerpc_utf16_to_utf8(const uint16_t *utf16, size_t len);
+
 struct dcerpc_context;
 struct dcerpc_iovec;
 int dcerpc_set_uint8(struct dcerpc_context *ctx, struct dcerpc_iovec *iov, uint8_t value);

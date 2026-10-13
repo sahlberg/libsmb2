@@ -23,6 +23,7 @@ libdcerpc_la_SOURCES = \
 	dcerpc.c \
 	dcerpc-dtyp.c \
 	dcerpc-epm.c \
+	dcerpc-unicode.c \
 	dcerpc-private.h
 
 SOCURRENT=1
