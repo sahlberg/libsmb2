@@ -447,10 +447,19 @@ void smb2_destroy_context(struct smb2_context *smb2)
 
         while (smb2->outqueue) {
                 struct smb2_pdu *pdu = smb2->outqueue;
+                struct smb2_pdu *p;
 
                 smb2->outqueue = pdu->next;
-                if (pdu->cb) {
-                        pdu->cb(smb2, SMB2_STATUS_SHUTDOWN, NULL, pdu->cb_data);
+                /*
+                 * An unsent compound is still chained: every PDU in it
+                 * has its own callback, and smb2_free_pdu() frees the
+                 * whole chain.
+                 */
+                for (p = pdu; p; p = p->next_compound) {
+                        if (p->cb) {
+                                p->cb(smb2, SMB2_STATUS_SHUTDOWN, NULL,
+                                      p->cb_data);
+                        }
                 }
                 smb2_free_pdu(smb2, pdu);
         }

@@ -2291,7 +2291,7 @@ fstat_cb_1(struct smb2_context *smb2, int status,
 {
         struct stat_cb_data *stat_data = private_data;
         struct smb2_query_info_reply *rep = command_data;
-        struct smb2_file_all_info *fs = rep->output_buffer;
+        struct smb2_file_all_info *fs;
         struct smb2_stat_64 *st = stat_data->st;
 
         if (status != SMB2_STATUS_SUCCESS) {
@@ -2300,6 +2300,7 @@ fstat_cb_1(struct smb2_context *smb2, int status,
                 free(stat_data);
                 return;
         }
+        fs = rep->output_buffer;
 
         smb2_set_stat_type(st, fs->basic.file_attributes,
                            stat_data->reparse_tag);

@@ -62,6 +62,46 @@
 #include "libsmb2-raw.h"
 #include "libsmb2-private.h"
 
+static int pdu_on_list(struct smb2_pdu *list, struct smb2_pdu *pdu)
+{
+        for (; list; list = list->next) {
+                if (list == pdu) {
+                        return 1;
+                }
+        }
+        return 0;
+}
+
+/*
+ * Free a PDU that a sync call owns (caller_frees_pdu) after waiting for it
+ * failed, e.g. because the connection dropped. If it has not completed, its
+ * callback still owns state such as the smb2dir or smb2fh, so complete it
+ * with SMB2_STATUS_SHUTDOWN first, as smb2_destroy_context() does for the
+ * PDUs it finds. The sync callback's cb_data must still be valid.
+ */
+static void sync_free_pending_pdu(struct smb2_context *smb2,
+                                  struct smb2_pdu *pdu)
+{
+        int pending = 0;
+
+        if (smb2->pdu == pdu) {
+                smb2->pdu = NULL;
+                pending = 1;
+        }
+        if (smb2->next_pdu == pdu) {
+                smb2->next_pdu = NULL;
+                pending = 1;
+        }
+        if (pdu_on_list(smb2->outqueue, pdu) ||
+            pdu_on_list(smb2->waitqueue, pdu)) {
+                pending = 1;
+        }
+        if (pending && pdu->cb) {
+                pdu->cb(smb2, SMB2_STATUS_SHUTDOWN, NULL, pdu->cb_data);
+        }
+        smb2_free_pdu(smb2, pdu);
+}
+
 static int wait_for_reply(struct smb2_context *smb2,
                           struct sync_cb_data *cb_data)
 {
@@ -89,6 +129,14 @@ static int wait_for_reply(struct smb2_context *smb2,
                         continue;
                 }
 		if (smb2_service(smb2, pfd.revents) < 0) {
+                        /*
+                         * Our reply was processed before the error: the
+                         * call completed, so return its result. The
+                         * connection error shows up on the next call.
+                         */
+                        if (cb_data->is_finished) {
+                                break;
+                        }
 			smb2_set_error(smb2, "smb2_service failed with : "
                                         "%s\n", smb2_get_error(smb2));
                         return -1;
@@ -208,8 +256,8 @@ struct smb2dir *smb2_opendir(struct smb2_context *smb2, const char *path)
 	}
 
 	if (wait_for_reply(smb2, cb_data) < 0) {
+                sync_free_pending_pdu(smb2, pdu);
                 free(cb_data);
-                smb2_free_pdu(smb2, pdu);
                 return NULL;
         }
 
@@ -256,7 +304,7 @@ struct smb2fh *smb2_open(struct smb2_context *smb2, const char *path, int flags)
 	}
 
 	if (wait_for_reply(smb2, cb_data) < 0) {
-                smb2_free_pdu(smb2, pdu);
+                sync_free_pending_pdu(smb2, pdu);
                 free(cb_data);
                 return NULL;
         }
