@@ -175,6 +175,14 @@ struct smb2fh {
         char *path;
         int flags;
         int symlink_hops;
+
+        /*
+         * For smb2_open_async_pdu(): the pdu the caller owns, until the
+         * first callback runs. Freeing the pdu before that cancels the
+         * open, which then frees fh and calls cancel_free_cb(cb_data).
+         */
+        struct smb2_pdu *cancel_pdu;
+        void (*cancel_free_cb)(void *);
 };
 
 void
@@ -503,6 +511,18 @@ query_cb(struct smb2_context *smb2, int status,
         free_smb2dir(smb2, dir);
 }
 
+/* The caller freed the opendir pdu before its callback ran */
+static void
+opendir_cancelled(void *private_data)
+{
+        struct smb2dir *dir = private_data;
+
+        if (dir->cancel_free_cb) {
+                dir->cancel_free_cb(dir->cb_data);
+        }
+        free_smb2dir(NULL, dir);
+}
+
 static void
 opendir_cb(struct smb2_context *smb2, int status,
            void *command_data, void *private_data)
@@ -511,6 +531,12 @@ opendir_cb(struct smb2_context *smb2, int status,
         struct smb2_create_reply *rep = command_data;
         struct smb2_query_directory_request req;
         struct smb2_pdu *pdu;
+
+        /* Completed: freeing the caller's pdu no longer cancels */
+        if (dir->cancel_pdu) {
+                dir->cancel_pdu->free_cb = NULL;
+                dir->cancel_pdu = NULL;
+        }
 
         if (status != SMB2_STATUS_SUCCESS) {
                 smb2_set_nterror(smb2, status, "Opendir failed with (0x%08x) %s.",
@@ -580,7 +606,11 @@ _smb2_opendir_async(struct smb2_context *smb2, const char *path,
                 smb2_set_error(smb2, "Failed to create opendir command.");
                 return NULL;
         }
-        pdu->free_cb = free_cb;
+        if (caller_frees_pdu) {
+                dir->cancel_pdu = pdu;
+                dir->cancel_free_cb = free_cb;
+                pdu->free_cb = opendir_cancelled;
+        }
         pdu->caller_frees_pdu = caller_frees_pdu;
         smb2_queue_pdu(smb2, pdu);
 
@@ -1524,12 +1554,30 @@ open_retry(struct smb2_context *smb2, struct smb2fh *fh)
         return 0;
 }
 
+/* The caller freed the open pdu before its callback ran */
+static void
+open_cancelled(void *private_data)
+{
+        struct smb2fh *fh = private_data;
+
+        if (fh->cancel_free_cb) {
+                fh->cancel_free_cb(fh->cb_data);
+        }
+        free_smb2fh(NULL, fh);
+}
+
 static void
 open_cb(struct smb2_context *smb2, int status,
         void *command_data, void *private_data)
 {
         struct smb2fh *fh = private_data;
         struct smb2_create_reply *rep = command_data;
+
+        /* Completed: freeing the caller's pdu no longer cancels */
+        if (fh->cancel_pdu) {
+                fh->cancel_pdu->free_cb = NULL;
+                fh->cancel_pdu = NULL;
+        }
 
         if (status == SMB2_STATUS_STOPPED_ON_SYMLINK && fh->path) {
                 char *target;
@@ -1642,6 +1690,11 @@ _smb2_open_async_with_oplock_or_lease(struct smb2_context *smb2, const char *pat
                 free(req.create_context);
         }
 
+        if (caller_frees_pdu) {
+                fh->cancel_pdu = pdu;
+                fh->cancel_free_cb = free_cb;
+                pdu->free_cb = open_cancelled;
+        }
         pdu->caller_frees_pdu = caller_frees_pdu;
         smb2_queue_pdu(smb2, pdu);
 

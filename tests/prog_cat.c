@@ -64,6 +64,24 @@ void cl_cb(struct smb2_context *smb2, int status,
         smb2_disconnect_share_async(smb2, dc_cb, NULL);
 }
 
+/* Closing the file after an error: just finish */
+void err_cl_cb(struct smb2_context *smb2, int status,
+                void *command_data, void *private_data)
+{
+        is_finished = 1;
+}
+
+/*
+ * Close fh after a failed read. If the connection is gone the close is
+ * completed when the context is destroyed, which frees fh.
+ */
+static void close_on_error(struct smb2_context *smb2, struct smb2fh *fh)
+{
+        if (smb2_close_async(smb2, fh, err_cl_cb, NULL) < 0) {
+                is_finished = 1;
+        }
+}
+
 void pr_cb(struct smb2_context *smb2, int status,
                 void *command_data, void *private_data)
 {
@@ -72,7 +90,7 @@ void pr_cb(struct smb2_context *smb2, int status,
         if (status < 0) {
                 printf("failed to read file (%s) %s\n",
                        strerror(-status), smb2_get_error(smb2));
-                is_finished = 1;
+                close_on_error(smb2, fh);
                 return;
         }
 
@@ -89,7 +107,7 @@ void pr_cb(struct smb2_context *smb2, int status,
         pos += status;
         if (smb2_pread_async(smb2, fh, buf, 102400, pos, pr_cb, fh) < 0) {
                 printf("Failed to call smb2_pread_async()\n");
-                is_finished = 1;
+                close_on_error(smb2, fh);
                 return;
         }
 }
@@ -108,7 +126,7 @@ void of_cb(struct smb2_context *smb2, int status,
 
         if (smb2_pread_async(smb2, fh, buf, 102400, 0, pr_cb, fh) < 0) {
                 printf("Failed to call smb2_pread_async()\n");
-                is_finished = 1;
+                close_on_error(smb2, fh);
                 return;
         }
 }

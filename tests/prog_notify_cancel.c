@@ -321,17 +321,16 @@ static int run_scenario_invalid_msg_id(struct smb2_context *smb2)
  * for it to still be outstanding when that check runs. It ends up being
  * completed later by the library itself, with SMB2_STATUS_SHUTDOWN, when
  * the leftover wait queue is torn down in smb2_destroy_context() -- so
- * its result has to be heap-allocated rather than a local, since its
- * callback can still fire after this function has returned. That one
- * small allocation is deliberately never freed; the process exits
- * shortly after.
+ * its result is static rather than a local, since its callback can still
+ * fire after this function has returned.
  */
 static int run_scenario_targeted_cancel(struct smb2_context *smb2,
                                         struct smb2fh *dir_fh_a,
                                         struct smb2fh *dir_fh_b)
 {
+        static struct result notify_b_result;
         struct result notify_a, cancel_a;
-        struct result *notify_b;
+        struct result *notify_b = &notify_b_result;
         uint64_t msg_id_a, msg_id_b;
 
         printf("Scenario: cancelling one CHANGE_NOTIFY does not affect "
@@ -340,23 +339,16 @@ static int run_scenario_targeted_cancel(struct smb2_context *smb2,
         memset(&notify_a, 0, sizeof(notify_a));
         memset(&cancel_a, 0, sizeof(cancel_a));
 
-        notify_b = calloc(1, sizeof(*notify_b));
-        if (notify_b == NULL) {
-                printf("[targeted] Failed to allocate result for the "
-                       "second CHANGE_NOTIFY\n");
-                return -1;
-        }
+        memset(notify_b, 0, sizeof(*notify_b));
 
         if (start_notify(smb2, dir_fh_a, &notify_a, &msg_id_a) == NULL) {
                 printf("[targeted] Failed to build first CHANGE_NOTIFY. "
                        "%s\n", smb2_get_error(smb2));
-                free(notify_b);
                 return -1;
         }
         if (start_notify(smb2, dir_fh_b, notify_b, &msg_id_b) == NULL) {
                 printf("[targeted] Failed to build second CHANGE_NOTIFY. "
                        "%s\n", smb2_get_error(smb2));
-                free(notify_b);
                 return -1;
         }
 

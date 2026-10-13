@@ -413,6 +413,14 @@ struct smb2dir {
         void *cb_data;
         smb2_file_id file_id;
 
+        /*
+         * For smb2_opendir_async_pdu(): the pdu the caller owns, until the
+         * first callback runs. Freeing the pdu before that cancels the
+         * opendir, which then frees dir and calls cancel_free_cb(cb_data).
+         */
+        struct smb2_pdu *cancel_pdu;
+        void (*cancel_free_cb)(void *);
+
         struct smb2_dirent_internal *entries;
         struct smb2_dirent_internal *current_entry;
         int index;

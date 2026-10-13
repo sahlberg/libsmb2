@@ -753,7 +753,7 @@ struct smb2dir;
  *          through the callback function.
  *          The pdu must be freed by smb2_free_pdu().
  *          The pdu can be cancelled before the callback is invoked by freeing
- *          it.
+ *          it. free_cb, if not NULL, is then called with cb_data.
  * NULL :   There was an error. The callback function will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
@@ -831,7 +831,7 @@ struct smb2fh;
  *          through the callback function.
  *          The pdu must be freed by smb2_free_pdu().
  *          The pdu can be cancelled before the callback is invoked by freeing
- *          it.
+ *          it. free_cb, if not NULL, is then called with cb_data.
  * NULL :   There was an error. The callback function will not be invoked.
  *
  * Opens or creates a file.
