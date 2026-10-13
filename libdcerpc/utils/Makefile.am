@@ -18,4 +18,6 @@ AM_CPPFLAGS = \
 LDADD = ../libdcerpc.la $(LIBSMB2_LIBS)
 winreg_tui_LDADD = $(LDADD) -lncurses
 
+dist_man_MANS = dcerpc.1
+
 EXTRA_DIST = CMakeLists.txt

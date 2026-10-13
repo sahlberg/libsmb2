@@ -22,6 +22,7 @@ foreach(SRC ${SOURCES})
 endforeach()
 
 target_link_libraries(dcerpc-tool ${CMAKE_DL_LIBS})
+install(FILES dcerpc.1 DESTINATION ${INSTALL_MAN_DIR}/man1)
 
 if(CURSES_FOUND)
   target_link_libraries(winreg-tui ${CURSES_LIBRARIES})

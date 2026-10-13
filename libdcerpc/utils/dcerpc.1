@@ -1,0 +1,313 @@
+.\" SPDX-License-Identifier: BSD-2-Clause
+.TH DCERPC 1 2026-10-14 libdcerpc "User Commands"
+.SH NAME
+dcerpc \- send DCE/RPC requests written in YAML to an SMB2 server
+.SH SYNOPSIS
+.B dcerpc
+.RB [ \-j | \-\-json ]
+.RB [ \-c | \-\-coder
+.IR file.so ]
+.I smb2-url
+.RI [ request.yaml ]
+.SH DESCRIPTION
+.B dcerpc
+connects to the
+.B IPC$
+share of an SMB2 server, binds to a DCE/RPC service over a named pipe,
+and sends one or more requests to it.
+Each request is written in YAML.
+.B dcerpc
+encodes it as NDR, sends it, and prints the decoded reply as YAML,
+or as JSON with
+.BR \-j .
+.PP
+The requests are read from
+.IR request.yaml ,
+or from standard input when no file is given, which makes a shell
+here-document a convenient way to write them.
+.PP
+Each request starts with a line naming the procedure, followed by its
+indented
+.B [in]
+parameters:
+.PP
+.RS
+.nf
+NetrShareEnum: Request
+  ServerName: \e\efs1
+  ...
+.fi
+.RE
+.PP
+Blank lines and lines starting with
+.B #
+are ignored.
+Several requests can be given in one input, separated by a line that
+contains only
+.BR \-\-\- .
+They are sent one at a time, in order, on the same connection, and each
+reply is printed before the next request is sent.
+.PP
+Each reply is printed after a line containing
+.B YAML:
+and a
+.B \-\-\-
+line, or after a line containing
+.BR JSON: .
+The reply holds the
+.B [out]
+parameters and the return value as
+.BR Status .
+.SH OPTIONS
+.TP
+.BR \-j ", " \-\-json
+Print the replies as JSON instead of YAML.
+The requests are always YAML.
+.TP
+.BR \-c ", " \-\-coder " \fIfile.so\fR"
+Load an additional interface from a coder that the libdcerpc IDL
+compiler generated and that was built as a shared object, for example
+.IR axpy_coder.so .
+The service name is the file name without the
+.I _coder.so
+suffix, and the object must export the symbols
+.IB name _interface
+and
+.IB name _procs\fR.
+A name without a
+.B /
+is loaded from the current directory.
+The option can be given more than once.
+.TP
+.BR \-h ", " \-\-help
+Print a short usage message and exit with status 0.
+.SH URL
+.RS
+.nf
+smb://[\fIdomain\fR;][\fIuser\fR@]\fIhost\fR[:\fIport\fR]/IPC$/\fIservice\fR[?\fIarguments\fR]
+.fi
+.RE
+.PP
+The share must be
+.BR IPC$ ,
+and the path names the service.
+The services that are built in are:
+.TP
+.B srvsvc
+Server service (shares, sessions, open files, server information).
+.TP
+.B wkssvc
+Workstation service.
+.TP
+.B winreg
+Remote registry.
+.TP
+.B lsarpc
+Local Security Authority (SID and name lookups).
+.TP
+.B epmapper
+Endpoint mapper.
+.PP
+Services loaded with
+.B \-c
+are added to this list.
+.PP
+The URL arguments are those of libsmb2, for example
+.B sec=ntlmssp
+or
+.B sec=krb5
+to choose the authentication, and
+.B seal
+to encrypt the connection.
+.SH AUTHENTICATION
+With NTLMSSP the user is taken from the URL, or is the name of the
+local user when the URL does not name one.
+The password is read from the file named by the
+.B NTLM_USER_FILE
+environment variable.
+Each line of that file has the form
+.PP
+.RS
+.IB domain : user : password
+.RE
+.PP
+Only the lines that name the user are used; user names are compared
+without regard to case.
+Of those,
+.B dcerpc
+uses the password from the first line whose first field is the domain
+given in the URL or the host part of the server name.
+A line with an empty first field matches any domain and server, and is
+used when no other line matches.
+An empty line ends the file.
+.PP
+With Kerberos
+.RB ( sec=krb5 )
+the credentials come from the Kerberos credential cache instead.
+.SH PLACEHOLDERS
+A request can use values from the replies to the requests before it,
+for example the handle returned by an open call.
+Before a request is sent, every
+.BI @ name @
+in it is replaced by the value of the field
+.I name
+in the previous reply, and every
+.BI @ name :\- n @
+by the value of the field
+.I name
+in the reply
+.I n
+requests back.
+When a reply has more than one field with that name, the first one is
+used.
+.PP
+.RS
+.nf
+OpenPolicy2: Request
+  SystemName: \e\efs1
+  ObjectAttributes:
+    Length: 24
+    Attributes: 0
+  DesiredAccess: POLICY_VIEW_LOCAL_INFORMATION
+\-\-\-
+Close: Request
+  PolicyHandle:
+    ContextHandleAttributes: 0
+    UUID: @UUID@
+.fi
+.RE
+.SH ENVIRONMENT
+.TP
+.B NTLM_USER_FILE
+The file with the NTLM passwords, see
+.BR AUTHENTICATION .
+.SH EXIT STATUS
+.TP
+.B 0
+All requests were sent and a reply was received for each of them.
+A reply can still carry an error in its
+.B Status
+field.
+.TP
+.B 1
+The command line is not valid.
+.TP
+.B 9
+The URL, the service name or a request is not valid, or a placeholder
+could not be resolved.
+.TP
+.B 10
+The connection, the bind or a call failed.
+.SH EXAMPLES
+List the shares on the server
+.B fs1
+with
+.B NetrShareEnum
+at level 1, which returns the name, type and comment of every share.
+.PP
+First create a file with the password, readable only by you:
+.PP
+.RS
+.nf
+$ cat ~/.ntlm
+EXAMPLE:alice:Secret.Passw0rd
+$ chmod 600 ~/.ntlm
+$ export NTLM_USER_FILE=~/.ntlm
+.fi
+.RE
+.PP
+Then send the request as a here-document:
+.PP
+.RS
+.nf
+$ dcerpc 'smb://EXAMPLE;alice@fs1/IPC$/srvsvc?sec=ntlmssp' <<EOF
+NetrShareEnum: Request
+  ServerName: \e\efs1
+  InfoStruct:
+    Level: SHARE_INFO_1
+    ShareInfo:
+  PreferedMaximumLength: 0xffffffff
+  ResumeHandle: 0
+EOF
+YAML:
+\-\-\-
+NetrShareEnum: Response
+  InfoStruct:
+    Level: SHARE_INFO_1
+    ShareInfo:
+      Level1:
+        EntriesRead: 4
+        Buffer:
+          \- NetName: ADMIN$
+            Type: STYPE_DISKTREE | STYPE_SPECIAL
+            Remark: Remote Admin
+          \- NetName: C$
+            Type: STYPE_DISKTREE | STYPE_SPECIAL
+            Remark: Default share
+          \- NetName: IPC$
+            Type: STYPE_IPC | STYPE_SPECIAL
+            Remark: Remote IPC
+          \- NetName: projects
+            Type: STYPE_DISKTREE
+            Remark: Project files
+  TotalEntries: 4
+  ResumeHandle: 0
+  Status: 0
+.fi
+.RE
+.PP
+The
+.B EOF
+is not quoted, so the shell expands
+.B $
+in the request.
+Quote it as
+.B <<'EOF'
+when a value contains a
+.BR $ .
+.PP
+The same request with the reply printed as JSON:
+.PP
+.RS
+.nf
+$ dcerpc \-j 'smb://EXAMPLE;alice@fs1/IPC$/srvsvc?sec=ntlmssp' <<EOF
+\&...
+EOF
+.fi
+.RE
+.SH REQUEST EXAMPLES
+The
+.I libdcerpc/dcerpc\-examples
+directory of the libsmb2 source has example requests for the srvsvc,
+wkssvc, winreg, lsarpc and epmapper procedures.
+The files are named
+.IB interface \- procedure .yaml\fR,
+for example
+.IR srvsvc\-NetrShareGetInfo.yaml ,
+and can be passed to
+.B dcerpc
+directly:
+.PP
+.RS
+.nf
+$ dcerpc 'smb://alice@fs1/IPC$/srvsvc' srvsvc\-NetrShareGetInfo.yaml
+.fi
+.RE
+.PP
+They are also available online:
+.PP
+.RS
+.nf
+https://github.com/sahlberg/libsmb2/tree/master/libdcerpc/dcerpc\-examples
+.fi
+.RE
+.PP
+The names and types of the fields come from the IDL file of the
+interface, in
+.IR libdcerpc/ interface / interface .idl .
+.SH NOTES
+libdcerpc is experimental, and the YAML that describes a request can
+change between releases.
+.SH SEE ALSO
+.UR https://github.com/sahlberg/libsmb2
+.UE
