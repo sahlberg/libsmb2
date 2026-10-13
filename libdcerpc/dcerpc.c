@@ -75,8 +75,11 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #else
 #include <sys/fcntl.h>
 #endif
+#ifdef HAVE_LIBSMB2
 #include <smb2/smb2.h>
 #include <smb2/libsmb2.h>
+#include <smb2/libsmb2-raw.h>
+#endif
 #include <dcerpc/dcerpc.h>
 #include <dcerpc/dcerpc-dtyp.h>
 #include <dcerpc/srvsvc.h>
@@ -84,7 +87,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <dcerpc/wkssvc.h>
 #include <dcerpc/winreg.h>
 #include <dcerpc/epm.h>
-#include <smb2/libsmb2-raw.h>
 #include "dcerpc-private.h"
 
 struct dcerpc_service *dcerpc_services = NULL;
@@ -210,7 +212,9 @@ struct dcerpc_context {
         int owns_smb2;
         const char *path;
         p_syntax_id_t *syntax;
+#ifdef HAVE_LIBSMB2
         smb2_file_id file_id;
+#endif
 
         uint8_t tctx_id; /* presentation context ID: 0 NDR32, 1 NDR64 */
         uint8_t packed_drep[4];
@@ -239,9 +243,11 @@ dcerpc_set_error(struct dcerpc_context *dce, const char *error_string, ...)
         vsnprintf(dce->error_string, sizeof(dce->error_string),
                   error_string, ap);
         va_end(ap);
+#ifdef HAVE_LIBSMB2
         if (dce->smb2) {
                 smb2_set_error(dce->smb2, "%s", dce->error_string);
         }
+#endif
 }
 
 /*
@@ -488,11 +494,13 @@ dcerpc_check_coders(struct smb2_context *smb2)
         for (i = 0; i < sizeof(tables) / sizeof(tables[0]); i++) {
                 missing = dcerpc_coders_missing(tables[i].coders);
                 if (missing) {
+#ifdef HAVE_LIBSMB2
                         if (smb2) {
                                 smb2_set_error(smb2, "DCERPC %s encoding "
                                                "has no %s",
                                                tables[i].name, missing);
                         }
+#endif
                         return -1;
                 }
         }
@@ -946,16 +954,24 @@ dcerpc_create_context(struct smb2_context *smb2)
 {
         struct dcerpc_context *ctx;
 
+#ifndef HAVE_LIBSMB2
+        /* Built without libsmb2: only naked contexts */
+        if (smb2) {
+                return NULL;
+        }
+#endif
         if (dcerpc_check_coders(smb2)) {
                 return NULL;
         }
 
         ctx = calloc(1, sizeof(struct dcerpc_context));
         if (ctx == NULL) {
+#ifdef HAVE_LIBSMB2
                 if (smb2) {
                         smb2_set_error(smb2, "Failed to allocate dcercp "
                                        "context.");
                 }
+#endif
                 return NULL;
         }
 
@@ -989,6 +1005,7 @@ dcerpc_create_context(struct smb2_context *smb2)
  * On success the returned context owns smb2; dcerpc_destroy_context() will
  * disconnect IPC$ and destroy the smb2 context. On failure returns NULL.
  */
+#ifdef HAVE_LIBSMB2
 struct dcerpc_context *
 dcerpc_create_context_smb(const char *smb_url)
 {
@@ -1096,14 +1113,33 @@ dcerpc_untrack(struct dcerpc_context *dce, struct dcerpc_pending *p)
         }
 }
 
+#else /* !HAVE_LIBSMB2 */
+struct dcerpc_context *
+dcerpc_create_context_smb(const char *smb_url _U_)
+{
+        return NULL;
+}
+
+int
+dcerpc_connect_context_async(struct dcerpc_context *dce,
+                             const char *path _U_,
+                             p_syntax_id_t *syntax _U_,
+                             dcerpc_cb cb _U_, void *cb_data _U_)
+{
+        return dcerpc_need_smb2(dce);
+}
+#endif /* HAVE_LIBSMB2 */
+
 void
 dcerpc_destroy_context(struct dcerpc_context *dce)
 {
+#ifdef HAVE_LIBSMB2
         struct smb2_context *smb2;
-        struct dcerpc_pending *p;
         int owns_smb2;
         int i;
         int opened = 0;
+#endif
+        struct dcerpc_pending *p;
 
         if (dce == NULL || dce->destroying) {
                 return;
@@ -1123,6 +1159,7 @@ dcerpc_destroy_context(struct dcerpc_context *dce)
                 }
         }
 
+#ifdef HAVE_LIBSMB2
         for (i = 0; i < SMB2_FD_SIZE; i++) {
                 if (dce->file_id[i]) {
                         opened = 1;
@@ -1144,14 +1181,17 @@ dcerpc_destroy_context(struct dcerpc_context *dce)
 
         smb2 = dce->smb2;
         owns_smb2 = dce->owns_smb2;
+#endif
 
         free(discard_const(dce->path));
         free(dce);
 
+#ifdef HAVE_LIBSMB2
         if (owns_smb2 && smb2) {
                 smb2_disconnect_share(smb2);
                 smb2_destroy_context(smb2);
         }
+#endif
 }
 
 void *
@@ -1627,6 +1667,14 @@ dcerpc_header_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         }
         return rc;
 }
+
+/*
+ * The connection-oriented PDUs after the header (bind, request,
+ * response, ...) and the transport that sends them over an SMB2 named
+ * pipe. Built without libsmb2 only the stubs at the end of this block
+ * remain.
+ */
+#ifdef HAVE_LIBSMB2
 
 /*
  * p_syntax_id_t.if_version is a single u_int32 with the major version in
@@ -3101,12 +3149,49 @@ dcerpc_open_async(struct dcerpc_context *dce, dcerpc_cb cb,
         return 0;
 }
 
+#else /* !HAVE_LIBSMB2 */
+/* Built without libsmb2: there is no transport, see dcerpc_need_smb2() */
+int
+dcerpc_call_async(struct dcerpc_context *dce, int opnum _U_,
+                  dcerpc_coder req_coder _U_, void *req _U_,
+                  dcerpc_coder rep_coder _U_, int decode_size _U_,
+                  dcerpc_cb cb _U_, void *cb_data _U_)
+{
+        return dcerpc_need_smb2(dce);
+}
+
+void *
+dcerpc_call(struct dcerpc_context *dce, int opnum _U_,
+            dcerpc_coder req_coder _U_, void *req _U_,
+            dcerpc_coder rep_coder _U_, int decode_size _U_)
+{
+        dcerpc_need_smb2(dce);
+        return NULL;
+}
+
+int
+dcerpc_connect_context(struct dcerpc_context *dce, const char *path _U_,
+                       p_syntax_id_t *syntax _U_)
+{
+        return dcerpc_need_smb2(dce);
+}
+
+int
+dcerpc_open_async(struct dcerpc_context *dce, dcerpc_cb cb _U_,
+                  void *cb_data _U_)
+{
+        return dcerpc_need_smb2(dce);
+}
+#endif /* HAVE_LIBSMB2 */
+
 const char *
 dcerpc_get_error(struct dcerpc_context *dce)
 {
+#ifdef HAVE_LIBSMB2
         if (dce->smb2) {
                 return smb2_get_error(dce->smb2);
         }
+#endif
         return dce->error_string;
 }
 

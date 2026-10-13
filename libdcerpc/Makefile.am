@@ -1,8 +1,12 @@
+# The utilities and the examples need the libsmb2 transport
+if HAVE_LIBSMB2
+    MAYBE_UTILS = utils
 if ENABLE_EXAMPLES
     MAYBE_EXAMPLES = examples
 endif
+endif
 
-SUBDIRS = include srvsvc wkssvc winreg lsa epm . utils tests $(MAYBE_EXAMPLES)
+SUBDIRS = include srvsvc wkssvc winreg lsa epm . $(MAYBE_UTILS) tests $(MAYBE_EXAMPLES)
 DIST_SUBDIRS = include srvsvc wkssvc winreg lsa epm . utils examples tests
 ACLOCAL_AMFLAGS = -I m4
 

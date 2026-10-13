@@ -12,3 +12,4 @@
 #cmakedefine HAVE_SYS_TYPES_H
 #cmakedefine HAVE_SYS_UNISTD_H
 #cmakedefine HAVE_UNISTD_H
+#cmakedefine HAVE_LIBSMB2

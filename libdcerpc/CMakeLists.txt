@@ -1,6 +1,7 @@
 # libdcerpc can be built on its own against an installed libsmb2
 # (found with pkg-config), or as a subdirectory of the libsmb2 tree
-# where it links the in-tree smb2 target.
+# where it links the in-tree smb2 target. With -DWITH_LIBSMB2=OFF it
+# is built without libsmb2, as coders only.
 set(LIBDCERPC_VERSION 1.0.0)
 set(LIBDCERPC_SOVERSION 1)
 
@@ -22,14 +23,30 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   set(INSTALL_INC_DIR "${CMAKE_INSTALL_FULL_INCLUDEDIR}")
   set(INSTALL_PKGCONFIG_DIR "${CMAKE_INSTALL_FULL_LIBDIR}/pkgconfig")
   set(INSTALL_MAN_DIR "${CMAKE_INSTALL_FULL_MANDIR}")
-
-  find_package(PkgConfig REQUIRED)
-  pkg_check_modules(LIBSMB2 REQUIRED IMPORTED_TARGET libsmb2>=7.0.0)
-  set(LIBDCERPC_SMB2 PkgConfig::LIBSMB2)
 else()
   set(INSTALL_BIN_DIR "${CMAKE_INSTALL_PREFIX}/bin")
   set(INSTALL_MAN_DIR "${CMAKE_INSTALL_PREFIX}/share/man")
-  set(LIBDCERPC_SMB2 smb2)
+endif()
+
+# WITH_LIBSMB2=OFF builds only the coders: no transport, so no binding or
+# calls, and no dependency on libsmb2 at all. The utilities and the
+# examples need the transport and are not built.
+option(WITH_LIBSMB2 "Build the libsmb2 transport (OFF: only the coders)" ON)
+if(WITH_LIBSMB2)
+  set(HAVE_LIBSMB2 1)
+  set(LIBDCERPC_REQUIRES "libsmb2 >= 7.0.0")
+  if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(LIBSMB2 REQUIRED IMPORTED_TARGET libsmb2>=7.0.0)
+    set(LIBDCERPC_SMB2 PkgConfig::LIBSMB2)
+  else()
+    set(LIBDCERPC_SMB2 smb2)
+  endif()
+else()
+  set(LIBDCERPC_REQUIRES "")
+  set(LIBDCERPC_SMB2 "")
+  set(ENABLE_UTILS OFF)
+  set(ENABLE_EXAMPLES OFF)
 endif()
 
 include(CheckIncludeFile)

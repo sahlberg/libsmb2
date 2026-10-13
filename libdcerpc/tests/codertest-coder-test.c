@@ -29,8 +29,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <stdlib.h>
 #include <string.h>
 
-#include <smb2/smb2.h>
-#include <smb2/libsmb2.h>
 
 #include <dcerpc/dcerpc.h>
 

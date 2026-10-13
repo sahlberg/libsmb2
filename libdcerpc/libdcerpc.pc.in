@@ -6,9 +6,9 @@ libdir=@libdir@
 includedir=@includedir@
 
 Name: libdcerpc
-Description: DCE/RPC client library (SMB2 named-pipe transport via libsmb2)
+Description: DCE/RPC library (coders, and SMB2 named-pipe transport via libsmb2)
 Version: @VERSION@
-Requires: libsmb2 >= 7.0.0
+Requires: @LIBDCERPC_REQUIRES@
 Conflicts:
 Libs: -L${libdir} -ldcerpc
 Cflags: -I${includedir}

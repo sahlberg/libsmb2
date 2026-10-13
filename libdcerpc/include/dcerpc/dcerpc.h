@@ -214,6 +214,8 @@ int dcerpc_register_coder(const char *name,
  * smb2 can be NULL. Such a context can only be used to encode and decode,
  * for example in a server that has its own SMB2 implementation and passes
  * the request stubs to the coders. Connecting and calls fail with -EINVAL.
+ * A libdcerpc built without libsmb2 (--without-libsmb2, WITH_LIBSMB2=OFF)
+ * only accepts NULL here.
  */
 struct dcerpc_context *dcerpc_create_context(struct smb2_context *smb2);
 /*

@@ -39,8 +39,25 @@ AS_IF([test -z "$PYTHON3"], [
     AC_MSG_ERROR([python3 is required to generate the IDL coders])
 ])
 
+dnl  --without-libsmb2 builds only the coders: no transport, so no
+dnl  binding or calls, and no dependency on libsmb2 at all. The utilities
+dnl  and the examples need the transport and are not built.
+AC_ARG_WITH([libsmb2],
+            [AS_HELP_STRING([--without-libsmb2],
+                            [Build only the coders, without the libsmb2 transport])],
+            [], [with_libsmb2=yes])
+
 PKG_PROG_PKG_CONFIG
-PKG_CHECK_MODULES([LIBSMB2], [libsmb2 >= 7.0.0])
+AS_IF([test "x$with_libsmb2" != "xno"], [
+    PKG_CHECK_MODULES([LIBSMB2], [libsmb2 >= 7.0.0])
+    AC_DEFINE([HAVE_LIBSMB2], [1], [Build the libsmb2 transport])
+    LIBDCERPC_REQUIRES="libsmb2 >= 7.0.0"
+], [
+    AC_MSG_NOTICE([Building without libsmb2: coders only])
+    LIBDCERPC_REQUIRES=""
+])
+AM_CONDITIONAL([HAVE_LIBSMB2], [test "x$with_libsmb2" != "xno"])
+AC_SUBST([LIBDCERPC_REQUIRES])
 
 AC_ARG_ENABLE([examples],
               [AS_HELP_STRING([--enable-examples],
@@ -62,8 +79,10 @@ AS_IF([test "$GCC" = "yes"], [
 AC_SUBST([WARN_CFLAGS])
 
 dnl  The dcerpc utility loads coders with dlopen()
-AC_SEARCH_LIBS([dlopen], [dl], [],
-               [AC_MSG_ERROR([dlopen not found, libdl is required])])
+AS_IF([test "x$with_libsmb2" != "xno"], [
+    AC_SEARCH_LIBS([dlopen], [dl], [],
+                   [AC_MSG_ERROR([dlopen not found, libdl is required])])
+])
 
 dnl  ncurses is optional; without it the winreg-tui utility is not built.
 have_ncurses=no

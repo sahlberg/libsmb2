@@ -1063,12 +1063,9 @@ C_HEADER_LIBDCERPC = """\
 #include <stdio.h>
 
 
-#include <smb2/smb2.h>
-#include <smb2/libsmb2.h>
 #include <dcerpc/dcerpc.h>
 #include <dcerpc/dcerpc-dtyp.h>
 #include <dcerpc/{header_name}>
-#include <smb2/libsmb2-raw.h>
 #include "dcerpc-private.h"
 """
 

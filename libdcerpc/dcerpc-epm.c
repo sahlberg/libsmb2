@@ -55,11 +55,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #endif
 
 
-#include <smb2/smb2.h>
-#include <smb2/libsmb2.h>
 #include <dcerpc/dcerpc.h>
 #include <dcerpc/epm.h>
-#include <smb2/libsmb2-raw.h>
 #include "dcerpc-private.h"
 
 /*
