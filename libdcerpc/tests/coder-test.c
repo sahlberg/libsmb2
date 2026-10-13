@@ -364,19 +364,13 @@ static void report_xfail(const char *test, const struct flavor *f, int ret,
 
 int run_coder_tests(const struct test_case *cases, int num_cases)
 {
-        struct smb2_context *smb2;
         struct dcerpc_context *dce;
         int i, f;
 
-        smb2 = smb2_init_context();
-        if (smb2 == NULL) {
-                printf("Failed to create smb2 context\n");
-                return 1;
-        }
-        dce = dcerpc_create_context(smb2);
+        /* The coders do not need libsmb2 */
+        dce = dcerpc_create_context(NULL);
         if (dce == NULL) {
-                printf("Failed to create dcerpc context: %s\n",
-                       smb2_get_error(smb2));
+                printf("Failed to create dcerpc context\n");
                 return 1;
         }
 
@@ -406,7 +400,6 @@ int run_coder_tests(const struct test_case *cases, int num_cases)
         }
 
         dcerpc_destroy_context(dce);
-        smb2_destroy_context(smb2);
 
         if (failures) {
                 printf("%d test(s) failed\n", failures);

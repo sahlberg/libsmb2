@@ -22,6 +22,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
  * stub.
  */
 
+#include <errno.h>
 #include <stdint.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -144,20 +145,14 @@ static int test_pdu_flags(void)
                 DCERPC_ENCODE | ENCODING_YAML | DCERPC_NDR64,
                 DCERPC_DECODE | ENCODING_JSON | DCERPC_BIG_ENDIAN,
         };
-        struct smb2_context *smb2;
         struct dcerpc_context *dce;
         struct dcerpc_pdu *pdu;
         int failed = 0;
         size_t i;
 
         printf("dcerpc_allocate_pdu() flags\n");
-        smb2 = smb2_init_context();
-        if (smb2 == NULL) {
-                return 1;
-        }
-        dce = dcerpc_create_context(smb2);
+        dce = dcerpc_create_context(NULL);
         if (dce == NULL) {
-                smb2_destroy_context(smb2);
                 return 1;
         }
         for (i = 0; i < sizeof(valid) / sizeof(valid[0]); i++) {
@@ -180,7 +175,6 @@ static int test_pdu_flags(void)
         }
         printf("  %s\n", failed ? "FAIL" : "PASS");
         dcerpc_destroy_context(dce);
-        smb2_destroy_context(smb2);
         return failed;
 }
 
@@ -219,7 +213,6 @@ static int encode_bytes(struct dcerpc_context *dce, uint32_t flags,
  */
 static int test_growable_iovec(void)
 {
-        struct smb2_context *smb2;
         struct dcerpc_context *dce;
         struct dcerpc_iovec iov = {0};
         uint8_t fixed[16];
@@ -227,13 +220,8 @@ static int test_growable_iovec(void)
         int failed = 0;
 
         printf("growable struct dcerpc_iovec\n");
-        smb2 = smb2_init_context();
-        if (smb2 == NULL) {
-                return 1;
-        }
-        dce = dcerpc_create_context(smb2);
+        dce = dcerpc_create_context(NULL);
         if (dce == NULL) {
-                smb2_destroy_context(smb2);
                 return 1;
         }
 
@@ -301,7 +289,54 @@ static int test_growable_iovec(void)
 
         printf("  %s\n", failed ? "FAIL" : "PASS");
         dcerpc_destroy_context(dce);
-        smb2_destroy_context(smb2);
+        return failed;
+}
+
+/*
+ * A context created without an smb2 context encodes and decodes (all the
+ * other tests use one), and refuses to connect or call.
+ */
+static int test_no_smb2(void)
+{
+        struct dcerpc_context *dce;
+        int failed = 0;
+        int ret;
+
+        printf("dcerpc context without an smb2 context\n");
+        dce = dcerpc_create_context(NULL);
+        if (dce == NULL) {
+                printf("  dcerpc_create_context(NULL) failed\n");
+                return 1;
+        }
+        if (dcerpc_get_smb2_context(dce) != NULL) {
+                printf("  dcerpc_get_smb2_context() is not NULL\n");
+                failed = 1;
+        }
+        ret = dcerpc_connect_context_async(dce, "srvsvc", NULL, NULL, NULL);
+        if (ret != -EINVAL) {
+                printf("  dcerpc_connect_context_async() returned %d\n", ret);
+                failed = 1;
+        }
+        ret = dcerpc_call_async(dce, 0, NULL, NULL, NULL, 0, NULL, NULL);
+        if (ret != -EINVAL) {
+                printf("  dcerpc_call_async() returned %d\n", ret);
+                failed = 1;
+        }
+        ret = dcerpc_connect_context(dce, "srvsvc", NULL);
+        if (ret != -EINVAL) {
+                printf("  dcerpc_connect_context() returned %d\n", ret);
+                failed = 1;
+        }
+        if (dcerpc_call(dce, 0, NULL, NULL, NULL, 0) != NULL) {
+                printf("  dcerpc_call() did not fail\n");
+                failed = 1;
+        }
+        if (strstr(dcerpc_get_error(dce), "No smb2 context") == NULL) {
+                printf("  unexpected error \"%s\"\n", dcerpc_get_error(dce));
+                failed = 1;
+        }
+        printf("  %s\n", failed ? "FAIL" : "PASS");
+        dcerpc_destroy_context(dce);
         return failed;
 }
 
@@ -310,6 +345,7 @@ int main(void)
         int ret = test_pdu_flags();
 
         ret |= test_growable_iovec();
+        ret |= test_no_smb2();
         return run_coder_tests(test_cases,
                                sizeof(test_cases) / sizeof(test_cases[0])) |
                 ret;

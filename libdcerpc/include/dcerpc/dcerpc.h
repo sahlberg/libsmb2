@@ -209,6 +209,10 @@ int dcerpc_register_coder(const char *name,
  * The caller retains ownership of smb2; dcerpc_destroy_context() will not
  * free it. Use this when you need fine-grained smb2 configuration before
  * connecting IPC$ / opening a pipe.
+ *
+ * smb2 can be NULL. Such a context can only be used to encode and decode,
+ * for example in a server that has its own SMB2 implementation and passes
+ * the request stubs to the coders. Connecting and calls fail with -EINVAL.
  */
 struct dcerpc_context *dcerpc_create_context(struct smb2_context *smb2);
 /*
@@ -227,6 +231,10 @@ struct dcerpc_context *dcerpc_create_context(struct smb2_context *smb2);
  */
 struct dcerpc_context *dcerpc_create_context_smb(const char *smb_url);
 void dcerpc_free_data(struct dcerpc_context *dce, void *data);
+/*
+ * The last error. With an smb2 context this is smb2_get_error(), which
+ * also holds the errors from libsmb2 itself.
+ */
 const char *dcerpc_get_error(struct dcerpc_context *dce);
 int dcerpc_connect_context_async(struct dcerpc_context *dce,
                                  const char *path, p_syntax_id_t *syntax,
@@ -248,6 +256,7 @@ int dcerpc_connect_context(struct dcerpc_context *dce,
  */
 void dcerpc_destroy_context(struct dcerpc_context *dce);
 
+/* NULL if the context was created without an smb2 context */
 struct smb2_context *dcerpc_get_smb2_context(struct dcerpc_context *dce);
 void *dcerpc_get_pdu_payload(struct dcerpc_pdu *pdu);
 
