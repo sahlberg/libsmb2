@@ -140,6 +140,9 @@ You need to set up the environment variable NTLM_USER_FILE to point to this
 file.
 You need one entry in this file for each local user account you want to be able
 to use libsmb2 for accessing a remote share.
+A line is only used for the user it names; user names are compared without
+regard to case. DOMAIN is either the domain or the name of the server, and a
+line with an empty DOMAIN is used when no other line for that user matches.
 
 By default, NTLM authentication will use the username for the current process.
 This can be overridden by specifying a different username in the SMB URL :

@@ -734,6 +734,32 @@ server_host_matches(const char *server, const char *name)
 
         return strlen(name) == len && !strncmp(name, host, len);
 }
+
+/*
+ * Does the user field of an NTLM_USER_FILE line name this user ?
+ * Windows user names are case insensitive, so compare them that way.
+ */
+static int
+user_matches(const char *user, const char *name)
+{
+        if (user == NULL || name == NULL) {
+                return 0;
+        }
+        for (; *user && *name; user++, name++) {
+                char a = *user, b = *name;
+
+                if (a >= 'A' && a <= 'Z') {
+                        a += 'a' - 'A';
+                }
+                if (b >= 'A' && b <= 'Z') {
+                        b += 'a' - 'A';
+                }
+                if (a != b) {
+                        return 0;
+                }
+        }
+        return *user == *name;
+}
 #endif /* !defined(_XBOX) && !defined(_IOP) &&  ... */
 
 void smb2_set_password_from_file(struct smb2_context *smb2)
@@ -809,6 +835,10 @@ void smb2_set_password_from_file(struct smb2_context *smb2)
                 }
                 *password++ = 0;
 
+                /* The line only holds the password of the user it names */
+                if (!user_matches(smb2->user, user)) {
+                        continue;
+                }
                 if (domain[0] && smb2->domain && !strcmp(smb2->domain, domain)) {
                         smb2_set_password(smb2, password);
                         fclose(fh);
