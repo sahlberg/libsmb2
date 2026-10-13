@@ -11,10 +11,6 @@
 
 #include "coder-test.h"
 
-/* libdcerpc test hooks: force the transfer syntax and byte order */
-void ndr_set_tctx(struct dcerpc_context *ctx, int tctx);
-void ndr_set_endian(struct dcerpc_pdu *pdu, int little_endian);
-
 /* Referent ids libdcerpc writes for unique and ref pointers */
 #define UPTR 0x5570747272747055ULL
 #define RPTR 0x5270747272747052ULL
@@ -23,16 +19,18 @@ void ndr_set_endian(struct dcerpc_pdu *pdu, int little_endian);
 
 struct flavor {
         const char *name;
-        int ndr64;
-        int little_endian;
+        uint32_t flags; /* DCERPC_NDR64, DCERPC_BIG_ENDIAN */
 };
 
 static const struct flavor flavors[NUM_FLAVORS] = {
-        [NDR32_LE] = { "NDR32 LE", 0, 1 },
-        [NDR32_BE] = { "NDR32 BE", 0, 0 },
-        [NDR64_LE] = { "NDR64 LE", 1, 1 },
-        [NDR64_BE] = { "NDR64 BE", 1, 0 },
+        [NDR32_LE] = { "NDR32 LE", 0 },
+        [NDR32_BE] = { "NDR32 BE", DCERPC_BIG_ENDIAN },
+        [NDR64_LE] = { "NDR64 LE", DCERPC_NDR64 },
+        [NDR64_BE] = { "NDR64 BE", DCERPC_NDR64 | DCERPC_BIG_ENDIAN },
 };
+
+#define FLAVOR_NDR64(f) (((f)->flags & DCERPC_NDR64) != 0)
+#define FLAVOR_LITTLE_ENDIAN(f) (((f)->flags & DCERPC_BIG_ENDIAN) == 0)
 
 static int failures;
 
@@ -50,8 +48,8 @@ static void hexdump(const char *label, const uint8_t *buf, int len)
 /*
  * NDR -> struct. The struct lives in the returned pdu's payload.
  *
- * The decoder byte-swaps big-endian UTF-16 strings in place, so it gets a
- * writable copy of buf.
+ * buf is the const known-good stub, in read-only memory: decoding must
+ * never write its input.
  */
 static struct dcerpc_pdu *ndr_decode(struct dcerpc_context *dce,
                                      const struct test_case *tc,
@@ -59,90 +57,99 @@ static struct dcerpc_pdu *ndr_decode(struct dcerpc_context *dce,
                                      const uint8_t *buf, int len,
                                      void **ptr)
 {
-        static uint8_t copy[BUF_SIZE];
         struct dcerpc_pdu *pdu;
         struct dcerpc_iovec iov;
-        int offset = 0;
 
-        if (len > BUF_SIZE) {
-                printf("  %s: NDR stub too large\n", f->name);
+        pdu = dcerpc_allocate_pdu(dce, DCERPC_DECODE | ENCODING_NDR |
+                                  f->flags, tc->size);
+        if (pdu == NULL) {
+                printf("  %s: %s\n", f->name, dcerpc_get_error(dce));
                 return NULL;
         }
-        memcpy(copy, buf, len);
-
-        ndr_set_tctx(dce, f->ndr64);
-        pdu = dcerpc_allocate_pdu(dce, ENCODING_NDR, DCERPC_DECODE,
-                                  tc->size);
-        ndr_set_endian(pdu, f->little_endian);
         dcerpc_set_request(pdu, tc->req);
         *ptr = dcerpc_get_pdu_payload(pdu);
 
-        iov.buf = copy;
-        iov.len = len;
-        iov.free = NULL;
+        iov = (struct dcerpc_iovec){
+                .buf = discard_const(buf),
+                .max_offset = len,
+        };
         if (tc->coder(tc->req ? "Response" : "Request", dce, pdu, &iov,
-                      &offset, *ptr)) {
+                      *ptr)) {
                 printf("  %s: NDR decode failed\n", f->name);
                 dcerpc_free_pdu(dce, pdu);
                 return NULL;
         }
-        if (offset != len) {
+        if (iov.offset != (size_t)len) {
                 printf("  %s: NDR decode consumed %d of %d bytes\n",
-                       f->name, offset, len);
+                       f->name, (int)iov.offset, len);
                 dcerpc_free_pdu(dce, pdu);
                 return NULL;
         }
         return pdu;
 }
 
-/* struct -> NDR. Returns the encoded length or -1. */
+/*
+ * struct -> NDR, into buf. Returns the encoded length or -1. Encodes into
+ * a growable iovec, so every case also tests growing the buffer.
+ */
 static int ndr_encode(struct dcerpc_context *dce, const struct test_case *tc,
                       const struct flavor *f, void *ptr, uint8_t *buf)
 {
         struct dcerpc_pdu *pdu;
-        struct dcerpc_iovec iov;
-        int offset = 0;
+        struct dcerpc_iovec iov = {0};
+        int ret;
 
-        ndr_set_tctx(dce, f->ndr64);
-        pdu = dcerpc_allocate_pdu(dce, ENCODING_NDR, DCERPC_ENCODE,
-                                  tc->size);
-        ndr_set_endian(pdu, f->little_endian);
+        pdu = dcerpc_allocate_pdu(dce, DCERPC_ENCODE | ENCODING_NDR |
+                                  f->flags, tc->size);
+        if (pdu == NULL) {
+                printf("  %s: %s\n", f->name, dcerpc_get_error(dce));
+                return -1;
+        }
         dcerpc_set_request(pdu, tc->req);
 
-        memset(buf, 0, BUF_SIZE);
-        iov.buf = buf;
-        iov.len = BUF_SIZE;
-        iov.free = NULL;
         if (tc->coder(tc->req ? "Response" : "Request", dce, pdu, &iov,
-                      &offset, ptr)) {
+                      ptr)) {
                 printf("  %s: NDR encode failed\n", f->name);
-                offset = -1;
+                ret = -1;
+        } else if (iov.offset > BUF_SIZE) {
+                printf("  %s: NDR encoded to %d bytes\n", f->name,
+                       (int)iov.offset);
+                ret = -1;
+        } else {
+                memset(buf, 0, BUF_SIZE);
+                memcpy(buf, iov.buf, iov.offset);
+                ret = (int)iov.offset;
         }
+        dcerpc_free_iovec(&iov);
         dcerpc_free_pdu(dce, pdu);
-        return offset;
+        return ret;
 }
 
-/* YAML -> struct. The struct lives in the returned pdu's payload. */
+/*
+ * YAML -> struct. The struct lives in the returned pdu's payload. Like
+ * ndr_decode(), it decodes the const YAML directly.
+ */
 static struct dcerpc_pdu *yaml_decode(struct dcerpc_context *dce,
                                       const struct test_case *tc,
                                       const char *yaml, void **ptr)
 {
-        static uint8_t buf[BUF_SIZE];
         struct dcerpc_pdu *pdu;
         struct dcerpc_iovec iov;
-        int offset = 0;
 
-        pdu = dcerpc_allocate_pdu(dce, ENCODING_YAML, DCERPC_DECODE,
+        pdu = dcerpc_allocate_pdu(dce, DCERPC_DECODE | ENCODING_YAML,
                                   tc->size);
+        if (pdu == NULL) {
+                printf("  %s\n", dcerpc_get_error(dce));
+                return NULL;
+        }
         dcerpc_set_request(pdu, tc->req);
         *ptr = dcerpc_get_pdu_payload(pdu);
 
-        memset(buf, 0, sizeof(buf));
-        strcpy((char *)buf, yaml);
-        iov.buf = buf;
-        iov.len = strlen(yaml) + 1;
-        iov.free = NULL;
-        if (dcerpc_do_coder(discard_const(tc->proc), dce, pdu, &iov, &offset,
+        iov = (struct dcerpc_iovec){
+                .buf = discard_const(yaml),
+                .max_offset = strlen(yaml) + 1,
+        };
+        if (dcerpc_do_coder(discard_const(tc->proc), dce, pdu, &iov,
                             *ptr, tc->coder)) {
                 printf("  YAML decode failed\n");
                 dcerpc_free_pdu(dce, pdu);
@@ -151,28 +158,37 @@ static struct dcerpc_pdu *yaml_decode(struct dcerpc_context *dce,
         return pdu;
 }
 
-/* struct -> YAML, into buf (NUL terminated). Returns 0 on success. */
+/*
+ * struct -> YAML, into buf (NUL terminated). Returns 0 on success. Like
+ * ndr_encode(), it encodes into a growable iovec.
+ */
 static int yaml_encode(struct dcerpc_context *dce, const struct test_case *tc,
                        void *ptr, char *buf)
 {
         struct dcerpc_pdu *pdu;
-        struct dcerpc_iovec iov;
-        int offset = 0;
+        struct dcerpc_iovec iov = {0};
         int ret = 0;
 
-        pdu = dcerpc_allocate_pdu(dce, ENCODING_YAML, DCERPC_ENCODE,
+        pdu = dcerpc_allocate_pdu(dce, DCERPC_ENCODE | ENCODING_YAML,
                                   tc->size);
+        if (pdu == NULL) {
+                printf("  %s\n", dcerpc_get_error(dce));
+                return -1;
+        }
         dcerpc_set_request(pdu, tc->req);
 
-        memset(buf, 0, BUF_SIZE);
-        iov.buf = (uint8_t *)buf;
-        iov.len = BUF_SIZE - 1;
-        iov.free = NULL;
-        if (dcerpc_do_coder(discard_const(tc->proc), dce, pdu, &iov, &offset,
+        if (dcerpc_do_coder(discard_const(tc->proc), dce, pdu, &iov,
                             ptr, tc->coder)) {
                 printf("  YAML encode failed\n");
                 ret = -1;
+        } else if (iov.offset >= BUF_SIZE) {
+                printf("  YAML encoded to %d bytes\n", (int)iov.offset);
+                ret = -1;
+        } else {
+                memset(buf, 0, BUF_SIZE);
+                memcpy(buf, iov.buf, iov.offset);
         }
+        dcerpc_free_iovec(&iov);
         dcerpc_free_pdu(dce, pdu);
         return ret;
 }
@@ -207,8 +223,8 @@ static uint64_t get_word(const uint8_t *p, int size, int little_endian)
 static int ndr_compare(const struct flavor *f, const struct blob *good,
                        const uint8_t *got, int len)
 {
-        int size = f->ndr64 ? 8 : 4;
-        uint64_t mask = f->ndr64 ? ~0ULL : 0xffffffffULL;
+        int size = FLAVOR_NDR64(f) ? 8 : 4;
+        uint64_t mask = FLAVOR_NDR64(f) ? ~0ULL : 0xffffffffULL;
         int i;
 
         if (len != good->len) {
@@ -222,10 +238,10 @@ static int ndr_compare(const struct flavor *f, const struct blob *good,
                 int n = i + size <= len ? size : len - i;
 
                 if (n == size) {
-                        uint64_t g = get_word(&got[i], size, f->little_endian);
+                        uint64_t g = get_word(&got[i], size, FLAVOR_LITTLE_ENDIAN(f));
 
                         if ((g == (UPTR & mask) || g == (RPTR & mask)) &&
-                            get_word(&good->data[i], size, f->little_endian)) {
+                            get_word(&good->data[i], size, FLAVOR_LITTLE_ENDIAN(f))) {
                                 continue;
                         }
                 }

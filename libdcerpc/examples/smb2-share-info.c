@@ -137,9 +137,7 @@ void si_cb(struct dcerpc_context *dce, int status,
 
         struct smb2_context *smb2 = dcerpc_get_smb2_context(dce);
         struct dcerpc_pdu *yaml_pdu;
-        struct dcerpc_iovec iov;
-        static unsigned char buf[65536];
-        int offset = 0;
+        struct dcerpc_iovec iov = {0};
 
         dce = dcerpc_create_context(smb2);
         if (dce == NULL) {
@@ -149,29 +147,25 @@ void si_cb(struct dcerpc_context *dce, int status,
         }
         printf("YAML:\n");
         printf("---\n");
-        yaml_pdu = dcerpc_allocate_pdu(dce, ENCODING_YAML, DCERPC_ENCODE, sizeof(struct srvsvc_NetrShareGetInfo_req));
-        offset = 0;
-        iov.len = 65536;
-        iov.buf = buf;
-        if (dcerpc_do_coder("NetrShareGetInfo", dce, yaml_pdu, &iov, &offset, si_req, srvsvc_NetrShareGetInfo_req_coder)) {
+        yaml_pdu = dcerpc_allocate_pdu(dce, DCERPC_ENCODE | ENCODING_YAML, sizeof(struct srvsvc_NetrShareGetInfo_req));
+        if (dcerpc_do_coder("NetrShareGetInfo", dce, yaml_pdu, &iov, si_req, srvsvc_NetrShareGetInfo_req_coder)) {
                 printf("Failed to encode REQ as YAML\n");
                 exit(10);
         }
         printf("%s\n", iov.buf);
+        dcerpc_free_iovec(&iov);
         dcerpc_free_pdu(dce, yaml_pdu);
         
         printf("---\n");
-        yaml_pdu = dcerpc_allocate_pdu(dce, ENCODING_YAML, DCERPC_ENCODE, sizeof(struct srvsvc_NetrShareGetInfo_rep));
-        offset = 0;
-        iov.len = 65536;
-        iov.buf = buf;
+        yaml_pdu = dcerpc_allocate_pdu(dce, DCERPC_ENCODE | ENCODING_YAML, sizeof(struct srvsvc_NetrShareGetInfo_rep));
         /* We need to reference req->Level from the reply */
         dcerpc_set_request(yaml_pdu, si_req);
-        if (dcerpc_do_coder("NetrShareGetInfo", dce, yaml_pdu, &iov, &offset, rep, srvsvc_NetrShareGetInfo_rep_coder)) {
+        if (dcerpc_do_coder("NetrShareGetInfo", dce, yaml_pdu, &iov, rep, srvsvc_NetrShareGetInfo_rep_coder)) {
                 printf("Failed to encode REP as YAML\n");
                 exit(10);
         }
         printf("%s\n", iov.buf);
+        dcerpc_free_iovec(&iov);
         dcerpc_free_pdu(dce, yaml_pdu);
 
         

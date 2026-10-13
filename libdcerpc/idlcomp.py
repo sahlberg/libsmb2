@@ -736,11 +736,11 @@ def unique_string_field_lines(indent: str, disp: str, var: str,
     return [
         f"{indent}if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&\n"
         f"{indent}    {var}->{field} == NULL) {{\n"
-        f'{indent}        if (dcerpc_ptr_coder("{disp}", dce, pdu, iov, offset, NULL,\n'
+        f'{indent}        if (dcerpc_ptr_coder("{disp}", dce, pdu, iov, NULL,\n'
         f"{indent}                             PTR_UNIQUE, dcerpc_utf16z_coder)) {{\n"
         f"{indent}                return -1;\n"
         f"{indent}        }}\n"
-        f"{indent}}} else if (dcerpc_ptr_coder(\"{disp}\", dce, pdu, iov, offset, &{var}->{field},\n"
+        f"{indent}}} else if (dcerpc_ptr_coder(\"{disp}\", dce, pdu, iov, &{var}->{field},\n"
         f"{indent}                            PTR_UNIQUE, dcerpc_utf16z_coder)) {{\n"
         f"{indent}        return -1;\n"
         f"{indent}}}"
@@ -1008,7 +1008,7 @@ C_HEADER = """\
 #include "{header_name}"
 
 /* Not in the public dcerpc.h; exported by libdcerpc */
-int dcerpc_pdu_direction(struct dcerpc_pdu *pdu);
+uint32_t dcerpc_pdu_direction(struct dcerpc_pdu *pdu);
 int dcerpc_pdu_is_conformance_run(struct dcerpc_pdu *pdu);
 
 """
@@ -1582,19 +1582,19 @@ def gen_prototypes(env: TypeEnv) -> str:
             lines.append(
                 f"int {env.coder_name(t.name)}(char *name, struct dcerpc_context *dce,\n"
                 f"                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,\n"
-                f"                int *offset, void *ptr);"
+                f"                void *ptr);"
             )
             if t.kind == "struct":
                 lines.append(
                     f"int {env.struct_coder_name(t.name)}(char *name, struct dcerpc_context *dce,\n"
                     f"                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,\n"
-                    f"                int *offset, void *ptr);"
+                    f"                void *ptr);"
                 )
             if t.kind == "union" and t.name in switched_param_unions(env):
                 lines.append(
                     f"int {env.prefix}_{t.name}_switch_coder(char *name, struct dcerpc_context *dce,\n"
                     f"                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,\n"
-                    f"                int *offset, void *ptr);"
+                    f"                void *ptr);"
                 )
             lines.append("")
 
@@ -1605,12 +1605,12 @@ def gen_prototypes(env: TypeEnv) -> str:
             lines.append(
                 f"int {env.prefix}_{fn.name}_req_coder(char *name, struct dcerpc_context *dce,\n"
                 f"                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,\n"
-                f"                int *offset, void *ptr);"
+                f"                void *ptr);"
             )
             lines.append(
                 f"int {env.prefix}_{fn.name}_rep_coder(char *name, struct dcerpc_context *dce,\n"
                 f"                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,\n"
-                f"                int *offset, void *ptr);"
+                f"                void *ptr);"
             )
             lines.append("")
     return "\n".join(lines)
@@ -1810,7 +1810,7 @@ def gen_field_coder_stmts(
     # array; NULL when there is no data
     if is_varying_bytes(f, tname):
         lines.append(
-            f'{indent}if (dcerpc_ptr_coder("{disp}", dce, pdu, iov, offset,\n'
+            f'{indent}if (dcerpc_ptr_coder("{disp}", dce, pdu, iov,\n'
             f"{indent}                     (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&\n"
             f"{indent}                      {var}->{f.name}.data == NULL) ? NULL : &{var}->{f.name},\n"
             f"{indent}                     PTR_UNIQUE, dcerpc_varying_bytes_coder)) {{\n"
@@ -1823,7 +1823,7 @@ def gen_field_coder_stmts(
     ext = env.extern(tname)
     if ext is not None and stars == 0 and size_is is None:
         lines.append(
-            f'{indent}if ({ext[1]}("{disp}", dce, pdu, iov, offset, &{var}->{f.name})) {{\n'
+            f'{indent}if ({ext[1]}("{disp}", dce, pdu, iov, &{var}->{f.name})) {{\n'
             f"{indent}        return -1;\n"
             f"{indent}}}"
         )
@@ -1833,7 +1833,7 @@ def gen_field_coder_stmts(
     pt = nullable_ptr_field(env, f)
     if pt is not None:
         lines.append(
-            f'{indent}if (dcerpc_ptr_coder("{disp}", dce, pdu, iov, offset,\n'
+            f'{indent}if (dcerpc_ptr_coder("{disp}", dce, pdu, iov,\n'
             f"{indent}                     (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&\n"
             f"{indent}                      {var}->{f.name} == NULL) ? NULL : &{var}->{f.name},\n"
             f"{indent}                     PTR_UNIQUE, {env.ptr_helper_name(pt)})) {{\n"
@@ -1878,7 +1878,7 @@ def gen_field_coder_stmts(
         # A sender may point at an empty array instead of sending NULL;
         # decode that into the (unchanged, NULL) field itself.
         lines.append(
-            f'{indent}if (dcerpc_ptr_coder("{disp}", dce, pdu, iov, offset,\n'
+            f'{indent}if (dcerpc_ptr_coder("{disp}", dce, pdu, iov,\n'
             f"{indent}                     (dcerpc_pdu_direction(pdu) == DCERPC_DECODE &&\n"
             f"{indent}                      {var}->{f.name} == NULL) ? (void *)&{var}->{f.name} : (void *){var}->{f.name},\n"
             f"{indent}                     PTR_UNIQUE, {env.carray_coder_name(elem)})) {{\n"
@@ -1891,7 +1891,7 @@ def gen_field_coder_stmts(
     if switch_is is not None:
         ut = tname
         lines.append(
-            f'{indent}if (dcerpc_union_coder("{disp}", dce, pdu, iov, offset,\n'
+            f'{indent}if (dcerpc_union_coder("{disp}", dce, pdu, iov,\n'
             f"{indent}                       &{var}->{switch_is}, &{var}->{f.name},\n"
             f"{indent}                       {env.coder_name(ut)})) {{\n"
             f"{indent}        return -1;\n"
@@ -1904,7 +1904,7 @@ def gen_field_coder_stmts(
         coder = builtin_coder(tname)
         if coder:
             lines.append(
-                f'{indent}if ({coder}("{disp}", dce, pdu, iov, offset, &{var}->{f.name})) {{\n'
+                f'{indent}if ({coder}("{disp}", dce, pdu, iov, &{var}->{f.name})) {{\n'
                 f"{indent}        return -1;\n"
                 f"{indent}}}"
             )
@@ -1913,7 +1913,7 @@ def gen_field_coder_stmts(
     # enum (NDR uint16/uint32 + pretty names for YAML)
     if tname in env.types and env.types[tname].kind == "enum" and stars == 0:
         lines.append(
-            f'{indent}if ({env.coder_name(tname)}("{disp}", dce, pdu, iov, offset, &{var}->{f.name})) {{\n'
+            f'{indent}if ({env.coder_name(tname)}("{disp}", dce, pdu, iov, &{var}->{f.name})) {{\n'
             f"{indent}        return -1;\n"
             f"{indent}}}"
         )
@@ -1923,7 +1923,7 @@ def gen_field_coder_stmts(
     # padded) as a structure in NDR
     if tname in env.types and env.types[tname].kind == "struct" and stars == 0:
         lines.append(
-            f'{indent}if ({env.struct_coder_name(tname)}("{disp}", dce, pdu, iov, offset, &{var}->{f.name})) {{\n'
+            f'{indent}if ({env.struct_coder_name(tname)}("{disp}", dce, pdu, iov, &{var}->{f.name})) {{\n'
             f"{indent}        return -1;\n"
             f"{indent}}}"
         )
@@ -1944,7 +1944,7 @@ def gen_union_case_stmts(env: TypeEnv, f: Field, var: str, indent: str) -> List[
     # same either way.
     if tname in env.types and env.types[tname].kind == "struct":
         lines.append(
-            f'{indent}if (dcerpc_ptr_coder("{disp}", dce, pdu, iov, offset, &{var}->{f.name},\n'
+            f'{indent}if (dcerpc_ptr_coder("{disp}", dce, pdu, iov, &{var}->{f.name},\n'
             f"{indent}                     PTR_UNIQUE, {env.struct_coder_name(tname)})) {{\n"
             f"{indent}        return -1;\n"
             f"{indent}}}"
@@ -1955,7 +1955,7 @@ def gen_union_case_stmts(env: TypeEnv, f: Field, var: str, indent: str) -> List[
         return lines
     if tname in env.types and env.types[tname].kind == "enum":
         lines.append(
-            f'{indent}if ({env.coder_name(tname)}("{disp}", dce, pdu, iov, offset, &{var}->{f.name})) {{\n'
+            f'{indent}if ({env.coder_name(tname)}("{disp}", dce, pdu, iov, &{var}->{f.name})) {{\n'
             f"{indent}        return -1;\n"
             f"{indent}}}"
         )
@@ -1963,7 +1963,7 @@ def gen_union_case_stmts(env: TypeEnv, f: Field, var: str, indent: str) -> List[
     if tname in BUILTINS:
         coder = builtin_coder(tname) or "dcerpc_uint32_coder"
         lines.append(
-            f'{indent}if ({coder}("{disp}", dce, pdu, iov, offset, &{var}->{f.name})) {{\n'
+            f'{indent}if ({coder}("{disp}", dce, pdu, iov, &{var}->{f.name})) {{\n'
             f"{indent}        return -1;\n"
             f"{indent}}}"
         )
@@ -2015,11 +2015,11 @@ def gen_u32_enum_coder(env: TypeEnv, t: TypeDef) -> str:
     lines.append(
         f"{env.coder_name(t.name)}(char *name, struct dcerpc_context *dce,\n"
         f"                struct dcerpc_pdu *pdu,\n"
-        f"                struct dcerpc_iovec *iov, int *offset,\n"
+        f"                struct dcerpc_iovec *iov,\n"
         f"                void *ptr)"
     )
     lines.append("{")
-    lines.append(f"        return dcerpc_uint32_coder_pp(name, dce, pdu, iov, offset, ptr,")
+    lines.append(f"        return dcerpc_uint32_coder_pp(name, dce, pdu, iov, ptr,")
     lines.append(f"                                      &{pp});")
     lines.append("}")
     lines.append("")
@@ -2070,7 +2070,7 @@ def gen_enum_coder(env: TypeEnv, t: TypeDef) -> str:
     lines.append(
         f"{env.coder_name(t.name)}(char *name, struct dcerpc_context *dce,\n"
         f"                struct dcerpc_pdu *pdu,\n"
-        f"                struct dcerpc_iovec *iov, int *offset,\n"
+        f"                struct dcerpc_iovec *iov,\n"
         f"                void *ptr)"
     )
     lines.append("{")
@@ -2081,7 +2081,7 @@ def gen_enum_coder(env: TypeEnv, t: TypeDef) -> str:
     lines.append(f"                tmp = ({wtype})*e;")
     lines.append("        }")
     lines.append(
-        f"        if ({coder}(name, dce, pdu, iov, offset, &tmp,\n"
+        f"        if ({coder}(name, dce, pdu, iov, &tmp,\n"
         f"                                   &{pp})) {{"
     )
     lines.append("                return -1;")
@@ -2118,14 +2118,14 @@ def gen_type_coders(env: TypeEnv) -> str:
         lines.append(
             f"static int {env.ptr_helper_name(pt)}(char *name, struct dcerpc_context *dce,\n"
             f"                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,\n"
-            f"                int *offset, void *ptr);"
+            f"                void *ptr);"
         )
     for et in list(dict.fromkeys(needed_carrays + needed_cvarrays)):
         if et.endswith("*"):
             lines.append(
                 f"static int {env.pelem_coder_name(et[:-1])}(char *name, struct dcerpc_context *dce,\n"
                 f"                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,\n"
-                f"                int *offset, void *ptr);"
+                f"                void *ptr);"
             )
 
     # Forward-declare element coders used by carray helpers defined above them
@@ -2136,7 +2136,7 @@ def gen_type_coders(env: TypeEnv) -> str:
             lines.append(
                 f"int {env.coder_name(et)}(char *name, struct dcerpc_context *dce,\n"
                 f"                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,\n"
-                f"                int *offset, void *ptr);"
+                f"                void *ptr);"
             )
         lines.append("")
 
@@ -2148,12 +2148,12 @@ def gen_type_coders(env: TypeEnv) -> str:
         lines.append(
             f"{env.elem_coder_name(et)}(char *name, struct dcerpc_context *dce,\n"
             f"                     struct dcerpc_pdu *pdu,\n"
-            f"                     struct dcerpc_iovec *iov, int *offset,\n"
+            f"                     struct dcerpc_iovec *iov,\n"
             f"                     void *ptr)"
         )
         lines.append("{")
         lines.append(
-            f"        return dcerpc_aligned_element_coder(name, dce, pdu, iov, offset, ptr,\n"
+            f"        return dcerpc_aligned_element_coder(name, dce, pdu, iov, ptr,\n"
             f"                                            {env.coder_name(et)}, {a32}, {a64});"
         )
         lines.append("}")
@@ -2185,7 +2185,7 @@ def gen_type_coders(env: TypeEnv) -> str:
         lines.append(
             f"{cname}(char *name, struct dcerpc_context *dce,\n"
             f"                     struct dcerpc_pdu *pdu,\n"
-            f"                     struct dcerpc_iovec *iov, int *offset,\n"
+            f"                     struct dcerpc_iovec *iov,\n"
             f"                     void *ptr)"
         )
         lines.append("{")
@@ -2197,7 +2197,7 @@ def gen_type_coders(env: TypeEnv) -> str:
                 raise SystemExit(f"error: conformant-varying array of {et} "
                                  "values is not supported")
             lines.append(
-                f'        return dcerpc_cvarray_coder(name, dce, pdu, iov, offset,\n'
+                f'        return dcerpc_cvarray_coder(name, dce, pdu, iov,\n'
                 f"                                    dcerpc_get_size_is(pdu),\n"
                 f"                                    dcerpc_get_length_is(pdu), ptr,\n"
                 f"                                    {esize},\n"
@@ -2207,7 +2207,7 @@ def gen_type_coders(env: TypeEnv) -> str:
             carray = ("dcerpc_scalar_carray_coder" if is_scalar_elem(env, et)
                       else "dcerpc_carray_coder")
             lines.append(
-                f'        return {carray}(name, dce, pdu, iov, offset,\n'
+                f'        return {carray}(name, dce, pdu, iov,\n'
                 f"                                   dcerpc_get_size_is(pdu), ptr,\n"
                 f"                                   {esize},\n"
                 f"                                   {ecoder});"
@@ -2222,7 +2222,7 @@ def gen_type_coders(env: TypeEnv) -> str:
         lines.append(
             f"{env.ptr_helper_name(pt)}(char *name, struct dcerpc_context *dce,\n"
             f"                     struct dcerpc_pdu *pdu,\n"
-            f"                     struct dcerpc_iovec *iov, int *offset,\n"
+            f"                     struct dcerpc_iovec *iov,\n"
             f"                     void *ptr)"
         )
         lines.append("{")
@@ -2234,7 +2234,7 @@ def gen_type_coders(env: TypeEnv) -> str:
         lines.append("                        return -1;")
         lines.append("                }")
         lines.append("        }")
-        lines.append(f"        return {coder}(name, dce, pdu, iov, offset, *pp);")
+        lines.append(f"        return {coder}(name, dce, pdu, iov, *pp);")
         lines.append("}")
         lines.append("")
 
@@ -2247,13 +2247,13 @@ def gen_type_coders(env: TypeEnv) -> str:
         lines.append(
             f"{env.pelem_coder_name(pt)}(char *name, struct dcerpc_context *dce,\n"
             f"                     struct dcerpc_pdu *pdu,\n"
-            f"                     struct dcerpc_iovec *iov, int *offset,\n"
+            f"                     struct dcerpc_iovec *iov,\n"
             f"                     void *ptr)"
         )
         lines.append("{")
         lines.append(f"        {c_ptr(c_ptr(pointee_ctype_coder(env, pt)[0]))}pp = ptr;")
         lines.append("")
-        lines.append("        return dcerpc_ptr_coder(name, dce, pdu, iov, offset,")
+        lines.append("        return dcerpc_ptr_coder(name, dce, pdu, iov,")
         lines.append("                                (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&")
         lines.append("                                 *pp == NULL) ? NULL : (void *)pp,")
         lines.append(f"                                PTR_UNIQUE, {env.ptr_helper_name(pt)});")
@@ -2266,12 +2266,12 @@ def gen_type_coders(env: TypeEnv) -> str:
         lines.append(
             f"{env.prefix}_{ch}_param_coder(char *name, struct dcerpc_context *dce,\n"
             f"                     struct dcerpc_pdu *pdu,\n"
-            f"                     struct dcerpc_iovec *iov, int *offset,\n"
+            f"                     struct dcerpc_iovec *iov,\n"
             f"                     void *ptr)"
         )
         lines.append("{")
         a32, a64 = CONTEXT_HANDLE_ALIGN
-        lines.append(f"        return dcerpc_aligned_struct_coder(name, dce, pdu, iov, offset, ptr,")
+        lines.append(f"        return dcerpc_aligned_struct_coder(name, dce, pdu, iov, ptr,")
         lines.append(f"                                           {CONTEXT_HANDLE[1]}, {a32}, {a64});")
         lines.append("}")
         lines.append("")
@@ -2285,7 +2285,7 @@ def gen_type_coders(env: TypeEnv) -> str:
             lines.append(
                 f"{env.coder_name(t.name)}(char *name, struct dcerpc_context *dce,\n"
                 f"                struct dcerpc_pdu *pdu,\n"
-                f"                struct dcerpc_iovec *iov, int *offset,\n"
+                f"                struct dcerpc_iovec *iov,\n"
                 f"                void *ptr)"
             )
             lines.append("{")
@@ -2298,7 +2298,7 @@ def gen_type_coders(env: TypeEnv) -> str:
                 if bt is not None:
                     ln = attr_arg(f.attrs, "size_is")
                     lines.append(
-                        f'        if (dcerpc_blob_coder("{f.name}", dce, pdu, iov, offset,\n'
+                        f'        if (dcerpc_blob_coder("{f.name}", dce, pdu, iov,\n'
                         f"                              s->{ln}, &s->{f.name},\n"
                         f"                              sizeof({bt[0]}),\n"
                         f"                              {bt[1]})) {{\n"
@@ -2308,7 +2308,7 @@ def gen_type_coders(env: TypeEnv) -> str:
                 elif f.name in blob_lens:
                     bf = blob_lens[f.name]
                     lines.append(
-                        f'        if (dcerpc_blob_len_coder("{f.name}", dce, pdu, iov, offset,\n'
+                        f'        if (dcerpc_blob_len_coder("{f.name}", dce, pdu, iov,\n'
                         f"                                  &s->{f.name}, s->{bf.name},\n"
                         f"                                  {blob_type(bf)[1]})) {{\n"
                         f"                return -1;\n"
@@ -2326,13 +2326,13 @@ def gen_type_coders(env: TypeEnv) -> str:
             lines.append(
                 f"{env.struct_coder_name(t.name)}(char *name, struct dcerpc_context *dce,\n"
                 f"                struct dcerpc_pdu *pdu,\n"
-                f"                struct dcerpc_iovec *iov, int *offset,\n"
+                f"                struct dcerpc_iovec *iov,\n"
                 f"                void *ptr)"
             )
             lines.append("{")
             lines.append(
                 f"        /* NDR alignment: {a32} (NDR32), {a64} (NDR64) */\n"
-                f"        return dcerpc_aligned_struct_coder(name, dce, pdu, iov, offset, ptr,\n"
+                f"        return dcerpc_aligned_struct_coder(name, dce, pdu, iov, ptr,\n"
                 f"                                           {env.coder_name(t.name)}, {a32}, {a64});"
             )
             lines.append("}")
@@ -2345,14 +2345,14 @@ def gen_type_coders(env: TypeEnv) -> str:
             lines.append(
                 f"{env.prefix}_{t.name}_switch_coder(char *name, struct dcerpc_context *dce,\n"
                 f"                struct dcerpc_pdu *pdu,\n"
-                f"                struct dcerpc_iovec *iov, int *offset,\n"
+                f"                struct dcerpc_iovec *iov,\n"
                 f"                void *ptr)"
             )
             lines.append("{")
             lines.append("        uint32_t level = dcerpc_get_switch_is(pdu);")
             lines.append("")
             lines.append(
-                f"        return dcerpc_union_coder(name, dce, pdu, iov, offset, &level, ptr,\n"
+                f"        return dcerpc_union_coder(name, dce, pdu, iov, &level, ptr,\n"
                 f"                                  {env.coder_name(t.name)});"
             )
             lines.append("}")
@@ -2369,7 +2369,7 @@ def gen_union_coder(env: TypeEnv, t: TypeDef) -> List[str]:
     lines.append(
         f"{env.coder_name(t.name)}(char *name, struct dcerpc_context *dce,\n"
         f"                struct dcerpc_pdu *pdu,\n"
-        f"                struct dcerpc_iovec *iov, int *offset,\n"
+        f"                struct dcerpc_iovec *iov,\n"
         f"                void *ptr)"
     )
     lines.append("{")
@@ -2454,7 +2454,7 @@ def gen_param_coder(env: TypeEnv, p: Param, var: str, indent: str = "        ",
     dbl = param_double_ptr(env, p)
     if dbl is not None:
         lines.append(
-            f'{indent}if (dcerpc_ptr_coder("{disp}", dce, pdu, iov, offset, &{var}->{p.name},\n'
+            f'{indent}if (dcerpc_ptr_coder("{disp}", dce, pdu, iov, &{var}->{p.name},\n'
             f"{indent}                     PTR_UNIQUE, {env.struct_coder_name(dbl)})) {{\n"
             f"{indent}        return -1;\n"
             f"{indent}}}"
@@ -2472,7 +2472,7 @@ def gen_param_coder(env: TypeEnv, p: Param, var: str, indent: str = "        ",
                 f"\n"
                 f"{indent}        bytes.len = {var}->{size_is};\n"
                 f"{indent}        bytes.data = {var}->{p.name};\n"
-                f'{indent}        if (dcerpc_bytes_coder("{disp}", dce, pdu, iov, offset, &bytes)) {{\n'
+                f'{indent}        if (dcerpc_bytes_coder("{disp}", dce, pdu, iov, &bytes)) {{\n'
                 f"{indent}                return -1;\n"
                 f"{indent}        }}\n"
                 f"{indent}        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {{\n"
@@ -2488,7 +2488,7 @@ def gen_param_coder(env: TypeEnv, p: Param, var: str, indent: str = "        ",
                 f"{indent}        vb.max_count = {var}->{size_is};\n"
                 f"{indent}        vb.len = {var}->{length_is};\n"
                 f"{indent}        vb.data = {var}->{p.name};\n"
-                f'{indent}        if (dcerpc_ptr_coder("{disp}", dce, pdu, iov, offset, &vb,\n'
+                f'{indent}        if (dcerpc_ptr_coder("{disp}", dce, pdu, iov, &vb,\n'
                 f"{indent}                             {ptype}, dcerpc_varying_bytes_coder)) {{\n"
                 f"{indent}                return -1;\n"
                 f"{indent}        }}\n"
@@ -2503,7 +2503,7 @@ def gen_param_coder(env: TypeEnv, p: Param, var: str, indent: str = "        ",
     pt = nullable_param(env, p)
     if pt is not None:
         lines.append(
-            f'{indent}if (dcerpc_ptr_coder("{disp}", dce, pdu, iov, offset,\n'
+            f'{indent}if (dcerpc_ptr_coder("{disp}", dce, pdu, iov,\n'
             f"{indent}                     (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&\n"
             f"{indent}                      {var}->{p.name} == NULL) ? NULL : &{var}->{p.name},\n"
             f"{indent}                     PTR_UNIQUE, {env.ptr_helper_name(pt)})) {{\n"
@@ -2541,7 +2541,7 @@ def gen_param_coder(env: TypeEnv, p: Param, var: str, indent: str = "        ",
                   else env.carray_coder_name(array_elem(env, p)))
         # an empty array is never dereferenced, but the pointer must not be NULL
         lines.append(
-            f'{indent}if (dcerpc_ptr_coder("{disp}", dce, pdu, iov, offset,\n'
+            f'{indent}if (dcerpc_ptr_coder("{disp}", dce, pdu, iov,\n'
             f"{indent}                     {var}->{p.name} ? (void *){var}->{p.name} : (void *)&{var}->{p.name},\n"
             f"{indent}                     PTR_REF, {helper})) {{\n"
             f"{indent}        return -1;\n"
@@ -2564,7 +2564,7 @@ def gen_param_coder(env: TypeEnv, p: Param, var: str, indent: str = "        ",
         if max_length is not None:
             lines.append(f"{indent}dcerpc_set_unicode_max_length(pdu, {max_length});")
         lines.append(
-            f'{indent}if (dcerpc_ptr_coder("{disp}", dce, pdu, iov, offset, &{var}->{p.name},\n'
+            f'{indent}if (dcerpc_ptr_coder("{disp}", dce, pdu, iov, &{var}->{p.name},\n'
             f"{indent}                     {uptype}, {coder})) {{\n"
             f"{indent}        return -1;\n"
             f"{indent}}}"
@@ -2579,7 +2579,7 @@ def gen_param_coder(env: TypeEnv, p: Param, var: str, indent: str = "        ",
         uptype = "PTR_UNIQUE" if attr_has(p.attrs, "unique") else "PTR_REF"
         lines.append(f"{indent}dcerpc_set_switch_is(pdu, {switch_source(fn, p, var)});")
         lines.append(
-            f'{indent}if (dcerpc_ptr_coder("{disp}", dce, pdu, iov, offset, &{var}->{p.name},\n'
+            f'{indent}if (dcerpc_ptr_coder("{disp}", dce, pdu, iov, &{var}->{p.name},\n'
             f"{indent}                     {uptype}, {env.prefix}_{tname}_switch_coder)) {{\n"
             f"{indent}        return -1;\n"
             f"{indent}}}"
@@ -2593,18 +2593,18 @@ def gen_param_coder(env: TypeEnv, p: Param, var: str, indent: str = "        ",
             lines.append(
                 f"{indent}if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&\n"
                 f"{indent}    {var}->{p.name} == NULL) {{\n"
-                f'{indent}        if (dcerpc_ptr_coder("{disp}", dce, pdu, iov, offset, NULL,\n'
+                f'{indent}        if (dcerpc_ptr_coder("{disp}", dce, pdu, iov, NULL,\n'
                 f"{indent}                             PTR_UNIQUE, dcerpc_utf16z_coder)) {{\n"
                 f"{indent}                return -1;\n"
                 f"{indent}        }}\n"
-                f"{indent}}} else if (dcerpc_ptr_coder(\"{disp}\", dce, pdu, iov, offset, {target},\n"
+                f"{indent}}} else if (dcerpc_ptr_coder(\"{disp}\", dce, pdu, iov, {target},\n"
                 f"{indent}                            PTR_UNIQUE, dcerpc_utf16z_coder)) {{\n"
                 f"{indent}        return -1;\n"
                 f"{indent}}}"
             )
             return lines
         lines.append(
-            f'{indent}if (dcerpc_ptr_coder("{disp}", dce, pdu, iov, offset, {target},\n'
+            f'{indent}if (dcerpc_ptr_coder("{disp}", dce, pdu, iov, {target},\n'
             f"{indent}                     {ptype}, dcerpc_utf16z_coder)) {{\n"
             f"{indent}        return -1;\n"
             f"{indent}}}"
@@ -2615,7 +2615,7 @@ def gen_param_coder(env: TypeEnv, p: Param, var: str, indent: str = "        ",
         # top-level ref/unique struct: use _struct_coder for nesting
         coder = env.struct_coder_name(tname)
         lines.append(
-            f'{indent}if (dcerpc_ptr_coder("{disp}", dce, pdu, iov, offset, &{var}->{p.name},\n'
+            f'{indent}if (dcerpc_ptr_coder("{disp}", dce, pdu, iov, &{var}->{p.name},\n'
             f"{indent}                     {ptype}, {coder})) {{\n"
             f"{indent}        return -1;\n"
             f"{indent}}}"
@@ -2624,7 +2624,7 @@ def gen_param_coder(env: TypeEnv, p: Param, var: str, indent: str = "        ",
 
     if tname in env.types and env.types[tname].kind == "enum":
         lines.append(
-            f'{indent}if (dcerpc_ptr_coder("{disp}", dce, pdu, iov, offset, &{var}->{p.name},\n'
+            f'{indent}if (dcerpc_ptr_coder("{disp}", dce, pdu, iov, &{var}->{p.name},\n'
             f"{indent}                     {ptype}, {env.coder_name(tname)})) {{\n"
             f"{indent}        return -1;\n"
             f"{indent}}}"
@@ -2636,7 +2636,7 @@ def gen_param_coder(env: TypeEnv, p: Param, var: str, indent: str = "        ",
         if coder:
             # PreferedMaximumLength etc.: top-level via ptr_coder
             lines.append(
-                f'{indent}if (dcerpc_ptr_coder("{disp}", dce, pdu, iov, offset, &{var}->{p.name},\n'
+                f'{indent}if (dcerpc_ptr_coder("{disp}", dce, pdu, iov, &{var}->{p.name},\n'
                 f"{indent}                     {ptype}, {coder})) {{\n"
                 f"{indent}        return -1;\n"
                 f"{indent}}}"
@@ -2661,7 +2661,7 @@ def gen_function_coders(env: TypeEnv) -> str:
         lines.append(
             f"{env.prefix}_{fn.name}_req_coder(char *name, struct dcerpc_context *dce,\n"
             f"                struct dcerpc_pdu *pdu,\n"
-            f"                struct dcerpc_iovec *iov, int *offset,\n"
+            f"                struct dcerpc_iovec *iov,\n"
             f"                void *ptr)"
         )
         lines.append("{")
@@ -2682,7 +2682,7 @@ def gen_function_coders(env: TypeEnv) -> str:
         lines.append(
             f"{env.prefix}_{fn.name}_rep_coder(char *name, struct dcerpc_context *dce,\n"
             f"                struct dcerpc_pdu *pdu,\n"
-            f"                struct dcerpc_iovec *iov, int *offset,\n"
+            f"                struct dcerpc_iovec *iov,\n"
             f"                void *ptr)"
         )
         lines.append("{")
@@ -2709,7 +2709,7 @@ def gen_function_coders(env: TypeEnv) -> str:
                 lines.extend(gen_param_coder(env, p, "rep", fn=fn))
         if fn.ret_type in STATUS_TYPES:
             lines.append(
-                '        if (dcerpc_uint32_coder("Status", dce, pdu, iov, offset, &rep->status)) {\n'
+                '        if (dcerpc_uint32_coder("Status", dce, pdu, iov, &rep->status)) {\n'
                 "                return -1;\n"
                 "        }"
             )

@@ -38,15 +38,39 @@ struct smb2_context;
  * so the same buffer can be cast either way; dcerpc owns this type so
  * consumers do not need to include or redefine smb2_iovec.
  */
+/*
+ * A coding buffer and the position in it. Coders code at offset and advance
+ * it; offset never exceeds max_offset, the size of buf, and offset ==
+ * max_offset means the buffer is used up.
+ *
+ * Encoding into an iovec with buf == NULL, e.g.
+ *     struct dcerpc_iovec vec = {0};
+ * allocates the buffer and sets .free = free. A buffer whose .free is free
+ * grows as needed: it is doubled (realloc, new space zeroed) up to
+ * DCERPC_IOVEC_MAX_SIZE. Any other buffer has a fixed size. After encoding,
+ * offset is the encoded length; free the buffer with dcerpc_free_iovec().
+ *
+ * To decode, point the iovec at the data:
+ *     struct dcerpc_iovec vec = { .buf = data, .max_offset = len };
+ * Decoding never writes, grows or frees the buffer, so it may be read-only,
+ * and the decoded data does not point into it.
+ */
+#define DCERPC_IOVEC_INITIAL_SIZE 1024
+#define DCERPC_IOVEC_MAX_SIZE (16 * 1024 * 1024)
+
 struct dcerpc_iovec {
         uint8_t *buf;
-        size_t len;
+        size_t offset;
+        size_t max_offset;
         void (*free)(void *);
 };
 
+/* Free iov->buf with iov->free, if set, and reset the iovec */
+void dcerpc_free_iovec(struct dcerpc_iovec *iov);
+
 /* Encoder/Decoder for a DCERPC object */
 typedef int (*dcerpc_coder)(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
-                            struct dcerpc_iovec *iov, int *offset,
+                            struct dcerpc_iovec *iov,
                             void *ptr);
 
 struct dcerpc_uint32_pretty_printer_bitfield {
@@ -63,21 +87,21 @@ struct dcerpc_uint32_pretty_printer {
 /* Encoder/Decoder for a DCERPC object with a pretty-printer*/
 typedef int (*dcerpc_coder_pp)(char *name, struct dcerpc_context *dce,
                                struct dcerpc_pdu *pdu,
-                               struct dcerpc_iovec *iov, int *offset,
+                               struct dcerpc_iovec *iov,
                                void *ptr,
                                struct dcerpc_uint32_pretty_printer *pp);
 
 /* Encoder/Decoder for a DCERPC object with a pass-through coder*/
 typedef int (*dcerpc_coder_cdr)(char *name, struct dcerpc_context *dce,
                                 struct dcerpc_pdu *pdu,
-                                struct dcerpc_iovec *iov, int *offset,
+                                struct dcerpc_iovec *iov,
                                 void *ptr,
                                 dcerpc_coder coder);
 
 /* Encoder/Decoder for a DCERPC union with a discriminator */
 typedef int (*dcerpc_coder_union)(char *name, struct dcerpc_context *dce,
                                   struct dcerpc_pdu *pdu,
-                                  struct dcerpc_iovec *iov, int *offset,
+                                  struct dcerpc_iovec *iov,
                                   uint32_t *switch_is, void *ptr,
                                   dcerpc_coder coder);
 
@@ -85,6 +109,7 @@ enum dcerpc_encoding {
         ENCODING_NDR    = 0,
         ENCODING_YAML   = 1,
         ENCODING_JSON   = 2
+        /* at most 255: the low 8 bits of the dcerpc_allocate_pdu() flags */
 };
 
 enum ptr_type {
@@ -269,8 +294,7 @@ void *dcerpc_call(struct dcerpc_context *dce,
                   dcerpc_coder rep_coder, int decode_size);
 
 int dcerpc_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                    struct dcerpc_iovec *iov,
-                    int *offset, void *ptr,
+                    struct dcerpc_iovec *iov, void *ptr,
                     dcerpc_coder coder);
 /*
  * Read a YAML file and decode it with coder into a newly allocated structure
@@ -279,9 +303,8 @@ int dcerpc_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *p
  * Creates a temporary smb2/dcerpc context internally; the caller does not
  * pass or manage a dcerpc_context. The returned pointer is a dcerpc mem-tree
  * root (same model as a successful dcerpc_call_async reply). Nested decode
- * allocations and the file buffer (loaded via dcerpc_alloc_data so YAML
- * string pointers into the buffer stay valid) are owned by that root. Free
- * with dcerpc_free_data(NULL, ptr) — the dce argument is unused.
+ * allocations, strings included, are owned by that root. Free with
+ * dcerpc_free_data(NULL, ptr) — the dce argument is unused.
  *
  * Returns NULL on error.
  * The top-level YAML key is taken from the file and must match what coder
@@ -290,11 +313,41 @@ int dcerpc_do_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *p
 void *dcerpc_read_yaml_file(const char *filename,
                             dcerpc_coder coder,
                             int decode_size);
-#define DCERPC_DECODE 0
-#define DCERPC_ENCODE 1
+/*
+ * PDU flags for dcerpc_allocate_pdu(): the direction, the NDR flavor and
+ * the encoding in one uint32_t.
+ *
+ *    31    30    29    28 .. 8     7 .. 0
+ *  +-----+-----+-----+---------+----------+
+ *  | DIR | BE  | N64 |reserved | encoding |
+ *  +-----+-----+-----+---------+----------+
+ *
+ * DIR  set: encode (C -> wire/text)    clear: decode
+ * BE   set: big-endian NDR             clear: little-endian
+ * N64  set: NDR64                      clear: NDR32
+ *
+ * BE and N64 only apply to ENCODING_NDR. The reserved bits must be 0.
+ */
+#define DCERPC_DECODE           0x00000000U
+#define DCERPC_ENCODE           0x80000000U
+#define DCERPC_BIG_ENDIAN       0x40000000U
+#define DCERPC_NDR64            0x20000000U
+#define DCERPC_DIRECTION_MASK   0x80000000U
+#define DCERPC_ENCODING_MASK    0x000000ffU
+
+#define DCERPC_PDU_ENCODING(flags) \
+        ((enum dcerpc_encoding)((flags) & DCERPC_ENCODING_MASK))
+
+/*
+ * A PDU for coding data with the encoding, direction and NDR flavor given
+ * by flags (DCERPC_ENCODE | ENCODING_NDR | DCERPC_NDR64, ...), and a
+ * payload of payload_size bytes for the C structure being coded.
+ * Returns NULL, with the error set on dce, if flags are invalid.
+ */
 struct dcerpc_pdu *dcerpc_allocate_pdu(struct dcerpc_context *dce,
-                                       enum dcerpc_encoding encoding,
-                                       int direction, int payload_size);
+                                       uint32_t flags, int payload_size);
+/* The NDR flavor negotiated at BIND: DCERPC_NDR64 and/or DCERPC_BIG_ENDIAN */
+uint32_t dcerpc_get_ndr_flavor(struct dcerpc_context *dce);
 void dcerpc_free_pdu(struct dcerpc_context *dce, struct dcerpc_pdu *pdu);
 
 /*
@@ -325,46 +378,46 @@ void dcerpc_set_request(struct dcerpc_pdu *pdu, void *request);
 void *dcerpc_get_request(struct dcerpc_pdu *pdu);
 
 int ndr_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
-                  struct dcerpc_iovec *iov, int *offset, void *ptr,
+                  struct dcerpc_iovec *iov, void *ptr,
                   enum ptr_type type, dcerpc_coder coder);
 int ndr_carray_coder(char *name, struct dcerpc_context *ctx,
                      struct dcerpc_pdu *pdu,
-                     struct dcerpc_iovec *iov, int *offset,
+                     struct dcerpc_iovec *iov,
                      uint32_t num, void *ptr, int elem_size, dcerpc_coder coder);
 int ndr_uint8_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                    struct dcerpc_iovec *iov, int *offset, void *ptr);
+                    struct dcerpc_iovec *iov, void *ptr);
 int ndr_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                     struct dcerpc_iovec *iov, int *offset, void *ptr);
+                     struct dcerpc_iovec *iov, void *ptr);
 int ndr_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                     struct dcerpc_iovec *iov, int *offset, void *ptr);
+                     struct dcerpc_iovec *iov, void *ptr);
 int ndr_uint3264_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                       struct dcerpc_iovec *iov, int *offset, void *ptr);
+                       struct dcerpc_iovec *iov, void *ptr);
 int ndr_union_coder(char *name, struct dcerpc_context *ctx,
                     struct dcerpc_pdu *pdu,
-                    struct dcerpc_iovec *iov, int *offset,
+                    struct dcerpc_iovec *iov,
                     uint32_t *switch_is, void *ptr, dcerpc_coder coder);
 int ndr_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                    struct dcerpc_iovec *iov, int *offset, void *ptr);
+                    struct dcerpc_iovec *iov, void *ptr);
 int ndr_utf16z_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                     struct dcerpc_iovec *iov, int *offset, void *ptr);
+                     struct dcerpc_iovec *iov, void *ptr);
 int ndr_uuid_coder(char *name, struct dcerpc_context *dce,
                    struct dcerpc_pdu *pdu,
-                   struct dcerpc_iovec *iov, int *offset,
+                   struct dcerpc_iovec *iov,
                    void *ptr);
 int ndr_sid_coder(char *name, struct dcerpc_context *dce,
                   struct dcerpc_pdu *pdu,
-                  struct dcerpc_iovec *iov, int *offset,
+                  struct dcerpc_iovec *iov,
                   void *ptr);
 
 int dcerpc_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
-                     struct dcerpc_iovec *iov, int *offset, void *ptr,
+                     struct dcerpc_iovec *iov, void *ptr,
                      enum ptr_type type, dcerpc_coder coder);
 int dcerpc_uint8_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                       struct dcerpc_iovec *iov, int *offset, void *ptr);
+                       struct dcerpc_iovec *iov, void *ptr);
 int dcerpc_uint16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                        struct dcerpc_iovec *iov, int *offset, void *ptr);
+                        struct dcerpc_iovec *iov, void *ptr);
 int dcerpc_uint16_coder_pp(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                           struct dcerpc_iovec *iov, int *offset, void *ptr,
+                           struct dcerpc_iovec *iov, void *ptr,
                            struct dcerpc_uint32_pretty_printer *pp);
 /*
  * An enum without [v1_enum]: 16 bits in NDR32, 32 bits in NDR64. ptr is a
@@ -372,22 +425,22 @@ int dcerpc_uint16_coder_pp(char *name, struct dcerpc_context *ctx, struct dcerpc
  */
 int dcerpc_enum16_coder(char *name, struct dcerpc_context *ctx,
                         struct dcerpc_pdu *pdu,
-                        struct dcerpc_iovec *iov, int *offset, void *ptr,
+                        struct dcerpc_iovec *iov, void *ptr,
                         struct dcerpc_uint32_pretty_printer *pp);
 int dcerpc_uint32_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                        struct dcerpc_iovec *iov, int *offset, void *ptr);
+                        struct dcerpc_iovec *iov, void *ptr);
 int dcerpc_uint32_coder_pp(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                           struct dcerpc_iovec *iov, int *offset, void *ptr,
+                           struct dcerpc_iovec *iov, void *ptr,
                            struct dcerpc_uint32_pretty_printer *pp);
 int dcerpc_uint64_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                        struct dcerpc_iovec *iov, int *offset, void *ptr);
+                        struct dcerpc_iovec *iov, void *ptr);
 int dcerpc_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                       struct dcerpc_iovec *iov, int *offset, void *ptr);
+                       struct dcerpc_iovec *iov, void *ptr);
 int dcerpc_utf16z_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                        struct dcerpc_iovec *iov, int *offset, void *ptr);
+                        struct dcerpc_iovec *iov, void *ptr);
 int dcerpc_carray_coder(char *name, struct dcerpc_context *ctx,
                         struct dcerpc_pdu *pdu,
-                        struct dcerpc_iovec *iov, int *offset,
+                        struct dcerpc_iovec *iov,
                         uint32_t num, void *ptr, int elem_size, dcerpc_coder coder);
 /*
  * Conformant-varying array of max_count elements of which num are sent
@@ -396,7 +449,7 @@ int dcerpc_carray_coder(char *name, struct dcerpc_context *ctx,
  */
 int dcerpc_cvarray_coder(char *name, struct dcerpc_context *ctx,
                          struct dcerpc_pdu *pdu,
-                         struct dcerpc_iovec *iov, int *offset,
+                         struct dcerpc_iovec *iov,
                          uint32_t max_count, uint32_t num, void *ptr,
                          int elem_size, dcerpc_coder coder);
 /*
@@ -406,15 +459,15 @@ int dcerpc_cvarray_coder(char *name, struct dcerpc_context *ctx,
  */
 int dcerpc_scalar_carray_coder(char *name, struct dcerpc_context *ctx,
                         struct dcerpc_pdu *pdu,
-                        struct dcerpc_iovec *iov, int *offset,
+                        struct dcerpc_iovec *iov,
                         uint32_t num, void *ptr, int elem_size, dcerpc_coder coder);
 int dcerpc_union_coder(char *name, struct dcerpc_context *ctx,
                        struct dcerpc_pdu *pdu,
-                       struct dcerpc_iovec *iov, int *offset,
+                       struct dcerpc_iovec *iov,
                        uint32_t *switch_is, void *ptr, dcerpc_coder coder);
 int dcerpc_struct_coder(char *name, struct dcerpc_context *ctx,
                         struct dcerpc_pdu *pdu,
-                        struct dcerpc_iovec *iov, int *offset,
+                        struct dcerpc_iovec *iov,
                         void *ptr, dcerpc_coder coder);
 /*
  * A structure with its NDR alignment known: idlcomp passes the alignment of
@@ -423,7 +476,7 @@ int dcerpc_struct_coder(char *name, struct dcerpc_context *ctx,
  */
 int dcerpc_aligned_struct_coder(char *name, struct dcerpc_context *ctx,
                                 struct dcerpc_pdu *pdu,
-                                struct dcerpc_iovec *iov, int *offset,
+                                struct dcerpc_iovec *iov,
                                 void *ptr, dcerpc_coder coder,
                                 int ndr32_align, int ndr64_align);
 /*
@@ -432,19 +485,19 @@ int dcerpc_aligned_struct_coder(char *name, struct dcerpc_context *ctx,
  */
 int dcerpc_aligned_element_coder(char *name, struct dcerpc_context *ctx,
                                  struct dcerpc_pdu *pdu,
-                                 struct dcerpc_iovec *iov, int *offset,
+                                 struct dcerpc_iovec *iov,
                                  void *ptr, dcerpc_coder coder,
                                  int ndr32_align, int ndr64_align);
 int dcerpc_context_handle_coder(char *name, struct dcerpc_context *dce,
                                 struct dcerpc_pdu *pdu,
-                                struct dcerpc_iovec *iov, int *offset,
+                                struct dcerpc_iovec *iov,
                                 void *ptr);
 int dcerpc_uuid_coder(char *name, struct dcerpc_context *ctx,
                       struct dcerpc_pdu *pdu,
-                      struct dcerpc_iovec *iov, int *offset, void *ptr);
+                      struct dcerpc_iovec *iov, void *ptr);
 int dcerpc_sid_coder(char *name, struct dcerpc_context *dce,
                      struct dcerpc_pdu *pdu,
-                     struct dcerpc_iovec *iov, int *offset,
+                     struct dcerpc_iovec *iov,
                      void *ptr);
 
 /*
@@ -460,7 +513,7 @@ struct dcerpc_bytes {
 };
 int dcerpc_bytes_coder(char *name, struct dcerpc_context *dce,
                        struct dcerpc_pdu *pdu,
-                       struct dcerpc_iovec *iov, int *offset,
+                       struct dcerpc_iovec *iov,
                        void *ptr);
 
 /*
@@ -476,11 +529,11 @@ int dcerpc_bytes_coder(char *name, struct dcerpc_context *dce,
  */
 int dcerpc_blob_len_coder(char *name, struct dcerpc_context *dce,
                           struct dcerpc_pdu *pdu,
-                          struct dcerpc_iovec *iov, int *offset,
+                          struct dcerpc_iovec *iov,
                           uint32_t *len, void *obj, dcerpc_coder coder);
 int dcerpc_blob_coder(char *name, struct dcerpc_context *dce,
                       struct dcerpc_pdu *pdu,
-                      struct dcerpc_iovec *iov, int *offset,
+                      struct dcerpc_iovec *iov,
                       uint32_t len, void *objp, size_t obj_size,
                       dcerpc_coder coder);
 
@@ -499,7 +552,7 @@ struct dcerpc_varying_bytes {
 };
 int dcerpc_varying_bytes_coder(char *name, struct dcerpc_context *dce,
                                struct dcerpc_pdu *pdu,
-                               struct dcerpc_iovec *iov, int *offset,
+                               struct dcerpc_iovec *iov,
                                void *ptr);
 /*
  * RPC_UNICODE_STRING (MS-DTYP). Buffer is not required to be NUL-terminated.
@@ -515,11 +568,11 @@ int dcerpc_varying_bytes_coder(char *name, struct dcerpc_context *dce,
  */
 int dcerpc_RPC_UNICODE_STRING_coder(char *name, struct dcerpc_context *dce,
                                     struct dcerpc_pdu *pdu,
-                                    struct dcerpc_iovec *iov, int *offset,
+                                    struct dcerpc_iovec *iov,
                                     void *ptr);
 int dcerpc_RPC_UNICODE_STRINGz_coder(char *name, struct dcerpc_context *dce,
                                      struct dcerpc_pdu *pdu,
-                                     struct dcerpc_iovec *iov, int *offset,
+                                     struct dcerpc_iovec *iov,
                                      void *ptr);
 /* MS-RRP name for the NUL-terminated form */
 #define dcerpc_RRP_UNICODE_STRING_coder dcerpc_RPC_UNICODE_STRINGz_coder
@@ -548,12 +601,12 @@ struct epm_twr_t {
 /* twr_t: the members, without the YAML/JSON nesting or NDR alignment */
 int dcerpc_epm_twr_coder(char *name, struct dcerpc_context *dce,
                          struct dcerpc_pdu *pdu,
-                         struct dcerpc_iovec *iov, int *offset,
+                         struct dcerpc_iovec *iov,
                          void *ptr);
 /* twr_t as a structure: what epm.idl's twr_t built-in type codes with */
 int dcerpc_epm_twr_struct_coder(char *name, struct dcerpc_context *dce,
                                 struct dcerpc_pdu *pdu,
-                                struct dcerpc_iovec *iov, int *offset,
+                                struct dcerpc_iovec *iov,
                                 void *ptr);
 /*
  * [string] char annotation[64]: a fixed-size varying string (offset and
@@ -561,7 +614,7 @@ int dcerpc_epm_twr_struct_coder(char *name, struct dcerpc_context *dce,
  */
 int dcerpc_epm_annotation_coder(char *name, struct dcerpc_context *dce,
                                 struct dcerpc_pdu *pdu,
-                                struct dcerpc_iovec *iov, int *offset,
+                                struct dcerpc_iovec *iov,
                                 void *ptr);
 
 /*

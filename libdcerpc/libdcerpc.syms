@@ -28,8 +28,10 @@ dcerpc_epm_tower_get_ncacn_np
 dcerpc_epm_twr_coder
 dcerpc_epm_twr_struct_coder
 dcerpc_free_data
+dcerpc_free_iovec
 dcerpc_free_pdu
 dcerpc_get_cr
+dcerpc_get_ndr_flavor
 dcerpc_get_error
 dcerpc_get_length_is
 dcerpc_get_pdu_payload
@@ -133,8 +135,6 @@ ndr32_syntax
 ndr64_syntax
 ndr_carray_coder
 ndr_ptr_coder
-ndr_set_endian
-ndr_set_tctx
 ndr_struct_coder
 ndr_uint16_coder
 ndr_uint3264_coder

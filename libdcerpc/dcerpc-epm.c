@@ -68,15 +68,14 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
  */
 static int
 epm_count_coder(char *name, struct dcerpc_context *dce,
-                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
-                int *offset, uint32_t *count)
+                struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov, uint32_t *count)
 {
         uint64_t v = 0;
 
         if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
                 v = *count;
         }
-        if (ndr_uint3264_coder(name, dce, pdu, iov, offset, &v)) {
+        if (ndr_uint3264_coder(name, dce, pdu, iov, &v)) {
                 return -1;
         }
         if (v > UINT32_MAX) {
@@ -100,7 +99,7 @@ epm_count_coder(char *name, struct dcerpc_context *dce,
 int
 dcerpc_epm_twr_coder(char *name, struct dcerpc_context *dce,
               struct dcerpc_pdu *pdu,
-              struct dcerpc_iovec *iov, int *offset,
+              struct dcerpc_iovec *iov,
               void *ptr)
 {
         struct epm_twr_t *twr = ptr;
@@ -111,7 +110,7 @@ dcerpc_epm_twr_coder(char *name, struct dcerpc_context *dce,
 
         if (dcerpc_pdu_encoding(pdu) != ENCODING_NDR) {
                 len = twr->TowerLength;
-                if (dcerpc_uint32_coder("TowerLength", dce, pdu, iov, offset,
+                if (dcerpc_uint32_coder("TowerLength", dce, pdu, iov,
                                         &len)) {
                         return -1;
                 }
@@ -120,8 +119,7 @@ dcerpc_epm_twr_coder(char *name, struct dcerpc_context *dce,
                 }
                 bytes.len = twr->TowerLength;
                 bytes.data = twr->TowerOctetString;
-                if (dcerpc_bytes_coder("TowerOctetString", dce, pdu, iov,
-                                       offset, &bytes)) {
+                if (dcerpc_bytes_coder("TowerOctetString", dce, pdu, iov, &bytes)) {
                         return -1;
                 }
                 if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {
@@ -135,18 +133,18 @@ dcerpc_epm_twr_coder(char *name, struct dcerpc_context *dce,
                 max_count = twr->TowerLength;
                 len = twr->TowerLength;
         }
-        if (epm_count_coder("MaxCount", dce, pdu, iov, offset, &max_count)) {
+        if (epm_count_coder("MaxCount", dce, pdu, iov, &max_count)) {
                 return -1;
         }
-        if (dcerpc_uint32_coder("TowerLength", dce, pdu, iov, offset, &len)) {
+        if (dcerpc_uint32_coder("TowerLength", dce, pdu, iov, &len)) {
                 return -1;
         }
         if (dcerpc_get_cr(pdu)) {
                 return 0;
         }
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {
-                if (len != max_count || max_count > 0x10000 || *offset < 0 ||
-                    (uint64_t)*offset + max_count > iov->len) {
+                if (len != max_count || max_count > 0x10000 || iov->offset < 0 ||
+                    (uint64_t)iov->offset + max_count > iov->max_offset) {
                         return -1;
                 }
                 twr->TowerLength = len;
@@ -160,7 +158,7 @@ dcerpc_epm_twr_coder(char *name, struct dcerpc_context *dce,
                 }
         }
         for (i = 0; i < max_count; i++) {
-                if (ndr_uint8_coder("TowerOctetString", dce, pdu, iov, offset,
+                if (ndr_uint8_coder("TowerOctetString", dce, pdu, iov,
                                     &twr->TowerOctetString[i])) {
                         return -1;
                 }
@@ -171,11 +169,11 @@ dcerpc_epm_twr_coder(char *name, struct dcerpc_context *dce,
 int
 dcerpc_epm_twr_struct_coder(char *name, struct dcerpc_context *dce,
                      struct dcerpc_pdu *pdu,
-                     struct dcerpc_iovec *iov, int *offset,
+                     struct dcerpc_iovec *iov,
                      void *ptr)
 {
         /* TowerLength and bytes; the hoisted max_count is not a member */
-        return dcerpc_aligned_struct_coder(name, dce, pdu, iov, offset, ptr,
+        return dcerpc_aligned_struct_coder(name, dce, pdu, iov, ptr,
                                            dcerpc_epm_twr_coder, 4, 4);
 }
 
@@ -186,7 +184,7 @@ dcerpc_epm_twr_struct_coder(char *name, struct dcerpc_context *dce,
 int
 dcerpc_epm_annotation_coder(char *name, struct dcerpc_context *dce,
                      struct dcerpc_pdu *pdu,
-                     struct dcerpc_iovec *iov, int *offset,
+                     struct dcerpc_iovec *iov,
                      void *ptr)
 {
         char **ann = ptr;
@@ -197,7 +195,7 @@ dcerpc_epm_annotation_coder(char *name, struct dcerpc_context *dce,
         char *out;
 
         if (dcerpc_pdu_encoding(pdu) != ENCODING_NDR) {
-                return dcerpc_utf16z_coder(name, dce, pdu, iov, offset, ann);
+                return dcerpc_utf16z_coder(name, dce, pdu, iov, ann);
         }
 
         if (dcerpc_get_cr(pdu)) {
@@ -210,17 +208,17 @@ dcerpc_epm_annotation_coder(char *name, struct dcerpc_context *dce,
                 if (actual > EPM_MAX_ANNOTATION_SIZE) {
                         actual = EPM_MAX_ANNOTATION_SIZE;
                 }
-                if (epm_count_coder("Offset", dce, pdu, iov, offset, &off)) {
+                if (epm_count_coder("Offset", dce, pdu, iov, &off)) {
                         return -1;
                 }
-                if (epm_count_coder("ActualCount", dce, pdu, iov, offset,
+                if (epm_count_coder("ActualCount", dce, pdu, iov,
                                         &actual)) {
                         return -1;
                 }
                 for (i = 0; i < actual; i++) {
                         uint8_t ch = (i + 1 == actual) ? 0 : (uint8_t)s[i];
 
-                        if (ndr_uint8_coder("Annotation", dce, pdu, iov, offset,
+                        if (ndr_uint8_coder("Annotation", dce, pdu, iov,
                                             &ch)) {
                                 return -1;
                         }
@@ -229,18 +227,18 @@ dcerpc_epm_annotation_coder(char *name, struct dcerpc_context *dce,
         }
 
         /* DECODE */
-        if (epm_count_coder("Offset", dce, pdu, iov, offset, &off)) {
+        if (epm_count_coder("Offset", dce, pdu, iov, &off)) {
                 return -1;
         }
-        if (epm_count_coder("ActualCount", dce, pdu, iov, offset, &actual)) {
+        if (epm_count_coder("ActualCount", dce, pdu, iov, &actual)) {
                 return -1;
         }
         if (actual == 0) {
                 *ann = NULL;
                 return 0;
         }
-        if (actual > EPM_MAX_ANNOTATION_SIZE || *offset < 0 ||
-            (uint64_t)*offset + actual > iov->len) {
+        if (actual > EPM_MAX_ANNOTATION_SIZE || iov->offset < 0 ||
+            (uint64_t)iov->offset + actual > iov->max_offset) {
                 return -1;
         }
         out = dcerpc_alloc_data(pdu, actual);
@@ -248,7 +246,7 @@ dcerpc_epm_annotation_coder(char *name, struct dcerpc_context *dce,
                 return -1;
         }
         for (i = 0; i < actual; i++) {
-                if (ndr_uint8_coder("Annotation", dce, pdu, iov, offset,
+                if (ndr_uint8_coder("Annotation", dce, pdu, iov,
                                     (uint8_t *)&out[i])) {
                         return -1;
                 }

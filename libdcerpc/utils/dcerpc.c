@@ -45,9 +45,9 @@ enum dcerpc_encoding output_encoding = ENCODING_YAML;
 int idx;
 int num_ops;
 struct opdata {
-        uint8_t buf[65536];
-        struct dcerpc_iovec iov;        
-        int offset;
+        uint8_t buf[65536];             /* the request YAML */
+        struct dcerpc_iovec iov;        /* decodes the request from buf */
+        struct dcerpc_iovec rep;        /* the response, growable */
 };
 #define MAXOPDATA 64
 struct opdata opdata[MAXOPDATA];
@@ -242,7 +242,7 @@ parse_placeholder(const char *body, size_t body_len,
  *   @name:-n@   - value of "name" from the reply n steps back (idx - n)
  *
  * cur_idx is the index of the request being prepared; responses for
- * completed ops 0 .. cur_idx-1 live in opdata[].buf.
+ * completed ops 0 .. cur_idx-1 live in opdata[].rep.
  */
 static int
 apply_response_substitutions(struct opdata *req, int cur_idx)
@@ -302,7 +302,7 @@ apply_response_substitutions(struct opdata *req, int cur_idx)
                         return -1;
                 }
                 src_idx = cur_idx - steps_back;
-                yaml = (const char *)opdata[src_idx].buf;
+                yaml = (const char *)opdata[src_idx].rep.buf;
 
                 value = lookup_response_field(yaml, name);
                 if (value == NULL) {
@@ -421,9 +421,6 @@ void si_cb(struct dcerpc_context *dce, int status,
 {
         struct rpc_cb_data *rpc_cb_data = cb_data;
 
-        opdata[idx].offset = 0;
-        memset(opdata[idx].iov.buf, 0, opdata[idx].iov.len);
-
         if (command_data == NULL) {
                 printf("No Response pdu (status=%d) %s\n",
                        status, dcerpc_get_error(dce));
@@ -437,7 +434,7 @@ void si_cb(struct dcerpc_context *dce, int status,
                 printf("---\n");
         }
         rpc_cb_data->rep = command_data;
-        rpc_cb_data->rep_pdu = dcerpc_allocate_pdu(dce, output_encoding, DCERPC_ENCODE, rpc_cb_data->proc->rep_size);
+        rpc_cb_data->rep_pdu = dcerpc_allocate_pdu(dce, DCERPC_ENCODE | output_encoding, rpc_cb_data->proc->rep_size);
         if (rpc_cb_data->rep_pdu == NULL) {
                 printf("failed to allocate Response pdu\n");
                 exit(10);
@@ -445,14 +442,16 @@ void si_cb(struct dcerpc_context *dce, int status,
         
         /* We might need to reference req from the reply */
         dcerpc_set_request(rpc_cb_data->rep_pdu, rpc_cb_data->req);
+        /* Kept for @name@ lookups by the requests that follow */
         if (dcerpc_do_coder(rpc_cb_data->proc->name, dce, rpc_cb_data->rep_pdu,
-                            &opdata[idx].iov, &opdata[idx].offset,
+                            &opdata[idx].rep,
                             rpc_cb_data->rep, rpc_cb_data->proc->rep_coder)) {
-                printf("Failed to encode REP as %s\n",
-                       output_encoding == ENCODING_JSON ? "JSON" : "YAML");
+                printf("Failed to encode REP as %s: %s\n",
+                       output_encoding == ENCODING_JSON ? "JSON" : "YAML",
+                       dcerpc_get_error(dce));
                 exit(10);
         }
-        printf("%s\n", opdata[idx].iov.buf);
+        printf("%s\n", opdata[idx].rep.buf);
 
         
         free(rpc_cb_data->req);
@@ -495,12 +494,17 @@ void do_request(struct dcerpc_context *dce)
                 exit(9);
         }
         
+        opdata[idx].iov = (struct dcerpc_iovec){
+                .buf = opdata[idx].buf,
+                .max_offset = sizeof(opdata[idx].buf),
+        };
+
         /*
          * Find the name of the procedure: the key on the first line that is
          * neither blank nor a # comment (the YAML decoder skips those too).
          */
         name = (char *)opdata[idx].iov.buf;
-        end = name + opdata[idx].iov.len;
+        end = name + opdata[idx].iov.max_offset;
         while (name < end && *name != '\0') {
                 char *p = name;
 
@@ -529,7 +533,6 @@ void do_request(struct dcerpc_context *dce)
                         break;
                 }
         }
-        opdata[idx].offset = 0;
 
         if (rpc_cb_data->proc == NULL) {
                 printf("Could not find a procedure with the name %.*s\n",
@@ -543,13 +546,13 @@ void do_request(struct dcerpc_context *dce)
                 exit(10);
         }
 
-        rpc_cb_data->req_pdu = dcerpc_allocate_pdu(dce, ENCODING_YAML, DCERPC_DECODE, rpc_cb_data->proc->req_size);
+        rpc_cb_data->req_pdu = dcerpc_allocate_pdu(dce, DCERPC_DECODE | ENCODING_YAML, rpc_cb_data->proc->req_size);
         if (rpc_cb_data->req_pdu == NULL) {
                 printf("Failed to allocate request PDU\n");
                 exit(9);
         }
         if (dcerpc_do_coder(rpc_cb_data->proc->name, dce, rpc_cb_data->req_pdu,
-                            &opdata[idx].iov, &opdata[idx].offset,
+                            &opdata[idx].iov,
                             rpc_cb_data->req, rpc_cb_data->proc->req_coder)) {
                 printf("Failed to decode REQ from YAML\n");
                 exit(10);
@@ -587,17 +590,12 @@ int main(int argc, char *argv[])
         struct dcerpc_context *dce;
         struct smb2_url *url;
 	struct pollfd pfd;
-        int i, fd, count, argi;
+        int fd, count, argi;
         uint8_t tmp[65536];
         ssize_t n;
         char *start, *p, *sep;
         const char *smb_url;
         const char *yaml_path;
-
-        for (i = 0; i < MAXOPDATA; i++) {
-                opdata[i].iov.buf = &opdata[i].buf[0];
-                opdata[i].iov.len = 65536;
-        }
 
         /* Parse optional flags before positional arguments */
         argi = 1;

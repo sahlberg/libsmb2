@@ -24,6 +24,12 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <smb2/smb2.h>
+#include <smb2/libsmb2.h>
 
 #include <dcerpc/dcerpc.h>
 
@@ -115,8 +121,196 @@ static const struct test_case test_cases[] = {
           0, NULL },
 };
 
+/*
+ * dcerpc_allocate_pdu() flags: every valid combination gives a PDU, and
+ * reserved bits, unknown encodings and NDR flavor bits on a text encoding
+ * are rejected.
+ */
+static int test_pdu_flags(void)
+{
+        static const uint32_t valid[] = {
+                DCERPC_DECODE | ENCODING_NDR,
+                DCERPC_ENCODE | ENCODING_NDR | DCERPC_NDR64,
+                DCERPC_ENCODE | ENCODING_NDR | DCERPC_BIG_ENDIAN,
+                DCERPC_DECODE | ENCODING_NDR | DCERPC_NDR64 |
+                        DCERPC_BIG_ENDIAN,
+                DCERPC_ENCODE | ENCODING_YAML,
+                DCERPC_DECODE | ENCODING_JSON,
+        };
+        static const uint32_t invalid[] = {
+                DCERPC_ENCODE | ENCODING_NDR | 0x00000100U,
+                DCERPC_DECODE | ENCODING_NDR | 0x10000000U,
+                DCERPC_ENCODE | 3,
+                DCERPC_ENCODE | ENCODING_YAML | DCERPC_NDR64,
+                DCERPC_DECODE | ENCODING_JSON | DCERPC_BIG_ENDIAN,
+        };
+        struct smb2_context *smb2;
+        struct dcerpc_context *dce;
+        struct dcerpc_pdu *pdu;
+        int failed = 0;
+        size_t i;
+
+        printf("dcerpc_allocate_pdu() flags\n");
+        smb2 = smb2_init_context();
+        if (smb2 == NULL) {
+                return 1;
+        }
+        dce = dcerpc_create_context(smb2);
+        if (dce == NULL) {
+                smb2_destroy_context(smb2);
+                return 1;
+        }
+        for (i = 0; i < sizeof(valid) / sizeof(valid[0]); i++) {
+                pdu = dcerpc_allocate_pdu(dce, valid[i], 16);
+                if (pdu == NULL) {
+                        printf("  0x%08x: rejected: %s\n", valid[i],
+                               dcerpc_get_error(dce));
+                        failed = 1;
+                        continue;
+                }
+                dcerpc_free_pdu(dce, pdu);
+        }
+        for (i = 0; i < sizeof(invalid) / sizeof(invalid[0]); i++) {
+                pdu = dcerpc_allocate_pdu(dce, invalid[i], 16);
+                if (pdu != NULL) {
+                        printf("  0x%08x: accepted\n", invalid[i]);
+                        dcerpc_free_pdu(dce, pdu);
+                        failed = 1;
+                }
+        }
+        printf("  %s\n", failed ? "FAIL" : "PASS");
+        dcerpc_destroy_context(dce);
+        smb2_destroy_context(smb2);
+        return failed;
+}
+
+/* Encode len bytes of a pattern as a byte array; returns the coder result */
+static int encode_bytes(struct dcerpc_context *dce, uint32_t flags,
+                        struct dcerpc_iovec *iov, uint32_t len)
+{
+        struct dcerpc_pdu *pdu;
+        struct dcerpc_bytes b;
+        uint32_t i;
+        int ret;
+
+        b.len = len;
+        b.data = malloc(len ? len : 1);
+        if (b.data == NULL) {
+                return -1;
+        }
+        for (i = 0; i < len; i++) {
+                b.data[i] = (uint8_t)(i * 7);
+        }
+        pdu = dcerpc_allocate_pdu(dce, DCERPC_ENCODE | flags, 16);
+        if (pdu == NULL) {
+                free(b.data);
+                return -1;
+        }
+        ret = dcerpc_bytes_coder("Data", dce, pdu, iov, &b);
+        dcerpc_free_pdu(dce, pdu);
+        free(b.data);
+        return ret;
+}
+
+/*
+ * Growable iovecs: buf == NULL grows (and sets .free = free) up to
+ * DCERPC_IOVEC_MAX_SIZE, as does a caller's buffer with .free = free; any
+ * other buffer has a fixed size.
+ */
+static int test_growable_iovec(void)
+{
+        struct smb2_context *smb2;
+        struct dcerpc_context *dce;
+        struct dcerpc_iovec iov = {0};
+        uint8_t fixed[16];
+        uint32_t i;
+        int failed = 0;
+
+        printf("growable struct dcerpc_iovec\n");
+        smb2 = smb2_init_context();
+        if (smb2 == NULL) {
+                return 1;
+        }
+        dce = dcerpc_create_context(smb2);
+        if (dce == NULL) {
+                smb2_destroy_context(smb2);
+                return 1;
+        }
+
+        /* NDR32: max_count, then the bytes; 1 KiB doubled to 4 MiB */
+        if (encode_bytes(dce, ENCODING_NDR, &iov, 3 * 1024 * 1024) ||
+            iov.free != free || iov.offset != 4 + 3 * 1024 * 1024 ||
+            iov.max_offset != 4 * 1024 * 1024) {
+                printf("  3 MiB NDR: failed (offset %zu, max_offset %zu): "
+                       "%s\n", iov.offset, iov.max_offset,
+                       dcerpc_get_error(dce));
+                failed = 1;
+        } else {
+                for (i = 0; i < 3 * 1024 * 1024; i++) {
+                        if (iov.buf[4 + i] != (uint8_t)(i * 7)) {
+                                printf("  3 MiB NDR: byte %u differs\n", i);
+                                failed = 1;
+                                break;
+                        }
+                }
+        }
+        dcerpc_free_iovec(&iov);
+
+        /* YAML: a hex string, twice the size */
+        if (encode_bytes(dce, ENCODING_YAML, &iov, 1024 * 1024) ||
+            iov.offset < 2 * 1024 * 1024 ||
+            strlen((char *)iov.buf) != iov.offset) {
+                printf("  1 MiB YAML: failed (offset %zu): %s\n",
+                       iov.offset, dcerpc_get_error(dce));
+                failed = 1;
+        }
+        dcerpc_free_iovec(&iov);
+
+        /* More than DCERPC_IOVEC_MAX_SIZE is refused */
+        if (encode_bytes(dce, ENCODING_NDR, &iov,
+                         DCERPC_IOVEC_MAX_SIZE + 1) == 0 ||
+            iov.max_offset > DCERPC_IOVEC_MAX_SIZE) {
+                printf("  over the limit: accepted (max_offset %zu)\n",
+                       iov.max_offset);
+                failed = 1;
+        }
+        dcerpc_free_iovec(&iov);
+
+        /* A caller's buffer without .free = free does not grow */
+        iov.buf = fixed;
+        iov.max_offset = sizeof(fixed);
+        if (encode_bytes(dce, ENCODING_NDR, &iov, 100) == 0 ||
+            iov.buf != fixed || iov.max_offset != sizeof(fixed)) {
+                printf("  fixed buffer: grew\n");
+                failed = 1;
+        }
+        memset(&iov, 0, sizeof(iov));
+
+        /* A caller's malloc()ed buffer with .free = free grows */
+        iov.buf = malloc(16);
+        iov.max_offset = 16;
+        iov.free = free;
+        if (iov.buf == NULL ||
+            encode_bytes(dce, ENCODING_NDR, &iov, 100) ||
+            iov.offset != 4 + 100 || iov.max_offset < 104) {
+                printf("  malloc()ed buffer: did not grow: %s\n",
+                       dcerpc_get_error(dce));
+                failed = 1;
+        }
+        dcerpc_free_iovec(&iov);
+
+        printf("  %s\n", failed ? "FAIL" : "PASS");
+        dcerpc_destroy_context(dce);
+        smb2_destroy_context(smb2);
+        return failed;
+}
+
 int main(void)
 {
+        int ret = test_pdu_flags();
+
+        ret |= test_growable_iovec();
         return run_coder_tests(test_cases,
-                               sizeof(test_cases) / sizeof(test_cases[0]));
+                               sizeof(test_cases) / sizeof(test_cases[0])) |
+                ret;
 }
