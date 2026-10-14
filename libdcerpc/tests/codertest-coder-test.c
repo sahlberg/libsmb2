@@ -338,9 +338,79 @@ static int test_no_smb2(void)
         return failed;
 }
 
+/*
+ * RPC_UNICODE_STRING Length counts UTF-16 bytes: "a\xc3\xa5\xf0\x9f\x8c\x8e"
+ * (a, a-ring, an emoji that is a surrogate pair) is 7 bytes of UTF-8 but
+ * 4 UTF-16 code units, so Length is 8. Windows faults a request whose
+ * Length does not match the string (it did, as 2 * strlen()).
+ */
+static int test_unicode_string_length(void)
+{
+        static const uint32_t flavors[] = {
+                0, DCERPC_BIG_ENDIAN, DCERPC_NDR64,
+                DCERPC_NDR64 | DCERPC_BIG_ENDIAN,
+        };
+        const char *str = "a\xc3\xa5\xf0\x9f\x8c\x8e";
+        struct dcerpc_context *dce;
+        int failed = 0;
+        size_t i;
+
+        printf("RPC_UNICODE_STRING Length of a non-ASCII string\n");
+        dce = dcerpc_create_context(NULL);
+        if (dce == NULL) {
+                return 1;
+        }
+        for (i = 0; i < sizeof(flavors) / sizeof(flavors[0]); i++) {
+                struct dcerpc_iovec iov = {0}, in;
+                struct dcerpc_pdu *pdu;
+                char *in_str = (char *)str, *out_str = NULL;
+                uint16_t len;
+
+                pdu = dcerpc_allocate_pdu(dce, DCERPC_ENCODE | ENCODING_NDR |
+                                          flavors[i], sizeof(char *));
+                if (pdu == NULL ||
+                    dcerpc_do_coder("s", dce, pdu, &iov, &in_str,
+                                    dcerpc_RPC_UNICODE_STRING_coder)) {
+                        printf("  0x%08x: encode failed\n", flavors[i]);
+                        failed = 1;
+                        goto next;
+                }
+                len = (flavors[i] & DCERPC_BIG_ENDIAN) ?
+                        (uint16_t)(iov.buf[0] << 8 | iov.buf[1]) :
+                        (uint16_t)(iov.buf[1] << 8 | iov.buf[0]);
+                if (len != 8) {
+                        printf("  0x%08x: Length %u, expected 8\n",
+                               flavors[i], len);
+                        failed = 1;
+                }
+                dcerpc_free_pdu(dce, pdu);
+                pdu = dcerpc_allocate_pdu(dce, DCERPC_DECODE | ENCODING_NDR |
+                                          flavors[i], sizeof(char *));
+                in = (struct dcerpc_iovec){ .buf = iov.buf,
+                                            .max_offset = iov.offset };
+                if (pdu == NULL ||
+                    dcerpc_do_coder("s", dce, pdu, &in, &out_str,
+                                    dcerpc_RPC_UNICODE_STRING_coder) ||
+                    out_str == NULL || strcmp(out_str, str)) {
+                        printf("  0x%08x: did not decode back\n", flavors[i]);
+                        failed = 1;
+                }
+        next:
+                if (pdu) {
+                        dcerpc_free_pdu(dce, pdu);
+                }
+                dcerpc_free_iovec(&iov);
+        }
+        printf("  %s\n", failed ? "FAIL" : "PASS");
+        dcerpc_destroy_context(dce);
+        return failed;
+}
+
 int main(void)
 {
         int ret = test_pdu_flags();
+
+        ret |= test_unicode_string_length();
 
         ret |= test_growable_iovec();
         ret |= test_no_smb2();

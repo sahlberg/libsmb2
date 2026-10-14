@@ -3691,7 +3691,26 @@ _ndr_RPC_UNICODE_STRING_coder(char *name, struct dcerpc_context *dce,
                 uint16_t override = dcerpc_get_unicode_max_length(pdu);
 
                 if (s && s[0] != '\0') {
-                        len = (uint16_t)(strlen(s) * 2);
+                        /*
+                         * Length is in bytes of UTF-16, which is not twice
+                         * the UTF-8 length for anything but ASCII.
+                         */
+                        struct dcerpc_utf16_buf *u = dcerpc_utf8_to_utf16(s);
+                        size_t units;
+
+                        if (u == NULL) {
+                                dcerpc_set_error(dce, "%s is not valid UTF-8",
+                                                 name);
+                                return -1;
+                        }
+                        units = (size_t)u->len;
+                        free(u);
+                        if (units + (nult ? 1 : 0) > UINT16_MAX / 2) {
+                                dcerpc_set_error(dce, "%s is too long for an "
+                                                 "RPC_UNICODE_STRING", name);
+                                return -1;
+                        }
+                        len = (uint16_t)(units * 2);
                         if (nult) {
                                 len = (uint16_t)(len + 2);
                         }
