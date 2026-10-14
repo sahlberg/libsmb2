@@ -1,0 +1,8 @@
+Connect2: Request
+  ServerName: \\10.10.10.11
+  DesiredAccess: SAM_SERVER_CONNECT
+---
+CloseHandle: Request
+  SamHandle:
+    ContextHandleAttributes: 0
+    UUID: @UUID:-1@

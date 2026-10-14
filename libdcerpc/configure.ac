@@ -104,6 +104,7 @@ AC_CONFIG_FILES([
     include/Makefile
     srvsvc/Makefile
     wkssvc/Makefile
+    samr/Makefile
     winreg/Makefile
     lsa/Makefile
     epm/Makefile

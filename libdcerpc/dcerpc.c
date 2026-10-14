@@ -85,6 +85,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <dcerpc/srvsvc.h>
 #include <dcerpc/lsa.h>
 #include <dcerpc/wkssvc.h>
+#include <dcerpc/samr.h>
 #include <dcerpc/winreg.h>
 #include <dcerpc/epm.h>
 #include "dcerpc-private.h"
@@ -982,6 +983,7 @@ dcerpc_create_context(struct smb2_context *smb2)
         dcerpc_register_coder("srvsvc", &srvsvc_interface, srvsvc_procs);
         dcerpc_register_coder("lsarpc", &lsa_interface, lsa_procs);
         dcerpc_register_coder("wkssvc", &wkssvc_interface, wkssvc_procs);
+        dcerpc_register_coder("samr", &samr_interface, samr_procs);
         dcerpc_register_coder("winreg", &winreg_interface, winreg_procs);
         dcerpc_register_coder("epmapper", &epm_interface, epm_procs);
 

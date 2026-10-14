@@ -1,0 +1,14 @@
+Connect2: Request
+  ServerName: \\10.10.10.11
+  DesiredAccess: SAM_SERVER_CONNECT | SAM_SERVER_LOOKUP_DOMAIN
+---
+LookupDomainInSamServer: Request
+  ServerHandle:
+    ContextHandleAttributes: 0
+    UUID: @UUID:-1@
+  Name: Builtin
+---
+CloseHandle: Request
+  SamHandle:
+    ContextHandleAttributes: 0
+    UUID: @UUID:-2@

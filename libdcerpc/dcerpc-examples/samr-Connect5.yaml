@@ -1,0 +1,13 @@
+Connect5: Request
+  ServerName: \\10.10.10.11
+  DesiredAccess: SAM_SERVER_CONNECT | SAM_SERVER_ENUMERATE_DOMAINS | SAM_SERVER_LOOKUP_DOMAIN
+  InVersion: 1
+  InRevisionInfo:
+    V1:
+      Revision: 3
+      SupportedFeatures: 0
+---
+CloseHandle: Request
+  SamHandle:
+    ContextHandleAttributes: 0
+    UUID: @UUID:-1@

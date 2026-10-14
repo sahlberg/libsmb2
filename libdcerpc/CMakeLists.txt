@@ -71,7 +71,7 @@ set(DCERPC_LIB_SOURCES
 # generated from <iface>/<iface>.idl. The <iface>_* syms are kept in the
 # source tree and must match the IDL; "make -C <iface> update" in an
 # autotools build rewrites them.
-set(DCERPC_IDL_IFACES srvsvc wkssvc winreg lsa epm)
+set(DCERPC_IDL_IFACES srvsvc wkssvc winreg lsa samr epm)
 
 find_program(PYTHON3 python3)
 if(NOT PYTHON3)

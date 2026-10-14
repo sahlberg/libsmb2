@@ -1,0 +1,127 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
+
+/*
+ * Security Account Manager: the SamrConnect, SamrCloseHandle,
+ * SamrLookupDomainInSamServer, SamrEnumerateDomainsInSamServer,
+ * SamrConnect2 and SamrConnect5 calls from [MS-SAMR].
+ * Function names drop the "Samr" prefix.
+ */
+[
+  uuid(12345778-1234-abcd-ef00-0123456789ac),
+  version(1.0),
+  helpstring("Security Account Manager"),
+  endpoint("ncacn_np:[\\pipe\\samr]"),
+  pointer_default(unique)
+]
+interface samr
+{
+
+typedef [context_handle] void *SAMPR_HANDLE;
+
+/*
+ * Server object access rights (DesiredAccess), [MS-SAMR] 2.2.1.3, and
+ * the common ones, 2.2.1.1
+ */
+typedef [bitmap32bit] bitmap {
+	SAM_SERVER_CONNECT           = 0x00000001,
+	SAM_SERVER_SHUTDOWN          = 0x00000002,
+	SAM_SERVER_INITIALIZE        = 0x00000004,
+	SAM_SERVER_CREATE_DOMAIN     = 0x00000008,
+	SAM_SERVER_ENUMERATE_DOMAINS = 0x00000010,
+	SAM_SERVER_LOOKUP_DOMAIN     = 0x00000020,
+	DELETE                       = 0x00010000,
+	READ_CONTROL                 = 0x00020000,
+	WRITE_DAC                    = 0x00040000,
+	WRITE_OWNER                  = 0x00080000,
+	ACCESS_SYSTEM_SECURITY       = 0x01000000,
+	MAXIMUM_ALLOWED              = 0x02000000
+} SAM_SERVER_ACCESS_MASK;
+
+/* [MS-SAMR] 2.2.3.9, 2.2.3.10 */
+typedef struct {
+	uint32_t RelativeId;
+	RPC_UNICODE_STRING Name;
+} SAMPR_RID_ENUMERATION, *PSAMPR_RID_ENUMERATION;
+
+typedef struct {
+	uint32_t EntriesRead;
+	[size_is(EntriesRead)] PSAMPR_RID_ENUMERATION Buffer;
+} SAMPR_ENUMERATION_BUFFER, *PSAMPR_ENUMERATION_BUFFER;
+
+/* [MS-SAMR] 2.2.7.15, 2.2.7.16 */
+typedef struct {
+	uint32_t Revision;
+	uint32_t SupportedFeatures;
+} SAMPR_REVISION_INFO_V1;
+
+typedef [switch_type(uint32_t)] union {
+	[case(1)] SAMPR_REVISION_INFO_V1 V1;
+} SAMPR_REVISION_INFO;
+
+/*
+ * Function: 0x00  (SamrConnect)
+ * ServerName points to a single wide character, not a string, and is
+ * ignored by the server.
+ */
+	[opnum(0x00)]
+	NTSTATUS Connect(
+		[in,unique] uint16_t *ServerName,
+		[out] SAMPR_HANDLE *ServerHandle,
+		[in] SAM_SERVER_ACCESS_MASK DesiredAccess
+	);
+
+/*
+ * Function: 0x01  (SamrCloseHandle)
+ */
+	[opnum(0x01)]
+	NTSTATUS CloseHandle(
+		[in,out] SAMPR_HANDLE *SamHandle
+	);
+
+/*
+ * Function: 0x05  (SamrLookupDomainInSamServer)
+ */
+	[opnum(0x05)]
+	NTSTATUS LookupDomainInSamServer(
+		[in] SAMPR_HANDLE ServerHandle,
+		[in,ref] RPC_UNICODE_STRING *Name,
+		[out] RPC_SID **DomainId
+	);
+
+/*
+ * Function: 0x06  (SamrEnumerateDomainsInSamServer)
+ */
+	[opnum(0x06)]
+	NTSTATUS EnumerateDomainsInSamServer(
+		[in] SAMPR_HANDLE ServerHandle,
+		[in,out,ref] uint32_t *EnumerationContext,
+		[out] PSAMPR_ENUMERATION_BUFFER *Buffer,
+		[in] uint32_t PreferedMaximumLength,
+		[out,ref] uint32_t *CountReturned
+	);
+
+/*
+ * Function: 0x39  (SamrConnect2)
+ */
+	[opnum(0x39)]
+	NTSTATUS Connect2(
+		[in,unique,string,charset(UTF16)] uint16_t *ServerName,
+		[out] SAMPR_HANDLE *ServerHandle,
+		[in] SAM_SERVER_ACCESS_MASK DesiredAccess
+	);
+
+/*
+ * Function: 0x40  (SamrConnect5)
+ */
+	[opnum(0x40)]
+	NTSTATUS Connect5(
+		[in,unique,string,charset(UTF16)] uint16_t *ServerName,
+		[in] SAM_SERVER_ACCESS_MASK DesiredAccess,
+		[in] uint32_t InVersion,
+		[in,switch_is(InVersion)] SAMPR_REVISION_INFO *InRevisionInfo,
+		[out,ref] uint32_t *OutVersion,
+		[out,switch_is(OutVersion)] SAMPR_REVISION_INFO *OutRevisionInfo,
+		[out] SAMPR_HANDLE *ServerHandle
+	);
+
+}

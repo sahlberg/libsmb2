@@ -8,6 +8,7 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir)/include \
 	-I$(top_builddir)/srvsvc \
 	-I$(top_builddir)/wkssvc \
+	-I$(top_builddir)/samr \
 	-I$(top_builddir)/winreg \
 	-I$(top_builddir)/lsa \
 	-I$(top_builddir)/epm \

@@ -1,0 +1,9 @@
+# ServerName is a single wide character (here '\'), not a string
+Connect: Request
+  ServerName: 92
+  DesiredAccess: SAM_SERVER_CONNECT | SAM_SERVER_ENUMERATE_DOMAINS
+---
+CloseHandle: Request
+  SamHandle:
+    ContextHandleAttributes: 0
+    UUID: @UUID:-1@

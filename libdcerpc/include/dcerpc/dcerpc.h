@@ -155,6 +155,7 @@ struct dcerpc_utf16 {
 extern p_syntax_id_t lsa_interface;
 extern p_syntax_id_t srvsvc_interface;
 extern p_syntax_id_t wkssvc_interface;
+extern p_syntax_id_t samr_interface;
 extern p_syntax_id_t winreg_interface;
 extern p_syntax_id_t epm_interface;
         

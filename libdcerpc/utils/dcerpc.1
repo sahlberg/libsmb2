@@ -103,7 +103,10 @@ Workstation service.
 Remote registry.
 .TP
 .B lsarpc
-Local Security Authority (SID and name lookups).
+Local Security Authority (SID and name lookups, policy information).
+.TP
+.B samr
+Security Account Manager (domains).
 .TP
 .B epmapper
 Endpoint mapper.
@@ -279,7 +282,7 @@ EOF
 The
 .I libdcerpc/dcerpc\-examples
 directory of the libsmb2 source has example requests for the srvsvc,
-wkssvc, winreg, lsarpc and epmapper procedures.
+wkssvc, winreg, lsarpc, samr and epmapper procedures.
 The files are named
 .IB interface \- procedure .yaml\fR,
 for example
