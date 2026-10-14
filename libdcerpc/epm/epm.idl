@@ -46,8 +46,12 @@ const uint8_t PROTOCOL_HTTP       = 0x1f;
 /* The size of EPM_ANNOTATION, including its NUL */
 const uint32_t MAX_ANNOTATION_SIZE = 64;
 
-typedef uuid_t *uuid_p_t;
-typedef twr_t *twr_p_t;
+/*
+ * Full pointers, as in C706 and [MS-RPCE] ([ptr], pointer_default(ptr)):
+ * every uuid_p_t and twr_p_t, and ept_lookup's InterfaceId.
+ */
+typedef [ptr] uuid_t *uuid_p_t;
+typedef [ptr] twr_t *twr_p_t;
 
 /* ept_lookup inquiry_type */
 typedef [v1_enum] enum {
@@ -84,8 +88,8 @@ typedef struct {
 	[opnum(0x02)]
 	error_status_t Lookup(
 		[in] INQUIRY_TYPE InquiryType,
-		[in,unique] uuid_p_t Object,
-		[in,unique] rpc_if_id_p_t InterfaceId,
+		[in,ptr] uuid_p_t Object,
+		[in,ptr] rpc_if_id_p_t InterfaceId,
 		[in] VERS_OPTION VersOption,
 		[in,out] ept_lookup_handle_t *EntryHandle,
 		[in] uint32_t MaxEnts,
@@ -98,8 +102,8 @@ typedef struct {
  */
 	[opnum(0x03)]
 	error_status_t Map(
-		[in,unique] uuid_p_t Object,
-		[in,unique] twr_p_t MapTower,
+		[in,ptr] uuid_p_t Object,
+		[in,ptr] twr_p_t MapTower,
 		[in,out] ept_lookup_handle_t *EntryHandle,
 		[in] uint32_t MaxTowers,
 		[out,ref] uint32_t *NumTowers,

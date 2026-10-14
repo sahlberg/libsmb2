@@ -546,7 +546,14 @@ struct dcerpc_pdu {
         size_t reasm_cap;
 
         int top_level;
-        uint64_t ptr_id;
+        /*
+         * Full pointers are numbered 1, 2, ... and a reply continues after
+         * the highest one of its request (dcerpc_set_full_pointer_id()),
+         * so this is the highest full pointer id coded so far. Unique and
+         * embedded ref pointers always use UPTR/RPTR, which stand out in
+         * a hexdump and show NDR32/NDR64.
+         */
+        uint64_t full_ptr_id;
 
         int cur_ptr;
         int max_ptr;
@@ -1194,6 +1201,18 @@ dcerpc_destroy_context(struct dcerpc_context *dce)
                 smb2_destroy_context(smb2);
         }
 #endif
+}
+
+uint64_t
+dcerpc_get_full_pointer_id(struct dcerpc_pdu *pdu)
+{
+        return pdu->full_ptr_id;
+}
+
+void
+dcerpc_set_full_pointer_id(struct dcerpc_pdu *pdu, uint64_t id)
+{
+        pdu->full_ptr_id = id;
 }
 
 void *
@@ -4841,8 +4860,11 @@ ndr_encode_ptr(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                         goto out;
                 }
                 
-                pdu->ptr_id++;
-                val = pdu->ptr_id;
+                /*
+                 * Like Windows, a full pointer never refers back to an
+                 * earlier referent: each one gets a new id and its data.
+                 */
+                val = ++pdu->full_ptr_id;
                 if (ndr_uint3264_coder("ReferentId", dce, pdu, iov, &val)) {
                         return -1;
                 }
@@ -4941,12 +4963,21 @@ ndr_decode_ptr(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                         return -1;
                 }
                 break;
+        case PTR_FULL:
         case PTR_UNIQUE:
                 if (ndr_uint3264_coder("ReferentId", dce, pdu, iov, &p)) {
                         return -1;
                 }
                 if (p == 0) {
                         return 0;
+                }
+                /*
+                 * Windows sends the data after every full pointer, even
+                 * one whose id it already used, so decode it like a
+                 * unique pointer and only track the highest id.
+                 */
+                if (type == PTR_FULL && p > pdu->full_ptr_id) {
+                        pdu->full_ptr_id = p;
                 }
                 if (ptr == NULL) {
                         /* Non-null wire referent but no local buffer: fail
@@ -4970,9 +5001,6 @@ ndr_decode_ptr(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                                 return -1;
                         }
                 }
-                break;
-        case PTR_FULL:
-                /* not implemented yet */
                 break;
         }
 
@@ -6320,11 +6348,11 @@ json_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                 }
                 if (rc > 0 || strcmp(pdu->json_key, name)) {
                         /*
-                         * UNIQUE pointers are optional: missing key means a
-                         * NULL referent. Leave json_key set if present so the
-                         * next field can consume it.
+                         * UNIQUE and FULL pointers are optional: missing key
+                         * means a NULL referent. Leave json_key set if
+                         * present so the next field can consume it.
                          */
-                        if (type == PTR_UNIQUE) {
+                        if (type != PTR_REF) {
                                 return 0;
                         }
                         if (rc > 0) {
@@ -6959,12 +6987,13 @@ yaml_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                 yaml_next_kv(pdu, iov);
                 if (strcmp(pdu->yaml_key, name)) {
                         /*
-                         * UNIQUE pointers are optional in YAML: missing key
-                         * means a NULL referent. REF pointers always present
-                         * the referent; the nested coder validates keys
-                         * (either a struct wrapper name or the first field).
+                         * UNIQUE and FULL pointers are optional in YAML:
+                         * missing key means a NULL referent. REF pointers
+                         * always present the referent; the nested coder
+                         * validates keys (either a struct wrapper name or
+                         * the first field).
                          */
-                        if (type == PTR_UNIQUE) {
+                        if (type != PTR_REF) {
                                 return 0;
                         }
                 }

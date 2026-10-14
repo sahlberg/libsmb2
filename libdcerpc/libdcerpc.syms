@@ -33,6 +33,7 @@ dcerpc_free_pdu
 dcerpc_get_cr
 dcerpc_get_ndr_flavor
 dcerpc_get_error
+dcerpc_get_full_pointer_id
 dcerpc_get_length_is
 dcerpc_get_pdu_payload
 dcerpc_get_request
@@ -59,6 +60,7 @@ dcerpc_RPC_UNICODE_STRINGz_coder
 dcerpc_scalar_carray_coder
 dcerpc_SECURITY_DESCRIPTOR_coder
 dcerpc_services
+dcerpc_set_full_pointer_id
 dcerpc_set_length_is
 dcerpc_set_request
 dcerpc_set_size_is

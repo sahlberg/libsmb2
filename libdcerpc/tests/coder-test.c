@@ -104,6 +104,8 @@ static int ndr_encode(struct dcerpc_context *dce, const struct test_case *tc,
                 return -1;
         }
         dcerpc_set_request(pdu, tc->req);
+        /* a reply's full pointers continue after its request's */
+        dcerpc_set_full_pointer_id(pdu, tc->full_ptr_base);
 
         if (tc->coder(tc->req ? "Response" : "Request", dce, pdu, &iov,
                       ptr)) {

@@ -364,6 +364,20 @@ uint32_t dcerpc_get_ndr_flavor(struct dcerpc_context *dce);
 void dcerpc_free_pdu(struct dcerpc_context *dce, struct dcerpc_pdu *pdu);
 
 /*
+ * Full pointers ([ptr]) are numbered 1, 2, ... in a request, and the
+ * reply continues after the highest id of its request. Windows sends the
+ * data after every full pointer, so libdcerpc never refers back to an
+ * earlier one; it only numbers them.
+ *
+ * dcerpc_get_full_pointer_id() is the highest full pointer id coded in
+ * pdu so far. A server encoding a reply calls
+ * dcerpc_set_full_pointer_id(reply_pdu, dcerpc_get_full_pointer_id(
+ * request_pdu)) before encoding it.
+ */
+uint64_t dcerpc_get_full_pointer_id(struct dcerpc_pdu *pdu);
+void dcerpc_set_full_pointer_id(struct dcerpc_pdu *pdu, uint64_t id);
+
+/*
  * Allocate size bytes associated with pdu. Freed automatically when the
  * PDU is destroyed (dcerpc_free_pdu), or with dcerpc_free_data() if the
  * primary payload was transferred out of the PDU (e.g. call reply root).

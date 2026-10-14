@@ -47,6 +47,9 @@ Supported:
     the deferred array once n is known, YAML/JSON show n first
   - field types: enum Name, or bare Name for a prior typedef enum
   - functions with [opnum(N)], [in]/out], [unique]/ref], [size_is], [switch_is]
+  - full pointers: [ptr] on a parameter or field, or "typedef [ptr] T *name"
+    for every pointer of that type (PTR_FULL: referent ids 1, 2, ..., and
+    the data after each one, as Windows sends them)
     (a union parameter's switch_is may name another parameter; for an [out]
     union switched by an [in]-only parameter the value is taken from the
     request, e.g. NetrShareGetInfo's Level)
@@ -1204,6 +1207,28 @@ def nullable_ptr_field(env: TypeEnv, f: Field) -> Optional[str]:
     return None
 
 
+def is_full_ptr(env: TypeEnv, type_name: str, attrs) -> bool:
+    """
+    A full pointer ([ptr]): declared so, or of a "typedef [ptr] T *name"
+    type (epm's twr_p_t). libdcerpc codes it as PTR_FULL: numbered
+    referent ids, and the data after every one, as Windows does.
+    """
+    if attr_has(attrs, "ptr"):
+        return True
+    td = env.types.get(type_name)
+    return td is not None and td.kind == "alias" and attr_has(td.attrs, "ptr")
+
+
+def full_ptr_pointees(env: TypeEnv) -> List[str]:
+    """Types T with a "typedef [ptr] T *name": pointers to them are full."""
+    return [t.base_type for t in env.iface.types
+            if t.kind == "alias" and t.stars == 1 and attr_has(t.attrs, "ptr")]
+
+
+def ptr_kind(env: TypeEnv, type_name: str, attrs) -> str:
+    return "PTR_FULL" if is_full_ptr(env, type_name, attrs) else "PTR_UNIQUE"
+
+
 def nullable_param(env: TypeEnv, p: Param) -> Optional[str]:
     """
     Pointee type name for a [unique] parameter that is a real, nullable C
@@ -1220,7 +1245,7 @@ def nullable_param(env: TypeEnv, p: Param) -> Optional[str]:
     if (p.stars == 2 and p.type_name == "RPC_SID" and
             not attr_has(p.attrs, "unique")):
         return p.type_name
-    if not attr_has(p.attrs, "unique"):
+    if not attr_has(p.attrs, "unique") and not attr_has(p.attrs, "ptr"):
         return None
     if env.is_string_type(p.type_name, p.stars, p.attrs):
         return None
@@ -1969,7 +1994,7 @@ def gen_field_coder_stmts(
             f'{indent}if (dcerpc_ptr_coder("{disp}", dce, pdu, iov,\n'
             f"{indent}                     (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&\n"
             f"{indent}                      {var}->{f.name} == NULL) ? NULL : &{var}->{f.name},\n"
-            f"{indent}                     PTR_UNIQUE, {env.ptr_helper_name(pt)})) {{\n"
+            f"{indent}                     {ptr_kind(env, f.type_name, f.attrs)}, {env.ptr_helper_name(pt)})) {{\n"
             f"{indent}        return -1;\n"
             f"{indent}}}"
         )
@@ -2401,7 +2426,8 @@ def gen_type_coders(env: TypeEnv) -> str:
         lines.append("        return dcerpc_ptr_coder(name, dce, pdu, iov,")
         lines.append("                                (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&")
         lines.append("                                 *pp == NULL) ? NULL : (void *)pp,")
-        lines.append(f"                                PTR_UNIQUE, {env.ptr_helper_name(pt)});")
+        kind = "PTR_FULL" if pt in full_ptr_pointees(env) else "PTR_UNIQUE"
+        lines.append(f"                                {kind}, {env.ptr_helper_name(pt)});")
         lines.append("}")
         lines.append("")
 
@@ -2591,6 +2617,8 @@ def gen_union_coder(env: TypeEnv, t: TypeDef) -> List[str]:
 
 
 def ptr_type_for_param(p: Param) -> str:
+    if attr_has(p.attrs, "ptr"):
+        return "PTR_FULL"
     if attr_has(p.attrs, "unique"):
         return "PTR_UNIQUE"
     if attr_has(p.attrs, "ref"):
@@ -2726,7 +2754,7 @@ def gen_param_coder(env: TypeEnv, p: Param, var: str, indent: str = "        ",
             f'{indent}if (dcerpc_ptr_coder("{disp}", dce, pdu, iov,\n'
             f"{indent}                     (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&\n"
             f"{indent}                      {var}->{p.name} == NULL) ? NULL : &{var}->{p.name},\n"
-            f"{indent}                     PTR_UNIQUE, {env.ptr_helper_name(pt)})) {{\n"
+            f"{indent}                     {ptr_kind(env, p.type_name, p.attrs)}, {env.ptr_helper_name(pt)})) {{\n"
             f"{indent}        return -1;\n"
             f"{indent}}}"
         )

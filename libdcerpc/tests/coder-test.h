@@ -60,6 +60,11 @@ struct test_case {
          */
         unsigned int xfail;
         const char *xfail_reason;
+        /*
+         * For a reply: the highest full pointer id of its request, which
+         * the reply's full pointers continue after. 0 when it has none.
+         */
+        uint64_t full_ptr_base;
 };
 
 int run_coder_tests(const struct test_case *cases, int num_cases);
