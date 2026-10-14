@@ -49,6 +49,7 @@ find $RPM_BUILD_ROOT -name "*.la" -exec rm -f {} \;
 %{_bindir}/dcerpc
 %{_bindir}/epm-enum
 %{_bindir}/winreg-tui
+%{_mandir}/man1/dcerpc.1*
 
 %package devel
 Summary: Development libraries for libdcerpc
