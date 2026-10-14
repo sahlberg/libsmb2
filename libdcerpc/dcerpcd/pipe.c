@@ -490,10 +490,13 @@ ndr_decode_done(struct dcerpc_context *dce, struct dcerpc_pdu *pdu)
 /*
  * Encode a reply structure to an NDR stub. *out_buf is malloc'd; the caller
  * frees it. request is optional (some coders use size_is from the request).
+ * request_pdu is the decoded request, if any: the reply's full pointers
+ * continue after the request's.
  */
 static int
 ndr_encode_stub(struct smb2_context *smb2,
                 void *request,
+                struct dcerpc_pdu *request_pdu,
                 void *reply,
                 dcerpc_coder coder,
                 uint8_t **out_buf,
@@ -519,6 +522,10 @@ ndr_encode_stub(struct smb2_context *smb2,
         }
         if (request) {
                 dcerpc_set_request(pdu, request);
+        }
+        if (request_pdu) {
+                dcerpc_set_full_pointer_id(pdu,
+                        dcerpc_get_full_pointer_id(request_pdu));
         }
         /* A growable iovec: the buffer is malloc'd and grows as needed */
         if (dcerpc_do_coder("Response", dce, pdu, &iov, reply, coder)) {
@@ -1220,7 +1227,7 @@ handle_request(struct smb2_context *smb2, struct dcerpcd_pipe *pipe,
                         ndr_decode_done(dce, pdu);
                         return queue_fault(pipe, call_id, drep0, 0x1c010004);
                 }
-                if (ndr_encode_stub(smb2, &req, &rep, epm_Lookup_rep_coder,
+                if (ndr_encode_stub(smb2, &req, pdu, &rep, epm_Lookup_rep_coder,
                                     &stub_out, &stub_out_len)) {
                         dcerpcd_epm_Lookup_free_rep(&rep);
                         ndr_decode_done(dce, pdu);
@@ -1244,7 +1251,7 @@ handle_request(struct smb2_context *smb2, struct dcerpcd_pipe *pipe,
                         ndr_decode_done(dce, pdu);
                         return queue_fault(pipe, call_id, drep0, 0x1c010004);
                 }
-                if (ndr_encode_stub(smb2, &req, &rep, epm_Map_rep_coder,
+                if (ndr_encode_stub(smb2, &req, pdu, &rep, epm_Map_rep_coder,
                                     &stub_out, &stub_out_len)) {
                         dcerpcd_epm_Map_free_rep(&rep);
                         ndr_decode_done(dce, pdu);
@@ -1268,7 +1275,7 @@ handle_request(struct smb2_context *smb2, struct dcerpcd_pipe *pipe,
                         ndr_decode_done(dce, pdu);
                         return queue_fault(pipe, call_id, drep0, 0x1c010004);
                 }
-                if (ndr_encode_stub(smb2, NULL, &rep,
+                if (ndr_encode_stub(smb2, NULL, pdu, &rep,
                                     epm_LookupHandleFree_rep_coder,
                                     &stub_out, &stub_out_len)) {
                         ndr_decode_done(dce, pdu);
