@@ -37,7 +37,8 @@ Supported:
   - typedef [switch_type(...)] union { [case(n)] T field; } Name;
     an arm is a pointer to a structure (LP*) or the structure itself; a
     plain enum switch_type gives a 16-bit discriminant in NDR32
-    (dcerpc_union_enum16_coder), a [v1_enum] one a 32-bit one
+    (dcerpc_union_enum16_coder), any other a 32-bit one in NDR32 and NDR64
+    (dcerpc_union_u32_coder); the arm is aligned to the largest arm
   - [out,switch_is(x)] PUNION *param: a pointer to a unique pointer to a
     union, e.g. LsarQueryInformationPolicy's PolicyInformation; the C field
     is a union pointer, NULL for a NULL referent
@@ -1206,12 +1207,20 @@ def nullable_ptr_field(env: TypeEnv, f: Field) -> Optional[str]:
 def nullable_param(env: TypeEnv, p: Param) -> Optional[str]:
     """
     Pointee type name for a [unique] parameter that is a real, nullable C
-    pointer: a pointer to a structure, or a typedef'd pointer to an integer
-    (PREGISTRY_SERVER_NAME). NULL encodes a NULL referent and decode
+    pointer: a pointer to a structure, a typedef'd pointer to an integer
+    (PREGISTRY_SERVER_NAME), or [out] RPC_SID **. NULL encodes a NULL referent and decode
     allocates the pointee. Other [unique] pointers to integers and enums
     (ResumeHandle) are values that are always sent.
     """
-    if not attr_has(p.attrs, "unique") or attr_arg(p.attrs, "size_is") is not None:
+    if attr_arg(p.attrs, "size_is") is not None:
+        return None
+    # [out] RPC_SID **: a [ref] pointer to a unique SID pointer, e.g.
+    # SamrLookupDomainInSamServer's DomainId; NULL when the server sends
+    # no SID
+    if (p.stars == 2 and p.type_name == "RPC_SID" and
+            not attr_has(p.attrs, "unique")):
+        return p.type_name
+    if not attr_has(p.attrs, "unique"):
         return None
     if env.is_string_type(p.type_name, p.stars, p.attrs):
         return None
@@ -1450,15 +1459,17 @@ def indent_lines(lines: List[str], extra: str) -> List[str]:
 
 def union_coder_fn(env: TypeEnv, union_name: str) -> str:
     """
-    dcerpc_union_coder, or dcerpc_union_enum16_coder for a union whose
-    switch_type is a plain enum: that discriminant is 16 bits in NDR32.
+    dcerpc_union_enum16_coder for a union whose switch_type is a plain
+    enum (a 16-bit discriminant in NDR32), dcerpc_union_u32_coder for any
+    other (32 bits in NDR32 and NDR64). Both align the arm to the largest
+    alignment of the arms.
     """
     td = env.types.get(union_name)
     sw = attr_arg(td.attrs, "switch_type") if td is not None else None
     st = env.types.get(sw) if sw else None
     if st is not None and st.kind == "enum" and not env.is_u32_enum(sw):
         return "dcerpc_union_enum16_coder"
-    return "dcerpc_union_coder"
+    return "dcerpc_union_u32_coder"
 
 
 def param_double_ptr_union(env: TypeEnv, p: Param) -> Optional[str]:
@@ -1858,22 +1869,20 @@ def union_arms_align(env: "TypeEnv", uname: str) -> Tuple[int, int]:
 
 def union_align(env: "TypeEnv", uname: str) -> Tuple[int, int]:
     """
-    The discriminant, then the arm: a 32/64-bit discriminant, or a plain
+    The discriminant, then the arm: a 32-bit discriminant, or a plain
     enum one (dcerpc_union_enum16_coder) that is 16 bits in NDR32.
     """
     t = env.types[uname]
     if union_coder_fn(env, uname) == "dcerpc_union_enum16_coder":
         return max_align(enum_align(env, attr_arg(t.attrs, "switch_type")),
                          union_arms_align(env, uname))
-    return max_align(PTR_ALIGN, *[union_arm_align(env, f) for f in t.fields])
+    return max_align((4, 4), union_arms_align(env, uname))
 
 
 def union_coder_args(env: "TypeEnv", uname: str) -> str:
     """Extra arguments of the union coder for uname: the arm alignment."""
-    if union_coder_fn(env, uname) == "dcerpc_union_enum16_coder":
-        a32, a64 = union_arms_align(env, uname)
-        return f", {a32}, {a64}"
-    return ""
+    a32, a64 = union_arms_align(env, uname)
+    return f", {a32}, {a64}"
 
 
 def field_align(env: "TypeEnv", f: "Field") -> Tuple[int, int]:
@@ -3090,6 +3099,13 @@ def generate(iface: Interface, idl_name: str, header_name: str,
             if bt is not None and f"#include <{bt[2]}>" not in includes:
                 includes.append(f"#include <{bt[2]}>")
             et, _ = env.resolve_pointee(f.type_name, f.stars)
+            ext = env.extern(et)
+            if ext is not None and ext[2] and f"#include <{ext[2]}>" not in includes:
+                includes.append(f"#include <{ext[2]}>")
+    # and the types of function parameters, e.g. [out] RPC_SID **
+    for fn in iface.functions if iface.has_interface else []:
+        for p in fn.params:
+            et, _ = env.resolve_pointee(p.type_name, p.stars)
             ext = env.extern(et)
             if ext is not None and ext[2] and f"#include <{ext[2]}>" not in includes:
                 includes.append(f"#include <{ext[2]}>")

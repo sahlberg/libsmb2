@@ -1501,6 +1501,62 @@ int dcerpc_union_coder(char *name, struct dcerpc_context *ctx,
 }
 
 /*
+ * NDR for a non-encapsulated union with a statically known arm alignment
+ * (ndr32_align/ndr64_align, the largest alignment of all the arms): the
+ * discriminant, 16 bits in NDR32 and 32 in NDR64 for a plain enum
+ * (disc16) or 32 bits otherwise, then the arm aligned to the arms.
+ */
+static int
+ndr_aligned_union_coder(char *name, struct dcerpc_context *ctx,
+                        struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                        uint32_t *switch_is, void *ptr, dcerpc_coder coder,
+                        int disc16, int ndr32_align, int ndr64_align)
+{
+        int max_alignment;
+
+        /* NDR64 aligns the whole union to its largest alignment */
+        if (pdu->ndr64 && !pdu->is_conformance_run &&
+            dcerpc_iov_align(pdu, iov, ndr64_align > 4 ? ndr64_align : 4)) {
+                return -1;
+        }
+        if (disc16) {
+                uint16_t level;
+
+                if (*switch_is > UINT16_MAX) {
+                        return -1;
+                }
+                level = (uint16_t)*switch_is;
+                if (dcerpc_enum16_coder("", ctx, pdu, iov, &level, NULL)) {
+                        return -1;
+                }
+                *switch_is = level;
+        } else if (dcerpc_uint32_coder("", ctx, pdu, iov, switch_is)) {
+                return -1;
+        }
+
+        dcerpc_set_switch_is(pdu, *switch_is);
+        if (!pdu->is_conformance_run &&
+            dcerpc_iov_align(pdu, iov, pdu->ndr64 ? ndr64_align : ndr32_align)) {
+                return -1;
+        }
+        /*
+         * NDR32 aligns the discriminant to its own size and only the arm
+         * to the arms' alignment, so the arm must not raise the alignment
+         * the union starts at (Windows' LsarQueryInformationPolicy replies
+         * have the 16-bit discriminant right after the pointer and the
+         * arm 8-aligned).
+         */
+        max_alignment = pdu->max_alignment;
+        if (coder(name, ctx, pdu, iov, ptr)) {
+                return -1;
+        }
+        if (pdu->is_conformance_run && !pdu->ndr64) {
+                pdu->max_alignment = max_alignment;
+        }
+        return 0;
+}
+
+/*
  * A union whose discriminant is a plain enum (switch_type is not a
  * [v1_enum]): in NDR the discriminant is 16 bits in NDR32 and 32 bits in
  * NDR64, like any plain enum (dcerpc_enum16_coder), and the arm that
@@ -1514,43 +1570,35 @@ int dcerpc_union_enum16_coder(char *name, struct dcerpc_context *ctx,
                               dcerpc_coder coder,
                               int ndr32_align, int ndr64_align)
 {
-        uint16_t level;
-        int max_alignment;
-
         if (pdu->encoding != ENCODING_NDR) {
                 return dcerpc_union_coder(name, ctx, pdu, iov, switch_is,
                                           ptr, coder);
         }
-        if (*switch_is > UINT16_MAX) {
-                return -1;
-        }
-        level = (uint16_t)*switch_is;
-        if (dcerpc_enum16_coder("", ctx, pdu, iov, &level, NULL)) {
-                return -1;
-        }
-        *switch_is = level;
+        return ndr_aligned_union_coder(name, ctx, pdu, iov, switch_is, ptr,
+                                       coder, 1, ndr32_align, ndr64_align);
+}
 
-        dcerpc_set_switch_is(pdu, level);
-        if (!pdu->is_conformance_run &&
-            dcerpc_iov_align(pdu, iov, pdu->ndr64 ? ndr64_align : ndr32_align)) {
-                return -1;
+/*
+ * A union whose discriminant is 32 bits (a [v1_enum] or an integer
+ * switch_type) in both NDR32 and NDR64, with the arm aligned to
+ * ndr32_align/ndr64_align. dcerpc_union_coder codes the discriminant as
+ * 64 bits in NDR64, which is only the same on the wire when the arms are
+ * 8-aligned and the stub is little-endian. YAML/JSON are the same as
+ * dcerpc_union_coder.
+ */
+int dcerpc_union_u32_coder(char *name, struct dcerpc_context *ctx,
+                           struct dcerpc_pdu *pdu,
+                           struct dcerpc_iovec *iov,
+                           uint32_t *switch_is, void *ptr,
+                           dcerpc_coder coder,
+                           int ndr32_align, int ndr64_align)
+{
+        if (pdu->encoding != ENCODING_NDR) {
+                return dcerpc_union_coder(name, ctx, pdu, iov, switch_is,
+                                          ptr, coder);
         }
-        /*
-         * NDR32 aligns the discriminant to its own size and only the arm
-         * to the arms' alignment, so the arm must not raise the alignment
-         * the union starts at (Windows' LsarQueryInformationPolicy replies
-         * have the 16-bit discriminant right after the pointer and the
-         * arm 8-aligned). NDR64 aligns the whole union to its largest
-         * alignment.
-         */
-        max_alignment = pdu->max_alignment;
-        if (coder(name, ctx, pdu, iov, ptr)) {
-                return -1;
-        }
-        if (pdu->is_conformance_run && !pdu->ndr64) {
-                pdu->max_alignment = max_alignment;
-        }
-        return 0;
+        return ndr_aligned_union_coder(name, ctx, pdu, iov, switch_is, ptr,
+                                       coder, 0, ndr32_align, ndr64_align);
 }
 
 int dcerpc_struct_coder(char *name, struct dcerpc_context *ctx,

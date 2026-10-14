@@ -487,6 +487,13 @@ int dcerpc_union_enum16_coder(char *name, struct dcerpc_context *ctx,
                               uint32_t *switch_is, void *ptr,
                               dcerpc_coder coder,
                               int ndr32_align, int ndr64_align);
+/* A union switched by a 32-bit value; the arm aligned as above */
+int dcerpc_union_u32_coder(char *name, struct dcerpc_context *ctx,
+                           struct dcerpc_pdu *pdu,
+                           struct dcerpc_iovec *iov,
+                           uint32_t *switch_is, void *ptr,
+                           dcerpc_coder coder,
+                           int ndr32_align, int ndr64_align);
 int dcerpc_struct_coder(char *name, struct dcerpc_context *ctx,
                         struct dcerpc_pdu *pdu,
                         struct dcerpc_iovec *iov,
