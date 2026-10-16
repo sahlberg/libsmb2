@@ -188,6 +188,12 @@ smb2_which_events(struct smb2_context *smb2)
 {
         int events = SMB2_VALID_SOCKET(smb2->fd) ? POLLIN : POLLOUT;
 
+#ifdef HAVE_LIBQUIC
+        if (smb2->quic_hs != NULL) {
+                return smb2_quic_events(smb2);
+        }
+#endif
+
         if (smb2->outqueue != NULL &&
             smb2_get_credit_charge(smb2, smb2->outqueue) <= smb2->credits) {
                 events |= POLLOUT;
@@ -288,6 +294,11 @@ smb2_write_to_socket(struct smb2_context *smb2)
                 tmpiov->iov_len -= (unsigned long)num_done;
 #else
                 tmpiov->iov_len -= (size_t)num_done;
+#endif
+#ifdef HAVE_LIBQUIC
+                if (smb2->quic) {
+                        count = smb2_quic_writev(smb2, tmpiov, niov);
+                } else
 #endif
                 count = writev(smb2->fd, tmpiov, niov);
 
@@ -1187,6 +1198,39 @@ smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
                 }
         }
 
+#ifdef HAVE_LIBQUIC
+        if (smb2->quic_hs != NULL) {
+                if (revents & (POLLERR | POLLHUP)) {
+                        /* the peer did not answer within the idle
+                         * timeout or closed the connection */
+                        smb2_set_error(smb2, "QUIC handshake failed, "
+                                       "no QUIC server listening?");
+                        smb2_quic_reset(smb2);
+                        ret = -1;
+                } else {
+                        ret = smb2_quic_handshake_service(smb2);
+                }
+                if (ret < 0) {
+                        if (smb2->connect_cb) {
+                                smb2->connect_cb(smb2, EIO, NULL,
+                                                 smb2->connect_data);
+                                smb2->connect_cb = NULL;
+                        }
+                        goto out;
+                }
+                smb2_change_events(smb2, smb2->fd, smb2_which_events(smb2));
+                if (ret == 1) {
+                        ret = 0;
+                        if (smb2->connect_cb) {
+                                smb2->connect_cb(smb2, 0, NULL,
+                                                 smb2->connect_data);
+                                smb2->connect_cb = NULL;
+                        }
+                }
+                goto out;
+        }
+#endif
+
         if (revents & POLLERR) {
                 int err = 0;
                 socklen_t err_size = sizeof(err);
@@ -1388,6 +1432,17 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_o
         }
         family = ai->ai_family;
 
+#ifdef HAVE_LIBQUIC
+        if (smb2->quic) {
+                fd = socket(family, SOCK_STREAM, IPPROTO_QUIC);
+                if (!SMB2_VALID_SOCKET(fd)) {
+                        smb2_set_error(smb2, "Failed to open QUIC socket, "
+                                       "is the quic kernel module loaded? "
+                                       "Errno:%s(%d).", strerror(errno), errno);
+                        return -EIO;
+                }
+        } else
+#endif
         fd = socket(family, SOCK_STREAM, 0);
         if (!SMB2_VALID_SOCKET(fd)) {
                 smb2_set_error(smb2, "Failed to open smb2 socket. "
@@ -1411,6 +1466,9 @@ connect_async_ai(struct smb2_context *smb2, const struct addrinfo *ai, int *fd_o
 #endif
 
         set_nonblocking(fd);
+#ifdef HAVE_LIBQUIC
+        if (!smb2->quic)
+#endif
         set_tcp_sockopt(fd, TCP_NODELAY, 1);
 #if 0 == CONFIGURE_OPTION_TCP_LINGER
         setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const void*)&yes, sizeof yes);
@@ -1451,6 +1509,30 @@ smb2_connect_async_next_addr(struct smb2_context *smb2, const struct addrinfo *b
                                 smb2->change_fd(smb2, fd, SMB2_ADD_FD);
                                 smb2_change_events(smb2, fd, POLLOUT);
                         }
+#ifdef HAVE_LIBQUIC
+                        if (smb2->quic) {
+                                /* connect() on a QUIC socket only sets the
+                                 * peer address, the socket does not become
+                                 * writable until the handshake is done. So
+                                 * use this address and start the handshake
+                                 * now, connect_cb is called when it has
+                                 * completed. */
+                                smb2->fd = fd;
+                                smb2_close_connecting_fds(smb2);
+                                if (smb2_quic_handshake_start(smb2) < 0) {
+                                        if (smb2->change_fd) {
+                                                smb2->change_fd(smb2, fd,
+                                                                SMB2_DEL_FD);
+                                        }
+                                        close(fd);
+                                        smb2->fd = SMB2_INVALID_SOCKET;
+                                        return -EIO;
+                                }
+                                smb2_change_events(smb2, fd,
+                                                   smb2_which_events(smb2));
+                                return 0;
+                        }
+#endif
 
                         smb2->next_addrinfo = ai->ai_next;
                         break;
@@ -1541,6 +1623,11 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
                 *port++ = 0;
         } else {
                 port = (char*)"445";
+#ifdef HAVE_LIBQUIC
+                if (smb2->quic) {
+                        port = (char*)"443";
+                }
+#endif
         }
 
         /* is it a hostname ? */

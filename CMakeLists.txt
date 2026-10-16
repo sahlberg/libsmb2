@@ -143,6 +143,25 @@ endif()
     endif()
   endif()
 
+  # SMB2 over QUIC (the "quic" URL argument) uses the Linux kernel QUIC module for
+  # the transport and libquic (on top of gnutls) for the TLS 1.3
+  # handshake, so it is Linux only. Built in when libquic is found.
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT (ESP_PLATFORM OR PICO_BOARD OR IOP OR BUILD_IRX))
+    option(ENABLE_LIBQUIC "Enable SMB2 over QUIC (needs libquic)" ON)
+    if(ENABLE_LIBQUIC)
+      find_path(LIBQUIC_INCLUDE_DIR netinet/quic.h)
+      find_library(LIBQUIC_LIBRARY quic)
+      find_library(GNUTLS_LIBRARY gnutls)
+      if(LIBQUIC_INCLUDE_DIR AND LIBQUIC_LIBRARY AND GNUTLS_LIBRARY)
+        message(STATUS "Build with SMB2 over QUIC support")
+        set(HAVE_LIBQUIC 1)
+        list(APPEND core_DEPENDS ${LIBQUIC_LIBRARY} ${GNUTLS_LIBRARY})
+      else()
+        message(STATUS "libquic not found, building without SMB2 over QUIC")
+      endif()
+    endif()
+  endif()
+
   if(NOT ESP_PLATFORM)
       include(cmake/ConfigureChecks.cmake)
   endif()

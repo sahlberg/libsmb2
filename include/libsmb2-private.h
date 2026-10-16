@@ -171,6 +171,14 @@ struct smb2_context {
 
         int timeout;
 
+#ifdef HAVE_LIBQUIC
+        /* "quic" URL argument: SMB2 over QUIC (MS-SMB2 2.1) using the
+         * kernel QUIC module, see quic.c */
+        int quic;
+        int quic_stream_open;
+        struct smb2_quic_handshake *quic_hs;
+#endif
+
         enum smb2_sec sec;
 
         uint16_t security_mode;
@@ -433,6 +441,21 @@ void smb2_set_nterror(struct smb2_context *smb2, int nterror,
                     const char *error_string, ...);
 
 void smb2_close_connecting_fds(struct smb2_context *smb2);
+
+#ifdef HAVE_LIBQUIC
+#ifndef IPPROTO_QUIC
+#define IPPROTO_QUIC 261
+#endif
+struct iovec;
+int smb2_quic_handshake_start(struct smb2_context *smb2);
+int smb2_quic_handshake_service(struct smb2_context *smb2);
+int smb2_quic_events(struct smb2_context *smb2);
+ssize_t smb2_quic_writev(struct smb2_context *smb2,
+                         const struct iovec *iov, int iovcnt);
+void smb2_quic_reset(struct smb2_context *smb2);
+#else
+#define smb2_quic_reset(smb2) do { } while (0)
+#endif
 
 void *smb2_alloc_init(struct smb2_context *smb2, size_t size);
 void *smb2_alloc_data(struct smb2_context *smb2, void *memctx, size_t size);

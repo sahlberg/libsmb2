@@ -199,6 +199,7 @@ smb2_close_context(struct smb2_context *smb2)
                 close(smb2->fd);
                 smb2->fd = SMB2_INVALID_SOCKET;
         }
+        smb2_quic_reset(smb2);
 
         smb2->message_id = 0;
         smb2->session_id = 0;
@@ -3830,6 +3831,7 @@ disconnect_cb_2(struct smb2_context *smb2, int status,
         }
         close(smb2->fd);
         smb2->fd = SMB2_INVALID_SOCKET;
+        smb2_quic_reset(smb2);
 }
 
 static void

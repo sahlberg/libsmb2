@@ -145,6 +145,35 @@ AS_IF([test "x$enable_libdcerpc" != "xno"], [
     AC_MSG_NOTICE([libdcerpc disabled])
 ])
 AM_CONDITIONAL([BUILD_LIBDCERPC], [test "x$enable_libdcerpc" != "xno"])
+
+dnl  SMB2 over QUIC (the "quic" URL argument) uses the Linux kernel QUIC module
+dnl  for the transport and libquic (on top of gnutls) for the TLS 1.3
+dnl  handshake, so it is Linux only. Built in when libquic is found.
+AC_ARG_WITH([libquic],
+            [AS_HELP_STRING([--without-libquic],
+                            [Do not build SMB2 over QUIC support (Linux only)])])
+MAYBE_LIBQUIC=""
+case $host in
+  *linux*)
+    AS_IF([test "x$with_libquic" != "xno"], [
+        AC_CHECK_HEADER([netinet/quic.h], [
+            AC_CHECK_LIB([quic], [quic_handshake_step], [
+                AC_DEFINE([HAVE_LIBQUIC], [1], [Whether we have libquic for SMB2 over QUIC])
+                MAYBE_LIBQUIC="-lquic -lgnutls"
+            ], [], [-lgnutls])
+        ])
+    ])
+    ;;
+esac
+AS_IF([test "x$with_libquic" = "xyes" && test "x$MAYBE_LIBQUIC" = "x"], [
+    AC_MSG_ERROR([libquic not found, or not on Linux])
+])
+AS_IF([test "x$MAYBE_LIBQUIC" != "x"], [
+    AC_MSG_NOTICE([Build with SMB2 over QUIC support])
+], [
+    AC_MSG_NOTICE([Build WITHOUT SMB2 over QUIC support])
+])
+AC_SUBST([MAYBE_LIBQUIC])
 AC_SUBST([LIBSOCKET])
 
 AC_CHECK_LIB([dl], [dlsym], [], [AC_MSG_ERROR([dlsym not found, libdl is required])])
