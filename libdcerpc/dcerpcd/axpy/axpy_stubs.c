@@ -176,19 +176,9 @@ axpy_exit(void)
 }
 
 /*
- * Auto load/free around process lifetime (GCC/clang).
- * constructor: before main(). destructor: after main() returns or exit().
- * Override path with $AXPY_CONFIG; default file name is "config".
+ * axpy_init() is serviced's SERVICE_INIT, called with -c's path before it
+ * registers; free the config when the process ends (GCC/clang).
  */
-static void __attribute__((constructor))
-axpy_ctor(void)
-{
-        if (axpy_init(NULL) != 0) {
-                fprintf(stderr, "axpy: constructor: config load failed\n");
-                /* Leave axpy_config NULL; compute will fail until fixed. */
-        }
-}
-
 static void __attribute__((destructor))
 axpy_dtor(void)
 {

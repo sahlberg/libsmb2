@@ -97,7 +97,8 @@ $(AXPY_STUBS_O): $(AXPY_STUBS_C) $(AXPY_SERVER_H) $(CONFIG_CODER_H)
 
 # -I. so #include "axpy_server.h" / SERVICE_SERVER_H resolve.
 $(SERVICED_O): $(SERVICED_C) ../dcerpcd_proto.h $(AXPY_SERVER_H)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -DSERVICE=$(SERVICE) -c -o $@ $(SERVICED_C)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -DSERVICE=$(SERVICE) \
+		-DSERVICE_INIT=$(SERVICE)_init -c -o $@ $(SERVICED_C)
 
 $(CLNT_O): axpy-clnt.c $(AXPY_CODER_H)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ axpy-clnt.c

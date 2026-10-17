@@ -17,6 +17,10 @@
  * Each X(i) links i_interface and i_procs from the coder and i_stubs from
  * the stubs .c.
  *
+ * With -DSERVICE_INIT=<fn>, int fn(const char *config) is called before
+ * registering, with the -c argument or NULL; if it fails the service does
+ * not start.
+ *
  * When the service runs as root, a client's DCE/RPC runs under its euid
  * (seteuid around each write; guest leaves credentials unchanged).
  * Non-root services skip switching and run stubs as themselves.
@@ -104,6 +108,10 @@ static const struct service_interface service_interfaces[] = {
 #undef X
         { NULL, NULL, NULL, NULL }
 };
+
+#ifdef SERVICE_INIT
+int SERVICE_INIT(const char *config);
+#endif
 
 /* Must match DCERPCD_DEFAULT_SVC_SOCK in dcerpcd.h */
 #define DCERPCD_DEFAULT_SVC_SOCK "/var/run/dcerpcd/dcerpcd.sock"
@@ -508,9 +516,12 @@ static void
 usage(const char *prog)
 {
         fprintf(stderr,
-                "Usage: %s [socket-path]\n"
+                "Usage: %s [-c config] [socket-path]\n"
                 "Register \\pipe\\" SERVICE_PIPE_NAME " with dcerpcd and "
                 "serve it.\n"
+#ifdef SERVICE_INIT
+                "  -c config    the service's config file\n"
+#endif
                 "socket-path defaults to " DCERPCD_DEFAULT_SVC_SOCK "\n",
                 prog);
         exit(1);
@@ -544,19 +555,40 @@ int
 main(int argc, char *argv[])
 {
         const char *sock_path = DCERPCD_DEFAULT_SVC_SOCK;
+        const char *config = NULL;
         struct sockaddr_un addr;
         int fd = -1;
         int rc = 1;
+        int i;
 
-        if (argc > 1) {
-                if (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")) {
+        for (i = 1; i < argc; i++) {
+                if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
                         usage(argv[0]);
                 }
-                sock_path = argv[1];
+#ifdef SERVICE_INIT
+                if (!strcmp(argv[i], "-c") || !strcmp(argv[i], "--config")) {
+                        if (i + 1 >= argc) {
+                                usage(argv[0]);
+                        }
+                        config = argv[++i];
+                        continue;
+                }
+#endif
+                if (argv[i][0] == '-' || i != argc - 1) {
+                        usage(argv[0]);
+                }
+                sock_path = argv[i];
         }
-        if (argc > 2) {
-                usage(argv[0]);
+
+#ifdef SERVICE_INIT
+        /* the service cannot work without it: do not start */
+        if (SERVICE_INIT(config) != 0) {
+                fprintf(stderr, SERVICE_NAME ": no config, not starting\n");
+                return 1;
         }
+#else
+        (void)config;
+#endif
 
         setvbuf(stdout, NULL, _IOLBF, 0);
         setvbuf(stderr, NULL, _IOLBF, 0);

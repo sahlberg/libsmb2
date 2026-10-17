@@ -193,19 +193,9 @@ To do this we add the following to the file :
     }
     
     /*
-     * Auto load/free around process lifetime (GCC/clang).
-     * constructor: before main(). destructor: after main() returns or exit().
-     * Override path with $AXPY_CONFIG; default file name is "config".
+     * axpy_init() is serviced's SERVICE_INIT, called with -c's path before it
+     * registers; free the config when the process ends (GCC/clang).
      */
-    static void __attribute__((constructor))
-    axpy_ctor(void)
-    {
-            if (axpy_init(NULL) != 0) {
-                    fprintf(stderr, "axpy: constructor: config load failed\n");
-                    /* Leave axpy_config NULL; compute will fail until fixed. */
-            }
-    }
-    
     static void __attribute__((destructor))
     axpy_dtor(void)
     {
@@ -213,8 +203,10 @@ To do this we add the following to the file :
     }
 ---
 
-Nice. Now we have code that will read the config into a global variable on startup
-and will free it on process termination.
+Nice. Now we have code that will read the config into a global variable and free it
+on process termination. serviced.c calls axpy_init() at startup (see below), with
+the file given by -c, and the service refuses to start without a config rather
+than run and fail every call.
 
     
 Now we can implement the actual business logic for the server. We do this by filling in
@@ -292,10 +284,16 @@ A pipe can serve more than one interface. With another IDL, say mul.idl, compile
 the same way, `-DSERVICE=calc -DSERVICE_INTERFACES='X(axpy) X(mul)'` serves both
 on \pipe\calc.
 
+It also needs `-DSERVICE_INIT=axpy_init`: that gives the service a `-c config`
+argument and calls `axpy_init()` with it before registering. Without -c,
+axpy_init() falls back to $AXPY_CONFIG and then to ./config.
+
 Compile and link with both coders and the stubs.
 
 Then just launch it and it should connect to and register with the dcerpcd master
-daemon.
+daemon:
+
+    $ ./axpy -c /path/to/config
 
 
 Building a sync client
