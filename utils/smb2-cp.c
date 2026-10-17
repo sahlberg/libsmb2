@@ -24,6 +24,7 @@
 #if !defined(__amigaos4__) && !defined(__AMIGA__) && !defined(__AROS__)
 #include <poll.h>
 #endif
+#include <errno.h>
 #include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -73,6 +74,15 @@ free_file_context(struct file_context *file_context)
 	free(file_context);
 }
 
+static const char *
+file_error(struct file_context *fc)
+{
+	if (fc->is_smb2) {
+		return smb2_get_error(fc->smb2);
+	}
+	return strerror(errno);
+}
+
 static int
 fstat_file(struct file_context *fc, struct stat *st)
 {
@@ -82,6 +92,9 @@ fstat_file(struct file_context *fc, struct stat *st)
 		int res;
 		struct smb2_stat_64 smb2_st;
 		res = smb2_fstat(fc->smb2, fc->smb2fh, &smb2_st);
+		if (res < 0) {
+			return res;
+		}
 		st->st_dev          = 0;
 		st->st_ino          = (ino_t)smb2_st.smb2_ino;
 #ifndef WIN32
@@ -230,7 +243,8 @@ int main(int argc, char *argv[])
 	}
 
 	if (fstat_file(src, &st) != 0) {
-		fprintf(stderr, "Failed to fstat source file\n");
+		fprintf(stderr, "Failed to fstat source file: %s\n",
+			file_error(src));
 		free_file_context(src);
 		free_file_context(dst);
 		return 10;
@@ -244,14 +258,16 @@ int main(int argc, char *argv[])
 		}
 		count = file_pread(src, buf, count, off);
 		if (count < 0) {
-			fprintf(stderr, "Failed to read from source file\n");
+			fprintf(stderr, "Failed to read from source file: %s\n",
+				file_error(src));
 			free_file_context(src);
 			free_file_context(dst);
 			return 10;
 		}
 		count = file_pwrite(dst, buf, count, off);
 		if (count < 0) {
-			fprintf(stderr, "Failed to write to dest file\n");
+			fprintf(stderr, "Failed to write to dest file: %s\n",
+				file_error(dst));
 			free_file_context(src);
 			free_file_context(dst);
 			return 10;
