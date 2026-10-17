@@ -488,6 +488,15 @@ int dcerpc_scalar_carray_coder(char *name, struct dcerpc_context *ctx,
                         struct dcerpc_pdu *pdu,
                         struct dcerpc_iovec *iov,
                         uint32_t num, void *ptr, int elem_size, dcerpc_coder coder);
+/*
+ * Like dcerpc_cvarray_coder() for an array of plain values: YAML/JSON
+ * show the num elements as dcerpc_scalar_carray_coder() does.
+ */
+int dcerpc_scalar_cvarray_coder(char *name, struct dcerpc_context *ctx,
+                                struct dcerpc_pdu *pdu,
+                                struct dcerpc_iovec *iov,
+                                uint32_t max_count, uint32_t num, void *ptr,
+                                int elem_size, dcerpc_coder coder);
 int dcerpc_union_coder(char *name, struct dcerpc_context *ctx,
                        struct dcerpc_pdu *pdu,
                        struct dcerpc_iovec *iov,

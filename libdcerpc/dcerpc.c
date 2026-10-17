@@ -5124,6 +5124,21 @@ dcerpc_cvarray_coder(char *name, struct dcerpc_context *ctx,
 }
 
 int
+dcerpc_scalar_cvarray_coder(char *name, struct dcerpc_context *ctx,
+                            struct dcerpc_pdu *pdu,
+                            struct dcerpc_iovec *iov,
+                            uint32_t max_count, uint32_t num, void *ptr,
+                            int elem_size, dcerpc_coder coder)
+{
+        if (pdu->encoding != ENCODING_NDR) {
+                return dcerpc_scalar_carray_coder(name, ctx, pdu, iov, num,
+                                                  ptr, elem_size, coder);
+        }
+        return ndr_cvarray_coder(name, ctx, pdu, iov, max_count, num,
+                                 ptr, elem_size, coder);
+}
+
+int
 ndr_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
               struct dcerpc_iovec *iov, void *ptr,
               enum ptr_type type, dcerpc_coder coder)

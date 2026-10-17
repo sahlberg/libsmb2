@@ -75,8 +75,10 @@ Supported:
     naming the parameters with the buffer size and the byte count
   - a [unique] T *field in a struct is a real C pointer: NULL encodes a NULL
     referent and decode allocates the pointee
-  - [size_is(m), length_is(l)] uint8_t *field: struct dcerpc_varying_bytes
-  - [in, size_is(n)] T *param: a conformant array parameter
+  - [size_is(m), length_is(l)] uint8_t *field: struct dcerpc_varying_bytes;
+    a number m is the max_count always sent (SAMPR_LOGON_HOURS)
+  - [in, size_is(n)] T *param: a conformant array parameter; n may be a
+    number. With [length_is(l)] it is conformant-varying.
   - a [size_is] array that a sender transmits as a pointer to zero elements
     decodes to NULL, like a NULL pointer
   - arrays of plain values (integers, enums, strings, SIDs) are bare
@@ -158,6 +160,9 @@ TOKEN_SPEC = [
     ("STAR", r"\*"),
     ("EQ", r"="),
     ("MINUS", r"-"),
+    # only inside attribute arguments, e.g. length_is((UnitsPerWeek+7)/8)
+    ("PLUS", r"\+"),
+    ("SLASH", r"/"),
     ("DOT", r"\."),
     ("WS", r"[ \t\r\n]+"),
     ("OTHER", r"."),
@@ -1794,9 +1799,12 @@ def param_value(fn, name: str, var: str) -> str:
     """
     C expression for the value of parameter name, as size_is/length_is use
     it: from the reply if it is [out], else from the request (coding the
-    reply, an [in]-only size comes from the request).
+    reply, an [in]-only size comes from the request). A number is a
+    constant size, e.g. SamrLookupNamesInDomain's size_is(1000).
     """
     name = name.lstrip("*")
+    if re.fullmatch(r"0x[0-9A-Fa-f]+|\d+", name):
+        return name
     src = next((q for q in fn.params if q.name == name), None)
     if src is None:
         raise SystemExit(f"error: {fn.name}: {name} is not a parameter")
@@ -1967,6 +1975,39 @@ def gen_field_coder_stmts(
     # [size_is(m), length_is(l)] uint8 *: unique pointer to a varying byte
     # array; NULL when there is no data
     if is_varying_bytes(f, tname):
+        # a constant size_is (SAMPR_LOGON_HOURS' 1260) is the max_count
+        # whatever the caller set: encode a copy with it, so the input is
+        # not written, and on decode it is what text encodings, which
+        # carry only the bytes, cannot give
+        if re.fullmatch(r"0x[0-9A-Fa-f]+|\d+", size_is):
+            lines.append(
+                f"{indent}if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&\n"
+                f"{indent}    {var}->{f.name}.data != NULL) {{\n"
+                f"{indent}        struct dcerpc_varying_bytes *vb;\n"
+                f"\n"
+                f"{indent}        vb = dcerpc_alloc_data(pdu, sizeof(*vb));\n"
+                f"{indent}        if (vb == NULL) {{\n"
+                f"{indent}                return -1;\n"
+                f"{indent}        }}\n"
+                f"{indent}        *vb = {var}->{f.name};\n"
+                f"{indent}        vb->max_count = {size_is};\n"
+                f'{indent}        if (dcerpc_ptr_coder("{disp}", dce, pdu, iov, vb,\n'
+                f"{indent}                             PTR_UNIQUE, dcerpc_varying_bytes_coder)) {{\n"
+                f"{indent}                return -1;\n"
+                f"{indent}        }}\n"
+                f"{indent}}} else {{\n"
+                f'{indent}        if (dcerpc_ptr_coder("{disp}", dce, pdu, iov,\n'
+                f"{indent}                             (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) ? NULL : &{var}->{f.name},\n"
+                f"{indent}                             PTR_UNIQUE, dcerpc_varying_bytes_coder)) {{\n"
+                f"{indent}                return -1;\n"
+                f"{indent}        }}\n"
+                f"{indent}        /* NDR decodes the deferred bytes, and max_count, later */\n"
+                f"{indent}        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {{\n"
+                f"{indent}                {var}->{f.name}.max_count = {size_is};\n"
+                f"{indent}        }}\n"
+                f"{indent}}}"
+            )
+            return lines
         lines.append(
             f'{indent}if (dcerpc_ptr_coder("{disp}", dce, pdu, iov,\n'
             f"{indent}                     (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&\n"
@@ -2363,11 +2404,10 @@ def gen_type_coders(env: TypeEnv) -> str:
         # like every other field, so YAML/JSON readers find it again.
         # Plain values are a bare YAML/JSON list (scalar_carray_coder).
         if varying:
-            if is_scalar_elem(env, et):
-                raise SystemExit(f"error: conformant-varying array of {et} "
-                                 "values is not supported")
+            cvarray = ("dcerpc_scalar_cvarray_coder" if is_scalar_elem(env, et)
+                       else "dcerpc_cvarray_coder")
             lines.append(
-                f'        return dcerpc_cvarray_coder(name, dce, pdu, iov,\n'
+                f'        return {cvarray}(name, dce, pdu, iov,\n'
                 f"                                    dcerpc_get_size_is(pdu),\n"
                 f"                                    dcerpc_get_length_is(pdu), ptr,\n"
                 f"                                    {esize},\n"
