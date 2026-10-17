@@ -502,8 +502,10 @@ int dcerpc_union_coder(char *name, struct dcerpc_context *ctx,
                        struct dcerpc_iovec *iov,
                        uint32_t *switch_is, void *ptr, dcerpc_coder coder);
 /*
- * A union switched by a plain (16-bit in NDR32) enum; the arm is aligned
- * to ndr32_align/ndr64_align, the largest alignment of all the arms
+ * A union switched by a plain (16-bit in NDR32) enum. In NDR64 the arm is
+ * aligned to ndr64_align, the largest alignment of all the arms ([MS-RPCE]
+ * 2.2.5.3.4.4); in NDR32 only to its own, by its coder ([C706] 14.3.2;
+ * ndr32_align is unused).
  */
 int dcerpc_union_enum16_coder(char *name, struct dcerpc_context *ctx,
                               struct dcerpc_pdu *pdu,

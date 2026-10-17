@@ -264,8 +264,14 @@ typedef struct {
 	RPC_UNICODE_STRING Name;
 } LSAPR_POLICY_PD_ACCOUNT_INFO;
 
-/* [MS-LSAD] 2.2.4.8: a plain enum */
-typedef enum {
+/*
+ * [MS-LSAD] 2.2.4.8 declares a plain enum, but Windows and Samba send it
+ * as 32 bits: in NDR32 a union arm is aligned to itself ([C706] 14.3.2),
+ * and their LsarQueryInformationPolicy reply has this arm 4-aligned after
+ * the 16-bit discriminant (a 16-bit DSROLE_OPERATION_STATE arm in dssetup
+ * follows its discriminant directly).
+ */
+typedef [v1_enum] enum {
 	PolicyServerRoleBackup = 2,
 	PolicyServerRolePrimary = 3
 } POLICY_LSA_SERVER_ROLE;

@@ -38,7 +38,11 @@ Supported:
     an arm is a pointer to a structure (LP*) or the structure itself; a
     plain enum switch_type gives a 16-bit discriminant in NDR32
     (dcerpc_union_enum16_coder), any other a 32-bit one in NDR32 and NDR64
-    (dcerpc_union_u32_coder); the arm is aligned to the largest arm
+    (dcerpc_union_u32_coder); in NDR64 the arm is aligned to the largest
+    arm ([MS-RPCE] 2.2.5.3.4.4), in NDR32 to its own ([C706] 14.3.2: "the
+    NDR alignment of a union is determined by the tag type and the arm
+    actually to be transmitted"); the largest arm still sets the alignment
+    of a structure the union is a member of
   - [out,switch_is(x)] PUNION *param: a pointer to a unique pointer to a
     union, e.g. LsarQueryInformationPolicy's PolicyInformation; the C field
     is a union pointer, NULL for a NULL referent
@@ -1895,7 +1899,11 @@ def union_arm_align(env: "TypeEnv", f: "Field") -> Tuple[int, int]:
 
 
 def union_arms_align(env: "TypeEnv", uname: str) -> Tuple[int, int]:
-    """The largest alignment of the arms of a union."""
+    """
+    The largest alignment of the arms of a union: what NDR64 aligns the
+    arm to ([MS-RPCE] 2.2.5.3.4.4). NDR32 aligns the arm to its own
+    alignment instead ([C706] 14.3.2).
+    """
     t = env.types[uname]
     return max_align(*[union_arm_align(env, f) for f in t.fields])
 
@@ -1903,7 +1911,10 @@ def union_arms_align(env: "TypeEnv", uname: str) -> Tuple[int, int]:
 def union_align(env: "TypeEnv", uname: str) -> Tuple[int, int]:
     """
     The discriminant, then the arm: a 32-bit discriminant, or a plain
-    enum one (dcerpc_union_enum16_coder) that is 16 bits in NDR32.
+    enum one (dcerpc_union_enum16_coder) that is 16 bits in NDR32. This is
+    the union's alignment as a member of a structure, the largest of the
+    discriminant and all the arms ([C706] 14.3.2), not the alignment of
+    the arm that is sent.
     """
     t = env.types[uname]
     if union_coder_fn(env, uname) == "dcerpc_union_enum16_coder":

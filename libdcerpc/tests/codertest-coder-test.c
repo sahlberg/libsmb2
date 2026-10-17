@@ -101,6 +101,75 @@ static const char embedded_head_yaml[] =
 
 #define BLOB(b) { b, sizeof(b) }
 
+/*
+ * UnionArm: ARM_LEVEL Level; [switch_is(Level)] ARM_UNION Union;
+ * uint16 After. ARM_UNION has a 2-aligned arm (SMALL_ARM { uint16 Short; })
+ * and an 8-aligned one (WIDE_ARM { hyper Big; }).
+ *
+ * NDR32: Level and the discriminant are 16 bits; the arm is aligned to its
+ * own alignment ([C706] 14.3.2), so Short follows the discriminant at
+ * offset 4, while Big is at offset 8. NDR64: Level and the discriminant
+ * are 32 bits; the union and its arm are 8-aligned (the largest arm,
+ * [MS-RPCE] 2.2.5.3.4.4), so the discriminant is at 8 and either arm at
+ * 16. Neither pads the union at the end.
+ *
+ * Small: Short = 0x1122, After = 0x3344.
+ * Wide: Big = 0x0102030405060708, After = 0x3344.
+ */
+static const uint8_t union_arm_small_ndr32_le[] = {
+        0x01, 0x00, 0x01, 0x00, 0x22, 0x11, 0x44, 0x33,
+};
+static const uint8_t union_arm_small_ndr32_be[] = {
+        0x00, 0x01, 0x00, 0x01, 0x11, 0x22, 0x33, 0x44,
+};
+static const uint8_t union_arm_small_ndr64_le[] = {
+        0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x22, 0x11, 0x44, 0x33,
+};
+static const uint8_t union_arm_small_ndr64_be[] = {
+        0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
+        0x11, 0x22, 0x33, 0x44,
+};
+static const uint8_t union_arm_wide_ndr32_le[] = {
+        0x02, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        0x44, 0x33,
+};
+static const uint8_t union_arm_wide_ndr32_be[] = {
+        0x00, 0x02, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00,
+        0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+        0x33, 0x44,
+};
+static const uint8_t union_arm_wide_ndr64_le[] = {
+        0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01,
+        0x44, 0x33,
+};
+static const uint8_t union_arm_wide_ndr64_be[] = {
+        0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00,
+        0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+        0x33, 0x44,
+};
+
+static const char union_arm_small_yaml[] =
+        "UnionArm: Request\n"
+        "  Level: ArmSmall\n"
+        "  Union:\n"
+        "    Small: \n"
+        "      Short: 4386\n"
+        "  After: 13124\n";
+static const char union_arm_wide_yaml[] =
+        "UnionArm: Request\n"
+        "  Level: ArmWide\n"
+        "  Union:\n"
+        "    Wide: \n"
+        "      Big: 72623859790382856\n"
+        "  After: 13124\n";
+
 static const struct test_case test_cases[] = {
         { "EmbeddedTail request: NDR64 trailing padding of an embedded structure",
           "EmbeddedTail",
@@ -117,6 +186,22 @@ static const struct test_case test_cases[] = {
           NULL, embedded_head_yaml,
           { BLOB(embedded_head_le), BLOB(embedded_head_be),
             BLOB(embedded_head_le), BLOB(embedded_head_be) },
+          0, NULL },
+        { "UnionArm request, 2-aligned arm: NDR32 aligns the arm to itself",
+          "UnionArm",
+          codertest_UnionArm_req_coder,
+          sizeof(struct codertest_UnionArm_req),
+          NULL, union_arm_small_yaml,
+          { BLOB(union_arm_small_ndr32_le), BLOB(union_arm_small_ndr32_be),
+            BLOB(union_arm_small_ndr64_le), BLOB(union_arm_small_ndr64_be) },
+          0, NULL },
+        { "UnionArm request, 8-aligned arm",
+          "UnionArm",
+          codertest_UnionArm_req_coder,
+          sizeof(struct codertest_UnionArm_req),
+          NULL, union_arm_wide_yaml,
+          { BLOB(union_arm_wide_ndr32_le), BLOB(union_arm_wide_ndr32_be),
+            BLOB(union_arm_wide_ndr64_le), BLOB(union_arm_wide_ndr64_be) },
           0, NULL },
 };
 

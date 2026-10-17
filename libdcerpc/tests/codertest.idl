@@ -44,6 +44,30 @@ typedef struct {
 	HEAD_INNER Inner;
 } HEAD_OUTER;
 
+/*
+ * A union whose arms differ in alignment. NDR32 aligns the selected arm
+ * to its own alignment ([C706] 14.3.2), so SMALL_ARM follows the 16-bit
+ * discriminant directly; NDR64 aligns the union, and the arm, to the
+ * largest arm (8) ([MS-RPCE] 2.2.5.3.4.4).
+ */
+typedef enum {
+	ArmSmall = 1,
+	ArmWide = 2
+} ARM_LEVEL;
+
+typedef struct {
+	uint16_t Short;
+} SMALL_ARM;
+
+typedef struct {
+	hyper Big;
+} WIDE_ARM;
+
+typedef [switch_type(ARM_LEVEL)] union {
+	[case(ArmSmall)] SMALL_ARM Small;
+	[case(ArmWide)] WIDE_ARM Wide;
+} ARM_UNION;
+
 	[opnum(0x00)]
 	WERROR EmbeddedTail(
 		[in,ref] TAIL_OUTER *Outer
@@ -52,5 +76,12 @@ typedef struct {
 	[opnum(0x01)]
 	WERROR EmbeddedHead(
 		[in,ref] HEAD_OUTER *Outer
+	);
+
+	[opnum(0x02)]
+	WERROR UnionArm(
+		[in] ARM_LEVEL Level,
+		[in,switch_is(Level)] ARM_UNION *Union,
+		[in] uint16_t After
 	);
 }
