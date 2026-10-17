@@ -84,6 +84,16 @@ endif()
     else()
       message(STATUS "libdcerpc disabled")
     endif()
+
+    # Only libdcerpc's coders and server runtime, without libsmb2: for a
+    # project that has libsmb2 as a submodule to get at libdcerpc, such as
+    # ksmbd-tools through meson's cmake module.
+    option(LIBDCERPC_ONLY "Build only libdcerpc, without the libsmb2 transport" OFF)
+    if(LIBDCERPC_ONLY)
+      set(WITH_LIBSMB2 OFF CACHE BOOL "" FORCE)
+      add_subdirectory(libdcerpc)
+      return()
+    endif()
   endif()
 
   # Kerberos. On Apple with GSS.framework, link only that framework (and
