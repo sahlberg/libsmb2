@@ -433,6 +433,8 @@ od_close_cb(struct smb2_context *smb2, int status,
         struct smb2dir *dir = private_data;
 
         if (status != SMB2_STATUS_SUCCESS) {
+                smb2_set_nterror(smb2, status, "Close failed with (0x%08x) %s",
+                                 status, nterror_to_str(status));
                 dir->cb(smb2, -nterror_to_errno(status),
                         NULL, dir->cb_data);
                 free_smb2dir(smb2, dir);
@@ -2355,6 +2357,8 @@ fstat_cb_1(struct smb2_context *smb2, int status,
         struct smb2_stat_64 *st = stat_data->st;
 
         if (status != SMB2_STATUS_SUCCESS) {
+                smb2_set_nterror(smb2, status, "Query info failed with "
+                                 "(0x%08x) %s", status, nterror_to_str(status));
                 stat_data->cb(smb2, -nterror_to_errno(status),
                        NULL, stat_data->cb_data);
                 free(stat_data);
@@ -2459,6 +2463,11 @@ getinfo_cb_3(struct smb2_context *smb2, int status,
 
         if (stat_data->status == SMB2_STATUS_SUCCESS) {
                 stat_data->status = status;
+        }
+        if (stat_data->status != SMB2_STATUS_SUCCESS) {
+                smb2_set_nterror(smb2, stat_data->status, "Query info failed with "
+                                 "(0x%08x) %s", stat_data->status,
+                                 nterror_to_str(stat_data->status));
         }
 
         stat_data->cb(smb2, -nterror_to_errno(stat_data->status),
@@ -2675,6 +2684,11 @@ trunc_cb_3(struct smb2_context *smb2, int status,
         if (trunc_data->status == SMB2_STATUS_SUCCESS) {
                 trunc_data->status = status;
         }
+        if (trunc_data->status != SMB2_STATUS_SUCCESS) {
+                smb2_set_nterror(smb2, trunc_data->status, "Truncate failed with "
+                                 "(0x%08x) %s", trunc_data->status,
+                                 nterror_to_str(trunc_data->status));
+        }
 
         trunc_data->cb(smb2, -nterror_to_errno(trunc_data->status),
                        NULL, trunc_data->cb_data);
@@ -2808,6 +2822,11 @@ new_name_cb_3(struct smb2_context *smb2, int status,
 
         if (new_name_data->status == SMB2_STATUS_SUCCESS) {
                 new_name_data->status = status;
+        }
+        if (new_name_data->status != SMB2_STATUS_SUCCESS) {
+                smb2_set_nterror(smb2, new_name_data->status, "Rename failed with "
+                                 "(0x%08x) %s", new_name_data->status,
+                                 nterror_to_str(new_name_data->status));
         }
 
         new_name_data->cb(smb2, -nterror_to_errno(new_name_data->status),
@@ -2970,6 +2989,10 @@ ftrunc_cb_1(struct smb2_context *smb2, int status,
 {
         struct create_cb_data *cb_data = private_data;
 
+        if (status != SMB2_STATUS_SUCCESS) {
+                smb2_set_nterror(smb2, status, "Truncate failed with "
+                                 "(0x%08x) %s", status, nterror_to_str(status));
+        }
         cb_data->cb(smb2, -nterror_to_errno(status),
                     NULL, cb_data->cb_data);
         free(cb_data);
@@ -3914,6 +3937,10 @@ echo_cb(struct smb2_context *smb2, int status,
 {
         struct smb2_echo_data *cb_data = private_data;
 
+        if (status != SMB2_STATUS_SUCCESS) {
+                smb2_set_nterror(smb2, status, "Echo failed with (0x%08x) %s",
+                                 status, nterror_to_str(status));
+        }
         cb_data->cb(smb2, -nterror_to_errno(status),
                     NULL, cb_data->cb_data);
         free(cb_data);
