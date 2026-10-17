@@ -1,0 +1,57 @@
+# The account domain is the first one EnumerateDomainsInSamServer
+# returns; LookupDomainInSamServer gives its SID for OpenDomain.
+Connect5: Request
+  ServerName: \\10.10.10.11
+  DesiredAccess: SAM_SERVER_CONNECT | SAM_SERVER_ENUMERATE_DOMAINS | SAM_SERVER_LOOKUP_DOMAIN
+  InVersion: 1
+  InRevisionInfo:
+    V1:
+      Revision: 3
+      SupportedFeatures: 0
+---
+EnumerateDomainsInSamServer: Request
+  ServerHandle:
+    ContextHandleAttributes: 0
+    UUID: @UUID:-1@
+  EnumerationContext: 0
+  PreferedMaximumLength: 65536
+---
+LookupDomainInSamServer: Request
+  ServerHandle:
+    ContextHandleAttributes: 0
+    UUID: @UUID:-2@
+  Name: @Name@
+---
+OpenDomain: Request
+  ServerHandle:
+    ContextHandleAttributes: 0
+    UUID: @UUID:-3@
+  DesiredAccess: DOMAIN_LOOKUP
+  DomainId: @DomainId@
+---
+OpenUser: Request
+  DomainHandle:
+    ContextHandleAttributes: 0
+    UUID: @UUID:-1@
+  DesiredAccess: USER_LIST_GROUPS
+  UserId: 500
+---
+GetGroupsForUser: Request
+  UserHandle:
+    ContextHandleAttributes: 0
+    UUID: @UUID:-1@
+---
+CloseHandle: Request
+  SamHandle:
+    ContextHandleAttributes: 0
+    UUID: @UUID:-2@
+---
+CloseHandle: Request
+  SamHandle:
+    ContextHandleAttributes: 0
+    UUID: @UUID:-4@
+---
+CloseHandle: Request
+  SamHandle:
+    ContextHandleAttributes: 0
+    UUID: @UUID:-8@

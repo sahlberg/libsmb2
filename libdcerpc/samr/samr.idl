@@ -2,8 +2,11 @@
 
 /*
  * Security Account Manager: the SamrConnect, SamrCloseHandle,
- * SamrLookupDomainInSamServer, SamrEnumerateDomainsInSamServer,
- * SamrConnect2 and SamrConnect5 calls from [MS-SAMR].
+ * SamrQuerySecurityObject, SamrLookupDomainInSamServer,
+ * SamrEnumerateDomainsInSamServer, SamrOpenDomain,
+ * SamrGetAliasMembership, SamrLookupNamesInDomain, SamrOpenUser,
+ * SamrQueryInformationUser, SamrGetGroupsForUser, SamrConnect2 and
+ * SamrConnect5 calls from [MS-SAMR].
  * Function names drop the "Samr" prefix.
  */
 [
@@ -37,6 +40,144 @@ typedef [bitmap32bit] bitmap {
 	MAXIMUM_ALLOWED              = 0x02000000
 } SAM_SERVER_ACCESS_MASK;
 
+/* Domain object access rights, [MS-SAMR] 2.2.1.4 */
+typedef [bitmap32bit] bitmap {
+	DOMAIN_READ_PASSWORD_PARAMETERS = 0x00000001,
+	DOMAIN_WRITE_PASSWORD_PARAMS    = 0x00000002,
+	DOMAIN_READ_OTHER_PARAMETERS    = 0x00000004,
+	DOMAIN_WRITE_OTHER_PARAMETERS   = 0x00000008,
+	DOMAIN_CREATE_USER              = 0x00000010,
+	DOMAIN_CREATE_GROUP             = 0x00000020,
+	DOMAIN_CREATE_ALIAS             = 0x00000040,
+	DOMAIN_GET_ALIAS_MEMBERSHIP     = 0x00000080,
+	DOMAIN_LIST_ACCOUNTS            = 0x00000100,
+	DOMAIN_LOOKUP                   = 0x00000200,
+	DOMAIN_ADMINISTER_SERVER        = 0x00000400,
+	DELETE                          = 0x00010000,
+	READ_CONTROL                    = 0x00020000,
+	WRITE_DAC                       = 0x00040000,
+	WRITE_OWNER                     = 0x00080000,
+	ACCESS_SYSTEM_SECURITY          = 0x01000000,
+	MAXIMUM_ALLOWED                 = 0x02000000
+} DOMAIN_ACCESS_MASK;
+
+/* User object access rights, [MS-SAMR] 2.2.1.7 */
+typedef [bitmap32bit] bitmap {
+	USER_READ_GENERAL            = 0x00000001,
+	USER_READ_PREFERENCES        = 0x00000002,
+	USER_WRITE_PREFERENCES       = 0x00000004,
+	USER_READ_LOGON              = 0x00000008,
+	USER_READ_ACCOUNT            = 0x00000010,
+	USER_WRITE_ACCOUNT           = 0x00000020,
+	USER_CHANGE_PASSWORD         = 0x00000040,
+	USER_FORCE_PASSWORD_CHANGE   = 0x00000080,
+	USER_LIST_GROUPS             = 0x00000100,
+	USER_READ_GROUP_INFORMATION  = 0x00000200,
+	USER_WRITE_GROUP_INFORMATION = 0x00000400,
+	DELETE                       = 0x00010000,
+	READ_CONTROL                 = 0x00020000,
+	WRITE_DAC                    = 0x00040000,
+	WRITE_OWNER                  = 0x00080000,
+	ACCESS_SYSTEM_SECURITY       = 0x01000000,
+	MAXIMUM_ALLOWED              = 0x02000000
+} USER_ACCESS_MASK;
+
+/* SECURITY_INFORMATION, [MS-DTYP] 2.4.7 */
+typedef [bitmap32bit] bitmap {
+	OWNER_SECURITY_INFORMATION = 0x00000001,
+	GROUP_SECURITY_INFORMATION = 0x00000002,
+	DACL_SECURITY_INFORMATION  = 0x00000004,
+	SACL_SECURITY_INFORMATION  = 0x00000008
+} SECURITY_INFORMATION;
+
+/* UserAccountControl, [MS-SAMR] 2.2.1.12 */
+typedef [bitmap32bit] bitmap {
+	USER_ACCOUNT_DISABLED                       = 0x00000001,
+	USER_HOME_DIRECTORY_REQUIRED                = 0x00000002,
+	USER_PASSWORD_NOT_REQUIRED                  = 0x00000004,
+	USER_TEMP_DUPLICATE_ACCOUNT                 = 0x00000008,
+	USER_NORMAL_ACCOUNT                         = 0x00000010,
+	USER_MNS_LOGON_ACCOUNT                      = 0x00000020,
+	USER_INTERDOMAIN_TRUST_ACCOUNT              = 0x00000040,
+	USER_WORKSTATION_TRUST_ACCOUNT              = 0x00000080,
+	USER_SERVER_TRUST_ACCOUNT                   = 0x00000100,
+	USER_DONT_EXPIRE_PASSWORD                   = 0x00000200,
+	USER_ACCOUNT_AUTO_LOCKED                    = 0x00000400,
+	USER_ENCRYPTED_TEXT_PASSWORD_ALLOWED        = 0x00000800,
+	USER_SMARTCARD_REQUIRED                     = 0x00001000,
+	USER_TRUSTED_FOR_DELEGATION                 = 0x00002000,
+	USER_NOT_DELEGATED                          = 0x00004000,
+	USER_USE_DES_KEY_ONLY                       = 0x00008000,
+	USER_DONT_REQUIRE_PREAUTH                   = 0x00010000,
+	USER_PASSWORD_EXPIRED                       = 0x00020000,
+	USER_TRUSTED_TO_AUTHENTICATE_FOR_DELEGATION = 0x00040000,
+	USER_NO_AUTH_DATA_REQUIRED                  = 0x00080000,
+	USER_PARTIAL_SECRETS_ACCOUNT                = 0x00100000,
+	USER_USE_AES_KEYS                           = 0x00200000
+} USER_ACCOUNT_CONTROL;
+
+/* WhichFields of SAMPR_USER_ALL_INFORMATION, [MS-SAMR] 2.2.1.8 */
+typedef [bitmap32bit] bitmap {
+	USER_ALL_USERNAME           = 0x00000001,
+	USER_ALL_FULLNAME           = 0x00000002,
+	USER_ALL_USERID             = 0x00000004,
+	USER_ALL_PRIMARYGROUPID     = 0x00000008,
+	USER_ALL_ADMINCOMMENT       = 0x00000010,
+	USER_ALL_USERCOMMENT        = 0x00000020,
+	USER_ALL_HOMEDIRECTORY      = 0x00000040,
+	USER_ALL_HOMEDIRECTORYDRIVE = 0x00000080,
+	USER_ALL_SCRIPTPATH         = 0x00000100,
+	USER_ALL_PROFILEPATH        = 0x00000200,
+	USER_ALL_WORKSTATIONS       = 0x00000400,
+	USER_ALL_LASTLOGON          = 0x00000800,
+	USER_ALL_LASTLOGOFF         = 0x00001000,
+	USER_ALL_LOGONHOURS         = 0x00002000,
+	USER_ALL_BADPASSWORDCOUNT   = 0x00004000,
+	USER_ALL_LOGONCOUNT         = 0x00008000,
+	USER_ALL_PASSWORDCANCHANGE  = 0x00010000,
+	USER_ALL_PASSWORDMUSTCHANGE = 0x00020000,
+	USER_ALL_PASSWORDLASTSET    = 0x00040000,
+	USER_ALL_ACCOUNTEXPIRES     = 0x00080000,
+	USER_ALL_USERACCOUNTCONTROL = 0x00100000,
+	USER_ALL_PARAMETERS         = 0x00200000,
+	USER_ALL_COUNTRYCODE        = 0x00400000,
+	USER_ALL_CODEPAGE           = 0x00800000,
+	USER_ALL_NTPASSWORDPRESENT  = 0x01000000,
+	USER_ALL_LMPASSWORDPRESENT  = 0x02000000,
+	USER_ALL_PRIVATEDATA        = 0x04000000,
+	USER_ALL_PASSWORDEXPIRED    = 0x08000000,
+	USER_ALL_SECURITYDESCRIPTOR = 0x10000000
+} USER_ALL_FIELDS;
+
+/* [MS-SAMR] 2.2.6.28: a plain (not [v1_enum]) enum, so 16 bits in NDR32 */
+typedef enum {
+	UserGeneralInformation = 1,
+	UserPreferencesInformation = 2,
+	UserLogonInformation = 3,
+	UserLogonHoursInformation = 4,
+	UserAccountInformation = 5,
+	UserNameInformation = 6,
+	UserAccountNameInformation = 7,
+	UserFullNameInformation = 8,
+	UserPrimaryGroupInformation = 9,
+	UserHomeInformation = 10,
+	UserScriptInformation = 11,
+	UserProfileInformation = 12,
+	UserAdminCommentInformation = 13,
+	UserWorkStationsInformation = 14,
+	UserControlInformation = 16,
+	UserExpiresInformation = 17,
+	UserInternal1Information = 18,
+	UserParametersInformation = 20,
+	UserAllInformation = 21,
+	UserInternal4Information = 23,
+	UserInternal5Information = 24,
+	UserInternal4InformationNew = 25,
+	UserInternal5InformationNew = 26,
+	UserInternal7Information = 31,
+	UserInternal8Information = 32
+} USER_INFORMATION_CLASS;
+
 /* [MS-SAMR] 2.2.3.9, 2.2.3.10 */
 typedef struct {
 	uint32_t RelativeId;
@@ -47,6 +188,262 @@ typedef struct {
 	uint32_t EntriesRead;
 	[size_is(EntriesRead)] PSAMPR_RID_ENUMERATION Buffer;
 } SAMPR_ENUMERATION_BUFFER, *PSAMPR_ENUMERATION_BUFFER;
+
+/*
+ * [MS-SAMR] 2.2.3.11. SecurityDescriptor is a self-relative
+ * SECURITY_DESCRIPTOR ([MS-DTYP] 2.4.6) of Length bytes.
+ */
+typedef struct {
+	[range(0,262144)] uint32_t Length;
+	[size_is(Length),blob(SECURITY_DESCRIPTOR)] uint8_t *SecurityDescriptor;
+} SAMPR_SR_SECURITY_DESCRIPTOR, *PSAMPR_SR_SECURITY_DESCRIPTOR;
+
+/*
+ * [MS-SAMR] 2.2.7.9. Sids is an array of SAMPR_SID_INFORMATION
+ * ({ PRPC_SID SidPointer; }, 2.2.7.8) there; an array of SID pointers is
+ * the same on the wire and is a plain list of SIDs in YAML/JSON.
+ */
+typedef struct {
+	[range(0,1024)] uint32_t Count;
+	[size_is(Count)] RPC_SID **Sids;
+} SAMPR_PSID_ARRAY, *PSAMPR_PSID_ARRAY;
+
+/* [MS-SAMR] 2.2.7.4 */
+typedef struct {
+	uint32_t Count;
+	[size_is(Count)] uint32_t *Element;
+} SAMPR_ULONG_ARRAY, *PSAMPR_ULONG_ARRAY;
+
+/* [MS-SAMR] 2.2.3.5, 2.2.3.6 */
+typedef struct {
+	uint32_t RelativeId;
+	uint32_t Attributes;
+} GROUP_MEMBERSHIP, *PGROUP_MEMBERSHIP;
+
+typedef struct {
+	uint32_t MembershipCount;
+	[size_is(MembershipCount)] PGROUP_MEMBERSHIP Groups;
+} SAMPR_GET_GROUPS_BUFFER, *PSAMPR_GET_GROUPS_BUFFER;
+
+/*
+ * OLD_LARGE_INTEGER, [MS-SAMR] 2.2.2.2: a 64-bit time as two 32-bit
+ * halves, so 4-byte aligned, unlike a hyper.
+ */
+typedef struct {
+	uint32_t LowPart;
+	int32_t HighPart;
+} OLD_LARGE_INTEGER;
+
+/*
+ * [MS-SAMR] 2.2.7.5. LogonHours is a bitmap of UnitsPerWeek bits, sent
+ * as [size_is(1260), length_is((UnitsPerWeek+7)/8)]. The C field is a
+ * struct dcerpc_varying_bytes whose len the caller sets when encoding;
+ * the max_count sent is always 1260.
+ */
+typedef struct {
+	uint16_t UnitsPerWeek;
+	[size_is(1260), length_is((UnitsPerWeek+7)/8)] uint8_t *LogonHours;
+} SAMPR_LOGON_HOURS;
+
+/*
+ * The SAMPR_USER_*_INFORMATION structures of SamrQueryInformationUser,
+ * [MS-SAMR] 2.2.6 and 2.2.7.
+ */
+typedef struct {
+	RPC_UNICODE_STRING UserName;
+	RPC_UNICODE_STRING FullName;
+	uint32_t PrimaryGroupId;
+	RPC_UNICODE_STRING AdminComment;
+	RPC_UNICODE_STRING UserComment;
+} SAMPR_USER_GENERAL_INFORMATION;
+
+typedef struct {
+	RPC_UNICODE_STRING UserComment;
+	RPC_UNICODE_STRING Reserved1;
+	uint16_t CountryCode;
+	uint16_t CodePage;
+} SAMPR_USER_PREFERENCES_INFORMATION;
+
+typedef struct {
+	RPC_UNICODE_STRING UserName;
+	RPC_UNICODE_STRING FullName;
+	uint32_t UserId;
+	uint32_t PrimaryGroupId;
+	RPC_UNICODE_STRING HomeDirectory;
+	RPC_UNICODE_STRING HomeDirectoryDrive;
+	RPC_UNICODE_STRING ScriptPath;
+	RPC_UNICODE_STRING ProfilePath;
+	RPC_UNICODE_STRING WorkStations;
+	OLD_LARGE_INTEGER LastLogon;
+	OLD_LARGE_INTEGER LastLogoff;
+	OLD_LARGE_INTEGER PasswordLastSet;
+	OLD_LARGE_INTEGER PasswordCanChange;
+	OLD_LARGE_INTEGER PasswordMustChange;
+	SAMPR_LOGON_HOURS LogonHours;
+	uint16_t BadPasswordCount;
+	uint16_t LogonCount;
+	USER_ACCOUNT_CONTROL UserAccountControl;
+} SAMPR_USER_LOGON_INFORMATION;
+
+typedef struct {
+	SAMPR_LOGON_HOURS LogonHours;
+} SAMPR_USER_LOGON_HOURS_INFORMATION;
+
+typedef struct {
+	RPC_UNICODE_STRING UserName;
+	RPC_UNICODE_STRING FullName;
+	uint32_t UserId;
+	uint32_t PrimaryGroupId;
+	RPC_UNICODE_STRING HomeDirectory;
+	RPC_UNICODE_STRING HomeDirectoryDrive;
+	RPC_UNICODE_STRING ScriptPath;
+	RPC_UNICODE_STRING ProfilePath;
+	RPC_UNICODE_STRING AdminComment;
+	RPC_UNICODE_STRING WorkStations;
+	OLD_LARGE_INTEGER LastLogon;
+	OLD_LARGE_INTEGER LastLogoff;
+	SAMPR_LOGON_HOURS LogonHours;
+	uint16_t BadPasswordCount;
+	uint16_t LogonCount;
+	OLD_LARGE_INTEGER PasswordLastSet;
+	OLD_LARGE_INTEGER AccountExpires;
+	USER_ACCOUNT_CONTROL UserAccountControl;
+} SAMPR_USER_ACCOUNT_INFORMATION;
+
+typedef struct {
+	RPC_UNICODE_STRING UserName;
+	RPC_UNICODE_STRING FullName;
+} SAMPR_USER_NAME_INFORMATION;
+
+typedef struct {
+	RPC_UNICODE_STRING UserName;
+} SAMPR_USER_A_NAME_INFORMATION;
+
+typedef struct {
+	RPC_UNICODE_STRING FullName;
+} SAMPR_USER_F_NAME_INFORMATION;
+
+typedef struct {
+	uint32_t PrimaryGroupId;
+} USER_PRIMARY_GROUP_INFORMATION;
+
+typedef struct {
+	RPC_UNICODE_STRING HomeDirectory;
+	RPC_UNICODE_STRING HomeDirectoryDrive;
+} SAMPR_USER_HOME_INFORMATION;
+
+typedef struct {
+	RPC_UNICODE_STRING ScriptPath;
+} SAMPR_USER_SCRIPT_INFORMATION;
+
+typedef struct {
+	RPC_UNICODE_STRING ProfilePath;
+} SAMPR_USER_PROFILE_INFORMATION;
+
+typedef struct {
+	RPC_UNICODE_STRING AdminComment;
+} SAMPR_USER_ADMIN_COMMENT_INFORMATION;
+
+typedef struct {
+	RPC_UNICODE_STRING WorkStations;
+} SAMPR_USER_WORKSTATIONS_INFORMATION;
+
+typedef struct {
+	USER_ACCOUNT_CONTROL UserAccountControl;
+} USER_CONTROL_INFORMATION;
+
+typedef struct {
+	OLD_LARGE_INTEGER AccountExpires;
+} USER_EXPIRES_INFORMATION;
+
+typedef struct {
+	RPC_UNICODE_STRING Parameters;
+} SAMPR_USER_PARAMETERS_INFORMATION;
+
+/*
+ * [MS-SAMR] 2.2.7.6. LmOwfPassword and NtOwfPassword are RPC_SHORT_BLOBs
+ * (2.2.7.24), which have the same wire form as an RPC_UNICODE_STRING. The
+ * server only fills them in for trusted local callers; over the network
+ * they are empty.
+ */
+typedef struct {
+	OLD_LARGE_INTEGER LastLogon;
+	OLD_LARGE_INTEGER LastLogoff;
+	OLD_LARGE_INTEGER PasswordLastSet;
+	OLD_LARGE_INTEGER AccountExpires;
+	OLD_LARGE_INTEGER PasswordCanChange;
+	OLD_LARGE_INTEGER PasswordMustChange;
+	RPC_UNICODE_STRING UserName;
+	RPC_UNICODE_STRING FullName;
+	RPC_UNICODE_STRING HomeDirectory;
+	RPC_UNICODE_STRING HomeDirectoryDrive;
+	RPC_UNICODE_STRING ScriptPath;
+	RPC_UNICODE_STRING ProfilePath;
+	RPC_UNICODE_STRING AdminComment;
+	RPC_UNICODE_STRING WorkStations;
+	RPC_UNICODE_STRING UserComment;
+	RPC_UNICODE_STRING Parameters;
+	RPC_UNICODE_STRING LmOwfPassword;
+	RPC_UNICODE_STRING NtOwfPassword;
+	RPC_UNICODE_STRING PrivateData;
+	SAMPR_SR_SECURITY_DESCRIPTOR SecurityDescriptor;
+	uint32_t UserId;
+	uint32_t PrimaryGroupId;
+	USER_ACCOUNT_CONTROL UserAccountControl;
+	USER_ALL_FIELDS WhichFields;
+	SAMPR_LOGON_HOURS LogonHours;
+	uint16_t BadPasswordCount;
+	uint16_t LogonCount;
+	uint16_t CountryCode;
+	uint16_t CodePage;
+	uint8_t LmPasswordPresent;
+	uint8_t NtPasswordPresent;
+	uint8_t PasswordExpired;
+	uint8_t PrivateDataSensitive;
+} SAMPR_USER_ALL_INFORMATION;
+
+/*
+ * [MS-SAMR] 2.2.7.29. The internal and password-setting classes (18 and
+ * 23 and above) are not here: they are set-only or for trusted callers.
+ */
+typedef [switch_type(USER_INFORMATION_CLASS)] union {
+	[case(UserGeneralInformation)]
+		SAMPR_USER_GENERAL_INFORMATION General;
+	[case(UserPreferencesInformation)]
+		SAMPR_USER_PREFERENCES_INFORMATION Preferences;
+	[case(UserLogonInformation)]
+		SAMPR_USER_LOGON_INFORMATION Logon;
+	[case(UserLogonHoursInformation)]
+		SAMPR_USER_LOGON_HOURS_INFORMATION LogonHours;
+	[case(UserAccountInformation)]
+		SAMPR_USER_ACCOUNT_INFORMATION Account;
+	[case(UserNameInformation)]
+		SAMPR_USER_NAME_INFORMATION Name;
+	[case(UserAccountNameInformation)]
+		SAMPR_USER_A_NAME_INFORMATION AccountName;
+	[case(UserFullNameInformation)]
+		SAMPR_USER_F_NAME_INFORMATION FullName;
+	[case(UserPrimaryGroupInformation)]
+		USER_PRIMARY_GROUP_INFORMATION PrimaryGroup;
+	[case(UserHomeInformation)]
+		SAMPR_USER_HOME_INFORMATION Home;
+	[case(UserScriptInformation)]
+		SAMPR_USER_SCRIPT_INFORMATION Script;
+	[case(UserProfileInformation)]
+		SAMPR_USER_PROFILE_INFORMATION Profile;
+	[case(UserAdminCommentInformation)]
+		SAMPR_USER_ADMIN_COMMENT_INFORMATION AdminComment;
+	[case(UserWorkStationsInformation)]
+		SAMPR_USER_WORKSTATIONS_INFORMATION WorkStations;
+	[case(UserControlInformation)]
+		USER_CONTROL_INFORMATION Control;
+	[case(UserExpiresInformation)]
+		USER_EXPIRES_INFORMATION Expires;
+	[case(UserParametersInformation)]
+		SAMPR_USER_PARAMETERS_INFORMATION Parameters;
+	[case(UserAllInformation)]
+		SAMPR_USER_ALL_INFORMATION All;
+} SAMPR_USER_INFO_BUFFER, *PSAMPR_USER_INFO_BUFFER;
 
 /* [MS-SAMR] 2.2.7.15, 2.2.7.16 */
 typedef struct {
@@ -79,6 +476,16 @@ typedef [switch_type(uint32_t)] union {
 	);
 
 /*
+ * Function: 0x03  (SamrQuerySecurityObject)
+ */
+	[opnum(0x03)]
+	NTSTATUS QuerySecurityObject(
+		[in] SAMPR_HANDLE ObjectHandle,
+		[in] SECURITY_INFORMATION SecurityInformation,
+		[out] PSAMPR_SR_SECURITY_DESCRIPTOR *SecurityDescriptor
+	);
+
+/*
  * Function: 0x05  (SamrLookupDomainInSamServer)
  */
 	[opnum(0x05)]
@@ -98,6 +505,71 @@ typedef [switch_type(uint32_t)] union {
 		[out] PSAMPR_ENUMERATION_BUFFER *Buffer,
 		[in] uint32_t PreferedMaximumLength,
 		[out,ref] uint32_t *CountReturned
+	);
+
+/*
+ * Function: 0x07  (SamrOpenDomain)
+ */
+	[opnum(0x07)]
+	NTSTATUS OpenDomain(
+		[in] SAMPR_HANDLE ServerHandle,
+		[in] DOMAIN_ACCESS_MASK DesiredAccess,
+		[in] RPC_SID *DomainId,
+		[out] SAMPR_HANDLE *DomainHandle
+	);
+
+/*
+ * Function: 0x10  (SamrGetAliasMembership)
+ */
+	[opnum(0x10)]
+	NTSTATUS GetAliasMembership(
+		[in] SAMPR_HANDLE DomainHandle,
+		[in] PSAMPR_PSID_ARRAY SidArray,
+		[out] PSAMPR_ULONG_ARRAY Membership
+	);
+
+/*
+ * Function: 0x11  (SamrLookupNamesInDomain)
+ * Names is a conformant-varying array that is always sized for 1000
+ * names, of which Count are sent.
+ */
+	[opnum(0x11)]
+	NTSTATUS LookupNamesInDomain(
+		[in] SAMPR_HANDLE DomainHandle,
+		[in,range(0,1000)] uint32_t Count,
+		[in,size_is(1000),length_is(Count)] RPC_UNICODE_STRING *Names,
+		[out] PSAMPR_ULONG_ARRAY RelativeIds,
+		[out] PSAMPR_ULONG_ARRAY Use
+	);
+
+/*
+ * Function: 0x22  (SamrOpenUser)
+ */
+	[opnum(0x22)]
+	NTSTATUS OpenUser(
+		[in] SAMPR_HANDLE DomainHandle,
+		[in] USER_ACCESS_MASK DesiredAccess,
+		[in] uint32_t UserId,
+		[out] SAMPR_HANDLE *UserHandle
+	);
+
+/*
+ * Function: 0x24  (SamrQueryInformationUser)
+ */
+	[opnum(0x24)]
+	NTSTATUS QueryInformationUser(
+		[in] SAMPR_HANDLE UserHandle,
+		[in] USER_INFORMATION_CLASS UserInformationClass,
+		[out,switch_is(UserInformationClass)] PSAMPR_USER_INFO_BUFFER *Buffer
+	);
+
+/*
+ * Function: 0x27  (SamrGetGroupsForUser)
+ */
+	[opnum(0x27)]
+	NTSTATUS GetGroupsForUser(
+		[in] SAMPR_HANDLE UserHandle,
+		[out] PSAMPR_GET_GROUPS_BUFFER *Groups
 	);
 
 /*

@@ -1,0 +1,35 @@
+Connect5: Request
+  ServerName: \\10.10.10.11
+  DesiredAccess: SAM_SERVER_CONNECT | SAM_SERVER_ENUMERATE_DOMAINS | SAM_SERVER_LOOKUP_DOMAIN
+  InVersion: 1
+  InRevisionInfo:
+    V1:
+      Revision: 3
+      SupportedFeatures: 0
+---
+OpenDomain: Request
+  ServerHandle:
+    ContextHandleAttributes: 0
+    UUID: @UUID:-1@
+  DesiredAccess: DOMAIN_LOOKUP
+  DomainId: S-1-5-32
+---
+LookupNamesInDomain: Request
+  DomainHandle:
+    ContextHandleAttributes: 0
+    UUID: @UUID:-1@
+  Count: 3
+  Names:
+    - Administrators
+    - Users
+    - AliasDoesNotExist
+---
+CloseHandle: Request
+  SamHandle:
+    ContextHandleAttributes: 0
+    UUID: @UUID:-2@
+---
+CloseHandle: Request
+  SamHandle:
+    ContextHandleAttributes: 0
+    UUID: @UUID:-4@
