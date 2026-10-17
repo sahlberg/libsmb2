@@ -268,21 +268,26 @@ void dcerpcd_external_shutdown(void);
 /* Include wire framing for external RPC proxy (also used by workers). */
 #include "dcerpcd_proto.h"
 
-/* ept_* handlers (named-pipe endpoints only). Replies may allocate; free with *_free_rep. */
-int dcerpcd_epm_Lookup(const struct epm_Lookup_req *req,
+/*
+ * ept_* handlers (named-pipe endpoints only). What a reply points to is
+ * allocated on pdu, the request's, and freed with it.
+ */
+int dcerpcd_epm_Lookup(struct dcerpc_pdu *pdu,
+                       const struct epm_Lookup_req *req,
                        struct epm_Lookup_rep *rep);
-void dcerpcd_epm_Lookup_free_rep(struct epm_Lookup_rep *rep);
-int dcerpcd_epm_Map(const struct epm_Map_req *req,
+int dcerpcd_epm_Map(struct dcerpc_pdu *pdu,
+                    const struct epm_Map_req *req,
                     struct epm_Map_rep *rep);
-void dcerpcd_epm_Map_free_rep(struct epm_Map_rep *rep);
 int dcerpcd_epm_LookupHandleFree(const struct epm_LookupHandleFree_req *req,
                                  struct epm_LookupHandleFree_rep *rep);
 
 /*
  * Named-pipe server (pipe.c): CREATE/CLOSE of known pipes, and
- * FSCTL_PIPE_TRANSCEIVE/READ/WRITE carrying DCERPC BIND + REQUEST
- * (fragmented in both directions), dispatched by the
- * service attached to the open pipe (builtin epm today; EXTERNAL later).
+ * FSCTL_PIPE_TRANSCEIVE/READ/WRITE carrying DCE/RPC to libdcerpc's server
+ * runtime (<dcerpc/server.h>), one endpoint per open. The builtin
+ * endpoint mapper takes NDR32 and NDR64 in either byte order; EXTERNAL
+ * services take NDR32 little-endian, which is what the worker protocol
+ * carries.
  */
 void dcerpcd_pipe_conn_cleanup(struct dcerpcd_conn *conn);
 

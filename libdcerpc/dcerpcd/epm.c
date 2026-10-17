@@ -213,7 +213,8 @@ write_floor_string(uint8_t *p, uint8_t proto, const char *s)
  *   floors: iface UUID, NDR UUID, NCACN, SMB/pipe name, NetBIOS host
  */
 static int
-build_np_tower(const dcerpc_uuid_t *iface, uint16_t maj, uint16_t min,
+build_np_tower(struct dcerpc_pdu *pdu,
+               const dcerpc_uuid_t *iface, uint16_t maj, uint16_t min,
                const char *pipe, const char *host, struct epm_twr_t *out)
 {
         size_t pipe_len = pipe ? strlen(pipe) + 1 : 1;
@@ -226,7 +227,7 @@ build_np_tower(const dcerpc_uuid_t *iface, uint16_t maj, uint16_t min,
                 return -1;
         }
         total = 2 + 25 + 25 + 7 + (5 + pipe_len) + (5 + host_len);
-        buf = calloc(1, total);
+        buf = dcerpc_alloc_data(pdu, total);
         if (buf == NULL) {
                 return -1;
         }
@@ -248,28 +249,17 @@ build_np_tower(const dcerpc_uuid_t *iface, uint16_t maj, uint16_t min,
         return 0;
 }
 
-/* A tower allocated by new_np_tower() */
-static void
-free_tower(struct epm_twr_t *twr)
-{
-        if (twr == NULL) {
-                return;
-        }
-        free(twr->TowerOctetString);
-        free(twr);
-}
-
+/* A tower for ep, allocated on pdu */
 static struct epm_twr_t *
-new_np_tower(const struct dcerpcd_ep *ep)
+new_np_tower(struct dcerpc_pdu *pdu, const struct dcerpcd_ep *ep)
 {
-        struct epm_twr_t *twr = calloc(1, sizeof(*twr));
+        struct epm_twr_t *twr = dcerpc_alloc_data(pdu, sizeof(*twr));
 
         if (twr == NULL) {
                 return NULL;
         }
-        if (build_np_tower(&ep->iface, ep->vers_major, ep->vers_minor,
+        if (build_np_tower(pdu, &ep->iface, ep->vers_major, ep->vers_minor,
                            ep->pipe, ep->host, twr)) {
-                free(twr);
                 return NULL;
         }
         return twr;
@@ -460,33 +450,23 @@ ep_matches_lookup(const struct dcerpcd_ep *ep, const struct epm_Lookup_req *req)
 }
 
 static int
-fill_epm_entry(const struct dcerpcd_ep *ep, struct epm_entry_t *out)
+fill_epm_entry(struct dcerpc_pdu *pdu, const struct dcerpcd_ep *ep,
+               struct epm_entry_t *out)
 {
+        const char *annotation = ep->annotation ? ep->annotation : "";
+
         memset(out, 0, sizeof(*out));
         out->Object = ep->object;
-        out->Annotation = ep->annotation ? strdup(ep->annotation) : strdup("");
+        out->Annotation = dcerpc_alloc_data(pdu, strlen(annotation) + 1);
         if (out->Annotation == NULL) {
                 return -1;
         }
-        out->Tower = new_np_tower(ep);
+        strcpy(out->Annotation, annotation);
+        out->Tower = new_np_tower(pdu, ep);
         if (out->Tower == NULL) {
-                free(out->Annotation);
-                out->Annotation = NULL;
                 return -1;
         }
         return 0;
-}
-
-static void
-free_epm_entry(struct epm_entry_t *e)
-{
-        if (e == NULL) {
-                return;
-        }
-        free(e->Annotation);
-        e->Annotation = NULL;
-        free_tower(e->Tower);
-        e->Tower = NULL;
 }
 
 /* ------------------------------------------------------------------ */
@@ -616,7 +596,7 @@ dcerpcd_epm_count(void)
 /* ------------------------------------------------------------------ */
 
 int
-dcerpcd_epm_Lookup(const struct epm_Lookup_req *req,
+dcerpcd_epm_Lookup(struct dcerpc_pdu *pdu, const struct epm_Lookup_req *req,
                    struct epm_Lookup_rep *rep)
 {
         struct dcerpcd_ep *ep;
@@ -653,7 +633,7 @@ dcerpcd_epm_Lookup(const struct epm_Lookup_req *req,
                 return 0;
         }
 
-        out = calloc(max_ents, sizeof(*out));
+        out = dcerpc_alloc_data(pdu, (size_t)max_ents * sizeof(*out));
         if (out == NULL) {
                 rep->status = EPM_STATUS_NO_MEMORY;
                 pthread_mutex_unlock(&epm_lock);
@@ -670,13 +650,7 @@ dcerpcd_epm_Lookup(const struct epm_Lookup_req *req,
                         nmatch++;
                         continue;
                 }
-                if (fill_epm_entry(ep, &out[filled]) != 0) {
-                        uint32_t j;
-
-                        for (j = 0; j < filled; j++) {
-                                free_epm_entry(&out[j]);
-                        }
-                        free(out);
+                if (fill_epm_entry(pdu, ep, &out[filled]) != 0) {
                         rep->status = EPM_STATUS_NO_MEMORY;
                         pthread_mutex_unlock(&epm_lock);
                         return 0;
@@ -709,24 +683,9 @@ dcerpcd_epm_Lookup(const struct epm_Lookup_req *req,
         return 0;
 }
 
-void
-dcerpcd_epm_Lookup_free_rep(struct epm_Lookup_rep *rep)
-{
-        uint32_t i;
-
-        if (rep == NULL || rep->Entries == NULL) {
-                return;
-        }
-        for (i = 0; i < rep->NumEnts; i++) {
-                free_epm_entry(&rep->Entries[i]);
-        }
-        free(rep->Entries);
-        rep->Entries = NULL;
-        rep->NumEnts = 0;
-}
-
 int
-dcerpcd_epm_Map(const struct epm_Map_req *req, struct epm_Map_rep *rep)
+dcerpcd_epm_Map(struct dcerpc_pdu *pdu, const struct epm_Map_req *req,
+                struct epm_Map_rep *rep)
 {
         dcerpc_uuid_t iface;
         uint16_t maj = 0, min = 0;
@@ -781,7 +740,7 @@ dcerpcd_epm_Map(const struct epm_Map_req *req, struct epm_Map_rep *rep)
                 return 0;
         }
 
-        towers = calloc(max_towers, sizeof(*towers));
+        towers = dcerpc_alloc_data(pdu, (size_t)max_towers * sizeof(*towers));
         if (towers == NULL) {
                 rep->status = EPM_STATUS_NO_MEMORY;
                 pthread_mutex_unlock(&epm_lock);
@@ -805,14 +764,8 @@ dcerpcd_epm_Map(const struct epm_Map_req *req, struct epm_Map_rep *rep)
                         nmatch++;
                         continue;
                 }
-                towers[filled] = new_np_tower(ep);
+                towers[filled] = new_np_tower(pdu, ep);
                 if (towers[filled] == NULL) {
-                        uint32_t j;
-
-                        for (j = 0; j < filled; j++) {
-                                free_tower(towers[j]);
-                        }
-                        free(towers);
                         rep->status = EPM_STATUS_NO_MEMORY;
                         pthread_mutex_unlock(&epm_lock);
                         return 0;
@@ -845,22 +798,6 @@ dcerpcd_epm_Map(const struct epm_Map_req *req, struct epm_Map_rep *rep)
         rep->status = EPM_STATUS_OK;
         pthread_mutex_unlock(&epm_lock);
         return 0;
-}
-
-void
-dcerpcd_epm_Map_free_rep(struct epm_Map_rep *rep)
-{
-        uint32_t i;
-
-        if (rep == NULL || rep->Towers == NULL) {
-                return;
-        }
-        for (i = 0; i < rep->NumTowers; i++) {
-                free_tower(rep->Towers[i]);
-        }
-        free(rep->Towers);
-        rep->Towers = NULL;
-        rep->NumTowers = 0;
 }
 
 int
