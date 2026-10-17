@@ -2429,8 +2429,13 @@ smb2_fstat_async(struct smb2_context *smb2, struct smb2fh *fh,
                 return -ENOMEM;
         }
 
+        /*
+         * Unrelated, with the real FileId: there is no CREATE in this
+         * chain and ksmbd only resolves the related-operation FileId
+         * from a CREATE, failing this with STATUS_FILE_CLOSED. It also
+         * keeps a failed attribute tag query from failing this one.
+         */
         req.file_info_class = SMB2_FILE_ALL_INFORMATION;
-        memcpy(req.file_id, compound_file_id, SMB2_FD_SIZE);
 
         next_pdu = smb2_cmd_query_info_async(smb2, &req, fstat_cb_1, stat_data);
         if (next_pdu == NULL) {
@@ -2439,7 +2444,7 @@ smb2_fstat_async(struct smb2_context *smb2, struct smb2fh *fh,
                 free(stat_data);
                 return -ENOMEM;
         }
-        smb2_add_compound_pdu(smb2, pdu, next_pdu);
+        smb2_add_unrelated_compound_pdu(smb2, pdu, next_pdu);
 
         smb2_queue_pdu(smb2, pdu);
 
