@@ -93,6 +93,7 @@ struct dcerpc_server {
         struct server_iface *ifaces;
         struct dcerpc_context *dce;     /* for the coders */
         int npipes;
+        uint16_t max_xmit;              /* 0, or the largest we send */
 };
 
 struct pres_context {
@@ -262,6 +263,17 @@ dcerpc_server_destroy(struct dcerpc_server *srv)
         }
         free(srv->pipe_name);
         free(srv);
+}
+
+int
+dcerpc_server_set_max_xmit_frag(struct dcerpc_server *srv, uint16_t max)
+{
+        max &= ~(uint16_t)7;
+        if (max < COMMON_HDR + RESPONSE_HDR + 8) {
+                return -1;
+        }
+        srv->max_xmit = max;
+        return 0;
 }
 
 const char *
@@ -654,6 +666,9 @@ process_bind(struct dcerpc_server_pipe *pipe, const uint8_t *pdu, size_t len,
         }
         if (max_recv == 0 || max_recv > MAX_FRAG) {
                 max_recv = MAX_FRAG;
+        }
+        if (pipe->srv->max_xmit && max_xmit > pipe->srv->max_xmit) {
+                max_xmit = pipe->srv->max_xmit;
         }
         assoc = get32(pdu + COMMON_HDR + 4, le);
         n_ctx = pdu[COMMON_HDR + 8];

@@ -382,6 +382,19 @@ test_bind(void)
         CHECK(out[4] == 0x10);
         check_results(out, len, 5, result, reason, ts);
 
+        printf("BIND: max_xmit capped by dcerpc_server_set_max_xmit_frag\n");
+        CHECK(dcerpc_server_set_max_xmit_frag(srv, 16) == -1);
+        CHECK(dcerpc_server_set_max_xmit_frag(srv, 1003) == 0);
+        build_bind(&b, 11, 1024, ctx, 1);
+        CHECK(dcerpc_server_pipe_write(pipe, b.data, b.len) == 0);
+        len = read_pdu(pipe, out, sizeof(out));
+        CHECK(out[2] == 12);
+        CHECK(le16(out + 16) == 1000);
+        build_bind(&b, 11, 512, ctx, 1);
+        CHECK(dcerpc_server_pipe_write(pipe, b.data, b.len) == 0);
+        len = read_pdu(pipe, out, sizeof(out));
+        CHECK(le16(out + 16) == 512);
+
         printf("ALTER_CONTEXT: lsa added on the same pipe, no sec_addr\n");
         b.le = 1;
         build_bind(&b, 14, 1024, &(struct ctx_def){ 7, &lsa_interface,

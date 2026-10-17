@@ -85,6 +85,13 @@ typedef int (*dcerpc_server_dispatch_fn)(struct dcerpc_server_call *call,
 struct dcerpc_server *dcerpc_server_create(const char *pipe_name);
 /* All pipes of srv must have been destroyed. */
 void dcerpc_server_destroy(struct dcerpc_server *srv);
+/*
+ * Never send fragments larger than max bytes (rounded down to a multiple
+ * of 8), whatever the client's BIND allows: for a transport that carries
+ * at most that much per read. Returns -1 if max is too small for a
+ * RESPONSE with any stub.
+ */
+int dcerpc_server_set_max_xmit_frag(struct dcerpc_server *srv, uint16_t max);
 const char *dcerpc_server_get_pipe_name(struct dcerpc_server *srv);
 
 /*
