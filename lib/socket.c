@@ -193,6 +193,13 @@ smb2_which_events(struct smb2_context *smb2)
                 return smb2_quic_events(smb2);
         }
 #endif
+#ifdef HAVE_LIBRDMACM
+        /* The epoll fd never polls writable. Output is flushed when we
+         * queue it and whenever completions are serviced. */
+        if (smb2->rdma && SMB2_VALID_SOCKET(smb2->fd)) {
+                return POLLIN;
+        }
+#endif
 
         if (smb2->outqueue != NULL &&
             smb2_get_credit_charge(smb2, smb2->outqueue) <= smb2->credits) {
@@ -298,6 +305,11 @@ smb2_write_to_socket(struct smb2_context *smb2)
 #ifdef HAVE_LIBQUIC
                 if (smb2->quic) {
                         count = smb2_quic_writev(smb2, tmpiov, niov);
+                } else
+#endif
+#ifdef HAVE_LIBRDMACM
+                if (smb2->rdma) {
+                        count = smb2_rdma_writev(smb2, tmpiov, niov);
                 } else
 #endif
                 count = writev(smb2->fd, tmpiov, niov);
@@ -1086,7 +1098,14 @@ read_more_data:
 static ssize_t smb2_readv_from_socket(struct smb2_context *smb2,
                                       const struct iovec *iov, int iovcnt)
 {
-        ssize_t rc = readv(smb2->fd, (struct iovec*) iov, iovcnt);
+        ssize_t rc;
+
+#ifdef HAVE_LIBRDMACM
+        if (smb2->rdma) {
+                return smb2_rdma_readv(smb2, iov, iovcnt);
+        }
+#endif
+        rc = readv(smb2->fd, (struct iovec*) iov, iovcnt);
         return rc;
 }
 
@@ -1226,6 +1245,47 @@ smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
                                                  smb2->connect_data);
                                 smb2->connect_cb = NULL;
                         }
+                }
+                goto out;
+        }
+#endif
+
+#ifdef HAVE_LIBRDMACM
+        if (smb2->rdma) {
+                int was_connected = smb2_rdma_connected(smb2);
+
+                ret = smb2_rdma_service(smb2);
+                if (ret < 0) {
+                        if (smb2->connect_cb) {
+                                smb2->connect_cb(smb2, EIO, NULL,
+                                                 smb2->connect_data);
+                                smb2->connect_cb = NULL;
+                        }
+                        goto out;
+                }
+                if (ret == 1) {
+                        ret = 0;
+                        if (smb2->connect_cb) {
+                                smb2->connect_cb(smb2, 0, NULL,
+                                                 smb2->connect_data);
+                                smb2->connect_cb = NULL;
+                        }
+                }
+                if (!was_connected || !smb2_rdma_connected(smb2)) {
+                        goto out;
+                }
+                if (smb2_read_from_socket(smb2) != 0) {
+                        ret = -1;
+                        goto out;
+                }
+                if (smb2->outqueue != NULL &&
+                    smb2_write_to_socket(smb2) != 0) {
+                        ret = -1;
+                        goto out;
+                }
+                /* grant the credits for what we just consumed */
+                if (smb2_rdma_flush_output(smb2) < 0) {
+                        ret = -1;
                 }
                 goto out;
         }
@@ -1498,6 +1558,20 @@ smb2_connect_async_next_addr(struct smb2_context *smb2, const struct addrinfo *b
         const struct addrinfo *ai;
         for (ai = base; ai != NULL; ai = ai->ai_next) {
                 int fd;
+#ifdef HAVE_LIBRDMACM
+                if (smb2->rdma) {
+                        /* rdma_cm resolves and connects on its own
+                         * channel, connect_cb is called once the SMBD
+                         * negotiate has completed. */
+                        err = smb2_rdma_connect(smb2, ai);
+                        if (err == 0) {
+                                smb2_set_error(smb2, "");
+                                smb2_close_connecting_fds(smb2);
+                                return 0;
+                        }
+                        continue;
+                }
+#endif
                 err = connect_async_ai(smb2, ai, &fd);
 
                 if (err == 0) {

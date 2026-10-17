@@ -200,6 +200,7 @@ smb2_close_context(struct smb2_context *smb2)
                 smb2->fd = SMB2_INVALID_SOCKET;
         }
         smb2_quic_reset(smb2);
+        smb2_rdma_reset(smb2);
 
         smb2->message_id = 0;
         smb2->session_id = 0;
@@ -1032,6 +1033,11 @@ negotiate_cb(struct smb2_context *smb2, int status,
         smb2->max_transact_size = rep->max_transact_size;
         smb2->max_read_size     = rep->max_read_size;
         smb2->max_write_size    = rep->max_write_size;
+#ifdef HAVE_LIBRDMACM
+        if (smb2->rdma) {
+                smb2_rdma_cap_io_sizes(smb2);
+        }
+#endif
         smb2->dialect           = rep->dialect_revision;
         smb2->cypher            = rep->cypher;
 
@@ -3832,6 +3838,7 @@ disconnect_cb_2(struct smb2_context *smb2, int status,
         close(smb2->fd);
         smb2->fd = SMB2_INVALID_SOCKET;
         smb2_quic_reset(smb2);
+        smb2_rdma_reset(smb2);
 }
 
 static void

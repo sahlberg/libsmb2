@@ -82,6 +82,11 @@ Arguments supported by libsmb2 are :
   quic          : Use SMB over QUIC instead of TCP. Default port is 443.
                   Linux only, needs the quic kernel module and libquic.
                   The server certificate is not verified.
+  rdma          : Use SMB Direct (SMB2 over RDMA) instead of TCP.
+                  Default port is 445 (InfiniBand/RoCE), use :5445 for
+                  iWARP. Linux only, needs librdmacm and an RDMA device.
+                  RDMA read/write channels are not used, I/O is limited
+                  to just under 1MB per read/write.
   timeout       : Timeout in seconds when to cancel a command.
                   Default it 0: No timeout.
   ndr32         : DCERPC: only offer NDR32 transfer syntax. (default)

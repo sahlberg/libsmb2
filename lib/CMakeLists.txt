@@ -21,6 +21,7 @@ set(SMB2_CORE_SOURCES
     ntlmssp.c
     pdu.c
     quic.c
+    smbdirect.c
     sha1.c
     sha224-256.c
     sha384-512.c

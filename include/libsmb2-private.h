@@ -178,6 +178,12 @@ struct smb2_context {
         int quic_stream_open;
         struct smb2_quic_handshake *quic_hs;
 #endif
+#ifdef HAVE_LIBRDMACM
+        /* "rdma" URL argument: SMB2 over SMB Direct [MS-SMBD], see
+         * smbdirect.c. smb2->fd is an epoll fd for the RDMA channels. */
+        int rdma;
+        struct smb2_rdma *rdma_conn;
+#endif
 
         enum smb2_sec sec;
 
@@ -455,6 +461,23 @@ ssize_t smb2_quic_writev(struct smb2_context *smb2,
 void smb2_quic_reset(struct smb2_context *smb2);
 #else
 #define smb2_quic_reset(smb2) do { } while (0)
+#endif
+
+#ifdef HAVE_LIBRDMACM
+struct iovec;
+struct addrinfo;
+int smb2_rdma_connect(struct smb2_context *smb2, const struct addrinfo *ai);
+int smb2_rdma_connected(struct smb2_context *smb2);
+int smb2_rdma_service(struct smb2_context *smb2);
+int smb2_rdma_flush_output(struct smb2_context *smb2);
+ssize_t smb2_rdma_writev(struct smb2_context *smb2,
+                         const struct iovec *iov, int iovcnt);
+ssize_t smb2_rdma_readv(struct smb2_context *smb2,
+                        const struct iovec *iov, int iovcnt);
+void smb2_rdma_cap_io_sizes(struct smb2_context *smb2);
+void smb2_rdma_reset(struct smb2_context *smb2);
+#else
+#define smb2_rdma_reset(smb2) do { } while (0)
 #endif
 
 void *smb2_alloc_init(struct smb2_context *smb2, size_t size);

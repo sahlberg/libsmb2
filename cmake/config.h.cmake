@@ -24,6 +24,9 @@
 /* Whether we have libquic for SMB2 over QUIC */
 #cmakedefine HAVE_LIBQUIC 1
 
+/* Whether we have librdmacm for SMB Direct */
+#cmakedefine HAVE_LIBRDMACM 1
+
 /* Whether we use gssapi_krb5 or not */
 #cmakedefine HAVE_LIBKRB5 "@HAVE_LIBKRB5@"
 

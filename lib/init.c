@@ -192,6 +192,14 @@ smb2_parse_args(struct smb2_context *smb2, char *args)
                         smb2_set_error(smb2, "quic: built without libquic");
                         return -1;
 #endif
+                } else if (!strcmp(args, "rdma")) {
+#ifdef HAVE_LIBRDMACM
+                        smb2->rdma = 1;
+#else
+                        smb2_set_error(smb2, "rdma: built without "
+                                       "librdmacm");
+                        return -1;
+#endif
                 } else {
                         smb2_set_error(smb2, "Unknown argument: %s", args);
                         return -1;
@@ -452,6 +460,7 @@ void smb2_destroy_context(struct smb2_context *smb2)
                 smb2->fd = SMB2_INVALID_SOCKET;
         }
         smb2_quic_reset(smb2);
+        smb2_rdma_reset(smb2);
 
         /*
          * Complete every PDU that is still queued with SMB2_STATUS_SHUTDOWN.

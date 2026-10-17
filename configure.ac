@@ -174,6 +174,37 @@ AS_IF([test "x$MAYBE_LIBQUIC" != "x"], [
     AC_MSG_NOTICE([Build WITHOUT SMB2 over QUIC support])
 ])
 AC_SUBST([MAYBE_LIBQUIC])
+
+dnl  SMB2 over SMB Direct (the "rdma" URL argument) uses librdmacm and
+dnl  libibverbs from rdma-core, Linux only. Built in when they are found.
+AC_ARG_WITH([librdmacm],
+            [AS_HELP_STRING([--without-librdmacm],
+                            [Do not build SMB Direct (RDMA) support (Linux only)])])
+MAYBE_LIBRDMACM=""
+case $host in
+  *linux*)
+    AS_IF([test "x$with_librdmacm" != "xno"], [
+        AC_CHECK_HEADERS([rdma/rdma_cma.h infiniband/verbs.h], [], [have_rdma_headers=no])
+        AS_IF([test "x$have_rdma_headers" != "xno"], [
+            AC_CHECK_LIB([rdmacm], [rdma_create_id], [
+                AC_CHECK_LIB([ibverbs], [ibv_alloc_pd], [
+                    AC_DEFINE([HAVE_LIBRDMACM], [1], [Whether we have librdmacm for SMB Direct])
+                    MAYBE_LIBRDMACM="-lrdmacm -libverbs"
+                ])
+            ])
+        ])
+    ])
+    ;;
+esac
+AS_IF([test "x$with_librdmacm" = "xyes" && test "x$MAYBE_LIBRDMACM" = "x"], [
+    AC_MSG_ERROR([librdmacm/libibverbs not found, or not on Linux])
+])
+AS_IF([test "x$MAYBE_LIBRDMACM" != "x"], [
+    AC_MSG_NOTICE([Build with SMB Direct support])
+], [
+    AC_MSG_NOTICE([Build WITHOUT SMB Direct support])
+])
+AC_SUBST([MAYBE_LIBRDMACM])
 AC_SUBST([LIBSOCKET])
 
 AC_CHECK_LIB([dl], [dlsym], [], [AC_MSG_ERROR([dlsym not found, libdl is required])])
