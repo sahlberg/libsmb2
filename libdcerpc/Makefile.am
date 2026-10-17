@@ -29,6 +29,7 @@ libdcerpc_la_SOURCES = \
 	dcerpc.c \
 	dcerpc-dtyp.c \
 	dcerpc-epm.c \
+	dcerpc-server.c \
 	dcerpc-unicode.c \
 	dcerpc-private.h
 

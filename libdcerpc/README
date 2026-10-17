@@ -47,10 +47,14 @@ libdcerpc can also be built without any dependency on libsmb2:
 or
   cmake -DWITH_LIBSMB2=OFF <srcdir>
 
-This builds only the coders. Use it in a server that has its own SMB2
-transport and passes the request stubs to the coders, with a context
-from dcerpc_create_context(NULL). Binding and calls are not available
-and fail with -EINVAL. The utilities and the examples are not built.
+This builds only the coders and the server runtime. Use it in a server
+that has its own SMB2 transport: <dcerpc/server.h> takes the bytes
+clients write to a named pipe, does BIND and fragmentation, dispatches
+the requests to stub implementations through the coders and gives back
+the bytes to return to their reads. The coders can also be used directly,
+with a context from dcerpc_create_context(NULL). Binding and calls, the
+client side, are not available and fail with -EINVAL. The utilities and
+the examples are not built.
 
 From the libsmb2 tree, libdcerpc is built together with libsmb2 against
 the uninstalled library (disable with ./configure --disable-libdcerpc or

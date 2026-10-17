@@ -63,6 +63,7 @@ development libraries for libdcerpc
 %defattr(-,root,root)
 %{_includedir}/dcerpc/dcerpc.h
 %{_includedir}/dcerpc/dcerpc-dtyp.h
+%{_includedir}/dcerpc/server.h
 %{_includedir}/dcerpc/epm.h
 %{_includedir}/dcerpc/lsa.h
 %{_includedir}/dcerpc/samr.h

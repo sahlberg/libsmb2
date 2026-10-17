@@ -156,6 +156,9 @@ extern p_syntax_id_t lsa_interface;
 extern p_syntax_id_t srvsvc_interface;
 extern p_syntax_id_t wkssvc_interface;
 extern p_syntax_id_t samr_interface;
+/* The NDR32 and NDR64 transfer syntaxes */
+extern p_syntax_id_t ndr32_syntax;
+extern p_syntax_id_t ndr64_syntax;
 extern p_syntax_id_t dssetup_interface;
 extern p_syntax_id_t winreg_interface;
 extern p_syntax_id_t epm_interface;
@@ -413,6 +416,12 @@ void dcerpc_set_unicode_max_length(struct dcerpc_pdu *pdu, uint16_t max_length);
 uint16_t dcerpc_get_unicode_max_length(struct dcerpc_pdu *pdu);
 void dcerpc_set_request(struct dcerpc_pdu *pdu, void *request);
 void *dcerpc_get_request(struct dcerpc_pdu *pdu);
+/*
+ * In a server stub (<dcerpc/server.h>): the call whose request pdu holds,
+ * NULL for any other pdu.
+ */
+struct dcerpc_server_call;
+struct dcerpc_server_call *dcerpc_pdu_server_call(struct dcerpc_pdu *pdu);
 
 int ndr_ptr_coder(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                   struct dcerpc_iovec *iov, void *ptr,

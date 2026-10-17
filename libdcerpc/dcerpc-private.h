@@ -33,6 +33,10 @@ int dcerpc_get_cr(struct dcerpc_pdu *pdu);
 
 int dcerpc_align_3264(struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov);
 
+struct dcerpc_server_call;
+void dcerpc_pdu_set_server_call(struct dcerpc_pdu *pdu,
+                                struct dcerpc_server_call *call);
+
 /* RPC_SID coder for all non-NDR encodings */
 int text_sid_coder(char *name, struct dcerpc_context *dce,
                    struct dcerpc_pdu *pdu,

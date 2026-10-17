@@ -565,6 +565,8 @@ struct dcerpc_pdu {
         int ndr64; /* NDR64, else NDR32 */
         struct dcerpc_coders *coders;
         void *request;
+        /* the server call a request PDU was decoded for (server.h) */
+        struct dcerpc_server_call *server_call;
 
         /* All items are parsed twice, first to handle the conformance
          * fields and a second time to handle the data itself.
@@ -3650,6 +3652,17 @@ uint16_t dcerpc_get_unicode_max_length(struct dcerpc_pdu *pdu)
 void dcerpc_set_request(struct dcerpc_pdu *pdu, void *request)
 {
         pdu->request = request;
+}
+
+void dcerpc_pdu_set_server_call(struct dcerpc_pdu *pdu,
+                                struct dcerpc_server_call *call)
+{
+        pdu->server_call = call;
+}
+
+struct dcerpc_server_call *dcerpc_pdu_server_call(struct dcerpc_pdu *pdu)
+{
+        return pdu->server_call;
 }
 
 void *dcerpc_get_request(struct dcerpc_pdu *pdu)
