@@ -32,7 +32,7 @@ This API is described in libsmb2-raw.h
 DCE/RPC (libdcerpc)
 ===================
 Full DCE/RPC support (named-pipe transport over SMB2, NDR/YAML/JSON coders,
-srvsvc/lsa/samr/winreg/wkssvc/epm) is provided by a separate library, **libdcerpc**,
+srvsvc/lsa/samr/dssetup/winreg/wkssvc/epm) is provided by a separate library, **libdcerpc**,
 which depends on libsmb2 for transport. libdcerpc lives in the libdcerpc/
 directory of this repository but is a separate project with its own build,
 version, soname, packaging and libdcerpc-<version> release tags.
@@ -122,9 +122,9 @@ will be available.
 
 DCE/RPC interfaces
 ==================
-On Linux, libdcerpc (srvsvc, lsarpc, samr, winreg, wkssvc, epm) is built from
-the libdcerpc/ subdirectory together with libsmb2 by default. Disable with
-./configure --disable-libdcerpc or cmake -DENABLE_LIBDCERPC=OFF.
+On Linux, libdcerpc (srvsvc, lsarpc, samr, dssetup, winreg, wkssvc, epm) is
+built from the libdcerpc/ subdirectory together with libsmb2 by default.
+Disable with ./configure --disable-libdcerpc or cmake -DENABLE_LIBDCERPC=OFF.
 
 Other platforms only have share enumeration in libsmb2.
 

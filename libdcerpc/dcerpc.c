@@ -86,6 +86,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <dcerpc/lsa.h>
 #include <dcerpc/wkssvc.h>
 #include <dcerpc/samr.h>
+#include <dcerpc/dssetup.h>
 #include <dcerpc/winreg.h>
 #include <dcerpc/epm.h>
 #include "dcerpc-private.h"
@@ -929,6 +930,14 @@ dcerpc_register_coder(const char *name,
                       p_syntax_id_t *interface,
                       struct dcerpc_procedure *procs)
 {
+        return dcerpc_register_service(name, NULL, interface, procs);
+}
+
+int
+dcerpc_register_service(const char *name, const char *pipe,
+                        p_syntax_id_t *interface,
+                        struct dcerpc_procedure *procs)
+{
         struct dcerpc_service *service;
 
         for (service = dcerpc_services; service; service = service->next) {
@@ -946,6 +955,14 @@ dcerpc_register_coder(const char *name,
         if (service->name == NULL) {
                 free(service);
                 return -ENOMEM;
+        }
+        if (pipe) {
+                service->pipe = strdup(pipe);
+                if (service->pipe == NULL) {
+                        free(discard_const(service->name));
+                        free(service);
+                        return -ENOMEM;
+                }
         }
 
         service->next = dcerpc_services;
@@ -991,6 +1008,8 @@ dcerpc_create_context(struct smb2_context *smb2)
         dcerpc_register_coder("lsarpc", &lsa_interface, lsa_procs);
         dcerpc_register_coder("wkssvc", &wkssvc_interface, wkssvc_procs);
         dcerpc_register_coder("samr", &samr_interface, samr_procs);
+        dcerpc_register_service("dssetup", "lsarpc", &dssetup_interface,
+                                dssetup_procs);
         dcerpc_register_coder("winreg", &winreg_interface, winreg_procs);
         dcerpc_register_coder("epmapper", &epm_interface, epm_procs);
 

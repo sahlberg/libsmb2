@@ -1,0 +1,98 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
+
+/*
+ * Directory Services Setup Remote Protocol: DsRolerGetPrimaryDomainInformation
+ * from [MS-DSSP], the only dssetup call that is used on the wire (opnums
+ * 1-10 are not). The interface is reached through the \pipe\lsarpc
+ * endpoint, next to lsa. Function names drop the "Dsr" prefix.
+ */
+[
+  uuid(3919286a-b10c-11d0-9ba8-00c04fd92ef5),
+  version(0.0),
+  helpstring("Directory Services Setup"),
+  endpoint("ncacn_np:[\\pipe\\lsarpc]"),
+  pointer_default(unique)
+]
+interface dssetup
+{
+
+/* [MS-DSSP] 2.2.1: plain enums, so 16 bits in NDR32 */
+typedef enum {
+	DsRole_RoleStandaloneWorkstation = 0,
+	DsRole_RoleMemberWorkstation = 1,
+	DsRole_RoleStandaloneServer = 2,
+	DsRole_RoleMemberServer = 3,
+	DsRole_RoleBackupDomainController = 4,
+	DsRole_RolePrimaryDomainController = 5
+} DSROLE_MACHINE_ROLE;
+
+typedef enum {
+	DsRoleServerUnknown = 0,
+	DsRoleServerPrimary = 1,
+	DsRoleServerBackup = 2
+} DSROLE_SERVER_STATE;
+
+typedef enum {
+	DsRolePrimaryDomainInfoBasic = 1,
+	DsRoleUpgradeStatus = 2,
+	DsRoleOperationState = 3
+} DSROLE_PRIMARY_DOMAIN_INFO_LEVEL;
+
+typedef enum {
+	DsRoleOperationIdle = 0,
+	DsRoleOperationActive = 1,
+	DsRoleOperationNeedReboot = 2
+} DSROLE_OPERATION_STATE;
+
+/* Flags of DSROLER_PRIMARY_DOMAIN_INFO_BASIC, [MS-DSSP] 2.2.5 */
+typedef [bitmap32bit] bitmap {
+	DSROLE_PRIMARY_DS_RUNNING         = 0x00000001,
+	DSROLE_PRIMARY_DS_MIXED_MODE      = 0x00000002,
+	DSROLE_UPGRADE_IN_PROGRESS        = 0x00000004,
+	DSROLE_PRIMARY_DOMAIN_GUID_PRESENT = 0x01000000
+} DSROLE_PRIMARY_DOMAIN_FLAGS;
+
+/* [MS-DSSP] 2.2.5 */
+typedef struct {
+	DSROLE_MACHINE_ROLE MachineRole;
+	DSROLE_PRIMARY_DOMAIN_FLAGS Flags;
+	[string,charset(UTF16)] uint16_t *DomainNameFlat;
+	[string,charset(UTF16)] uint16_t *DomainNameDns;
+	[string,charset(UTF16)] uint16_t *DomainForestName;
+	uuid_t DomainGuid;
+} DSROLER_PRIMARY_DOMAIN_INFO_BASIC;
+
+/*
+ * [MS-DSSP] 2.2.6. OperationState is an unsigned long holding
+ * DSROLE_UPGRADE_IN_PROGRESS or 0.
+ */
+typedef struct {
+	uint32_t OperationState;
+	DSROLE_SERVER_STATE PreviousServerState;
+} DSROLE_UPGRADE_STATUS_INFO;
+
+/* [MS-DSSP] 2.2.4 */
+typedef struct {
+	DSROLE_OPERATION_STATE OperationState;
+} DSROLE_OPERATION_STATE_INFO;
+
+/* [MS-DSSP] 2.2.2 */
+typedef [switch_type(DSROLE_PRIMARY_DOMAIN_INFO_LEVEL)] union {
+	[case(DsRolePrimaryDomainInfoBasic)]
+		DSROLER_PRIMARY_DOMAIN_INFO_BASIC DomainInfoBasic;
+	[case(DsRoleUpgradeStatus)]
+		DSROLE_UPGRADE_STATUS_INFO UpgradStatusInfo;
+	[case(DsRoleOperationState)]
+		DSROLE_OPERATION_STATE_INFO OperationStateInfo;
+} DSROLER_PRIMARY_DOMAIN_INFORMATION, *PDSROLER_PRIMARY_DOMAIN_INFORMATION;
+
+/*
+ * Function: 0x00  (DsRolerGetPrimaryDomainInformation)
+ */
+	[opnum(0x00)]
+	WERROR GetPrimaryDomainInformation(
+		[in] DSROLE_PRIMARY_DOMAIN_INFO_LEVEL InfoLevel,
+		[out,switch_is(InfoLevel)] PDSROLER_PRIMARY_DOMAIN_INFORMATION *DomainInfo
+	);
+
+}

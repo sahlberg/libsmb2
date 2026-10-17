@@ -1,0 +1,8 @@
+GetPrimaryDomainInformation: Request
+  InfoLevel: DsRolePrimaryDomainInfoBasic
+---
+GetPrimaryDomainInformation: Request
+  InfoLevel: DsRoleUpgradeStatus
+---
+GetPrimaryDomainInformation: Request
+  InfoLevel: DsRoleOperationState

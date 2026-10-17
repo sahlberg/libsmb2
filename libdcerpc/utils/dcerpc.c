@@ -762,7 +762,9 @@ int main(int argc, char *argv[])
         }
         
         service_name = url->path;
-        if (dcerpc_connect_context_async(dce, url->path, service->interface,
+        if (dcerpc_connect_context_async(dce,
+                       service->pipe ? service->pipe : url->path,
+                       service->interface,
                        co_cb, NULL) != 0) {
 		printf("Failed to connect dce context. %s\n",
                        smb2_get_error(smb2));

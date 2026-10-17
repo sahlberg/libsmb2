@@ -156,6 +156,7 @@ extern p_syntax_id_t lsa_interface;
 extern p_syntax_id_t srvsvc_interface;
 extern p_syntax_id_t wkssvc_interface;
 extern p_syntax_id_t samr_interface;
+extern p_syntax_id_t dssetup_interface;
 extern p_syntax_id_t winreg_interface;
 extern p_syntax_id_t epm_interface;
         
@@ -191,6 +192,8 @@ struct dcerpc_stub {
 struct dcerpc_service {
         struct dcerpc_service *next;
         const char *name;
+        /* named pipe it is reached through; NULL when it is name */
+        const char *pipe;
         p_syntax_id_t *interface;
         struct dcerpc_procedure *procs;
 };
@@ -205,6 +208,13 @@ extern struct dcerpc_service *dcerpc_services;
 int dcerpc_register_coder(const char *name,
                           p_syntax_id_t *interface,
                           struct dcerpc_procedure *procs);
+/*
+ * Like dcerpc_register_coder() for a service that is not reached through
+ * a pipe of its own name, e.g. dssetup through lsarpc. pipe may be NULL.
+ */
+int dcerpc_register_service(const char *name, const char *pipe,
+                            p_syntax_id_t *interface,
+                            struct dcerpc_procedure *procs);
 
 /*
  * Create a DCE/RPC context on an existing smb2 context.

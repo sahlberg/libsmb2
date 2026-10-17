@@ -108,6 +108,12 @@ Local Security Authority (SID and name lookups, policy information).
 .B samr
 Security Account Manager (domains, users and their groups and aliases).
 .TP
+.B dssetup
+Directory Services Setup (the server's role and domain), reached through
+the
+.B lsarpc
+pipe.
+.TP
 .B epmapper
 Endpoint mapper.
 .PP
@@ -282,7 +288,7 @@ EOF
 The
 .I libdcerpc/dcerpc\-examples
 directory of the libsmb2 source has example requests for the srvsvc,
-wkssvc, winreg, lsarpc, samr and epmapper procedures.
+wkssvc, winreg, lsarpc, samr, dssetup and epmapper procedures.
 The files are named
 .IB interface \- procedure .yaml\fR,
 for example
