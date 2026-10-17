@@ -137,8 +137,6 @@ dcerpcd_auth_destruction(struct smb2_server *srvr _U_,
                        conn->username ? conn->username : "(none)",
                        conn->auth_kind == DCERPCD_AUTH_USER ? "user" :
                        conn->auth_kind == DCERPCD_AUTH_GUEST ? "guest" : "none");
-                /* Drop any proxy RPCs still waiting on external workers. */
-                dcerpcd_external_cancel_by_smb2(smb2);
                 conn_free(conn);
                 smb2_set_opaque(smb2, NULL);
         }

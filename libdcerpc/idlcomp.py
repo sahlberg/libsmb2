@@ -1644,8 +1644,8 @@ def gen_server_decls(env: TypeEnv) -> str:
     #
     # Stub / implementation table: defined in the stubs .c (not the coder)
     # so clients can link coders without pulling server implementations.
-    # Uses struct dcerpc_stub from dcerpc.h. Look up with
-    # dcerpc_find_stub(table, opnum) (see serviced.c / callers).
+    # Uses struct dcerpc_stub from dcerpc.h; served with
+    # dcerpc_server_add_interface() from <dcerpc/server.h>.
     #
     lines.append(
         f"/*\n"
@@ -1656,8 +1656,9 @@ def gen_server_decls(env: TypeEnv) -> str:
         f" *   req  — decoded request (size proc->req_size)\n"
         f" *   rep  — zeroed response to fill (size proc->rep_size)\n"
         f" *   pdu  — use dcerpc_alloc_data(pdu, …) for nested allocations\n"
-        f" * Return 0 if rep is populated; non-zero on failure.\n"
-        f" * Look up entries with dcerpc_find_stub({env.prefix}_stubs, opnum).\n"
+        f" * Return 0 to send rep, a DCERPC_FAULT_* status to send that\n"
+        f" * instead, or -1 for DCERPC_FAULT_OTHER.\n"
+        f" * Serve with dcerpc_server_add_interface() (<dcerpc/server.h>).\n"
         f" */\n"
         f"extern struct dcerpc_stub {env.prefix}_stubs[];"
     )
@@ -3104,7 +3105,7 @@ def gen_stubs_table(env: TypeEnv) -> str:
     lines.append(f" *")
     lines.append(f" * Lives in the stubs .c (with the *_stub functions), not the")
     lines.append(f" * generated coder, so clients can link coders alone.")
-    lines.append(f" * Look up with dcerpc_find_stub({env.prefix}_stubs, opnum).")
+    lines.append(f" * Served with dcerpc_server_add_interface() (<dcerpc/server.h>).")
     lines.append(f" *********************************************************************/")
     lines.append("")
     lines.append(f"struct dcerpc_stub {env.prefix}_stubs[] = {{")

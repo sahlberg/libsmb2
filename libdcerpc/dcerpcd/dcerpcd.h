@@ -88,25 +88,20 @@ enum dcerpcd_auth_kind {
  *
  * BUILTIN_* handlers run in-process. EXTERNAL services are separate
  * processes that connect to dcerpcd over the control Unix domain socket
- * and register themselves (see external.c).
+ * and register the pipe they serve (see external.c); dcerpcd forwards the
+ * pipe's bytes and the DCE/RPC is theirs.
  */
 enum dcerpcd_service_kind {
         DCERPCD_SVC_NONE = 0,
         DCERPCD_SVC_BUILTIN_EPM,  /* in-process endpoint mapper */
-        DCERPCD_SVC_EXTERNAL,     /* worker process via control UDS */
+        DCERPCD_SVC_EXTERNAL,     /* service process via control UDS */
 };
 
 struct dcerpcd_service {
         const char *pipe_name;    /* base name: "epmapper", "srvsvc", ... */
         enum dcerpcd_service_kind kind;
         const char *annotation;
-        const char *uds_path;     /* reserved; NULL for now */
         int conn_fd;              /* EXTERNAL: live control-socket fd, else -1 */
-        /* EXTERNAL: interface UUID/version from registration (for BIND) */
-        dcerpc_uuid_t iface;
-        uint16_t vers_major;
-        uint16_t vers_minor;
-        int has_iface;
 };
 
 struct dcerpcd_pipe;
@@ -125,57 +120,48 @@ const struct dcerpcd_service *dcerpcd_service_lookup(const char *pipe_name);
 /*
  * Dynamic EXTERNAL service registry (pipe.c).
  * pipe_name is the base name ("srvsvc"), not the full \\pipe\\ path.
- * conn_fd is the control-socket connection used for later proxying.
+ * conn_fd is the service's control-socket connection. Returns -1 if the
+ * pipe is a builtin or already registered.
  */
 int dcerpcd_service_add_external(const char *pipe_name,
                                  const char *annotation,
-                                 int conn_fd,
-                                 const dcerpc_uuid_t *iface,
-                                 uint16_t vers_major,
-                                 uint16_t vers_minor);
+                                 int conn_fd);
 void dcerpcd_service_remove_by_fd(int conn_fd);
 
 /*
- * Asynchronous external RPC proxy (see dcerpcd_proto.h).
+ * Pipes of EXTERNAL services (external.c, framing in dcerpcd_proto.h).
  *
- * Send a request on the worker UDS and return immediately. When the
- * matching (session_id, msgid) reply arrives (or on cancel/timeout),
- * cb is invoked:
- *   err == 0  → look at status (DCERPCD_RPC_STATUS_*); ndr is malloc'd
- *               on OK (caller frees) or NULL
- *   err != 0  → transport error / timeout / cancel; ndr is NULL
+ * dcerpcd_external_open() tells the service on conn_fd that a client
+ * opened its pipe and returns the pipe's id. cb is called with each pipe
+ * message the service sends for it: data is malloc'd and the callee's.
+ * cb with data NULL means the pipe is broken (the service closed it or
+ * went away); it is not called again and the id is gone.
  *
- * In-flight commands are tracked per worker, keyed by session_id+msgid.
- * Worker FDs are driven from the main smb2_serve_port select loop via
- * dcerpcd_external_fdset / dcerpcd_external_service.
+ * dcerpcd_external_write() forwards what the client wrote and
+ * dcerpcd_external_close() the client's close; cb is not called after it.
+ * Messages are queued, so neither blocks on the service.
  */
-typedef void (*dcerpcd_external_done_cb)(void *cb_data,
-                                         int err,
-                                         int32_t status,
-                                         uint8_t *ndr,
-                                         uint32_t ndr_len);
+typedef void (*dcerpcd_external_pipe_cb)(void *cb_data,
+                                         uint8_t *data,
+                                         uint32_t len);
 
-int dcerpcd_external_call_async(int conn_fd,
-                                struct smb2_context *smb2,
-                                uint32_t session_id,
-                                int32_t uid,
-                                uint32_t opnum,
-                                const uint8_t *ndr,
-                                uint32_t ndr_len,
-                                dcerpcd_external_done_cb cb,
-                                void *cb_data,
-                                uint32_t *msgid_out);
-
-/* Drop all in-flight proxy calls for an SMB client that is going away. */
-void dcerpcd_external_cancel_by_smb2(struct smb2_context *smb2);
+int dcerpcd_external_open(int conn_fd,
+                          uint32_t session_id,
+                          int32_t uid,
+                          const char *user,
+                          dcerpcd_external_pipe_cb cb,
+                          void *cb_data,
+                          uint32_t *pipe_id);
+int dcerpcd_external_write(uint32_t pipe_id, const uint8_t *buf, size_t len);
+void dcerpcd_external_close(uint32_t pipe_id);
 
 /*
  * Integrate external control sockets into smb2_serve_port's select loop:
- *   dcerpcd_external_fdset()   — listen + all worker clients
- *   dcerpcd_external_service() — accept, registration, reply demux, timeouts
+ *   dcerpcd_external_fdset()   — listen + all services
+ *   dcerpcd_external_service() — accept, registration, pipe messages
  */
-void dcerpcd_external_fdset(fd_set *rfds, int *maxfd);
-void dcerpcd_external_service(fd_set *rfds);
+void dcerpcd_external_fdset(fd_set *rfds, fd_set *wfds, int *maxfd);
+void dcerpcd_external_service(fd_set *rfds, fd_set *wfds);
 
 /* smb2_server.extra_* wrappers (server arg unused). */
 void dcerpcd_external_serve_fdset(struct smb2_server *server,
@@ -258,14 +244,15 @@ uint32_t dcerpcd_epm_count(void);
  *
  * Listens on a Unix domain socket (default: /var/run/dcerpcd/dcerpcd.sock).
  * Services connect, send a YAML registration, and stay connected so that
- * dcerpcd can proxy RPC later. On disconnect, EPM + service entries go away.
+ * dcerpcd can forward their pipe's traffic. On disconnect, EPM + service
+ * entries go away and the open pipes break.
  */
 #define DCERPCD_DEFAULT_SVC_SOCK "/var/run/dcerpcd/dcerpcd.sock"
 
 int dcerpcd_external_init(const char *sock_path);
 void dcerpcd_external_shutdown(void);
 
-/* Include wire framing for external RPC proxy (also used by workers). */
+/* Wire framing for the pipes of external services (also used by them). */
 #include "dcerpcd_proto.h"
 
 /*
@@ -284,10 +271,8 @@ int dcerpcd_epm_LookupHandleFree(const struct epm_LookupHandleFree_req *req,
 /*
  * Named-pipe server (pipe.c): CREATE/CLOSE of known pipes, and
  * FSCTL_PIPE_TRANSCEIVE/READ/WRITE carrying DCE/RPC to libdcerpc's server
- * runtime (<dcerpc/server.h>), one endpoint per open. The builtin
- * endpoint mapper takes NDR32 and NDR64 in either byte order; EXTERNAL
- * services take NDR32 little-endian, which is what the worker protocol
- * carries.
+ * runtime (<dcerpc/server.h>) for the builtin endpoint mapper, one
+ * endpoint per open, or as bytes to the process of an EXTERNAL service.
  */
 void dcerpcd_pipe_conn_cleanup(struct dcerpcd_conn *conn);
 

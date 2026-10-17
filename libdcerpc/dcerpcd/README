@@ -5,9 +5,17 @@ services as standalone services that runs as separate processes.
 
 It contains a master DCE/RPC daemon that contains a built-in EPM.
 This server also provides a unix domain socket where separate standalone
-services can connect and register with the master daemon.
-Once registered, those services are reachable through a IPC$ named pipe
-on the master server.
+services can connect and register a named pipe with the master daemon.
+Once registered, the pipe is reachable in IPC$ on the master server.
+
+The master daemon only does SMB2: it forwards what a client writes to the
+pipe to the service, and passes what the service sends back to the
+client's reads. All of the DCE/RPC (BIND, auth, fragments, NDR32/NDR64 in
+either byte order) runs inside the service, with libdcerpc's server
+runtime (<dcerpc/server.h>), so one pipe can serve any number of
+interfaces, e.g. lsarpc and dssetup on \pipe\lsarpc. The interfaces a
+service lists when it registers are advertised in the built-in EPM.
+The control protocol is described in external.c and dcerpcd_proto.h.
 
 It has boilerplate and tooling to build completely standalone services
 running as separate processes and which can be started, stopped at runtime.
@@ -109,9 +117,9 @@ If the idl contains an endpoint description block, like this:
   pointer_default(unique)
 ]
 
-Then the idl compiler will also generate the required code to connect and
-register with the master dcerpcd server and generate a stub.c where you can
-fill in what the actual functions should do.
+Then the idl compiler will also generate the strings serviced.c needs to
+register the pipe with the master dcerpcd server, and a stub.c where you
+can fill in what the actual functions should do.
 
 
 Access control
@@ -119,7 +127,7 @@ Access control
 If you want access control based on the user that sent the request
 you have to run the service as root. In that case the service will
 switch to the uid that the authenticated user mapped to locally
-before the stub is called.
+while it handles what that user wrote to the pipe, stubs included.
 
 
 services
@@ -127,11 +135,19 @@ services
 Services are generated mostly automatically by the idl compiler.
 See axpy/ and axpy/README for an example service.
 
+axpy/serviced.c is a generic service: built with -DSERVICE=axpy it serves
+the axpy interface on \pipe\axpy. To serve several interfaces on one
+pipe, name the pipe and list them:
+
+  -DSERVICE=lsarpc -DSERVICE_INTERFACES='X(lsa) X(dssetup)'
+
+and link each interface's coder and stubs.
+
 
 libdcerpc interfaces
 --------------------
 The Windows interfaces (srvsvc, wkssvc, winreg, lsa, epm) are client-side
 coders in libdcerpc, generated from ../<iface>/<iface>.idl. dcerpcd
 serves only its endpoint mapper (with libdcerpc's epm coders: ept_lookup,
-ept_map and ept_lookup_handle_free) and the external services registered
-with it.
+ept_map and ept_lookup_handle_free) and forwards the pipes of the external
+services registered with it.

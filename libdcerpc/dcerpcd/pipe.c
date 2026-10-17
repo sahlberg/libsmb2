@@ -2,10 +2,12 @@
 /*
  * Named pipes for dcerpcd: CREATE/CLOSE of the pipes of known services,
  * and FSCTL_PIPE_TRANSCEIVE, READ and WRITE carrying DCE/RPC. The DCE/RPC
- * itself (BIND, fragments, dispatch) is libdcerpc's server runtime
- * (<dcerpc/server.h>), one endpoint per open pipe: the builtin endpoint
- * mapper is served from its coders and the stubs below, EXTERNAL services
- * by forwarding the request stub to their worker process.
+ * of the builtin endpoint mapper (BIND, fragments, dispatch) is libdcerpc's
+ * server runtime (<dcerpc/server.h>), one endpoint per open pipe, served
+ * from the epm coders and the stubs below. The pipes of EXTERNAL services
+ * are only bytes here: what the client writes goes to the service process,
+ * which runs the DCE/RPC, and what it sends back is queued for the
+ * client's reads.
  *
  */
 /*
@@ -48,11 +50,9 @@ static const struct dcerpcd_service builtin_services[] = {
                 .pipe_name = "epmapper",
                 .kind = DCERPCD_SVC_BUILTIN_EPM,
                 .annotation = "Endpoint Mapper",
-                .uds_path = NULL,
                 .conn_fd = -1,
-                .has_iface = 0,
         },
-        { NULL, DCERPCD_SVC_NONE, NULL, NULL, -1, { 0 }, 0, 0, 0 }
+        { NULL, DCERPCD_SVC_NONE, NULL, -1 }
 };
 
 /* Dynamically registered EXTERNAL services (owned strings). */
@@ -66,20 +66,32 @@ struct dcerpcd_ext_svc {
 static struct dcerpcd_ext_svc *ext_services;
 static pthread_mutex_t svc_lock = PTHREAD_MUTEX_INITIALIZER;
 
+/* A pipe message from an EXTERNAL service, not yet read by the client */
+struct pipe_msg {
+        struct pipe_msg *next;
+        uint8_t *data;
+        uint32_t len;
+        uint32_t off;               /* read so far */
+};
+
 struct dcerpcd_pipe {
         struct dcerpcd_pipe *next;
         smb2_file_id file_id;
         char *name;                 /* base pipe name, e.g. "epmapper" */
         struct smb2_context *smb2;
         enum dcerpcd_service_kind kind;
-        /* EXTERNAL: the worker's control socket, as at CREATE */
-        int conn_fd;
 
-        /* this open's DCE/RPC endpoint and pipe */
+        /* builtin: this open's DCE/RPC endpoint and pipe */
         struct dcerpc_server *srv;
         struct dcerpc_server_pipe *rpc;
 
-        /* TRANSCEIVE or READ waiting for an EXTERNAL reply */
+        /* EXTERNAL: the pipe at the service, and what it sent */
+        uint32_t ext_id;
+        int broken;                 /* the service closed it or went away */
+        struct pipe_msg *out;
+        struct pipe_msg **out_tail;
+
+        /* TRANSCEIVE or READ waiting for the service's output */
         uint8_t wait_cmd;           /* 0, SMB2_IOCTL or SMB2_READ */
         uint64_t wait_msgid;
         uint32_t wait_max;
@@ -117,10 +129,7 @@ dcerpcd_service_lookup(const char *pipe_name)
 int
 dcerpcd_service_add_external(const char *pipe_name,
                              const char *annotation,
-                             int conn_fd,
-                             const dcerpc_uuid_t *iface,
-                             uint16_t vers_major,
-                             uint16_t vers_minor)
+                             int conn_fd)
 {
         struct dcerpcd_ext_svc *e;
 
@@ -156,33 +165,24 @@ dcerpcd_service_add_external(const char *pipe_name,
         e->svc.pipe_name = e->pipe_name_owned;
         e->svc.kind = DCERPCD_SVC_EXTERNAL;
         e->svc.annotation = e->annotation_owned;
-        e->svc.uds_path = NULL;
         e->svc.conn_fd = conn_fd;
-        if (iface) {
-                e->svc.iface = *iface;
-                e->svc.vers_major = vers_major;
-                e->svc.vers_minor = vers_minor;
-                e->svc.has_iface = 1;
-        }
 
         pthread_mutex_lock(&svc_lock);
-        /* Replace any previous registration for this pipe or fd. */
+        /* A pipe belongs to the first service that registers it */
         {
-                struct dcerpcd_ext_svc **pp = &ext_services;
+                struct dcerpcd_ext_svc *cur;
 
-                while (*pp) {
-                        struct dcerpcd_ext_svc *cur = *pp;
-
+                for (cur = ext_services; cur; cur = cur->next) {
                         if (cur->svc.conn_fd == conn_fd ||
-                            (cur->svc.pipe_name &&
-                             strcasecmp(cur->svc.pipe_name, pipe_name) == 0)) {
-                                *pp = cur->next;
-                                free(cur->pipe_name_owned);
-                                free(cur->annotation_owned);
-                                free(cur);
-                                continue;
+                            strcasecmp(cur->svc.pipe_name, pipe_name) == 0) {
+                                pthread_mutex_unlock(&svc_lock);
+                                fprintf(stderr, "service: pipe %s is already "
+                                        "registered\n", pipe_name);
+                                free(e->pipe_name_owned);
+                                free(e->annotation_owned);
+                                free(e);
+                                return -1;
                         }
-                        pp = &cur->next;
                 }
         }
         e->next = ext_services;
@@ -320,9 +320,22 @@ pipe_free(struct dcerpcd_pipe *p)
         if (p == NULL) {
                 return;
         }
-        /* EXTERNAL calls still in flight are detached and dropped */
-        dcerpc_server_pipe_destroy(p->rpc);
-        dcerpc_server_destroy(p->srv);
+        if (p->kind == DCERPCD_SVC_EXTERNAL && !p->broken) {
+                dcerpcd_external_close(p->ext_id);
+        }
+        while (p->out) {
+                struct pipe_msg *m = p->out;
+
+                p->out = m->next;
+                free(m->data);
+                free(m);
+        }
+        if (p->rpc) {
+                dcerpc_server_pipe_destroy(p->rpc);
+        }
+        if (p->srv) {
+                dcerpc_server_destroy(p->srv);
+        }
         free(p->name);
         free(p);
 }
@@ -410,8 +423,52 @@ static const struct dcerpc_stub epm_stubs[] = {
 };
 
 /* ------------------------------------------------------------------ */
-/* EXTERNAL services                                                   */
+/* Pipe messages                                                       */
 /* ------------------------------------------------------------------ */
+
+static int
+pipe_has_output(struct dcerpcd_pipe *pipe)
+{
+        if (pipe->kind == DCERPCD_SVC_EXTERNAL) {
+                return pipe->out != NULL;
+        }
+        return dcerpc_server_pipe_has_output(pipe->rpc);
+}
+
+/*
+ * Up to max bytes of the next pipe message. *more is set when the
+ * message did not fit and the rest is returned by the next read.
+ */
+static size_t
+pipe_take(struct dcerpcd_pipe *pipe, uint8_t *buf, size_t max, int *more)
+{
+        struct pipe_msg *m = pipe->out;
+        size_t n;
+
+        if (pipe->kind != DCERPCD_SVC_EXTERNAL) {
+                return dcerpc_server_pipe_read(pipe->rpc, buf, max, more);
+        }
+        *more = 0;
+        if (m == NULL) {
+                return 0;
+        }
+        n = m->len - m->off;
+        if (n > max) {
+                n = max;
+                *more = 1;
+        }
+        memcpy(buf, m->data + m->off, n);
+        m->off += (uint32_t)n;
+        if (m->off == m->len) {
+                pipe->out = m->next;
+                if (pipe->out == NULL) {
+                        pipe->out_tail = &pipe->out;
+                }
+                free(m->data);
+                free(m);
+        }
+        return n;
+}
 
 /*
  * Answer a TRANSCEIVE (SMB2_IOCTL) or READ with the next pipe message,
@@ -433,9 +490,7 @@ pipe_send_message(struct dcerpcd_pipe *pipe, uint8_t cmd, uint64_t msgid,
         if (data == NULL) {
                 return -1;
         }
-        len = dcerpc_server_pipe_read(pipe->rpc, data,
-                                      max < 0x10000 ? max : 0x10000, &more);
-
+        len = pipe_take(pipe, data, max < 0x10000 ? max : 0x10000, &more);
         if (cmd == SMB2_READ) {
                 struct smb2_read_reply rep;
 
@@ -488,7 +543,10 @@ pipe_send_error(struct smb2_context *smb2, uint8_t cmd, uint64_t msgid,
         smb2_queue_pdu(smb2, pdu);
 }
 
-/* Complete a TRANSCEIVE/READ that was waiting for an EXTERNAL reply. */
+/*
+ * Complete a TRANSCEIVE/READ that was waiting for the service: with its
+ * output, or STATUS_PIPE_BROKEN once there will be none.
+ */
 static void
 pipe_complete_wait(struct dcerpcd_pipe *pipe)
 {
@@ -497,12 +555,11 @@ pipe_complete_wait(struct dcerpcd_pipe *pipe)
         if (cmd == 0) {
                 return;
         }
-        if (!dcerpc_server_pipe_has_output(pipe->rpc) &&
-            dcerpc_server_pipe_calls_pending(pipe->rpc)) {
+        if (!pipe_has_output(pipe) && !pipe->broken) {
                 return;
         }
         pipe->wait_cmd = 0;
-        if (!dcerpc_server_pipe_has_output(pipe->rpc) ||
+        if (!pipe_has_output(pipe) ||
             pipe_send_message(pipe, cmd, pipe->wait_msgid, pipe->wait_max,
                               pipe->wait_flags)) {
                 pipe_send_error(pipe->smb2, cmd, pipe->wait_msgid,
@@ -510,129 +567,46 @@ pipe_complete_wait(struct dcerpcd_pipe *pipe)
         }
 }
 
-/* An EXTERNAL call in flight: finished when the worker replies */
-struct external_pending {
-        struct dcerpc_server_call *call;
-        uint32_t session_id;
-        uint32_t msgid;
-        char service_name[64];
-};
-
+/* The service sent a pipe message, or broke the pipe (data NULL) */
 static void
-external_rpc_done(void *cb_data, int err, int32_t status,
-                  uint8_t *ndr, uint32_t ndr_len)
+external_output(void *cb_data, uint8_t *data, uint32_t len)
 {
-        struct external_pending *p = cb_data;
-        struct dcerpc_server_pipe *rpc;
-        struct dcerpcd_pipe *pipe;
+        struct dcerpcd_pipe *pipe = cb_data;
+        struct pipe_msg *m;
 
-        rpc = dcerpc_server_call_get_pipe(p->call);
-        /* NULL if the pipe was closed while the call was in flight */
-        pipe = rpc ? dcerpc_server_pipe_get_private(rpc) : NULL;
-
-        if (err != 0 || status != DCERPCD_RPC_STATUS_OK) {
-                printf("pipe: EXTERNAL %s session=%u service=%s msgid=%u "
-                       "err=%d status=%d\n",
-                       err != 0 ? "failed" : "worker FAULT",
-                       p->session_id, p->service_name, p->msgid,
-                       err, (int)status);
-                dcerpc_server_call_fault(p->call, DCERPC_FAULT_OP_RNG_ERROR);
-        } else {
-                printf("pipe: EXTERNAL success session=%u service=%s "
-                       "msgid=%u ndr_len=%u\n",
-                       p->session_id, p->service_name, p->msgid, ndr_len);
-                if (dcerpc_server_call_reply(p->call, ndr, ndr_len)) {
-                        fprintf(stderr, "pipe: session=%u failed to queue "
-                                "the reply\n", p->session_id);
-                }
-        }
-        free(ndr);
-        /* err -2: the SMB client is gone */
-        if (pipe && err != -2) {
+        if (data == NULL) {
+                printf("pipe: %s: the service closed the pipe\n", pipe->name);
+                pipe->broken = 1;
                 pipe_complete_wait(pipe);
+                return;
         }
-        free(p);
+        m = calloc(1, sizeof(*m));
+        if (m == NULL) {
+                free(data);
+                return;
+        }
+        m->data = data;
+        m->len = len;
+        *pipe->out_tail = m;
+        pipe->out_tail = &m->next;
+        pipe_complete_wait(pipe);
 }
 
-/* Forward a request stub to the service's worker; the reply comes later */
-static int
-external_dispatch(struct dcerpc_server_call *call, void *private_data _U_)
-{
-        struct dcerpcd_pipe *pipe =
-                dcerpc_server_pipe_get_private(dcerpc_server_call_get_pipe(call));
-        struct dcerpcd_conn *conn = dcerpcd_auth_conn(pipe->smb2);
-        uint32_t session_id = conn ? conn->session_id : 0;
-        int32_t uid = DCERPCD_RPC_UID_GUEST;
-        uint16_t opnum = dcerpc_server_call_opnum(call);
-        struct external_pending *pend;
-        const uint8_t *stub;
-        size_t stub_len;
-
-        if (conn && conn->auth_kind == DCERPCD_AUTH_USER) {
-                uid = (int32_t)conn->uid;
-        }
-        pend = calloc(1, sizeof(*pend));
-        if (pend == NULL) {
-                return dcerpc_server_call_fault(call,
-                                                DCERPC_FAULT_OP_RNG_ERROR);
-        }
-        pend->call = call;
-        pend->session_id = session_id;
-        snprintf(pend->service_name, sizeof(pend->service_name), "%s",
-                 pipe->name);
-
-        stub = dcerpc_server_call_stub(call, &stub_len);
-        if (pipe->conn_fd < 0 ||
-            dcerpcd_external_call_async(pipe->conn_fd, pipe->smb2, session_id,
-                                        uid, opnum, stub, (uint32_t)stub_len,
-                                        external_rpc_done, pend,
-                                        &pend->msgid) != 0) {
-                fprintf(stderr, "pipe: EXTERNAL forward failed session=%u "
-                        "service=%s opnum=%u\n", session_id, pipe->name,
-                        (unsigned)opnum);
-                free(pend);
-                return dcerpc_server_call_fault(call,
-                                                DCERPC_FAULT_OP_RNG_ERROR);
-        }
-        printf("pipe: EXTERNAL forwarded session=%u service=%s opnum=%u "
-               "uid=%d msgid=%u ndr_len=%zu (async)\n", session_id,
-               pipe->name, (unsigned)opnum, (int)uid, pend->msgid, stub_len);
-        return 0;
-}
-
-/* The endpoint for a new open of svc's pipe */
+/* The endpoint for a new open of a builtin service's pipe */
 static struct dcerpc_server *
 service_endpoint(const struct dcerpcd_service *svc, const char *name)
 {
-        struct dcerpc_server *srv = dcerpc_server_create(name);
-        p_syntax_id_t iface;
-        int rc = -1;
+        struct dcerpc_server *srv;
 
+        if (svc->kind != DCERPCD_SVC_BUILTIN_EPM) {
+                return NULL;
+        }
+        srv = dcerpc_server_create(name);
         if (srv == NULL) {
                 return NULL;
         }
-        switch (svc->kind) {
-        case DCERPCD_SVC_BUILTIN_EPM:
-                rc = dcerpc_server_add_interface(srv, &epm_interface,
-                                                 epm_procs, epm_stubs,
-                                                 DCERPC_SERVER_ALL_NDR);
-                break;
-        case DCERPCD_SVC_EXTERNAL:
-                if (!svc->has_iface) {
-                        break;
-                }
-                iface.uuid = svc->iface;
-                iface.vers = svc->vers_major;
-                iface.vers_minor = svc->vers_minor;
-                /* the worker protocol carries NDR32 little-endian stubs */
-                rc = dcerpc_server_add_raw_interface(srv, &iface,
-                                                     external_dispatch, NULL,
-                                                     DCERPC_SERVER_NDR32_LE);
-                break;
-        default:
-                break;
-        }
-        if (rc) {
+        if (dcerpc_server_add_interface(srv, &epm_interface, epm_procs,
+                                        epm_stubs, DCERPC_SERVER_ALL_NDR)) {
                 dcerpc_server_destroy(srv);
                 return NULL;
         }
@@ -684,14 +658,31 @@ dcerpcd_pipe_create(struct smb2_server *srvr _U_, struct smb2_context *smb2,
         p->name = base;
         p->smb2 = smb2;
         p->kind = svc->kind;
-        p->conn_fd = svc->conn_fd;
-        p->srv = service_endpoint(svc, base);
-        p->rpc = p->srv ? dcerpc_server_pipe_create(p->srv, p) : NULL;
-        if (p->rpc == NULL) {
-                fprintf(stderr, "pipe: CREATE session=%u %s: no DCE/RPC "
-                        "endpoint\n", conn->session_id, base);
-                pipe_free(p);
-                return -1;
+        p->out_tail = &p->out;
+        if (svc->kind == DCERPCD_SVC_EXTERNAL) {
+                if (dcerpcd_external_open(svc->conn_fd, conn->session_id,
+                                          conn->auth_kind == DCERPCD_AUTH_USER ?
+                                          (int32_t)conn->uid :
+                                          DCERPCD_UID_GUEST,
+                                          conn->username,
+                                          external_output, p,
+                                          &p->ext_id)) {
+                        fprintf(stderr, "pipe: CREATE session=%u %s: the "
+                                "service did not take it\n",
+                                conn->session_id, base);
+                        p->broken = 1;
+                        pipe_free(p);
+                        return -1;
+                }
+        } else {
+                p->srv = service_endpoint(svc, base);
+                p->rpc = p->srv ? dcerpc_server_pipe_create(p->srv, p) : NULL;
+                if (p->rpc == NULL) {
+                        fprintf(stderr, "pipe: CREATE session=%u %s: no "
+                                "DCE/RPC endpoint\n", conn->session_id, base);
+                        pipe_free(p);
+                        return -1;
+                }
         }
         fid_assign(p->file_id, next_fid, next_fid + 0x10000);
         next_fid++;
@@ -744,8 +735,8 @@ dcerpcd_pipe_close(struct smb2_server *srvr _U_, struct smb2_context *smb2,
 }
 
 /*
- * Park a TRANSCEIVE/READ until an in-flight EXTERNAL call queues output.
- * Only one may wait at a time.
+ * Park a TRANSCEIVE/READ until the service sends output, as a read of an
+ * empty pipe blocks. Only one may wait at a time.
  */
 static int
 pipe_wait(struct dcerpcd_pipe *pipe, uint8_t cmd, uint32_t max,
@@ -762,6 +753,20 @@ pipe_wait(struct dcerpcd_pipe *pipe, uint8_t cmd, uint32_t max,
         pipe->wait_max = max;
         pipe->wait_flags = flags;
         return 1;
+}
+
+/* What the client wrote, to the DCE/RPC of the pipe. -1 on error. */
+static int
+pipe_input(struct dcerpcd_pipe *p, const uint8_t *buf, size_t len)
+{
+        if (p->kind == DCERPCD_SVC_EXTERNAL) {
+                return dcerpcd_external_write(p->ext_id, buf, len);
+        }
+        if (dcerpc_server_pipe_write(p->rpc, buf, len)) {
+                fprintf(stderr, "pipe: %s: not DCE/RPC\n", p->name);
+                return -1;
+        }
+        return 0;
 }
 
 int
@@ -795,14 +800,17 @@ dcerpcd_pipe_ioctl(struct smb2_server *srvr _U_, struct smb2_context *smb2,
                 return -1;
         }
 
-        if (dcerpc_server_pipe_write(p->rpc, req->input, req->input_count)) {
-                fprintf(stderr, "pipe: session=%u %s: not DCE/RPC\n",
-                        conn ? conn->session_id : 0, p->name);
+        if (p->broken) {
+                pipe_send_error(smb2, SMB2_IOCTL,
+                                smb2_get_last_request_message_id(smb2),
+                                SMB2_STATUS_PIPE_BROKEN);
+                return 1;
+        }
+        if (pipe_input(p, req->input, req->input_count)) {
                 return -1;
         }
-        if (!dcerpc_server_pipe_has_output(p->rpc) &&
-            dcerpc_server_pipe_calls_pending(p->rpc)) {
-                /* EXTERNAL: reply deferred until the worker responds */
+        if (!pipe_has_output(p) && p->kind == DCERPCD_SVC_EXTERNAL) {
+                /* the reply comes when the service sends it */
                 return pipe_wait(p, SMB2_IOCTL, req->max_output_response,
                                  req->flags);
         }
@@ -829,12 +837,13 @@ dcerpcd_pipe_read(struct smb2_server *srvr _U_, struct smb2_context *smb2,
                         conn ? conn->session_id : 0);
                 return -1;
         }
-        if (!dcerpc_server_pipe_has_output(p->rpc)) {
-                if (dcerpc_server_pipe_calls_pending(p->rpc)) {
+        if (!pipe_has_output(p)) {
+                if (p->kind == DCERPCD_SVC_EXTERNAL && !p->broken) {
                         return pipe_wait(p, SMB2_READ, req->length, 0);
                 }
                 pipe_send_error(smb2, SMB2_READ,
                                 smb2_get_last_request_message_id(smb2),
+                                p->broken ? SMB2_STATUS_PIPE_BROKEN :
                                 SMB2_STATUS_PIPE_EMPTY);
                 return 1;
         }
@@ -861,9 +870,13 @@ dcerpcd_pipe_write(struct smb2_server *srvr _U_, struct smb2_context *smb2,
                         conn ? conn->session_id : 0);
                 return -1;
         }
-        if (dcerpc_server_pipe_write(p->rpc, req->buf, req->length)) {
-                fprintf(stderr, "pipe: session=%u %s: not DCE/RPC\n",
-                        conn ? conn->session_id : 0, p->name);
+        if (p->broken) {
+                pipe_send_error(smb2, SMB2_WRITE,
+                                smb2_get_last_request_message_id(smb2),
+                                SMB2_STATUS_PIPE_BROKEN);
+                return 1;
+        }
+        if (pipe_input(p, req->buf, req->length)) {
                 return -1;
         }
         rep->count = req->length;

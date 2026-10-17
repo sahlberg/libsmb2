@@ -6,35 +6,35 @@
  * External DCE/RPC service control channel for dcerpcd.
  * Listens on a Unix domain socket (default: /var/run/dcerpcd/dcerpcd.sock).
  * Creates the parent directory if needed.  A service process connects and
- * sends a length-prefixed YAML registration describing its interface and
- * ncacn_np endpoints.  While the connection stays up, the endpoints appear
- * in the endpoint mapper and the pipe is available as DCERPCD_SVC_EXTERNAL.
- * On disconnect the registrations are removed.
+ * sends a length-prefixed YAML registration naming the pipe it serves.
+ * While the connection stays up, the pipe is available as
+ * DCERPCD_SVC_EXTERNAL and the interfaces it lists are in the endpoint
+ * mapper. On disconnect the registrations are removed.
  * Wire format (registration request):
  *   uint32_t body_len;          // little-endian
  *   char     body[body_len];    // UTF-8 YAML, max 64 KiB
  * YAML body (example):
  *   Service:
- *     name: srvsvc
- *     uuid: 4b324fc8-1670-01d3-1278-5a47bf6ee188
- *     version: 3.0
- *     annotation: Server Service
- *     endpoints:
- *       - transport: ncacn_np
- *         endpoint: \pipe\srvsvc
+ *     pipe: lsarpc
+ *     annotation: LSA
+ *     interfaces:               # optional, for the endpoint mapper only
+ *       - uuid: 12345778-1234-abcd-ef00-0123456789ab
+ *         version: 0.0
+ *       - uuid: 3919286a-b10c-11d0-9ba8-00c04fd92ef5
+ *         version: 0.0
  * Reply (ASCII, not length-prefixed):
  *   OK\n
  *   or
  *   ERROR: <message>\n
- * After registration, dcerpcd may send RPC proxy messages framed as
- * documented in dcerpcd_proto.h (64-byte "DCER" header + ndr_len + stub).
- * Workers reply with the same framing; uid_or_status holds the status code
- * (0 = OK, 1 = FAIL). session_id + msgid identify the reply. On FAIL,
- * ndr_len is 0.
+ * After registration the connection carries the pipe traffic, framed as
+ * documented in dcerpcd_proto.h: dcerpcd sends OPEN, WRITE and CLOSE for
+ * each client open of the pipe, the service sends OUTPUT and CLOSE. The
+ * DCE/RPC is the service's; dcerpcd does not look into the bytes.
  *
- * Proxy RPC is asynchronous: each worker keeps an in-flight list keyed by
- * (session_id, msgid). Worker sockets and the listen fd are driven from
- * smb2_serve_port's select loop via dcerpcd_external_fdset/service.
+ * Messages to a service are queued and written as its socket allows, so
+ * a slow service never blocks dcerpcd. Service sockets and the listen fd
+ * are driven from smb2_serve_port's select loop via
+ * dcerpcd_external_fdset/service.
  *
  */
 /*
@@ -60,7 +60,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/un.h>
-#include <time.h>
 #include <unistd.h>
 
 #include "smb2.h"
@@ -76,29 +75,27 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 #define MAX_REG_BODY (64 * 1024)
 #define MAX_CLIENTS  32
-#define MAX_ENDPOINTS 8
-#define MAX_PROXY_BODY (16 * 1024 * 1024)
-#define EXTERNAL_RPC_TIMEOUT_SEC 30
+#define MAX_INTERFACES 16
+/* Bytes queued for a service that has stopped reading */
+#define MAX_OUT_QUEUE (64 * 1024 * 1024)
 
 /* ------------------------------------------------------------------ */
 /* Registration message parse                                          */
 /* ------------------------------------------------------------------ */
 
-struct reg_endpoint {
-        char *transport;   /* "ncacn_np" for now */
-        char *endpoint;    /* "\\pipe\\srvsvc" */
+struct reg_interface {
+        dcerpc_uuid_t uuid;
+        uint16_t vers_major;
+        uint16_t vers_minor;
+        char *uuid_str;
+        char *version_str;
 };
 
 struct reg_msg {
-        char *name;
-        char *uuid_str;
-        char *version_str;
+        char *pipe;
         char *annotation;
-        uint16_t vers_major;
-        uint16_t vers_minor;
-        dcerpc_uuid_t uuid;
-        struct reg_endpoint eps[MAX_ENDPOINTS];
-        int nep;
+        struct reg_interface ifs[MAX_INTERFACES];
+        int nif;
 };
 
 static void
@@ -109,13 +106,11 @@ reg_msg_free(struct reg_msg *m)
         if (m == NULL) {
                 return;
         }
-        free(m->name);
-        free(m->uuid_str);
-        free(m->version_str);
+        free(m->pipe);
         free(m->annotation);
-        for (i = 0; i < m->nep; i++) {
-                free(m->eps[i].transport);
-                free(m->eps[i].endpoint);
+        for (i = 0; i < m->nif; i++) {
+                free(m->ifs[i].uuid_str);
+                free(m->ifs[i].version_str);
         }
         memset(m, 0, sizeof(*m));
 }
@@ -210,8 +205,9 @@ parse_reg_yaml(char *body, struct reg_msg *out, char *err, size_t errlen)
         char *save = NULL;
         char *line;
         int in_service = 0;
-        int in_endpoints = 0;
-        int cur_ep = -1;
+        int in_interfaces = 0;
+        int cur_if = -1;
+        int i;
 
         memset(out, 0, sizeof(*out));
 
@@ -231,30 +227,32 @@ parse_reg_yaml(char *body, struct reg_msg *out, char *err, size_t errlen)
 
                 if (indent == 0 && !strncmp(p, "Service:", 8)) {
                         in_service = 1;
-                        in_endpoints = 0;
+                        in_interfaces = 0;
                         continue;
                 }
                 if (!in_service) {
                         continue;
                 }
 
-                /* list item under endpoints */
-                if (in_endpoints && indent >= 4 && p[0] == '-' &&
+                /* list item under interfaces */
+                if (in_interfaces && indent >= 4 && p[0] == '-' &&
                     (p[1] == ' ' || p[1] == '\0')) {
                         p++;
                         while (*p == ' ') {
                                 p++;
                         }
-                        if (out->nep >= MAX_ENDPOINTS) {
-                                snprintf(err, errlen, "too many endpoints");
+                        if (out->nif >= MAX_INTERFACES) {
+                                snprintf(err, errlen, "too many interfaces");
                                 return -1;
                         }
-                        cur_ep = out->nep++;
-                        memset(&out->eps[cur_ep], 0, sizeof(out->eps[cur_ep]));
+                        cur_if = out->nif++;
+                        memset(&out->ifs[cur_if], 0, sizeof(out->ifs[cur_if]));
                         if (*p == '\0') {
                                 continue;
                         }
-                        /* inline "- transport: foo" */
+                        /* inline "- uuid: ..." */
+                } else if (indent <= 2) {
+                        in_interfaces = 0;
                 }
 
                 colon = strchr(p, ':');
@@ -265,76 +263,53 @@ parse_reg_yaml(char *body, struct reg_msg *out, char *err, size_t errlen)
                 key = trim(p);
                 val = trim(colon + 1);
 
-                if (!strcmp(key, "endpoints")) {
-                        in_endpoints = 1;
-                        cur_ep = -1;
+                if (!in_interfaces && !strcmp(key, "interfaces")) {
+                        in_interfaces = 1;
+                        cur_if = -1;
                         continue;
                 }
 
-                if (in_endpoints) {
-                        if (cur_ep < 0) {
+                if (in_interfaces) {
+                        if (cur_if < 0) {
                                 continue;
                         }
-                        if (!strcmp(key, "transport")) {
-                                free(out->eps[cur_ep].transport);
-                                out->eps[cur_ep].transport = xstrdup(val);
-                        } else if (!strcmp(key, "endpoint")) {
-                                free(out->eps[cur_ep].endpoint);
-                                out->eps[cur_ep].endpoint = xstrdup(val);
+                        if (!strcmp(key, "uuid")) {
+                                free(out->ifs[cur_if].uuid_str);
+                                out->ifs[cur_if].uuid_str = xstrdup(val);
+                        } else if (!strcmp(key, "version")) {
+                                free(out->ifs[cur_if].version_str);
+                                out->ifs[cur_if].version_str = xstrdup(val);
                         }
                         continue;
                 }
 
-                if (!strcmp(key, "name")) {
-                        free(out->name);
-                        out->name = xstrdup(val);
-                } else if (!strcmp(key, "uuid")) {
-                        free(out->uuid_str);
-                        out->uuid_str = xstrdup(val);
-                } else if (!strcmp(key, "version")) {
-                        free(out->version_str);
-                        out->version_str = xstrdup(val);
+                if (!strcmp(key, "pipe")) {
+                        free(out->pipe);
+                        out->pipe = xstrdup(val);
                 } else if (!strcmp(key, "annotation")) {
                         free(out->annotation);
                         out->annotation = xstrdup(val);
                 }
         }
 
-        if (out->name == NULL || out->name[0] == '\0') {
-                snprintf(err, errlen, "missing Service.name");
+        if (out->pipe == NULL || out->pipe[0] == '\0') {
+                snprintf(err, errlen, "missing Service.pipe");
                 return -1;
         }
-        if (out->uuid_str == NULL || parse_uuid(out->uuid_str, &out->uuid)) {
-                snprintf(err, errlen, "missing/invalid Service.uuid");
-                return -1;
-        }
-        if (out->version_str == NULL ||
-            parse_version(out->version_str, &out->vers_major, &out->vers_minor)) {
-                snprintf(err, errlen, "missing/invalid Service.version");
-                return -1;
-        }
-        if (out->nep < 1) {
-                snprintf(err, errlen, "Service.endpoints must list at least one");
-                return -1;
-        }
-        {
-                int i;
+        for (i = 0; i < out->nif; i++) {
+                struct reg_interface *ri = &out->ifs[i];
 
-                for (i = 0; i < out->nep; i++) {
-                        if (out->eps[i].transport == NULL ||
-                            out->eps[i].endpoint == NULL) {
-                                snprintf(err, errlen,
-                                         "endpoint %d missing transport/endpoint",
-                                         i);
-                                return -1;
-                        }
-                        if (strcasecmp(out->eps[i].transport, "ncacn_np") != 0) {
-                                snprintf(err, errlen,
-                                         "unsupported transport '%s' "
-                                         "(only ncacn_np for now)",
-                                         out->eps[i].transport);
-                                return -1;
-                        }
+                if (ri->uuid_str == NULL || parse_uuid(ri->uuid_str, &ri->uuid)) {
+                        snprintf(err, errlen, "interface %d: missing/invalid "
+                                 "uuid", i);
+                        return -1;
+                }
+                if (ri->version_str == NULL ||
+                    parse_version(ri->version_str, &ri->vers_major,
+                                  &ri->vers_minor)) {
+                        snprintf(err, errlen, "interface %d: missing/invalid "
+                                 "version", i);
+                        return -1;
                 }
         }
         return 0;
@@ -344,48 +319,48 @@ parse_reg_yaml(char *body, struct reg_msg *out, char *err, size_t errlen)
 /* Client connection state                                             */
 /* ------------------------------------------------------------------ */
 
-/* One outstanding proxy RPC on a worker connection. */
-struct ext_inflight {
-        struct ext_inflight *next;
-        uint32_t session_id;
-        uint32_t msgid;
-        struct smb2_context *smb2; /* for cancel_by_smb2 */
-        dcerpcd_external_done_cb cb;
+/* A client open of the service's pipe */
+struct ext_pipe {
+        struct ext_pipe *next;
+        uint32_t id;
+        dcerpcd_external_pipe_cb cb;
         void *cb_data;
-        time_t started;
 };
 
 struct ext_client {
         int fd;
         int registered;
+        /* a write failed: closed from the main loop */
+        int dead;
+        /* read from the service, not yet a whole message */
         uint8_t *buf;
         size_t buflen;
         size_t bufcap;
+        /* queued for the service: out[outoff..outlen) */
+        uint8_t *out;
+        size_t outoff;
+        size_t outlen;
+        size_t outcap;
         char name[64];
-        struct ext_inflight *inflight;
+        struct ext_pipe *pipes;
 };
 
 static int listen_fd = -1;
 static char *sock_path_owned;
 static int clients_inited;
-static uint32_t next_msgid = 1;
+static uint32_t next_pipe_id = 1;
 
 static struct ext_client clients[MAX_CLIENTS];
 
+/* Unlink and free a pipe, telling its owner that it is broken */
 static void
-inflight_fail_all(struct ext_client *c, int err)
+pipe_broken(struct ext_pipe **pp)
 {
-        struct ext_inflight *p;
+        struct ext_pipe *p = *pp;
 
-        while (c->inflight) {
-                p = c->inflight;
-                c->inflight = p->next;
-                if (p->cb) {
-                        p->cb(p->cb_data, err, DCERPCD_RPC_STATUS_FAIL,
-                              NULL, 0);
-                }
-                free(p);
-        }
+        *pp = p->next;
+        p->cb(p->cb_data, NULL, 0);
+        free(p);
 }
 
 static void
@@ -394,15 +369,18 @@ client_close(struct ext_client *c)
         if (c == NULL || c->fd < 0) {
                 return;
         }
-        inflight_fail_all(c, -1);
+        while (c->pipes) {
+                pipe_broken(&c->pipes);
+        }
         if (c->registered) {
                 dcerpcd_epm_unregister_by_owner(c->fd);
                 dcerpcd_service_remove_by_fd(c->fd);
-                printf("external: disconnected service name=%s fd=%d\n",
+                printf("external: disconnected service pipe=%s fd=%d\n",
                        c->name[0] ? c->name : "?", c->fd);
         }
         close(c->fd);
         free(c->buf);
+        free(c->out);
         memset(c, 0, sizeof(*c));
         c->fd = -1;
 }
@@ -437,6 +415,30 @@ client_by_fd(int fd)
         return NULL;
 }
 
+/* The link to pipe id, or NULL. *cp is set to its service. */
+static struct ext_pipe **
+pipe_by_id(uint32_t id, struct ext_client **cp)
+{
+        int i;
+
+        for (i = 0; i < MAX_CLIENTS; i++) {
+                struct ext_pipe **pp;
+
+                if (clients[i].fd < 0) {
+                        continue;
+                }
+                for (pp = &clients[i].pipes; *pp; pp = &(*pp)->next) {
+                        if ((*pp)->id == id) {
+                                if (cp) {
+                                        *cp = &clients[i];
+                                }
+                                return pp;
+                        }
+                }
+        }
+        return NULL;
+}
+
 static int
 send_reply(int fd, const char *msg)
 {
@@ -447,10 +449,93 @@ send_reply(int fd, const char *msg)
         return (n == (ssize_t)len) ? 0 : -1;
 }
 
+/* ------------------------------------------------------------------ */
+/* Messages to the service                                             */
+/* ------------------------------------------------------------------ */
+
+/* Write what the socket takes. A write error marks the service dead. */
+static void
+client_flush(struct ext_client *c)
+{
+        while (!c->dead && c->outoff < c->outlen) {
+                ssize_t n = write(c->fd, c->out + c->outoff,
+                                  c->outlen - c->outoff);
+
+                if (n < 0) {
+                        if (errno == EINTR) {
+                                continue;
+                        }
+                        if (errno != EAGAIN && errno != EWOULDBLOCK) {
+                                fprintf(stderr, "external: write fd=%d: %s\n",
+                                        c->fd, strerror(errno));
+                                c->dead = 1;
+                        }
+                        break;
+                }
+                c->outoff += (size_t)n;
+        }
+        if (c->outoff == c->outlen) {
+                c->outoff = 0;
+                c->outlen = 0;
+        }
+}
+
+/* Queue a message of a header and the payload a + b */
+static int
+client_send(struct ext_client *c, uint32_t type, uint32_t pipe_id,
+            const uint8_t *a, size_t alen, const uint8_t *b, size_t blen)
+{
+        size_t need = DCERPCD_MSG_HDR_SIZE + alen + blen;
+
+        if (c->dead || alen + blen > DCERPCD_MSG_MAX) {
+                return -1;
+        }
+        if (c->outlen - c->outoff + need > MAX_OUT_QUEUE) {
+                fprintf(stderr, "external: service %s fd=%d is not reading\n",
+                        c->name, c->fd);
+                return -1;
+        }
+        if (c->outoff && c->outlen + need > c->outcap) {
+                memmove(c->out, c->out + c->outoff, c->outlen - c->outoff);
+                c->outlen -= c->outoff;
+                c->outoff = 0;
+        }
+        if (c->outlen + need > c->outcap) {
+                size_t ncap = c->outcap ? c->outcap : 4096;
+                uint8_t *nb;
+
+                while (ncap < c->outlen + need) {
+                        ncap *= 2;
+                }
+                nb = realloc(c->out, ncap);
+                if (nb == NULL) {
+                        return -1;
+                }
+                c->out = nb;
+                c->outcap = ncap;
+        }
+        dcerpcd_msg_hdr_encode(c->out + c->outlen, type, pipe_id,
+                               (uint32_t)(alen + blen));
+        c->outlen += DCERPCD_MSG_HDR_SIZE;
+        if (alen) {
+                memcpy(c->out + c->outlen, a, alen);
+                c->outlen += alen;
+        }
+        if (blen) {
+                memcpy(c->out + c->outlen, b, blen);
+                c->outlen += blen;
+        }
+        client_flush(c);
+        return c->dead ? -1 : 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* Registration                                                        */
+/* ------------------------------------------------------------------ */
+
 /*
  * Pipe path helpers: accept "srvsvc", "\\pipe\\srvsvc", "/pipe/srvsvc".
- * Returns malloc'd base name ("srvsvc") and optionally normalized
- * "\\pipe\\name" for the tower.
+ * Returns malloc'd base name ("srvsvc").
  */
 static char *
 pipe_base_name(const char *endpoint)
@@ -469,106 +554,57 @@ pipe_base_name(const char *endpoint)
         while (*p == '\\' || *p == '/') {
                 p++;
         }
-        if (*p == '\0') {
+        if (*p == '\0' || strchr(p, '\\') || strchr(p, '/')) {
                 return NULL;
         }
         return strdup(p);
-}
-
-static char *
-pipe_tower_path(const char *endpoint)
-{
-        char *base = pipe_base_name(endpoint);
-        char *path;
-        size_t n;
-
-        if (base == NULL) {
-                return NULL;
-        }
-        n = strlen(base) + 16;
-        path = malloc(n);
-        if (path == NULL) {
-                free(base);
-                return NULL;
-        }
-        /* C string "\\pipe\\name" is the wire path \pipe\name */
-        snprintf(path, n, "\\pipe\\%s", base);
-        free(base);
-        return path;
 }
 
 static int
 apply_registration(struct ext_client *c, struct reg_msg *msg, char *err,
                    size_t errlen)
 {
+        char *base;
+        char tower_path[128];
         int i;
-        char *base = NULL;
-        char *tower_path = NULL;
 
-        /* Use first ncacn_np endpoint for the pipe service binding. */
-        base = pipe_base_name(msg->eps[0].endpoint);
-        if (base == NULL) {
-                snprintf(err, errlen, "invalid pipe endpoint");
+        base = pipe_base_name(msg->pipe);
+        if (base == NULL || strlen(base) >= sizeof(c->name)) {
+                snprintf(err, errlen, "invalid pipe name");
+                free(base);
                 return -1;
         }
-
-        /*
-         * Prefer Service.name as the pipe base if it matches a simple
-         * identifier; otherwise use the endpoint base name.
-         */
-        if (msg->name && msg->name[0] && strchr(msg->name, '\\') == NULL &&
-            strchr(msg->name, '/') == NULL) {
-                free(base);
-                base = strdup(msg->name);
-                if (base == NULL) {
-                        snprintf(err, errlen, "out of memory");
-                        return -1;
-                }
-        }
-
-        if (dcerpcd_service_add_external(base, msg->annotation, c->fd,
-                                         &msg->uuid,
-                                         msg->vers_major,
-                                         msg->vers_minor) != 0) {
-                snprintf(err, errlen, "failed to register service '%s'", base);
+        if (dcerpcd_service_add_external(base, msg->annotation, c->fd) != 0) {
+                snprintf(err, errlen, "pipe '%s' is not available", base);
                 free(base);
                 return -1;
         }
 
-        for (i = 0; i < msg->nep; i++) {
-                tower_path = pipe_tower_path(msg->eps[i].endpoint);
-                if (tower_path == NULL) {
-                        dcerpcd_service_remove_by_fd(c->fd);
-                        dcerpcd_epm_unregister_by_owner(c->fd);
-                        snprintf(err, errlen, "bad endpoint path");
-                        free(base);
-                        return -1;
-                }
-                if (dcerpcd_epm_register_np(&msg->uuid,
-                                            msg->vers_major, msg->vers_minor,
+        /* C string "\\pipe\\name" is the wire path \pipe\name */
+        snprintf(tower_path, sizeof(tower_path), "\\pipe\\%s", base);
+        for (i = 0; i < msg->nif; i++) {
+                if (dcerpcd_epm_register_np(&msg->ifs[i].uuid,
+                                            msg->ifs[i].vers_major,
+                                            msg->ifs[i].vers_minor,
                                             NULL,
                                             tower_path,
                                             msg->annotation,
                                             NULL,
                                             c->fd) != 0) {
-                        free(tower_path);
                         dcerpcd_service_remove_by_fd(c->fd);
                         dcerpcd_epm_unregister_by_owner(c->fd);
                         snprintf(err, errlen, "epm register failed");
                         free(base);
                         return -1;
                 }
-                free(tower_path);
         }
 
         snprintf(c->name, sizeof(c->name), "%s", base);
         c->registered = 1;
         free(base);
-        printf("external: registered service name=%s uuid=%s v%u.%u fd=%d "
+        printf("external: registered service pipe=%s interfaces=%d fd=%d "
                "(%u epm entries total)\n",
-               c->name, msg->uuid_str ? msg->uuid_str : "?",
-               (unsigned)msg->vers_major, (unsigned)msg->vers_minor,
-               c->fd, dcerpcd_epm_count());
+               c->name, msg->nif, c->fd, dcerpcd_epm_count());
         return 0;
 }
 
@@ -584,10 +620,7 @@ client_try_register(struct ext_client *c)
         if (c->buflen < 4) {
                 return 0; /* need more */
         }
-        body_len = (uint32_t)c->buf[0] |
-                   ((uint32_t)c->buf[1] << 8) |
-                   ((uint32_t)c->buf[2] << 16) |
-                   ((uint32_t)c->buf[3] << 24);
+        body_len = dcerpcd_get_le32(c->buf);
         if (body_len == 0 || body_len > MAX_REG_BODY) {
                 send_reply(c->fd, "ERROR: invalid registration length\n");
                 return -1;
@@ -638,6 +671,10 @@ client_try_register(struct ext_client *c)
         return 1;
 }
 
+/* ------------------------------------------------------------------ */
+/* Messages from the service                                           */
+/* ------------------------------------------------------------------ */
+
 static int
 buf_append(struct ext_client *c, const uint8_t *data, size_t n)
 {
@@ -671,98 +708,54 @@ buf_consume(struct ext_client *c, size_t n)
         c->buflen -= n;
 }
 
-/*
- * Parse complete DCER proxy response frames from c->buf and complete
- * matching in-flight entries (session_id + msgid).
- */
+/* Handle the complete messages in c->buf. -1 drops the service. */
 static int
-client_try_proxy_responses(struct ext_client *c)
+client_try_messages(struct ext_client *c)
 {
-        while (c->buflen >= DCERPCD_RPC_HDR_SIZE + 4) {
-                struct dcerpcd_rpc_hdr hdr;
-                uint32_t ndr_len;
-                unsigned npad;
-                size_t need;
-                uint8_t *ndr = NULL;
-                struct ext_inflight **pp;
-                struct ext_inflight *inf;
+        while (c->buflen >= DCERPCD_MSG_HDR_SIZE) {
+                struct dcerpcd_msg_hdr hdr;
+                struct ext_pipe **pp;
+                uint8_t *data;
 
-                memcpy(&hdr, c->buf, sizeof(hdr));
-                if (!dcerpcd_rpc_hdr_ok(&hdr)) {
-                        fprintf(stderr,
-                                "external: bad RPC magic on fd=%d "
-                                "(%02x %02x %02x %02x)\n",
-                                c->fd,
-                                (unsigned)(uint8_t)hdr.magic[0],
-                                (unsigned)(uint8_t)hdr.magic[1],
-                                (unsigned)(uint8_t)hdr.magic[2],
-                                (unsigned)(uint8_t)hdr.magic[3]);
+                if (dcerpcd_msg_hdr_decode(c->buf, &hdr)) {
+                        fprintf(stderr, "external: bad message from service "
+                                "%s fd=%d\n", c->name, c->fd);
                         return -1;
                 }
-                ndr_len = (uint32_t)c->buf[DCERPCD_RPC_HDR_SIZE] |
-                          ((uint32_t)c->buf[DCERPCD_RPC_HDR_SIZE + 1] << 8) |
-                          ((uint32_t)c->buf[DCERPCD_RPC_HDR_SIZE + 2] << 16) |
-                          ((uint32_t)c->buf[DCERPCD_RPC_HDR_SIZE + 3] << 24);
-                if (ndr_len > MAX_PROXY_BODY) {
-                        fprintf(stderr,
-                                "external: ndr_len %u too large on fd=%d\n",
-                                ndr_len, c->fd);
-                        return -1;
-                }
-                npad = dcerpcd_rpc_ndr_pad(ndr_len);
-                need = DCERPCD_RPC_HDR_SIZE + 4 + ndr_len + npad;
-                if (c->buflen < need) {
+                if (c->buflen < DCERPCD_MSG_HDR_SIZE + hdr.len) {
                         return 0; /* need more */
                 }
-
-                if (ndr_len) {
-                        ndr = malloc(ndr_len);
-                        if (ndr == NULL) {
-                                return -1;
-                        }
-                        memcpy(ndr, c->buf + DCERPCD_RPC_HDR_SIZE + 4,
-                               ndr_len);
+                pp = &c->pipes;
+                while (*pp && (*pp)->id != hdr.pipe_id) {
+                        pp = &(*pp)->next;
                 }
-                buf_consume(c, need);
 
-                inf = NULL;
-                for (pp = &c->inflight; *pp; pp = &(*pp)->next) {
-                        if ((*pp)->session_id == hdr.session_id &&
-                            (*pp)->msgid == hdr.msgid) {
-                                inf = *pp;
-                                *pp = inf->next;
+                switch (hdr.type) {
+                case DCERPCD_MSG_OUTPUT:
+                        if (*pp == NULL || hdr.len == 0) {
                                 break;
                         }
-                }
-                if (inf == NULL) {
-                        fprintf(stderr,
-                                "external: unmatched response session=%u "
-                                "msgid=%u fd=%d\n",
-                                hdr.session_id, hdr.msgid, c->fd);
-                        free(ndr);
-                        continue;
-                }
-
-                printf("external: response session=%u msgid=%u opnum=%u "
-                       "status=%d ndr_len=%u\n",
-                       hdr.session_id, hdr.msgid, hdr.opnum,
-                       (int)hdr.uid_or_status, ndr_len);
-
-                if (inf->cb) {
-                        uint8_t *cb_ndr = NULL;
-                        uint32_t cb_len = 0;
-
-                        if (hdr.uid_or_status == DCERPCD_RPC_STATUS_OK &&
-                            ndr_len > 0) {
-                                cb_ndr = ndr;
-                                cb_len = ndr_len;
-                                ndr = NULL;
+                        data = malloc(hdr.len);
+                        if (data == NULL) {
+                                return -1;
                         }
-                        inf->cb(inf->cb_data, 0, hdr.uid_or_status,
-                                cb_ndr, cb_len);
+                        memcpy(data, c->buf + DCERPCD_MSG_HDR_SIZE, hdr.len);
+                        (*pp)->cb((*pp)->cb_data, data, hdr.len);
+                        break;
+                case DCERPCD_MSG_CLOSE:
+                        if (*pp) {
+                                printf("external: service %s closed pipe "
+                                       "id=%u\n", c->name, hdr.pipe_id);
+                                pipe_broken(pp);
+                        }
+                        break;
+                default:
+                        fprintf(stderr, "external: unexpected message type "
+                                "%u from service %s fd=%d\n", hdr.type,
+                                c->name, c->fd);
+                        return -1;
                 }
-                free(ndr);
-                free(inf);
+                buf_consume(c, DCERPCD_MSG_HDR_SIZE + hdr.len);
         }
         return 0;
 }
@@ -770,7 +763,7 @@ client_try_proxy_responses(struct ext_client *c)
 static int
 client_on_readable(struct ext_client *c)
 {
-        uint8_t tmp[4096];
+        uint8_t tmp[16384];
         ssize_t n;
 
         n = read(c->fd, tmp, sizeof(tmp));
@@ -795,19 +788,14 @@ client_on_readable(struct ext_client *c)
                 if (client_try_register(c) < 0) {
                         return -1;
                 }
+                /* pipe messages cannot come before OPEN, so none follow */
                 return 0;
         }
 
-        /* Registered: accumulate proxy replies and demux. */
-        if (c->buflen + (size_t)n > MAX_PROXY_BODY + 128) {
-                fprintf(stderr, "external: proxy buffer overflow fd=%d\n",
-                        c->fd);
-                return -1;
-        }
         if (buf_append(c, tmp, (size_t)n) != 0) {
                 return -1;
         }
-        return client_try_proxy_responses(c);
+        return client_try_messages(c);
 }
 
 static int
@@ -832,193 +820,85 @@ client_slot_new(int fd)
 }
 
 /* ------------------------------------------------------------------ */
-/* Async forward DCERPC request stubs to a registered worker           */
+/* Pipes                                                               */
 /* ------------------------------------------------------------------ */
 
-static int
-write_all(int fd, const void *buf, size_t len)
+int
+dcerpcd_external_open(int conn_fd,
+                      uint32_t session_id,
+                      int32_t uid,
+                      const char *user,
+                      dcerpcd_external_pipe_cb cb,
+                      void *cb_data,
+                      uint32_t *pipe_id)
 {
-        const uint8_t *p = buf;
+        struct ext_client *c = client_by_fd(conn_fd);
+        struct ext_pipe *p;
+        uint8_t open[DCERPCD_OPEN_SIZE];
 
-        while (len) {
-                ssize_t n = write(fd, p, len);
-
-                if (n < 0) {
-                        if (errno == EINTR) {
-                                continue;
-                        }
-                        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                                /* UDS usually buffers a full small message;
-                                 * treat backpressure as failure for now. */
-                                return -1;
-                        }
-                        return -1;
-                }
-                if (n == 0) {
-                        return -1;
-                }
-                p += (size_t)n;
-                len -= (size_t)n;
+        if (c == NULL || !c->registered || cb == NULL) {
+                return -1;
         }
+        if (user == NULL) {
+                user = "";
+        }
+        p = calloc(1, sizeof(*p));
+        if (p == NULL) {
+                return -1;
+        }
+        p->id = next_pipe_id++;
+        if (next_pipe_id == 0) {
+                next_pipe_id = 1;
+        }
+        p->cb = cb;
+        p->cb_data = cb_data;
+
+        dcerpcd_put_le32(open, session_id);
+        dcerpcd_put_le32(open + 4, (uint32_t)uid);
+        if (client_send(c, DCERPCD_MSG_OPEN, p->id, open, sizeof(open),
+                        (const uint8_t *)user, strlen(user))) {
+                free(p);
+                return -1;
+        }
+        p->next = c->pipes;
+        c->pipes = p;
+        *pipe_id = p->id;
         return 0;
 }
 
 int
-dcerpcd_external_call_async(int conn_fd,
-                            struct smb2_context *smb2,
-                            uint32_t session_id,
-                            int32_t uid,
-                            uint32_t opnum,
-                            const uint8_t *ndr,
-                            uint32_t ndr_len,
-                            dcerpcd_external_done_cb cb,
-                            void *cb_data,
-                            uint32_t *msgid_out)
+dcerpcd_external_write(uint32_t pipe_id, const uint8_t *buf, size_t len)
 {
-        struct ext_client *c;
-        struct ext_inflight *inf;
-        struct dcerpcd_rpc_hdr hdr;
-        uint8_t lenbuf[4];
-        uint8_t pad[3];
-        unsigned npad;
-        uint32_t msgid;
+        struct ext_client *c = NULL;
 
-        if (conn_fd < 0 || cb == NULL || (ndr_len > 0 && ndr == NULL)) {
+        if (pipe_by_id(pipe_id, &c) == NULL) {
                 return -1;
         }
-        c = client_by_fd(conn_fd);
-        if (c == NULL || !c->registered) {
-                fprintf(stderr,
-                        "external: call_async: no registered worker fd=%d\n",
-                        conn_fd);
-                return -1;
-        }
-
-        memset(&hdr, 0, sizeof(hdr));
-        hdr.magic[0] = DCERPCD_RPC_MAGIC0;
-        hdr.magic[1] = DCERPCD_RPC_MAGIC1;
-        hdr.magic[2] = DCERPCD_RPC_MAGIC2;
-        hdr.magic[3] = DCERPCD_RPC_MAGIC3;
-        hdr.uid_or_status = uid;
-        hdr.session_id = session_id;
-        hdr.opnum = opnum;
-
-        npad = dcerpcd_rpc_ndr_pad(ndr_len);
-        memset(pad, 0, sizeof(pad));
-
-        lenbuf[0] = (uint8_t)(ndr_len & 0xff);
-        lenbuf[1] = (uint8_t)((ndr_len >> 8) & 0xff);
-        lenbuf[2] = (uint8_t)((ndr_len >> 16) & 0xff);
-        lenbuf[3] = (uint8_t)((ndr_len >> 24) & 0xff);
-
-        msgid = next_msgid++;
-        if (next_msgid == 0) {
-                next_msgid = 1;
-        }
-        hdr.msgid = msgid;
-
-        inf = calloc(1, sizeof(*inf));
-        if (inf == NULL) {
-                return -1;
-        }
-        inf->session_id = session_id;
-        inf->msgid = msgid;
-        inf->smb2 = smb2;
-        inf->cb = cb;
-        inf->cb_data = cb_data;
-        inf->started = time(NULL);
-
-        if (write_all(conn_fd, &hdr, sizeof(hdr)) != 0 ||
-            write_all(conn_fd, lenbuf, 4) != 0 ||
-            (ndr_len && write_all(conn_fd, ndr, ndr_len) != 0) ||
-            (npad && write_all(conn_fd, pad, npad) != 0)) {
-                free(inf);
-                fprintf(stderr,
-                        "external: call_async write fd=%d session=%u "
-                        "opnum=%u: %s\n",
-                        conn_fd, session_id, opnum, strerror(errno));
-                return -1;
-        }
-
-        inf->next = c->inflight;
-        c->inflight = inf;
-        if (msgid_out) {
-                *msgid_out = msgid;
-        }
-        return 0;
+        return client_send(c, DCERPCD_MSG_WRITE, pipe_id, buf, len, NULL, 0);
 }
 
 void
-dcerpcd_external_cancel_by_smb2(struct smb2_context *smb2)
+dcerpcd_external_close(uint32_t pipe_id)
 {
-        int i;
+        struct ext_client *c = NULL;
+        struct ext_pipe **pp = pipe_by_id(pipe_id, &c);
+        struct ext_pipe *p;
 
-        if (smb2 == NULL) {
+        if (pp == NULL) {
                 return;
         }
-        for (i = 0; i < MAX_CLIENTS; i++) {
-                struct ext_inflight **pp;
-
-                if (clients[i].fd < 0) {
-                        continue;
-                }
-                pp = &clients[i].inflight;
-                while (*pp) {
-                        struct ext_inflight *inf = *pp;
-
-                        if (inf->smb2 == smb2) {
-                                *pp = inf->next;
-                                if (inf->cb) {
-                                        inf->cb(inf->cb_data, -2,
-                                                DCERPCD_RPC_STATUS_FAIL,
-                                                NULL, 0);
-                                }
-                                free(inf);
-                        } else {
-                                pp = &inf->next;
-                        }
-                }
-        }
+        p = *pp;
+        *pp = p->next;
+        free(p);
+        (void)client_send(c, DCERPCD_MSG_CLOSE, pipe_id, NULL, 0, NULL, 0);
 }
 
-static void
-external_scan_timeouts(void)
-{
-        int i;
-        time_t now = time(NULL);
-
-        for (i = 0; i < MAX_CLIENTS; i++) {
-                struct ext_inflight **pp;
-
-                if (clients[i].fd < 0) {
-                        continue;
-                }
-                pp = &clients[i].inflight;
-                while (*pp) {
-                        struct ext_inflight *inf = *pp;
-
-                        if (now - inf->started >= EXTERNAL_RPC_TIMEOUT_SEC) {
-                                fprintf(stderr,
-                                        "external: timeout session=%u "
-                                        "msgid=%u fd=%d\n",
-                                        inf->session_id, inf->msgid,
-                                        clients[i].fd);
-                                *pp = inf->next;
-                                if (inf->cb) {
-                                        inf->cb(inf->cb_data, -1,
-                                                DCERPCD_RPC_STATUS_FAIL,
-                                                NULL, 0);
-                                }
-                                free(inf);
-                        } else {
-                                pp = &inf->next;
-                        }
-                }
-        }
-}
+/* ------------------------------------------------------------------ */
+/* Main loop                                                           */
+/* ------------------------------------------------------------------ */
 
 void
-dcerpcd_external_fdset(fd_set *rfds, int *maxfd)
+dcerpcd_external_fdset(fd_set *rfds, fd_set *wfds, int *maxfd)
 {
         int i;
 
@@ -1033,27 +913,27 @@ dcerpcd_external_fdset(fd_set *rfds, int *maxfd)
                 }
         }
         for (i = 0; i < MAX_CLIENTS; i++) {
-                if (clients[i].fd >= 0) {
-                        FD_SET(clients[i].fd, rfds);
-                        if (clients[i].fd > *maxfd) {
-                                *maxfd = clients[i].fd;
-                        }
+                if (clients[i].fd < 0) {
+                        continue;
+                }
+                FD_SET(clients[i].fd, rfds);
+                if (wfds && clients[i].outlen > clients[i].outoff) {
+                        FD_SET(clients[i].fd, wfds);
+                }
+                if (clients[i].fd > *maxfd) {
+                        *maxfd = clients[i].fd;
                 }
         }
 }
 
 void
-dcerpcd_external_service(fd_set *rfds)
+dcerpcd_external_service(fd_set *rfds, fd_set *wfds)
 {
         int i;
 
         ensure_clients_inited();
-        external_scan_timeouts();
 
-        if (rfds == NULL) {
-                return;
-        }
-        if (listen_fd >= 0 && FD_ISSET(listen_fd, rfds)) {
+        if (rfds && listen_fd >= 0 && FD_ISSET(listen_fd, rfds)) {
                 int cfd = accept(listen_fd, NULL, NULL);
 
                 if (cfd < 0) {
@@ -1070,26 +950,36 @@ dcerpcd_external_service(fd_set *rfds)
                 }
         }
         for (i = 0; i < MAX_CLIENTS; i++) {
-                if (clients[i].fd >= 0 && FD_ISSET(clients[i].fd, rfds)) {
-                        if (client_on_readable(&clients[i]) < 0) {
-                                client_close(&clients[i]);
-                        }
+                struct ext_client *c = &clients[i];
+
+                if (c->fd < 0) {
+                        continue;
+                }
+                if (wfds && FD_ISSET(c->fd, wfds)) {
+                        client_flush(c);
+                }
+                if (!c->dead && rfds && FD_ISSET(c->fd, rfds) &&
+                    client_on_readable(c) < 0) {
+                        c->dead = 1;
+                }
+                if (c->dead) {
+                        client_close(c);
                 }
         }
 }
 
 void
 dcerpcd_external_serve_fdset(struct smb2_server *server _U_,
-                             fd_set *rfds, fd_set *wfds _U_, int *maxfd)
+                             fd_set *rfds, fd_set *wfds, int *maxfd)
 {
-        dcerpcd_external_fdset(rfds, maxfd);
+        dcerpcd_external_fdset(rfds, wfds, maxfd);
 }
 
 void
 dcerpcd_external_serve_service(struct smb2_server *server _U_,
-                               fd_set *rfds, fd_set *wfds _U_)
+                               fd_set *rfds, fd_set *wfds)
 {
-        dcerpcd_external_service(rfds);
+        dcerpcd_external_service(rfds, wfds);
 }
 
 /* ------------------------------------------------------------------ */

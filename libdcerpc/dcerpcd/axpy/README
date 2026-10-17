@@ -280,11 +280,17 @@ the result of the computation.
 ---
 
 That's it. Now the server is pretty much finished.
-Now we just add the generic service wrapper, service.d, and compile it.
+Now we just add the generic service wrapper, serviced.c, and compile it.
 
-serviced.c needs to be compiled with `-DSERVICE=axpy` so it picks up `axpy_coder.h`,
-registers the interface over dcerpcd’s control socket, and dispatches requests through
-`axpy_stubs[]`.
+serviced.c needs to be compiled with `-DSERVICE=axpy` so it picks up `axpy_server.h`,
+registers \pipe\axpy over dcerpcd’s control socket, and serves the pipe itself with
+libdcerpc's server runtime: BIND, the NDR flavor the client asks for, and the
+calls into `axpy_stubs[]` all happen in the axpy process. dcerpcd only forwards
+the pipe's bytes.
+
+A pipe can serve more than one interface. With another IDL, say mul.idl, compiled
+the same way, `-DSERVICE=calc -DSERVICE_INTERFACES='X(axpy) X(mul)'` serves both
+on \pipe\calc.
 
 Compile and link with both coders and the stubs.
 

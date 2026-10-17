@@ -1,28 +1,36 @@
 /* -*-  mode:c; tab-width:8; c-basic-offset:8; indent-tabs-mode:nil;  -*- */
 /*
- * Control-channel RPC proxy framing between dcerpcd and external services.
- * Layout (all multi-byte integers little-endian):
- *   struct dcerpcd_rpc_hdr hdr;   // exactly 64 bytes
- *   uint32_t               ndr_len;
- *   uint8_t                ndr[ndr_len];
- *   uint8_t                pad[0..3];   // pad so (4 + ndr_len + pad) % 4 == 0
- * Request (dcerpcd → worker):
- *   hdr.uid_or_status = POSIX uid, or DCERPCD_RPC_UID_GUEST (-1)
- *   hdr.session_id    = dcerpcd SMB client session id
- *   hdr.msgid         = id for matching the reply (per dcerpcd process)
- *   hdr.opnum         = DCERPC operation number
- *   ndr               = request stub
- * Response (worker → dcerpcd):
- *   hdr.uid_or_status = status (DCERPCD_RPC_STATUS_OK / _FAIL / …)
- *   hdr.session_id    = same session_id as the request
- *   hdr.msgid         = same id as the request
- *   hdr.opnum         = same opnum as the request
- *   ndr_len           = 0 on failure; NDR reply length on success (later)
- *   ndr               = empty when status != OK
+ * Named-pipe proxy framing between dcerpcd and external services, used
+ * after the registration (see external.c).
  *
- * Replies are matched on (session_id, msgid) so concurrent SMB sessions
- * can share the worker connection without confusing correlation ids.
+ * dcerpcd is only the SMB2 end of the pipe: it forwards what a client
+ * writes to the pipe to the service, and queues what the service sends
+ * back for the client to read. Everything DCE/RPC (BIND, auth, fragments,
+ * the interfaces served on the pipe) is up to the service.
  *
+ * Every message, in both directions:
+ *   uint8_t  magic[4];   "DCEP"
+ *   uint32_t type;       DCERPCD_MSG_*
+ *   uint32_t pipe_id;    chosen by dcerpcd at OPEN
+ *   uint32_t len;        payload length, at most DCERPCD_MSG_MAX
+ *   uint8_t  payload[len];
+ * Integers are little-endian.
+ *
+ * dcerpcd -> service
+ *   OPEN    a client opened the pipe; the payload is
+ *             uint32_t session_id;  dcerpcd's SMB session
+ *             int32_t  uid;         local uid, or DCERPCD_UID_GUEST
+ *             char     user[];      local user name, the rest of the
+ *                                   payload, not NUL terminated
+ *   WRITE   bytes the client wrote (a WRITE, or a TRANSCEIVE's input)
+ *   CLOSE   the client closed the pipe; no payload
+ * service -> dcerpcd
+ *   OUTPUT  one pipe message (a DCE/RPC fragment) for the client to read
+ *   CLOSE   the service closed the pipe; the client's I/O on it fails
+ *           with STATUS_PIPE_BROKEN from now on; no payload
+ *
+ * A message for a pipe_id the receiver does not know (it was closed by
+ * the other end meanwhile) is ignored.
  */
 /*
    Copyright (C) 2026 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
@@ -45,61 +53,67 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 extern "C" {
 #endif
 
-/* ASCII magic at the start of every RPC proxy message */
-#define DCERPCD_RPC_MAGIC0  'D'
-#define DCERPCD_RPC_MAGIC1  'C'
-#define DCERPCD_RPC_MAGIC2  'E'
-#define DCERPCD_RPC_MAGIC3  'R'
+#define DCERPCD_MSG_MAGIC     "DCEP"
+#define DCERPCD_MSG_HDR_SIZE  16
+#define DCERPCD_MSG_MAX       (16 * 1024 * 1024)
 
-#define DCERPCD_RPC_HDR_SIZE  64
+#define DCERPCD_MSG_OPEN      1
+#define DCERPCD_MSG_WRITE     2
+#define DCERPCD_MSG_OUTPUT    3
+#define DCERPCD_MSG_CLOSE     4
 
-/* Request: guest / nobody uid */
-#define DCERPCD_RPC_UID_GUEST   ((int32_t)-1)
+/* OPEN: the uid of a guest session */
+#define DCERPCD_UID_GUEST     ((int32_t)-1)
+/* OPEN: the fixed part of the payload, before the user name */
+#define DCERPCD_OPEN_SIZE     8
 
-/* Response status codes (stored in uid_or_status) */
-#define DCERPCD_RPC_STATUS_OK   0
-#define DCERPCD_RPC_STATUS_FAIL 1
-
-/*
- * 64-byte header.
- *
- * uid_or_status:
- *   Request  — caller uid or DCERPCD_RPC_UID_GUEST
- *   Response — DCERPCD_RPC_STATUS_OK / DCERPCD_RPC_STATUS_FAIL / …
- * session_id:
- *   dcerpcd client session id (echoed on the response)
- * msgid:
- *   correlation id (echoed on the response; unique together with session_id)
- */
-struct dcerpcd_rpc_hdr {
-        char     magic[4];       /* "DCER" */
-        int32_t  uid_or_status;
-        uint32_t session_id;     /* immediately before msgid */
-        uint32_t msgid;
-        uint32_t opnum;
-        uint8_t  reserved[44];   /* must be zero; total sizeof == 64 */
+struct dcerpcd_msg_hdr {
+        uint32_t type;
+        uint32_t pipe_id;
+        uint32_t len;
 };
 
-#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
-_Static_assert(sizeof(struct dcerpcd_rpc_hdr) == DCERPCD_RPC_HDR_SIZE,
-               "dcerpcd_rpc_hdr must be 64 bytes");
-#endif
-
-static inline int
-dcerpcd_rpc_hdr_ok(const struct dcerpcd_rpc_hdr *h)
+static inline void
+dcerpcd_put_le32(uint8_t *p, uint32_t v)
 {
-        return h != NULL &&
-               h->magic[0] == DCERPCD_RPC_MAGIC0 &&
-               h->magic[1] == DCERPCD_RPC_MAGIC1 &&
-               h->magic[2] == DCERPCD_RPC_MAGIC2 &&
-               h->magic[3] == DCERPCD_RPC_MAGIC3;
+        p[0] = (uint8_t)v;
+        p[1] = (uint8_t)(v >> 8);
+        p[2] = (uint8_t)(v >> 16);
+        p[3] = (uint8_t)(v >> 24);
 }
 
-/* Bytes of zero pad so (4 + ndr_len + pad) is a multiple of 4. */
-static inline unsigned
-dcerpcd_rpc_ndr_pad(uint32_t ndr_len)
+static inline uint32_t
+dcerpcd_get_le32(const uint8_t *p)
 {
-        return (4u - (ndr_len & 3u)) & 3u;
+        return (uint32_t)p[0] | ((uint32_t)p[1] << 8) |
+               ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+}
+
+static inline void
+dcerpcd_msg_hdr_encode(uint8_t *buf, uint32_t type, uint32_t pipe_id,
+                       uint32_t len)
+{
+        buf[0] = DCERPCD_MSG_MAGIC[0];
+        buf[1] = DCERPCD_MSG_MAGIC[1];
+        buf[2] = DCERPCD_MSG_MAGIC[2];
+        buf[3] = DCERPCD_MSG_MAGIC[3];
+        dcerpcd_put_le32(buf + 4, type);
+        dcerpcd_put_le32(buf + 8, pipe_id);
+        dcerpcd_put_le32(buf + 12, len);
+}
+
+/* Returns 0, or -1 if buf is not a message header */
+static inline int
+dcerpcd_msg_hdr_decode(const uint8_t *buf, struct dcerpcd_msg_hdr *hdr)
+{
+        if (buf[0] != DCERPCD_MSG_MAGIC[0] || buf[1] != DCERPCD_MSG_MAGIC[1] ||
+            buf[2] != DCERPCD_MSG_MAGIC[2] || buf[3] != DCERPCD_MSG_MAGIC[3]) {
+                return -1;
+        }
+        hdr->type = dcerpcd_get_le32(buf + 4);
+        hdr->pipe_id = dcerpcd_get_le32(buf + 8);
+        hdr->len = dcerpcd_get_le32(buf + 12);
+        return hdr->len > DCERPCD_MSG_MAX ? -1 : 0;
 }
 
 #ifdef __cplusplus
