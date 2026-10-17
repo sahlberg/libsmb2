@@ -1195,6 +1195,16 @@ connect_cb(struct smb2_context *smb2, int status,
         req.security_mode = smb2->security_mode;
         switch (smb2->version) {
         case SMB2_VERSION_ANY:
+#ifdef HAVE_LIBRDMACM
+                /* SMB2 over RDMA needs dialect 3.0 or later */
+                if (smb2->rdma) {
+                        req.dialect_count = 3;
+                        req.dialects[0] = SMB2_VERSION_0300;
+                        req.dialects[1] = SMB2_VERSION_0302;
+                        req.dialects[2] = SMB2_VERSION_0311;
+                        break;
+                }
+#endif
                 req.dialect_count = 5;
                 req.dialects[0] = SMB2_VERSION_0202;
                 req.dialects[1] = SMB2_VERSION_0210;

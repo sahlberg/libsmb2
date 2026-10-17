@@ -1666,6 +1666,17 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
                                "connected.");
                 return -EINVAL;
         }
+#ifdef HAVE_LIBRDMACM
+        /* SMB2 over RDMA needs dialect 3.0 or later */
+        if (smb2->rdma &&
+            (smb2->version == SMB2_VERSION_ANY2 ||
+             smb2->version == SMB2_VERSION_0202 ||
+             smb2->version == SMB2_VERSION_0210)) {
+                smb2_set_error(smb2, "rdma: SMB Direct needs SMB 3.0 or "
+                               "later, it can not be used with vers=2.x");
+                return -EINVAL;
+        }
+#endif
 
         addr = strdup(server);
         if (addr == NULL) {

@@ -85,6 +85,8 @@ Arguments supported by libsmb2 are :
   rdma          : Use SMB Direct (SMB2 over RDMA) instead of TCP.
                   Default port is 445 (InfiniBand/RoCE), use :5445 for
                   iWARP. Linux only, needs librdmacm and an RDMA device.
+                  Needs SMB 3.0 or later, so it can not be combined
+                  with vers=2, vers=2.02 or vers=2.10.
                   RDMA read/write channels are not used, I/O is limited
                   to just under 1MB per read/write.
   timeout       : Timeout in seconds when to cancel a command.
