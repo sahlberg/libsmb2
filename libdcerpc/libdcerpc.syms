@@ -84,6 +84,7 @@ dcerpc_server_pipe_get_server
 dcerpc_server_pipe_has_output
 dcerpc_server_pipe_read
 dcerpc_server_pipe_write
+dcerpc_server_set_log
 dcerpc_server_set_max_xmit_frag
 dcerpc_set_full_pointer_id
 dcerpc_set_length_is

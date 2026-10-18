@@ -92,6 +92,21 @@ void dcerpc_server_destroy(struct dcerpc_server *srv);
  * RESPONSE with any stub.
  */
 int dcerpc_server_set_max_xmit_frag(struct dcerpc_server *srv, uint16_t max);
+
+/* How much a log message matters */
+#define DCERPC_SERVER_LOG_ERROR  0  /* bad input, or the server failed */
+#define DCERPC_SERVER_LOG_INFO   1  /* a client asked for what isn't served */
+#define DCERPC_SERVER_LOG_DEBUG  2  /* every BIND result and every call */
+
+/*
+ * Called with each message the endpoint logs: one line, without a
+ * newline, starting with the pipe name. Without a log function, set with
+ * dcerpc_server_set_log(), nothing is logged.
+ */
+typedef void (*dcerpc_server_log_fn)(void *private_data, int level,
+                                     const char *msg);
+void dcerpc_server_set_log(struct dcerpc_server *srv,
+                           dcerpc_server_log_fn fn, void *private_data);
 const char *dcerpc_server_get_pipe_name(struct dcerpc_server *srv);
 
 /*

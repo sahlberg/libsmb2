@@ -21,6 +21,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #endif
 
 #include <errno.h>
+#include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -94,6 +95,8 @@ struct dcerpc_server {
         struct dcerpc_context *dce;     /* for the coders */
         int npipes;
         uint16_t max_xmit;              /* 0, or the largest we send */
+        dcerpc_server_log_fn log_fn;
+        void *log_private;
 };
 
 struct pres_context {
@@ -263,6 +266,58 @@ dcerpc_server_destroy(struct dcerpc_server *srv)
         }
         free(srv->pipe_name);
         free(srv);
+}
+
+void
+dcerpc_server_set_log(struct dcerpc_server *srv, dcerpc_server_log_fn fn,
+                      void *private_data)
+{
+        srv->log_fn = fn;
+        srv->log_private = private_data;
+}
+
+static void
+srv_log(struct dcerpc_server *srv, int level, const char *fmt, ...)
+        __attribute__((format(printf, 3, 4)));
+
+static void
+srv_log(struct dcerpc_server *srv, int level, const char *fmt, ...)
+{
+        char msg[512];
+        va_list ap;
+        int n;
+
+        if (srv->log_fn == NULL) {
+                return;
+        }
+        n = snprintf(msg, sizeof(msg), "%s: ", srv->pipe_name);
+        if (n < 0 || (size_t)n >= sizeof(msg)) {
+                n = 0;
+        }
+        va_start(ap, fmt);
+        vsnprintf(msg + n, sizeof(msg) - n, fmt, ap);
+        va_end(ap);
+        srv->log_fn(srv->log_private, level, msg);
+}
+
+/* "uuid vM.m" of an interface, for log messages */
+static const char *
+syntax_str(const p_syntax_id_t *s, char *buf, size_t len)
+{
+        const dcerpc_uuid_t *u = &s->uuid;
+
+        snprintf(buf, len, "%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x"
+                 " v%u.%u", u->v1, u->v2, u->v3, u->v4[0], u->v4[1],
+                 u->v4[2], u->v4[3], u->v4[4], u->v4[5], u->v4[6], u->v4[7],
+                 s->vers, s->vers_minor);
+        return buf;
+}
+
+static const char *
+flavor_str(int ndr64, int le)
+{
+        return ndr64 ? (le ? "NDR64" : "NDR64 big-endian") :
+                       (le ? "NDR32" : "NDR32 big-endian");
 }
 
 int
@@ -593,6 +648,7 @@ negotiate_context(struct dcerpc_server_pipe *pipe, const uint8_t *ctx,
 {
         p_syntax_id_t abstract, ts;
         struct server_iface *iface;
+        char name[64];
         uint32_t ndr32 = le ? DCERPC_SERVER_NDR32_LE : DCERPC_SERVER_NDR32_BE;
         uint32_t ndr64 = le ? DCERPC_SERVER_NDR64_LE : DCERPC_SERVER_NDR64_BE;
         int j, found32 = -1, found64 = -1;
@@ -616,8 +672,11 @@ negotiate_context(struct dcerpc_server_pipe *pipe, const uint8_t *ctx,
         }
 
         put16(res, RESULT_PROVIDER_REJECTION);
+        syntax_str(&abstract, name, sizeof(name));
         iface = find_iface(pipe->srv, &abstract);
         if (iface == NULL) {
+                srv_log(pipe->srv, DCERPC_SERVER_LOG_INFO,
+                        "BIND: interface %s is not served", name);
                 put16(res + 2, REASON_ABSTRACT_SYNTAX_NOT_SUPPORTED);
                 return;
         }
@@ -625,6 +684,9 @@ negotiate_context(struct dcerpc_server_pipe *pipe, const uint8_t *ctx,
                 if (add_context(pipe, get16(ctx, le), iface, 1) == 0) {
                         put16(res, RESULT_ACCEPTANCE);
                         put_syntax(res + 4, &ndr64_syntax);
+                        srv_log(pipe->srv, DCERPC_SERVER_LOG_DEBUG,
+                                "BIND: interface %s, %s", name,
+                                flavor_str(1, le));
                 }
                 return;
         }
@@ -632,9 +694,16 @@ negotiate_context(struct dcerpc_server_pipe *pipe, const uint8_t *ctx,
                 if (add_context(pipe, get16(ctx, le), iface, 0) == 0) {
                         put16(res, RESULT_ACCEPTANCE);
                         put_syntax(res + 4, &ndr32_syntax);
+                        srv_log(pipe->srv, DCERPC_SERVER_LOG_DEBUG,
+                                "BIND: interface %s, %s", name,
+                                flavor_str(0, le));
                 }
                 return;
         }
+        srv_log(pipe->srv, DCERPC_SERVER_LOG_INFO,
+                "BIND: interface %s: none of the client's transfer "
+                "syntaxes is served in %s", name,
+                le ? "little-endian" : "big-endian");
         put16(res + 2, REASON_TRANSFER_SYNTAXES_NOT_SUPPORTED);
 }
 
@@ -653,6 +722,8 @@ process_bind(struct dcerpc_server_pipe *pipe, const uint8_t *pdu, size_t len,
         int i;
 
         if (len < COMMON_HDR + 12) {
+                srv_log(pipe->srv, DCERPC_SERVER_LOG_ERROR,
+                        "BIND: PDU too short (%zu bytes)", len);
                 return -1;
         }
         /*
@@ -707,11 +778,17 @@ process_bind(struct dcerpc_server_pipe *pipe, const uint8_t *pdu, size_t len,
                 uint8_t n_ts;
 
                 if (pos + 24 > len) {
+                        srv_log(pipe->srv, DCERPC_SERVER_LOG_ERROR,
+                                "BIND: context %d is past the end of the "
+                                "PDU", i);
                         put16(res, RESULT_PROVIDER_REJECTION);
                         continue;
                 }
                 n_ts = pdu[pos + 2];
                 if (pos + 24 + 20 * (size_t)n_ts > len) {
+                        srv_log(pipe->srv, DCERPC_SERVER_LOG_ERROR,
+                                "BIND: context %d is past the end of the "
+                                "PDU", i);
                         put16(res, RESULT_PROVIDER_REJECTION);
                         pos = len;
                         continue;
@@ -848,13 +925,21 @@ dispatch_coders(struct dcerpc_server_call *call)
         proc = find_proc(call->iface->procs, call->opnum);
         stub = find_stub(call->iface->stubs, call->opnum);
         if (proc == NULL || stub == NULL || stub->fn == NULL) {
+                srv_log(srv, DCERPC_SERVER_LOG_INFO,
+                        "opnum %u%s%s%s is not implemented", call->opnum,
+                        proc ? " (" : "", proc ? proc->name : "",
+                        proc ? ")" : "");
                 return dcerpc_server_call_fault(call,
                                                 DCERPC_FAULT_OP_RNG_ERROR);
         }
+        srv_log(srv, DCERPC_SERVER_LOG_DEBUG, "%s (opnum %u)", proc->name,
+                call->opnum);
 
         req_pdu = dcerpc_allocate_pdu(dce, DCERPC_DECODE | ENCODING_NDR |
                                       call->flags, proc->req_size);
         if (req_pdu == NULL) {
+                srv_log(srv, DCERPC_SERVER_LOG_ERROR, "%s: out of memory",
+                        proc->name);
                 return dcerpc_server_call_fault(call, DCERPC_FAULT_OTHER);
         }
         dcerpc_pdu_set_server_call(req_pdu, call);
@@ -865,17 +950,33 @@ dispatch_coders(struct dcerpc_server_call *call)
         };
         if (dcerpc_do_coder("Request", dce, req_pdu, &iov, req,
                             proc->req_coder)) {
+                srv_log(srv, DCERPC_SERVER_LOG_ERROR,
+                        "%s: the request (%zu bytes, %s) does not decode: %s",
+                        proc->name, call->stub_len,
+                        flavor_str(!!(call->flags & DCERPC_NDR64),
+                                   !(call->flags & DCERPC_BIG_ENDIAN)),
+                        dcerpc_get_error(dce));
                 dcerpc_free_pdu(dce, req_pdu);
                 return dcerpc_server_call_fault(call, DCERPC_FAULT_NDR);
         }
 
         rep = calloc(1, proc->rep_size);
         if (rep == NULL) {
+                srv_log(srv, DCERPC_SERVER_LOG_ERROR, "%s: out of memory",
+                        proc->name);
                 dcerpc_free_pdu(dce, req_pdu);
                 return dcerpc_server_call_fault(call, DCERPC_FAULT_OTHER);
         }
         status = stub->fn(dce, req_pdu, req, rep);
         if (status) {
+                if (status < 0) {
+                        srv_log(srv, DCERPC_SERVER_LOG_ERROR,
+                                "%s: the stub failed", proc->name);
+                } else {
+                        srv_log(srv, DCERPC_SERVER_LOG_DEBUG,
+                                "%s: fault 0x%08x", proc->name,
+                                (unsigned int)status);
+                }
                 free(rep);
                 dcerpc_free_pdu(dce, req_pdu);
                 return dcerpc_server_call_fault(call, status < 0 ?
@@ -886,6 +987,8 @@ dispatch_coders(struct dcerpc_server_call *call)
         rep_pdu = dcerpc_allocate_pdu(dce, DCERPC_ENCODE | ENCODING_NDR |
                                       call->reply_flags, 16);
         if (rep_pdu == NULL) {
+                srv_log(srv, DCERPC_SERVER_LOG_ERROR, "%s: out of memory",
+                        proc->name);
                 free(rep);
                 dcerpc_free_pdu(dce, req_pdu);
                 return dcerpc_server_call_fault(call, DCERPC_FAULT_OTHER);
@@ -897,6 +1000,9 @@ dispatch_coders(struct dcerpc_server_call *call)
         iov = (struct dcerpc_iovec){0};
         if (dcerpc_do_coder("Response", dce, rep_pdu, &iov, rep,
                             proc->rep_coder)) {
+                srv_log(srv, DCERPC_SERVER_LOG_ERROR,
+                        "%s: the reply does not encode: %s", proc->name,
+                        dcerpc_get_error(dce));
                 rc = dcerpc_server_call_fault(call, DCERPC_FAULT_NDR);
         } else {
                 rc = dcerpc_server_call_reply(call, iov.buf, iov.offset);
@@ -921,6 +1027,9 @@ dispatch(struct dcerpc_server_pipe *pipe, uint32_t call_id,
                 (le ? DCERPC_SERVER_NDR64_LE : DCERPC_SERVER_NDR64_BE) :
                 (le ? DCERPC_SERVER_NDR32_LE : DCERPC_SERVER_NDR32_BE);
         if (!(ctx->iface->flavors & flavor)) {
+                srv_log(pipe->srv, DCERPC_SERVER_LOG_ERROR,
+                        "REQUEST in %s, which context %u was not bound with",
+                        flavor_str(ctx->ndr64, le), ctx->id);
                 free(stub);
                 return queue_fault(pipe, call_id, ctx->id,
                                    DCERPC_FAULT_PROTO_ERROR);
@@ -978,6 +1087,8 @@ process_request(struct dcerpc_server_pipe *pipe, const uint8_t *pdu,
         uint8_t *ns;
 
         if (len < hdr) {
+                srv_log(pipe->srv, DCERPC_SERVER_LOG_ERROR,
+                        "REQUEST: PDU too short (%zu bytes)", len);
                 return queue_fault(pipe, call_id, 0,
                                    DCERPC_FAULT_PROTO_ERROR);
         }
@@ -987,20 +1098,17 @@ process_request(struct dcerpc_server_pipe *pipe, const uint8_t *pdu,
         }
         if (auth_len) {
                 /* drop the sec_trailer, the auth value and the padding */
-                if (len < hdr + 8 + (size_t)auth_len) {
+                if (len < hdr + 8 + (size_t)auth_len ||
+                    pdu[len - 8 - auth_len + 2] >
+                    len - 8 - auth_len - hdr) {
+                        srv_log(pipe->srv, DCERPC_SERVER_LOG_ERROR,
+                                "REQUEST: call %u: bad auth trailer",
+                                call_id);
                         return queue_fault(pipe, call_id, context_id,
                                            DCERPC_FAULT_PROTO_ERROR);
                 }
                 end = len - 8 - auth_len;
-                if (pdu[end + 2] > end - hdr) {
-                        return queue_fault(pipe, call_id, context_id,
-                                           DCERPC_FAULT_PROTO_ERROR);
-                }
                 end -= pdu[end + 2];
-        }
-        if (end < hdr) {
-                return queue_fault(pipe, call_id, context_id,
-                                   DCERPC_FAULT_PROTO_ERROR);
         }
         stub_len = end - hdr;
 
@@ -1013,11 +1121,17 @@ process_request(struct dcerpc_server_pipe *pipe, const uint8_t *pdu,
                 pipe->req_stub_len = 0;
         } else if (!pipe->req_active || call_id != pipe->req_call_id) {
                 pipe->req_active = 0;
+                srv_log(pipe->srv, DCERPC_SERVER_LOG_ERROR,
+                        "REQUEST: call %u: fragment without a first "
+                        "fragment", call_id);
                 return queue_fault(pipe, call_id, context_id,
                                    DCERPC_FAULT_PROTO_ERROR);
         }
         if (stub_len > MAX_REQUEST_STUB - pipe->req_stub_len) {
                 pipe->req_active = 0;
+                srv_log(pipe->srv, DCERPC_SERVER_LOG_ERROR,
+                        "REQUEST: call %u: larger than %u bytes",
+                        call_id, MAX_REQUEST_STUB);
                 return queue_fault(pipe, call_id, context_id,
                                    DCERPC_FAULT_PROTO_ERROR);
         }
@@ -1037,11 +1151,16 @@ process_request(struct dcerpc_server_pipe *pipe, const uint8_t *pdu,
         pipe->req_active = 0;
 
         if (pipe->ncontexts == 0) {
+                srv_log(pipe->srv, DCERPC_SERVER_LOG_ERROR,
+                        "REQUEST: call %u before BIND", call_id);
                 return queue_fault(pipe, call_id, context_id,
                                    DCERPC_FAULT_PROTO_ERROR);
         }
         ctx = find_context(pipe, pipe->req_context_id);
         if (ctx == NULL) {
+                srv_log(pipe->srv, DCERPC_SERVER_LOG_ERROR,
+                        "REQUEST: call %u on context %u, which is not "
+                        "bound", call_id, pipe->req_context_id);
                 return queue_fault(pipe, call_id, context_id,
                                    DCERPC_FAULT_CONTEXT_MISMATCH);
         }
@@ -1070,6 +1189,8 @@ process_pdu(struct dcerpc_server_pipe *pipe, const uint8_t *pdu, size_t len)
         case PTYPE_ORPHANED:
                 return 0;
         default:
+                srv_log(pipe->srv, DCERPC_SERVER_LOG_ERROR,
+                        "unexpected PDU type %u", pdu[2]);
                 return -1;
         }
 }
@@ -1097,6 +1218,9 @@ dcerpc_server_pipe_write(struct dcerpc_server_pipe *pipe, const uint8_t *buf,
                                           pdu[4] & DREP_LITTLE_ENDIAN);
 
                 if (pdu[0] != 5 || pdu[1] > 1 || frag_len < COMMON_HDR) {
+                        srv_log(pipe->srv, DCERPC_SERVER_LOG_ERROR,
+                                "not DCE/RPC (version %u.%u, frag_length "
+                                "%u)", pdu[0], pdu[1], frag_len);
                         pipe->in_len = 0;
                         return -1;
                 }

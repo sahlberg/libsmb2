@@ -709,6 +709,103 @@ test_raw_async(void)
         dcerpc_server_destroy(srv);
 }
 
+/* What the log hook was called with */
+static int nlog;
+static int log_levels[32];
+static char log_msgs[32][512];
+
+static void
+collect_log(void *private_data, int level, const char *msg)
+{
+        CHECK(private_data == &nlog);
+        if (nlog < 32) {
+                log_levels[nlog] = level;
+                snprintf(log_msgs[nlog], sizeof(log_msgs[nlog]), "%s", msg);
+        }
+        nlog++;
+}
+
+/* Exactly one message was logged since the last call: at level, with s */
+static void
+check_log(int level, const char *s)
+{
+        CHECK(nlog == 1);
+        if (nlog >= 1) {
+                CHECK(log_levels[0] == level);
+                CHECK(strncmp(log_msgs[0], "lsarpc: ", 8) == 0);
+                CHECK(strstr(log_msgs[0], s) != NULL);
+                printf("  %d %s\n", log_levels[0], log_msgs[0]);
+        }
+        nlog = 0;
+}
+
+static void
+test_log(void)
+{
+        struct dcerpc_server *srv = make_server();
+        struct dcerpc_server_pipe *pipe;
+        struct buf b = { .le = 1 };
+        struct ctx_def unknown = { 5, &unknown_syntax, &ndr32_syntax };
+        uint8_t stub[64], out[1024];
+        uint32_t fault;
+        size_t len;
+        int nfrags;
+
+        printf("log: no messages without a log function\n");
+        pipe = bound_pipe(srv, 1, &ndr32_syntax, 4280);
+        CHECK(nlog == 0);
+        dcerpc_server_pipe_destroy(pipe);
+
+        printf("log: BIND results\n");
+        dcerpc_server_set_log(srv, collect_log, &nlog);
+        pipe = bound_pipe(srv, 1, &ndr32_syntax, 4280);
+        CHECK(nlog == 2);
+        CHECK(log_levels[0] == DCERPC_SERVER_LOG_DEBUG);
+        CHECK(strstr(log_msgs[0], "BIND: interface 3919286a-b10c-11d0-"
+                     "9ba8-00c04fd92ef5 v0.0, NDR32") != NULL);
+        nlog = 0;
+        build_bind(&b, 14, 4280, &unknown, 1);
+        CHECK(dcerpc_server_pipe_write(pipe, b.data, b.len) == 0);
+        CHECK(read_pdu(pipe, out, sizeof(out)) > 0);
+        check_log(DCERPC_SERVER_LOG_INFO, "is not served");
+
+        printf("log: calls\n");
+        len = encode_req(0, 1, stub);
+        build_request(&b, 3, 50, 0, 0, stub, len, len);
+        CHECK(dcerpc_server_pipe_write(pipe, b.data, b.len) == 0);
+        read_response(pipe, out, &fault, &nfrags);
+        check_log(DCERPC_SERVER_LOG_DEBUG,
+                  "GetPrimaryDomainInformation (opnum 0)");
+
+        build_request(&b, 3, 51, 0, 7, stub, len, len);
+        CHECK(dcerpc_server_pipe_write(pipe, b.data, b.len) == 0);
+        read_response(pipe, out, &fault, &nfrags);
+        CHECK(fault == DCERPC_FAULT_OP_RNG_ERROR);
+        check_log(DCERPC_SERVER_LOG_INFO, "opnum 7 is not implemented");
+
+        build_request(&b, 3, 52, 0, 0, stub, 1, 1);
+        CHECK(dcerpc_server_pipe_write(pipe, b.data, b.len) == 0);
+        read_response(pipe, out, &fault, &nfrags);
+        CHECK(nlog == 2);
+        nlog = 0;
+        CHECK(log_levels[1] == DCERPC_SERVER_LOG_ERROR);
+        CHECK(strstr(log_msgs[1], "does not decode") != NULL);
+
+        printf("log: protocol errors\n");
+        build_request(&b, 3, 53, 9, 0, stub, len, len);
+        CHECK(dcerpc_server_pipe_write(pipe, b.data, b.len) == 0);
+        read_response(pipe, out, &fault, &nfrags);
+        check_log(DCERPC_SERVER_LOG_ERROR,
+                  "context 9, which is not bound");
+
+        memset(out, 0xff, 32);
+        CHECK(dcerpc_server_pipe_write(pipe, out, 32) == -1);
+        check_log(DCERPC_SERVER_LOG_ERROR, "not DCE/RPC");
+
+        dcerpc_server_pipe_destroy(pipe);
+        dcerpc_server_destroy(srv);
+}
+
 int main(void)
 {
         test_bind();
@@ -716,6 +813,7 @@ int main(void)
         test_fragments();
         test_errors();
         test_raw_async();
+        test_log();
         if (failures) {
                 printf("%d check(s) failed\n", failures);
                 return 1;
