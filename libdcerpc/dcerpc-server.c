@@ -97,6 +97,7 @@ struct dcerpc_server {
         uint16_t max_xmit;              /* 0, or the largest we send */
         dcerpc_server_log_fn log_fn;
         void *log_private;
+        int log_level;
 };
 
 struct pres_context {
@@ -269,11 +270,19 @@ dcerpc_server_destroy(struct dcerpc_server *srv)
 }
 
 void
-dcerpc_server_set_log(struct dcerpc_server *srv, dcerpc_server_log_fn fn,
-                      void *private_data)
+dcerpc_server_set_log(struct dcerpc_server *srv, int level,
+                      dcerpc_server_log_fn fn, void *private_data)
 {
         srv->log_fn = fn;
         srv->log_private = private_data;
+        srv->log_level = level;
+}
+
+/* Whether a message at level would be logged */
+static int
+log_on(struct dcerpc_server *srv, int level)
+{
+        return srv->log_fn != NULL && level <= srv->log_level;
 }
 
 static void
@@ -287,7 +296,7 @@ srv_log(struct dcerpc_server *srv, int level, const char *fmt, ...)
         va_list ap;
         int n;
 
-        if (srv->log_fn == NULL) {
+        if (!log_on(srv, level)) {
                 return;
         }
         n = snprintf(msg, sizeof(msg), "%s: ", srv->pipe_name);
@@ -318,6 +327,77 @@ flavor_str(int ndr64, int le)
 {
         return ndr64 ? (le ? "NDR64" : "NDR64 big-endian") :
                        (le ? "NDR32" : "NDR32 big-endian");
+}
+
+/* A debug hex dump of buf, 16 bytes a line with their ASCII */
+static void
+log_hex(struct dcerpc_server *srv, const uint8_t *buf, size_t len)
+{
+        char line[80];
+        size_t off, i;
+        int n;
+
+        for (off = 0; off < len; off += 16) {
+                n = snprintf(line, sizeof(line), "  %04zx ", off);
+                for (i = 0; i < 16; i++) {
+                        if (i == 8) {
+                                line[n++] = ' ';
+                        }
+                        if (off + i < len) {
+                                n += snprintf(line + n, sizeof(line) - n,
+                                              " %02x", buf[off + i]);
+                        } else {
+                                n += snprintf(line + n, sizeof(line) - n,
+                                              "   ");
+                        }
+                }
+                line[n++] = ' ';
+                line[n++] = ' ';
+                for (i = 0; i < 16 && off + i < len; i++) {
+                        uint8_t c = buf[off + i];
+
+                        line[n++] = c >= 0x20 && c < 0x7f ? (char)c : '.';
+                }
+                line[n] = '\0';
+                srv_log(srv, DCERPC_SERVER_LOG_DEBUG, "%s", line);
+        }
+}
+
+/*
+ * A debug transcoding of a decoded request (req NULL) or reply to YAML,
+ * as utils/dcerpc prints them: one message per line.
+ */
+static void
+log_yaml(struct dcerpc_server *srv, const char *name, dcerpc_coder coder,
+         void *data, void *req)
+{
+        struct dcerpc_context *dce = srv->dce;
+        struct dcerpc_iovec iov = {0};
+        struct dcerpc_pdu *pdu;
+        char *line, *next;
+
+        pdu = dcerpc_allocate_pdu(dce, DCERPC_ENCODE | ENCODING_YAML, 16);
+        if (pdu == NULL) {
+                return;
+        }
+        if (req) {
+                dcerpc_set_request(pdu, req);
+        }
+        if (dcerpc_do_coder((char *)name, dce, pdu, &iov, data, coder) ||
+            iov.buf == NULL) {
+                srv_log(srv, DCERPC_SERVER_LOG_DEBUG,
+                        "%s: no YAML: %s", name, dcerpc_get_error(dce));
+        } else {
+                for (line = (char *)iov.buf; line && *line; line = next) {
+                        next = strchr(line, '\n');
+                        if (next) {
+                                *next++ = '\0';
+                        }
+                        srv_log(srv, DCERPC_SERVER_LOG_DEBUG, "  %s", line);
+                }
+        }
+        dcerpc_free_iovec(&iov);
+        dcerpc_free_pdu(dce, pdu);
 }
 
 int
@@ -950,14 +1030,28 @@ dispatch_coders(struct dcerpc_server_call *call)
         };
         if (dcerpc_do_coder("Request", dce, req_pdu, &iov, req,
                             proc->req_coder)) {
+                const char *err = dcerpc_get_error(dce);
+
                 srv_log(srv, DCERPC_SERVER_LOG_ERROR,
-                        "%s: the request (%zu bytes, %s) does not decode: %s",
+                        "%s: the request (%zu bytes, %s) does not decode%s%s",
                         proc->name, call->stub_len,
                         flavor_str(!!(call->flags & DCERPC_NDR64),
                                    !(call->flags & DCERPC_BIG_ENDIAN)),
-                        dcerpc_get_error(dce));
+                        err && *err ? ": " : "", err ? err : "");
+                if (log_on(srv, DCERPC_SERVER_LOG_DEBUG)) {
+                        log_hex(srv, call->stub, call->stub_len);
+                }
                 dcerpc_free_pdu(dce, req_pdu);
                 return dcerpc_server_call_fault(call, DCERPC_FAULT_NDR);
+        }
+        if (log_on(srv, DCERPC_SERVER_LOG_DEBUG)) {
+                srv_log(srv, DCERPC_SERVER_LOG_DEBUG,
+                        "%s request, %zu bytes of %s:", proc->name,
+                        call->stub_len,
+                        flavor_str(!!(call->flags & DCERPC_NDR64),
+                                   !(call->flags & DCERPC_BIG_ENDIAN)));
+                log_hex(srv, call->stub, call->stub_len);
+                log_yaml(srv, proc->name, proc->req_coder, req, NULL);
         }
 
         rep = calloc(1, proc->rep_size);
@@ -1005,6 +1099,15 @@ dispatch_coders(struct dcerpc_server_call *call)
                         dcerpc_get_error(dce));
                 rc = dcerpc_server_call_fault(call, DCERPC_FAULT_NDR);
         } else {
+                if (log_on(srv, DCERPC_SERVER_LOG_DEBUG)) {
+                        srv_log(srv, DCERPC_SERVER_LOG_DEBUG,
+                                "%s reply, %zu bytes of %s:", proc->name,
+                                iov.offset,
+                                flavor_str(!!(call->reply_flags &
+                                              DCERPC_NDR64), 1));
+                        log_hex(srv, iov.buf, iov.offset);
+                        log_yaml(srv, proc->name, proc->rep_coder, rep, req);
+                }
                 rc = dcerpc_server_call_reply(call, iov.buf, iov.offset);
         }
         dcerpc_free_iovec(&iov);

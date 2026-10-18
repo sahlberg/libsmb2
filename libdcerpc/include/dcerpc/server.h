@@ -96,16 +96,19 @@ int dcerpc_server_set_max_xmit_frag(struct dcerpc_server *srv, uint16_t max);
 /* How much a log message matters */
 #define DCERPC_SERVER_LOG_ERROR  0  /* bad input, or the server failed */
 #define DCERPC_SERVER_LOG_INFO   1  /* a client asked for what isn't served */
-#define DCERPC_SERVER_LOG_DEBUG  2  /* every BIND result and every call */
+#define DCERPC_SERVER_LOG_DEBUG  2  /* every BIND result and every call,
+                                       with each request and reply as a
+                                       hex dump and as YAML */
 
 /*
- * Called with each message the endpoint logs: one line, without a
- * newline, starting with the pipe name. Without a log function, set with
- * dcerpc_server_set_log(), nothing is logged.
+ * Called with each message the endpoint logs, up to level: one line,
+ * without a newline, starting with the pipe name. Messages above level
+ * are not even built, so only ask for DCERPC_SERVER_LOG_DEBUG when they
+ * are wanted. Without a log function nothing is logged.
  */
 typedef void (*dcerpc_server_log_fn)(void *private_data, int level,
                                      const char *msg);
-void dcerpc_server_set_log(struct dcerpc_server *srv,
+void dcerpc_server_set_log(struct dcerpc_server *srv, int level,
                            dcerpc_server_log_fn fn, void *private_data);
 const char *dcerpc_server_get_pipe_name(struct dcerpc_server *srv);
 
