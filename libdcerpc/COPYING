@@ -1,6 +1,10 @@
-libdcerpc is licenced under the 2-Clause BSD License.
+libdcerpc is licenced under the 2-Clause BSD License
+(SPDX-License-Identifier: BSD-2-Clause).
 
-Every source file also contains a licence boilerplate.
+This applies to everything in the libdcerpc/ directory. Every source
+file also contains a licence boilerplate or an SPDX-License-Identifier;
+the files without one (build files, documentation and the YAML examples)
+are under the same licence.
 
 Copyright (C) 2018 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
 
