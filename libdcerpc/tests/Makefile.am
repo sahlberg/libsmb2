@@ -3,7 +3,7 @@
 # server-test runs the server runtime (dcerpc/server.h) without a
 # transport.
 check_PROGRAMS = wkssvc-coder-test srvsvc-coder-test winreg-coder-test \
-	lsa-coder-test samr-coder-test dssetup-coder-test epm-coder-test \
+	lsa-coder-test samr-coder-test dssetup-coder-test netlogon-coder-test epm-coder-test \
 	codertest-coder-test server-test
 TESTS = $(check_PROGRAMS)
 
@@ -13,6 +13,7 @@ winreg_coder_test_SOURCES = winreg-coder-test.c coder-test.c coder-test.h
 lsa_coder_test_SOURCES = lsa-coder-test.c coder-test.c coder-test.h
 samr_coder_test_SOURCES = samr-coder-test.c coder-test.c coder-test.h
 dssetup_coder_test_SOURCES = dssetup-coder-test.c coder-test.c coder-test.h
+netlogon_coder_test_SOURCES = netlogon-coder-test.c coder-test.c coder-test.h
 epm_coder_test_SOURCES = epm-coder-test.c coder-test.c coder-test.h
 codertest_coder_test_SOURCES = codertest-coder-test.c coder-test.c coder-test.h
 server_test_SOURCES = server-test.c
@@ -42,6 +43,7 @@ AM_CPPFLAGS = \
 	-I$(top_builddir)/wkssvc \
 	-I$(top_builddir)/samr \
 	-I$(top_builddir)/dssetup \
+	-I$(top_builddir)/netlogon \
 	-I$(top_builddir)/winreg \
 	-I$(top_builddir)/lsa \
 	-I$(top_builddir)/epm \

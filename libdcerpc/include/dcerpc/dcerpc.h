@@ -163,6 +163,7 @@ extern p_syntax_id_t samr_interface;
 extern p_syntax_id_t ndr32_syntax;
 extern p_syntax_id_t ndr64_syntax;
 extern p_syntax_id_t dssetup_interface;
+extern p_syntax_id_t netlogon_interface;
 extern p_syntax_id_t winreg_interface;
 extern p_syntax_id_t epm_interface;
         

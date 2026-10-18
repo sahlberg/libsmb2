@@ -6,8 +6,8 @@ if ENABLE_EXAMPLES
 endif
 endif
 
-SUBDIRS = include srvsvc wkssvc winreg lsa samr dssetup epm . $(MAYBE_UTILS) tests $(MAYBE_EXAMPLES)
-DIST_SUBDIRS = include srvsvc wkssvc winreg lsa samr dssetup epm . utils examples tests
+SUBDIRS = include srvsvc wkssvc winreg lsa samr dssetup netlogon epm . $(MAYBE_UTILS) tests $(MAYBE_EXAMPLES)
+DIST_SUBDIRS = include srvsvc wkssvc winreg lsa samr dssetup netlogon epm . utils examples tests
 ACLOCAL_AMFLAGS = -I m4
 
 AM_CFLAGS = $(WARN_CFLAGS)
@@ -19,6 +19,7 @@ libdcerpc_la_CPPFLAGS = -I$(srcdir)/include \
 			-I$(builddir)/wkssvc \
 			-I$(builddir)/samr \
 			-I$(builddir)/dssetup \
+			-I$(builddir)/netlogon \
 			-I$(builddir)/winreg \
 			-I$(builddir)/lsa \
 			-I$(builddir)/epm \
@@ -37,7 +38,7 @@ SOCURRENT=1
 SOREVISION=0
 SOAGE=0
 
-libdcerpc_la_LIBADD = srvsvc/libsrvsvc.la wkssvc/libwkssvc.la winreg/libwinreg.la lsa/liblsa.la samr/libsamr.la dssetup/libdssetup.la epm/libepm.la $(LIBSMB2_LIBS)
+libdcerpc_la_LIBADD = srvsvc/libsrvsvc.la wkssvc/libwkssvc.la winreg/libwinreg.la lsa/liblsa.la samr/libsamr.la dssetup/libdssetup.la netlogon/libnetlogon.la epm/libepm.la $(LIBSMB2_LIBS)
 libdcerpc_la_LDFLAGS = \
 	-version-info $(SOCURRENT):$(SOREVISION):$(SOAGE) \
 	-bindir $(bindir) \

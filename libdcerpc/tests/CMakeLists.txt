@@ -2,7 +2,7 @@
 # Each test program holds the known-good NDR and YAML for one interface;
 # coder-test.c runs them.
 set(TESTS wkssvc-coder-test srvsvc-coder-test winreg-coder-test
-    lsa-coder-test samr-coder-test dssetup-coder-test epm-coder-test)
+    lsa-coder-test samr-coder-test dssetup-coder-test netlogon-coder-test epm-coder-test)
 
 foreach(TEST ${TESTS})
   add_executable(${TEST} ${TEST}.c coder-test.c)

@@ -1,0 +1,7 @@
+# The first step of setting up a secure channel: send a client challenge
+# for the computer account NLTEST1$ and get the server's challenge back.
+ServerReqChallenge: Request
+  PrimaryName: \\ad-adc
+  ComputerName: NLTEST1
+  ClientChallenge:
+    Data: 0102030405060708

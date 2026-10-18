@@ -1,0 +1,95 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
+
+/*
+ * Netlogon Remote Protocol: the NetrServerReqChallenge and
+ * NetrServerAuthenticate3 calls from [MS-NRPC], which set up a secure
+ * channel. Neither needs one, so they work without schannel.
+ * Function names drop the "Netr" prefix.
+ */
+[
+  uuid(12345678-1234-abcd-ef00-01234567cffb),
+  version(1.0),
+  helpstring("Netlogon"),
+  endpoint("ncacn_np:[\\pipe\\netlogon]"),
+  pointer_default(unique)
+]
+interface netlogon
+{
+
+/* [MS-NRPC] 2.2.1.3.4 */
+typedef struct {
+	uint8_t Data[8];
+} NETLOGON_CREDENTIAL, *PNETLOGON_CREDENTIAL;
+
+/* [MS-NRPC] 2.2.1.3.13: a plain enum, so 16 bits in NDR32 */
+typedef enum {
+	NullSecureChannel = 0,
+	MsvApSecureChannel = 1,
+	WorkstationSecureChannel = 2,
+	TrustedDnsDomainSecureChannel = 3,
+	TrustedDomainSecureChannel = 4,
+	UasServerSecureChannel = 5,
+	ServerSecureChannel = 6,
+	CdcServerSecureChannel = 7
+} NETLOGON_SECURE_CHANNEL_TYPE;
+
+/*
+ * NegotiateFlags, [MS-NRPC] 3.1.4.2. The spec names them by letter; these
+ * are the names Samba uses (NETLOGON_NEG_* in C).
+ */
+typedef [bitmap32bit] bitmap {
+	NEG_ACCOUNT_LOCKOUT            = 0x00000001,
+	NEG_PERSISTENT_SAMREPL         = 0x00000002,
+	NEG_ARCFOUR                    = 0x00000004,
+	NEG_PROMOTION_COUNT            = 0x00000008,
+	NEG_CHANGELOG_BDC              = 0x00000010,
+	NEG_FULL_SYNC_REPL             = 0x00000020,
+	NEG_MULTIPLE_SIDS              = 0x00000040,
+	NEG_REDO                       = 0x00000080,
+	NEG_PASSWORD_CHANGE_REFUSAL    = 0x00000100,
+	NEG_SEND_PASSWORD_INFO_PDC     = 0x00000200,
+	NEG_GENERIC_PASSTHROUGH        = 0x00000400,
+	NEG_CONCURRENT_RPC             = 0x00000800,
+	NEG_AVOID_ACCOUNT_DB_REPL      = 0x00001000,
+	NEG_AVOID_SECURITYAUTH_DB_REPL = 0x00002000,
+	NEG_STRONG_KEYS                = 0x00004000,
+	NEG_TRANSITIVE_TRUSTS          = 0x00008000,
+	NEG_DNS_DOMAIN_TRUSTS          = 0x00010000,
+	NEG_PASSWORD_SET2              = 0x00020000,
+	NEG_GETDOMAININFO              = 0x00040000,
+	NEG_CROSS_FOREST_TRUSTS        = 0x00080000,
+	NEG_NEUTRALIZE_NT4_EMULATION   = 0x00100000,
+	NEG_RODC_PASSTHROUGH           = 0x00200000,
+	NEG_SUPPORTS_AES_SHA2          = 0x00400000,
+	NEG_SUPPORTS_AES               = 0x01000000,
+	NEG_AUTHENTICATED_RPC_LSASS    = 0x20000000,
+	NEG_AUTHENTICATED_RPC          = 0x40000000
+} NETLOGON_NEG_FLAGS;
+
+/*
+ * Function: 0x04  (NetrServerReqChallenge)
+ */
+	[opnum(0x04)]
+	NTSTATUS ServerReqChallenge(
+		[in,unique,string,charset(UTF16)] uint16_t *PrimaryName,
+		[in,ref,string,charset(UTF16)] uint16_t *ComputerName,
+		[in] PNETLOGON_CREDENTIAL ClientChallenge,
+		[out] PNETLOGON_CREDENTIAL ServerChallenge
+	);
+
+/*
+ * Function: 0x1a  (NetrServerAuthenticate3)
+ */
+	[opnum(0x1a)]
+	NTSTATUS ServerAuthenticate3(
+		[in,unique,string,charset(UTF16)] uint16_t *PrimaryName,
+		[in,ref,string,charset(UTF16)] uint16_t *AccountName,
+		[in] NETLOGON_SECURE_CHANNEL_TYPE SecureChannelType,
+		[in,ref,string,charset(UTF16)] uint16_t *ComputerName,
+		[in] PNETLOGON_CREDENTIAL ClientCredential,
+		[out] PNETLOGON_CREDENTIAL ServerCredential,
+		[in,out,ref] NETLOGON_NEG_FLAGS *NegotiateFlags,
+		[out,ref] uint32_t *AccountRid
+	);
+
+}

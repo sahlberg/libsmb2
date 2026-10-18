@@ -106,6 +106,7 @@ AC_CONFIG_FILES([
     wkssvc/Makefile
     samr/Makefile
     dssetup/Makefile
+    netlogon/Makefile
     winreg/Makefile
     lsa/Makefile
     epm/Makefile

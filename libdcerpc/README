@@ -3,7 +3,8 @@ The API is unstable and subject to change.
 
 libdcerpc is a DCE/RPC library. It uses libsmb2 named pipes as
 transport and implements NDR32/NDR64 as well as YAML and JSON coders for
-the srvsvc, lsarpc, samr, dssetup, winreg, wkssvc and epm interfaces.
+the srvsvc, lsarpc, samr, dssetup, netlogon, winreg, wkssvc and epm
+interfaces.
 
 libdcerpc is distributed under the 2-Clause BSD licence. See COPYING.
 

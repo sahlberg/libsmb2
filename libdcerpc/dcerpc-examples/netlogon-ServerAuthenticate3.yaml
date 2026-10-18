@@ -1,0 +1,18 @@
+# The second step, on the same connection as ServerReqChallenge. The
+# ClientCredential is computed from both challenges and the account
+# password ([MS-NRPC] 3.1.4.4), so this fixed one is refused with
+# STATUS_ACCESS_DENIED (3221225506).
+ServerReqChallenge: Request
+  PrimaryName: \\ad-adc
+  ComputerName: NLTEST1
+  ClientChallenge:
+    Data: 0102030405060708
+---
+ServerAuthenticate3: Request
+  PrimaryName: \\ad-adc
+  AccountName: NLTEST1$
+  SecureChannelType: WorkstationSecureChannel
+  ComputerName: NLTEST1
+  ClientCredential:
+    Data: 0000000000000000
+  NegotiateFlags: NEG_STRONG_KEYS | NEG_SUPPORTS_AES | NEG_AUTHENTICATED_RPC

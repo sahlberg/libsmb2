@@ -18,7 +18,7 @@ BuildRequires: python3
 
 %description
 Libdcerpc is a DCE/RPC client library implementing SRVSVC, LSA, SAMR, DSSETUP,
-WKSSVC, WINREG and EPM, using libsmb2 named pipes as transport.
+NETLOGON, WKSSVC, WINREG and EPM, using libsmb2 named pipes as transport.
 
 This package also contains the dcerpc, epm-enum and winreg-tui utilities.
 
@@ -68,6 +68,7 @@ development libraries for libdcerpc
 %{_includedir}/dcerpc/lsa.h
 %{_includedir}/dcerpc/samr.h
 %{_includedir}/dcerpc/dssetup.h
+%{_includedir}/dcerpc/netlogon.h
 %{_includedir}/dcerpc/srvsvc.h
 %{_includedir}/dcerpc/wkssvc.h
 %{_includedir}/dcerpc/winreg.h

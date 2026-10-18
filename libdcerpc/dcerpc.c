@@ -87,6 +87,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <dcerpc/wkssvc.h>
 #include <dcerpc/samr.h>
 #include <dcerpc/dssetup.h>
+#include <dcerpc/netlogon.h>
 #include <dcerpc/winreg.h>
 #include <dcerpc/epm.h>
 #include "dcerpc-private.h"
@@ -1012,6 +1013,7 @@ dcerpc_create_context(struct smb2_context *smb2)
         dcerpc_register_coder("samr", &samr_interface, samr_procs);
         dcerpc_register_service("dssetup", "lsarpc", &dssetup_interface,
                                 dssetup_procs);
+        dcerpc_register_coder("netlogon", &netlogon_interface, netlogon_procs);
         dcerpc_register_coder("winreg", &winreg_interface, winreg_procs);
         dcerpc_register_coder("epmapper", &epm_interface, epm_procs);
 
