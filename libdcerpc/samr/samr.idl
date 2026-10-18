@@ -5,7 +5,8 @@
  * SamrQuerySecurityObject, SamrLookupDomainInSamServer,
  * SamrEnumerateDomainsInSamServer, SamrOpenDomain,
  * SamrGetAliasMembership, SamrLookupNamesInDomain, SamrOpenUser,
- * SamrQueryInformationUser, SamrGetGroupsForUser, SamrConnect2 and
+ * SamrDeleteUser, SamrQueryInformationUser, SamrGetGroupsForUser,
+ * SamrCreateUser2InDomain, SamrConnect2, SamrSetInformationUser2 and
  * SamrConnect5 calls from [MS-SAMR].
  * Function names drop the "Samr" prefix.
  */
@@ -403,8 +404,35 @@ typedef struct {
 } SAMPR_USER_ALL_INFORMATION;
 
 /*
- * [MS-SAMR] 2.2.7.29. The internal and password-setting classes (18 and
- * 23 and above) are not here: they are set-only or for trusted callers.
+ * [MS-SAMR] 2.2.6.21, 2.2.6.22: a SAMPR_USER_PASSWORD (the password at
+ * the end of 512 bytes, then its length in bytes), encrypted with RC4
+ * ([MS-SAMR] 3.2.2.1). The key is the session key; the _NEW form appends
+ * a 16-byte ClearSalt and uses MD5(ClearSalt, session key) (3.2.2.2).
+ * Over SMB the session key is smb2_get_application_key().
+ */
+typedef struct {
+	uint8_t Buffer[516];
+} SAMPR_ENCRYPTED_USER_PASSWORD;
+
+typedef struct {
+	uint8_t Buffer[532];
+} SAMPR_ENCRYPTED_USER_PASSWORD_NEW;
+
+/* [MS-SAMR] 2.2.6.26, 2.2.6.27: set-only */
+typedef struct {
+	SAMPR_ENCRYPTED_USER_PASSWORD UserPassword;
+	uint8_t PasswordExpired;
+} SAMPR_USER_INTERNAL5_INFORMATION;
+
+typedef struct {
+	SAMPR_ENCRYPTED_USER_PASSWORD_NEW UserPassword;
+	uint8_t PasswordExpired;
+} SAMPR_USER_INTERNAL5_INFORMATION_NEW;
+
+/*
+ * [MS-SAMR] 2.2.6.29. Of the internal and password-setting classes (18
+ * and 23 and above) only UserInternal5Information and
+ * UserInternal5InformationNew are here, for setting a password.
  */
 typedef [switch_type(USER_INFORMATION_CLASS)] union {
 	[case(UserGeneralInformation)]
@@ -443,6 +471,10 @@ typedef [switch_type(USER_INFORMATION_CLASS)] union {
 		SAMPR_USER_PARAMETERS_INFORMATION Parameters;
 	[case(UserAllInformation)]
 		SAMPR_USER_ALL_INFORMATION All;
+	[case(UserInternal5Information)]
+		SAMPR_USER_INTERNAL5_INFORMATION Internal5;
+	[case(UserInternal5InformationNew)]
+		SAMPR_USER_INTERNAL5_INFORMATION_NEW Internal5New;
 } SAMPR_USER_INFO_BUFFER, *PSAMPR_USER_INFO_BUFFER;
 
 /* [MS-SAMR] 2.2.7.15, 2.2.7.16 */
@@ -554,6 +586,14 @@ typedef [switch_type(uint32_t)] union {
 	);
 
 /*
+ * Function: 0x23  (SamrDeleteUser)
+ */
+	[opnum(0x23)]
+	NTSTATUS DeleteUser(
+		[in,out] SAMPR_HANDLE *UserHandle
+	);
+
+/*
  * Function: 0x24  (SamrQueryInformationUser)
  */
 	[opnum(0x24)]
@@ -573,6 +613,23 @@ typedef [switch_type(uint32_t)] union {
 	);
 
 /*
+ * Function: 0x32  (SamrCreateUser2InDomain)
+ * AccountType is one of the USER_*_ACCOUNT flags, e.g.
+ * USER_WORKSTATION_TRUST_ACCOUNT for a computer account. The account is
+ * created disabled.
+ */
+	[opnum(0x32)]
+	NTSTATUS CreateUser2InDomain(
+		[in] SAMPR_HANDLE DomainHandle,
+		[in,ref] RPC_UNICODE_STRING *Name,
+		[in] USER_ACCOUNT_CONTROL AccountType,
+		[in] USER_ACCESS_MASK DesiredAccess,
+		[out] SAMPR_HANDLE *UserHandle,
+		[out,ref] USER_ACCESS_MASK *GrantedAccess,
+		[out,ref] uint32_t *RelativeId
+	);
+
+/*
  * Function: 0x39  (SamrConnect2)
  */
 	[opnum(0x39)]
@@ -580,6 +637,16 @@ typedef [switch_type(uint32_t)] union {
 		[in,unique,string,charset(UTF16)] uint16_t *ServerName,
 		[out] SAMPR_HANDLE *ServerHandle,
 		[in] SAM_SERVER_ACCESS_MASK DesiredAccess
+	);
+
+/*
+ * Function: 0x3a  (SamrSetInformationUser2)
+ */
+	[opnum(0x3a)]
+	NTSTATUS SetInformationUser2(
+		[in] SAMPR_HANDLE UserHandle,
+		[in] USER_INFORMATION_CLASS UserInformationClass,
+		[in,switch_is(UserInformationClass)] SAMPR_USER_INFO_BUFFER *Buffer
 	);
 
 /*

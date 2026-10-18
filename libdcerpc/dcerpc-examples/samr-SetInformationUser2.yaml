@@ -1,0 +1,62 @@
+# Create a workstation account, EXAMPLE$, enable it with
+# UserControlInformation (it is created disabled), read the flags back
+# and delete it again. Setting a password (UserInternal5Information and
+# UserInternal5InformationNew) needs a buffer encrypted with the SMB
+# application key, which a fixed request cannot hold; see
+# tests/samr-coder-test.c.
+Connect5: Request
+  ServerName: \\10.10.10.11
+  DesiredAccess: SAM_SERVER_CONNECT | SAM_SERVER_ENUMERATE_DOMAINS | SAM_SERVER_LOOKUP_DOMAIN
+  InVersion: 1
+  InRevisionInfo:
+    V1:
+      Revision: 3
+      SupportedFeatures: 0
+---
+EnumerateDomainsInSamServer: Request
+  ServerHandle:
+    ContextHandleAttributes: 0
+    UUID: @UUID:-1@
+  EnumerationContext: 0
+  PreferedMaximumLength: 65536
+---
+LookupDomainInSamServer: Request
+  ServerHandle:
+    ContextHandleAttributes: 0
+    UUID: @UUID:-2@
+  Name: @Name@
+---
+OpenDomain: Request
+  ServerHandle:
+    ContextHandleAttributes: 0
+    UUID: @UUID:-3@
+  DesiredAccess: DOMAIN_LOOKUP | DOMAIN_CREATE_USER
+  DomainId: @DomainId@
+---
+CreateUser2InDomain: Request
+  DomainHandle:
+    ContextHandleAttributes: 0
+    UUID: @UUID:-1@
+  Name: EXAMPLE$
+  AccountType: USER_WORKSTATION_TRUST_ACCOUNT
+  DesiredAccess: USER_READ_ACCOUNT | USER_WRITE_ACCOUNT | DELETE
+---
+SetInformationUser2: Request
+  UserHandle:
+    ContextHandleAttributes: 0
+    UUID: @UUID@
+  UserInformationClass: UserControlInformation
+  Buffer:
+    Control:
+      UserAccountControl: USER_WORKSTATION_TRUST_ACCOUNT
+---
+QueryInformationUser: Request
+  UserHandle:
+    ContextHandleAttributes: 0
+    UUID: @UUID:-2@
+  UserInformationClass: UserControlInformation
+---
+DeleteUser: Request
+  UserHandle:
+    ContextHandleAttributes: 0
+    UUID: @UUID:-3@

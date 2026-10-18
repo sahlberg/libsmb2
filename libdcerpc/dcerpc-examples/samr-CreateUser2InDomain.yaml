@@ -1,0 +1,44 @@
+# Create a workstation account, EXAMPLE$, in the account domain, and
+# delete it again. Needs a user that may create accounts, e.g. a domain
+# administrator. The account is created disabled.
+Connect5: Request
+  ServerName: \\10.10.10.11
+  DesiredAccess: SAM_SERVER_CONNECT | SAM_SERVER_ENUMERATE_DOMAINS | SAM_SERVER_LOOKUP_DOMAIN
+  InVersion: 1
+  InRevisionInfo:
+    V1:
+      Revision: 3
+      SupportedFeatures: 0
+---
+EnumerateDomainsInSamServer: Request
+  ServerHandle:
+    ContextHandleAttributes: 0
+    UUID: @UUID:-1@
+  EnumerationContext: 0
+  PreferedMaximumLength: 65536
+---
+LookupDomainInSamServer: Request
+  ServerHandle:
+    ContextHandleAttributes: 0
+    UUID: @UUID:-2@
+  Name: @Name@
+---
+OpenDomain: Request
+  ServerHandle:
+    ContextHandleAttributes: 0
+    UUID: @UUID:-3@
+  DesiredAccess: DOMAIN_LOOKUP | DOMAIN_CREATE_USER
+  DomainId: @DomainId@
+---
+CreateUser2InDomain: Request
+  DomainHandle:
+    ContextHandleAttributes: 0
+    UUID: @UUID:-1@
+  Name: EXAMPLE$
+  AccountType: USER_WORKSTATION_TRUST_ACCOUNT
+  DesiredAccess: USER_READ_ACCOUNT | USER_WRITE_ACCOUNT | DELETE
+---
+DeleteUser: Request
+  UserHandle:
+    ContextHandleAttributes: 0
+    UUID: @UUID@
