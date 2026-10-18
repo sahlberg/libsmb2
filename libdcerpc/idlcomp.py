@@ -85,6 +85,8 @@ Supported:
     number. With [length_is(l)] it is conformant-varying.
   - a [size_is] array that a sender transmits as a pointer to zero elements
     decodes to NULL, like a NULL pointer
+  - uint8_t name[N] in a structure: a fixed-size byte array, coded
+    inline with no count (NETLOGON_CREDENTIAL); hex in YAML/JSON
   - arrays of plain values (integers, enums, strings, SIDs) are bare
     YAML/JSON lists (dcerpc_scalar_carray_coder); arrays of structures are
     lists of mappings
@@ -211,6 +213,7 @@ class Field:
     type_name: str
     stars: int  # number of * after type name
     name: str
+    array_len: Optional[int] = None  # uint8_t name[N]: fixed-size array
 
 
 @dataclass
@@ -585,8 +588,18 @@ class Parser:
             attrs = self.parse_attr_list()
         type_name, stars = self.parse_type_name()
         name = self.eat("IDENT").value
+        array_len = None
+        if self.peek("LBRACK"):
+            self.eat("LBRACK")
+            array_len = self.parse_number()
+            self.eat("RBRACK")
+            if (type_name not in ("uint8", "uint8_t") or stars or attrs
+                    or array_len <= 0):
+                raise SyntaxError(f"fixed-size arrays are only supported as "
+                                  f"uint8_t {name}[N] ({name})")
         self.eat("SEMI")
-        return Field(attrs=attrs, type_name=type_name, stars=stars, name=name)
+        return Field(attrs=attrs, type_name=type_name, stars=stars, name=name,
+                     array_len=array_len)
 
     def parse_function(self) -> Function:
         attrs: List[Attr] = []
@@ -1385,12 +1398,16 @@ def gen_struct_defs(env: TypeEnv) -> str:
             lines.append(f"{env.c_struct_name(t.name)} {{")
             for f in t.fields:
                 ctype = gen_c_type_for_field(env, f)
-                lines.append(f"        {ctype} {f.name};")
+                dim = f"[{f.array_len}]" if f.array_len is not None else ""
+                lines.append(f"        {ctype} {f.name}{dim};")
             lines.append("};")
             lines.append("")
         elif t.kind == "union":
             lines.append(f"{env.c_union_name(t.name)} {{")
             for f in t.fields:
+                if f.array_len is not None:
+                    raise SystemExit(f"error: fixed-size array {f.name} "
+                                     f"as a union arm is not supported")
                 ctype = gen_union_field_ctype(env, f)
                 lines.append(f"        {ctype} {f.name};")
             lines.append("};")
@@ -1936,6 +1953,8 @@ def field_align(env: "TypeEnv", f: "Field") -> Tuple[int, int]:
     size_is = attr_arg(f.attrs, "size_is")
     if blob_type(f) is not None:
         return PTR_ALIGN
+    if f.array_len is not None:
+        return BUILTIN_ALIGN["uint8_t"]
     if env.is_string_type(f.type_name, f.stars, f.attrs) or tname in env.string_aliases:
         return PTR_ALIGN
     if is_varying_bytes(f, tname):
@@ -1978,6 +1997,16 @@ def gen_field_coder_stmts(
     size_is = attr_arg(f.attrs, "size_is")
     switch_is = attr_arg(f.attrs, "switch_is")
     disp = f.name
+
+    # uint8_t name[N]: the bytes inline, hex in YAML/JSON
+    if f.array_len is not None:
+        lines.append(
+            f'{indent}if (dcerpc_fixed_bytes_coder("{disp}", dce, pdu, iov,\n'
+            f"{indent}                             {var}->{f.name}, {f.array_len})) {{\n"
+            f"{indent}        return -1;\n"
+            f"{indent}}}"
+        )
+        return lines
 
     # string
     if env.is_string_type(f.type_name, f.stars, f.attrs) or tname in env.string_aliases:

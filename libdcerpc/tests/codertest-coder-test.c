@@ -170,6 +170,30 @@ static const char union_arm_wide_yaml[] =
         "      Big: 72623859790382856\n"
         "  After: 13124\n";
 
+/*
+ * FixedBytes: FIXED_BYTES { uint8 Before; uint8 Data[8]; uint32 After; }
+ * Before = 0x11, Data = 01..08, After = 0x22334455.
+ *
+ * Data has no count and is 1-aligned, so it is at offset 1; After is
+ * padded to offset 12. The structure is 4-aligned and 16 bytes, so NDR64
+ * adds no padding.
+ */
+static const uint8_t fixed_bytes_le[] = {
+        0x11, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+        0x08, 0x00, 0x00, 0x00, 0x55, 0x44, 0x33, 0x22,
+};
+static const uint8_t fixed_bytes_be[] = {
+        0x11, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+        0x08, 0x00, 0x00, 0x00, 0x22, 0x33, 0x44, 0x55,
+};
+
+static const char fixed_bytes_yaml[] =
+        "FixedBytes: Request\n"
+        "  Fixed: \n"
+        "    Before: 17\n"
+        "    Data: 0102030405060708\n"
+        "    After: 573785173\n";
+
 static const struct test_case test_cases[] = {
         { "EmbeddedTail request: NDR64 trailing padding of an embedded structure",
           "EmbeddedTail",
@@ -202,6 +226,14 @@ static const struct test_case test_cases[] = {
           NULL, union_arm_wide_yaml,
           { BLOB(union_arm_wide_ndr32_le), BLOB(union_arm_wide_ndr32_be),
             BLOB(union_arm_wide_ndr64_le), BLOB(union_arm_wide_ndr64_be) },
+          0, NULL },
+        { "FixedBytes request: a fixed-size byte array",
+          "FixedBytes",
+          codertest_FixedBytes_req_coder,
+          sizeof(struct codertest_FixedBytes_req),
+          NULL, fixed_bytes_yaml,
+          { BLOB(fixed_bytes_le), BLOB(fixed_bytes_be),
+            BLOB(fixed_bytes_le), BLOB(fixed_bytes_be) },
           0, NULL },
 };
 

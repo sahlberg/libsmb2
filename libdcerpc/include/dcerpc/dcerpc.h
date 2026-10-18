@@ -594,6 +594,16 @@ int dcerpc_bytes_coder(char *name, struct dcerpc_context *dce,
                        void *ptr);
 
 /*
+ * byte data[len] — a fixed-size byte array, e.g. NETLOGON_CREDENTIAL.
+ * NDR: the len bytes, with no count and 1-byte alignment.
+ * YAML/JSON: a hex string of exactly len bytes.
+ */
+int dcerpc_fixed_bytes_coder(char *name, struct dcerpc_context *dce,
+                             struct dcerpc_pdu *pdu,
+                             struct dcerpc_iovec *iov,
+                             uint8_t *data, uint32_t len);
+
+/*
  * Blob: a [size_is(len)] unique byte array whose bytes are a packet-form
  * object (e.g. a self-relative SECURITY_DESCRIPTOR coded by
  * dcerpc_SECURITY_DESCRIPTOR_coder). The C struct holds the decoded object

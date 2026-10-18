@@ -1530,6 +1530,41 @@ dcerpc_varying_bytes_coder(char *name, struct dcerpc_context *ctx,
         return -1;
 }
 
+int
+dcerpc_fixed_bytes_coder(char *name, struct dcerpc_context *ctx,
+                         struct dcerpc_pdu *pdu,
+                         struct dcerpc_iovec *iov,
+                         uint8_t *data, uint32_t len)
+{
+        struct dcerpc_bytes b;
+        uint32_t i;
+
+        if (pdu->encoding == ENCODING_NDR) {
+                for (i = 0; i < len; i++) {
+                        if (ndr_uint8_coder(name, ctx, pdu, iov, &data[i])) {
+                                return -1;
+                        }
+                }
+                return 0;
+        }
+
+        /* Text encodings: a hex string, which must hold exactly len bytes */
+        b.len = len;
+        b.data = data;
+        if (dcerpc_bytes_coder(name, ctx, pdu, iov, &b)) {
+                return -1;
+        }
+        if (pdu->direction == DCERPC_DECODE) {
+                if (b.len != len) {
+                        printf("%s must be %u bytes, not %u\n",
+                               name, len, b.len);
+                        return -1;
+                }
+                memcpy(data, b.data, len);
+        }
+        return 0;
+}
+
 int dcerpc_union_coder(char *name, struct dcerpc_context *ctx,
                        struct dcerpc_pdu *pdu,
                        struct dcerpc_iovec *iov,

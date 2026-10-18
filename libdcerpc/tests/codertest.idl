@@ -68,6 +68,16 @@ typedef [switch_type(ARM_LEVEL)] union {
 	[case(ArmWide)] WIDE_ARM Wide;
 } ARM_UNION;
 
+/*
+ * A fixed-size byte array: 1-aligned, so Data follows Before at offset 1,
+ * and After is padded to offset 12.
+ */
+typedef struct {
+	uint8_t Before;
+	uint8_t Data[8];
+	uint32_t After;
+} FIXED_BYTES;
+
 	[opnum(0x00)]
 	WERROR EmbeddedTail(
 		[in,ref] TAIL_OUTER *Outer
@@ -83,5 +93,10 @@ typedef [switch_type(ARM_LEVEL)] union {
 		[in] ARM_LEVEL Level,
 		[in,switch_is(Level)] ARM_UNION *Union,
 		[in] uint16_t After
+	);
+
+	[opnum(0x03)]
+	WERROR FixedBytes(
+		[in,ref] FIXED_BYTES *Fixed
 	);
 }

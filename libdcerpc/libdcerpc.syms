@@ -27,6 +27,7 @@ dcerpc_epm_tower_get_ncacn_ip_tcp
 dcerpc_epm_tower_get_ncacn_np
 dcerpc_epm_twr_coder
 dcerpc_epm_twr_struct_coder
+dcerpc_fixed_bytes_coder
 dcerpc_free_data
 dcerpc_free_iovec
 dcerpc_free_pdu
