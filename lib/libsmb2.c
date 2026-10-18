@@ -128,12 +128,10 @@ static const char SmbSign[] = "SmbSign";
 static const char SMB2AESCCM[] = "SMB2AESCCM";
 static const char ServerOut[] = "ServerOut";
 static const char ServerIn[] = "ServerIn ";
-/* The following strings will be used for deriving other keys */
-#if 0
+/* and the application key */
 static const char SMB2APP[] = "SMB2APP";
 static const char SmbRpc[] = "SmbRpc";
 static const char SMBAppKey[] = "SMBAppKey";
-#endif
 
 const smb2_file_id compound_file_id = {
         0xff, 0xff, 0xff, 0xff,  0xff, 0xff, 0xff, 0xff,
@@ -209,6 +207,7 @@ smb2_close_context(struct smb2_context *smb2)
         smb2->tree_id_cur = 0;
         smb2->tree_id[0] = 0xdeadbeef;
         memset(smb2->signing_key, 0, SMB2_KEY_SIZE);
+        memset(smb2->application_key, 0, SMB2_KEY_SIZE);
         if (smb2->session_key) {
                 free(smb2->session_key);
                 smb2->session_key = NULL;
@@ -751,6 +750,10 @@ static void smb2_create_signing_key(struct smb2_context *smb2)
                 memcpy(smb2->signing_key,
                        smb2->session_key,
                        MIN(smb2->session_key_size, SMB2_KEY_SIZE));
+                /* and the application key */
+                memcpy(smb2->application_key,
+                       smb2->session_key,
+                       MIN(smb2->session_key_size, SMB2_KEY_SIZE));
         } else if (smb2->dialect <= SMB2_VERSION_0302) {
                 smb2_derive_key(smb2->session_key,
                                 smb2->session_key_size,
@@ -759,6 +762,13 @@ static void smb2_create_signing_key(struct smb2_context *smb2)
                                 SmbSign,
                                 sizeof(SmbSign),
                                 smb2->signing_key);
+                smb2_derive_key(smb2->session_key,
+                                smb2->session_key_size,
+                                SMB2APP,
+                                sizeof(SMB2APP),
+                                SmbRpc,
+                                sizeof(SmbRpc),
+                                smb2->application_key);
                 smb2_derive_key(smb2->session_key,
                                 smb2->session_key_size,
                                 SMB2AESCCM,
@@ -781,6 +791,13 @@ static void smb2_create_signing_key(struct smb2_context *smb2)
                                 (char *)smb2->preauthhash,
                                 SMB2_PREAUTH_HASH_SIZE,
                                 smb2->signing_key);
+                smb2_derive_key(smb2->session_key,
+                                smb2->session_key_size,
+                                SMBAppKey,
+                                sizeof(SMBAppKey),
+                                (char *)smb2->preauthhash,
+                                SMB2_PREAUTH_HASH_SIZE,
+                                smb2->application_key);
                 smb2_derive_key(smb2->session_key,
                                 smb2->session_key_size,
                                 SMBC2SCipherKey,

@@ -693,6 +693,16 @@ const char *smb2_get_server_guid(struct smb2_context *smb2)
 {
         return smb2->server_guid;
 }
+
+int smb2_get_application_key(struct smb2_context *smb2, uint8_t key[16])
+{
+        if (smb2->session_key == NULL || smb2->session_key_size == 0) {
+                smb2_set_error(smb2, "No session key");
+                return -EINVAL;
+        }
+        memcpy(key, smb2->application_key, SMB2_KEY_SIZE);
+        return 0;
+}
  
 uint16_t smb2_get_dialect(struct smb2_context *smb2)
 {

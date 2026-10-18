@@ -545,6 +545,16 @@ const char *smb2_get_client_guid(struct smb2_context *smb2);
  * Returns the server_guid for this context.
  */
 const char *smb2_get_server_guid(struct smb2_context *smb2);
+
+/*
+ * Copies the application key of the session to key: Session.ApplicationKey
+ * of [MS-SMB2] 3.2.5.3.1, which DCE/RPC over a named pipe uses as its
+ * session key, e.g. to encrypt the password buffers of SAMR.
+ *
+ * Returns 0 on success, or -EINVAL if there is no logged-on session with
+ * a session key.
+ */
+int smb2_get_application_key(struct smb2_context *smb2, uint8_t key[16]);
         
 /*
  * Asynchronous call to connect a TCP connection to the server
