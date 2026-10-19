@@ -126,4 +126,33 @@ typedef [switch_type(uint32_t)] union {
 		[out,ref,switch_is(QueryLevel)] NETLOGON_CAPABILITIES *Capabilities
 	);
 
+/*
+ * [MS-NRPC] 2.2.1.3.7. Buffer is 256 UTF-16 units, carried as bytes:
+ * the caller encrypts the whole structure with the session key before
+ * it is coded. Length is the password length in bytes. In the clear
+ * buffer the password sits at offset (512 - Length) and the bytes in
+ * front of it are random.
+ */
+typedef struct {
+	uint8_t Buffer[512];
+	uint32_t Length;
+} NL_TRUST_PASSWORD, *PNL_TRUST_PASSWORD;
+
+/*
+ * Function: 0x1e  (NetrServerPasswordSet2)
+ * Replaces the machine-account password on the secure channel.
+ * ReturnAuthenticator is produced by the server, so it is absent from
+ * the request. The DC rejects a call that is not signed.
+ */
+	[opnum(0x1e)]
+	NTSTATUS ServerPasswordSet2(
+		[in,unique,string,charset(UTF16)] uint16_t *PrimaryName,
+		[in,ref,string,charset(UTF16)] uint16_t *AccountName,
+		[in] NETLOGON_SECURE_CHANNEL_TYPE SecureChannelType,
+		[in,ref,string,charset(UTF16)] uint16_t *ComputerName,
+		[in,ref] NETLOGON_AUTHENTICATOR *Authenticator,
+		[out,ref] NETLOGON_AUTHENTICATOR *ReturnAuthenticator,
+		[in,ref] NL_TRUST_PASSWORD *ClearNewPassword
+	);
+
 }
