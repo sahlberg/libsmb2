@@ -256,4 +256,176 @@ typedef [switch_type(uint32_t)] union {
 		[out,ref,switch_is(Level)] NETLOGON_DOMAIN_INFORMATION *DomBuffer
 	);
 
+/*
+ * [MS-NRPC] 2.2.1.3.1, the same shape as [MS-SAMR] 2.2.2.2. Two 32-bit
+ * halves, so the value is 4-aligned. A uint64 would align to 8.
+ */
+typedef struct {
+	uint32_t LowPart;
+	int32_t HighPart;
+} OLD_LARGE_INTEGER;
+
+/*
+ * Counted byte buffer. Length and MaximumLength are in bytes. An empty
+ * buffer is length 0 and a NULL pointer.
+ */
+typedef struct {
+	uint16_t Length;
+	uint16_t MaximumLength;
+	[size_is(MaximumLength), length_is(Length)] uint8_t *Buffer;
+} STRING;
+
+/* [MS-NRPC] 2.2.1.4.15 */
+typedef struct {
+	RPC_UNICODE_STRING LogonDomainName;
+	uint32_t ParameterControl;
+	OLD_LARGE_INTEGER Reserved;
+	RPC_UNICODE_STRING UserName;
+	RPC_UNICODE_STRING Workstation;
+} NETLOGON_LOGON_IDENTITY_INFO, *PNETLOGON_LOGON_IDENTITY_INFO;
+
+/* [MS-NRPC] 2.2.1.3.3. Eight bytes of challenge. */
+typedef struct {
+	uint8_t Data[8];
+} LM_CHALLENGE;
+
+/*
+ * [MS-NRPC] 2.2.1.4.5. The challenge responses are the NTLM material
+ * the member passes through; they are not encrypted by the coder.
+ */
+typedef struct {
+	NETLOGON_LOGON_IDENTITY_INFO Identity;
+	LM_CHALLENGE LmChallenge;
+	STRING NtChallengeResponse;
+	STRING LmChallengeResponse;
+} NETLOGON_NETWORK_INFO, *PNETLOGON_NETWORK_INFO;
+
+/* [MS-NRPC] 2.2.1.4.16. A plain enum, so 16 bits in NDR32. */
+typedef enum {
+	NetlogonInteractiveInformation = 1,
+	NetlogonNetworkInformation = 2,
+	NetlogonServiceInformation = 3,
+	NetlogonGenericInformation = 4,
+	NetlogonInteractiveTransitiveInformation = 5,
+	NetlogonNetworkTransitiveInformation = 6,
+	NetlogonServiceTransitiveInformation = 7,
+	NetlogonTicketLogonInformation = 8
+} NETLOGON_LOGON_INFO_CLASS;
+
+/*
+ * Only the network arm is implemented. That is the level a member uses
+ * for NTLM pass-through. The other levels share this union.
+ */
+typedef [switch_type(NETLOGON_LOGON_INFO_CLASS)] union {
+	[case(NetlogonNetworkInformation)] PNETLOGON_NETWORK_INFO LogonNetwork;
+} NETLOGON_LEVEL, *PNETLOGON_LEVEL;
+
+/* [MS-NRPC] 2.2.1.4.17 / [MS-SAMR] 2.2.3.5 */
+typedef struct {
+	uint32_t RelativeId;
+	uint32_t Attributes;
+} GROUP_MEMBERSHIP, *PGROUP_MEMBERSHIP;
+
+/* [MS-NRPC] 2.2.1.3.5. Sixteen bytes of session key. */
+typedef struct {
+	uint8_t Data[16];
+} USER_SESSION_KEY;
+
+/* [MS-NRPC] 2.2.1.4.18. Sid may be NULL. */
+typedef struct {
+	RPC_SID *Sid;
+	uint32_t Attributes;
+} NETLOGON_SID_AND_ATTRIBUTES, *PNETLOGON_SID_AND_ATTRIBUTES;
+
+/*
+ * [MS-NRPC] 2.2.1.4.14, validation level 6. Reserved4 is a one-element
+ * array in the specification; one uint32 has the same encoding. GroupIds
+ * and ExtraSids are NULL when their counts are 0.
+ */
+typedef struct {
+	OLD_LARGE_INTEGER LogonTime;
+	OLD_LARGE_INTEGER LogoffTime;
+	OLD_LARGE_INTEGER KickOffTime;
+	OLD_LARGE_INTEGER PasswordLastSet;
+	OLD_LARGE_INTEGER PasswordCanChange;
+	OLD_LARGE_INTEGER PasswordMustChange;
+	RPC_UNICODE_STRING EffectiveName;
+	RPC_UNICODE_STRING FullName;
+	RPC_UNICODE_STRING LogonScript;
+	RPC_UNICODE_STRING ProfilePath;
+	RPC_UNICODE_STRING HomeDirectory;
+	RPC_UNICODE_STRING HomeDirectoryDrive;
+	uint16_t LogonCount;
+	uint16_t BadPasswordCount;
+	uint32_t UserId;
+	uint32_t PrimaryGroupId;
+	uint32_t GroupCount;
+	[size_is(GroupCount)] PGROUP_MEMBERSHIP GroupIds;
+	uint32_t UserFlags;
+	USER_SESSION_KEY UserSessionKey;
+	RPC_UNICODE_STRING LogonServer;
+	RPC_UNICODE_STRING LogonDomainName;
+	RPC_SID *LogonDomainId;
+	uint8_t LMKey[8];
+	uint32_t UserAccountControl;
+	uint32_t SubAuthStatus;
+	OLD_LARGE_INTEGER LastSuccessfulILogon;
+	OLD_LARGE_INTEGER LastFailedILogon;
+	uint32_t FailedILogonCount;
+	uint32_t Reserved4;
+	uint32_t SidCount;
+	[size_is(SidCount)] PNETLOGON_SID_AND_ATTRIBUTES ExtraSids;
+	RPC_UNICODE_STRING DnsLogonDomainName;
+	RPC_UNICODE_STRING Upn;
+	RPC_UNICODE_STRING ExpansionString1;
+	RPC_UNICODE_STRING ExpansionString2;
+	RPC_UNICODE_STRING ExpansionString3;
+	RPC_UNICODE_STRING ExpansionString4;
+	RPC_UNICODE_STRING ExpansionString5;
+	RPC_UNICODE_STRING ExpansionString6;
+	RPC_UNICODE_STRING ExpansionString7;
+	RPC_UNICODE_STRING ExpansionString8;
+	RPC_UNICODE_STRING ExpansionString9;
+	RPC_UNICODE_STRING ExpansionString10;
+} NETLOGON_VALIDATION_SAM_INFO4, *PNETLOGON_VALIDATION_SAM_INFO4;
+
+/* [MS-NRPC] 2.2.1.4.19. A plain enum, so 16 bits in NDR32. */
+typedef enum {
+	NetlogonValidationUasInfo = 1,
+	NetlogonValidationSamInfo = 2,
+	NetlogonValidationSamInfo2 = 3,
+	NetlogonValidationGenericInfo = 4,
+	NetlogonValidationGenericInfo2 = 5,
+	NetlogonValidationSamInfo4 = 6,
+	NetlogonValidationTicketLogon = 7
+} NETLOGON_VALIDATION_INFO_CLASS;
+
+/*
+ * Only SamInfo4 is implemented. A member asks for that level so the
+ * reply carries the user's SIDs.
+ */
+typedef [switch_type(NETLOGON_VALIDATION_INFO_CLASS)] union {
+	[case(NetlogonValidationSamInfo4)]
+		PNETLOGON_VALIDATION_SAM_INFO4 ValidationSam4;
+} NETLOGON_VALIDATION, *PNETLOGON_VALIDATION;
+
+/*
+ * Function: 0x27  (NetrLogonSamLogonEx)
+ * Passes an NTLM network logon to the DC and returns the validation
+ * info. There is no authenticator argument: the secure channel signs
+ * the PDU. The DC rejects a call that is not signed. Authoritative and
+ * ExtraFlags are [ref], so they are inline.
+ */
+	[opnum(0x27)]
+	NTSTATUS LogonSamLogonEx(
+		[in,unique,string,charset(UTF16)] uint16_t *LogonServer,
+		[in,unique,string,charset(UTF16)] uint16_t *ComputerName,
+		[in] NETLOGON_LOGON_INFO_CLASS LogonLevel,
+		[in,ref,switch_is(LogonLevel)] NETLOGON_LEVEL *LogonInformation,
+		[in] NETLOGON_VALIDATION_INFO_CLASS ValidationLevel,
+		[out,ref,switch_is(ValidationLevel)] NETLOGON_VALIDATION *ValidationInformation,
+		[out,ref] uint8_t *Authoritative,
+		[in,out,ref] uint32_t *ExtraFlags
+	);
+
 }

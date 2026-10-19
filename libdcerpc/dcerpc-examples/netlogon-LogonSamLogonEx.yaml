@@ -1,0 +1,28 @@
+# Passes an NTLM network logon to the DC. The secure channel has to
+# sign the PDU, so this fixed request is refused with
+# STATUS_ACCESS_DENIED (3221225506).
+LogonSamLogonEx: Request
+  LogonServer: \\ad-adc
+  ComputerName: NLTEST1
+  LogonLevel: NetlogonNetworkInformation
+  LogonInformation:
+    LogonNetwork: 
+      Identity: 
+        LogonDomainName: AD
+        ParameterControl: 0
+        Reserved: 
+          LowPart: 0
+          HighPart: 0
+        UserName: user
+        Workstation: NLTEST1
+      LmChallenge: 
+        Data: 0102030405060708
+      NtChallengeResponse: 
+        Length: 8
+        MaximumLength: 8
+        Buffer: 1111111111111111
+      LmChallengeResponse: 
+        Length: 0
+        MaximumLength: 0
+  ValidationLevel: NetlogonValidationSamInfo4
+  ExtraFlags: 0
