@@ -1,10 +1,11 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 /*
- * Netlogon Remote Protocol: the NetrServerReqChallenge and
- * NetrServerAuthenticate3 calls from [MS-NRPC], which set up a secure
- * channel. Neither needs one, so they work without schannel.
- * Function names drop the "Netr" prefix.
+ * Netlogon Remote Protocol, [MS-NRPC].
+ * NetrServerReqChallenge and NetrServerAuthenticate3 set up a secure
+ * channel and do not themselves use one. The later calls do: a caller
+ * signs and seals the PDU, and fills the authenticators, before sending
+ * them. Function names drop the "Netr" prefix.
  */
 [
   uuid(12345678-1234-abcd-ef00-01234567cffb),
@@ -90,6 +91,39 @@ typedef [bitmap32bit] bitmap {
 		[out] PNETLOGON_CREDENTIAL ServerCredential,
 		[in,out,ref] NETLOGON_NEG_FLAGS *NegotiateFlags,
 		[out,ref] uint32_t *AccountRid
+	);
+
+/*
+ * [MS-NRPC] 2.2.1.1.5. Timestamp is the seconds the client adds into
+ * the credential chain for this call.
+ */
+typedef struct {
+	NETLOGON_CREDENTIAL Credential;
+	uint32_t Timestamp;
+} NETLOGON_AUTHENTICATOR, *PNETLOGON_AUTHENTICATOR;
+
+/*
+ * [MS-NRPC] 2.2.1.2.2. QueryLevel 1 returns the flags the server
+ * negotiated; level 2 returns the flags the client asked for.
+ */
+typedef [switch_type(uint32_t)] union {
+	[case(1)] NETLOGON_NEG_FLAGS ServerCapabilities;
+	[case(2)] NETLOGON_NEG_FLAGS RequestedFlags;
+} NETLOGON_CAPABILITIES, *PNETLOGON_CAPABILITIES;
+
+/*
+ * Function: 0x15  (NetrLogonGetCapabilities)
+ * Confirms the flags negotiated by ServerAuthenticate3. The secure
+ * channel has to be up: the DC rejects a call that is not signed.
+ */
+	[opnum(0x15)]
+	NTSTATUS LogonGetCapabilities(
+		[in,ref,string,charset(UTF16)] uint16_t *ServerName,
+		[in,unique,string,charset(UTF16)] uint16_t *ComputerName,
+		[in,ref] NETLOGON_AUTHENTICATOR *Authenticator,
+		[in,out,ref] NETLOGON_AUTHENTICATOR *ReturnAuthenticator,
+		[in] uint32_t QueryLevel,
+		[out,ref,switch_is(QueryLevel)] NETLOGON_CAPABILITIES *Capabilities
 	);
 
 }

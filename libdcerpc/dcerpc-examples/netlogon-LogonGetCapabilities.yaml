@@ -1,0 +1,15 @@
+# Confirms the flags negotiated by ServerAuthenticate3. The authenticator
+# is chained from the secure channel and the PDU has to be signed, so this
+# fixed authenticator is refused with STATUS_ACCESS_DENIED (3221225506).
+LogonGetCapabilities: Request
+  ServerName: \\ad-adc
+  ComputerName: NLTEST1
+  Authenticator: 
+    Credential: 
+      Data: 0102030405060708
+    Timestamp: 1
+  ReturnAuthenticator: 
+    Credential: 
+      Data: 1122334455667788
+    Timestamp: 0
+  QueryLevel: 1
