@@ -59,7 +59,10 @@
 #include <string.h>
 #endif
 
-#ifdef HAVE_SYS_IOCTL_H
+/* On libogc/libogc2 FIONBIO must come from <network.h>, which only defines it
+ * if nobody did before. The toolchain's <sys/ioctl.h> defines a different
+ * value that net_ioctl() rejects with EINVAL, so don't include it there. */
+#if defined(HAVE_SYS_IOCTL_H) && !defined(__wii__) && !defined(__gamecube__)
 #include <sys/ioctl.h>
 #endif
 
@@ -1421,7 +1424,10 @@ set_nonblocking(t_socket fd)
          * so the call "succeeds" (ret=0) without the socket ever actually
          * becoming non-blocking. net_ioctl(FIONBIO) does the correct
          * translation internally, so use that instead of building the
-         * F_SETFL flags word ourselves. */
+         * F_SETFL flags word ourselves. FIONBIO has to be libogc's own
+         * definition from <network.h> (see the <sys/ioctl.h> note above),
+         * otherwise net_ioctl() fails with EINVAL and the socket silently
+         * stays blocking. */
         int one = 1;
         net_ioctl(fd, FIONBIO, &one);
 #else
