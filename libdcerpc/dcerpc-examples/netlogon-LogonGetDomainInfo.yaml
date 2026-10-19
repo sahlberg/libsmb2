@@ -1,0 +1,29 @@
+# Level 1 asks the DC for the domain a member belongs to. The
+# authenticator is chained from the secure channel and the PDU has to be
+# signed, so this fixed authenticator is refused with
+# STATUS_ACCESS_DENIED (3221225506).
+LogonGetDomainInfo: Request
+  ServerName: \\ad-adc
+  ComputerName: NLTEST1
+  Authenticator: 
+    Credential: 
+      Data: 0102030405060708
+    Timestamp: 1
+  ReturnAuthenticator: 
+    Credential: 
+      Data: 1122334455667788
+    Timestamp: 0
+  Level: 1
+  WkstaBuffer:
+    WorkstationInfo: 
+      LsaPolicy: 
+        LsaPolicySize: 0
+      DnsHostName: NLTEST1
+      OsVersion: 
+      OsName: 
+      DummyString3: 
+      DummyString4: 
+      WorkstationFlags: 0
+      KerberosSupportedEncryptionTypes: 0
+      DummyLong3: 0
+      DummyLong4: 0

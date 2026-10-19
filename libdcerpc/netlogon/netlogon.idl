@@ -155,4 +155,105 @@ typedef struct {
 		[in,ref] NL_TRUST_PASSWORD *ClearNewPassword
 	);
 
+/* [MS-DTYP] GUID. No built-in; four fields, aligned as a uint32. */
+typedef struct {
+	uint32_t Data1;
+	uint16_t Data2;
+	uint16_t Data3;
+	uint8_t Data4[8];
+} GUID, *PGUID;
+
+/*
+ * [MS-NRPC] 2.2.1.3.16. LsaPolicy is the raw policy blob. An empty
+ * policy is a zero length and a NULL buffer.
+ */
+typedef struct {
+	uint32_t LsaPolicySize;
+	[size_is(LsaPolicySize)] uint8_t *LsaPolicy;
+} NETLOGON_LSA_POLICY_INFO, *PNETLOGON_LSA_POLICY_INFO;
+
+/*
+ * [MS-NRPC] 2.2.1.3.15. The four counted strings are RPC_UNICODE_STRING
+ * (length, maximum length, unique UTF-16 buffer). DomainSid may be NULL.
+ */
+typedef struct {
+	RPC_UNICODE_STRING DomainName;
+	RPC_UNICODE_STRING DnsDomainName;
+	RPC_UNICODE_STRING DnsForestName;
+	GUID DomainGuid;
+	RPC_SID *DomainSid;
+	RPC_UNICODE_STRING TrustExtension;
+	RPC_UNICODE_STRING DummyString2;
+	RPC_UNICODE_STRING DummyString3;
+	RPC_UNICODE_STRING DummyString4;
+	uint32_t DummyLong1;
+	uint32_t DummyLong2;
+	uint32_t DummyLong3;
+	uint32_t DummyLong4;
+} NETLOGON_ONE_DOMAIN_INFO, *PNETLOGON_ONE_DOMAIN_INFO;
+
+/* [MS-NRPC] 2.2.1.3.12. TrustedDomains is NULL when the count is 0. */
+typedef struct {
+	NETLOGON_ONE_DOMAIN_INFO PrimaryDomain;
+	uint32_t TrustedDomainCount;
+	[size_is(TrustedDomainCount)] NETLOGON_ONE_DOMAIN_INFO **TrustedDomains;
+	NETLOGON_LSA_POLICY_INFO LsaPolicy;
+	RPC_UNICODE_STRING DnsHostNameInDs;
+	RPC_UNICODE_STRING DummyString2;
+	RPC_UNICODE_STRING DummyString3;
+	RPC_UNICODE_STRING DummyString4;
+	uint32_t WorkstationFlags;
+	uint32_t SupportedEncTypes;
+	uint32_t DummyLong3;
+	uint32_t DummyLong4;
+} NETLOGON_DOMAIN_INFO, *PNETLOGON_DOMAIN_INFO;
+
+typedef [switch_type(uint32_t)] union {
+	[case(1)] PNETLOGON_DOMAIN_INFO DomainInfo;
+	[case(2)] PNETLOGON_LSA_POLICY_INFO LsaPolicyInfo;
+} NETLOGON_DOMAIN_INFORMATION, *PNETLOGON_DOMAIN_INFORMATION;
+
+/*
+ * [MS-NRPC] 2.2.1.3.14. The wchar_t strings are unique and may be NULL.
+ * OsVersion and OsName are counted strings, not an OSVERSIONINFOEX.
+ */
+typedef struct {
+	NETLOGON_LSA_POLICY_INFO LsaPolicy;
+	[unique,string,charset(UTF16)] uint16_t *DnsHostName;
+	[unique,string,charset(UTF16)] uint16_t *SiteName;
+	[unique,string,charset(UTF16)] uint16_t *Dummy1;
+	[unique,string,charset(UTF16)] uint16_t *Dummy2;
+	[unique,string,charset(UTF16)] uint16_t *Dummy3;
+	[unique,string,charset(UTF16)] uint16_t *Dummy4;
+	RPC_UNICODE_STRING OsVersion;
+	RPC_UNICODE_STRING OsName;
+	RPC_UNICODE_STRING DummyString3;
+	RPC_UNICODE_STRING DummyString4;
+	uint32_t WorkstationFlags;
+	uint32_t KerberosSupportedEncryptionTypes;
+	uint32_t DummyLong3;
+	uint32_t DummyLong4;
+} NETLOGON_WORKSTATION_INFO, *PNETLOGON_WORKSTATION_INFO;
+
+typedef [switch_type(uint32_t)] union {
+	[case(1)] PNETLOGON_WORKSTATION_INFO WorkstationInfo;
+	[case(2)] PNETLOGON_WORKSTATION_INFO LsaPolicyInfo;
+} NETLOGON_WORKSTATION_INFORMATION, *PNETLOGON_WORKSTATION_INFORMATION;
+
+/*
+ * Function: 0x1d  (NetrLogonGetDomainInfo)
+ * Level 1 sends workstation info and receives the domain info a member
+ * uses after it joins. The DC rejects a call that is not signed.
+ */
+	[opnum(0x1d)]
+	NTSTATUS LogonGetDomainInfo(
+		[in,ref,string,charset(UTF16)] uint16_t *ServerName,
+		[in,unique,string,charset(UTF16)] uint16_t *ComputerName,
+		[in,ref] NETLOGON_AUTHENTICATOR *Authenticator,
+		[in,out,ref] NETLOGON_AUTHENTICATOR *ReturnAuthenticator,
+		[in] uint32_t Level,
+		[in,ref,switch_is(Level)] NETLOGON_WORKSTATION_INFORMATION *WkstaBuffer,
+		[out,ref,switch_is(Level)] NETLOGON_DOMAIN_INFORMATION *DomBuffer
+	);
+
 }
