@@ -15,6 +15,10 @@ add_executable(server-test server-test.c)
 target_link_libraries(server-test dcerpc)
 add_test(NAME server-test COMMAND server-test)
 
+add_executable(schannel-test schannel-test.c)
+target_link_libraries(schannel-test dcerpc)
+add_test(NAME schannel-test COMMAND schannel-test)
+
 # codertest.idl is a test-only interface for NDR layouts the real
 # interfaces do not exercise. Its coders use only the public libdcerpc API
 # (idlcomp without --libdcerpc) and are built into the test program.

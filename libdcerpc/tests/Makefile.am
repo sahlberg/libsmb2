@@ -4,7 +4,7 @@
 # transport.
 check_PROGRAMS = wkssvc-coder-test srvsvc-coder-test winreg-coder-test \
 	lsa-coder-test samr-coder-test dssetup-coder-test netlogon-coder-test epm-coder-test \
-	codertest-coder-test server-test
+	codertest-coder-test server-test schannel-test
 TESTS = $(check_PROGRAMS)
 
 wkssvc_coder_test_SOURCES = wkssvc-coder-test.c coder-test.c coder-test.h
@@ -17,6 +17,7 @@ netlogon_coder_test_SOURCES = netlogon-coder-test.c coder-test.c coder-test.h
 epm_coder_test_SOURCES = epm-coder-test.c coder-test.c coder-test.h
 codertest_coder_test_SOURCES = codertest-coder-test.c coder-test.c coder-test.h
 server_test_SOURCES = server-test.c
+schannel_test_SOURCES = schannel-test.c
 nodist_codertest_coder_test_SOURCES = codertest_coder.c codertest_coder.h
 
 # codertest.idl is a test-only interface for NDR layouts the real

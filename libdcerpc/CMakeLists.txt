@@ -65,6 +65,7 @@ set(DCERPC_LIB_SOURCES
     dcerpc-epm.c
     dcerpc-server.c
     dcerpc-unicode.c
+    schannel.c
     dcerpc-private.h
 )
 

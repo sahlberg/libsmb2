@@ -32,6 +32,7 @@ libdcerpc_la_SOURCES = \
 	dcerpc-epm.c \
 	dcerpc-server.c \
 	dcerpc-unicode.c \
+	schannel.c \
 	dcerpc-private.h
 
 SOCURRENT=1
