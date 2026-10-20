@@ -2670,6 +2670,29 @@ dcerpc_send_pdu_cb_and_free(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
         dcerpc_free_pdu(dce, pdu);
 }
 
+/*
+ * Free the output of a PIPE_TRANSCEIVE reply the callback will not use.
+ * libsmb2 decodes every reply whose status is not of error severity
+ * (warnings such as BUFFER_OVERFLOW, informational ones) as an ioctl
+ * reply with an allocated output, whatever its status; an error reply
+ * is a struct smb2_error_reply instead and has no output of ours.
+ */
+static void
+dcerpc_free_ioctl_output(struct smb2_context *smb2, uint32_t status,
+                         struct smb2_ioctl_reply *rep)
+{
+        if (rep == NULL || status == SMB2_STATUS_STOPPED_ON_SYMLINK) {
+                return;
+        }
+        if ((status & SMB2_STATUS_SEVERITY_MASK) ==
+            SMB2_STATUS_SEVERITY_ERROR &&
+            status != SMB2_STATUS_MORE_PROCESSING_REQUIRED) {
+                return;
+        }
+        smb2_free_data(smb2, rep->output);
+        rep->output = NULL;
+}
+
 static void
 dcerpc_call_cb(struct smb2_context *smb2, int status,
                void *command_data, void *private_data)
@@ -2679,10 +2702,7 @@ dcerpc_call_cb(struct smb2_context *smb2, int status,
         struct smb2_ioctl_reply *rep = command_data;
 
         if (pdu->pending.orphaned) {
-                if (rep && (status == SMB2_STATUS_SUCCESS ||
-                            status == SMB2_STATUS_BUFFER_OVERFLOW)) {
-                        smb2_free_data(smb2, rep->output);
-                }
+                dcerpc_free_ioctl_output(smb2, status, rep);
                 dcerpc_free_pdu(NULL, pdu);
                 return;
         }
@@ -2697,6 +2717,7 @@ dcerpc_call_cb(struct smb2_context *smb2, int status,
                 status = SMB2_STATUS_SUCCESS;
         }
         if (status != SMB2_STATUS_SUCCESS) {
+                dcerpc_free_ioctl_output(smb2, status, rep);
                 dcerpc_send_pdu_cb_and_free(dce, pdu, -nterror_to_errno(status), NULL);
                 return;
         }
@@ -3222,9 +3243,7 @@ smb2_bind_cb(struct smb2_context *smb2, int status,
         int i;
 
         if (pdu->pending.orphaned) {
-                if (rep && status == SMB2_STATUS_SUCCESS) {
-                        smb2_free_data(smb2, rep->output);
-                }
+                dcerpc_free_ioctl_output(smb2, status, rep);
                 dcerpc_free_pdu(NULL, pdu);
                 return;
         }
@@ -3232,6 +3251,7 @@ smb2_bind_cb(struct smb2_context *smb2, int status,
         pdu->direction = DCERPC_DECODE;
 
         if (status != SMB2_STATUS_SUCCESS) {
+                dcerpc_free_ioctl_output(smb2, status, rep);
                 dcerpc_send_pdu_cb_and_free(dce, pdu, -nterror_to_errno(status), NULL);
                 return;
         }
