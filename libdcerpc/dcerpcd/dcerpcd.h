@@ -111,6 +111,14 @@ struct dcerpcd_conn {
         enum dcerpcd_auth_kind auth_kind;
         uid_t uid;              /* valid when auth_kind == DCERPCD_AUTH_USER */
         char *username;         /* "guest" or the authenticated local user */
+        /*
+         * Who NTLMSSP authorize_user() is checking the client's proof
+         * for. Only once the proof is verified does
+         * dcerpcd_auth_session_established() make it the identity above.
+         */
+        enum dcerpcd_auth_kind pending_kind;
+        uid_t pending_uid;
+        char *pending_username;
         struct dcerpcd_pipe *pipes; /* open named pipes on this connection */
 };
 

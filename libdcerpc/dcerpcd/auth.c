@@ -49,6 +49,7 @@ conn_free(struct dcerpcd_conn *conn)
         }
         dcerpcd_pipe_conn_cleanup(conn);
         free(conn->username);
+        free(conn->pending_username);
         free(conn);
 }
 
@@ -105,6 +106,8 @@ dcerpcd_auth_setup_client(struct smb2_context *smb2)
         conn->session_id = next_session_id++;
         conn->auth_kind = DCERPCD_AUTH_NONE;
         conn->uid = (uid_t)-1;
+        conn->pending_kind = DCERPCD_AUTH_NONE;
+        conn->pending_uid = (uid_t)-1;
         conn->pipes = NULL;
         smb2_set_opaque(smb2, conn);
 
@@ -147,6 +150,8 @@ dcerpcd_auth_destruction(struct smb2_server *srvr _U_,
  * Called by the NTLMSSP server path before verifying the client's response.
  * Install the cleartext password for the claimed user, or allow guest.
  * Real users must exist both in our passwd file and as a local account.
+ * The claimed identity stays pending until the proof is verified and
+ * dcerpcd_auth_session_established() is called.
  */
 int
 dcerpcd_auth_authorize_user(struct smb2_server *srvr _U_,
@@ -166,10 +171,10 @@ dcerpcd_auth_authorize_user(struct smb2_server *srvr _U_,
 
         /* Guest / anonymous */
         if (user == NULL || user[0] == '\0' || strcasecmp(user, "guest") == 0) {
-                free(conn->username);
-                conn->username = strdup("guest");
-                conn->auth_kind = DCERPCD_AUTH_GUEST;
-                conn->uid = (uid_t)-1;
+                free(conn->pending_username);
+                conn->pending_username = strdup("guest");
+                conn->pending_kind = DCERPCD_AUTH_GUEST;
+                conn->pending_uid = (uid_t)-1;
                 smb2_set_user(smb2, "guest");
                 /* No password: allow_anonymous handles NTLMSSP guest. */
                 smb2_set_password(smb2, NULL);
@@ -198,13 +203,13 @@ dcerpcd_auth_authorize_user(struct smb2_server *srvr _U_,
                 return -1;
         }
 
-        free(conn->username);
-        conn->username = strdup(ent->user);
-        if (conn->username == NULL) {
+        free(conn->pending_username);
+        conn->pending_username = strdup(ent->user);
+        if (conn->pending_username == NULL) {
                 return -1;
         }
-        conn->auth_kind = DCERPCD_AUTH_USER;
-        conn->uid = pw->pw_uid;
+        conn->pending_kind = DCERPCD_AUTH_USER;
+        conn->pending_uid = pw->pw_uid;
 
         smb2_set_user(smb2, ent->user);
         smb2_set_password(smb2, ent->password);
@@ -227,10 +232,22 @@ dcerpcd_auth_session_established(struct smb2_server *srvr _U_,
                 return -1;
         }
 
+        /* The NTLMSSP proof checked out: the pending identity is ours */
+        if (conn->pending_kind != DCERPCD_AUTH_NONE) {
+                free(conn->username);
+                conn->username = conn->pending_username;
+                conn->pending_username = NULL;
+                conn->auth_kind = conn->pending_kind;
+                conn->uid = conn->pending_uid;
+                conn->pending_kind = DCERPCD_AUTH_NONE;
+                conn->pending_uid = (uid_t)-1;
+        }
+
         /*
-         * NTLMSSP sets auth_kind in authorize_user(). Kerberos/GSSAPI never
-         * calls that path; libsmb2 sets smb2 user/domain from the ticket
-         * principal (user@REALM → user + domain). Map that to a local uid.
+         * NTLMSSP sets auth_kind through authorize_user() above.
+         * Kerberos/GSSAPI never calls that path; libsmb2 sets smb2
+         * user/domain from the ticket principal (user@REALM → user +
+         * domain). Map that to a local uid.
          */
         if (conn->auth_kind != DCERPCD_AUTH_USER) {
                 user = smb2_get_user(smb2);
