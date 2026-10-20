@@ -19,6 +19,18 @@ add_executable(schannel-test schannel-test.c)
 target_link_libraries(schannel-test dcerpc)
 add_test(NAME schannel-test COMMAND schannel-test)
 
+# schannel-rpc-test plays the server over a fake transport: it provides
+# the smb2_cmd_*_async() calls, so it needs the libsmb2 transport, and
+# its definitions must win over libsmb2's in a static build too.
+if(WITH_LIBSMB2)
+  add_executable(schannel-rpc-test schannel-rpc-test.c)
+  target_compile_definitions(schannel-rpc-test PRIVATE
+                             "_U_=__attribute__((unused))")
+  target_link_libraries(schannel-rpc-test dcerpc
+                        -Wl,--allow-multiple-definition)
+  add_test(NAME schannel-rpc-test COMMAND schannel-rpc-test)
+endif()
+
 # codertest.idl is a test-only interface for NDR layouts the real
 # interfaces do not exercise. Its coders use only the public libdcerpc API
 # (idlcomp without --libdcerpc) and are built into the test program.

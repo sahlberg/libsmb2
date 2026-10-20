@@ -1,10 +1,16 @@
 # Coder transcoding tests, run by "make check". Each test program holds
 # the known-good NDR and YAML for one interface; coder-test.c runs them.
 # server-test runs the server runtime (dcerpc/server.h) without a
-# transport.
+# transport. schannel-rpc-test runs a schannel client over a fake one.
 check_PROGRAMS = wkssvc-coder-test srvsvc-coder-test winreg-coder-test \
 	lsa-coder-test samr-coder-test dssetup-coder-test netlogon-coder-test epm-coder-test \
 	codertest-coder-test server-test schannel-test
+# schannel-rpc-test plays the server over a fake transport: it provides
+# the smb2_cmd_*_async() calls, so it needs the libsmb2 transport, and
+# its definitions must win over libsmb2's in a static build too.
+if HAVE_LIBSMB2
+check_PROGRAMS += schannel-rpc-test
+endif
 TESTS = $(check_PROGRAMS)
 
 wkssvc_coder_test_SOURCES = wkssvc-coder-test.c coder-test.c coder-test.h
@@ -18,6 +24,8 @@ epm_coder_test_SOURCES = epm-coder-test.c coder-test.c coder-test.h
 codertest_coder_test_SOURCES = codertest-coder-test.c coder-test.c coder-test.h
 server_test_SOURCES = server-test.c
 schannel_test_SOURCES = schannel-test.c
+schannel_rpc_test_SOURCES = schannel-rpc-test.c schannel-rpc-vectors.h
+schannel_rpc_test_LDFLAGS = -Wl,--allow-multiple-definition
 nodist_codertest_coder_test_SOURCES = codertest_coder.c codertest_coder.h
 
 # codertest.idl is a test-only interface for NDR layouts the real
