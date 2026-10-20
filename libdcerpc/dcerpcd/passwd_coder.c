@@ -34,6 +34,8 @@
 uint32_t dcerpc_pdu_direction(struct dcerpc_pdu *pdu);
 enum dcerpc_encoding dcerpc_pdu_encoding(struct dcerpc_pdu *pdu);
 int dcerpc_pdu_is_conformance_run(struct dcerpc_pdu *pdu);
+void *dcerpc_alloc_array(struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                         uint64_t count, size_t esize);
 
 
 int passwd_entry_coder(char *name, struct dcerpc_context *dce,
@@ -121,12 +123,8 @@ passwd_PASSWD_coder(char *name, struct dcerpc_context *dce,
         dcerpc_set_size_is(pdu, s->count);
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && s->count) {
                 if (s->entry == NULL) {
-                        size_t esize = sizeof(struct passwd_entry);
-                        if (s->count > SIZE_MAX / esize) {
-                                return -1;
-                        }
-                        s->entry = dcerpc_alloc_data(pdu,
-                                (size_t)s->count * esize);
+                        s->entry = dcerpc_alloc_array(pdu, iov,
+                                s->count, sizeof(struct passwd_entry));
                         if (s->entry == NULL) {
                                 return -1;
                         }

@@ -44,6 +44,9 @@ void dcerpc_pdu_raise_max_alignment(struct dcerpc_pdu *pdu, int alignment);
 int dcerpc_get_cr(struct dcerpc_pdu *pdu);
 
 int dcerpc_align_3264(struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov);
+/* An array for a decoder, refused if count can not be in what is left */
+void *dcerpc_alloc_array(struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                         uint64_t count, size_t esize);
 
 struct dcerpc_server_call;
 void dcerpc_pdu_set_server_call(struct dcerpc_pdu *pdu,

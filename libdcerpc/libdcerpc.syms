@@ -6,6 +6,7 @@ dcerpc_align_3264
 dcerpc_aligned_element_coder
 dcerpc_aligned_struct_coder
 dcerpc_allocate_pdu
+dcerpc_alloc_array
 dcerpc_alloc_data
 dcerpc_call
 dcerpc_call_async

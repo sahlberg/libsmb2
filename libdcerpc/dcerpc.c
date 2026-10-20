@@ -1265,6 +1265,34 @@ dcerpc_alloc_data(struct dcerpc_pdu *pdu, size_t size)
         return &ptr->buf[0];
 }
 
+/*
+ * An array of count elements of esize bytes for a decoder. On NDR decode
+ * count comes from the peer and every element takes at least one byte of
+ * what is left of the buffer (the array data follows, if deferred, in the
+ * same buffer), so a count larger than that is refused before allocating:
+ * otherwise a few bytes could ask for gigabytes.
+ */
+void *
+dcerpc_alloc_array(struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                   uint64_t count, size_t esize)
+{
+        if (esize == 0 || count > SIZE_MAX / esize) {
+                return NULL;
+        }
+        if (pdu->direction == DCERPC_DECODE &&
+            pdu->encoding == ENCODING_NDR &&
+            (iov->offset > iov->max_offset ||
+             count > iov->max_offset - iov->offset)) {
+                dcerpc_set_error(pdu->dce, "DCERPC array of %llu elements "
+                                 "with %zu bytes left",
+                                 (unsigned long long)count,
+                                 iov->offset > iov->max_offset ? 0 :
+                                 iov->max_offset - iov->offset);
+                return NULL;
+        }
+        return dcerpc_alloc_data(pdu, (size_t)count * esize);
+}
+
 void
 dcerpc_free_pdu(struct dcerpc_context *dce _U_, struct dcerpc_pdu *pdu)
 {
@@ -4424,7 +4452,7 @@ ndr_bytes_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                         b->data = NULL;
                         return 0;
                 }
-                b->data = dcerpc_alloc_data(pdu, max_count);
+                b->data = dcerpc_alloc_array(pdu, iov, max_count, 1);
                 if (b->data == NULL) {
                         return -1;
                 }
@@ -4490,7 +4518,7 @@ ndr_varying_bytes_coder(char *name, struct dcerpc_context *ctx,
                         b->data = NULL;
                         return 0;
                 }
-                b->data = dcerpc_alloc_data(pdu, actual);
+                b->data = dcerpc_alloc_array(pdu, iov, actual, 1);
                 if (b->data == NULL) {
                         return -1;
                 }

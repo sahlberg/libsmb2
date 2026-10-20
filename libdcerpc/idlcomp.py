@@ -761,6 +761,28 @@ def attr_int(attrs: List[Attr], name: str, default: Optional[int] = None) -> Opt
     return int(a, 0)
 
 
+def range_check_lines(attrs: List[Attr], value: str, indent: str) -> List[str]:
+    """
+    [range(lo, hi)] on a scalar: the peer's value must be in it on decode.
+    The IDLs put it on the counts that size arrays (lsa's Entries, the
+    Count of LookupNames, ...), so it bounds what a peer can ask for.
+    """
+    r = attr_arg(attrs, "range")
+    if r is None:
+        return []
+    lo_s, _, hi_s = r.partition(",")
+    lo, hi = int(lo_s.strip(), 0), int(hi_s.strip(), 0)
+    cond = f"{value} > {hi}"
+    if lo > 0:
+        cond = f"{value} < {lo} || {cond}"
+    return [
+        f"{indent}if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE &&\n"
+        f"{indent}    ({cond})) {{\n"
+        f"{indent}        return -1;\n"
+        f"{indent}}}"
+    ]
+
+
 def unique_string_field_lines(indent: str, disp: str, var: str,
                               field: str) -> List[str]:
     """
@@ -1046,6 +1068,8 @@ C_HEADER = """\
 uint32_t dcerpc_pdu_direction(struct dcerpc_pdu *pdu);
 enum dcerpc_encoding dcerpc_pdu_encoding(struct dcerpc_pdu *pdu);
 int dcerpc_pdu_is_conformance_run(struct dcerpc_pdu *pdu);
+void *dcerpc_alloc_array(struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
+                         uint64_t count, size_t esize);
 
 """
 
@@ -2101,15 +2125,9 @@ def gen_field_coder_stmts(
             esize = f"sizeof({BUILTINS[elem]})"
         else:
             esize = f"sizeof({env.c_struct_name(elem)})"
-        lines.append(f"{indent}                size_t esize = {esize};")
         lines.append(
-            f"{indent}                if ({var}->{size_is} > SIZE_MAX / esize) {{\n"
-            f"{indent}                        return -1;\n"
-            f"{indent}                }}"
-        )
-        lines.append(
-            f"{indent}                {var}->{f.name} = dcerpc_alloc_data(pdu,\n"
-            f"{indent}                        (size_t){var}->{size_is} * esize);\n"
+            f"{indent}                {var}->{f.name} = dcerpc_alloc_array(pdu, iov,\n"
+            f"{indent}                        {var}->{size_is}, {esize});\n"
             f"{indent}                if ({var}->{f.name} == NULL) {{\n"
             f"{indent}                        return -1;\n"
             f"{indent}                }}"
@@ -2151,6 +2169,7 @@ def gen_field_coder_stmts(
                 f"{indent}        return -1;\n"
                 f"{indent}}}"
             )
+            lines.extend(range_check_lines(f.attrs, f"{var}->{f.name}", indent))
             return lines
 
     # enum (NDR uint16/uint32 + pretty names for YAML)
@@ -2859,16 +2878,19 @@ def gen_param_coder(env: TypeEnv, p: Param, var: str, indent: str = "        ",
         size = param_value(fn, size_is, var) if fn is not None else f"{var}->{size_is}"
         length_is = attr_arg(p.attrs, "length_is")
         lines.append(f"{indent}dcerpc_set_size_is(pdu, {size});")
+        # A conformant-varying array has only length_is elements on the
+        # wire, and decoding writes no more (the wire's size must still be
+        # size_is): allocate those, so a large size_is (samr's 1000 Names)
+        # is neither allocated nor refused as more than the PDU can hold.
+        count = size
         if length_is is not None:
-            lines.append(f"{indent}dcerpc_set_length_is(pdu, {param_value(fn, length_is, var)});")
+            count = param_value(fn, length_is, var)
+            lines.append(f"{indent}dcerpc_set_length_is(pdu, {count});")
         lines.append(
             f"{indent}if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && {size} &&\n"
             f"{indent}    {var}->{p.name} == NULL) {{\n"
-            f"{indent}        if ({size} > SIZE_MAX / sizeof({ctype})) {{\n"
-            f"{indent}                return -1;\n"
-            f"{indent}        }}\n"
-            f"{indent}        {var}->{p.name} = dcerpc_alloc_data(pdu,\n"
-            f"{indent}                (size_t){size} * sizeof({ctype}));\n"
+            f"{indent}        {var}->{p.name} = dcerpc_alloc_array(pdu, iov,\n"
+            f"{indent}                {count}, sizeof({ctype}));\n"
             f"{indent}        if ({var}->{p.name} == NULL) {{\n"
             f"{indent}                return -1;\n"
             f"{indent}        }}\n"
@@ -2978,6 +3000,7 @@ def gen_param_coder(env: TypeEnv, p: Param, var: str, indent: str = "        ",
                 f"{indent}        return -1;\n"
                 f"{indent}}}"
             )
+            lines.extend(range_check_lines(p.attrs, f"{var}->{p.name}", indent))
             return lines
 
     lines.append(f"{indent}/* TODO param {p.name} */")
