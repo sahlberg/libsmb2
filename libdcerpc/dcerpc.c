@@ -3033,10 +3033,19 @@ dcerpc_wait_for_reply(struct smb2_context *smb2, struct dcerpc_sync_cb_data *cb_
                         smb2_set_error(smb2, "Poll failed");
                         return -1;
                 }
-                if (pfd.revents == 0) {
-                        continue;
-                }
+                /*
+                 * Service even when idle: libsmb2 only times out PDUs
+                 * from smb2_service(), so a server that never answers
+                 * would otherwise keep us here for ever.
+                 */
                 if (smb2_service(smb2, pfd.revents) < 0) {
+                        /*
+                         * Our reply was processed before the error, as
+                         * lib/sync.c: the call completed, so return it.
+                         */
+                        if (cb_data->is_finished) {
+                                break;
+                        }
                         smb2_set_error(smb2, "smb2_service failed with : "
                                        "%s\n", smb2_get_error(smb2));
                         return -1;
