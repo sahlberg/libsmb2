@@ -41,6 +41,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <sys/types.h>
 #endif
 
+#include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
 
@@ -357,6 +358,15 @@ sid_from_string(char *name, const char *str, RPC_SID *sid)
         }
         p += 2;
 
+        /*
+         * strto*() accept leading blanks and a sign, and saturate or
+         * wrap; every number here must be plain digits in its range.
+         */
+        if (!isdigit((unsigned char)*p)) {
+                printf("Failed to parse SID revision for %s: %s\n",
+                       name, str);
+                return -1;
+        }
         rev = strtoul(p, &end, 10);
         if (end == p || *end != '-' || rev > 255) {
                 printf("Failed to parse SID revision for %s: %s\n",
@@ -365,12 +375,24 @@ sid_from_string(char *name, const char *str, RPC_SID *sid)
         }
         p = end + 1;
 
+        if (!isdigit((unsigned char)*p)) {
+                printf("Failed to parse SID authority for %s: %s\n",
+                       name, str);
+                return -1;
+        }
+        errno = 0;
         if (p[0] == '0' && (p[1] == 'x' || p[1] == 'X')) {
+                if (!isxdigit((unsigned char)p[2])) {
+                        printf("Failed to parse SID authority for %s: %s\n",
+                               name, str);
+                        return -1;
+                }
                 ia = strtoull(p, &end, 16);
         } else {
                 ia = strtoull(p, &end, 10);
         }
-        if (end == p) {
+        /* the identifier authority is 48 bits */
+        if (end == p || errno == ERANGE || ia > 0xffffffffffffULL) {
                 printf("Failed to parse SID authority for %s: %s\n",
                        name, str);
                 return -1;
@@ -386,8 +408,14 @@ sid_from_string(char *name, const char *str, RPC_SID *sid)
                                name, str);
                         return -1;
                 }
+                if (!isdigit((unsigned char)*p)) {
+                        printf("Failed to parse SID subauthority for %s: %s\n",
+                               name, str);
+                        return -1;
+                }
+                errno = 0;
                 sa = strtoul(p, &end, 10);
-                if (end == p) {
+                if (end == p || errno == ERANGE || sa > UINT32_MAX) {
                         printf("Failed to parse SID subauthority for %s: %s\n",
                                name, str);
                         return -1;
@@ -420,6 +448,11 @@ sid_to_string(char *name, const RPC_SID *sid, char *sidstr, size_t size)
         int len;
         int i;
 
+        /* SubAuthority[] holds MAXSUBAUTH: the count is the caller's */
+        if (sid->SubAuthorityCount > MAXSUBAUTH) {
+                printf("Too many SID subauthorities for %s\n", name);
+                return -1;
+        }
         for (i = 0; i < 6; i++) {
                 ia = (ia << 8) | sid->IdentifierAuthority[i];
         }
