@@ -5224,21 +5224,27 @@ ndr_decode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                  void *ptr, int nult)
 {
         struct dcerpc_utf16 *s = ptr;
-        uint64_t val; /* Any fundament of this? */
+        uint64_t val = 0;
         char *str;
         const char *tmp;
+        const uint8_t *units8;
+        uint32_t i;
 
         /* Conformance part */
         if (pdu->is_conformance_run) {
-                if (ndr_conformance_coder(ctx, pdu, iov, &val)) {
+                /* NDR64 counts are 64-bit; none of ours exceeds 32 */
+                if (ndr_conformance_coder(ctx, pdu, iov, &val) ||
+                    val > UINT32_MAX) {
                         return -1;
                 }
                 s->max_count = (uint32_t)val;
-                if (ndr_conformance_coder(ctx, pdu, iov, &val)) {
+                if (ndr_conformance_coder(ctx, pdu, iov, &val) ||
+                    val > UINT32_MAX) {
                         return -1;
                 }
                 s->offset = (uint32_t)val;
-                if (ndr_conformance_coder(ctx, pdu, iov, &val)) {
+                if (ndr_conformance_coder(ctx, pdu, iov, &val) ||
+                    val > UINT32_MAX) {
                         return -1;
                 }
                 s->actual_count = (uint32_t)val;
@@ -5249,17 +5255,36 @@ ndr_decode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         }
         
         /* Data part */
-        if (s->actual_count > s->max_count) {
+        if (s->actual_count > s->max_count || s->offset != 0) {
                 return -1;
         }
         if ((uint64_t)iov->offset + (uint64_t)s->actual_count * 2u > iov->max_offset) {
                 return -1;
         }
+        /*
+         * The string ends at its first NUL. Trailing NULs (a terminator,
+         * or one counted in a Length) are fine, but characters after a
+         * NUL would be silently dropped: "admin\0x" would read as
+         * "admin". A unit is NUL when both its bytes are, in either
+         * byte order.
+         */
+        units8 = &iov->buf[iov->offset];
+        for (i = 0; i < s->actual_count; i++) {
+                if (units8[2 * i] == 0 && units8[2 * i + 1] == 0) {
+                        break;
+                }
+        }
+        for (; i < s->actual_count; i++) {
+                if (units8[2 * i] != 0 || units8[2 * i + 1] != 0) {
+                        dcerpc_set_error(ctx, "DCERPC string with a NUL "
+                                         "inside it");
+                        return -1;
+                }
+        }
         if (!(pdu->hdr.packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN)) {
                 /* Byte-swap into a copy: decoding never writes the input */
                 size_t start = iov->offset;
                 uint16_t *units;
-                uint32_t i;
 
                 units = malloc((s->actual_count ? s->actual_count : 1) *
                                sizeof(uint16_t));
