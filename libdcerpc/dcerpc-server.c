@@ -72,6 +72,11 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #define DEFAULT_FRAG            4280
 /* Largest reassembled REQUEST stub */
 #define MAX_REQUEST_STUB        (4 * 1024 * 1024)
+/*
+ * Output not yet read by the client. A client that only writes PDUs and
+ * never reads the replies would otherwise grow it without bound.
+ */
+#define MAX_OUTPUT              (32 * 1024 * 1024)
 #define ASSOC_GROUP             0x12345
 
 /* Bind time feature negotiation: 6cb71c2c-9812-4540-<bitmask> v1 */
@@ -593,6 +598,12 @@ out_reserve(struct dcerpc_server_pipe *pipe, size_t len)
                 pipe->out_len -= pipe->out_pos;
                 pipe->out_pos = 0;
         }
+        if (len > MAX_OUTPUT - pipe->out_len) {
+                srv_log(pipe->srv, DCERPC_SERVER_LOG_ERROR,
+                        "%zu bytes of output not read by the client",
+                        pipe->out_len);
+                return NULL;
+        }
         nb = realloc(pipe->out_buf, pipe->out_len + len);
         if (nb == NULL) {
                 return NULL;
@@ -823,6 +834,14 @@ process_bind(struct dcerpc_server_pipe *pipe, const uint8_t *pdu, size_t len,
         }
         assoc = get32(pdu + COMMON_HDR + 4, le);
         n_ctx = pdu[COMMON_HDR + 8];
+        /*
+         * Each context takes at least 24 bytes of the PDU and gets a
+         * 24-byte result: do not answer for contexts that can not be
+         * there, so a short BIND can not ask for a long BIND_ACK.
+         */
+        if (n_ctx > (len - (COMMON_HDR + 12)) / 24) {
+                n_ctx = (uint8_t)((len - (COMMON_HDR + 12)) / 24);
+        }
 
         if (alter) {
                 sec_addr[0] = '\0';
