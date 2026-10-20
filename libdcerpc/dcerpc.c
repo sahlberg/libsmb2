@@ -3009,6 +3009,12 @@ dcerpc_call_async(struct dcerpc_context *dce,
  */
 struct dcerpc_sync_cb_data {
         int is_finished;
+        /*
+         * The sync caller gave up waiting (dcerpc_wait_for_reply()
+         * failed) while the call was still pending: the callback frees
+         * this and the reply, if it ever comes.
+         */
+        int abandoned;
         int status;
         void *ptr;
 };
@@ -3045,10 +3051,36 @@ dcerpc_call_sync_cb(struct dcerpc_context *dce, int status,
 {
         struct dcerpc_sync_cb_data *scb = cb_data;
 
-        (void)dce;
+        if (scb->abandoned) {
+                if (command_data != NULL) {
+                        dcerpc_free_data(dce, command_data);
+                }
+                free(scb);
+                return;
+        }
         scb->status = status;
         scb->ptr = command_data;
         scb->is_finished = 1;
+}
+
+/*
+ * dcerpc_wait_for_reply() failed. If the call already completed, free
+ * what it left; else it is still pending and its callback will run later
+ * (when the reply, a timeout or dcerpc_destroy_context() comes), so leave
+ * scb for dcerpc_call_sync_cb() to free then.
+ */
+static void
+dcerpc_abandon_sync(struct dcerpc_context *dce,
+                    struct dcerpc_sync_cb_data *scb)
+{
+        if (scb->is_finished) {
+                if (scb->ptr != NULL) {
+                        dcerpc_free_data(dce, scb->ptr);
+                }
+                free(scb);
+                return;
+        }
+        scb->abandoned = 1;
 }
 
 void *
@@ -3085,7 +3117,7 @@ dcerpc_call(struct dcerpc_context *dce,
         }
 
         if (dcerpc_wait_for_reply(smb2, scb) < 0) {
-                free(scb);
+                dcerpc_abandon_sync(dce, scb);
                 return NULL;
         }
 
@@ -3140,7 +3172,7 @@ dcerpc_connect_context(struct dcerpc_context *dce, const char *path,
         }
 
         if (dcerpc_wait_for_reply(smb2, scb) < 0) {
-                free(scb);
+                dcerpc_abandon_sync(dce, scb);
                 return -1;
         }
 
