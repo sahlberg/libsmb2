@@ -32,7 +32,8 @@ extern "C" {
  */
 extern unsigned char NT_SID_AUTHORITY[6];
 
-#define MAXSUBAUTH 10
+/* SID_MAX_SUB_AUTHORITIES (MS-DTYP 2.4.2) */
+#define MAXSUBAUTH 15
 typedef struct RPC_SID {
         uint8_t Revision;
         uint8_t SubAuthorityCount;
