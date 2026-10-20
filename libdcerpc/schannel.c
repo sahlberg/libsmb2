@@ -45,6 +45,21 @@ struct dcerpc_schannel {
         int failed;
 };
 
+/*
+ * Clear memory that held a key, a password or plaintext. Through a
+ * volatile pointer, so the compiler can not drop it as a dead store
+ * before free() or the end of a function, as it may a memset().
+ */
+static void
+wipe(void *p, size_t n)
+{
+        volatile uint8_t *v = p;
+
+        while (n--) {
+                *v++ = 0;
+        }
+}
+
 /* ---------------------------------------------------------------- AES */
 
 static const uint8_t aes_sbox[256] = {
@@ -161,6 +176,10 @@ aes128_encrypt_block(const uint8_t key[16], const uint8_t in[16],
                 }
         }
         memcpy(out, s, 16);
+        /* rk[0] is the key itself */
+        wipe(rk, sizeof(rk));
+        wipe(s, sizeof(s));
+        wipe(t, sizeof(t));
 }
 
 /* AES-128-CFB8. enc is non-zero to encrypt. iv is updated. */
@@ -277,6 +296,8 @@ md4(const uint8_t *msg, size_t len, uint8_t out[16])
                 h2 += d;
                 h3 += e;
         }
+        /* the message is the UTF-16 machine password */
+        wipe(buf, nblocks * 64);
         free(buf);
         for (i = 0; i < 4; i++) {
                 out[i] = (uint8_t)(h0 >> (8 * i));
@@ -389,6 +410,8 @@ sha256(const uint8_t *msg, size_t len, uint8_t out[32])
                 st[6] += g;
                 st[7] += h;
         }
+        /* HMAC's inner message starts with the key ^ ipad */
+        wipe(buf, nblocks * 64);
         free(buf);
         for (i = 0; i < 8; i++) {
                 out[4 * i] = (uint8_t)(st[i] >> 24);
@@ -408,6 +431,7 @@ hmac_sha256(const uint8_t *key, size_t key_len,
         uint8_t inner_hash[32], outer[96];
         uint8_t *inner;
         size_t i;
+        int rc;
 
         memset(k, 0, 64);
         if (key_len > 64) {
@@ -421,25 +445,36 @@ hmac_sha256(const uint8_t *key, size_t key_len,
                 ipad[i] = k[i] ^ 0x36;
                 opad[i] = k[i] ^ 0x5c;
         }
+        wipe(k, sizeof(k));
         if (msg_len > SIZE_MAX - 64) {
-                return -1;
+                rc = -1;
+                goto out;
         }
         inner = malloc(64 + msg_len);
         if (inner == NULL) {
-                return -1;
+                rc = -1;
+                goto out;
         }
         memcpy(inner, ipad, 64);
         if (msg_len) {
                 memcpy(inner + 64, msg, msg_len);
         }
-        if (sha256(inner, 64 + msg_len, inner_hash) < 0) {
-                free(inner);
-                return -1;
-        }
+        rc = sha256(inner, 64 + msg_len, inner_hash);
+        wipe(inner, 64 + msg_len);
         free(inner);
+        if (rc < 0) {
+                goto out;
+        }
         memcpy(outer, opad, 64);
         memcpy(outer + 64, inner_hash, 32);
-        return sha256(outer, 96, out);
+        rc = sha256(outer, 96, out);
+ out:
+        /* the pads are the key xor a constant */
+        wipe(ipad, sizeof(ipad));
+        wipe(opad, sizeof(opad));
+        wipe(inner_hash, sizeof(inner_hash));
+        wipe(outer, sizeof(outer));
+        return rc;
 }
 
 
@@ -536,27 +571,27 @@ dcerpc_schannel_create(const uint8_t client_challenge[8],
                 return NULL;
         }
         if (md4((const uint8_t *)pw->val, (size_t)pw->len * 2, nthash) < 0) {
-                memset(pw->val, 0, (size_t)pw->len * 2);
+                wipe(pw->val, (size_t)pw->len * 2);
                 free(pw);
                 return NULL;
         }
-        memset(pw->val, 0, (size_t)pw->len * 2);
+        wipe(pw->val, (size_t)pw->len * 2);
         free(pw);
         memcpy(material, client_challenge, 8);
         memcpy(material + 8, server_challenge, 8);
         if (hmac_sha256(nthash, 16, material, 16, mac) < 0) {
-                memset(nthash, 0, sizeof(nthash));
+                wipe(nthash, sizeof(nthash));
                 return NULL;
         }
-        memset(nthash, 0, sizeof(nthash));
+        wipe(nthash, sizeof(nthash));
 
         sch = calloc(1, sizeof(*sch));
         if (sch == NULL) {
-                memset(mac, 0, sizeof(mac));
+                wipe(mac, sizeof(mac));
                 return NULL;
         }
         memcpy(sch->session_key, mac, 16);
-        memset(mac, 0, sizeof(mac));
+        wipe(mac, sizeof(mac));
         credential(sch->session_key, client_challenge, sch->client_credential);
         credential(sch->session_key, server_challenge, sch->server_credential);
         if (memcmp(sch->client_credential, zeros, 8) == 0) {
@@ -571,7 +606,7 @@ void
 dcerpc_schannel_destroy(struct dcerpc_schannel *sch)
 {
         if (sch != NULL) {
-                memset(sch, 0, sizeof(*sch));
+                wipe(sch, sizeof(*sch));
                 free(sch);
         }
 }
@@ -685,11 +720,14 @@ checksum8(const uint8_t session_key[16], const uint8_t hdr[8],
                 memcpy(buf + 16, msg, len);
         }
         if (hmac_sha256(session_key, 16, buf, 16 + len, mac) < 0) {
+                wipe(buf, 16 + len);
                 free(buf);
                 return -1;
         }
+        wipe(buf, 16 + len);
         free(buf);
         memcpy(out, mac, 8);
+        wipe(mac, sizeof(mac));
         return 0;
 }
 
@@ -735,6 +773,7 @@ dcerpc_schannel_seal(struct dcerpc_schannel *sch,
         memcpy(iv, seq, 8);
         memcpy(iv + 8, seq, 8);
         aes_cfb8_iv(key, iv, body, body, 8 + len, 1);
+        wipe(key, sizeof(key));
         memcpy(token + 24, body, 8);
         if (len) {
                 memcpy(crypt, body + 8, len);
@@ -788,11 +827,15 @@ dcerpc_schannel_unseal(struct dcerpc_schannel *sch,
         memcpy(iv, expect, 8);
         memcpy(iv + 8, expect, 8);
         aes_cfb8_iv(key, iv, body, body, 8 + len, 0);
+        wipe(key, sizeof(key));
         if (checksum8(sch->session_key, hdr, body, body + 8, len, sum) < 0) {
+                wipe(body, 8 + len);
                 free(body);
                 return -1;
         }
         if (ct_memcmp(sum, token + 16, 8) != 0) {
+                /* the plaintext of a forged token stays here */
+                wipe(body, 8 + len);
                 free(body);
                 sch->failed = 1;
                 return -1;
@@ -800,6 +843,7 @@ dcerpc_schannel_unseal(struct dcerpc_schannel *sch,
         if (len) {
                 memcpy(plain, body + 8, len);
         }
+        wipe(body, 8 + len);
         free(body);
         sch->server_seq++;
         return 0;
