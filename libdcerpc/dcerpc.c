@@ -2309,6 +2309,14 @@ dce_frags_status(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
 
                 /* Non-RESPONSE (FAULT, BIND_ACK, ...) is a single PDU */
                 if (hdr.PTYPE != PDU_TYPE_RESPONSE) {
+                        /* ... and can not follow RESPONSE fragments */
+                        if (offset != 0) {
+                                dcerpc_set_error(dce, "DCERPC PDU type %d "
+                                                 "in a RESPONSE fragment set",
+                                                 hdr.PTYPE);
+                                pdu->direction = saved_dir;
+                                return DCE_FRAG_ERROR;
+                        }
                         if (hdr.frag_length < 16) {
                                 pdu->direction = saved_dir;
                                 return DCE_FRAG_ERROR;
@@ -2401,6 +2409,13 @@ dce_unfragment_iov(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                         return -1;
                 }
 
+                if (next_hdr.PTYPE != PDU_TYPE_RESPONSE) {
+                        dcerpc_set_error(dce, "DCERPC PDU type %d in a "
+                                         "RESPONSE fragment set",
+                                         next_hdr.PTYPE);
+                        pdu->direction = saved_dir;
+                        return -1;
+                }
                 if (next_hdr.frag_length < 24 ||
                     (size_t)offset + next_hdr.frag_length > iov->max_offset) {
                         dcerpc_set_error(dce, "DCERPC next fragment "
