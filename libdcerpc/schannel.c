@@ -36,6 +36,13 @@ struct dcerpc_schannel {
         uint8_t seed[8];
         uint64_t client_seq;
         uint64_t server_seq;
+        /*
+         * A check of something the server sent failed. The channel can
+         * no longer be trusted (and a forger would otherwise get any
+         * number of tries at the same sequence number or seed), so every
+         * call fails from then on.
+         */
+        int failed;
 };
 
 /* ---------------------------------------------------------------- AES */
@@ -438,6 +445,19 @@ hmac_sha256(const uint8_t *key, size_t key_len,
 
 /* ------------------------------------------------------- session math */
 
+/* memcmp() for secrets: the time taken does not depend on the data */
+static int
+ct_memcmp(const uint8_t *a, const uint8_t *b, size_t n)
+{
+        uint8_t diff = 0;
+        size_t i;
+
+        for (i = 0; i < n; i++) {
+                diff |= a[i] ^ b[i];
+        }
+        return diff != 0;
+}
+
 static void
 cred_add(uint8_t cred[8], uint32_t n)
 {
@@ -578,7 +598,7 @@ int
 dcerpc_schannel_authenticator(struct dcerpc_schannel *sch,
                               uint32_t timestamp, uint8_t cred[8])
 {
-        if (sch == NULL || cred == NULL) {
+        if (sch == NULL || cred == NULL || sch->failed) {
                 return -1;
         }
         cred_add(sch->seed, timestamp);
@@ -592,13 +612,14 @@ dcerpc_schannel_check_authenticator(struct dcerpc_schannel *sch,
 {
         uint8_t next[8], got[8];
 
-        if (sch == NULL || cred == NULL) {
+        if (sch == NULL || cred == NULL || sch->failed) {
                 return -1;
         }
         memcpy(next, sch->seed, 8);
         cred_add(next, 1);
         credential(sch->session_key, next, got);
-        if (memcmp(got, cred, 8) != 0) {
+        if (ct_memcmp(got, cred, 8) != 0) {
+                sch->failed = 1;
                 return -1;
         }
         memcpy(sch->seed, next, 8);
@@ -611,7 +632,7 @@ dcerpc_schannel_encrypt_trust_password(const struct dcerpc_schannel *sch,
 {
         uint8_t iv[16];
 
-        if (sch == NULL || password == NULL) {
+        if (sch == NULL || password == NULL || sch->failed) {
                 return -1;
         }
         memset(iv, 0, 16);
@@ -683,7 +704,7 @@ dcerpc_schannel_seal(struct dcerpc_schannel *sch,
         uint8_t *body;
 
         if (sch == NULL || token == NULL || (len > 0 && (plain == NULL ||
-            crypt == NULL))) {
+            crypt == NULL)) || sch->failed) {
                 return -1;
         }
         if (confounder != NULL) {
@@ -738,18 +759,20 @@ dcerpc_schannel_unseal(struct dcerpc_schannel *sch,
         uint8_t *body;
 
         if (sch == NULL || token == NULL || (len > 0 && (crypt == NULL ||
-            plain == NULL)) || len > SIZE_MAX - 16) {
+            plain == NULL)) || len > SIZE_MAX - 16 || sch->failed) {
                 return -1;
         }
         sign_header(hdr);
         if (memcmp(token, hdr, 8) != 0) {
+                sch->failed = 1;
                 return -1;
         }
         sequence_bytes(sch->server_seq, 0, expect);
         memcpy(iv, token + 16, 8);
         memcpy(iv + 8, token + 16, 8);
         aes_cfb8_iv(sch->session_key, iv, token + 8, got_seq, 8, 0);
-        if (memcmp(got_seq, expect, 8) != 0) {
+        if (ct_memcmp(got_seq, expect, 8) != 0) {
+                sch->failed = 1;
                 return -1;
         }
 
@@ -765,9 +788,13 @@ dcerpc_schannel_unseal(struct dcerpc_schannel *sch,
         memcpy(iv, expect, 8);
         memcpy(iv + 8, expect, 8);
         aes_cfb8_iv(key, iv, body, body, 8 + len, 0);
-        if (checksum8(sch->session_key, hdr, body, body + 8, len, sum) < 0 ||
-            memcmp(sum, token + 16, 8) != 0) {
+        if (checksum8(sch->session_key, hdr, body, body + 8, len, sum) < 0) {
                 free(body);
+                return -1;
+        }
+        if (ct_memcmp(sum, token + 16, 8) != 0) {
+                free(body);
+                sch->failed = 1;
                 return -1;
         }
         if (len) {

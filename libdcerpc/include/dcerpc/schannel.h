@@ -67,8 +67,11 @@ int dcerpc_schannel_authenticator(struct dcerpc_schannel *sch,
 
 /*
  * Check the server's return authenticator for the authenticator() just
- * sent. On success the seed advances by one. On failure the seed is
- * left as authenticator() stored it.
+ * sent. On success the seed advances by one.
+ *
+ * A failed check, here or in unseal(), means the channel can no longer
+ * be trusted: every call on sch fails from then on, and the caller must
+ * set up a new secure channel.
  */
 int dcerpc_schannel_check_authenticator(struct dcerpc_schannel *sch,
                                         const uint8_t cred[8]);

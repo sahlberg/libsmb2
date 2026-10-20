@@ -130,12 +130,24 @@ test_credentials(void)
         from_hex("062e3572dfffbe88", want, 8);
         CHECK(memcmp(cred, want, 8) == 0);
 
+        from_hex("0764724c74f9792a", want, 8);
+        CHECK(dcerpc_schannel_check_authenticator(sch, want) == 0);
+        /* A replay fails, and ends the session */
+        CHECK(dcerpc_schannel_check_authenticator(sch, want) != 0);
+        CHECK(dcerpc_schannel_authenticator(sch, 1, cred) != 0);
+        dcerpc_schannel_destroy(sch);
+
+        /* A wrong authenticator ends the session: no second try */
+        sch = open_session();
+        CHECK(sch != NULL);
+        if (sch == NULL) {
+                return;
+        }
+        CHECK(dcerpc_schannel_authenticator(sch, 1, cred) == 0);
         memset(bad, 0xff, 8);
         CHECK(dcerpc_schannel_check_authenticator(sch, bad) != 0);
         from_hex("0764724c74f9792a", want, 8);
-        CHECK(dcerpc_schannel_check_authenticator(sch, want) == 0);
         CHECK(dcerpc_schannel_check_authenticator(sch, want) != 0);
-
         dcerpc_schannel_destroy(sch);
 }
 
@@ -205,22 +217,42 @@ test_seal(void)
         from_hex("4cfb96b27f", want_ct, 5);
         CHECK(memcmp(crypt, want_ct, 5) == 0);
 
-        /* The initiator bit is not a token this side can unseal. */
-        memcpy(plain, "XXXXX", 5);
-        CHECK(dcerpc_schannel_unseal(sch, crypt, 5, token, plain) != 0);
-        CHECK(memcmp(plain, "XXXXX", 5) == 0);
-
-        from_hex(acceptor, want_tok, 32);
-        want_tok[16] ^= 0xff;
-        CHECK(dcerpc_schannel_unseal(sch, want_ct, 5, want_tok, plain) != 0);
-
+        /* The acceptor's token for the same message unseals */
         from_hex(acceptor, want_tok, 32);
         from_hex("1ad0b296dd", want_ct, 5);
         memset(plain, 0, 5);
         CHECK(dcerpc_schannel_unseal(sch, want_ct, 5, want_tok, plain) == 0);
         CHECK(memcmp(plain, hello, 5) == 0);
+        /* A replay fails, and ends the session */
         CHECK(dcerpc_schannel_unseal(sch, want_ct, 5, want_tok, plain) != 0);
+        CHECK(dcerpc_schannel_seal(sch, hello, 5, confounder, crypt,
+                                    token) != 0);
+        dcerpc_schannel_destroy(sch);
 
+        /* The initiator bit is not a token this side can unseal. */
+        sch = open_session();
+        CHECK(sch != NULL);
+        if (sch == NULL) {
+                return;
+        }
+        CHECK(dcerpc_schannel_seal(sch, hello, 5, confounder, crypt,
+                                    token) == 0);
+        memcpy(plain, "XXXXX", 5);
+        CHECK(dcerpc_schannel_unseal(sch, crypt, 5, token, plain) != 0);
+        CHECK(memcmp(plain, "XXXXX", 5) == 0);
+        dcerpc_schannel_destroy(sch);
+
+        /* A bad checksum fails, and the good token is not let in after */
+        sch = open_session();
+        CHECK(sch != NULL);
+        if (sch == NULL) {
+                return;
+        }
+        from_hex(acceptor, want_tok, 32);
+        want_tok[16] ^= 0xff;
+        CHECK(dcerpc_schannel_unseal(sch, want_ct, 5, want_tok, plain) != 0);
+        from_hex(acceptor, want_tok, 32);
+        CHECK(dcerpc_schannel_unseal(sch, want_ct, 5, want_tok, plain) != 0);
         dcerpc_schannel_destroy(sch);
 }
 
