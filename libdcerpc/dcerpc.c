@@ -388,6 +388,8 @@ struct dcerpc_response_pdu {
 #define NSE_BUF_SIZE 128*1024
 /* Fragment size to use when sending before a BIND_ACK told us one. */
 #define DCE_DEFAULT_XMIT_FRAG 4280
+/* The smallest fragment every implementation must accept (C706) */
+#define DCE_MIN_FRAG 1432
 
 struct dcerpc_cb_data {
         struct dcerpc_pending pending;
@@ -3359,6 +3361,18 @@ smb2_bind_cb(struct smb2_context *smb2, int status,
         }
         if (i == n_offered) {
                 smb2_set_error(smb2, "Bind rejected all contexts");
+                dcerpc_send_pdu_cb_and_free(dce, pdu, -EINVAL, NULL);
+                return;
+        }
+        /*
+         * C706 12.6.4.4: every implementation accepts fragments of at
+         * least 1432 bytes. Less would split a request into a write per
+         * few bytes of stub (8 bytes each at max_recv_frag 32).
+         */
+        if (pdu->bind_ack.max_recv_frag < DCE_MIN_FRAG) {
+                dcerpc_set_error(dce, "DCERPC BIND_ACK max_recv_frag %u is "
+                                 "below %d", pdu->bind_ack.max_recv_frag,
+                                 DCE_MIN_FRAG);
                 dcerpc_send_pdu_cb_and_free(dce, pdu, -EINVAL, NULL);
                 return;
         }
