@@ -23,6 +23,7 @@ struct config_CONFIG {
         char * keytab;
         char * hostname;
         char * domain;
+        char * svc_group;
 };
 
 /* Data-only IDL (prefix config): types and coders, no interface */

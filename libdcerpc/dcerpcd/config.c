@@ -48,6 +48,7 @@ static dcerpcd_config g_defaults = {
         .keytab = NULL,
         .hostname = NULL,
         .domain = NULL,
+        .svc_group = NULL,      /* control socket open to every local user */
 };
 
 static dcerpcd_config *g_config = &g_defaults;

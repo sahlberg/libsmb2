@@ -51,6 +51,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 #include <errno.h>
 #include <fcntl.h>
+#include <grp.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -1039,10 +1040,33 @@ dcerpcd_external_init(const char *path)
 {
         struct sockaddr_un addr;
         mode_t old_umask;
+        mode_t mode;
         const char *sock = path && path[0] ? path : DCERPCD_DEFAULT_SVC_SOCK;
+        const char *group = dcerpcd_config_get()->svc_group;
+        gid_t gid = (gid_t)-1;
 
         if (listen_fd >= 0) {
                 return 0;
+        }
+
+        /*
+         * Whoever can connect can register a pipe name not taken yet and
+         * serve that interface to remote clients. With svc_group only
+         * that group (and root) can; else any local user, so that non-root
+         * workers can register when dcerpcd runs as root (port 445).
+         */
+        if (group != NULL && group[0] != '\0') {
+                struct group *gr = getgrnam(group);
+
+                if (gr == NULL) {
+                        fprintf(stderr, "external: svc_group %s: no such "
+                                "group\n", group);
+                        return -1;
+                }
+                gid = gr->gr_gid;
+                mode = 0660;
+        } else {
+                mode = 0666;
         }
 
         sock_path_owned = strdup(sock);
@@ -1078,11 +1102,8 @@ dcerpcd_external_init(const char *path)
         }
         strncpy(addr.sun_path, sock_path_owned, sizeof(addr.sun_path) - 1);
 
-        /*
-         * World-accessible local control socket so non-root workers can
-         * register when dcerpcd itself runs as root (port 445).
-         */
-        old_umask = umask(0);
+        /* Created with the final mode: nobody else gets a window */
+        old_umask = umask(~mode & 0777);
         if (bind(listen_fd, (struct sockaddr *)&addr, sizeof(addr)) != 0) {
                 umask(old_umask);
                 fprintf(stderr, "external: bind %s: %s\n", sock_path_owned,
@@ -1094,7 +1115,17 @@ dcerpcd_external_init(const char *path)
                 return -1;
         }
         umask(old_umask);
-        if (chmod(sock_path_owned, 0666) != 0) {
+        if (gid != (gid_t)-1 && chown(sock_path_owned, (uid_t)-1, gid) != 0) {
+                fprintf(stderr, "external: chown %s to group %s: %s\n",
+                        sock_path_owned, group, strerror(errno));
+                close(listen_fd);
+                unlink(sock_path_owned);
+                listen_fd = -1;
+                free(sock_path_owned);
+                sock_path_owned = NULL;
+                return -1;
+        }
+        if (chmod(sock_path_owned, mode) != 0) {
                 fprintf(stderr, "external: chmod %s: %s\n", sock_path_owned,
                         strerror(errno));
                 /* non-fatal: owner can still connect */

@@ -9,9 +9,12 @@
  *     keytab: /etc/krb5.keytab
  *     hostname: fileserver
  *     domain: EXAMPLE.COM
+ *     svc_group: dcerpc
  *
- * port and krb5 are required. keytab, hostname, and domain are optional
- * (unique string pointers; omit the key to leave unset).
+ * port and krb5 are required. keytab, hostname, domain and svc_group are
+ * optional (unique string pointers; omit the key to leave unset).
+ * svc_group: only this group (and root) may register external services
+ * on the control socket; unset, any local user may.
  * krb5: 0 = disable Kerberos/GSSAPI, 1 = enable (default when file absent).
  *
  * Full-line and trailing # comments are allowed (see yaml_next_kv).
@@ -23,4 +26,5 @@ typedef struct {
 	[string,charset(UTF16)] uint16_t *keytab;
 	[string,charset(UTF16)] uint16_t *hostname;
 	[string,charset(UTF16)] uint16_t *domain;
+	[string,charset(UTF16)] uint16_t *svc_group;
 } CONFIG;

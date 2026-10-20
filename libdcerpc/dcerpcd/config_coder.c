@@ -86,6 +86,16 @@ config_CONFIG_coder(char *name, struct dcerpc_context *dce,
                                     PTR_UNIQUE, dcerpc_utf16z_coder)) {
                 return -1;
         }
+        if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&
+            s->svc_group == NULL) {
+                if (dcerpc_ptr_coder("svc_group", dce, pdu, iov, NULL,
+                                     PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                        return -1;
+                }
+        } else if (dcerpc_ptr_coder("svc_group", dce, pdu, iov, &s->svc_group,
+                                    PTR_UNIQUE, dcerpc_utf16z_coder)) {
+                return -1;
+        }
 
         return 0;
 }

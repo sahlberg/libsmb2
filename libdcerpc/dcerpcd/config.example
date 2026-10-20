@@ -2,7 +2,8 @@
 #
 # Loaded via dcerpc_read_yaml_file() + config.idl (CONFIG root).
 # Full-line and trailing # comments are allowed. Blank lines are ignored.
-# port and krb5 are required; keytab, hostname, and domain may be omitted.
+# port and krb5 are required; keytab, hostname, domain and svc_group may
+# be omitted.
 
 CONFIG:
   # SMB listen port (445 needs root or CAP_NET_BIND_SERVICE).
@@ -19,3 +20,8 @@ CONFIG:
   # Optional SMB server identity / SPN host part and realm/workgroup.
   hostname: fileserver.fqdn
   domain: EXAMPLE.COM
+
+  # Optional group allowed to register external services on the control
+  # socket (mode 0660, this group). Omit to let any local user register,
+  # i.e. claim any pipe name not registered yet.
+  svc_group: dcerpc
