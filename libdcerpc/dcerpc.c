@@ -4155,6 +4155,167 @@ yaml_name(const char *name)
 }
 
 /*
+ * A double-quoted YAML scalar, unquoted in place. Values that a plain
+ * scalar can not carry (control characters, a leading '"' or '#', " #",
+ * leading or trailing blanks, ": " in a list element) are written quoted
+ * by yaml_print_string().
+ * Escapes: \\ \" \n \r \t \xHH. After the closing quote only blanks and
+ * a # comment may follow.
+ */
+static int
+yaml_unquote(char *str)
+{
+        char *in = str + 1;
+        char *out = str;
+
+        while (*in != '"') {
+                unsigned int v;
+                int i;
+
+                if (*in == '\0') {
+                        return -1;
+                }
+                if (*in != '\\') {
+                        *out++ = *in++;
+                        continue;
+                }
+                in++;
+                switch (*in) {
+                case '\\':
+                case '"':
+                        *out++ = *in++;
+                        break;
+                case 'n':
+                        *out++ = '\n';
+                        in++;
+                        break;
+                case 'r':
+                        *out++ = '\r';
+                        in++;
+                        break;
+                case 't':
+                        *out++ = '\t';
+                        in++;
+                        break;
+                case 'x':
+                        in++;
+                        v = 0;
+                        for (i = 0; i < 2; i++) {
+                                int n = hex_nibble(*in);
+
+                                if (n < 0) {
+                                        return -1;
+                                }
+                                v = (v << 4) | (unsigned int)n;
+                                in++;
+                        }
+                        if (v == 0) {
+                                return -1;
+                        }
+                        *out++ = (char)v;
+                        break;
+                default:
+                        return -1;
+                }
+        }
+        in++;
+        while (*in == ' ' || *in == '\t') {
+                in++;
+        }
+        if (*in != '\0' && *in != '#') {
+                return -1;
+        }
+        *out = '\0';
+        return 0;
+}
+
+/*
+ * Does a string need yaml_print_string() to quote it? An anonymous list
+ * element ("- value") also must not look like "key: value".
+ */
+static int
+yaml_needs_quoting(const char *s, int anonymous)
+{
+        size_t len = strlen(s);
+        size_t i;
+
+        if (len == 0) {
+                return 0;
+        }
+        if (s[0] == '"' || s[0] == '#' || s[0] == ' ' || s[0] == '\t' ||
+            s[len - 1] == ' ' || s[len - 1] == '\t') {
+                return 1;
+        }
+        for (i = 0; i < len; i++) {
+                unsigned char c = (unsigned char)s[i];
+
+                if (c < 0x20 || c == 0x7f) {
+                        return 1;
+                }
+                if (c == '#' && (s[i - 1] == ' ' || s[i - 1] == '\t')) {
+                        return 1;
+                }
+                if (anonymous && c == ':' &&
+                    (s[i + 1] == '\0' || s[i + 1] == ' ' ||
+                     s[i + 1] == '\t')) {
+                        return 1;
+                }
+        }
+        return 0;
+}
+
+/*
+ * A string value: plain when it reads back unchanged, else double-quoted
+ * and escaped. The strings often come from the peer, and one with a
+ * newline must not be able to add a key of its own to the output.
+ */
+static int
+yaml_print_string(struct dcerpc_context *ctx, struct dcerpc_iovec *iov,
+                  const char *s, int anonymous)
+{
+        if (!yaml_needs_quoting(s, anonymous)) {
+                return dcerpc_text_printf(ctx, iov, "%s\n", s);
+        }
+        if (dcerpc_text_printf(ctx, iov, "\"")) {
+                return -1;
+        }
+        for (; *s; s++) {
+                unsigned char c = (unsigned char)*s;
+                int rc;
+
+                switch (c) {
+                case '\\':
+                        rc = dcerpc_text_printf(ctx, iov, "\\\\");
+                        break;
+                case '"':
+                        rc = dcerpc_text_printf(ctx, iov, "\\\"");
+                        break;
+                case '\n':
+                        rc = dcerpc_text_printf(ctx, iov, "\\n");
+                        break;
+                case '\r':
+                        rc = dcerpc_text_printf(ctx, iov, "\\r");
+                        break;
+                case '\t':
+                        rc = dcerpc_text_printf(ctx, iov, "\\t");
+                        break;
+                default:
+                        if (c < 0x20 || c == 0x7f) {
+                                rc = dcerpc_text_printf(ctx, iov, "\\x%02x",
+                                                        c);
+                        } else {
+                                rc = dcerpc_text_printf(ctx, iov, "%c", c);
+                        }
+                        break;
+                }
+                if (rc) {
+                        return -1;
+                }
+        }
+        return dcerpc_text_printf(ctx, iov, "\"\n");
+}
+
+/*
  * Advance to the next YAML key: value (or list item "- key: value").
  *
  * Skips blank lines and # comments:
@@ -4162,8 +4323,8 @@ yaml_name(const char *name)
  *   - trailing comments: "key: value # comment" (space/tab before '#')
  *
  * '#' inside an unquoted value with no preceding whitespace is kept as
- * part of the value (e.g. password: abc#def). Quoted strings are not
- * special-cased by this codec.
+ * part of the value (e.g. password: abc#def). A value in double quotes
+ * is taken as it is quoted (yaml_unquote()), # and all.
  */
 static int
 yaml_next_kv(struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov)
@@ -4237,6 +4398,11 @@ again:
                 if (*str == '#') {
                         goto again;
                 }
+                /* "- "quoted"": an anonymous element, whatever it holds */
+                if (*str == '"') {
+                        pdu->yaml_key = (char *)"";
+                        goto value;
+                }
         }
 
         /* The key ends at ": " or at a ':' that ends the line. */
@@ -4271,6 +4437,21 @@ again:
                 str++;
         }
 value:
+        if (*str == '"') {
+                char *q = dcerpc_alloc_data(pdu, strlen(str) + 1);
+
+                if (q == NULL) {
+                        return -1;
+                }
+                strcpy(q, str);
+                if (yaml_unquote(q) == 0) {
+                        pdu->yaml_val = q;
+                        return 0;
+                }
+                /* Not a well-formed quoted string: take it as it is. */
+                dcerpc_set_error(pdu->dce, "YAML bad quoted value for %s",
+                                 pdu->yaml_key);
+        }
         /*
          * Strip a trailing # comment from the value. A '#' starts a comment
          * only when it is at the start of the value or preceded by whitespace
@@ -7006,7 +7187,7 @@ yaml_utf16_coder(char *name, struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 if (yaml_print_key(ctx, pdu, iov, name)) {
                         return -1;
                 }
-                if (dcerpc_text_printf(ctx, iov, "%s\n", s ? s : "")) {
+                if (yaml_print_string(ctx, iov, s ? s : "", name == NULL)) {
                         return -1;
                 }
                 return 0;
