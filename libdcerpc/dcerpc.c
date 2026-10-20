@@ -2369,16 +2369,21 @@ dce_unfragment_iov(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                 pdu->direction = saved_dir;
                 return -1;
         }
-        if (hdr.rpc_vers != 5 || hdr.rpc_vers_minor != 0 ||
-            hdr.PTYPE != PDU_TYPE_RESPONSE) {
-                iov->offset = 0;
-                pdu->direction = saved_dir;
-                return 0;
-        }
-
         iov->offset = 0;
-        if (hdr.pfc_flags & PFC_LAST_FRAG) {
+        /*
+         * A single PDU (any non-RESPONSE, or a RESPONSE that is its own
+         * last fragment) ends at its frag_length, and the reply holds
+         * nothing after it: bytes past it are not part of the stub.
+         */
+        if (hdr.PTYPE != PDU_TYPE_RESPONSE ||
+            (hdr.pfc_flags & PFC_LAST_FRAG)) {
                 pdu->direction = saved_dir;
+                if (hdr.frag_length != iov->max_offset) {
+                        dcerpc_set_error(dce, "DCERPC PDU of %u bytes in "
+                                         "a %zu byte reply",
+                                         hdr.frag_length, iov->max_offset);
+                        return -1;
+                }
                 return 0;
         }
 
@@ -2449,6 +2454,14 @@ dce_unfragment_iov(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                 }
                 pdu->direction = DCERPC_DECODE;
         } while (!(next_hdr.pfc_flags & PFC_LAST_FRAG));
+
+        /* As for a single PDU: nothing may follow the last fragment */
+        if ((size_t)offset != iov->max_offset) {
+                dcerpc_set_error(dce, "DCERPC %zu bytes after the last "
+                                 "fragment", iov->max_offset - offset);
+                pdu->direction = saved_dir;
+                return -1;
+        }
 
         iov->offset = 0;
         iov->max_offset = (size_t)unfragment_len;
@@ -3281,6 +3294,15 @@ smb2_bind_cb(struct smb2_context *smb2, int status,
                 return;
         }
         smb2_free_data(dce->smb2, rep->output);
+
+        /* The BIND_ACK is all of the reply, as dce_unfragment_iov() */
+        if (pdu->hdr.frag_length != rep->output_count) {
+                dcerpc_set_error(dce, "DCERPC BIND_ACK of %u bytes in a "
+                                 "%u byte reply", pdu->hdr.frag_length,
+                                 rep->output_count);
+                dcerpc_send_pdu_cb_and_free(dce, pdu, -EINVAL, NULL);
+                return;
+        }
 
         if (pdu->bind_ack.num_results < 1) {
                 smb2_set_error(smb2, "No results in BIND ACK");
