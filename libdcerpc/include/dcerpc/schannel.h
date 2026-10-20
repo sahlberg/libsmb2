@@ -37,11 +37,18 @@ extern "C" {
 struct dcerpc_schannel;
 
 /*
+ * A random client challenge for ServerReqChallenge, whose first five
+ * bytes are not all the same (see dcerpc_schannel_create()).
+ */
+int dcerpc_schannel_client_challenge(uint8_t challenge[8]);
+
+/*
  * machine_password is the clear machine password, UTF-8. The session key
  * is the first 16 bytes of HMAC-SHA256(MD4(UTF-16LE password),
  * client_challenge || server_challenge).
- * Returns NULL on allocation failure, a missing AES flag, or a zero
- * client credential.
+ * Returns NULL on allocation failure, a missing AES flag, a client
+ * challenge whose first five bytes are all the same (refused by servers
+ * since CVE-2020-1472), or a zero client credential.
  */
 struct dcerpc_schannel *dcerpc_schannel_create(
         const uint8_t client_challenge[8],

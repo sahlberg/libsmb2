@@ -182,6 +182,23 @@ test_credentials(void)
                                       "password", 0) == NULL);
         CHECK(dcerpc_schannel_create(NULL, server_challenge, "password",
                                       DCERPC_SCHANNEL_AES) == NULL);
+        {
+                /* first five bytes the same: refused, as by servers */
+                uint8_t weak[8] = { 7, 7, 7, 7, 7, 1, 2, 3 };
+                uint8_t chal[8];
+                int i, same = 1;
+
+                CHECK(dcerpc_schannel_create(weak, server_challenge,
+                                             "password",
+                                             DCERPC_SCHANNEL_AES) == NULL);
+                CHECK(dcerpc_schannel_client_challenge(chal) == 0);
+                for (i = 1; i < 5; i++) {
+                        if (chal[i] != chal[0]) {
+                                same = 0;
+                        }
+                }
+                CHECK(!same);
+        }
 
         sch = open_session();
         CHECK(sch != NULL);

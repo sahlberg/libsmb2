@@ -573,6 +573,38 @@ random_bytes(uint8_t *p, size_t n)
         return got == n ? 0 : -1;
 }
 
+/*
+ * [MS-NRPC] 3.1.4.1, since CVE-2020-1472 (Zerologon): a server refuses a
+ * client challenge whose first five bytes are all the same. Such a
+ * challenge makes an all-zero credential likely enough to be guessed.
+ */
+static int
+challenge_is_weak(const uint8_t challenge[8])
+{
+        int i;
+
+        for (i = 1; i < 5; i++) {
+                if (challenge[i] != challenge[0]) {
+                        return 0;
+                }
+        }
+        return 1;
+}
+
+int
+dcerpc_schannel_client_challenge(uint8_t challenge[8])
+{
+        if (challenge == NULL) {
+                return -1;
+        }
+        do {
+                if (random_bytes(challenge, 8)) {
+                        return -1;
+                }
+        } while (challenge_is_weak(challenge));
+        return 0;
+}
+
 struct dcerpc_schannel *
 dcerpc_schannel_create(const uint8_t client_challenge[8],
                        const uint8_t server_challenge[8],
@@ -586,7 +618,8 @@ dcerpc_schannel_create(const uint8_t client_challenge[8],
 
         if (client_challenge == NULL || server_challenge == NULL ||
             machine_password == NULL ||
-            (negotiate_flags & DCERPC_SCHANNEL_AES) == 0) {
+            (negotiate_flags & DCERPC_SCHANNEL_AES) == 0 ||
+            challenge_is_weak(client_challenge)) {
                 return NULL;
         }
         pw = dcerpc_utf8_to_utf16(machine_password);
