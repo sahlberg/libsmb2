@@ -4329,11 +4329,33 @@ yaml_print_key(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
  * Does the current key match name? An anonymous array element (name
  * NULL) is a key-less list item, which yaml_next_kv() returns as key "".
  */
+/*
+ * yaml_next_kv() failed: leave a key no name matches and no value, so
+ * every coder after it fails its key check instead of dereferencing a
+ * NULL key or value; callers do not check yaml_next_kv()'s return.
+ */
+static char yaml_failed_key[] = "\001";
+
+static void
+yaml_set_failed(struct dcerpc_pdu *pdu)
+{
+        pdu->yaml_key = yaml_failed_key;
+        pdu->yaml_val = NULL;
+}
+
 static int
 yaml_key_mismatch(struct dcerpc_pdu *pdu, const char *name)
 {
+        if (pdu->yaml_key == NULL) {
+                return 1;
+        }
         if (name == NULL) {
-                return pdu->yaml_key == NULL || pdu->yaml_key[0] != '\0';
+                /*
+                 * An anonymous element ("- value"). The end of the input
+                 * also has key "" but no value: a list shorter than its
+                 * count must not read that as an element.
+                 */
+                return pdu->yaml_key[0] != '\0' || pdu->yaml_val == NULL;
         }
         return strcmp(pdu->yaml_key, name);
 }
@@ -4562,6 +4584,7 @@ again:
                 }
                 str = dcerpc_alloc_data(pdu, len + 1);
                 if (str == NULL) {
+                        yaml_set_failed(pdu);
                         return -1;
                 }
                 memcpy(str, &iov->buf[start], len);
@@ -4632,6 +4655,7 @@ value:
                 char *q = dcerpc_alloc_data(pdu, strlen(str) + 1);
 
                 if (q == NULL) {
+                        yaml_set_failed(pdu);
                         return -1;
                 }
                 strcpy(q, str);
