@@ -72,9 +72,9 @@ dcerpc_schannel_client_credential
 dcerpc_schannel_create
 dcerpc_schannel_destroy
 dcerpc_schannel_encrypt_trust_password
-dcerpc_schannel_seal
+dcerpc_schannel_protect
 dcerpc_schannel_server_credential
-dcerpc_schannel_unseal
+dcerpc_schannel_unprotect
 dcerpc_services
 dcerpc_pdu_server_call
 dcerpc_server_add_interface

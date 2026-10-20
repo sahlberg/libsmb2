@@ -24,15 +24,21 @@ extern "C" {
 /*
  * AES Netlogon secure channel, [MS-NRPC] 3.1.4.3.1 through 3.3.4.2.1.
  * The caller owns the connection. These functions produce credentials,
- * authenticators, the encrypted trust password, and sealed buffers.
+ * authenticators, the encrypted trust password, and signed or sealed
+ * messages.
  *
  * NEG_SUPPORTS_AES (0x01000000) is required. RC4 is not implemented.
  * A client credential of eight zero bytes is refused.
  */
 #define DCERPC_SCHANNEL_AES 0x01000000u
 
-/* Bytes in an NL_AUTH_SHA2_SIGNATURE token, which is auth_length. */
+/*
+ * Bytes in an NL_AUTH_SHA2_SIGNATURE token, which is auth_length. A
+ * token for a signed-only message may end after 48: its confounder is
+ * unused, but protect() always writes 56, as Windows and Samba send.
+ */
 #define DCERPC_SCHANNEL_TOKEN_LEN 56
+#define DCERPC_SCHANNEL_SIGN_TOKEN_LEN 48
 
 struct dcerpc_schannel;
 
@@ -95,7 +101,7 @@ int dcerpc_schannel_authenticator(struct dcerpc_schannel *sch,
  * Check the server's return authenticator for the authenticator() just
  * sent. On success the seed advances by one.
  *
- * A failed check, here or in unseal(), means the channel can no longer
+ * A failed check, here or in unprotect(), means the channel can no longer
  * be trusted: every call on sch fails from then on, and the caller must
  * set up a new secure channel.
  */
@@ -110,24 +116,36 @@ int dcerpc_schannel_encrypt_trust_password(const struct dcerpc_schannel *sch,
                                            uint8_t password[516]);
 
 /*
- * Seal plain[0..len) into crypt[0..len). token receives the 56-byte
- * signature. confounder is 8 bytes, or NULL to read them from /dev/urandom.
- * crypt and plain may be the same buffer. This is the initiator direction.
+ * Protect one outgoing message (a PDU fragment), as the initiator.
+ *
+ * sign[0..sign_len) is the region the signature covers and
+ * data[0..data_len) the region sealed in place when seal is non-zero;
+ * over DCE/RPC data is the stub and its padding, and sign either the
+ * same or, with header signing, the PDU from its header to the end of
+ * its sec_trailer. data may lie inside sign: it is signed before it is
+ * sealed. Signed-only (seal 0), data is not touched.
+ *
+ * token receives the DCERPC_SCHANNEL_TOKEN_LEN byte signature. confounder
+ * is 8 bytes when sealing, or NULL for random ones; ignored otherwise.
+ * Each call takes the channel's next sequence number.
  */
-int dcerpc_schannel_seal(struct dcerpc_schannel *sch,
-                         const uint8_t *plain, size_t len,
-                         const uint8_t *confounder,
-                         uint8_t *crypt,
-                         uint8_t token[DCERPC_SCHANNEL_TOKEN_LEN]);
+int dcerpc_schannel_protect(struct dcerpc_schannel *sch, int seal,
+                            uint8_t *data, size_t data_len,
+                            const uint8_t *sign, size_t sign_len,
+                            const uint8_t *confounder,
+                            uint8_t token[DCERPC_SCHANNEL_TOKEN_LEN]);
 
 /*
- * Unseal a token written by the acceptor (no initiator bit in the
- * sequence). crypt and plain may be the same buffer.
+ * Check one incoming message from the acceptor: the regions as for
+ * protect(), token the token_len byte auth value it came with. With seal,
+ * data is unsealed in place first, then the signature over sign is
+ * checked against the plaintext. On failure the session is unusable, and
+ * data (with seal) is cleared.
  */
-int dcerpc_schannel_unseal(struct dcerpc_schannel *sch,
-                           const uint8_t *crypt, size_t len,
-                           const uint8_t token[DCERPC_SCHANNEL_TOKEN_LEN],
-                           uint8_t *plain);
+int dcerpc_schannel_unprotect(struct dcerpc_schannel *sch, int seal,
+                              uint8_t *data, size_t data_len,
+                              const uint8_t *sign, size_t sign_len,
+                              const uint8_t *token, size_t token_len);
 
 #ifdef __cplusplus
 }

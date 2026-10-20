@@ -269,78 +269,175 @@ test_trust_password(void)
         dcerpc_schannel_destroy(sch);
 }
 
+/*
+ * A fake request (tag 0) or response (tag 2) PDU: 24 header bytes, then
+ * the 8 bytes sealed (stub "hello" and 3 pad), then an 8-byte
+ * sec_trailer. The whole PDU is signed, as with header signing.
+ */
+#define DATA_OFS 24
+#define DATA_LEN 8
+#define PDU_LEN 40
+
 static void
-test_seal(void)
+fake_pdu(uint8_t tag, uint8_t pdu[PDU_LEN])
 {
-        struct dcerpc_schannel *sch;
-        uint8_t token[DCERPC_SCHANNEL_TOKEN_LEN];
-        uint8_t crypt[5], plain[5];
-        uint8_t want_tok[DCERPC_SCHANNEL_TOKEN_LEN];
-        uint8_t want_ct[5];
-        uint8_t confounder[8] = {
+        static const uint8_t trailer[8] = { 68, 6, 3, 0, 0, 0, 0, 0 };
+
+        memset(pdu, 0, PDU_LEN);
+        pdu[0] = 5;
+        pdu[2] = tag;
+        pdu[3] = 3;
+        memcpy(pdu + DATA_OFS, "hello", 5);
+        memcpy(pdu + DATA_OFS + DATA_LEN, trailer, 8);
+}
+
+/*
+ * From an independent Python model of Samba's netsec_outgoing_packet():
+ * one sequence number for the channel, client messages 0 (sealed) and 1
+ * (signed), then server replies 2 (sealed) and 3 (signed).
+ */
+static const char c0_tok[] =
+        "13001a00ffff00001ea81e2c5cd2f379ad6f1bf65526477f10eb4a54182477fe";
+static const char c0_data[] = "4cfb96b27f4838b6";
+static const char c1_tok[] =
+        "1300ffffffff0000a7f30b887f1db1836c463601579c1859";
+static const char s2_tok[] =
+        "13001a00ffff00005b9fce2141cfde8db1c29b1ea0bd284860a4a677778ed546";
+static const char s2_data[] = "caee32be5d855c3b";
+static const char s3_tok[] =
+        "1300ffffffff00009d12098a2e426c45e7e677571070412f";
+
+/* The two requests a session sends before the tests' replies */
+static void
+send_requests(struct dcerpc_schannel *sch, uint8_t token[56])
+{
+        static const uint8_t confounder[8] = {
                 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08
         };
-        static const uint8_t hello[5] = { 'h', 'e', 'l', 'l', 'o' };
-        /* Acceptor sequence 0, same confounder and message. */
-        static const char acceptor[] =
-                "13001a00ffff0000"
-                "4ec9930dca80feef"
-                "d3fe63750b6539f2"
-                "4ad3661603eeddf3";
+        uint8_t pdu[PDU_LEN];
+        uint8_t want[56];
+
+        fake_pdu(0, pdu);
+        CHECK(dcerpc_schannel_protect(sch, 1, pdu + DATA_OFS, DATA_LEN,
+                                      pdu, PDU_LEN, confounder,
+                                      token) == 0);
+        memset(want, 0, sizeof(want));
+        from_hex(c0_tok, want, 32);
+        CHECK(memcmp(token, want, 56) == 0);
+        from_hex(c0_data, want, DATA_LEN);
+        CHECK(memcmp(pdu + DATA_OFS, want, DATA_LEN) == 0);
+
+        fake_pdu(0, pdu);
+        CHECK(dcerpc_schannel_protect(sch, 0, NULL, 0, pdu, PDU_LEN,
+                                      NULL, token) == 0);
+        memset(want, 0, sizeof(want));
+        from_hex(c1_tok, want, 24);
+        CHECK(memcmp(token, want, 56) == 0);
+}
+
+/* The sealed reply s2, as it arrives */
+static void
+sealed_reply(uint8_t pdu[PDU_LEN], uint8_t token[56])
+{
+        fake_pdu(2, pdu);
+        from_hex(s2_data, pdu + DATA_OFS, DATA_LEN);
+        memset(token, 0, 56);
+        from_hex(s2_tok, token, 32);
+}
+
+static void
+test_protect(void)
+{
+        struct dcerpc_schannel *sch;
+        uint8_t token[56];
+        uint8_t pdu[PDU_LEN];
+        uint8_t plain[PDU_LEN];
 
         sch = open_session();
         CHECK(sch != NULL);
         if (sch == NULL) {
                 return;
         }
-        CHECK(dcerpc_schannel_seal(sch, hello, 5, confounder, crypt,
-                                    token) == 0);
-        memset(want_tok, 0, sizeof(want_tok));
-        from_hex("13001a00ffff0000"
-                 "4ec9930d4ab9701c"
-                 "d3fe63750b6539f2"
-                 "10eb4a54182477fe",
-                 want_tok, 32);
-        CHECK(memcmp(token, want_tok, DCERPC_SCHANNEL_TOKEN_LEN) == 0);
-        from_hex("4cfb96b27f", want_ct, 5);
-        CHECK(memcmp(crypt, want_ct, 5) == 0);
+        send_requests(sch, token);
 
-        /* The acceptor's token for the same message unseals */
-        from_hex(acceptor, want_tok, 32);
-        from_hex("1ad0b296dd", want_ct, 5);
-        memset(plain, 0, 5);
-        CHECK(dcerpc_schannel_unseal(sch, want_ct, 5, want_tok, plain) == 0);
-        CHECK(memcmp(plain, hello, 5) == 0);
+        /* The sealed reply unseals to the plaintext PDU */
+        sealed_reply(pdu, token);
+        CHECK(dcerpc_schannel_unprotect(sch, 1, pdu + DATA_OFS, DATA_LEN,
+                                        pdu, PDU_LEN, token, 56) == 0);
+        fake_pdu(2, plain);
+        CHECK(memcmp(pdu, plain, PDU_LEN) == 0);
+
+        /* The signed reply, with its token cut after the checksum */
+        fake_pdu(2, pdu);
+        memset(token, 0, sizeof(token));
+        from_hex(s3_tok, token, 24);
+        CHECK(dcerpc_schannel_unprotect(sch, 0, NULL, 0, pdu, PDU_LEN,
+                                        token, 48) == 0);
+
         /* A replay fails, and ends the session */
-        CHECK(dcerpc_schannel_unseal(sch, want_ct, 5, want_tok, plain) != 0);
-        CHECK(dcerpc_schannel_seal(sch, hello, 5, confounder, crypt,
-                                    token) != 0);
+        CHECK(dcerpc_schannel_unprotect(sch, 0, NULL, 0, pdu, PDU_LEN,
+                                        token, 48) != 0);
+        CHECK(dcerpc_schannel_protect(sch, 0, NULL, 0, pdu, PDU_LEN,
+                                      NULL, token) != 0);
         dcerpc_schannel_destroy(sch);
 
-        /* The initiator bit is not a token this side can unseal. */
+        /*
+         * A change to a signed byte that is not sealed (the header)
+         * fails, the forged plaintext is cleared, and the real reply is
+         * not let in after.
+         */
         sch = open_session();
         CHECK(sch != NULL);
         if (sch == NULL) {
                 return;
         }
-        CHECK(dcerpc_schannel_seal(sch, hello, 5, confounder, crypt,
-                                    token) == 0);
-        memcpy(plain, "XXXXX", 5);
-        CHECK(dcerpc_schannel_unseal(sch, crypt, 5, token, plain) != 0);
-        CHECK(memcmp(plain, "XXXXX", 5) == 0);
+        send_requests(sch, token);
+        sealed_reply(pdu, token);
+        pdu[3] ^= 0x01;
+        CHECK(dcerpc_schannel_unprotect(sch, 1, pdu + DATA_OFS, DATA_LEN,
+                                        pdu, PDU_LEN, token, 56) != 0);
+        memset(plain, 0, DATA_LEN);
+        CHECK(memcmp(pdu + DATA_OFS, plain, DATA_LEN) == 0);
+        sealed_reply(pdu, token);
+        CHECK(dcerpc_schannel_unprotect(sch, 1, pdu + DATA_OFS, DATA_LEN,
+                                        pdu, PDU_LEN, token, 56) != 0);
         dcerpc_schannel_destroy(sch);
 
-        /* A bad checksum fails, and the good token is not let in after */
+        /* A sealed token is not a signed-only one, and the reverse */
         sch = open_session();
         CHECK(sch != NULL);
         if (sch == NULL) {
                 return;
         }
-        from_hex(acceptor, want_tok, 32);
-        want_tok[16] ^= 0xff;
-        CHECK(dcerpc_schannel_unseal(sch, want_ct, 5, want_tok, plain) != 0);
-        from_hex(acceptor, want_tok, 32);
-        CHECK(dcerpc_schannel_unseal(sch, want_ct, 5, want_tok, plain) != 0);
+        send_requests(sch, token);
+        sealed_reply(pdu, token);
+        CHECK(dcerpc_schannel_unprotect(sch, 0, NULL, 0, pdu, PDU_LEN,
+                                        token, 56) != 0);
+        dcerpc_schannel_destroy(sch);
+
+        /* A token too short for its kind */
+        sch = open_session();
+        CHECK(sch != NULL);
+        if (sch == NULL) {
+                return;
+        }
+        send_requests(sch, token);
+        sealed_reply(pdu, token);
+        CHECK(dcerpc_schannel_unprotect(sch, 1, pdu + DATA_OFS, DATA_LEN,
+                                        pdu, PDU_LEN, token, 48) != 0);
+        dcerpc_schannel_destroy(sch);
+
+        /* An initiator's token is not one this side can unprotect */
+        sch = open_session();
+        CHECK(sch != NULL);
+        if (sch == NULL) {
+                return;
+        }
+        fake_pdu(0, pdu);
+        CHECK(dcerpc_schannel_protect(sch, 0, NULL, 0, pdu, PDU_LEN,
+                                      NULL, token) == 0);
+        CHECK(dcerpc_schannel_unprotect(sch, 0, NULL, 0, pdu, PDU_LEN,
+                                        token, 56) != 0);
         dcerpc_schannel_destroy(sch);
 }
 
@@ -350,7 +447,7 @@ main(void)
         test_credentials();
         test_server_check();
         test_trust_password();
-        test_seal();
+        test_protect();
         if (failures) {
                 printf("%d failures\n", failures);
                 return 1;

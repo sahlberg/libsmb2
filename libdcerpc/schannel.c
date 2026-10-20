@@ -36,8 +36,13 @@ struct dcerpc_schannel {
         uint8_t server_credential[8];
         /* Running authenticator seed. Starts as the client credential. */
         uint8_t seed[8];
-        uint64_t client_seq;
-        uint64_t server_seq;
+        /*
+         * One sequence number for the channel, as Samba keeps it: taken
+         * by every message sent and every message received, so a reply
+         * carries the number after its request's (and each fragment
+         * its own).
+         */
+        uint64_t seq;
         /*
          * A check of something the server sent failed. The channel can
          * no longer be trusted (and a forger would otherwise get any
@@ -781,130 +786,171 @@ seal_key(const uint8_t session_key[16], uint8_t out[16])
         }
 }
 
+/*
+ * NL_AUTH_SHA2_SIGNATURE header: SignatureAlgorithm HMAC-SHA256 (0x0013),
+ * SealAlgorithm AES-128 (0x001a) or none (0xffff), Pad 0xffff, Flags 0.
+ */
 static void
-sign_header(uint8_t hdr[8])
+sign_header(int seal, uint8_t hdr[8])
 {
         hdr[0] = 0x13;
         hdr[1] = 0x00;
-        hdr[2] = 0x1a;
-        hdr[3] = 0x00;
+        hdr[2] = seal ? 0x1a : 0xff;
+        hdr[3] = seal ? 0x00 : 0xff;
         hdr[4] = 0xff;
         hdr[5] = 0xff;
         hdr[6] = 0x00;
         hdr[7] = 0x00;
 }
 
-/* HMAC-SHA256(session key, header || confounder || message), first 8. */
+/*
+ * HMAC-SHA256(session key, header || confounder || message), first 8
+ * bytes. A signed-only message has no confounder.
+ */
 static int
 checksum8(const uint8_t session_key[16], const uint8_t hdr[8],
-          const uint8_t confounder[8], const uint8_t *msg, size_t len,
+          const uint8_t *confounder, const uint8_t *msg, size_t len,
           uint8_t out[8])
 {
+        size_t pre = confounder ? 16 : 8;
         uint8_t *buf;
         uint8_t mac[32];
 
-        if (len > SIZE_MAX - 16) {
+        if (len > SIZE_MAX - pre) {
                 return -1;
         }
-        buf = malloc(16 + len);
+        buf = malloc(pre + len);
         if (buf == NULL) {
                 return -1;
         }
         memcpy(buf, hdr, 8);
-        memcpy(buf + 8, confounder, 8);
-        if (len) {
-                memcpy(buf + 16, msg, len);
+        if (confounder) {
+                memcpy(buf + 8, confounder, 8);
         }
-        if (hmac_sha256(session_key, 16, buf, 16 + len, mac) < 0) {
-                wipe(buf, 16 + len);
+        if (len) {
+                memcpy(buf + pre, msg, len);
+        }
+        if (hmac_sha256(session_key, 16, buf, pre + len, mac) < 0) {
+                wipe(buf, pre + len);
                 free(buf);
                 return -1;
         }
-        wipe(buf, 16 + len);
+        wipe(buf, pre + len);
         free(buf);
         memcpy(out, mac, 8);
         wipe(mac, sizeof(mac));
         return 0;
 }
 
-int
-dcerpc_schannel_seal(struct dcerpc_schannel *sch,
-                     const uint8_t *plain, size_t len,
-                     const uint8_t *confounder,
-                     uint8_t *crypt,
-                     uint8_t token[DCERPC_SCHANNEL_TOKEN_LEN])
+/*
+ * AES-128-CFB8 under the sealing key over confounder || data, one stream
+ * with IV seq || seq. enc is non-zero to encrypt. Both are done in place.
+ */
+static int
+seal_stream(const uint8_t session_key[16], const uint8_t seq[8],
+            uint8_t confounder[8], uint8_t *data, size_t len, int enc)
 {
-        uint8_t seq[8], conf[8], sum[8], key[16], iv[16];
+        uint8_t key[16], iv[16];
         uint8_t *body;
 
-        if (sch == NULL || token == NULL || (len > 0 && (plain == NULL ||
-            crypt == NULL)) || sch->failed ||
-            !sch->verified) {
+        if (len > SIZE_MAX - 8) {
                 return -1;
         }
-        if (confounder != NULL) {
-                memcpy(conf, confounder, 8);
-        } else if (random_bytes(conf, 8)) {
-                return -1;
-        }
-        if (len > SIZE_MAX - 16) {
-                return -1;
-        }
-        memset(token, 0, DCERPC_SCHANNEL_TOKEN_LEN);
-        sign_header(token);
-        sequence_bytes(sch->client_seq, 1, seq);
-        if (checksum8(sch->session_key, token, conf, plain, len, sum) < 0) {
-                return -1;
-        }
-        memcpy(token + 16, sum, 8);
-
         body = malloc(8 + len);
         if (body == NULL) {
                 return -1;
         }
-        memcpy(body, conf, 8);
+        memcpy(body, confounder, 8);
         if (len) {
-                memcpy(body + 8, plain, len);
+                memcpy(body + 8, data, len);
         }
-        seal_key(sch->session_key, key);
+        seal_key(session_key, key);
         memcpy(iv, seq, 8);
         memcpy(iv + 8, seq, 8);
-        aes_cfb8_iv(key, iv, body, body, 8 + len, 1);
+        aes_cfb8_iv(key, iv, body, body, 8 + len, enc);
         wipe(key, sizeof(key));
-        memcpy(token + 24, body, 8);
+        memcpy(confounder, body, 8);
         if (len) {
-                memcpy(crypt, body + 8, len);
+                memcpy(data, body + 8, len);
         }
+        wipe(body, 8 + len);
         free(body);
-
-        memcpy(iv, sum, 8);
-        memcpy(iv + 8, sum, 8);
-        aes_cfb8_iv(sch->session_key, iv, seq, token + 8, 8, 1);
-        sch->client_seq++;
         return 0;
 }
 
 int
-dcerpc_schannel_unseal(struct dcerpc_schannel *sch,
-                       const uint8_t *crypt, size_t len,
-                       const uint8_t token[DCERPC_SCHANNEL_TOKEN_LEN],
-                       uint8_t *plain)
+dcerpc_schannel_protect(struct dcerpc_schannel *sch, int seal,
+                        uint8_t *data, size_t data_len,
+                        const uint8_t *sign, size_t sign_len,
+                        const uint8_t *confounder,
+                        uint8_t token[DCERPC_SCHANNEL_TOKEN_LEN])
 {
-        uint8_t expect[8], got_seq[8], sum[8], key[16], iv[16];
-        uint8_t hdr[8];
-        uint8_t *body;
+        uint8_t seq[8], conf[8], sum[8], iv[16];
 
-        if (sch == NULL || token == NULL || (len > 0 && (crypt == NULL ||
-            plain == NULL)) || len > SIZE_MAX - 16 || sch->failed ||
-            !sch->verified) {
+        if (sch == NULL || token == NULL || sch->failed || !sch->verified ||
+            (seal && data_len > 0 && data == NULL) ||
+            (sign_len > 0 && sign == NULL)) {
                 return -1;
         }
-        sign_header(hdr);
+        if (seal) {
+                if (confounder != NULL) {
+                        memcpy(conf, confounder, 8);
+                } else if (random_bytes(conf, 8)) {
+                        return -1;
+                }
+        }
+        memset(token, 0, DCERPC_SCHANNEL_TOKEN_LEN);
+        sign_header(seal, token);
+        sequence_bytes(sch->seq, 1, seq);
+
+        /* Sign the plaintext: data, if it is inside sign, is not sealed yet */
+        if (checksum8(sch->session_key, token, seal ? conf : NULL,
+                      sign, sign_len, sum) < 0) {
+                return -1;
+        }
+        memcpy(token + 16, sum, 8);
+
+        if (seal) {
+                if (seal_stream(sch->session_key, seq, conf, data, data_len,
+                                1) < 0) {
+                        return -1;
+                }
+                memcpy(token + 24, conf, 8);
+        }
+
+        memcpy(iv, sum, 8);
+        memcpy(iv + 8, sum, 8);
+        aes_cfb8_iv(sch->session_key, iv, seq, token + 8, 8, 1);
+        sch->seq++;
+        return 0;
+}
+
+int
+dcerpc_schannel_unprotect(struct dcerpc_schannel *sch, int seal,
+                          uint8_t *data, size_t data_len,
+                          const uint8_t *sign, size_t sign_len,
+                          const uint8_t *token, size_t token_len)
+{
+        uint8_t expect[8], got_seq[8], sum[8], conf[8], iv[16];
+        uint8_t hdr[8];
+
+        if (sch == NULL || token == NULL || sch->failed || !sch->verified ||
+            (seal && data_len > 0 && data == NULL) ||
+            (sign_len > 0 && sign == NULL)) {
+                return -1;
+        }
+        /* A signed-only token ends before the confounder */
+        if (token_len < (seal ? DCERPC_SCHANNEL_TOKEN_LEN :
+                         DCERPC_SCHANNEL_SIGN_TOKEN_LEN)) {
+                sch->failed = 1;
+                return -1;
+        }
+        sign_header(seal, hdr);
         if (memcmp(token, hdr, 8) != 0) {
                 sch->failed = 1;
                 return -1;
         }
-        sequence_bytes(sch->server_seq, 0, expect);
+        sequence_bytes(sch->seq, 0, expect);
         memcpy(iv, token + 16, 8);
         memcpy(iv + 8, token + 16, 8);
         aes_cfb8_iv(sch->session_key, iv, token + 8, got_seq, 8, 0);
@@ -913,36 +959,26 @@ dcerpc_schannel_unseal(struct dcerpc_schannel *sch,
                 return -1;
         }
 
-        body = malloc(8 + len);
-        if (body == NULL) {
-                return -1;
+        /* Unseal first: the signature is over the plaintext */
+        if (seal) {
+                memcpy(conf, token + 24, 8);
+                if (seal_stream(sch->session_key, expect, conf, data,
+                                data_len, 0) < 0) {
+                        return -1;
+                }
         }
-        memcpy(body, token + 24, 8);
-        if (len) {
-                memcpy(body + 8, crypt, len);
-        }
-        seal_key(sch->session_key, key);
-        memcpy(iv, expect, 8);
-        memcpy(iv + 8, expect, 8);
-        aes_cfb8_iv(key, iv, body, body, 8 + len, 0);
-        wipe(key, sizeof(key));
-        if (checksum8(sch->session_key, hdr, body, body + 8, len, sum) < 0) {
-                wipe(body, 8 + len);
-                free(body);
+        if (checksum8(sch->session_key, hdr, seal ? conf : NULL,
+                      sign, sign_len, sum) < 0) {
                 return -1;
         }
         if (ct_memcmp(sum, token + 16, 8) != 0) {
-                /* the plaintext of a forged token stays here */
-                wipe(body, 8 + len);
-                free(body);
+                /* the plaintext of a forged message is nobody's to use */
+                if (seal && data_len > 0) {
+                        wipe(data, data_len);
+                }
                 sch->failed = 1;
                 return -1;
         }
-        if (len) {
-                memcpy(plain, body + 8, len);
-        }
-        wipe(body, 8 + len);
-        free(body);
-        sch->server_seq++;
+        sch->seq++;
         return 0;
 }
