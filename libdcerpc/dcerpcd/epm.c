@@ -633,6 +633,13 @@ dcerpcd_epm_Lookup(struct dcerpc_pdu *pdu, const struct epm_Lookup_req *req,
                 return 0;
         }
 
+        /*
+         * MaxEnts is the client's: never allocate for more entries than
+         * there are to return.
+         */
+        if (max_ents > nmatch - start) {
+                max_ents = nmatch - start;
+        }
         out = dcerpc_alloc_data(pdu, (size_t)max_ents * sizeof(*out));
         if (out == NULL) {
                 rep->status = EPM_STATUS_NO_MEMORY;
@@ -740,6 +747,10 @@ dcerpcd_epm_Map(struct dcerpc_pdu *pdu, const struct epm_Map_req *req,
                 return 0;
         }
 
+        /* As in Lookup: no more than there are to return */
+        if (max_towers > nmatch - start) {
+                max_towers = nmatch - start;
+        }
         towers = dcerpc_alloc_data(pdu, (size_t)max_towers * sizeof(*towers));
         if (towers == NULL) {
                 rep->status = EPM_STATUS_NO_MEMORY;
