@@ -537,6 +537,12 @@ struct dcerpc_pdu {
         void *payload;
 
         /*
+         * The call_id the request was sent with: decoding the reply
+         * overwrites hdr, and every PDU of the reply must carry it.
+         */
+        uint32_t call_id;
+
+        /*
          * Multi-fragment REQUEST: all fragments back to back. Fragments
          * before the last are sent with WRITE, the last with TRANSCEIVE.
          */
@@ -2297,6 +2303,14 @@ dce_frags_status(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                         pdu->direction = saved_dir;
                         return DCE_FRAG_ERROR;
                 }
+                /* A reply, or a fragment of one, to some other call */
+                if (hdr.call_id != pdu->call_id) {
+                        dcerpc_set_error(dce, "DCERPC reply call_id %u, "
+                                         "expected %u", hdr.call_id,
+                                         pdu->call_id);
+                        pdu->direction = saved_dir;
+                        return DCE_FRAG_ERROR;
+                }
                 /*
                  * No security context is ever negotiated, so a reply has
                  * no auth trailer; one that claims to would have its
@@ -2804,6 +2818,7 @@ dcerpc_encode_request(struct dcerpc_context *dce, int opnum,
         pdu->hdr.PTYPE = PDU_TYPE_REQUEST;
         pdu->hdr.pfc_flags = PFC_FIRST_FRAG | PFC_LAST_FRAG;
         pdu->hdr.call_id = dce->call_id++;
+        pdu->call_id = pdu->hdr.call_id;
         pdu->hdr.frag_length = 0;
         pdu->hdr.auth_length = 0;
         pdu->req.alloc_hint = 0;
@@ -3300,6 +3315,13 @@ smb2_bind_cb(struct smb2_context *smb2, int status,
         }
         smb2_free_data(dce->smb2, rep->output);
 
+        if (pdu->hdr.call_id != pdu->call_id) {
+                dcerpc_set_error(dce, "DCERPC BIND_ACK call_id %u, "
+                                 "expected %u", pdu->hdr.call_id,
+                                 pdu->call_id);
+                dcerpc_send_pdu_cb_and_free(dce, pdu, -EINVAL, NULL);
+                return;
+        }
         /* The BIND_ACK is all of the reply, as dce_unfragment_iov() */
         if (pdu->hdr.frag_length != rep->output_count) {
                 dcerpc_set_error(dce, "DCERPC BIND_ACK of %u bytes in a "
@@ -3404,6 +3426,7 @@ dcerpc_bind_async(struct dcerpc_context *dce, dcerpc_cb cb,
         pdu->hdr.PTYPE = PDU_TYPE_BIND;
         pdu->hdr.pfc_flags = PFC_FIRST_FRAG | PFC_LAST_FRAG;
         pdu->hdr.call_id = dce->call_id++;
+        pdu->call_id = pdu->hdr.call_id;
         pdu->hdr.frag_length = 0;
         pdu->hdr.auth_length = 0;
         pdu->bind.max_xmit_frag = 32768;
