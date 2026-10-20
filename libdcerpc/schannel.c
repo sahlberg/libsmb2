@@ -20,10 +20,12 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #endif
 
 #include <errno.h>
+#include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <dcerpc/schannel.h>
 #include "dcerpc-private.h"
@@ -535,18 +537,33 @@ sequence_bytes(uint64_t seq, int initiator, uint8_t out[8])
         }
 }
 
+/*
+ * Random bytes for confounders, read straight from /dev/urandom: no
+ * stdio buffer filled with 4 KB of it per call, and no descriptor left
+ * to a child that execs while we read.
+ */
 static int
 random_bytes(uint8_t *p, size_t n)
 {
-        FILE *fp;
-        size_t got;
+        size_t got = 0;
+        int fd;
 
-        fp = fopen("/dev/urandom", "rb");
-        if (fp == NULL) {
+        fd = open("/dev/urandom", O_RDONLY | O_CLOEXEC);
+        if (fd < 0) {
                 return -1;
         }
-        got = fread(p, 1, n, fp);
-        fclose(fp);
+        while (got < n) {
+                ssize_t r = read(fd, p + got, n - got);
+
+                if (r < 0 && errno == EINTR) {
+                        continue;
+                }
+                if (r <= 0) {
+                        break;
+                }
+                got += (size_t)r;
+        }
+        close(fd);
         return got == n ? 0 : -1;
 }
 
