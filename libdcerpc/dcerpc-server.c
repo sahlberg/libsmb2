@@ -1217,6 +1217,14 @@ process_request(struct dcerpc_server_pipe *pipe, const uint8_t *pdu,
         context_id = get16(pdu + COMMON_HDR + 4, le);
         if (pfc & PFC_OBJECT_UUID) {
                 hdr += 16;
+                /* else stub_len below would underflow */
+                if (len < hdr) {
+                        srv_log(pipe->srv, DCERPC_SERVER_LOG_ERROR,
+                                "REQUEST: PDU too short for its object "
+                                "UUID (%zu bytes)", len);
+                        return queue_fault(pipe, call_id, context_id,
+                                           DCERPC_FAULT_PROTO_ERROR);
+                }
         }
         if (auth_len) {
                 /* drop the sec_trailer, the auth value and the padding */
