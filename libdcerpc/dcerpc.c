@@ -3268,6 +3268,9 @@ smb2_bind_cb(struct smb2_context *smb2, int status,
         struct dcerpc_context *dce = pdu->dce;
         struct dcerpc_iovec iov _U_;
         struct smb2_ioctl_reply *rep = command_data;
+        p_syntax_id_t *offered[2];
+        int offered_id[2];
+        int n_offered;
         int i;
 
         if (pdu->pending.orphaned) {
@@ -3309,26 +3312,52 @@ smb2_bind_cb(struct smb2_context *smb2, int status,
                 dcerpc_send_pdu_cb_and_free(dce, pdu, -EINVAL, NULL);
                 return;
         }
-        for (i = 0; i < pdu->bind_ack.num_results; i++) {
-                if (pdu->bind_ack.results[i].ack_result !=
-                    ACK_RESULT_ACCEPTANCE) {
+        /*
+         * One result per context offered, in the order offered (see
+         * dcerpc_bind_async(): context 0 is NDR32 and context 1 NDR64,
+         * either or both). An accepted one must name the transfer syntax
+         * its context offered; take its context id from what we offered,
+         * never from the position alone.
+         */
+        n_offered = 0;
+        if (smb2_get_ndr(smb2) == 0 || smb2_get_ndr(smb2) == 1) {
+                offered_id[n_offered] = 0;
+                offered[n_offered++] = &ndr32_syntax;
+        }
+        if (smb2_get_ndr(smb2) == 0 || smb2_get_ndr(smb2) == 2) {
+                offered_id[n_offered] = 1;
+                offered[n_offered++] = &ndr64_syntax;
+        }
+        if (pdu->bind_ack.num_results != n_offered) {
+                dcerpc_set_error(dce, "DCERPC BIND_ACK has %u results for "
+                                 "%d contexts", pdu->bind_ack.num_results,
+                                 n_offered);
+                dcerpc_send_pdu_cb_and_free(dce, pdu, -EINVAL, NULL);
+                return;
+        }
+        for (i = 0; i < n_offered; i++) {
+                struct dcerpc_bind_context_results *res =
+                        &pdu->bind_ack.results[i];
+
+                if (res->ack_result != ACK_RESULT_ACCEPTANCE) {
                         continue;
                 }
-
-                switch (smb2_get_ndr(smb2)) {
-                case 0:
-                        dce->tctx_id = i;
-                        break;
-                case 1:
-                        dce->tctx_id = 0;
-                        break;
-                case 2:
-                        dce->tctx_id = 1;
-                        break;
+                if (memcmp(&res->uuid, &offered[i]->uuid,
+                           sizeof(res->uuid)) ||
+                    res->syntax_version != ((uint32_t)offered[i]->vers |
+                                            ((uint32_t)offered[i]->vers_minor
+                                             << 16))) {
+                        dcerpc_set_error(dce, "DCERPC BIND_ACK accepted "
+                                         "a transfer syntax context %d "
+                                         "did not offer", offered_id[i]);
+                        dcerpc_send_pdu_cb_and_free(dce, pdu, -EINVAL,
+                                                    NULL);
+                        return;
                 }
+                dce->tctx_id = offered_id[i];
                 break;
         }
-        if (i == pdu->bind_ack.num_results) {
+        if (i == n_offered) {
                 smb2_set_error(smb2, "Bind rejected all contexts");
                 dcerpc_send_pdu_cb_and_free(dce, pdu, -EINVAL, NULL);
                 return;
