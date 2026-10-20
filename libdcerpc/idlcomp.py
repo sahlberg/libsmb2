@@ -1044,6 +1044,7 @@ C_HEADER = """\
 
 /* Not in the public dcerpc.h; exported by libdcerpc */
 uint32_t dcerpc_pdu_direction(struct dcerpc_pdu *pdu);
+enum dcerpc_encoding dcerpc_pdu_encoding(struct dcerpc_pdu *pdu);
 int dcerpc_pdu_is_conformance_run(struct dcerpc_pdu *pdu);
 
 """
@@ -2806,6 +2807,7 @@ def gen_param_coder(env: TypeEnv, p: Param, var: str, indent: str = "        ",
                 f"{indent}        }}\n"
                 f"{indent}        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {{\n"
                 f"{indent}                {var}->{p.name} = bytes.data;\n"
+                f"{indent}                {p.name}_wire_max = bytes.len;\n"
                 f"{indent}        }}"
             )
         else:
@@ -2817,12 +2819,18 @@ def gen_param_coder(env: TypeEnv, p: Param, var: str, indent: str = "        ",
                 f"{indent}        vb.max_count = {var}->{size_is};\n"
                 f"{indent}        vb.len = {var}->{length_is};\n"
                 f"{indent}        vb.data = {var}->{p.name};\n"
+                f"{indent}        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {{\n"
+                f"{indent}                /* left as is by a NULL referent */\n"
+                f"{indent}                vb.max_count = vb.len = UINT32_MAX;\n"
+                f"{indent}        }}\n"
                 f'{indent}        if (dcerpc_ptr_coder("{disp}", dce, pdu, iov, &vb,\n'
                 f"{indent}                             {ptype}, dcerpc_varying_bytes_coder)) {{\n"
                 f"{indent}                return -1;\n"
                 f"{indent}        }}\n"
                 f"{indent}        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {{\n"
                 f"{indent}                {var}->{p.name} = vb.data;\n"
+                f"{indent}                {p.name}_wire_max = vb.max_count;\n"
+                f"{indent}                {p.name}_wire_len = vb.len;\n"
                 f"{indent}        }}"
             )
         lines.append(f"{indent}}}")
@@ -2976,6 +2984,59 @@ def gen_param_coder(env: TypeEnv, p: Param, var: str, indent: str = "        ",
     return lines
 
 
+def byte_array_wire_decls(env: TypeEnv, params: List[Param], indent: str = "        ") -> List[str]:
+    """
+    Locals that keep the lengths a byte array parameter had on the wire.
+    UINT32_MAX means not sent (a NULL referent) or not decoded.
+    """
+    lines: List[str] = []
+    for p in params:
+        if not byte_array_param(env, p):
+            continue
+        lines.append(f"{indent}uint32_t {p.name}_wire_max = UINT32_MAX;")
+        if attr_arg(p.attrs, "length_is") is not None:
+            lines.append(f"{indent}uint32_t {p.name}_wire_len = UINT32_MAX;")
+    return lines
+
+
+def byte_array_wire_checks(env: TypeEnv, params: List[Param], var: str,
+                           indent: str = "        ") -> List[str]:
+    """
+    A byte array parameter's size_is/length_is name other parameters, which
+    the peer sends separately from the array and often after it (MS-RRP
+    puts lpcbData/lpcbLen after lpData). Once everything is decoded, the
+    array must be exactly as long as those parameters say, or a caller
+    using them as the length of the data reads past it. YAML/JSON carry
+    only the bytes, not a separate buffer size, so there only length_is
+    is checked.
+    """
+    lines: List[str] = []
+    for p in params:
+        if not byte_array_param(env, p):
+            continue
+        size_is = attr_arg(p.attrs, "size_is")
+        length_is = attr_arg(p.attrs, "length_is")
+        if length_is is None:
+            lines.append(
+                f"{indent}if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE &&\n"
+                f"{indent}    {p.name}_wire_max != UINT32_MAX &&\n"
+                f"{indent}    {p.name}_wire_max != {var}->{size_is}) {{\n"
+                f"{indent}        return -1;\n"
+                f"{indent}}}"
+            )
+        else:
+            lines.append(
+                f"{indent}if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE &&\n"
+                f"{indent}    {p.name}_wire_max != UINT32_MAX &&\n"
+                f"{indent}    ({p.name}_wire_len != {var}->{length_is} ||\n"
+                f"{indent}     (dcerpc_pdu_encoding(pdu) == ENCODING_NDR &&\n"
+                f"{indent}      {p.name}_wire_max != {var}->{size_is}))) {{\n"
+                f"{indent}        return -1;\n"
+                f"{indent}}}"
+            )
+    return lines
+
+
 def gen_function_coders(env: TypeEnv) -> str:
     lines: List[str] = []
     for i, fn in enumerate(env.iface.functions):
@@ -2995,12 +3056,13 @@ def gen_function_coders(env: TypeEnv) -> str:
         )
         lines.append("{")
         lines.append(f"        struct {env.prefix}_{fn.name}_req *req = ptr;")
+        in_params = [p for p in fn.params if param_directions(p)[0]]
+        lines.extend(byte_array_wire_decls(env, in_params))
         lines.append("")
         lines.append("        (void)name;")
-        for p in fn.params:
-            inn, _out = param_directions(p)
-            if inn:
-                lines.extend(gen_param_coder(env, p, "req", fn=fn))
+        for p in in_params:
+            lines.extend(gen_param_coder(env, p, "req", fn=fn))
+        lines.extend(byte_array_wire_checks(env, in_params, "req"))
         lines.append("")
         lines.append("        return 0;")
         lines.append("}")
@@ -3026,16 +3088,17 @@ def gen_function_coders(env: TypeEnv) -> str:
         if needs_req:
             lines.append("        /* the request holds an [in] value the reply depends on */")
             lines.append(f"        struct {env.prefix}_{fn.name}_req *req = dcerpc_get_request(pdu);")
+        out_params = [p for p in fn.params if param_directions(p)[1]]
+        lines.extend(byte_array_wire_decls(env, out_params))
         lines.append("")
         lines.append("        (void)name;")
         if needs_req:
             lines.append("        if (req == NULL) {")
             lines.append("                return -1;")
             lines.append("        }")
-        for p in fn.params:
-            _inn, out = param_directions(p)
-            if out:
-                lines.extend(gen_param_coder(env, p, "rep", fn=fn))
+        for p in out_params:
+            lines.extend(gen_param_coder(env, p, "rep", fn=fn))
+        lines.extend(byte_array_wire_checks(env, out_params, "rep"))
         if fn.ret_type in STATUS_TYPES:
             lines.append(
                 '        if (dcerpc_uint32_coder("Status", dce, pdu, iov, &rep->status)) {\n'

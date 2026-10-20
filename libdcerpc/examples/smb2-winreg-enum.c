@@ -182,6 +182,10 @@ print_value(int depth, const char *name, uint32_t type,
 {
         const char *nm = (name && name[0]) ? name : "(Default)";
 
+        /* lpData is a unique pointer: a NULL one has no data, whatever lpcbLen says */
+        if (data == NULL) {
+                len = 0;
+        }
         print_indent(depth);
         printf("%s (%s) = ", nm, reg_type_name(type));
 

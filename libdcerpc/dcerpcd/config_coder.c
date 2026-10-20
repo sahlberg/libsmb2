@@ -32,6 +32,7 @@
 
 /* Not in the public dcerpc.h; exported by libdcerpc */
 uint32_t dcerpc_pdu_direction(struct dcerpc_pdu *pdu);
+enum dcerpc_encoding dcerpc_pdu_encoding(struct dcerpc_pdu *pdu);
 int dcerpc_pdu_is_conformance_run(struct dcerpc_pdu *pdu);
 
 
