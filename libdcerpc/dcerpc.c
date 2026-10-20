@@ -2415,11 +2415,12 @@ dce_frags_status(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                         return DCE_FRAG_ERROR;
                 }
                 /*
-                 * No security context is ever negotiated, so a reply has
-                 * no auth trailer; one that claims to would have its
-                 * trailer decoded as stub data, unverified.
+                 * Without a security context a reply has no auth
+                 * trailer; one that claims to would have its trailer
+                 * decoded as stub data, unverified. With one,
+                 * dce_unfragment_auth() checks every trailer.
                  */
-                if (hdr.auth_length != 0) {
+                if (hdr.auth_length != 0 && dce->sch == NULL) {
                         dcerpc_set_error(dce, "DCERPC reply has an auth "
                                          "trailer but none was negotiated");
                         pdu->direction = saved_dir;
@@ -2586,6 +2587,148 @@ dce_unfragment_iov(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
         iov->max_offset = (size_t)unfragment_len;
         pdu->direction = saved_dir;
         return 0;
+}
+
+/*
+ * dce_unfragment_iov() for a schannel context: check and unprotect each
+ * fragment of the reply in place, then collapse them into one PDU (the
+ * first header, then the stubs without padding or auth trailers) with
+ * auth_length 0. Every RESPONSE fragment, and a FAULT that has one, must
+ * carry a valid auth trailer; only an unsigned FAULT on its own, which a
+ * server may send when it rejects the auth, is taken as it is. Any
+ * failed check of a trailer ends the secure channel.
+ */
+static int
+dce_unfragment_auth(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+                    struct dcerpc_iovec *iov)
+{
+        int seal = dce->auth_level == DCERPC_AUTH_LEVEL_PRIVACY;
+        size_t min_token = seal ? DCERPC_SCHANNEL_TOKEN_LEN :
+                DCERPC_SCHANNEL_SIGN_TOKEN_LEN;
+        size_t offset = 0, out = 24;
+        uint32_t saved_dir = pdu->direction;
+        struct dcerpc_header first, hdr;
+        int last;
+
+        pdu->direction = DCERPC_DECODE;
+        do {
+                struct dcerpc_iovec tmpiov = {
+                        .buf = iov->buf + offset,
+                        .max_offset = iov->max_offset - offset,
+                };
+                uint8_t *f = iov->buf + offset;
+                uint32_t context_id;
+                size_t t, stub;
+                uint8_t pad;
+
+                if (iov->max_offset - offset < 24 ||
+                    dcerpc_header_coder(dce, pdu, &tmpiov, &hdr)) {
+                        goto fail;
+                }
+                if (offset == 0) {
+                        first = hdr;
+                }
+                if (hdr.frag_length < 24 ||
+                    hdr.frag_length > iov->max_offset - offset) {
+                        dcerpc_set_error(dce, "DCERPC fragment length out "
+                                         "of bounds");
+                        goto fail;
+                }
+                if (hdr.auth_length == 0) {
+                        if (offset == 0 && hdr.PTYPE == PDU_TYPE_FAULT &&
+                            hdr.frag_length == iov->max_offset) {
+                                iov->offset = 0;
+                                pdu->direction = saved_dir;
+                                return 0;
+                        }
+                        dcerpc_set_error(dce, "DCERPC reply without an auth "
+                                         "trailer on a schannel context");
+                        goto fail;
+                }
+                if (hdr.auth_length < min_token ||
+                    (size_t)hdr.auth_length + DCE_SEC_TRAILER_LEN + 24 >
+                    hdr.frag_length) {
+                        dcerpc_set_error(dce, "DCERPC reply auth_length %u "
+                                         "out of bounds", hdr.auth_length);
+                        goto fail;
+                }
+                t = hdr.frag_length - hdr.auth_length - DCE_SEC_TRAILER_LEN;
+                pad = f[t + 2];
+                if (hdr.packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN) {
+                        context_id = (uint32_t)f[t + 4] |
+                                ((uint32_t)f[t + 5] << 8) |
+                                ((uint32_t)f[t + 6] << 16) |
+                                ((uint32_t)f[t + 7] << 24);
+                } else {
+                        context_id = ((uint32_t)f[t + 4] << 24) |
+                                ((uint32_t)f[t + 5] << 16) |
+                                ((uint32_t)f[t + 6] << 8) |
+                                (uint32_t)f[t + 7];
+                }
+                if (f[t] != DCERPC_AUTH_TYPE_SCHANNEL ||
+                    f[t + 1] != dce->auth_level ||
+                    pad >= DCE_AUTH_PAD_ALIGN || pad > t - 24 ||
+                    context_id != DCE_AUTH_CONTEXT_ID) {
+                        dcerpc_set_error(dce, "DCERPC reply auth trailer "
+                                         "is not ours");
+                        goto fail;
+                }
+                if (dcerpc_schannel_unprotect(dce->sch, seal,
+                                              f + 24, t - 24,
+                                              dce->header_sign ? f : f + 24,
+                                              dce->header_sign ?
+                                              t + DCE_SEC_TRAILER_LEN :
+                                              t - 24,
+                                              f + t + DCE_SEC_TRAILER_LEN,
+                                              hdr.auth_length)) {
+                        dcerpc_set_error(dce, "DCERPC reply failed the "
+                                         "schannel check");
+                        goto fail;
+                }
+                stub = t - 24 - pad;
+                if (offset != 0) {
+                        memmove(iov->buf + out, f + 24, stub);
+                }
+                out += stub;
+                offset += hdr.frag_length;
+                last = (hdr.pfc_flags & PFC_LAST_FRAG) ||
+                       hdr.PTYPE != PDU_TYPE_RESPONSE;
+                if (!last && iov->max_offset - offset < 24) {
+                        dcerpc_set_error(dce, "DCERPC truncated multi-"
+                                         "fragment response");
+                        goto fail;
+                }
+        } while (!last);
+
+        /* Nothing may follow the last fragment */
+        if (offset != iov->max_offset) {
+                dcerpc_set_error(dce, "DCERPC %zu bytes after the last "
+                                 "fragment", iov->max_offset - offset);
+                goto fail;
+        }
+
+        /*
+         * The collapsed PDU has no trailer. frag_length is 16 bits and
+         * combined stubs may be longer: the decoder goes by max_offset.
+         */
+        if (out <= 0xffff) {
+                first.frag_length = (uint16_t)out;
+        }
+        first.auth_length = 0;
+        first.pfc_flags |= PFC_LAST_FRAG;
+        pdu->direction = DCERPC_ENCODE;
+        iov->offset = 0;
+        if (dcerpc_header_coder(dce, pdu, iov, &first)) {
+                goto fail;
+        }
+        iov->offset = 0;
+        iov->max_offset = out;
+        pdu->direction = saved_dir;
+        return 0;
+
+ fail:
+        pdu->direction = saved_dir;
+        return -1;
 }
 
 static int
@@ -2767,7 +2910,8 @@ dcerpc_finish_call_from_reasm(struct dcerpc_context *dce,
                 .max_offset = pdu->reasm_len,
         };
 
-        if (dce_unfragment_iov(dce, pdu, &iov)) {
+        if ((dce->sch != NULL ? dce_unfragment_auth(dce, pdu, &iov) :
+             dce_unfragment_iov(dce, pdu, &iov))) {
                 dcerpc_send_pdu_cb_and_free(dce, pdu, -EINVAL, NULL);
                 return;
         }
