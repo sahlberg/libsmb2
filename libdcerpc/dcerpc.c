@@ -5592,7 +5592,7 @@ ndr_carray_coder(char *name, struct dcerpc_context *ctx,
                  struct dcerpc_iovec *iov,
                  uint32_t num, void *ptr, int elem_size, dcerpc_coder coder)
 {
-        int i;
+        uint32_t i;
         uint64_t p;
         uint8_t *data = ptr;
 
@@ -5607,7 +5607,7 @@ ndr_carray_coder(char *name, struct dcerpc_context *ctx,
 
         /* Data */
         for (i = 0; i < p; i++) {
-                if (coder(name, ctx, pdu, iov, &data[i * elem_size])) {
+                if (coder(name, ctx, pdu, iov, &data[(size_t)i * elem_size])) {
                         return -1;
                 }
         }
@@ -5653,7 +5653,7 @@ ndr_cvarray_coder(char *name, struct dcerpc_context *ctx,
                 return -1;
         }
         for (i = 0; i < num; i++) {
-                if (coder(name, ctx, pdu, iov, &data[i * elem_size])) {
+                if (coder(name, ctx, pdu, iov, &data[(size_t)i * elem_size])) {
                         return -1;
                 }
         }
@@ -6768,7 +6768,7 @@ json_carray_coder(char *name, struct dcerpc_context *ctx,
                   struct dcerpc_iovec *iov,
                   uint32_t num, void *ptr, int elem_size, dcerpc_coder coder)
 {
-        int i;
+        uint32_t i;
         uint8_t *data = ptr;
 
         if (pdu->direction == DCERPC_DECODE) {
@@ -6778,7 +6778,7 @@ json_carray_coder(char *name, struct dcerpc_context *ctx,
                 if (json_expect_char(iov, '[') < 0) {
                         return -1;
                 }
-                for (i = 0; i < (int)num; i++) {
+                for (i = 0; i < num; i++) {
                         json_skip_ws(iov);
                         if (i > 0) {
                                 if (json_expect_char(iov, ',') < 0) {
@@ -6791,7 +6791,7 @@ json_carray_coder(char *name, struct dcerpc_context *ctx,
                         }
                         pdu->json_key = NULL;
                         if (coder(name, ctx, pdu, iov,
-                                  &data[i * elem_size])) {
+                                  &data[(size_t)i * elem_size])) {
                                 return -1;
                         }
                         if (json_expect_char(iov, '}') < 0) {
@@ -6818,7 +6818,7 @@ json_carray_coder(char *name, struct dcerpc_context *ctx,
                 }
 
                 pdu->json_indentation++;
-                for (i = 0; i < (int)num; i++) {
+                for (i = 0; i < num; i++) {
                         /* Array element separator */
                         pdu->json_need_comma = (i > 0);
                         json_sep(pdu, iov);
@@ -6828,7 +6828,7 @@ json_carray_coder(char *name, struct dcerpc_context *ctx,
                         pdu->json_need_comma = 0;
                         pdu->json_indentation++;
                         if (coder(name, ctx, pdu, iov,
-                                  &data[i * elem_size])) {
+                                  &data[(size_t)i * elem_size])) {
                                 return -1;
                         }
                         pdu->json_indentation--;
@@ -6861,7 +6861,7 @@ json_scalar_carray_coder(char *name, struct dcerpc_context *ctx,
                          uint32_t num, void *ptr, int elem_size,
                          dcerpc_coder coder)
 {
-        int i;
+        uint32_t i;
         uint8_t *data = ptr;
 
         if (pdu->direction == DCERPC_DECODE) {
@@ -6871,7 +6871,7 @@ json_scalar_carray_coder(char *name, struct dcerpc_context *ctx,
                 if (json_expect_char(iov, '[') < 0) {
                         return -1;
                 }
-                for (i = 0; i < (int)num; i++) {
+                for (i = 0; i < num; i++) {
                         json_skip_ws(iov);
                         if (i > 0) {
                                 if (json_expect_char(iov, ',') < 0) {
@@ -6879,7 +6879,7 @@ json_scalar_carray_coder(char *name, struct dcerpc_context *ctx,
                                 }
                         }
                         if (coder(NULL, ctx, pdu, iov,
-                                  &data[i * elem_size])) {
+                                  &data[(size_t)i * elem_size])) {
                                 return -1;
                         }
                 }
@@ -6899,10 +6899,10 @@ json_scalar_carray_coder(char *name, struct dcerpc_context *ctx,
                 return 0;
         }
         pdu->json_indentation++;
-        for (i = 0; i < (int)num; i++) {
+        for (i = 0; i < num; i++) {
                 /* the element's json_print_key() writes the separator */
                 pdu->json_need_comma = (i > 0);
-                if (coder(NULL, ctx, pdu, iov, &data[i * elem_size])) {
+                if (coder(NULL, ctx, pdu, iov, &data[(size_t)i * elem_size])) {
                         return -1;
                 }
         }
@@ -7468,7 +7468,7 @@ yaml_carray_coder(char *name, struct dcerpc_context *ctx,
                   struct dcerpc_iovec *iov,
                   uint32_t num, void *ptr, int elem_size, dcerpc_coder coder)
 {
-        int i;
+        uint32_t i;
         uint8_t *data = ptr;
 
         if (pdu->direction == DCERPC_DECODE) {
@@ -7480,8 +7480,8 @@ yaml_carray_coder(char *name, struct dcerpc_context *ctx,
                 }
                 pdu->yaml_key = NULL;
                 yaml_next_kv(pdu, iov);
-                for (i = 0; i < (int)num; i++) {
-                        if (coder(name, ctx, pdu, iov, &data[i * elem_size])) {
+                for (i = 0; i < num; i++) {
+                        if (coder(name, ctx, pdu, iov, &data[(size_t)i * elem_size])) {
                                 return -1;
                         }
                 }
@@ -7495,10 +7495,10 @@ yaml_carray_coder(char *name, struct dcerpc_context *ctx,
                 }
 
                 pdu->yaml_indentation++;
-                for (i = 0; i < (int)num; i++) {
+                for (i = 0; i < num; i++) {
                         pdu->yaml_array_prefix = 1;
                         pdu->yaml_indentation++;
-                        if (coder(name, ctx, pdu, iov, &data[i * elem_size])) {
+                        if (coder(name, ctx, pdu, iov, &data[(size_t)i * elem_size])) {
                                 return -1;
                         }
                         pdu->yaml_indentation--;
@@ -7522,7 +7522,7 @@ yaml_scalar_carray_coder(char *name, struct dcerpc_context *ctx,
                          uint32_t num, void *ptr, int elem_size,
                          dcerpc_coder coder)
 {
-        int i;
+        uint32_t i;
         uint8_t *data = ptr;
 
         if (pdu->direction == DCERPC_DECODE) {
@@ -7534,9 +7534,9 @@ yaml_scalar_carray_coder(char *name, struct dcerpc_context *ctx,
                 }
                 pdu->yaml_key = NULL;
                 yaml_next_kv(pdu, iov);
-                for (i = 0; i < (int)num; i++) {
+                for (i = 0; i < num; i++) {
                         if (coder(NULL, ctx, pdu, iov,
-                                  &data[i * elem_size])) {
+                                  &data[(size_t)i * elem_size])) {
                                 return -1;
                         }
                 }
@@ -7549,10 +7549,10 @@ yaml_scalar_carray_coder(char *name, struct dcerpc_context *ctx,
                 return -1;
         }
         pdu->yaml_indentation++;
-        for (i = 0; i < (int)num; i++) {
+        for (i = 0; i < num; i++) {
                 pdu->yaml_array_prefix = 1;
                 pdu->yaml_indentation++;
-                if (coder(NULL, ctx, pdu, iov, &data[i * elem_size])) {
+                if (coder(NULL, ctx, pdu, iov, &data[(size_t)i * elem_size])) {
                         return -1;
                 }
                 pdu->yaml_indentation--;
