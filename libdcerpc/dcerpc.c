@@ -2521,6 +2521,16 @@ dcerpc_frag_read_cb(struct smb2_context *smb2, int status,
         if (rep) {
                 nread = rep->data_length;
         }
+        /* fr->buf holds no more than was asked for */
+        if (nread > DCE_FRAG_READ_SIZE) {
+                smb2_set_error(smb2, "DCERPC fragment READ returned %u "
+                               "bytes, more than the %d asked for", nread,
+                               DCE_FRAG_READ_SIZE);
+                free(fr->buf);
+                free(fr);
+                dcerpc_send_pdu_cb_and_free(dce, pdu, -EIO, NULL);
+                return;
+        }
         if (nread == 0) {
                 smb2_set_error(smb2, "DCERPC fragment READ returned 0 bytes "
                                "before LAST_FRAG");
