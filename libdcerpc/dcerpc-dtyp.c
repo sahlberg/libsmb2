@@ -673,8 +673,54 @@ acl_compute_size(const ACL *acl)
         return size;
 }
 
+/* The ACE types that are Header+Mask+Sid, the only ones modelled */
+static int
+ace_type_is_mask_sid(uint8_t type)
+{
+        switch (type) {
+        case ACCESS_ALLOWED_ACE_TYPE:
+        case ACCESS_DENIED_ACE_TYPE:
+        case SYSTEM_AUDIT_ACE_TYPE:
+        case SYSTEM_ALARM_ACE_TYPE:
+        case SYSTEM_MANDATORY_LABEL_ACE_TYPE:
+        case SYSTEM_SCOPED_POLICY_ID_ACE_TYPE:
+                return 1;
+        }
+        return 0;
+}
+
 /*
- * Encode/decode AceCount ACEs packed after the ACL header.
+ * Decode one packet-form ACE that must end by acl_end. The next ACE
+ * starts AceSize bytes after this one, not where its SID ended: anything
+ * else would read the rest of a longer ACE as the next one, so an ACE
+ * the peer sent would come out as a different one. An ACE type that is
+ * not Header+Mask+Sid (object, callback, ...) can not be represented and
+ * is refused rather than misread.
+ */
+static int
+ace_decode_packet(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+                  struct dcerpc_iovec *iov, struct ace_mask_sid *ace,
+                  size_t acl_end)
+{
+        size_t start = iov->offset;
+
+        if (ace_mask_sid_fields_coder("Ace", dce, pdu, iov, ace)) {
+                return -1;
+        }
+        if (!ace_type_is_mask_sid(ace->Header.AceType)) {
+                return -1;
+        }
+        if (ace->Header.AceSize < iov->offset - start ||
+            ace->Header.AceSize > acl_end - start) {
+                return -1;
+        }
+        iov->offset = start + ace->Header.AceSize;
+        return 0;
+}
+
+/*
+ * Encode/decode AceCount ACEs packed after the ACL header, which on NDR
+ * decode end at acl_end.
  * NDR: sequential packet ACEs (no array conformance count).
  * YAML/JSON: named array "Aces".
  */
@@ -682,9 +728,8 @@ static int
 acl_aces_coder(char *name, struct dcerpc_context *dce,
                struct dcerpc_pdu *pdu,
                struct dcerpc_iovec *iov,
-               void *ptr)
+               ACL *acl, size_t acl_end)
 {
-        ACL *acl = ptr;
         uint16_t i;
 
         if (dcerpc_pdu_encoding(pdu) != ENCODING_NDR) {
@@ -702,6 +747,14 @@ acl_aces_coder(char *name, struct dcerpc_context *dce,
 
         /* NDR packet form: ACEs back-to-back, no size_is prefix. */
         for (i = 0; i < acl->AceCount; i++) {
+                if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {
+                        if (ace_decode_packet(dce, pdu, iov,
+                                              (struct ace_mask_sid *)
+                                              &acl->Aces[i], acl_end)) {
+                                return -1;
+                        }
+                        continue;
+                }
                 if (ace_mask_sid_fields_coder("Ace", dce, pdu, iov,
                                               &acl->Aces[i])) {
                         return -1;
@@ -719,6 +772,8 @@ acl_fields_coder(char *name, struct dcerpc_context *dce,
         ACL *acl = ptr;
         uint16_t ace_count;
         uint8_t zero = 0;
+        size_t acl_start = iov->offset;
+        size_t acl_end = 0;
 
         if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
                 acl->Sbz1 = 0;
@@ -780,6 +835,20 @@ acl_fields_coder(char *name, struct dcerpc_context *dce,
                 }
         }
 
+        /*
+         * NDR decode: the ACEs must fit in AclSize, which must fit in what
+         * is left of the buffer, and each ACE is at least 16 bytes.
+         */
+        if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE &&
+            dcerpc_pdu_encoding(pdu) == ENCODING_NDR) {
+                if (acl->AclSize < 8 ||
+                    acl->AclSize > iov->max_offset - acl_start ||
+                    (size_t)acl->AceCount * 16 > (size_t)acl->AclSize - 8) {
+                        return -1;
+                }
+                acl_end = acl_start + acl->AclSize;
+        }
+
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE && acl->AceCount) {
                 acl->Aces = dcerpc_alloc_data(pdu,
                                             (size_t)acl->AceCount *
@@ -789,8 +858,12 @@ acl_fields_coder(char *name, struct dcerpc_context *dce,
                 }
         }
 
-        if (acl_aces_coder("Aces", dce, pdu, iov, acl)) {
+        if (acl_aces_coder("Aces", dce, pdu, iov, acl, acl_end)) {
                 return -1;
+        }
+        /* The ACL takes AclSize bytes, whatever follows the last ACE */
+        if (acl_end) {
+                iov->offset = acl_end;
         }
 
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE &&
