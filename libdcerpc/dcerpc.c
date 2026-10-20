@@ -1580,6 +1580,33 @@ int dcerpc_union_coder(char *name, struct dcerpc_context *ctx,
 }
 
 /*
+ * On decode the union's discriminant comes from the wire, but the caller
+ * already knows which arm it wants: switch_is is the [switch_is] value
+ * (the request's level for a reply, the struct's Level field decoded just
+ * before an embedded union). A peer sending a different discriminant
+ * would have the arm decoded as one type and read by the caller as
+ * another, so refuse it. The conformance run decodes ahead of the fields
+ * switch_is comes from, so only the data run is checked.
+ */
+static int
+dcerpc_union_check_discriminant(struct dcerpc_context *ctx,
+                                struct dcerpc_pdu *pdu,
+                                uint64_t switch_is, uint64_t wire)
+{
+        if (pdu->direction != DCERPC_DECODE || pdu->is_conformance_run) {
+                return 0;
+        }
+        if (wire != switch_is) {
+                dcerpc_set_error(ctx, "DCERPC union discriminant %llu, "
+                                 "expected %llu",
+                                 (unsigned long long)wire,
+                                 (unsigned long long)switch_is);
+                return -1;
+        }
+        return 0;
+}
+
+/*
  * NDR for a non-encapsulated union with a statically known arm alignment
  * (ndr32_align/ndr64_align, the largest alignment of all the arms): the
  * discriminant, 16 bits in NDR32 and 32 in NDR64 for a plain enum
@@ -1617,9 +1644,22 @@ ndr_aligned_union_coder(char *name, struct dcerpc_context *ctx,
                 if (dcerpc_enum16_coder("", ctx, pdu, iov, &level, NULL)) {
                         return -1;
                 }
+                if (dcerpc_union_check_discriminant(ctx, pdu, *switch_is,
+                                                    level)) {
+                        return -1;
+                }
                 *switch_is = level;
-        } else if (dcerpc_uint32_coder("", ctx, pdu, iov, switch_is)) {
-                return -1;
+        } else {
+                uint32_t level = *switch_is;
+
+                if (dcerpc_uint32_coder("", ctx, pdu, iov, &level)) {
+                        return -1;
+                }
+                if (dcerpc_union_check_discriminant(ctx, pdu, *switch_is,
+                                                    level)) {
+                        return -1;
+                }
+                *switch_is = level;
         }
 
         dcerpc_set_switch_is(pdu, *switch_is);
@@ -4613,6 +4653,9 @@ int ndr_union_coder(char *name, struct dcerpc_context *ctx,
         /* Conformance */
         p = *switch_is;
         if (ndr_uint3264_coder("", ctx, pdu, iov, &p)) {
+                return -1;
+        }
+        if (dcerpc_union_check_discriminant(ctx, pdu, *switch_is, p)) {
                 return -1;
         }
         *switch_is = p;
