@@ -2198,6 +2198,12 @@ dcerpc_pdu_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                                  pdu->hdr.PTYPE, ptype);
                 return -1;
         }
+        /* As in dce_frags_status(): no auth trailer was negotiated */
+        if (pdu->direction == DCERPC_DECODE && pdu->hdr.auth_length != 0) {
+                dcerpc_set_error(ctx, "DCERPC PDU has an auth trailer but "
+                                 "none was negotiated");
+                return -1;
+        }
         /* A BIND is only ever encoded: its decode has nowhere to go. */
         if (pdu->hdr.PTYPE == PDU_TYPE_BIND &&
             pdu->direction == DCERPC_DECODE) {
@@ -2286,6 +2292,17 @@ dce_frags_status(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                 }
 
                 if (hdr.rpc_vers != 5 || hdr.rpc_vers_minor != 0) {
+                        pdu->direction = saved_dir;
+                        return DCE_FRAG_ERROR;
+                }
+                /*
+                 * No security context is ever negotiated, so a reply has
+                 * no auth trailer; one that claims to would have its
+                 * trailer decoded as stub data, unverified.
+                 */
+                if (hdr.auth_length != 0) {
+                        dcerpc_set_error(dce, "DCERPC reply has an auth "
+                                         "trailer but none was negotiated");
                         pdu->direction = saved_dir;
                         return DCE_FRAG_ERROR;
                 }
