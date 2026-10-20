@@ -223,6 +223,17 @@ struct dcerpc_context {
         uint8_t packed_drep[4];
         uint32_t call_id;
         uint16_t max_xmit_frag; /* server's max_recv_frag from BIND_ACK */
+        /*
+         * RPC-level security, from dcerpc_set_schannel(): the secure
+         * channel (the caller's), the auth level, and the names the bind
+         * gives for it. header_sign is set when the BIND_ACK agreed to
+         * sign PDU headers too.
+         */
+        struct dcerpc_schannel *sch;
+        uint8_t auth_level;
+        char *auth_domain;
+        char *auth_computer;
+        int header_sign;
         char error_string[1024];
 };
 
@@ -379,6 +390,8 @@ struct dcerpc_response_pdu {
 #define PFC_FIRST_FRAG      0x01
 #define PFC_LAST_FRAG       0x02
 #define PFC_PENDING_CANCEL  0x04
+/* In a BIND/BIND_ACK the same bit offers/accepts header signing ([MS-RPCE]) */
+#define PFC_SUPPORT_HEADER_SIGN 0x04
 #define PFC_RESERVED_1      0x08
 #define PFC_CONC_MPX        0x10
 #define PFC_DID_NOT_EXECUTE 0x20
@@ -390,6 +403,17 @@ struct dcerpc_response_pdu {
 #define DCE_DEFAULT_XMIT_FRAG 4280
 /* The smallest fragment every implementation must accept (C706) */
 #define DCE_MIN_FRAG 1432
+
+/* sec_trailer: auth_type, auth_level, auth_pad_length, reserved, context id */
+#define DCE_SEC_TRAILER_LEN 8
+/* Our one security context on the association */
+#define DCE_AUTH_CONTEXT_ID 1
+
+/* NL_AUTH_MESSAGE ([MS-NRPC] 2.2.1.3.1) */
+#define NL_NEGOTIATE_REQUEST                0
+#define NL_NEGOTIATE_RESPONSE               1
+#define NL_FLAG_OEM_NETBIOS_DOMAIN_NAME     0x00000001
+#define NL_FLAG_OEM_NETBIOS_COMPUTER_NAME   0x00000002
 
 struct dcerpc_cb_data {
         struct dcerpc_pending pending;
@@ -1224,6 +1248,8 @@ dcerpc_destroy_context(struct dcerpc_context *dce)
 #endif
 
         free(discard_const(dce->path));
+        free(dce->auth_domain);
+        free(dce->auth_computer);
         free(dce);
 
 #ifdef HAVE_LIBSMB2
@@ -1232,6 +1258,41 @@ dcerpc_destroy_context(struct dcerpc_context *dce)
                 smb2_destroy_context(smb2);
         }
 #endif
+}
+
+int
+dcerpc_set_schannel(struct dcerpc_context *dce,
+                    struct dcerpc_schannel *sch, int auth_level,
+                    const char *domain, const char *computer)
+{
+        char *d, *c;
+
+        if (dce == NULL || sch == NULL || domain == NULL ||
+            computer == NULL ||
+            (auth_level != DCERPC_AUTH_LEVEL_INTEGRITY &&
+             auth_level != DCERPC_AUTH_LEVEL_PRIVACY)) {
+                return -EINVAL;
+        }
+        /* The bind carries the auth: it is too late once bound */
+        if (dce->max_xmit_frag != 0) {
+                dcerpc_set_error(dce, "DCERPC schannel must be set before "
+                                 "the bind");
+                return -EINVAL;
+        }
+        d = strdup(domain);
+        c = strdup(computer);
+        if (d == NULL || c == NULL) {
+                free(d);
+                free(c);
+                return -ENOMEM;
+        }
+        free(dce->auth_domain);
+        free(dce->auth_computer);
+        dce->auth_domain = d;
+        dce->auth_computer = c;
+        dce->sch = sch;
+        dce->auth_level = (uint8_t)auth_level;
+        return 0;
 }
 
 uint64_t
@@ -2240,8 +2301,13 @@ dcerpc_pdu_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                                  pdu->hdr.PTYPE, ptype);
                 return -1;
         }
-        /* As in dce_frags_status(): no auth trailer was negotiated */
-        if (pdu->direction == DCERPC_DECODE && pdu->hdr.auth_length != 0) {
+        /*
+         * As in dce_frags_status(): no auth trailer was negotiated,
+         * except the one a BIND_ACK answers our authenticated BIND with
+         * (smb2_bind_cb() checks it).
+         */
+        if (pdu->direction == DCERPC_DECODE && pdu->hdr.auth_length != 0 &&
+            !(ptype == PDU_TYPE_BIND_ACK && ctx->sch != NULL)) {
                 dcerpc_set_error(ctx, "DCERPC PDU has an auth trailer but "
                                  "none was negotiated");
                 return -1;
@@ -3059,6 +3125,12 @@ dcerpc_call_async(struct dcerpc_context *dce,
         if (dcerpc_need_smb2(dce)) {
                 return -EINVAL;
         }
+        /* Requests are not signed or sealed yet: do not send them bare */
+        if (dce->sch != NULL) {
+                dcerpc_set_error(dce, "DCERPC calls on a schannel context "
+                                 "are not supported yet");
+                return -ENOTSUP;
+        }
 
         pdu = dcerpc_encode_request(dce, opnum, req_coder, req, &iov);
         if (pdu == NULL) {
@@ -3311,6 +3383,10 @@ dcerpc_bind_cb(struct dcerpc_context *dce, int status,
         free(data);
 }
 
+static int dcerpc_bind_ack_auth(struct dcerpc_context *dce,
+                                struct dcerpc_pdu *pdu, const uint8_t *buf,
+                                size_t len, size_t body_end);
+
 static void
 smb2_bind_cb(struct smb2_context *smb2, int status,
              void *command_data, void *private_data)
@@ -3343,6 +3419,14 @@ smb2_bind_cb(struct smb2_context *smb2, int status,
                 .max_offset = rep->output_count,
         };
         if (dcerpc_pdu_coder(dce, pdu, &iov, PDU_TYPE_BIND_ACK)) {
+                smb2_free_data(dce->smb2, rep->output);
+                dcerpc_send_pdu_cb_and_free(dce, pdu, -EINVAL, NULL);
+                return;
+        }
+        if (dce->sch != NULL &&
+            (pdu->hdr.frag_length != rep->output_count ||
+             dcerpc_bind_ack_auth(dce, pdu, rep->output, rep->output_count,
+                                  iov.offset))) {
                 smb2_free_data(dce->smb2, rep->output);
                 dcerpc_send_pdu_cb_and_free(dce, pdu, -EINVAL, NULL);
                 return;
@@ -3436,6 +3520,136 @@ smb2_bind_cb(struct smb2_context *smb2, int status,
 
         dcerpc_send_pdu_cb_and_free(dce, pdu, 0, NULL);
 }
+/*
+ * The auth trailer of an authenticated BIND, after its body: padding to
+ * 4, the sec_trailer, and an NL_AUTH_MESSAGE NEGOTIATE_REQUEST naming
+ * the domain and machine account the secure channel belongs to. Then
+ * frag_length and auth_length are set to match.
+ */
+static int
+dcerpc_bind_auth(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+                 struct dcerpc_iovec *iov)
+{
+        static const uint32_t nl_flags = NL_FLAG_OEM_NETBIOS_DOMAIN_NAME |
+                NL_FLAG_OEM_NETBIOS_COMPUTER_NAME;
+        const char *names[2] = { dce->auth_domain, dce->auth_computer };
+        size_t auth_len = 8;
+        size_t end;
+        uint8_t pad;
+        int i, n;
+
+        for (n = 0; n < 2; n++) {
+                auth_len += strlen(names[n]) + 1;
+        }
+        pad = (uint8_t)((4 - (iov->offset & 3)) & 3);
+        for (i = 0; i < pad; i++) {
+                if (dcerpc_set_uint8(dce, iov, 0)) {
+                        return -1;
+                }
+        }
+        if (dcerpc_set_uint8(dce, iov, DCERPC_AUTH_TYPE_SCHANNEL) ||
+            dcerpc_set_uint8(dce, iov, dce->auth_level) ||
+            dcerpc_set_uint8(dce, iov, pad) ||
+            dcerpc_set_uint8(dce, iov, 0) ||
+            dcerpc_set_uint32(dce, pdu, iov, DCE_AUTH_CONTEXT_ID)) {
+                return -1;
+        }
+        /* NL_AUTH_MESSAGE is little-endian whatever the PDU's order */
+        for (i = 0; i < 4; i++) {
+                if (dcerpc_set_uint8(dce, iov,
+                                     (uint8_t)(NL_NEGOTIATE_REQUEST >>
+                                               (8 * i)))) {
+                        return -1;
+                }
+        }
+        for (i = 0; i < 4; i++) {
+                if (dcerpc_set_uint8(dce, iov,
+                                     (uint8_t)(nl_flags >> (8 * i)))) {
+                        return -1;
+                }
+        }
+        for (n = 0; n < 2; n++) {
+                const char *c = names[n];
+
+                do {
+                        if (dcerpc_set_uint8(dce, iov, (uint8_t)*c)) {
+                                return -1;
+                        }
+                } while (*c++ != '\0');
+        }
+        end = iov->offset;
+        if (end > UINT16_MAX) {
+                dcerpc_set_error(dce, "DCERPC BIND with auth too long");
+                return -1;
+        }
+        iov->offset = 8;
+        if (dcerpc_set_uint16(dce, pdu, iov, (uint16_t)end) ||
+            dcerpc_set_uint16(dce, pdu, iov, (uint16_t)auth_len)) {
+                return -1;
+        }
+        iov->offset = end;
+        return 0;
+}
+
+/*
+ * The auth trailer of the BIND_ACK to an authenticated BIND, at the end
+ * of buf (len bytes, the whole PDU); body_end is where the BIND_ACK body
+ * decoded to. It must be ours (auth type, level, context id) and carry
+ * an NL_AUTH_MESSAGE NEGOTIATE_RESPONSE.
+ */
+static int
+dcerpc_bind_ack_auth(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
+                     const uint8_t *buf, size_t len, size_t body_end)
+{
+        struct dcerpc_iovec iov;
+        uint16_t auth_len = pdu->hdr.auth_length;
+        uint32_t context_id, type;
+        size_t t;
+
+        if (auth_len == 0) {
+                dcerpc_set_error(dce, "DCERPC BIND_ACK did not accept the "
+                                 "schannel auth");
+                return -1;
+        }
+        if (auth_len < 8 || (size_t)auth_len + DCE_SEC_TRAILER_LEN > len ||
+            len - auth_len - DCE_SEC_TRAILER_LEN < body_end) {
+                dcerpc_set_error(dce, "DCERPC BIND_ACK auth_length %u out "
+                                 "of bounds", auth_len);
+                return -1;
+        }
+        t = len - auth_len - DCE_SEC_TRAILER_LEN;
+        if (buf[t] != DCERPC_AUTH_TYPE_SCHANNEL ||
+            buf[t + 1] != dce->auth_level ||
+            buf[t + 2] != t - body_end) {
+                dcerpc_set_error(dce, "DCERPC BIND_ACK auth type %u level "
+                                 "%u pad %u is not ours", buf[t],
+                                 buf[t + 1], buf[t + 2]);
+                return -1;
+        }
+        iov = (struct dcerpc_iovec){
+                .buf = (uint8_t *)(void *)buf,
+                .offset = t + 4,
+                .max_offset = len,
+        };
+        if (dcerpc_get_uint32(dce, pdu, &iov, &context_id) ||
+            context_id != DCE_AUTH_CONTEXT_ID) {
+                dcerpc_set_error(dce, "DCERPC BIND_ACK auth context id is "
+                                 "not ours");
+                return -1;
+        }
+        t += DCE_SEC_TRAILER_LEN;
+        type = (uint32_t)buf[t] | ((uint32_t)buf[t + 1] << 8) |
+               ((uint32_t)buf[t + 2] << 16) | ((uint32_t)buf[t + 3] << 24);
+        if (type != NL_NEGOTIATE_RESPONSE) {
+                dcerpc_set_error(dce, "DCERPC BIND_ACK NL_AUTH_MESSAGE type "
+                                 "%u is not a negotiate response", type);
+                return -1;
+        }
+        dce->header_sign = (pdu->hdr.pfc_flags &
+                            PFC_SUPPORT_HEADER_SIGN) != 0;
+        return 0;
+}
+
 
 static int
 dcerpc_bind_async(struct dcerpc_context *dce, dcerpc_cb cb,
@@ -3459,6 +3673,9 @@ dcerpc_bind_async(struct dcerpc_context *dce, dcerpc_cb cb,
         pdu->hdr.rpc_vers_minor = 0;
         pdu->hdr.PTYPE = PDU_TYPE_BIND;
         pdu->hdr.pfc_flags = PFC_FIRST_FRAG | PFC_LAST_FRAG;
+        if (dce->sch != NULL) {
+                pdu->hdr.pfc_flags |= PFC_SUPPORT_HEADER_SIGN;
+        }
         pdu->hdr.call_id = dce->call_id++;
         pdu->call_id = pdu->hdr.call_id;
         pdu->hdr.frag_length = 0;
@@ -3513,6 +3730,10 @@ dcerpc_bind_async(struct dcerpc_context *dce, dcerpc_cb cb,
         if (dcerpc_pdu_coder(dce, pdu, &iov, PDU_TYPE_BIND)) {
                 dcerpc_free_pdu(dce, pdu);
                 return -ENOMEM;
+        }
+        if (dce->sch != NULL && dcerpc_bind_auth(dce, pdu, &iov)) {
+                dcerpc_free_pdu(dce, pdu);
+                return -EINVAL;
         }
 
         memset(&req, 0, sizeof(struct smb2_ioctl_request));

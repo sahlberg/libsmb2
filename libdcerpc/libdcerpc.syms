@@ -103,6 +103,7 @@ dcerpc_server_set_max_xmit_frag
 dcerpc_set_full_pointer_id
 dcerpc_set_length_is
 dcerpc_set_request
+dcerpc_set_schannel
 dcerpc_set_size_is
 dcerpc_set_switch_is
 dcerpc_set_uint8

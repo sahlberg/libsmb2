@@ -270,6 +270,24 @@ int dcerpc_connect_context_async(struct dcerpc_context *dce,
 int dcerpc_connect_context(struct dcerpc_context *dce,
                            const char *path, p_syntax_id_t *syntax);
 /*
+ * RPC-level security with a Netlogon secure channel (auth type 68):
+ * every PDU after the bind is signed (DCERPC_AUTH_LEVEL_INTEGRITY) or
+ * also sealed (DCERPC_AUTH_LEVEL_PRIVACY) with sch, from
+ * dcerpc_schannel_create() and checked with
+ * dcerpc_schannel_check_server_credential(). domain and computer are the
+ * NetBIOS names of the domain and of the machine account the channel was
+ * set up for; the bind sends them. Call before connecting; sch must
+ * outlive the context. Returns 0 or -errno.
+ */
+#define DCERPC_AUTH_TYPE_SCHANNEL   68
+#define DCERPC_AUTH_LEVEL_INTEGRITY 5
+#define DCERPC_AUTH_LEVEL_PRIVACY   6
+struct dcerpc_schannel;
+int dcerpc_set_schannel(struct dcerpc_context *dce,
+                        struct dcerpc_schannel *sch, int auth_level,
+                        const char *domain, const char *computer);
+
+/*
  * Free a dcerpc context. Always closes an open named pipe (best-effort).
  * If the context was created with dcerpc_create_context_smb(), also
  * disconnects IPC$ and destroys the owned smb2 context. If created with
