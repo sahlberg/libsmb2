@@ -5272,6 +5272,12 @@ dcerpc_cvarray_coder(char *name, struct dcerpc_context *ctx,
                      int elem_size, dcerpc_coder coder)
 {
         if (pdu->encoding != ENCODING_NDR) {
+                /* the array holds max_count elements; NDR checks this too */
+                if (num > max_count) {
+                        dcerpc_set_error(ctx, "DCERPC %s has %u elements, "
+                                         "room for %u", name, num, max_count);
+                        return -1;
+                }
                 return dcerpc_carray_coder(name, ctx, pdu, iov, num,
                                            ptr, elem_size, coder);
         }
@@ -5287,6 +5293,12 @@ dcerpc_scalar_cvarray_coder(char *name, struct dcerpc_context *ctx,
                             int elem_size, dcerpc_coder coder)
 {
         if (pdu->encoding != ENCODING_NDR) {
+                /* the array holds max_count elements; NDR checks this too */
+                if (num > max_count) {
+                        dcerpc_set_error(ctx, "DCERPC %s has %u elements, "
+                                         "room for %u", name, num, max_count);
+                        return -1;
+                }
                 return dcerpc_scalar_carray_coder(name, ctx, pdu, iov, num,
                                                   ptr, elem_size, coder);
         }
