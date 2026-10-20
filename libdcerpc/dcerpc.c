@@ -6272,17 +6272,29 @@ json_expect_key(struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
 static int
 json_parse_ulong(struct dcerpc_iovec *iov, unsigned long *out)
 {
-        char *start;
+        /*
+         * strtoul() needs a NUL-terminated string and the buffer need not
+         * be: parse a copy of at most what is left of it. No number we
+         * take is longer than this.
+         */
+        char num[32];
+        size_t n = 0;
         char *end;
 
         json_skip_ws(iov);
-        start = (char *)&iov->buf[iov->offset];
-        *out = strtoul(start, &end, 0);
-        if (end == start) {
+        while (n < sizeof(num) - 1 && iov->offset + n < iov->max_offset &&
+               iov->buf[iov->offset + n] != '\0') {
+                num[n] = (char)iov->buf[iov->offset + n];
+                n++;
+        }
+        num[n] = '\0';
+        errno = 0;
+        *out = strtoul(num, &end, 0);
+        if (end == num || errno == ERANGE) {
                 printf("JSON parse error: expected number\n");
                 return -1;
         }
-        iov->offset += (int)(end - start);
+        iov->offset += (size_t)(end - num);
         return 0;
 }
 
