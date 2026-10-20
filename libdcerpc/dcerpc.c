@@ -89,6 +89,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <dcerpc/dssetup.h>
 #include <dcerpc/netlogon.h>
 #include <dcerpc/winreg.h>
+#include <dcerpc/schannel.h>
 #include <dcerpc/epm.h>
 #include "dcerpc-private.h"
 
@@ -408,6 +409,8 @@ struct dcerpc_response_pdu {
 #define DCE_SEC_TRAILER_LEN 8
 /* Our one security context on the association */
 #define DCE_AUTH_CONTEXT_ID 1
+/* The stub before an auth trailer is padded to this ([MS-RPCE] 2.2.2.11) */
+#define DCE_AUTH_PAD_ALIGN 16
 
 /* NL_AUTH_MESSAGE ([MS-NRPC] 2.2.1.3.1) */
 #define NL_NEGOTIATE_REQUEST                0
@@ -3017,6 +3020,108 @@ dcerpc_fragment_request(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
         return 0;
 }
 
+/*
+ * Split an encoded REQUEST (24-byte header then stub, in buf) into the
+ * fragments of a schannel context, each signed or sealed: header, a
+ * chunk of the stub padded to DCE_AUTH_PAD_ALIGN, the sec_trailer and
+ * the token. With header signing the signature covers the fragment up
+ * to the end of its sec_trailer, else the stub and its padding; sealing
+ * covers the stub and padding. Every fragment takes the channel's next
+ * sequence number, in the order they are sent.
+ */
+static int
+dcerpc_fragment_request_auth(struct dcerpc_context *dce,
+                             struct dcerpc_pdu *pdu, const uint8_t *buf,
+                             size_t len, size_t max_frag)
+{
+        const uint8_t *stub = buf + 24;
+        size_t stub_len = len - 24;
+        size_t overhead = 24 + DCE_SEC_TRAILER_LEN + DCERPC_SCHANNEL_TOKEN_LEN;
+        size_t max_stub, nfrags, off = 0, o = 0;
+        int seal = dce->auth_level == DCERPC_AUTH_LEVEL_PRIVACY;
+
+        if (max_frag < overhead + DCE_AUTH_PAD_ALIGN) {
+                dcerpc_set_error(dce, "DCERPC fragment size %zu too small "
+                                 "for an auth trailer", max_frag);
+                return -1;
+        }
+        /* Fragments before the last need no padding */
+        max_stub = (max_frag - overhead) & ~(size_t)(DCE_AUTH_PAD_ALIGN - 1);
+        nfrags = stub_len ? (stub_len + max_stub - 1) / max_stub : 1;
+        pdu->frag_buf = malloc(stub_len + nfrags * (overhead +
+                                                     DCE_AUTH_PAD_ALIGN));
+        if (pdu->frag_buf == NULL) {
+                dcerpc_set_error(dce, "Failed to allocate request "
+                                 "fragments");
+                return -1;
+        }
+        do {
+                uint8_t *frag = pdu->frag_buf + o;
+                size_t chunk = stub_len - off;
+                size_t pad, flen, tr;
+                uint8_t pfc = 0;
+                struct dcerpc_iovec iov;
+
+                if (chunk > max_stub) {
+                        chunk = max_stub;
+                }
+                if (off == 0) {
+                        pfc |= PFC_FIRST_FRAG;
+                }
+                if (off + chunk == stub_len) {
+                        pfc |= PFC_LAST_FRAG;
+                }
+                pad = (DCE_AUTH_PAD_ALIGN - (chunk % DCE_AUTH_PAD_ALIGN)) %
+                      DCE_AUTH_PAD_ALIGN;
+                tr = 24 + chunk + pad;
+                flen = tr + DCE_SEC_TRAILER_LEN + DCERPC_SCHANNEL_TOKEN_LEN;
+
+                memcpy(frag, buf, 24);
+                memcpy(frag + 24, stub + off, chunk);
+                memset(frag + 24 + chunk, 0, pad);
+                if (dcerpc_fixup_request_hdr(dce, pdu, frag, flen, pfc,
+                                             (uint32_t)(stub_len - off))) {
+                        return -1;
+                }
+                iov = (struct dcerpc_iovec){
+                        .buf = frag,
+                        .offset = 10,
+                        .max_offset = flen,
+                };
+                if (dcerpc_set_uint16(dce, pdu, &iov,
+                                      DCERPC_SCHANNEL_TOKEN_LEN)) {
+                        return -1;
+                }
+                frag[tr] = DCERPC_AUTH_TYPE_SCHANNEL;
+                frag[tr + 1] = dce->auth_level;
+                frag[tr + 2] = (uint8_t)pad;
+                frag[tr + 3] = 0;
+                iov.offset = tr + 4;
+                if (dcerpc_set_uint32(dce, pdu, &iov, DCE_AUTH_CONTEXT_ID)) {
+                        return -1;
+                }
+                if (dcerpc_schannel_protect(dce->sch, seal,
+                                            frag + 24, chunk + pad,
+                                            dce->header_sign ? frag :
+                                            frag + 24,
+                                            dce->header_sign ?
+                                            tr + DCE_SEC_TRAILER_LEN :
+                                            chunk + pad,
+                                            NULL,
+                                            frag + tr +
+                                            DCE_SEC_TRAILER_LEN)) {
+                        dcerpc_set_error(dce, "DCERPC schannel could not "
+                                         "protect the request");
+                        return -1;
+                }
+                o += flen;
+                off += chunk;
+        } while (off < stub_len);
+        pdu->frag_len = o;
+        pdu->frag_pos = 0;
+        return 0;
+}
+
 static int dcerpc_send_request_frag(struct dcerpc_context *dce,
                                     struct dcerpc_pdu *pdu);
 
@@ -3125,12 +3230,6 @@ dcerpc_call_async(struct dcerpc_context *dce,
         if (dcerpc_need_smb2(dce)) {
                 return -EINVAL;
         }
-        /* Requests are not signed or sealed yet: do not send them bare */
-        if (dce->sch != NULL) {
-                dcerpc_set_error(dce, "DCERPC calls on a schannel context "
-                                 "are not supported yet");
-                return -ENOTSUP;
-        }
 
         pdu = dcerpc_encode_request(dce, opnum, req_coder, req, &iov);
         if (pdu == NULL) {
@@ -3148,7 +3247,14 @@ dcerpc_call_async(struct dcerpc_context *dce,
         if (max_frag < 24 + 8) {
                 max_frag = DCE_DEFAULT_XMIT_FRAG;
         }
-        if (len <= max_frag) {
+        if (dce->sch != NULL) {
+                if (dcerpc_fragment_request_auth(dce, pdu, iov.buf, len,
+                                                 max_frag)) {
+                        dcerpc_free_iovec(&iov);
+                        dcerpc_free_pdu(dce, pdu);
+                        return -1;
+                }
+        } else if (len <= max_frag) {
                 /* fits in one fragment: send the encoded buffer itself */
                 pdu->frag_buf = iov.buf;
                 iov.buf = NULL;
