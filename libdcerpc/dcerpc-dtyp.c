@@ -656,21 +656,25 @@ static struct dcerpc_uint32_pretty_printer acl_revision_pp = {
         },
 };
 
-static uint16_t
-acl_compute_size(const ACL *acl)
+/*
+ * AclSize for the ACL's ACEs, or -1 if it does not fit its 16 bits:
+ * wrapped, the ACL would be sent with a size that cuts it short.
+ */
+static int
+acl_compute_size(const ACL *acl, uint16_t *size)
 {
-        uint16_t size = 8; /* header */
+        uint32_t total = 8; /* header */
         uint16_t i;
 
-        if (acl->Aces == NULL) {
-                return size;
+        for (i = 0; acl->Aces != NULL && i < acl->AceCount; i++) {
+                total += ace_mask_sid_size((const struct ace_mask_sid *)
+                                           &acl->Aces[i]);
         }
-        for (i = 0; i < acl->AceCount; i++) {
-                size = (uint16_t)(size +
-                        ace_mask_sid_size((const struct ace_mask_sid *)
-                                          &acl->Aces[i]));
+        if (total > UINT16_MAX) {
+                return -1;
         }
-        return size;
+        *size = (uint16_t)total;
+        return 0;
 }
 
 /* The ACE types that are Header+Mask+Sid, the only ones modelled */
@@ -778,7 +782,9 @@ acl_fields_coder(char *name, struct dcerpc_context *dce,
         if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) {
                 acl->Sbz1 = 0;
                 acl->Sbz2 = 0;
-                acl->AclSize = acl_compute_size(acl);
+                if (acl_compute_size(acl, &acl->AclSize)) {
+                        return -1;
+                }
         }
 
         if (dcerpc_uint8_pp_coder("AclRevision", dce, pdu, iov,
@@ -870,7 +876,9 @@ acl_fields_coder(char *name, struct dcerpc_context *dce,
             dcerpc_pdu_encoding(pdu) != ENCODING_NDR) {
                 acl->Sbz1 = 0;
                 acl->Sbz2 = 0;
-                acl->AclSize = acl_compute_size(acl);
+                if (acl_compute_size(acl, &acl->AclSize)) {
+                        return -1;
+                }
         }
         return 0;
 }
