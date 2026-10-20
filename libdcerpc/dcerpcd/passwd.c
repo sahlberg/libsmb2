@@ -130,6 +130,23 @@ dcerpcd_passwd_load(const char *path)
                 return -1;
         }
 
+        /*
+         * An empty or missing password would let NTLM authenticate with
+         * no password at all. YAML makes one easy to get by accident:
+         * everything from a '#' is a comment, so quote such a password.
+         */
+        for (i = 0; i < db->count; i++) {
+                if (db->entry[i].user == NULL ||
+                    db->entry[i].user[0] == '\0' ||
+                    db->entry[i].password == NULL ||
+                    db->entry[i].password[0] == '\0') {
+                        fprintf(stderr, "passwd: entry %u in %s has no "
+                                "user or no password\n", i, path);
+                        dcerpc_free_data(NULL, db);
+                        return -1;
+                }
+        }
+
         g_passwd = db;
 
         printf("passwd: loaded %u user(s) from %s\n", db->count, path);
