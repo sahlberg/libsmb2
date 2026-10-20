@@ -289,6 +289,28 @@ smb2_process_read_fixed(struct smb2_context *smb2,
                 return -1;
         }
 
+        /* The data goes into the buffer the read was issued with, and
+         * anything past it into a scratch tail, but data_length is what
+         * callers are told was read: more than was asked for would have
+         * them use bytes their buffer does not hold.
+         */
+        if (pdu->in.niov) {
+                size_t asked = 0;
+                int i;
+
+                for (i = 0; i < pdu->in.niov; i++) {
+                        asked += pdu->in.iov[i].len;
+                }
+                if (rep->data_length > asked) {
+                        smb2_set_error(smb2, "Read returned %u bytes, "
+                                       "%zu were asked for",
+                                       rep->data_length, asked);
+                        pdu->payload = NULL;
+                        free(rep);
+                        return -1;
+                }
+        }
+
         if (rep->data_offset != SMB2_HEADER_SIZE + 16) {
                 smb2_set_error(smb2, "Unexpected data offset in Read reply. "
                                "Expected %d, got %d",
