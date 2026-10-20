@@ -120,6 +120,7 @@ dcerpc_union_coder
 dcerpc_union_enum16_coder
 dcerpc_union_u32_coder
 dcerpc_utf16_coder
+dcerpc_varying_bytes_checked_coder
 dcerpc_varying_bytes_coder
 dcerpc_utf16z_coder
 dssetup_DSROLE_MACHINE_ROLE_coder

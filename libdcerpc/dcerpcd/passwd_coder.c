@@ -36,6 +36,9 @@ enum dcerpc_encoding dcerpc_pdu_encoding(struct dcerpc_pdu *pdu);
 int dcerpc_pdu_is_conformance_run(struct dcerpc_pdu *pdu);
 void *dcerpc_alloc_array(struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
                          uint64_t count, size_t esize);
+int dcerpc_varying_bytes_checked_coder(char *name, struct dcerpc_context *ctx,
+                                       struct dcerpc_pdu *pdu,
+                                       struct dcerpc_iovec *iov, void *ptr);
 
 
 int passwd_entry_coder(char *name, struct dcerpc_context *dce,

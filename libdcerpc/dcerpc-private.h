@@ -44,6 +44,10 @@ void dcerpc_pdu_raise_max_alignment(struct dcerpc_pdu *pdu, int alignment);
 int dcerpc_get_cr(struct dcerpc_pdu *pdu);
 
 int dcerpc_align_3264(struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov);
+/* A varying byte array field checked against size_is and length_is */
+int dcerpc_varying_bytes_checked_coder(char *name, struct dcerpc_context *ctx,
+                                       struct dcerpc_pdu *pdu,
+                                       struct dcerpc_iovec *iov, void *ptr);
 /* An array for a decoder, refused if count can not be in what is left */
 void *dcerpc_alloc_array(struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
                          uint64_t count, size_t esize);

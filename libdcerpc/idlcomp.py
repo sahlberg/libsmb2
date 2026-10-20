@@ -761,6 +761,26 @@ def attr_int(attrs: List[Attr], name: str, default: Optional[int] = None) -> Opt
     return int(a, 0)
 
 
+def field_expr(expr: str, var: str) -> str:
+    """
+    A size_is/length_is expression over sibling fields as C, e.g.
+    (UnitsPerWeek+7)/8 -> (s->UnitsPerWeek+7)/8.
+    """
+    return re.sub(r"\b([A-Za-z_]\w*)\b", lambda m: f"{var}->{m.group(1)}", expr)
+
+
+def varying_bytes_sizes_lines(f: Field, var: str, indent: str) -> List[str]:
+    """
+    Set size_is and length_is for dcerpc_varying_bytes_checked_coder(),
+    which checks the decoded bytes against them; the fields they come
+    from precede the pointer, and a deferred pointer keeps both.
+    """
+    return [
+        f"{indent}dcerpc_set_size_is(pdu, {field_expr(attr_arg(f.attrs, 'size_is'), var)});",
+        f"{indent}dcerpc_set_length_is(pdu, {field_expr(attr_arg(f.attrs, 'length_is'), var)});",
+    ]
+
+
 def range_check_lines(attrs: List[Attr], value: str, indent: str) -> List[str]:
     """
     [range(lo, hi)] on a scalar: the peer's value must be in it on decode.
@@ -1070,6 +1090,9 @@ enum dcerpc_encoding dcerpc_pdu_encoding(struct dcerpc_pdu *pdu);
 int dcerpc_pdu_is_conformance_run(struct dcerpc_pdu *pdu);
 void *dcerpc_alloc_array(struct dcerpc_pdu *pdu, struct dcerpc_iovec *iov,
                          uint64_t count, size_t esize);
+int dcerpc_varying_bytes_checked_coder(char *name, struct dcerpc_context *ctx,
+                                       struct dcerpc_pdu *pdu,
+                                       struct dcerpc_iovec *iov, void *ptr);
 
 """
 
@@ -2045,6 +2068,7 @@ def gen_field_coder_stmts(
         # whatever the caller set: encode a copy with it, so the input is
         # not written, and on decode it is what text encodings, which
         # carry only the bytes, cannot give
+        lines.extend(varying_bytes_sizes_lines(f, var, indent))
         if re.fullmatch(r"0x[0-9A-Fa-f]+|\d+", size_is):
             lines.append(
                 f"{indent}if (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&\n"
@@ -2058,13 +2082,13 @@ def gen_field_coder_stmts(
                 f"{indent}        *vb = {var}->{f.name};\n"
                 f"{indent}        vb->max_count = {size_is};\n"
                 f'{indent}        if (dcerpc_ptr_coder("{disp}", dce, pdu, iov, vb,\n'
-                f"{indent}                             PTR_UNIQUE, dcerpc_varying_bytes_coder)) {{\n"
+                f"{indent}                             PTR_UNIQUE, dcerpc_varying_bytes_checked_coder)) {{\n"
                 f"{indent}                return -1;\n"
                 f"{indent}        }}\n"
                 f"{indent}}} else {{\n"
                 f'{indent}        if (dcerpc_ptr_coder("{disp}", dce, pdu, iov,\n'
                 f"{indent}                             (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE) ? NULL : &{var}->{f.name},\n"
-                f"{indent}                             PTR_UNIQUE, dcerpc_varying_bytes_coder)) {{\n"
+                f"{indent}                             PTR_UNIQUE, dcerpc_varying_bytes_checked_coder)) {{\n"
                 f"{indent}                return -1;\n"
                 f"{indent}        }}\n"
                 f"{indent}        /* NDR decodes the deferred bytes, and max_count, later */\n"
@@ -2078,7 +2102,7 @@ def gen_field_coder_stmts(
             f'{indent}if (dcerpc_ptr_coder("{disp}", dce, pdu, iov,\n'
             f"{indent}                     (dcerpc_pdu_direction(pdu) == DCERPC_ENCODE &&\n"
             f"{indent}                      {var}->{f.name}.data == NULL) ? NULL : &{var}->{f.name},\n"
-            f"{indent}                     PTR_UNIQUE, dcerpc_varying_bytes_coder)) {{\n"
+            f"{indent}                     PTR_UNIQUE, dcerpc_varying_bytes_checked_coder)) {{\n"
             f"{indent}        return -1;\n"
             f"{indent}}}"
         )

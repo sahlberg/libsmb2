@@ -1568,6 +1568,40 @@ dcerpc_varying_bytes_coder(char *name, struct dcerpc_context *ctx,
         return -1;
 }
 
+/*
+ * dcerpc_varying_bytes_coder() for a struct field whose size and length
+ * are other fields of the struct (STRING's MaximumLength and Length):
+ * the caller sets them as size_is and length_is, which a deferred
+ * pointer keeps, and on decode the bytes must be exactly that long, or
+ * a reader using the length fields reads past them. YAML/JSON carry only
+ * the bytes, so there only the length is checked.
+ */
+int
+dcerpc_varying_bytes_checked_coder(char *name, struct dcerpc_context *ctx,
+                                   struct dcerpc_pdu *pdu,
+                                   struct dcerpc_iovec *iov, void *ptr)
+{
+        struct dcerpc_varying_bytes *b = ptr;
+        uint32_t size_is = pdu->size_is;
+        uint32_t length_is = pdu->length_is;
+
+        if (dcerpc_varying_bytes_coder(name, ctx, pdu, iov, ptr)) {
+                return -1;
+        }
+        if (pdu->direction != DCERPC_DECODE || pdu->is_conformance_run) {
+                return 0;
+        }
+        if (b->len != length_is ||
+            (pdu->encoding == ENCODING_NDR && b->max_count != size_is)) {
+                dcerpc_set_error(ctx, "DCERPC %s holds %u of %u bytes, "
+                                 "its length fields say %u of %u",
+                                 name ? name : "array", b->len,
+                                 b->max_count, length_is, size_is);
+                return -1;
+        }
+        return 0;
+}
+
 int
 dcerpc_fixed_bytes_coder(char *name, struct dcerpc_context *ctx,
                          struct dcerpc_pdu *pdu,
