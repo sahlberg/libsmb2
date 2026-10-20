@@ -57,6 +57,25 @@ void dcerpc_schannel_server_credential(const struct dcerpc_schannel *sch,
                                        uint8_t cred[8]);
 
 /*
+ * Check the ServerAuthenticate3 reply: the server's credential, which
+ * only a server knowing the machine password can produce, and the flags
+ * it negotiated, which must keep AES. Until this succeeds every call
+ * below fails; if it fails, the session is unusable.
+ */
+int dcerpc_schannel_check_server_credential(struct dcerpc_schannel *sch,
+                                            const uint8_t cred[8],
+                                            uint32_t negotiated_flags);
+
+/*
+ * [MS-NRPC] 3.4.5.2.10: the ServerCapabilities LogonGetCapabilities
+ * returns over the secure channel must equal the flags negotiated in
+ * the clear; anything else means the negotiation was tampered with, and
+ * the session is unusable.
+ */
+int dcerpc_schannel_check_capabilities(struct dcerpc_schannel *sch,
+                                       uint32_t capabilities);
+
+/*
  * Next client authenticator. timestamp is seconds since the Unix epoch.
  * The low 4 bytes of the stored seed are increased by timestamp, with no
  * carry into the high 4, and the result is encrypted.

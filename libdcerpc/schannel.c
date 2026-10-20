@@ -45,6 +45,12 @@ struct dcerpc_schannel {
          * call fails from then on.
          */
         int failed;
+        /*
+         * The server's credential has been checked, and these are the
+         * flags it negotiated; nothing else works before that.
+         */
+        int verified;
+        uint32_t negotiated_flags;
 };
 
 /*
@@ -647,10 +653,48 @@ dcerpc_schannel_server_credential(const struct dcerpc_schannel *sch,
 }
 
 int
+dcerpc_schannel_check_server_credential(struct dcerpc_schannel *sch,
+                                        const uint8_t cred[8],
+                                        uint32_t negotiated_flags)
+{
+        if (sch == NULL || cred == NULL || sch->failed || sch->verified) {
+                return -1;
+        }
+        /*
+         * A server that does not know the machine password can not
+         * produce this. Without AES, the server dropped what the session
+         * is computed with.
+         */
+        if (ct_memcmp(cred, sch->server_credential, 8) != 0 ||
+            (negotiated_flags & DCERPC_SCHANNEL_AES) == 0) {
+                sch->failed = 1;
+                return -1;
+        }
+        sch->verified = 1;
+        sch->negotiated_flags = negotiated_flags;
+        return 0;
+}
+
+int
+dcerpc_schannel_check_capabilities(struct dcerpc_schannel *sch,
+                                   uint32_t capabilities)
+{
+        if (sch == NULL || !sch->verified || sch->failed) {
+                return -1;
+        }
+        if (capabilities != sch->negotiated_flags) {
+                sch->failed = 1;
+                return -1;
+        }
+        return 0;
+}
+
+int
 dcerpc_schannel_authenticator(struct dcerpc_schannel *sch,
                               uint32_t timestamp, uint8_t cred[8])
 {
-        if (sch == NULL || cred == NULL || sch->failed) {
+        if (sch == NULL || cred == NULL || sch->failed ||
+            !sch->verified) {
                 return -1;
         }
         cred_add(sch->seed, timestamp);
@@ -664,7 +708,8 @@ dcerpc_schannel_check_authenticator(struct dcerpc_schannel *sch,
 {
         uint8_t next[8], got[8];
 
-        if (sch == NULL || cred == NULL || sch->failed) {
+        if (sch == NULL || cred == NULL || sch->failed ||
+            !sch->verified) {
                 return -1;
         }
         memcpy(next, sch->seed, 8);
@@ -684,7 +729,8 @@ dcerpc_schannel_encrypt_trust_password(const struct dcerpc_schannel *sch,
 {
         uint8_t iv[16];
 
-        if (sch == NULL || password == NULL || sch->failed) {
+        if (sch == NULL || password == NULL || sch->failed ||
+            !sch->verified) {
                 return -1;
         }
         memset(iv, 0, 16);
@@ -759,7 +805,8 @@ dcerpc_schannel_seal(struct dcerpc_schannel *sch,
         uint8_t *body;
 
         if (sch == NULL || token == NULL || (len > 0 && (plain == NULL ||
-            crypt == NULL)) || sch->failed) {
+            crypt == NULL)) || sch->failed ||
+            !sch->verified) {
                 return -1;
         }
         if (confounder != NULL) {
@@ -815,7 +862,8 @@ dcerpc_schannel_unseal(struct dcerpc_schannel *sch,
         uint8_t *body;
 
         if (sch == NULL || token == NULL || (len > 0 && (crypt == NULL ||
-            plain == NULL)) || len > SIZE_MAX - 16 || sch->failed) {
+            plain == NULL)) || len > SIZE_MAX - 16 || sch->failed ||
+            !sch->verified) {
                 return -1;
         }
         sign_header(hdr);

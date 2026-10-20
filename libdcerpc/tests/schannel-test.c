@@ -92,11 +92,82 @@ from_hex(const char *hex, uint8_t *out, size_t n)
         return hex[2 * n] == '\0' ? 0 : -1;
 }
 
+/* The server credential for these challenges and password */
+static const char server_cred[] = "d366d0ea4659d79d";
+#define NEGOTIATED (DCERPC_SCHANNEL_AES | 0x00004000u)
+
 static struct dcerpc_schannel *
 open_session(void)
 {
-        return dcerpc_schannel_create(client_challenge, server_challenge,
-                                      "password", DCERPC_SCHANNEL_AES);
+        struct dcerpc_schannel *sch;
+        uint8_t cred[8];
+
+        sch = dcerpc_schannel_create(client_challenge, server_challenge,
+                                     "password", DCERPC_SCHANNEL_AES);
+        if (sch == NULL) {
+                return NULL;
+        }
+        from_hex(server_cred, cred, 8);
+        if (dcerpc_schannel_check_server_credential(sch, cred,
+                                                    NEGOTIATED)) {
+                dcerpc_schannel_destroy(sch);
+                return NULL;
+        }
+        return sch;
+}
+
+static void
+test_server_check(void)
+{
+        struct dcerpc_schannel *sch;
+        uint8_t cred[8];
+        uint8_t good[8];
+
+        from_hex(server_cred, good, 8);
+
+        /* Nothing works before the server credential is checked */
+        sch = dcerpc_schannel_create(client_challenge, server_challenge,
+                                     "password", DCERPC_SCHANNEL_AES);
+        CHECK(sch != NULL);
+        if (sch == NULL) {
+                return;
+        }
+        CHECK(dcerpc_schannel_authenticator(sch, 1, cred) != 0);
+        CHECK(dcerpc_schannel_check_server_credential(sch, good,
+                                                      NEGOTIATED) == 0);
+        CHECK(dcerpc_schannel_authenticator(sch, 1, cred) == 0);
+        /* Capabilities over the channel must match what was negotiated */
+        CHECK(dcerpc_schannel_check_capabilities(sch, NEGOTIATED) == 0);
+        CHECK(dcerpc_schannel_check_capabilities(sch,
+                                                 NEGOTIATED & ~0x4000u) != 0);
+        CHECK(dcerpc_schannel_authenticator(sch, 1, cred) != 0);
+        dcerpc_schannel_destroy(sch);
+
+        /* A wrong server credential */
+        sch = dcerpc_schannel_create(client_challenge, server_challenge,
+                                     "password", DCERPC_SCHANNEL_AES);
+        CHECK(sch != NULL);
+        if (sch == NULL) {
+                return;
+        }
+        memcpy(cred, good, 8);
+        cred[7] ^= 1;
+        CHECK(dcerpc_schannel_check_server_credential(sch, cred,
+                                                      NEGOTIATED) != 0);
+        CHECK(dcerpc_schannel_check_server_credential(sch, good,
+                                                      NEGOTIATED) != 0);
+        dcerpc_schannel_destroy(sch);
+
+        /* A server that dropped AES */
+        sch = dcerpc_schannel_create(client_challenge, server_challenge,
+                                     "password", DCERPC_SCHANNEL_AES);
+        CHECK(sch != NULL);
+        if (sch == NULL) {
+                return;
+        }
+        CHECK(dcerpc_schannel_check_server_credential(sch, good,
+                                                      0x00004000u) != 0);
+        dcerpc_schannel_destroy(sch);
 }
 
 static void
@@ -260,6 +331,7 @@ int
 main(void)
 {
         test_credentials();
+        test_server_check();
         test_trust_password();
         test_seal();
         if (failures) {
