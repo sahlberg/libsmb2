@@ -5434,7 +5434,16 @@ ndr_encode_ptr(char *name, struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                 /*
                  * Like Windows, a full pointer never refers back to an
                  * earlier referent: each one gets a new id and its data.
+                 * A reply continues after its request's highest id, which
+                 * the peer chose: past the largest id the next one would
+                 * wrap to 0, a NULL pointer followed by data.
                  */
+                if (pdu->full_ptr_id >= (pdu->ndr64 ? UINT64_MAX :
+                                         UINT32_MAX)) {
+                        dcerpc_set_error(dce, "DCERPC out of full pointer "
+                                         "ids");
+                        return -1;
+                }
                 val = ++pdu->full_ptr_id;
                 if (ndr_uint3264_coder("ReferentId", dce, pdu, iov, &val)) {
                         return -1;
