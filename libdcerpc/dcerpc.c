@@ -2112,11 +2112,28 @@ dcerpc_response_coder(struct dcerpc_context *ctx,
         return 0;
 }
 
+/*
+ * Code a whole PDU. ptype is the only PDU type accepted: on decode the
+ * type comes from the peer, and the PDU types share storage in the
+ * dcerpc_pdu union, so a reply of the wrong type must be refused before
+ * its body is decoded into fields that hold something else.
+ */
 static int
 dcerpc_pdu_coder(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
-                 struct dcerpc_iovec *iov)
+                 struct dcerpc_iovec *iov, uint8_t ptype)
 {
         if (dcerpc_header_coder(ctx, pdu, iov, &pdu->hdr)) {
+                return -1;
+        }
+        if (pdu->hdr.PTYPE != ptype) {
+                dcerpc_set_error(ctx, "DCERPC PDU type %d, expected %d",
+                                 pdu->hdr.PTYPE, ptype);
+                return -1;
+        }
+        /* A BIND is only ever encoded: its decode has nowhere to go. */
+        if (pdu->hdr.PTYPE == PDU_TYPE_BIND &&
+            pdu->direction == DCERPC_DECODE) {
+                dcerpc_set_error(ctx, "DCERPC can not decode a BIND");
                 return -1;
         }
 
@@ -2536,13 +2553,7 @@ dcerpc_finish_call_from_reasm(struct dcerpc_context *dce,
                 return;
         }
 
-        if (dcerpc_pdu_coder(dce, pdu, &iov)) {
-                dcerpc_send_pdu_cb_and_free(dce, pdu, -EINVAL, NULL);
-                return;
-        }
-
-        if (pdu->hdr.PTYPE != PDU_TYPE_RESPONSE) {
-                dcerpc_set_error(dce, "DCERPC response was not a RESPONSE");
+        if (dcerpc_pdu_coder(dce, pdu, &iov, PDU_TYPE_RESPONSE)) {
                 dcerpc_send_pdu_cb_and_free(dce, pdu, -EINVAL, NULL);
                 return;
         }
@@ -2653,7 +2664,7 @@ dcerpc_encode_request(struct dcerpc_context *dce, int opnum,
         pdu->req.context_id = dce->tctx_id;
         pdu->req.opnum = opnum;
 
-        if (dcerpc_pdu_coder(dce, pdu, iov)) {
+        if (dcerpc_pdu_coder(dce, pdu, iov, PDU_TYPE_REQUEST)) {
                 dcerpc_free_iovec(iov);
                 dcerpc_free_pdu(dce, pdu);
                 return NULL;
@@ -3093,18 +3104,12 @@ smb2_bind_cb(struct smb2_context *smb2, int status,
                 .buf = rep->output,
                 .max_offset = rep->output_count,
         };
-        if (dcerpc_pdu_coder(dce, pdu, &iov)) {
+        if (dcerpc_pdu_coder(dce, pdu, &iov, PDU_TYPE_BIND_ACK)) {
                 smb2_free_data(dce->smb2, rep->output);
                 dcerpc_send_pdu_cb_and_free(dce, pdu, -EINVAL, NULL);
                 return;
         }
         smb2_free_data(dce->smb2, rep->output);
-
-        if (pdu->hdr.PTYPE != PDU_TYPE_BIND_ACK) {
-                dcerpc_set_error(dce, "DCERPC response was not a BIND_ACK");
-                dcerpc_send_pdu_cb_and_free(dce, pdu, -EINVAL, NULL);
-                return;
-        }
 
         if (pdu->bind_ack.num_results < 1) {
                 smb2_set_error(smb2, "No results in BIND ACK");
@@ -3212,7 +3217,7 @@ dcerpc_bind_async(struct dcerpc_context *dce, dcerpc_cb cb,
                 .buf = pdu->payload,
                 .max_offset = NSE_BUF_SIZE,
         };
-        if (dcerpc_pdu_coder(dce, pdu, &iov)) {
+        if (dcerpc_pdu_coder(dce, pdu, &iov, PDU_TYPE_BIND)) {
                 dcerpc_free_pdu(dce, pdu);
                 return -ENOMEM;
         }
