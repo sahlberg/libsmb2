@@ -1846,6 +1846,13 @@ fstat_cb_1(struct smb2_context *smb2, int status,
                 free(stat_data);
                 return;
         }
+        /* A server can claim success and still send no output buffer */
+        if (fs == NULL) {
+                smb2_set_error(smb2, "Query info reply has no data");
+                stat_data->cb(smb2, -EIO, NULL, stat_data->cb_data);
+                free(stat_data);
+                return;
+        }
 
         st->smb2_type = SMB2_TYPE_FILE;
         if (fs->basic.file_attributes & SMB2_FILE_ATTRIBUTE_DIRECTORY) {
@@ -1948,6 +1955,11 @@ getinfo_cb_2(struct smb2_context *smb2, int status,
                 stat_data->status = status;
         }
         if (stat_data->status != SMB2_STATUS_SUCCESS) {
+                return;
+        }
+        /* A server can claim success and still send no output buffer */
+        if (rep->output_buffer == NULL) {
+                stat_data->status = SMB2_STATUS_DATA_ERROR;
                 return;
         }
 
