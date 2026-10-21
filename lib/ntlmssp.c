@@ -244,7 +244,9 @@ encoder(const void *buffer, size_t size, void *ptr)
                         free(tmp);
                         return -1;
                 }
-                memcpy(auth_data->buf, tmp, auth_data->len);
+                if (auth_data->len) {
+                        memcpy(auth_data->buf, tmp, auth_data->len);
+                }
                 free(tmp);
         }
 
