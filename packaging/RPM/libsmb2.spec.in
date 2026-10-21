@@ -93,6 +93,12 @@ development libraries for LibSMB2
 %{_libdir}/pkgconfig/libsmb2.pc
 
 %changelog
+* Thu Oct 22 2026 : Version 6.3.0
+ - Security fixes for malformed or hostile server replies:
+   bounds checks on lengths and offsets in the PDU, NTLMSSP and
+   SPNEGO decoders, the FILE_ALL_INFORMATION name, header-only
+   replies, QUERY_INFO replies without data and the DCE/RPC
+   array and string counts used by share enumeration.
 * Mon Dec 16 2024 : Version 6.1.0
  - Fix return code for smb2-ls on failure
  - Fix memory errors in smb2_opendir()
