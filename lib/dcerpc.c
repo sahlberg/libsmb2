@@ -911,11 +911,19 @@ dcerpc_carray_coder(struct dcerpc_context *ctx,
         carray->max_count = p;
 
         if (dcerpc_pdu_direction(pdu) == DCERPC_DECODE) {
+                /* The count comes off the wire. Every element takes at
+                 * least one byte of the reply, so a count larger than the
+                 * reply is bogus, and bounding it keeps the allocation size
+                 * below from wrapping.
+                 */
+                if (p > iov->len) {
+                        return -1;
+                }
                 if (carray->max_count && carray->data == NULL) {
                         carray->data = smb2_alloc_data(
                                 dcerpc_get_smb2_context(ctx),
                                 dcerpc_get_pdu_payload(pdu),
-                                carray->max_count * elem_size);
+                                (size_t)carray->max_count * elem_size);
                         if (carray->data == NULL) {
                                 return -1;
                         }
@@ -1042,7 +1050,11 @@ dcerpc_decode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
         }
         
         /* Data part */
-        if (*offset + s->actual_count * 2 > iov->len) {
+        /* actual_count comes off the wire, so do this in 64 bits where
+         * actual_count * 2 can not wrap
+         */
+        if (*offset < 0 ||
+            (uint64_t)*offset + (uint64_t)s->actual_count * 2 > iov->len) {
                 return -1;
         }
         if (!(pdu->hdr.packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN)) {
@@ -1057,6 +1069,9 @@ dcerpc_decode_utf16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 }
         }
         tmp = smb2_utf16_to_utf8((uint16_t *)(&iov->buf[*offset]), (size_t)s->actual_count);
+        if (tmp == NULL) {
+                return -1;
+        }
         *offset += (int)s->actual_count * 2;
 
         str = smb2_alloc_data(ctx->smb2, pdu->payload, strlen(tmp) + 1);
