@@ -532,11 +532,28 @@ share_enum_decode(struct share_enum *se)
         }
         while (off < se->rlen) {
                 const uint8_t *frag = se->rbuf + off;
-                uint16_t frag_len = se_get_u16(frag + 8, be);
+                uint16_t frag_len;
 
+                /* share_enum_got_data() walked the fragments each in its
+                 * own byte order, but the stub is decoded in the first
+                 * one's: a fragment in another byte order would have its
+                 * frag_length misread here, and the copy below run past
+                 * both buffers.
+                 */
+                if (se->rlen - off < DCE_RESP_HDR_LEN ||
+                    (frag[4] & DCE_DREP_LE) !=
+                    (se->rbuf[4] & DCE_DREP_LE)) {
+                        smb2_set_error(smb2, "srvsvc response fragments "
+                                       "differ in byte order");
+                        free(stub);
+                        share_enum_fail(se, 0, -EINVAL);
+                        return;
+                }
+                frag_len = se_get_u16(frag + 8, be);
                 if (frag[2] != DCE_PTYPE_RESPONSE ||
                     se_get_u16(frag + 10, be) != 0 ||
-                    frag_len < DCE_RESP_HDR_LEN) {
+                    frag_len < DCE_RESP_HDR_LEN ||
+                    frag_len > se->rlen - off) {
                         smb2_set_error(smb2, "Unexpected srvsvc response "
                                        "fragment");
                         free(stub);
