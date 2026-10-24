@@ -282,13 +282,20 @@ endif()
       find_library(SOCKET_LIBRARY socket)
       find_library(NSL_LIBRARY nsl)
       list(APPEND CORE_LIBRARIES ${SOCKET_LIBRARY} ${NSL_LIBRARY})
+    elseif(CMAKE_SYSTEM_NAME STREQUAL Haiku)
+      # Errors are reported as -errno, but Haiku's error codes are negative
+      # already. The error mapper makes errno match the positive constants;
+      # its symbols are hidden, so it does not affect users of the library.
+      add_definitions(-DB_USE_POSITIVE_POSIX_ERRORS)
+      # The socket functions live in libnetwork.so, not in libroot.so
+      list(APPEND CORE_LIBRARIES posix_error_mapper network)
     endif()
 
     # Look for a cryptographically strong source of random bytes for
     # smb2_random_bytes(). Only probed on the host-like systems: anything we
     # do not positively identify here simply falls back to the random()
     # based path, so the console and embedded toolchains are left alone.
-    if(CMAKE_SYSTEM_NAME MATCHES "Linux|Darwin|.*BSD|Solaris|Android")
+    if(CMAKE_SYSTEM_NAME MATCHES "Linux|Darwin|.*BSD|Solaris|Android|Haiku")
       include(CheckSymbolExists)
       check_symbol_exists(arc4random_buf "stdlib.h" HAVE_ARC4RANDOM_BUF)
       check_symbol_exists(getrandom "sys/random.h" HAVE_GETRANDOM)
