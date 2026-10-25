@@ -942,6 +942,10 @@ dcerpcd_external_service(fd_set *rfds, fd_set *wfds)
                                 fprintf(stderr, "external: accept: %s\n",
                                         strerror(errno));
                         }
+                } else if (cfd >= FD_SETSIZE) {
+                        fprintf(stderr, "external: fd %d is too large for "
+                                "select(), closing it\n", cfd);
+                        close(cfd);
                 } else if (client_slot_new(cfd) < 0) {
                         send_reply(cfd, "ERROR: too many services\n");
                         close(cfd);
