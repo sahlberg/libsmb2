@@ -373,6 +373,18 @@ smb2_write_to_socket(struct smb2_context *smb2)
         return 0;
 }
 
+static int
+smb2_reply_matches_request(struct smb2_context *smb2, struct smb2_pdu *pdu)
+{
+        if (pdu->header.command != smb2->hdr.command) {
+                smb2_set_error(smb2, "Reply for command %d has the MessageId "
+                               "of a command %d request",
+                               smb2->hdr.command, pdu->header.command);
+                return -1;
+        }
+        return 0;
+}
+
 typedef ssize_t (*read_func)(struct smb2_context *smb2,
                              const struct iovec *iov, int iovcnt);
 
@@ -662,6 +674,10 @@ read_more_data:
                                         pdu = smb2_find_pdu(smb2,
                                                         smb2->hdr.message_id);
                                         if (pdu != NULL &&
+                                            smb2_reply_matches_request(smb2, pdu)) {
+                                                return -1;
+                                        }
+                                        if (pdu != NULL &&
                                             (smb2->hdr.flags & SMB2_FLAGS_ASYNC_COMMAND)) {
                                                 /*
                                                  * Remember the AsyncId from this
@@ -773,6 +789,9 @@ read_more_data:
                                     pdu->prev_compound_mid &&
                                     smb2_find_pdu(smb2, pdu->prev_compound_mid)) {
                                         smb2_set_error(smb2, "compound reply received out of order");
+                                        return -1;
+                                }
+                                if (smb2_reply_matches_request(smb2, pdu)) {
                                         return -1;
                                 }
 
@@ -993,6 +1012,10 @@ read_more_data:
                  */
                 if (!smb2_is_server(smb2)) {
                         pdu = smb2_find_pdu(smb2, smb2->hdr.message_id);
+                        if (pdu != NULL &&
+                            smb2_reply_matches_request(smb2, pdu)) {
+                                return -1;
+                        }
                         if (pdu != NULL &&
                             (smb2->hdr.flags & SMB2_FLAGS_ASYNC_COMMAND)) {
                                 /*
