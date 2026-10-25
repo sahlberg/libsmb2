@@ -497,7 +497,7 @@ read_more_data:
                 goto read_more_data;
         case SMB2_RECV_HEADER:
                 if (!memcmp(smb2->in.iov[smb2->in.niov - 1].buf, smb3tfrm, 4)) {
-                        if (!smb2_is_server(smb2)) {
+                        {
                                 /* validate the transform header before allocating for its payload */
                                 const uint8_t *th = smb2->in.iov[smb2->in.niov - 1].buf;
                                 uint32_t orig_size;
