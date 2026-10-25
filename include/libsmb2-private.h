@@ -341,6 +341,9 @@ struct smb2_pdu {
          */
         smb2_free_payload free_payload;
 
+        /* IOCTL: the CtlCode of the request */
+        uint32_t ctl_code;
+
         /* For sending/receiving
          * out contains at least two vectors:
          * [0]  64 bytes for the smb header
