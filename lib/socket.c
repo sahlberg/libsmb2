@@ -332,6 +332,32 @@ smb2_reply_matches_request(struct smb2_context *smb2, struct smb2_pdu *pdu)
         return 0;
 }
 
+/*
+ * Bytes left to read in the current PDU, or in the current element of a
+ * compound chain. Returns -1 if NextCommand points past the end of the PDU.
+ */
+static int64_t
+smb2_pdu_bytes_left(struct smb2_context *smb2)
+{
+        int64_t left, elem;
+
+        left = (int64_t)smb2->spl + SMB2_SPL_SIZE - (int64_t)smb2->in.num_done;
+        /* We never read the SPL when handling decrypted payloads. */
+        if (smb2->enc) {
+                left -= SMB2_SPL_SIZE;
+        }
+        if (smb2->hdr.next_command == 0) {
+                return left;
+        }
+        elem = (int64_t)smb2->hdr.next_command -
+                (SMB2_HEADER_SIZE + (int64_t)smb2->in.num_done -
+                 (int64_t)smb2->payload_offset);
+        if (elem > left) {
+                return -1;
+        }
+        return elem;
+}
+
 typedef ssize_t (*read_func)(struct smb2_context *smb2,
                              const struct iovec *iov, int iovcnt);
 
@@ -696,6 +722,11 @@ read_more_data:
                                        smb2_get_error(smb2));
                         return -1;
                 }
+                if (len > smb2_pdu_bytes_left(smb2)) {
+                        smb2_set_error(smb2, "Variable part of command payload "
+                                       "extends beyond the end of the PDU");
+                        return -1;
+                }
 
                 /* Add application provided iovectors */
                 if (len) {
@@ -725,19 +756,7 @@ read_more_data:
                 }
 
                 /* Check for padding */
-                if (smb2->hdr.next_command) {
-                        len = smb2->hdr.next_command - (SMB2_HEADER_SIZE +
-                                  smb2->in.num_done - smb2->payload_offset);
-                } else {
-                        len = smb2->spl + SMB2_SPL_SIZE - smb2->in.num_done;
-                        /*
-                         * We never read the SPL when handling decrypted
-                         * payloads.
-                         */
-                        if (smb2->enc) {
-                                len -= SMB2_SPL_SIZE;
-                        }
-                }
+                len = smb2_pdu_bytes_left(smb2);
                 if (len < 0) {
                         smb2_set_error(smb2, "Negative number of PAD bytes "
                                        "encountered during PDU decode of"
@@ -765,19 +784,7 @@ read_more_data:
                 }
 
                 /* Check for padding */
-                if (smb2->hdr.next_command) {
-                        len = smb2->hdr.next_command - (SMB2_HEADER_SIZE +
-                                  smb2->in.num_done - smb2->payload_offset);
-                } else {
-                        len = smb2->spl + SMB2_SPL_SIZE - smb2->in.num_done;
-                        /*
-                         * We never read the SPL when handling decrypted
-                         * payloads.
-                         */
-                        if (smb2->enc) {
-                                len -= SMB2_SPL_SIZE;
-                        }
-                }
+                len = smb2_pdu_bytes_left(smb2);
                 if (len < 0) {
                         smb2_set_error(smb2, "Negative number of PAD bytes "
                                        "encountered during PDU decode of"
