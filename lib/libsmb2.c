@@ -4192,6 +4192,12 @@ struct notify_change_cb_data {
 };
 
 static void
+notify_close_cb(struct smb2_context *smb2 _U_, int status _U_,
+                void *command_data _U_, void *private_data _U_)
+{
+}
+
+static void
 notify_change_cb(struct smb2_context *smb2, int status,
           void *command_data _U_, void *private_data)
 {
@@ -4249,7 +4255,12 @@ notify_change_cb(struct smb2_context *smb2, int status,
                 smb2_notify_change_filehandle_async(smb2, notify_change_data->fh, notify_change_data->flags, notify_change_data->filter,
                         notify_change_data->loop, notify_change_data->cb, notify_change_data->cb_data);
         } else {
-                smb2_close(smb2, notify_change_data->fh);
+                /* we are inside smb2_service(): never block in the sync
+                 * smb2_close() here, it re-enters the receive path */
+                if (smb2_close_async(smb2, notify_change_data->fh,
+                                     notify_close_cb, NULL) < 0) {
+                        free_smb2fh(smb2, notify_change_data->fh);
+                }
         }
         free(notify_change_data);
 }

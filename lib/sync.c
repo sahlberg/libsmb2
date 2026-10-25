@@ -324,6 +324,14 @@ static void sync_close_cb(struct smb2_context *smb2, int status,
         struct sync_cb_data *cb_data = private_data;
 
         if (status == SMB2_STATUS_SHUTDOWN) {
+                if (cb_data->status == SMB2_STATUS_CANCELLED) {
+                        free(cb_data);
+                } else {
+                        /* The waiter still owns this state. Wake it so it
+                         * can release the state even if service fails. */
+                        cb_data->status = SMB2_STATUS_SHUTDOWN;
+                        cb_data->is_finished = 1;
+                }
                 return;
         }
         if (cb_data->status == SMB2_STATUS_CANCELLED) {
@@ -353,11 +361,16 @@ int smb2_close(struct smb2_context *smb2, struct smb2fh *fh)
 
 	rc = wait_for_reply(smb2, cb_data);
         if (rc < 0) {
+                if (cb_data->is_finished) {
+                        goto out;
+                }
+                /* the CLOSE is still queued: sync_close_cb() owns and
+                 * frees cb_data when its reply (or SHUTDOWN) arrives */
                 cb_data->status = SMB2_STATUS_CANCELLED;
-                goto out;
+                return rc;
 	}
 
-        rc = cb_data->status;
+        rc = cb_data->status == SMB2_STATUS_SHUTDOWN ? -EIO : cb_data->status;
  out:
         free(cb_data);
 
