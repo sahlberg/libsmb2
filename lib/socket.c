@@ -614,6 +614,12 @@ read_more_data:
                 if (smb2_is_server(smb2) && smb2->hdr.command == SMB1_NEGOTIATE) {
                         uint8_t flusher[32];
                         struct iovec fiov;
+
+                        if (smb2->in.num_done != SMB2_SPL_SIZE + SMB2_HEADER_SIZE) {
+                                smb2_set_error(smb2, "SMB1 NEGOTIATE inside a "
+                                               "compound");
+                                return -1;
+                        }
                         fiov.iov_base = (char *)flusher;
                         fiov.iov_len = sizeof(flusher);
                         do {
