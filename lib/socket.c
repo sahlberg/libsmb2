@@ -1912,6 +1912,19 @@ int smb2_accept_connection_async(const int fd, const int to_msec, smb2_accepted_
                 socklen = sizeof(client_addr);
                 clientfd = accept(fd, (struct sockaddr *)&client_addr, &socklen);
 
+#if defined(FD_SETSIZE) && !defined(_WIN32) && !defined(_XBOX)
+                if (clientfd >= FD_SETSIZE) {
+                        close(clientfd);
+                        return 0;
+                }
+                if (clientfd < 0 &&
+                    (errno == EMFILE || errno == ENFILE || errno == ENOBUFS ||
+                     errno == ENOMEM || errno == ECONNABORTED ||
+                     errno == EINTR || errno == EAGAIN ||
+                     errno == EWOULDBLOCK)) {
+                        return 0;
+                }
+#endif
                 if (clientfd >= 0) {
                         set_nonblocking(clientfd);
                         set_tcp_sockopt(clientfd, TCP_NODELAY, 1);
