@@ -183,7 +183,7 @@ smb2_process_echo_request_fixed(struct smb2_context *smb2,
                                (int)iov->len);
                 return -1;
         }
-        req = malloc(sizeof(*req));
+        req = calloc(1, sizeof(*req));
         if (req == NULL) {
                 smb2_set_error(smb2, "Failed to allocate echo request");
                 return -1;
