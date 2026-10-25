@@ -59,7 +59,7 @@ smb2_decode_fileidfulldirectoryinformation(
     struct smb2_fileidfulldirectoryinformation *fs,
     struct smb2_iovec *vec)
 {
-        uint32_t name_len;
+        uint32_t name_len = 0;
         uint64_t t;
 
         /* Make sure the name fits before end of vector.
