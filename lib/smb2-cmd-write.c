@@ -290,6 +290,15 @@ smb2_process_write_request_fixed(struct smb2_context *smb2,
                 }
         }
 
+        if ((uint64_t)IOVREQ_OFFSET_WRITE +
+            PAD_TO_64BIT(req->write_channel_info_length) + req->length >
+            smb2->spl) {
+                smb2_set_error(smb2, "Write data extends beyond end of PDU");
+                pdu->payload = NULL;
+                free(req);
+                return -1;
+        }
+
         if (req->length) {
                 return IOVREQ_OFFSET_WRITE + PAD_TO_64BIT(req->write_channel_info_length) + req->length;
         }

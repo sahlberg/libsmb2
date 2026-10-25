@@ -805,6 +805,15 @@ smb2_process_query_info_request_fixed(struct smb2_context *smb2,
                 return -1;
         }
 
+        if ((uint64_t)req->input_buffer_offset + req->input_buffer_length >
+            smb2->spl) {
+                smb2_set_error(smb2, "Query info input buffer extends beyond "
+                               "end of PDU");
+                pdu->payload = NULL;
+                free(req);
+                return -1;
+        }
+
         return IOVREQ_OFFSET_QUERY + req->input_buffer_length;
 }
 
