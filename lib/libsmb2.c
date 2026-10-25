@@ -4129,21 +4129,42 @@ smb2_decode_filenotifychangeinformation(
 {
         uint32_t name_len, tmp;
 
-        if (next_entry_offset + 12 > vec->len) {
-                return 0;
-        }
-        smb2_get_uint32(vec, next_entry_offset+4, &fnc->action);
-        smb2_get_uint32(vec, next_entry_offset+8, &name_len);
-        fnc->name = smb2_utf16_to_utf8((uint16_t *)(void *)&vec->buf[next_entry_offset+12], name_len / 2);
+        for (;;) {
+                /* 12 byte fixed part, then FileNameLength bytes of name,
+                 * all inside the output buffer; no uint32 wrap */
+                if (next_entry_offset > vec->len ||
+                    vec->len - next_entry_offset < 12) {
+                        smb2_set_error(smb2, "Truncated notify entry");
+                        return -1;
+                }
+                smb2_get_uint32(vec, next_entry_offset+4, &fnc->action);
+                smb2_get_uint32(vec, next_entry_offset+8, &name_len);
+                if ((name_len & 1) ||
+                    name_len > vec->len - next_entry_offset - 12) {
+                        smb2_set_error(smb2, "FileNameLength %u runs past "
+                                       "the notify buffer", name_len);
+                        return -1;
+                }
+                fnc->name = smb2_utf16_to_utf8((uint16_t *)(void *)&vec->buf[next_entry_offset+12], name_len / 2);
 
-        smb2_get_uint32(vec, next_entry_offset, &tmp);
-        next_entry_offset += tmp;
-        if (tmp != 0) {
-                struct smb2_file_notify_change_information *next_fnc = calloc(1, sizeof(struct smb2_file_notify_change_information));
-                fnc->next = next_fnc;
-                smb2_decode_filenotifychangeinformation(smb2, next_fnc, vec, next_entry_offset);
+                smb2_get_uint32(vec, next_entry_offset, &tmp);
+                /* each entry must move strictly forward past its own
+                 * fixed part, so the walk always terminates */
+                if (tmp == 0) {
+                        return 0;
+                }
+                if (tmp < 12 || tmp > vec->len - next_entry_offset ||
+                    name_len > tmp - 12) {
+                        smb2_set_error(smb2, "Invalid notify entry offset");
+                        return -1;
+                }
+                next_entry_offset += tmp;
+                fnc->next = calloc(1, sizeof(struct smb2_file_notify_change_information));
+                if (fnc->next == NULL) {
+                        return -1;
+                }
+                fnc = fnc->next;
         }
-        return 0;
 }
 
 void
@@ -4179,6 +4200,7 @@ notify_change_cb(struct smb2_context *smb2, int status,
         struct smb2_change_notify_reply *rep = command_data;
         struct smb2_iovec vec;
         struct smb2_file_notify_change_information *fnc = calloc(1, sizeof(struct smb2_file_notify_change_information));
+        int decode_status = 0;
 
         if (status) {
                 smb2_set_error(smb2, "notify_change_cb failed (%s) %s\n",
@@ -4204,19 +4226,26 @@ notify_change_cb(struct smb2_context *smb2, int status,
         vec.buf = rep->output;
         vec.len = rep->output_buffer_length;
 
-        if (smb2_decode_filenotifychangeinformation(smb2, fnc, &vec, 0)) {
-                smb2_set_error(smb2, "Failed to decode file notify change information\n");
+        /* An empty buffer carries no entries; that is not malformed */
+        if (fnc == NULL) {
+                decode_status = -ENOMEM;
+        } else if (vec.len &&
+                   smb2_decode_filenotifychangeinformation(smb2, fnc, &vec, 0)) {
+                decode_status = -EIO;
+                free_smb2_file_notify_change_information(smb2, fnc);
+                fnc = NULL;
         }
 
         if (notify_change_data->cb) {
                 notify_change_data->cb(
                         smb2,
+                        decode_status ? decode_status :
                         -nterror_to_errno(notify_change_data->status),
                         fnc,
                         notify_change_data->cb_data
                 );
         }
-        if (notify_change_data->loop) {
+        if (notify_change_data->loop && !decode_status) {
                 smb2_notify_change_filehandle_async(smb2, notify_change_data->fh, notify_change_data->flags, notify_change_data->filter,
                         notify_change_data->loop, notify_change_data->cb, notify_change_data->cb_data);
         } else {
