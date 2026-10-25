@@ -82,6 +82,11 @@ smb3_encrypt_pdu(struct smb2_context *smb2,
         if (!pdu->seal) {
                 return 0;
         }
+        if (!smb2->enc_keys_ready) {
+                smb2_set_error(smb2, "PDU must be sealed but there are no "
+                               "encryption keys");
+                return -1;
+        }
 
         spl = 52;  /* transform header */
         for (tmp_pdu = pdu; tmp_pdu; tmp_pdu = tmp_pdu->next_compound) {
@@ -91,7 +96,7 @@ smb3_encrypt_pdu(struct smb2_context *smb2,
         }
         pdu->crypt = calloc(spl, sizeof(uint8_t));
         if (pdu->crypt == NULL) {
-                pdu->seal = 0;
+                smb2_set_error(smb2, "Failed to allocate the sealed PDU");
                 return -1;
         }
 
