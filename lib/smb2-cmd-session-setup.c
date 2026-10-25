@@ -231,7 +231,7 @@ smb2_process_session_setup_fixed(struct smb2_context *smb2,
                 return -1;
         }
 
-        rep = malloc(sizeof(*rep));
+        rep = calloc(1, sizeof(*rep));
         if (rep == NULL) {
                 smb2_set_error(smb2, "Failed to allocate session setup reply");
                 return -1;
@@ -301,7 +301,7 @@ smb2_process_session_setup_request_fixed(struct smb2_context *smb2,
                 return -1;
         }
 
-        req = malloc(sizeof(*req));
+        req = calloc(1, sizeof(*req));
         if (req == NULL) {
                 smb2_set_error(smb2, "Failed to allocate session setup request");
                 return -1;

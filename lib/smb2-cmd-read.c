@@ -260,7 +260,7 @@ smb2_process_read_fixed(struct smb2_context *smb2,
                 return -1;
         }
 
-        rep = malloc(sizeof(*rep));
+        rep = calloc(1, sizeof(*rep));
         if (rep == NULL) {
                 smb2_set_error(smb2, "Failed to allocate read reply");
                 return -1;

@@ -194,7 +194,7 @@ smb2_process_flush_request_fixed(struct smb2_context *smb2,
                 return -1;
         }
 
-        req = malloc(sizeof(*req));
+        req = calloc(1, sizeof(*req));
         if (req == NULL) {
                 smb2_set_error(smb2, "Failed to allocate flush request");
                 return -1;

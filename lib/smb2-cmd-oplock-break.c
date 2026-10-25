@@ -400,7 +400,7 @@ smb2_process_oplock_break_fixed(struct smb2_context *smb2,
 
         smb2_get_uint16(iov, 0, &struct_size);
 
-        rep = malloc(sizeof(*rep));
+        rep = calloc(1, sizeof(*rep));
         if (rep == NULL) {
                 smb2_set_error(smb2, "Failed to allocate oplock-"
                                 "or lease break reply");
@@ -486,7 +486,7 @@ smb2_process_oplock_break_request_fixed(struct smb2_context *smb2,
 
         smb2_get_uint16(iov, 0, &struct_size);
 
-        req = malloc(sizeof(*req));
+        req = calloc(1, sizeof(*req));
         if (req == NULL) {
                 smb2_set_error(smb2, "Failed to allocate oplock-"
                                "lease-break request");
