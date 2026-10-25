@@ -763,7 +763,11 @@ smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
                 }
         }
 
-        smb3_encrypt_pdu(smb2, pdu);
+        if (smb3_encrypt_pdu(smb2, pdu) < 0) {
+                smb2_free_pdu(smb2, pdu);
+                smb2_close_context(smb2);
+                return;
+        }
 
         /*
          * The preauth hash has to cover the bytes we actually put on the
