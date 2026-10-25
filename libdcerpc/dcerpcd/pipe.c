@@ -66,6 +66,9 @@ struct dcerpcd_ext_svc {
 static struct dcerpcd_ext_svc *ext_services;
 static pthread_mutex_t svc_lock = PTHREAD_MUTEX_INITIALIZER;
 
+/* Output of an EXTERNAL service a client has not read yet, per pipe */
+#define MAX_PIPE_OUTPUT (32 * 1024 * 1024)
+
 /* A pipe message from an EXTERNAL service, not yet read by the client */
 struct pipe_msg {
         struct pipe_msg *next;
@@ -90,6 +93,7 @@ struct dcerpcd_pipe {
         int broken;                 /* the service closed it or went away */
         struct pipe_msg *out;
         struct pipe_msg **out_tail;
+        size_t out_bytes;
 
         /* TRANSCEIVE or READ waiting for the service's output */
         uint8_t wait_cmd;           /* 0, SMB2_IOCTL or SMB2_READ */
@@ -464,6 +468,7 @@ pipe_take(struct dcerpcd_pipe *pipe, uint8_t *buf, size_t max, int *more)
                 if (pipe->out == NULL) {
                         pipe->out_tail = &pipe->out;
                 }
+                pipe->out_bytes -= m->len;
                 free(m->data);
                 free(m);
         }
@@ -580,6 +585,18 @@ external_output(void *cb_data, uint8_t *data, uint32_t len)
                 pipe_complete_wait(pipe);
                 return;
         }
+        if (pipe->broken || len > MAX_PIPE_OUTPUT - pipe->out_bytes) {
+                if (!pipe->broken) {
+                        printf("pipe: %s: client is not reading the "
+                               "service's output, closing the pipe\n",
+                               pipe->name);
+                        dcerpcd_external_close(pipe->ext_id);
+                        pipe->broken = 1;
+                }
+                free(data);
+                pipe_complete_wait(pipe);
+                return;
+        }
         m = calloc(1, sizeof(*m));
         if (m == NULL) {
                 free(data);
@@ -587,6 +604,7 @@ external_output(void *cb_data, uint8_t *data, uint32_t len)
         }
         m->data = data;
         m->len = len;
+        pipe->out_bytes += len;
         *pipe->out_tail = m;
         pipe->out_tail = &m->next;
         pipe_complete_wait(pipe);
