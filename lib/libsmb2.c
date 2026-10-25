@@ -862,6 +862,15 @@ session_setup_cb(struct smb2_context *smb2, int status,
 
         if (smb2->seal_requested != SMB2_SEAL_NONE &&
             (rep->session_flags & SMB2_SESSION_FLAG_IS_ENCRYPT_DATA)) {
+                if (smb2->dialect < SMB2_VERSION_0300) {
+                        smb2_close_context(smb2);
+                        smb2_set_error(smb2, "Server requires encryption on "
+                                       "dialect 0x%04x, which has no "
+                                       "encryption", smb2->dialect);
+                        c_data->cb(smb2, -EACCES, NULL, c_data->cb_data);
+                        free_c_data(smb2, c_data);
+                        return;
+                }
                 smb2->seal = 1;
                 smb2->sign = 0;
         }
@@ -1085,6 +1094,17 @@ negotiate_cb(struct smb2_context *smb2, int status,
          * sealed on the wire; we just no longer abort the connection based
          * on this bit alone.
          */
+
+        if (smb2->seal_requested == SMB2_SEAL_MUST &&
+            smb2->dialect < SMB2_VERSION_0300) {
+                smb2_set_error(smb2, "Encryption required but the server "
+                               "negotiated dialect 0x%04x, which has no "
+                               "encryption", smb2->dialect);
+                smb2_close_context(smb2);
+                c_data->cb(smb2, -EACCES, NULL, c_data->cb_data);
+                free_c_data(smb2, c_data);
+                return;
+        }
 
         if (smb2->sign &&
             !(rep->security_mode & SMB2_NEGOTIATE_SIGNING_ENABLED)) {
