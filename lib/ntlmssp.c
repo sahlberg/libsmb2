@@ -358,8 +358,12 @@ ntlm_decode_challenge_message(struct smb2_context *smb2, struct auth_data *auth_
                         return -1;
                 }
 
-                /* copy challenge message verbatim except payload */
-                memcpy(auth_data->ntlm_buf, buf, challenge_header_len);
+                /* copy the whole challenge message; the payload is
+                 * rewritten below, but whatever is not rewritten must not
+                 * be uninitialised heap that encode_ntlm_auth() later
+                 * sends back to the server */
+                memcpy(auth_data->ntlm_buf, buf, len);
+                memset(auth_data->ntlm_buf + len, 0, alloc_len - len);
 
                 /* payload pointer */
                 outoff = challenge_header_len;
@@ -710,7 +714,8 @@ encode_ntlm_auth(struct smb2_context *smb2, time_t ti,
 
         memcpy(&u32, &auth_data->ntlm_buf[40], 4);
         u32 = le32toh(u32);
-        server_name_len = u32 >> 16;
+        /* TargetInfoLen, not TargetInfoMaxLen */
+        server_name_len = u32 & 0xffff;
 
         memcpy(&u32, &auth_data->ntlm_buf[44], 4);
         u32 = le32toh(u32);
