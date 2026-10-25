@@ -3528,6 +3528,12 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                         smb2->session_id = server->session_counter++;
                 }
                 else if (message_type == AUTHENTICATION_MESSAGE) {
+                        if (c_data->auth_data == NULL) {
+                                smb2_set_error(smb2, "NTLMSSP AUTHENTICATE "
+                                               "without a NEGOTIATE first");
+                                smb2_close_context(smb2);
+                                return;
+                        }
                         /* alloc a pdu for next request (not really required to get tree connect) */
                         smb2->next_pdu = smb2_allocate_pdu(smb2, SMB2_TREE_CONNECT,
                                        smb2_general_client_request_cb, cb_data);
