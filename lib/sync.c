@@ -1161,6 +1161,11 @@ static void sync_notify_change_cb(struct smb2_context *smb2, int status,
         struct sync_cb_data *cb_data = private_data;
 
         if (cb_data->status == SMB2_STATUS_CANCELLED) {
+                if (command_data) {
+                        free_smb2_file_notify_change_information(smb2,
+                                                                 command_data);
+                }
+                free(cb_data);
                 return;
         }
 
@@ -1192,7 +1197,6 @@ struct smb2_file_notify_change_information *smb2_notify_change(struct smb2_conte
 
 	if (wait_for_reply(smb2, cb_data) < 0) {
                 cb_data->status = SMB2_STATUS_CANCELLED;
-                free(cb_data);
                 return NULL;
         }
 
