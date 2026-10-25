@@ -330,6 +330,14 @@ smb2_process_ioctl_fixed(struct smb2_context *smb2,
         pdu->payload = rep;
 
         smb2_get_uint32(iov, 4, &rep->ctl_code);
+        if (rep->ctl_code != pdu->ctl_code) {
+                smb2_set_error(smb2, "Ioctl reply CtlCode 0x%08x does not "
+                               "match the request's 0x%08x",
+                               rep->ctl_code, pdu->ctl_code);
+                pdu->payload = NULL;
+                free(rep);
+                return -1;
+        }
         memcpy(rep->file_id, iov->buf + 8, SMB2_FD_SIZE);
         smb2_get_uint32(iov, 24, &rep->input_offset);
         smb2_get_uint32(iov, 28, &rep->input_count);
