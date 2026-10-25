@@ -1211,6 +1211,9 @@ static void sync_share_enum_cb(struct smb2_context *smb2, int status,
         struct sync_cb_data *cb_data = private_data;
 
         if (cb_data->status == SMB2_STATUS_CANCELLED) {
+                if (command_data) {
+                        smb2_free_data(smb2, command_data);
+                }
                 free(cb_data);
                 return;
         }
@@ -1249,6 +1252,7 @@ smb2_share_enum_sync(struct smb2_context *smb2,
 
 	rc = wait_for_reply(smb2, cb_data);
         if (rc < 0) {
+                cb_data->status = SMB2_STATUS_CANCELLED;
                 return NULL;
 	}
 
