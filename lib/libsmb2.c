@@ -394,8 +394,14 @@ decode_dirents(struct smb2_context *smb2, struct smb2dir *dir,
                 tmp_vec.buf = &vec->buf[offset];
                 tmp_vec.len = vec->len - offset;
 
-                smb2_decode_fileidfulldirectoryinformation(smb2, &fs,
-                                                           &tmp_vec);
+                memset(&fs, 0, sizeof(fs));
+                if (smb2_decode_fileidfulldirectoryinformation(smb2, &fs,
+                                                               &tmp_vec)) {
+                        /* fs holds nothing from this entry (or stale data
+                         * from the previous one): do not let two entries
+                         * own the same name, and stop the walk here. */
+                        return -1;
+                }
                 /* steal the name */
                 ent->dirent.name = fs.name;
                 /*
@@ -419,6 +425,13 @@ decode_dirents(struct smb2_context *smb2, struct smb2dir *dir,
                 ent->dirent.st.smb2_btime = fs.creation_time.tv_sec;
                 ent->dirent.st.smb2_btime_nsec = fs.creation_time.tv_usec * 1000;
 
+                /* NextEntryOffset is a uint32 from the wire: it must move
+                 * forward and stay inside the buffer, or the walk can wrap
+                 * back and allocate entries forever */
+                if (fs.next_entry_offset > vec->len - offset) {
+                        smb2_set_error(smb2, "Malformed query reply.");
+                        return -1;
+                }
                 offset += fs.next_entry_offset;
         } while (fs.next_entry_offset);
 
