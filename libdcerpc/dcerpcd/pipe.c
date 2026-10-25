@@ -69,6 +69,8 @@ static pthread_mutex_t svc_lock = PTHREAD_MUTEX_INITIALIZER;
 /* Output of an EXTERNAL service a client has not read yet, per pipe */
 #define MAX_PIPE_OUTPUT (32 * 1024 * 1024)
 
+#define MAX_PIPES_PER_CONN 64
+
 /* A pipe message from an EXTERNAL service, not yet read by the client */
 struct pipe_msg {
         struct pipe_msg *next;
@@ -644,8 +646,17 @@ dcerpcd_pipe_create(struct smb2_server *srvr _U_, struct smb2_context *smb2,
         struct dcerpcd_pipe *p;
         const struct dcerpcd_service *svc;
         char *base;
+        int n = 0;
 
         if (conn == NULL) {
+                return -1;
+        }
+        for (p = conn->pipes; p; p = p->next) {
+                n++;
+        }
+        if (n >= MAX_PIPES_PER_CONN) {
+                fprintf(stderr, "pipe: CREATE rejected session=%u: already "
+                        "%d pipes open\n", conn->session_id, n);
                 return -1;
         }
         base = pipe_basename(req->name);
