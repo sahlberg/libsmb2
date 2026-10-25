@@ -93,6 +93,11 @@ development libraries for LibSMB2
 %{_libdir}/pkgconfig/libsmb2.pc
 
 %changelog
+* Sun Oct 25 2026 : Version 6.3.1
+ - Security fix for a malformed or hostile server reply:
+   a directory entry that fails to decode no longer leaves two
+   entries owning the same name (double free), and a wrapping
+   NextEntryOffset no longer loops until memory runs out.
 * Thu Oct 22 2026 : Version 6.3.0
  - Security fixes for malformed or hostile server replies:
    bounds checks on lengths and offsets in the PDU, NTLMSSP and
