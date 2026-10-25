@@ -128,6 +128,7 @@ If you want access control based on the user that sent the request
 you have to run the service as root. In that case the service will
 switch to the uid that the authenticated user mapped to locally
 while it handles what that user wrote to the pipe, stubs included.
+Guest and anonymous clients run as "nobody".
 
 
 services

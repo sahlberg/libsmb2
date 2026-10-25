@@ -48,6 +48,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #define SERVICE_STR(x)       SERVICE_STR2(x)
 
 #include <errno.h>
+#include <grp.h>
+#include <pwd.h>
 #include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -131,16 +133,64 @@ static struct service_pipe *pipes;
 /*
  * Run the DCE/RPC of a client's write as the client.
  *
- * Only meaningful when the service runs as root (euid 0): seteuid() to a
+ * Only meaningful when the service runs as root (euid 0): switching to a
  * normal user and back requires root.  If we are not root, both enter and
- * leave are no-ops and the stubs run as the service's own euid.
+ * leave are no-ops and the stubs run as the service's own credentials.
  *
- * Guest (DCERPCD_UID_GUEST / -1) leaves euid unchanged.  *saved_euid is
- * always set for leave_request_uid().
+ * Guest (DCERPCD_UID_GUEST / -1) runs as "nobody".  *saved_euid is always
+ * set for leave_request_uid().
  */
+static gid_t root_egid;
+static gid_t *root_groups;
+static int root_ngroups = -1;
+
+static int
+save_root_groups(void)
+{
+        int n;
+
+        if (root_ngroups >= 0) {
+                return 0;
+        }
+        n = getgroups(0, NULL);
+        if (n < 0) {
+                return -1;
+        }
+        root_groups = calloc(n ? n : 1, sizeof(gid_t));
+        if (root_groups == NULL) {
+                return -1;
+        }
+        n = getgroups(n, root_groups);
+        if (n < 0) {
+                return -1;
+        }
+        root_egid = getegid();
+        root_ngroups = n;
+        return 0;
+}
+
+static int
+leave_request_uid(uid_t saved_euid)
+{
+        if (saved_euid != 0) {
+                return 0;
+        }
+        if (geteuid() != 0 && seteuid(0) != 0) {
+                return -1;
+        }
+        if (root_ngroups >= 0 &&
+            (setegid(root_egid) != 0 ||
+             setgroups(root_ngroups, root_groups) != 0)) {
+                return -1;
+        }
+        return 0;
+}
+
 static int
 enter_request_uid(int32_t uid, uid_t *saved_euid)
 {
+        struct passwd *pw;
+
         *saved_euid = geteuid();
 
         /* Non-root services cannot switch credentials and return. */
@@ -148,29 +198,29 @@ enter_request_uid(int32_t uid, uid_t *saved_euid)
                 return 0;
         }
         if (uid == DCERPCD_UID_GUEST) {
-                return 0;
-        }
-        if (uid < 0) {
+                pw = getpwnam("nobody");
+        } else if (uid < 0) {
                 errno = EINVAL;
                 return -1;
-        }
-        if ((uid_t)uid == 0) {
+        } else if ((uid_t)uid == 0) {
                 return 0;
+        } else {
+                pw = getpwuid((uid_t)uid);
         }
-        if (seteuid((uid_t)uid) != 0) {
+        if (pw == NULL) {
+                errno = ENOENT;
                 return -1;
         }
-        return 0;
-}
-
-static int
-leave_request_uid(uid_t saved_euid)
-{
-        if (geteuid() == saved_euid) {
-                return 0;
+        if (save_root_groups() != 0) {
+                return -1;
         }
-        /* Only entered a drop when we were root; restore must succeed. */
-        if (seteuid(saved_euid) != 0) {
+        if (initgroups(pw->pw_name, pw->pw_gid) != 0 ||
+            setegid(pw->pw_gid) != 0 ||
+            seteuid(pw->pw_uid) != 0) {
+                int err = errno;
+
+                leave_request_uid(*saved_euid);
+                errno = err;
                 return -1;
         }
         return 0;
