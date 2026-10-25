@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v5
     - name: Install dependencies
       run: |
         sudo apt update
@@ -26,13 +26,13 @@ jobs:
   build-windows:
     name: Windows build
 
-    runs-on: windows-latest
+    runs-on: windows-2022
 
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v5
     - name: Cmake configure
       run: |
-        cmake -G "Visual Studio 16 2019" .
+        cmake -G "Visual Studio 17 2022" -A x64 .
     - name: Build (MSVC)
       run: |
         cmake --build .
