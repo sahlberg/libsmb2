@@ -357,9 +357,9 @@ test_bind(void)
                 { 3, &unknown_syntax, &ndr32_syntax },
                 { 4, &lsa_interface, &ndr64_syntax },  /* lsa: NDR32 only */
         };
-        int result[] = { 0, 0, 3, 2, 2 };
-        int reason[] = { 0, 0, 0, 1, 2 };
-        const p_syntax_id_t *ts[] = { &ndr32_syntax, &ndr64_syntax,
+        int result[] = { 2, 0, 3, 2, 2 };
+        int reason[] = { 2, 0, 0, 1, 2 };
+        const p_syntax_id_t *ts[] = { NULL, &ndr64_syntax,
                                       NULL, NULL, NULL };
 
         printf("BIND: results per context, sec_addr, fragment size\n");
@@ -489,6 +489,93 @@ check_reply(uint32_t flags, uint16_t level, const uint8_t *stub,
         }
         dcerpc_free_pdu(dce, pdu);
         dcerpc_destroy_context(dce);
+}
+
+/*
+ * An interface is accepted in one context of a BIND only: Windows offers
+ * NDR32 and NDR64 in contexts of their own, and closes the pipe if the
+ * BIND_ACK accepts both.
+ */
+static void
+test_bind_one_context(void)
+{
+        struct dcerpc_server *srv = make_server();
+        struct dcerpc_server_pipe *pipe;
+        struct buf b = { .le = 1 };
+        uint8_t stub[64], out[1024];
+        size_t len;
+        uint32_t fault;
+        int nfrags;
+        struct ctx_def windows[] = {
+                { 0, &dssetup_interface, &ndr32_syntax },
+                { 1, &dssetup_interface, &ndr64_syntax },
+                { 2, &dssetup_interface, &btfn_syntax },
+        };
+        struct ctx_def lsa[] = {
+                { 0, &lsa_interface, &ndr64_syntax },  /* lsa: NDR32 only */
+                { 1, &lsa_interface, &ndr32_syntax },
+                { 2, &lsa_interface, &ndr32_syntax },
+                { 3, &dssetup_interface, &ndr32_syntax },
+        };
+
+        printf("BIND: NDR32 and NDR64 in contexts of their own, as Windows "
+               "offers them: only NDR64 accepted\n");
+        pipe = dcerpc_server_pipe_create(srv, NULL);
+        build_bind(&b, 11, 4280, windows, 3);
+        CHECK(dcerpc_server_pipe_write(pipe, b.data, b.len) == 0);
+        len = read_pdu(pipe, out, sizeof(out));
+        CHECK(out[2] == 12);
+        check_results(out, len, 3, (int[]){ 2, 0, 3 }, (int[]){ 2, 0, 0 },
+                      (const p_syntax_id_t *[]){ NULL, &ndr64_syntax,
+                                                 NULL });
+        /* the rejected context is not bound, the accepted one is */
+        len = encode_req(0, 1, stub);
+        build_request(&b, 3, 1, 0, 0, stub, len, len);
+        CHECK(dcerpc_server_pipe_write(pipe, b.data, b.len) == 0);
+        read_response(pipe, out, &fault, &nfrags);
+        CHECK(fault == DCERPC_FAULT_CONTEXT_MISMATCH);
+        len = encode_req(DCERPC_NDR64, 1, stub);
+        build_request(&b, 3, 2, 1, 0, stub, len, len);
+        CHECK(dcerpc_server_pipe_write(pipe, b.data, b.len) == 0);
+        read_response(pipe, out, &fault, &nfrags);
+        CHECK(fault == 0);
+        dcerpc_server_pipe_destroy(pipe);
+
+        printf("BIND: the same in reverse order: still NDR64\n");
+        pipe = dcerpc_server_pipe_create(srv, NULL);
+        build_bind(&b, 11, 4280, (struct ctx_def[]){
+                        { 0, &dssetup_interface, &ndr64_syntax },
+                        { 1, &dssetup_interface, &ndr32_syntax } }, 2);
+        CHECK(dcerpc_server_pipe_write(pipe, b.data, b.len) == 0);
+        len = read_pdu(pipe, out, sizeof(out));
+        check_results(out, len, 2, (int[]){ 0, 2 }, (int[]){ 0, 2 },
+                      (const p_syntax_id_t *[]){ &ndr64_syntax, NULL });
+        dcerpc_server_pipe_destroy(pipe);
+
+        printf("BIND: an NDR32-only interface: the first NDR32 context, "
+               "other interfaces apart\n");
+        pipe = dcerpc_server_pipe_create(srv, NULL);
+        build_bind(&b, 11, 4280, lsa, 4);
+        CHECK(dcerpc_server_pipe_write(pipe, b.data, b.len) == 0);
+        len = read_pdu(pipe, out, sizeof(out));
+        check_results(out, len, 4, (int[]){ 2, 0, 2, 0 },
+                      (int[]){ 2, 0, 2, 0 },
+                      (const p_syntax_id_t *[]){ NULL, &ndr32_syntax,
+                                                 NULL, &ndr32_syntax });
+        dcerpc_server_pipe_destroy(pipe);
+
+        printf("BIND, big-endian client: only NDR64 accepted\n");
+        b.le = 0;
+        pipe = dcerpc_server_pipe_create(srv, NULL);
+        build_bind(&b, 11, 4280, windows, 3);
+        CHECK(dcerpc_server_pipe_write(pipe, b.data, b.len) == 0);
+        len = read_pdu(pipe, out, sizeof(out));
+        check_results(out, len, 3, (int[]){ 2, 0, 3 }, (int[]){ 2, 0, 0 },
+                      (const p_syntax_id_t *[]){ NULL, &ndr64_syntax,
+                                                 NULL });
+        dcerpc_server_pipe_destroy(pipe);
+
+        dcerpc_server_destroy(srv);
 }
 
 static void
@@ -869,6 +956,7 @@ test_log(void)
 int main(void)
 {
         test_bind();
+        test_bind_one_context();
         test_coder_calls();
         test_fragments();
         test_errors();

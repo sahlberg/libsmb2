@@ -729,73 +729,118 @@ add_context(struct dcerpc_server_pipe *pipe, uint16_t id,
         return 0;
 }
 
-/*
- * The result for one presentation context: accept the interface with
- * NDR64 if it allows that and the client offers it, else with NDR32.
- */
+/* What one presentation context of a BIND offers */
+struct ctx_offer {
+        int valid;                      /* 0 if past the end of the PDU */
+        uint16_t id;
+        p_syntax_id_t abstract;
+        struct server_iface *iface;     /* NULL if not served */
+        int btfn;                       /* bind time feature negotiation */
+        int ndr64;                      /* best served syntax, or -1 */
+};
+
 static void
-negotiate_context(struct dcerpc_server_pipe *pipe, const uint8_t *ctx,
-                  uint8_t n_ts, int le, uint8_t *res)
+read_offer(struct dcerpc_server_pipe *pipe, const uint8_t *ctx,
+           uint8_t n_ts, int le, struct ctx_offer *off)
 {
-        p_syntax_id_t abstract, ts;
-        struct server_iface *iface;
-        char name[64];
+        p_syntax_id_t ts;
         uint32_t ndr32 = le ? DCERPC_SERVER_NDR32_LE : DCERPC_SERVER_NDR32_BE;
         uint32_t ndr64 = le ? DCERPC_SERVER_NDR64_LE : DCERPC_SERVER_NDR64_BE;
-        int j, found32 = -1, found64 = -1;
+        int j, found32 = 0, found64 = 0;
 
-        get_syntax(ctx + 4, le, &abstract);
+        off->valid = 1;
+        off->id = get16(ctx, le);
+        off->ndr64 = -1;
+        get_syntax(ctx + 4, le, &off->abstract);
         for (j = 0; j < n_ts; j++) {
                 get_syntax(ctx + 24 + 20 * j, le, &ts);
                 if (ts.uuid.v1 == BTFN_V1 && ts.uuid.v2 == BTFN_V2 &&
                     ts.uuid.v3 == BTFN_V3 && ts.vers == 1) {
-                        /* we support none of the features */
-                        put16(res, RESULT_NEGOTIATE_ACK);
-                        put16(res + 2, 0);
-                        return;
+                        off->btfn = 1;
                 }
                 if (syntax_equal(&ts, &ndr32_syntax)) {
-                        found32 = j;
+                        found32 = 1;
                 }
                 if (syntax_equal(&ts, &ndr64_syntax)) {
-                        found64 = j;
+                        found64 = 1;
                 }
+        }
+        off->iface = find_iface(pipe->srv, &off->abstract);
+        if (off->iface == NULL) {
+                return;
+        }
+        if (found64 && (off->iface->flavors & ndr64)) {
+                off->ndr64 = 1;
+        } else if (found32 && (off->iface->flavors & ndr32)) {
+                off->ndr64 = 0;
+        }
+}
+
+/*
+ * The result for presentation context i of n. An interface is accepted in
+ * one context only: Windows clients offer NDR32 and NDR64 in contexts
+ * of their own, and close the pipe if both are accepted. The context
+ * accepted is the first with NDR64, if the interface allows that, else
+ * the first with NDR32; the others for that interface are rejected as
+ * Windows does, with their transfer syntaxes not supported.
+ */
+static void
+negotiate_context(struct dcerpc_server_pipe *pipe,
+                  const struct ctx_offer *offers, int n, int i, int le,
+                  uint8_t *res)
+{
+        const struct ctx_offer *off = &offers[i];
+        char name[64];
+        int j, best = i;
+
+        if (off->btfn) {
+                /* we support none of the features */
+                put16(res, RESULT_NEGOTIATE_ACK);
+                put16(res + 2, 0);
+                return;
         }
 
         put16(res, RESULT_PROVIDER_REJECTION);
-        syntax_str(&abstract, name, sizeof(name));
-        iface = find_iface(pipe->srv, &abstract);
-        if (iface == NULL) {
+        syntax_str(&off->abstract, name, sizeof(name));
+        if (off->iface == NULL) {
                 srv_log(pipe->srv, DCERPC_SERVER_LOG_INFO,
                         "BIND: interface %s is not served", name);
                 put16(res + 2, REASON_ABSTRACT_SYNTAX_NOT_SUPPORTED);
                 return;
         }
-        if (found64 >= 0 && (iface->flavors & ndr64)) {
-                if (add_context(pipe, get16(ctx, le), iface, 1) == 0) {
-                        put16(res, RESULT_ACCEPTANCE);
-                        put_syntax(res + 4, &ndr64_syntax);
-                        srv_log(pipe->srv, DCERPC_SERVER_LOG_DEBUG,
-                                "BIND: interface %s, %s", name,
-                                flavor_str(1, le));
-                }
+        if (off->ndr64 < 0) {
+                srv_log(pipe->srv, DCERPC_SERVER_LOG_INFO,
+                        "BIND: interface %s: none of the client's transfer "
+                        "syntaxes is served in %s", name,
+                        le ? "little-endian" : "big-endian");
+                put16(res + 2, REASON_TRANSFER_SYNTAXES_NOT_SUPPORTED);
                 return;
         }
-        if (found32 >= 0 && (iface->flavors & ndr32)) {
-                if (add_context(pipe, get16(ctx, le), iface, 0) == 0) {
-                        put16(res, RESULT_ACCEPTANCE);
-                        put_syntax(res + 4, &ndr32_syntax);
-                        srv_log(pipe->srv, DCERPC_SERVER_LOG_DEBUG,
-                                "BIND: interface %s, %s", name,
-                                flavor_str(0, le));
+        for (j = 0; j < n; j++) {
+                if (j == i || !offers[j].valid || offers[j].btfn ||
+                    offers[j].iface != off->iface) {
+                        continue;
                 }
+                if (offers[j].ndr64 > offers[best].ndr64 ||
+                    (offers[j].ndr64 == offers[best].ndr64 && j < best)) {
+                        best = j;
+                }
+        }
+        if (best != i) {
+                srv_log(pipe->srv, DCERPC_SERVER_LOG_DEBUG,
+                        "BIND: interface %s: context %u not accepted, "
+                        "context %u is", name, off->id, offers[best].id);
+                put16(res + 2, REASON_TRANSFER_SYNTAXES_NOT_SUPPORTED);
                 return;
         }
-        srv_log(pipe->srv, DCERPC_SERVER_LOG_INFO,
-                "BIND: interface %s: none of the client's transfer "
-                "syntaxes is served in %s", name,
-                le ? "little-endian" : "big-endian");
-        put16(res + 2, REASON_TRANSFER_SYNTAXES_NOT_SUPPORTED);
+        if (add_context(pipe, off->id, off->iface, off->ndr64) == 0) {
+                put16(res, RESULT_ACCEPTANCE);
+                put_syntax(res + 4, off->ndr64 ? &ndr64_syntax :
+                           &ndr32_syntax);
+                srv_log(pipe->srv, DCERPC_SERVER_LOG_DEBUG,
+                        "BIND: interface %s, %s", name,
+                        flavor_str(off->ndr64, le));
+        }
 }
 
 static int
@@ -809,6 +854,7 @@ process_bind(struct dcerpc_server_pipe *pipe, const uint8_t *pdu, size_t len,
         uint8_t n_ctx;
         size_t pos, o, sec_len;
         char sec_addr[128];
+        struct ctx_offer *offers;
         uint8_t *p;
         int i;
 
@@ -854,8 +900,13 @@ process_bind(struct dcerpc_server_pipe *pipe, const uint8_t *pdu, size_t len,
         /* header, frag sizes, assoc, sec_addr, pad, n_results, results */
         o = COMMON_HDR + 8 + 2 + sec_len;
         o = (o + 3) & ~(size_t)3;
+        offers = calloc(n_ctx ? n_ctx : 1, sizeof(*offers));
+        if (offers == NULL) {
+                return -1;
+        }
         p = out_reserve(pipe, o + 4 + 24 * (size_t)n_ctx);
         if (p == NULL) {
+                free(offers);
                 return -1;
         }
         if (!alter) {
@@ -871,30 +922,34 @@ process_bind(struct dcerpc_server_pipe *pipe, const uint8_t *pdu, size_t len,
         memcpy(p + COMMON_HDR + 10, sec_addr, sec_len);
         p[o] = n_ctx;
 
+        /* all the offers first: which context gets an interface */
         pos = COMMON_HDR + 12;
         for (i = 0; i < n_ctx; i++) {
-                uint8_t *res = p + o + 4 + 24 * i;
                 uint8_t n_ts;
 
                 if (pos + 24 > len) {
-                        srv_log(pipe->srv, DCERPC_SERVER_LOG_ERROR,
-                                "BIND: context %d is past the end of the "
-                                "PDU", i);
-                        put16(res, RESULT_PROVIDER_REJECTION);
-                        continue;
+                        break;
                 }
                 n_ts = pdu[pos + 2];
                 if (pos + 24 + 20 * (size_t)n_ts > len) {
+                        break;
+                }
+                read_offer(pipe, pdu + pos, n_ts, le, &offers[i]);
+                pos += 24 + 20 * (size_t)n_ts;
+        }
+        for (i = 0; i < n_ctx; i++) {
+                uint8_t *res = p + o + 4 + 24 * i;
+
+                if (!offers[i].valid) {
                         srv_log(pipe->srv, DCERPC_SERVER_LOG_ERROR,
                                 "BIND: context %d is past the end of the "
                                 "PDU", i);
                         put16(res, RESULT_PROVIDER_REJECTION);
-                        pos = len;
                         continue;
                 }
-                negotiate_context(pipe, pdu + pos, n_ts, le, res);
-                pos += 24 + 20 * (size_t)n_ts;
+                negotiate_context(pipe, offers, n_ctx, i, le, res);
         }
+        free(offers);
         return 0;
 }
 
