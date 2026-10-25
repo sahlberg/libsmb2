@@ -240,7 +240,7 @@ smb2_encode_negotiate_reply(struct smb2_context *smb2,
                 memset(buf + rep->security_buffer_length, 0, seclen - rep->security_buffer_length);
                 smb2_add_iovector(smb2, &pdu->out,
                                         buf,
-                                        len,
+                                        seclen,
                                         free);
         }
 
