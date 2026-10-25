@@ -254,11 +254,29 @@ dcerpcd_auth_session_established(struct smb2_server *srvr _U_,
                 if (user != NULL && user[0] != '\0' &&
                     strcasecmp(user, "guest") != 0) {
                         struct passwd *pw = getpwnam(user);
+                        const char *realm = dcerpcd_config_get()->domain;
+                        const char *domain = smb2_get_domain(smb2);
 
                         if (pw == NULL) {
                                 fprintf(stderr,
                                         "session: session=%u Kerberos user "
                                         "\"%s\" has no local account\n",
+                                        conn->session_id, user);
+                                return -1;
+                        }
+                        if (realm != NULL && realm[0] != '\0' &&
+                            (domain == NULL || strcasecmp(domain, realm))) {
+                                fprintf(stderr,
+                                        "session: session=%u Kerberos user "
+                                        "\"%s\" is from realm \"%s\", not "
+                                        "%s\n", conn->session_id, user,
+                                        domain ? domain : "", realm);
+                                return -1;
+                        }
+                        if (pw->pw_uid == 0) {
+                                fprintf(stderr,
+                                        "session: session=%u Kerberos user "
+                                        "\"%s\" would map to root\n",
                                         conn->session_id, user);
                                 return -1;
                         }

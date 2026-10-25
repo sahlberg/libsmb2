@@ -52,7 +52,9 @@ NTLM and Kereberos is supported.
 For NTLM the usernames must map to a local user with the same name.
 
 For kerberos, the incoming SPN, of the form <username>/fqdn@REALM
-is mapped straight to <username> locally.
+is mapped straight to <username> locally. When domain is set in the
+config only principals from that realm are accepted, and a principal
+is never mapped to root.
 
 Other mappings are planned for later.
 
