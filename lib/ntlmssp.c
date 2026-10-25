@@ -1083,6 +1083,7 @@ ntlmssp_authenticate_blob(struct smb2_server *server, struct smb2_context *smb2,
         if (!auth_data->user || (auth_data->user[0] == '\0') ||
                         !smb2->password || (smb2->password[0] == '\0')) {
                 if (server && server->allow_anonymous) {
+                        smb2_set_user(smb2, "");
                         return 0;
                 }
                 return -1;
