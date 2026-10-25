@@ -1298,6 +1298,20 @@ process_request(struct dcerpc_server_pipe *pipe, const uint8_t *pdu,
         stub_len = end - hdr;
 
         if (pfc & PFC_FIRST_FRAG) {
+                pipe->req_active = 0;
+                if (pipe->ncontexts == 0) {
+                        srv_log(pipe->srv, DCERPC_SERVER_LOG_ERROR,
+                                "REQUEST: call %u before BIND", call_id);
+                        return queue_fault(pipe, call_id, context_id,
+                                           DCERPC_FAULT_PROTO_ERROR);
+                }
+                if (find_context(pipe, context_id) == NULL) {
+                        srv_log(pipe->srv, DCERPC_SERVER_LOG_ERROR,
+                                "REQUEST: call %u on context %u, which is "
+                                "not bound", call_id, context_id);
+                        return queue_fault(pipe, call_id, context_id,
+                                           DCERPC_FAULT_CONTEXT_MISMATCH);
+                }
                 pipe->req_active = 1;
                 pipe->req_call_id = call_id;
                 pipe->req_context_id = context_id;
@@ -1335,12 +1349,6 @@ process_request(struct dcerpc_server_pipe *pipe, const uint8_t *pdu,
         }
         pipe->req_active = 0;
 
-        if (pipe->ncontexts == 0) {
-                srv_log(pipe->srv, DCERPC_SERVER_LOG_ERROR,
-                        "REQUEST: call %u before BIND", call_id);
-                return queue_fault(pipe, call_id, context_id,
-                                   DCERPC_FAULT_PROTO_ERROR);
-        }
         ctx = find_context(pipe, pipe->req_context_id);
         if (ctx == NULL) {
                 srv_log(pipe->srv, DCERPC_SERVER_LOG_ERROR,
