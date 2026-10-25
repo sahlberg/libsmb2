@@ -2860,7 +2860,7 @@ smb2_oplock_break_notify(struct smb2_context *smb2, int status, void *command_da
                         case SMB2_BREAK_TYPE_OPLOCK_RESPONSE:
                                 break;
                         case SMB2_BREAK_TYPE_LEASE_NOTIFICATION:
-                                memset(&rep_lease, 0, sizeof(rep_oplock));
+                                memset(&rep_lease, 0, sizeof(rep_lease));
                                 rep_lease.flags = rep->lock.lease.flags;
                                 rep_lease.lease_state = new_lease_state;
                                 memcpy(rep_lease.lease_key, rep->lock.lease.lease_key, SMB2_LEASE_KEY_SIZE);
