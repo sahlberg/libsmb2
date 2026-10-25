@@ -5409,7 +5409,7 @@ ndr_varying_bytes_coder(char *name, struct dcerpc_context *ctx,
                 return -1;
         }
         if (pdu->direction == DCERPC_DECODE) {
-                if (actual > max_count || actual > DCERPC_BYTES_MAX ||
+                if (max_count > DCERPC_BYTES_MAX || actual > max_count ||
                     arr_offset != 0) {
                         return -1;
                 }
