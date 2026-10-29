@@ -1642,7 +1642,8 @@ def c_param_field_type(env: TypeEnv, p: Param) -> str:
             return env.c_enum_name(tname)
 
     if tname in BUILTINS:
-        return BUILTINS[tname]
+        # [size_is] array parameter, or the value
+        return c_ptr(BUILTINS[tname]) if attr_arg(p.attrs, "size_is") else BUILTINS[tname]
 
     return "void *"
 

@@ -790,6 +790,7 @@ negotiate_context(struct dcerpc_server_pipe *pipe,
                   uint8_t *res)
 {
         const struct ctx_offer *off = &offers[i];
+        const struct pres_context *bound;
         char name[64];
         int j, best = i;
 
@@ -802,6 +803,24 @@ negotiate_context(struct dcerpc_server_pipe *pipe,
 
         put16(res, RESULT_PROVIDER_REJECTION);
         syntax_str(&off->abstract, name, sizeof(name));
+        /*
+         * A context already negotiated keeps what it was given: offering
+         * it again is acknowledged, for another interface rejected.
+         */
+        bound = find_context(pipe, off->id);
+        if (bound != NULL) {
+                if (bound->iface == off->iface) {
+                        put16(res, RESULT_ACCEPTANCE);
+                        put_syntax(res + 4, bound->ndr64 ? &ndr64_syntax :
+                                   &ndr32_syntax);
+                } else {
+                        srv_log(pipe->srv, DCERPC_SERVER_LOG_INFO,
+                                "BIND: context %u is already bound, not "
+                                "to %s", off->id, name);
+                        put16(res + 2, REASON_NOT_SPECIFIED);
+                }
+                return;
+        }
         if (off->iface == NULL) {
                 srv_log(pipe->srv, DCERPC_SERVER_LOG_INFO,
                         "BIND: interface %s is not served", name);

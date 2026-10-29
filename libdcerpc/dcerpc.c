@@ -5891,24 +5891,52 @@ dcerpc_add_deferred_pointer(struct dcerpc_context *ctx,
         return 0;
 }
 
+/*
+ * The referents queued as entries from to to, in order, each followed by
+ * the referents of the pointers embedded in it: a deferred referent is
+ * represented whole, its own deferred referents included, before the
+ * next referent of the structure that deferred them ([C706] 14.3.12.3),
+ * as MIDL and Samba do.
+ */
+static int
+dcerpc_process_deferred_range(struct dcerpc_context *ctx,
+                              struct dcerpc_pdu *pdu,
+                              struct dcerpc_iovec *iov, int from, int to)
+{
+        int idx, nested;
+
+        for (idx = from; idx < to; idx++) {
+                /* a copy: coding the referent may grow the array */
+                struct dcerpc_deferred_pointer dp = pdu->ptrs[idx];
+
+                pdu->size_is = dp.size_is;
+                pdu->length_is = dp.length_is;
+                pdu->switch_is = dp.switch_is;
+                nested = pdu->max_ptr;
+                if (ndr_do_coder("DEFERRED", ctx, pdu, iov, dp.ptr, dp.coder)) {
+                        return -1;
+                }
+                if (pdu->max_ptr != nested &&
+                    dcerpc_process_deferred_range(ctx, pdu, iov, nested,
+                                                  pdu->max_ptr)) {
+                        return -1;
+                }
+        }
+        return 0;
+}
+
 static int
 dcerpc_process_deferred_pointers(struct dcerpc_context *ctx,
                                  struct dcerpc_pdu *pdu,
                                  struct dcerpc_iovec *iov)
 {
-        struct dcerpc_deferred_pointer *dp;
-        int idx;
+        int from = pdu->cur_ptr, to = pdu->max_ptr;
 
-        while (pdu->cur_ptr != pdu->max_ptr) {
-                idx = pdu->cur_ptr++;
-                dp = &pdu->ptrs[idx];
-                pdu->size_is = dp->size_is;
-                pdu->length_is = dp->length_is;
-                pdu->switch_is = dp->switch_is;
-                if (ndr_do_coder("DEFERRED", ctx, pdu, iov, dp->ptr, dp->coder)) {
-                        return -1;
-                }
+        pdu->cur_ptr = pdu->max_ptr;
+        if (dcerpc_process_deferred_range(ctx, pdu, iov, from, to)) {
+                return -1;
         }
+        pdu->cur_ptr = pdu->max_ptr;
         return 0;
 }
 

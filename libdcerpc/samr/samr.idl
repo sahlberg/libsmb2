@@ -4,10 +4,13 @@
  * Security Account Manager: the SamrConnect, SamrCloseHandle,
  * SamrQuerySecurityObject, SamrLookupDomainInSamServer,
  * SamrEnumerateDomainsInSamServer, SamrOpenDomain,
- * SamrGetAliasMembership, SamrLookupNamesInDomain, SamrOpenUser,
- * SamrDeleteUser, SamrQueryInformationUser, SamrGetGroupsForUser,
- * SamrCreateUser2InDomain, SamrConnect2, SamrSetInformationUser2 and
- * SamrConnect5 calls from [MS-SAMR].
+ * SamrEnumerateGroupsInDomain, SamrEnumerateUsersInDomain,
+ * SamrEnumerateAliasesInDomain, SamrGetAliasMembership,
+ * SamrLookupNamesInDomain, SamrLookupIdsInDomain, SamrOpenGroup,
+ * SamrGetMembersInGroup, SamrOpenAlias, SamrGetMembersInAlias,
+ * SamrOpenUser, SamrDeleteUser, SamrQueryInformationUser,
+ * SamrGetGroupsForUser, SamrCreateUser2InDomain, SamrConnect2,
+ * SamrSetInformationUser2 and SamrConnect5 calls from [MS-SAMR].
  * Function names drop the "Samr" prefix.
  */
 [
@@ -61,6 +64,36 @@ typedef [bitmap32bit] bitmap {
 	ACCESS_SYSTEM_SECURITY          = 0x01000000,
 	MAXIMUM_ALLOWED                 = 0x02000000
 } DOMAIN_ACCESS_MASK;
+
+/* Group object access rights, [MS-SAMR] 2.2.1.5 */
+typedef [bitmap32bit] bitmap {
+	GROUP_READ_INFORMATION = 0x00000001,
+	GROUP_WRITE_ACCOUNT    = 0x00000002,
+	GROUP_ADD_MEMBER       = 0x00000004,
+	GROUP_REMOVE_MEMBER    = 0x00000008,
+	GROUP_LIST_MEMBERS     = 0x00000010,
+	DELETE                 = 0x00010000,
+	READ_CONTROL           = 0x00020000,
+	WRITE_DAC              = 0x00040000,
+	WRITE_OWNER            = 0x00080000,
+	ACCESS_SYSTEM_SECURITY = 0x01000000,
+	MAXIMUM_ALLOWED        = 0x02000000
+} GROUP_ACCESS_MASK;
+
+/* Alias object access rights, [MS-SAMR] 2.2.1.6 */
+typedef [bitmap32bit] bitmap {
+	ALIAS_ADD_MEMBER       = 0x00000001,
+	ALIAS_REMOVE_MEMBER    = 0x00000002,
+	ALIAS_LIST_MEMBERS     = 0x00000004,
+	ALIAS_READ_INFORMATION = 0x00000008,
+	ALIAS_WRITE_ACCOUNT    = 0x00000010,
+	DELETE                 = 0x00010000,
+	READ_CONTROL           = 0x00020000,
+	WRITE_DAC              = 0x00040000,
+	WRITE_OWNER            = 0x00080000,
+	ACCESS_SYSTEM_SECURITY = 0x01000000,
+	MAXIMUM_ALLOWED        = 0x02000000
+} ALIAS_ACCESS_MASK;
 
 /* User object access rights, [MS-SAMR] 2.2.1.7 */
 typedef [bitmap32bit] bitmap {
@@ -214,6 +247,19 @@ typedef struct {
 	uint32_t Count;
 	[size_is(Count)] uint32_t *Element;
 } SAMPR_ULONG_ARRAY, *PSAMPR_ULONG_ARRAY;
+
+/* [MS-SAMR] 2.2.7.3 */
+typedef struct {
+	[range(0,1024)] uint32_t Count;
+	[size_is(Count)] RPC_UNICODE_STRING *Element;
+} SAMPR_RETURNED_USTRING_ARRAY, *PSAMPR_RETURNED_USTRING_ARRAY;
+
+/* [MS-SAMR] 2.2.7.14 */
+typedef struct {
+	uint32_t MemberCount;
+	[size_is(MemberCount)] uint32_t *Members;
+	[size_is(MemberCount)] uint32_t *Attributes;
+} SAMPR_GET_MEMBERS_BUFFER, *PSAMPR_GET_MEMBERS_BUFFER;
 
 /* [MS-SAMR] 2.2.3.5, 2.2.3.6 */
 typedef struct {
@@ -551,6 +597,43 @@ typedef [switch_type(uint32_t)] union {
 	);
 
 /*
+ * Function: 0x0b  (SamrEnumerateGroupsInDomain)
+ */
+	[opnum(0x0b)]
+	NTSTATUS EnumerateGroupsInDomain(
+		[in] SAMPR_HANDLE DomainHandle,
+		[in,out,ref] uint32_t *EnumerationContext,
+		[out] PSAMPR_ENUMERATION_BUFFER *Buffer,
+		[in] uint32_t PreferedMaximumLength,
+		[out,ref] uint32_t *CountReturned
+	);
+
+/*
+ * Function: 0x0d  (SamrEnumerateUsersInDomain)
+ */
+	[opnum(0x0d)]
+	NTSTATUS EnumerateUsersInDomain(
+		[in] SAMPR_HANDLE DomainHandle,
+		[in,out,ref] uint32_t *EnumerationContext,
+		[in] USER_ACCOUNT_CONTROL UserAccountControl,
+		[out] PSAMPR_ENUMERATION_BUFFER *Buffer,
+		[in] uint32_t PreferedMaximumLength,
+		[out,ref] uint32_t *CountReturned
+	);
+
+/*
+ * Function: 0x0f  (SamrEnumerateAliasesInDomain)
+ */
+	[opnum(0x0f)]
+	NTSTATUS EnumerateAliasesInDomain(
+		[in] SAMPR_HANDLE DomainHandle,
+		[in,out,ref] uint32_t *EnumerationContext,
+		[out] PSAMPR_ENUMERATION_BUFFER *Buffer,
+		[in] uint32_t PreferedMaximumLength,
+		[out,ref] uint32_t *CountReturned
+	);
+
+/*
  * Function: 0x10  (SamrGetAliasMembership)
  */
 	[opnum(0x10)]
@@ -572,6 +655,60 @@ typedef [switch_type(uint32_t)] union {
 		[in,size_is(1000),length_is(Count)] RPC_UNICODE_STRING *Names,
 		[out] PSAMPR_ULONG_ARRAY RelativeIds,
 		[out] PSAMPR_ULONG_ARRAY Use
+	);
+
+/*
+ * Function: 0x12  (SamrLookupIdsInDomain)
+ * RelativeIds is a conformant-varying array that is always sized for
+ * 1000 RIDs, of which Count are sent.
+ */
+	[opnum(0x12)]
+	NTSTATUS LookupIdsInDomain(
+		[in] SAMPR_HANDLE DomainHandle,
+		[in,range(0,1000)] uint32_t Count,
+		[in,size_is(1000),length_is(Count)] uint32_t *RelativeIds,
+		[out] PSAMPR_RETURNED_USTRING_ARRAY Names,
+		[out] PSAMPR_ULONG_ARRAY Use
+	);
+
+/*
+ * Function: 0x13  (SamrOpenGroup)
+ */
+	[opnum(0x13)]
+	NTSTATUS OpenGroup(
+		[in] SAMPR_HANDLE DomainHandle,
+		[in] GROUP_ACCESS_MASK DesiredAccess,
+		[in] uint32_t GroupId,
+		[out] SAMPR_HANDLE *GroupHandle
+	);
+
+/*
+ * Function: 0x19  (SamrGetMembersInGroup)
+ */
+	[opnum(0x19)]
+	NTSTATUS GetMembersInGroup(
+		[in] SAMPR_HANDLE GroupHandle,
+		[out] PSAMPR_GET_MEMBERS_BUFFER *Members
+	);
+
+/*
+ * Function: 0x1b  (SamrOpenAlias)
+ */
+	[opnum(0x1b)]
+	NTSTATUS OpenAlias(
+		[in] SAMPR_HANDLE DomainHandle,
+		[in] ALIAS_ACCESS_MASK DesiredAccess,
+		[in] uint32_t AliasId,
+		[out] SAMPR_HANDLE *AliasHandle
+	);
+
+/*
+ * Function: 0x21  (SamrGetMembersInAlias)
+ */
+	[opnum(0x21)]
+	NTSTATUS GetMembersInAlias(
+		[in] SAMPR_HANDLE AliasHandle,
+		[out] PSAMPR_PSID_ARRAY Members
 	);
 
 /*
