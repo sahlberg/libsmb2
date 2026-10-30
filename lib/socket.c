@@ -1156,6 +1156,13 @@ smb2_read_from_socket(struct smb2_context *smb2)
         int count;
 
         while(1) {
+                /* A callback closed the connection: whoever did set the
+                 * error, do not replace it with that of a read on a closed
+                 * socket.
+                 */
+                if (!SMB2_VALID_SOCKET(smb2->fd)) {
+                        return -1;
+                }
                 /* initialize the input vectors to the spl and the header
                  * which are both static data in the smb2 context.
                  * additional vectors will be added when we can map this to
