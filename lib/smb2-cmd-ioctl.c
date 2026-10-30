@@ -210,7 +210,8 @@ smb2_encode_ioctl_reply(struct smb2_context *smb2,
                         len = SMB2_IOCTL_VALIDIATE_NEGOTIATE_INFO_SIZE;
                         break;
                 default:
-                        if (smb2->passthrough) {
+                        if (smb2->passthrough ||
+                            rep->ctl_code == SMB2_FSCTL_PIPE_TRANSCEIVE) {
                                 /* assume the replys output is already coded */
                                 len = rep->output_count;
                         }
@@ -246,7 +247,8 @@ smb2_encode_ioctl_reply(struct smb2_context *smb2,
                         break;
                 }
                 default:
-                        if (smb2->passthrough) {
+                        if (smb2->passthrough ||
+                            rep->ctl_code == SMB2_FSCTL_PIPE_TRANSCEIVE) {
                                 memcpy(buf, rep->output, rep->output_count);
                                 ioctlv->len = rep->output_count;
                         }
