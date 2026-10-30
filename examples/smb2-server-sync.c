@@ -371,8 +371,25 @@ int ioctl_handler(struct smb2_server *srvr, struct smb2_context *smb2,
         switch(rep->ctl_code) {
         case SMB2_FSCTL_VALIDATE_NEGOTIATE_INFO:
                 break;
-        default:
+        case SMB2_FSCTL_DFS_GET_REFERRALS:
+        case SMB2_FSCTL_DFS_GET_REFERRALS_EX: {
+                /* MS-SMB2 3.3.5.15.2: no DFS here */
+                struct smb2_error_reply err;
+                struct smb2_pdu *pdu;
+
+                memset(&err, 0, sizeof(err));
+                pdu = smb2_cmd_error_reply_async(smb2, &err, SMB2_IOCTL,
+                                SMB2_STATUS_FS_DRIVER_REQUIRED, NULL, NULL);
+                if (pdu == NULL) {
+                        return -1;
+                }
+                smb2_set_pdu_message_id(smb2, pdu,
+                                smb2_get_last_request_message_id(smb2));
+                smb2_queue_pdu(smb2, pdu);
                 return 1;
+        }
+        default:
+                return -1;
         }
         return 0;
 }
