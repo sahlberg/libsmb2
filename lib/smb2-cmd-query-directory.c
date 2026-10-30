@@ -306,6 +306,7 @@ smb2_encode_query_directory_reply(struct smb2_context *smb2,
                 do {
                         fs = (struct smb2_fileidbothdirectoryinformation*)(void *)(rep->output_buffer + in_offset);
                         fname_len = 0;
+                        name = NULL;
                         if (fs->name && fs->name[0]) {
                                 name = smb2_utf8_to_utf16(fs->name);
                                 if (name == NULL) {
