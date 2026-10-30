@@ -374,6 +374,8 @@ struct smb2_pdu {
          * signed, and before the pdu can be written out and freed.
          */
         int update_preauth_hash;
+        /* sign even when the session is not signed (MS-SMB2 3.3.5.15.12) */
+        int must_sign;
         smb2_command_cb cb;
         void *cb_data;
         void (*free_cb)(void *);

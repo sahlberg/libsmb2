@@ -4672,6 +4672,9 @@ smb2_ioctl_request_cb(struct smb2_server *server, struct smb2_context *smb2, voi
                 rep.output = (uint8_t*)&out_info;
                 rep.output_count = sizeof(out_info);
                 pdu = smb2_cmd_ioctl_reply_async(smb2, &rep, NULL, cb_data);
+                if (pdu != NULL) {
+                        pdu->must_sign = 1;
+                }
         }
         else {
                 if (server->handlers && server->handlers->ioctl_cmd) {
@@ -5171,11 +5174,13 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                 return;
         }
 
-        /* there is no session key until the last leg */
-        if (smb2->sign && !more_processing_needed)  {
-                /* Derive the signing key from session key
-                * This is based on negotiated protocol
-                */
+        /*
+         * There is no session key until the last leg. Derive the keys
+         * even when the session is not signed: some replies are signed
+         * regardless, and the application key is needed either way.
+         */
+        if (!more_processing_needed && have_valid_session_key &&
+            smb2->session_key_size) {
                 smb2_create_signing_key(smb2);
         }
 
