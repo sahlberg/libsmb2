@@ -4679,22 +4679,17 @@ smb2_ioctl_request_cb(struct smb2_server *server, struct smb2_context *smb2, voi
 static void
 smb2_cancel_request_cb(struct smb2_server *server, struct smb2_context *smb2, void *command_data, void *cb_data)
 {
-        struct smb2_error_reply err;
-        struct smb2_pdu *pdu = NULL;
-        int ret = -1;
-
         if (server->handlers && server->handlers->cancel_cmd) {
-                ret = server->handlers->cancel_cmd(server, smb2);
+                server->handlers->cancel_cmd(server, smb2);
         }
-        if (ret < 0) {
-                memset(&err, 0, sizeof(err));
-                pdu = smb2_cmd_error_reply_async(smb2,
-                                &err, SMB2_CANCEL, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
-        }
-        if (pdu != NULL) {
-                smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
-                smb2_queue_pdu(smb2, pdu);
-        }
+        /*
+         * A CANCEL never gets a reply (MS-SMB2 3.3.5.16), so nothing
+         * would ever take it off the wait queue. It also carries the
+         * message id of the request it cancels: an error reply here
+         * would be correlated with, and complete, that request instead.
+         */
+        smb2_free_pdu(smb2, smb2->pdu);
+        smb2->pdu = NULL;
 }
 
 static void
