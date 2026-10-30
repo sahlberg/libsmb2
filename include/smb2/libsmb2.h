@@ -748,6 +748,19 @@ void smb2_set_pdu_message_id(struct smb2_context *smb2, struct smb2_pdu *pdu, ui
 uint64_t smb2_get_pdu_message_id(struct smb2_context *smb2, struct smb2_pdu *pdu);
 uint64_t smb2_get_last_request_message_id(struct smb2_context *smb2);
 uint64_t smb2_get_last_reply_message_id(struct smb2_context *smb2);
+/*
+ * The tree id of the request being handled, 0 if it is an async request
+ * (which names no tree), and its async id, 0 if it is not async. A
+ * CANCEL of a request that got STATUS_PENDING names it by async id.
+ */
+uint32_t smb2_get_last_request_tree_id(struct smb2_context *smb2);
+uint64_t smb2_get_last_request_async_id(struct smb2_context *smb2);
+/*
+ * The async id of the outstanding request with this message id: the one
+ * a server gave it with its STATUS_PENDING reply, or a client got for it
+ * in one. 0 if there is no such request or it is not async.
+ */
+uint64_t smb2_get_async_id(struct smb2_context *smb2, uint64_t message_id);
 int smb2_pdu_is_compound(struct smb2_context *smb2);
 
 /*

@@ -82,6 +82,7 @@ smb2_fsync_async
 smb2_ftruncate
 smb2_ftruncate_async
 smb2_get_application_key
+smb2_get_async_id
 smb2_get_client_guid
 smb2_get_compound_pdu
 smb2_get_dialect
@@ -91,8 +92,10 @@ smb2_get_error
 smb2_get_fd
 smb2_get_fds
 smb2_get_file_id
+smb2_get_last_request_async_id
 smb2_get_last_request_message_id
 smb2_get_last_reply_message_id
+smb2_get_last_request_tree_id
 smb2_get_max_read_size
 smb2_get_max_write_size
 smb2_get_ndr

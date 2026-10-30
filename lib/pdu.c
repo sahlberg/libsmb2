@@ -834,6 +834,39 @@ smb2_get_last_reply_message_id(struct smb2_context *smb2)
         return 0;
 }
 
+uint32_t
+smb2_get_last_request_tree_id(struct smb2_context *smb2)
+{
+        if (smb2 && !(smb2->hdr.flags & SMB2_FLAGS_ASYNC_COMMAND)) {
+                return smb2->hdr.sync.tree_id;
+        }
+        return 0;
+}
+
+uint64_t
+smb2_get_last_request_async_id(struct smb2_context *smb2)
+{
+        if (smb2 && (smb2->hdr.flags & SMB2_FLAGS_ASYNC_COMMAND)) {
+                return smb2->hdr.async.async_id;
+        }
+        return 0;
+}
+
+uint64_t
+smb2_get_async_id(struct smb2_context *smb2, uint64_t message_id)
+{
+        struct smb2_pdu *pdu;
+
+        if (smb2 == NULL) {
+                return 0;
+        }
+        pdu = smb2_find_pdu(smb2, message_id);
+        if (pdu && (pdu->header.flags & SMB2_FLAGS_ASYNC_COMMAND)) {
+                return pdu->header.async.async_id;
+        }
+        return 0;
+}
+
 struct smb2_pdu *
 smb2_find_pdu(struct smb2_context *smb2,
               uint64_t message_id) {
