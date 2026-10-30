@@ -568,6 +568,12 @@ smb2_process_ioctl_request_variable(struct smb2_context *smb2,
                 smb2_get_uint16(&vec, 22, &info->dialect);
                 req->input_count = sizeof(struct smb2_ioctl_validate_negotiate_info);
                 break;
+        case SMB2_FSCTL_PIPE_TRANSCEIVE:
+                /* the bytes written to a named pipe: nothing to decode, the
+                 * server application hands them to its pipe as they are
+                 */
+                ptr = vec.buf;
+                break;
         default:
                 if (smb2->passthrough) {
                         /* dont know how to handle this, let user decode it */
