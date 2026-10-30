@@ -765,7 +765,9 @@ read_more_data:
                          * any request from the client, so use the header's command
                          * not the pdu's command for the rest of input
                          */
-                        if (smb2->hdr.command > SMB2_SESSION_SETUP) {
+                        /* SESSION_SETUP too: once a session exists, a new one was parsed as the
+                         * TREE_CONNECT the placeholder pdu stands for, and the connection dropped */
+                        if (smb2->hdr.command >= SMB2_SESSION_SETUP) {
                                 pdu->header.command = smb2->hdr.command;
                         }
                         pdu->header.credit_charge = smb2->hdr.credit_charge;

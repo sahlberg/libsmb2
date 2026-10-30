@@ -4877,11 +4877,27 @@ smb2_general_client_request_cb(struct smb2_context *smb2, int status, void *comm
         }
 
         switch (smb2->pdu->header.command) {
-        case SMB2_SESSION_SETUP:
-                smb2_session_setup_request_cb(smb2, status, command_data, cb_data);
-                /* session setup cb allocs next_pdu itself */
-                next_cb = NULL;
+        case SMB2_SESSION_SETUP: {
+                /* A second session, or a re-authentication, on a connection that has one: this
+                 * server keeps one session (one id, one signing key) per connection, and running the
+                 * session setup again would put the connection back into authentication for every
+                 * request after it. Refuse it; the session that exists goes on. */
+                struct smb2_error_reply err;
+                struct smb2_pdu *pdu;
+
+                memset(&err, 0, sizeof(err));
+                pdu = smb2_cmd_error_reply_async(smb2, &err, SMB2_SESSION_SETUP,
+                                                 SMB2_STATUS_REQUEST_NOT_ACCEPTED, NULL, cb_data);
+                if (pdu != NULL) {
+                        /* the request's session id (0 for a new session), not the existing
+                         * session's: a client finds the reply's session by it, and an error
+                         * reply to a session setup is not signed */
+                        pdu->header.session_id = smb2->hdr.session_id;
+                        smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
+                        smb2_queue_pdu(smb2, pdu);
+                }
                 break;
+        }
         case SMB2_LOGOFF:
                 smb2_logoff_request_cb(server, smb2, command_data, cb_data);
                 /* prep for a new session setup req */
