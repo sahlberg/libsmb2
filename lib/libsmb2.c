@@ -5160,7 +5160,8 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                 return;
         }
 
-        if (smb2->sign)  {
+        /* there is no session key until the last leg */
+        if (smb2->sign && !more_processing_needed)  {
                 /* Derive the signing key from session key
                 * This is based on negotiated protocol
                 */
