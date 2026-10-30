@@ -1513,6 +1513,11 @@ free_smb2_file_notify_change_information(struct smb2_context *smb2, struct smb2_
 int smb2_notify_change_async(struct smb2_context *smb2, const char *path, uint16_t flags, uint32_t filter, int loop,
                        smb2_command_cb cb, void *cb_data);
 
+/*
+ * As smb2_notify_change_async() but on a directory handle the caller has
+ * opened. The handle stays the caller's: it is not closed when the watch
+ * ends, and the caller must not close it while a watch is outstanding.
+ */
 int smb2_notify_change_filehandle_async(struct smb2_context *smb2, struct smb2fh *smb2_dir_fh, uint16_t flags, uint32_t filter, int loop,
                        smb2_command_cb cb, void *cb_data);
 

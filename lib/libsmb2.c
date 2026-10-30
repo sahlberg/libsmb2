@@ -4209,7 +4209,14 @@ struct notify_change_cb_data {
         // do a new notify_change request after each response if 1
         uint32_t loop;
         uint32_t status;
+        // fh was opened by smb2_notify_change_async() and is ours to close
+        int owns_fh;
 };
+
+static int
+notify_change_fh_async(struct smb2_context *smb2, struct smb2fh *smb2_dir_fh,
+                       uint16_t flags, uint32_t filter, int loop, int owns_fh,
+                       smb2_command_cb cb, void *cb_data);
 
 static void
 notify_close_cb(struct smb2_context *smb2 _U_, int status _U_,
@@ -4244,7 +4251,9 @@ notify_change_cb(struct smb2_context *smb2, int status,
                                                NULL, notify_change_data->cb_data);
                 }
                 free(fnc);
-                free_smb2fh(smb2, notify_change_data->fh);
+                if (notify_change_data->owns_fh) {
+                        free_smb2fh(smb2, notify_change_data->fh);
+                }
                 free(notify_change_data);
                 return;
         }
@@ -4271,10 +4280,12 @@ notify_change_cb(struct smb2_context *smb2, int status,
                         notify_change_data->cb_data
                 );
         }
-        if (notify_change_data->loop && !decode_status) {
-                smb2_notify_change_filehandle_async(smb2, notify_change_data->fh, notify_change_data->flags, notify_change_data->filter,
-                        notify_change_data->loop, notify_change_data->cb, notify_change_data->cb_data);
-        } else {
+        if (notify_change_data->loop && !decode_status &&
+            notify_change_fh_async(smb2, notify_change_data->fh, notify_change_data->flags, notify_change_data->filter,
+                        notify_change_data->loop, notify_change_data->owns_fh,
+                        notify_change_data->cb, notify_change_data->cb_data) == 0) {
+                /* re-armed, the new request has the handle now */
+        } else if (notify_change_data->owns_fh) {
                 /* we are inside smb2_service(): never block in the sync
                  * smb2_close() here, it re-enters the receive path */
                 if (smb2_close_async(smb2, notify_change_data->fh,
@@ -4285,7 +4296,9 @@ notify_change_cb(struct smb2_context *smb2, int status,
         free(notify_change_data);
 }
 
-int smb2_notify_change_filehandle_async(struct smb2_context *smb2, struct smb2fh *smb2_dir_fh, uint16_t flags, uint32_t filter, int loop,
+static int
+notify_change_fh_async(struct smb2_context *smb2, struct smb2fh *smb2_dir_fh,
+                       uint16_t flags, uint32_t filter, int loop, int owns_fh,
                        smb2_command_cb cb, void *cb_data)
 {
         struct notify_change_cb_data *notify_change_cb_data;
@@ -4305,6 +4318,7 @@ int smb2_notify_change_filehandle_async(struct smb2_context *smb2, struct smb2fh
         notify_change_cb_data->flags = flags;
         notify_change_cb_data->filter = filter;
         notify_change_cb_data->loop = loop;
+        notify_change_cb_data->owns_fh = owns_fh;
 
         /* CHANGE NOTIFY command */
         memset(&ch_req, 0, sizeof(struct smb2_change_notify_request));
@@ -4326,6 +4340,12 @@ int smb2_notify_change_filehandle_async(struct smb2_context *smb2, struct smb2fh
         return 0;
 }
 
+int smb2_notify_change_filehandle_async(struct smb2_context *smb2, struct smb2fh *smb2_dir_fh, uint16_t flags, uint32_t filter, int loop,
+                       smb2_command_cb cb, void *cb_data)
+{
+        return notify_change_fh_async(smb2, smb2_dir_fh, flags, filter, loop, 0, cb, cb_data);
+}
+
 int smb2_notify_change_async(struct smb2_context *smb2, const char *path, uint16_t flags, uint32_t filter, int loop,
                        smb2_command_cb cb, void *cb_data)
 {
@@ -4339,7 +4359,11 @@ int smb2_notify_change_async(struct smb2_context *smb2, const char *path, uint16
                 smb2_set_error(smb2, "smb2_open failed. %s\n", smb2_get_error(smb2));
                 return -1;
         }
-        return smb2_notify_change_filehandle_async(smb2, fh, flags, filter, loop, cb, cb_data);
+        if (notify_change_fh_async(smb2, fh, flags, filter, loop, 1, cb, cb_data) < 0) {
+                smb2_close(smb2, fh);
+                return -1;
+        }
+        return 0;
 
 }
 
