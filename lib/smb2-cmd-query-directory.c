@@ -276,7 +276,7 @@ smb2_encode_query_directory_reply(struct smb2_context *smb2,
 
         len = rep->output_buffer_length;
         len = PAD_TO_32BIT(len);
-        buf = malloc(len);
+        buf = calloc(1, len);
         if (buf == NULL) {
                 smb2_set_error(smb2, "Failed to allocate output buf");
                 return -1;
