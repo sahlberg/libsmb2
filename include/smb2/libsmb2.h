@@ -1550,9 +1550,27 @@ const char *smb2_utf16_to_utf8(const uint16_t *str, size_t len);
 struct smb2_server;
 
 /* pdu handlers in general take the request from the client, and return
- * < 0  on error, and the library should create an error reply
+ * < 0  on error, and the library replies with STATUS_NOT_IMPLEMENTED
  * == 0 on OK, and the library should use the reply struct (if needed) to create a reply
  * > 0  if the handler created and queued a reply itself
+ *
+ * A handler that queues its own reply has to give it the request's
+ * message id, smb2_set_pdu_message_id(smb2, pdu,
+ * smb2_get_last_request_message_id(smb2)), or the reply is dropped.
+ * Queueing the reply frees the request: the handler must not touch req,
+ * or anything it points to, after that. A handler that replies later
+ * keeps req valid until then, but has to save that message id now.
+ * Pointers into the received data (a create's create_context, an
+ * ioctl's input outside FSCTL_VALIDATE_NEGOTIATE_INFO) are only valid
+ * during the call.
+ *
+ * Ioctl input and output buffers are only passed through for
+ * FSCTL_PIPE_TRANSCEIVE, or for any ioctl when the context runs in
+ * passthrough mode (smb2_set_passthrough()).
+ *
+ * cancel_cmd is told of a CANCEL (smb2_get_last_request_message_id()
+ * is the id of the request to cancel). A CANCEL has no reply of its
+ * own, and the library frees it once cancel_cmd returns.
  */
 struct smb2_server_request_handlers {
         int (*destruction_event)(struct smb2_server *srvr, struct smb2_context *smb2);
