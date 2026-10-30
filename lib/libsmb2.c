@@ -752,6 +752,17 @@ smb3_update_preauth_hash(struct smb2_context *smb2, int niov,
         return 0;
 }
 
+/* MS-SMB2 3.2.4.2.2.2: a client that requires signing says so */
+static uint16_t
+smb2_request_security_mode(struct smb2_context *smb2)
+{
+        if (smb2->sign) {
+                return smb2->security_mode | SMB2_NEGOTIATE_SIGNING_ENABLED |
+                        SMB2_NEGOTIATE_SIGNING_REQUIRED;
+        }
+        return smb2->security_mode;
+}
+
 static void smb2_create_signing_key(struct smb2_context *smb2)
 {
         /* Derive the signing key from session key
@@ -1004,7 +1015,7 @@ send_session_setup_request(struct smb2_context *smb2,
 
         /* Session setup request. */
         memset(&req, 0, sizeof(struct smb2_session_setup_request));
-        req.security_mode = (uint8_t)smb2->security_mode;
+        req.security_mode = (uint8_t)smb2_request_security_mode(smb2);
 
         if (smb2->sec == SMB2_SEC_NTLMSSP) {
                 if (ntlmssp_generate_blob(NULL, smb2, time(NULL), c_data->auth_data,
@@ -1242,7 +1253,7 @@ connect_cb(struct smb2_context *smb2, int status,
              smb2->version == SMB2_VERSION_0311)) {
                 req.capabilities |= SMB2_GLOBAL_CAP_ENCRYPTION;
         }
-        req.security_mode = smb2->security_mode;
+        req.security_mode = smb2_request_security_mode(smb2);
         switch (smb2->version) {
         case SMB2_VERSION_ANY:
 #ifdef HAVE_LIBRDMACM
