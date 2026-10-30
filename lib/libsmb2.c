@@ -4870,6 +4870,12 @@ smb2_general_client_request_cb(struct smb2_context *smb2, int status, void *comm
         if (status == SMB2_STATUS_CANCELLED || status == SMB2_STATUS_SHUTDOWN) {
                 return;
         }
+        /* MS-SMB2 3.3.5.3: only the first request may be a negotiate */
+        if (smb2->hdr.command == SMB1_NEGOTIATE) {
+                smb2_set_error(smb2, "SMB1 negotiate after the session setup");
+                smb2_close_context(smb2);
+                return;
+        }
 
         switch (smb2->pdu->header.command) {
         case SMB2_SESSION_SETUP: {
