@@ -335,8 +335,13 @@ endif()
       configure_file(cmake/libsmb2.pc.cmake
                   ${CMAKE_CURRENT_BINARY_DIR}/libsmb2.pc @ONLY)
 
-      install(DIRECTORY include/smb2
-            DESTINATION ${INSTALL_INC_DIR})
+      install(FILES include/smb2/libsmb2.h
+                    include/smb2/libsmb2-raw.h
+                    include/smb2/libsmb2-share-enum.h
+                    include/smb2/smb2.h
+                    include/smb2/smb2-errors.h
+                    include/smb2/smb2-ioctl.h
+            DESTINATION ${INSTALL_INC_DIR}/smb2)
 
       install(FILES cmake/FindSMB2.cmake
                   ${CMAKE_CURRENT_BINARY_DIR}/libsmb2-config-version.cmake
