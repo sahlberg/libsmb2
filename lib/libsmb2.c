@@ -4970,6 +4970,14 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
         if (status) {
                 return;
         }
+        /* After a negotiate, whatever comes next lands here: a CANCEL has no payload (req is NULL) and
+         * any other command's payload is not a session setup request. Neither can be answered before
+         * a session exists; a client that sends one is dropped. */
+        if (req == NULL || smb2->hdr.command != SMB2_SESSION_SETUP) {
+                smb2_set_error(smb2, "request %d before a session setup", smb2->hdr.command);
+                smb2_close_context(smb2);
+                return;
+        }
 
         rep.security_buffer_length = 0;
         rep.security_buffer_offset = 0;
@@ -5203,6 +5211,12 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
 
         if (status != SMB2_STATUS_SUCCESS) {
                 /* context is being destroyed */
+                return;
+        }
+        /* the first request lands here whatever its command; only a negotiate's payload is one */
+        if (smb2->hdr.command != SMB2_NEGOTIATE && smb2->hdr.command != SMB1_NEGOTIATE) {
+                smb2_set_error(smb2, "request %d before a negotiate", smb2->hdr.command);
+                smb2_close_context(smb2);
                 return;
         }
 
