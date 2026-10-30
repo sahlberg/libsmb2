@@ -51,6 +51,7 @@
 
 #include "smb2.h"
 #include "libsmb2.h"
+#include "libsmb2-raw.h"
 #include "libsmb2-private.h"
 
 int
@@ -552,6 +553,16 @@ smb2_process_query_directory_request_fixed(struct smb2_context *smb2,
         return IOVREQ_OFFSET_DIRECTORY + req->file_name_length;
 }
 
+static void
+free_query_directory_request(struct smb2_context *smb2, void *payload)
+{
+        struct smb2_query_directory_request *req = payload;
+
+        if (req && req->name) {
+                smb2_free_data(smb2, discard_const(req->name));
+        }
+}
+
 int
 smb2_process_query_directory_request_variable(struct smb2_context *smb2,
                                       struct smb2_pdu *pdu)
@@ -571,6 +582,9 @@ smb2_process_query_directory_request_variable(struct smb2_context *smb2,
                         }
                         free(discard_const(req->name));
                         req->name = ptr;
+                        if (ptr) {
+                                pdu->free_payload = free_query_directory_request;
+                        }
                         if (!ptr) {
                                 smb2_set_error(smb2, "can not alloc name buffer");
                                 return -1;

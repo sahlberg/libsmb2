@@ -53,6 +53,7 @@
 
 #include "smb2.h"
 #include "libsmb2.h"
+#include "libsmb2-raw.h"
 #include "libsmb2-private.h"
 
 /*
@@ -531,6 +532,16 @@ smb2_process_ioctl_request_fixed(struct smb2_context *smb2,
         return IOVREQ_OFFSET_IOCTL + req->input_count;
 }
 
+static void
+free_ioctl_request(struct smb2_context *smb2, void *payload)
+{
+        struct smb2_ioctl_request *req = payload;
+
+        if (req && req->input) {
+                smb2_free_data(smb2, discard_const(req->input));
+        }
+}
+
 int
 smb2_process_ioctl_request_variable(struct smb2_context *smb2,
                             struct smb2_pdu *pdu)
@@ -561,6 +572,7 @@ smb2_process_ioctl_request_variable(struct smb2_context *smb2,
                 if (ptr == NULL) {
                         return -ENOMEM;
                 }
+                pdu->free_payload = free_ioctl_request;
                 info = ptr;
                 smb2_get_uint32(&vec, 0, &info->capabilities);
                 memcpy(info->guid, &vec.buf[4], 16);

@@ -51,6 +51,7 @@
 
 #include "smb2.h"
 #include "libsmb2.h"
+#include "libsmb2-raw.h"
 #include "libsmb2-private.h"
 
 #define CCX_OFFSET()    \
@@ -508,6 +509,16 @@ smb2_process_create_request_fixed(struct smb2_context *smb2,
                             (SMB2_CREATE_REQUEST_SIZE & 0xfffe)));
 }
 
+static void
+free_create_request(struct smb2_context *smb2, void *payload)
+{
+        struct smb2_create_request *req = payload;
+
+        if (req && req->name) {
+                smb2_free_data(smb2, discard_const(req->name));
+        }
+}
+
 int
 smb2_process_create_request_variable(struct smb2_context *smb2,
                           struct smb2_pdu *pdu)
@@ -546,6 +557,9 @@ smb2_process_create_request_variable(struct smb2_context *smb2,
                         }
                         free(discard_const(req->name));
                         req->name = ptr;
+                        if (ptr) {
+                                pdu->free_payload = free_create_request;
+                        }
                         if (!ptr) {
                                 smb2_set_error(smb2, "can not alloc name buffer");
                                 return -1;

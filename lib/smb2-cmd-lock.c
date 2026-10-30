@@ -53,6 +53,7 @@
 
 #include "smb2.h"
 #include "libsmb2.h"
+#include "libsmb2-raw.h"
 #include "libsmb2-private.h"
 
 static int
@@ -235,6 +236,16 @@ smb2_parse_locks(struct smb2_context *smb2,
         return 0;
 }
 
+static void
+free_lock_request(struct smb2_context *smb2, void *payload)
+{
+        struct smb2_lock_request *req = payload;
+
+        if (req && req->locks) {
+                smb2_free_data(smb2, req->locks);
+        }
+}
+
 int
 smb2_process_lock_request_fixed(struct smb2_context *smb2,
                          struct smb2_pdu *pdu)
@@ -284,6 +295,7 @@ smb2_process_lock_request_fixed(struct smb2_context *smb2,
                 return -1;
         }
         req->locks = ptr;
+        pdu->free_payload = free_lock_request;
 
         /* the fixed size includes 1 lock (the most common use) so
          * there is no more data in that case

@@ -4429,8 +4429,6 @@ smb2_create_request_cb(struct smb2_server *server, struct smb2_context *smb2, vo
         struct smb2_create_reply rep;
         struct smb2_error_reply err;
         struct smb2_pdu *pdu = NULL;
-        /* taken now: a handler that queues its own reply frees req with its pdu */
-        const char *name = req ? req->name : NULL;
         int ret = -1;
 
         memset(&rep, 0, sizeof(rep));
@@ -4444,9 +4442,6 @@ smb2_create_request_cb(struct smb2_server *server, struct smb2_context *smb2, vo
                 memset(&err, 0, sizeof(err));
                 pdu = smb2_cmd_error_reply_async(smb2,
                                 &err, SMB2_CREATE, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
-        }
-        if (name) {
-                smb2_free_data(smb2, discard_const(name));
         }
         if (pdu) {
                 smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
@@ -4653,9 +4648,6 @@ smb2_ioctl_request_cb(struct smb2_server *server, struct smb2_context *smb2, voi
                 rep.output = (uint8_t*)&out_info;
                 rep.output_count = sizeof(out_info);
                 pdu = smb2_cmd_ioctl_reply_async(smb2, &rep, NULL, cb_data);
-                if (req->input) {
-                        smb2_free_data(smb2, discard_const(req->input));
-                }
         }
         else {
                 if (server->handlers && server->handlers->ioctl_cmd) {
@@ -4723,8 +4715,6 @@ smb2_query_directory_request_cb(struct smb2_server *server, struct smb2_context 
         struct smb2_query_directory_reply rep;
         struct smb2_error_reply err;
         struct smb2_pdu *pdu = NULL;
-        /* taken now: a handler that queues its own reply frees req with its pdu */
-        const char *name = req ? req->name : NULL;
         int ret = -1;
 
         memset(&rep, 0, sizeof(rep));
@@ -4749,9 +4739,6 @@ smb2_query_directory_request_cb(struct smb2_server *server, struct smb2_context 
                 else {
                         pdu = smb2_cmd_query_directory_reply_async(smb2, req, &rep, NULL, cb_data);
                 }
-        }
-        if (name) {
-                smb2_free_data(smb2, discard_const(name));
         }
         if (pdu != NULL) {
                 smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
