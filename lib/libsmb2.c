@@ -4880,6 +4880,33 @@ static void
 smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data);
 
 /*
+ * A request for a session this connection no longer has, or never had: it
+ * is not executed, and it gets an unsigned STATUS_USER_SESSION_DELETED so
+ * its client logs that session on again. A CANCEL has no reply.
+ */
+static void
+smb2_server_reply_session_deleted(struct smb2_context *smb2, void *cb_data)
+{
+        struct smb2_error_reply err;
+        struct smb2_pdu *pdu;
+
+        if (smb2->pdu->header.command == SMB2_CANCEL) {
+                smb2_free_pdu(smb2, smb2->pdu);
+                smb2->pdu = NULL;
+                return;
+        }
+        memset(&err, 0, sizeof(err));
+        pdu = smb2_cmd_error_reply_async(smb2, &err, smb2->pdu->header.command,
+                                         SMB2_STATUS_USER_SESSION_DELETED, NULL, cb_data);
+        if (pdu != NULL) {
+                pdu->header.session_id = smb2->hdr.session_id;
+                pdu->never_sign = 1;
+                smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
+                smb2_queue_pdu(smb2, pdu);
+        }
+}
+
+/*
  * The server keeps one session per connection. A new session on a
  * connection that has one (Windows does that for every logon session on
  * the client) retires the old one: the application is told as for a
@@ -4953,23 +4980,7 @@ smb2_general_client_request_cb(struct smb2_context *smb2, int status, void *comm
         if (smb2->hdr.session_id != smb2->session_id &&
             !(smb2->pdu->header.command == SMB2_SESSION_SETUP && smb2->hdr.session_id == 0)) {
                 /* a request for a retired session, or one that never was */
-                if (smb2->pdu->header.command == SMB2_CANCEL) {
-                        smb2_free_pdu(smb2, smb2->pdu);
-                        smb2->pdu = NULL;
-                } else {
-                        struct smb2_error_reply err;
-                        struct smb2_pdu *pdu;
-
-                        memset(&err, 0, sizeof(err));
-                        pdu = smb2_cmd_error_reply_async(smb2, &err, smb2->pdu->header.command,
-                                                         SMB2_STATUS_USER_SESSION_DELETED, NULL, cb_data);
-                        if (pdu != NULL) {
-                                pdu->header.session_id = smb2->hdr.session_id;
-                                pdu->never_sign = 1;
-                                smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
-                                smb2_queue_pdu(smb2, pdu);
-                        }
-                }
+                smb2_server_reply_session_deleted(smb2, cb_data);
         } else switch (smb2->pdu->header.command) {
         case SMB2_SESSION_SETUP: {
                 if (smb2->hdr.session_id == 0) {
@@ -5094,6 +5105,16 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
          * any other command's payload is not a session setup request. Neither can be answered before
          * a session exists; a client that sends one is dropped. */
         if (req == NULL || smb2->hdr.command != SMB2_SESSION_SETUP) {
+                if (smb2->hdr.session_id != 0 && smb2->hdr.session_id != smb2->session_id) {
+                        /* the session a new one is replacing: answer it, and wait on for the next leg */
+                        smb2_server_reply_session_deleted(smb2, cb_data);
+                        smb2->next_pdu = smb2_allocate_pdu(smb2, SMB2_SESSION_SETUP,
+                                                           smb2_session_setup_request_cb, cb_data);
+                        if (!smb2->next_pdu) {
+                                smb2_close_context(smb2);
+                        }
+                        return;
+                }
                 smb2_set_error(smb2, "request %d before a session setup", smb2->hdr.command);
                 smb2_close_context(smb2);
                 return;
