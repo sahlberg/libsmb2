@@ -43,6 +43,9 @@
 #include "smb2.h"
 
 const char *nterror_to_str(uint32_t status) {
+#ifdef _IOP
+        return "Unknown";
+#else
         switch (status) {
         case SMB2_STATUS_SUCCESS:
                 return "STATUS_SUCCESS";
@@ -1075,6 +1078,7 @@ const char *nterror_to_str(uint32_t status) {
         default:
                  return "Unknown";
         }
+#endif
 }
 
 int nterror_to_errno(uint32_t status) {

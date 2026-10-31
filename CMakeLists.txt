@@ -264,7 +264,7 @@ endif()
       endif()
       # as ps2sdk's Makefile.iopglobal: the IOP kernel cannot take the
       # several LO relocs to one HI that GCC makes without -mno-explicit-relocs
-      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -fno-builtin -msoft-float -mno-explicit-relocs")
+      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -fno-builtin -msoft-float -mno-explicit-relocs -Os")
       include_directories(${CMAKE_CURRENT_BINARY_DIR} include/ps2)
     elseif(VITA)
       add_definitions(-DNEED_READV -DNEED_WRITEV -DNEED_GETLOGIN_R)  
