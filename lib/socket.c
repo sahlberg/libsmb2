@@ -1078,9 +1078,16 @@ read_more_data:
          * bypass signing entirely. MS-SMB2 3.2.5.1.3 requires us to drop
          * such a message instead.
          */
+        /*
+         * A server answers a request for a session it has retired (see
+         * smb2_general_client_request_cb()) with STATUS_USER_SESSION_DELETED
+         * and never executes it, so there is no key to check it with and
+         * nothing to protect.
+         */
         if (smb2->sign &&
             (smb2->hdr.command != SMB2_NEGOTIATE) &&
             (smb2->hdr.command != SMB2_SESSION_SETUP) &&
+            !(smb2_is_server(smb2) && smb2->hdr.session_id != smb2->session_id) &&
             !smb2->enc) {
                 uint8_t signature[16] _U_;
 

@@ -244,6 +244,8 @@ struct smb2_context {
         uint8_t salt[SMB2_SALT_SIZE];
         uint16_t cypher;
         uint8_t preauthhash[SMB2_PREAUTH_HASH_SIZE];
+        /* server: the hash after the negotiate, where every session's starts */
+        uint8_t negotiate_preauthhash[SMB2_PREAUTH_HASH_SIZE];
 
 
 #ifdef HAVE_LIBKRB5
@@ -376,6 +378,8 @@ struct smb2_pdu {
         int update_preauth_hash;
         /* sign even when the session is not signed (MS-SMB2 3.3.5.15.12) */
         int must_sign;
+        /* never sign: a reply for a session the server has retired */
+        int never_sign;
         smb2_command_cb cb;
         void *cb_data;
         void (*free_cb)(void *);

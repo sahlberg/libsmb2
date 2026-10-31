@@ -753,8 +753,8 @@ smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
                         prev_compound_mid = p->header.message_id;
                 }
 
-                if (smb2->sign || p->must_sign ||
-                    (p->header.command == SMB2_TREE_CONNECT && smb2->dialect == SMB2_VERSION_0311 && !smb2->seal)) {
+                if (!p->never_sign && (smb2->sign || p->must_sign ||
+                    (p->header.command == SMB2_TREE_CONNECT && smb2->dialect == SMB2_VERSION_0311 && !smb2->seal))) {
                         if (smb2_pdu_add_signature(smb2, p) < 0) {
                                 smb2_set_error(smb2, "Failure to add "
                                                "signature. %s",

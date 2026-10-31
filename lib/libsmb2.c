@@ -4879,6 +4879,54 @@ smb2_set_info_request_cb(struct smb2_server *server, struct smb2_context *smb2, 
 static void
 smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data);
 
+/*
+ * The server keeps one session per connection. A new session on a
+ * connection that has one (Windows does that for every logon session on
+ * the client) retires the old one: the application is told as for a
+ * LOGOFF, the old session's keys and authentication are dropped, and its
+ * requests get STATUS_USER_SESSION_DELETED from then on, so its client
+ * logs it on again, retiring the other in turn. Fine for one user at a
+ * time; real support for several sessions on a connection needs a table
+ * of them, each with its own keys, swapped in by the request's SessionId.
+ *
+ * The old session goes when the new session setup starts, not when it
+ * succeeds: a login that then fails (Windows tries anonymous ones) still
+ * ends the session in use, and with it any transfer in progress, since
+ * there are no durable handles. Two logon sessions on the client using
+ * the server at once (the user's and SYSTEM's, say, more likely on a
+ * domain member) keep retiring each other. Keeping the old session until
+ * the new one has authenticated would fix the first.
+ */
+static void
+smb2_server_retire_session(struct smb2_server *server, struct smb2_context *smb2,
+                           struct connect_data *c_data)
+{
+        if (server->handlers && server->handlers->logoff_cmd) {
+                server->handlers->logoff_cmd(server, smb2);
+        }
+        if (c_data->auth_data) {
+                if (smb2->sec == SMB2_SEC_NTLMSSP) {
+                        ntlmssp_destroy_context(c_data->auth_data);
+                }
+#ifdef HAVE_LIBKRB5
+                else {
+                        krb5_free_auth_data(c_data->auth_data);
+                }
+#endif
+                c_data->auth_data = NULL;
+        }
+        free(smb2->session_key);
+        smb2->session_key = NULL;
+        smb2->session_key_size = 0;
+        memset(smb2->signing_key, 0, SMB2_KEY_SIZE);
+        memset(smb2->application_key, 0, SMB2_KEY_SIZE);
+        memset(smb2->serverin_key, 0, SMB2_KEY_SIZE);
+        memset(smb2->serverout_key, 0, SMB2_KEY_SIZE);
+        smb2->enc_keys_ready = 0;
+        smb2->session_id = 0;
+        memcpy(smb2->preauthhash, smb2->negotiate_preauthhash, SMB2_PREAUTH_HASH_SIZE);
+}
+
 static void
 smb2_general_client_request_cb(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
 {
@@ -4902,12 +4950,38 @@ smb2_general_client_request_cb(struct smb2_context *smb2, int status, void *comm
                 return;
         }
 
-        switch (smb2->pdu->header.command) {
+        if (smb2->hdr.session_id != smb2->session_id &&
+            !(smb2->pdu->header.command == SMB2_SESSION_SETUP && smb2->hdr.session_id == 0)) {
+                /* a request for a retired session, or one that never was */
+                if (smb2->pdu->header.command == SMB2_CANCEL) {
+                        smb2_free_pdu(smb2, smb2->pdu);
+                        smb2->pdu = NULL;
+                } else {
+                        struct smb2_error_reply err;
+                        struct smb2_pdu *pdu;
+
+                        memset(&err, 0, sizeof(err));
+                        pdu = smb2_cmd_error_reply_async(smb2, &err, smb2->pdu->header.command,
+                                                         SMB2_STATUS_USER_SESSION_DELETED, NULL, cb_data);
+                        if (pdu != NULL) {
+                                pdu->header.session_id = smb2->hdr.session_id;
+                                pdu->never_sign = 1;
+                                smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
+                                smb2_queue_pdu(smb2, pdu);
+                        }
+                }
+        } else switch (smb2->pdu->header.command) {
         case SMB2_SESSION_SETUP: {
-                /* A second session, or a re-authentication, on a connection that has one: this
-                 * server keeps one session (one id, one signing key) per connection, and running the
-                 * session setup again would put the connection back into authentication for every
-                 * request after it. Refuse it; the session that exists goes on. */
+                if (smb2->hdr.session_id == 0) {
+                        /* a new session: it takes the place of the current one */
+                        smb2_server_retire_session(server, smb2, c_data);
+                        smb2_session_setup_request_cb(smb2, status, command_data, cb_data);
+                        /* session setup cb allocs next_pdu itself */
+                        next_cb = NULL;
+                        break;
+                }
+                /* A re-authentication of the current session: it would keep its id, which this
+                 * server's session setup cannot do yet. Refuse it; the session goes on. */
                 struct smb2_error_reply err;
                 struct smb2_pdu *pdu;
 
@@ -5447,6 +5521,7 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
         smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
         pdu->update_preauth_hash = 1;
         smb2_queue_pdu(smb2, pdu);
+        memcpy(smb2->negotiate_preauthhash, smb2->preauthhash, SMB2_PREAUTH_HASH_SIZE);
 
         if (req) {
                 /* alloc a pdu for session request */
