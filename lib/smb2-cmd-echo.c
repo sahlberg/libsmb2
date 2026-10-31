@@ -104,56 +104,6 @@ smb2_cmd_echo_async(struct smb2_context *smb2,
         return pdu;
 }
 
-static int
-smb2_encode_echo_reply(struct smb2_context *smb2,
-                         struct smb2_pdu *pdu)
-{
-        uint8_t *buf;
-        int len;
-        struct smb2_iovec *iov;
-
-        len = SMB2_ECHO_REPLY_SIZE;
-
-        buf = calloc(len, sizeof(uint8_t));
-        if (buf == NULL) {
-                smb2_set_error(smb2, "Failed to allocate echo buffer");
-                return -1;
-        }
-
-        iov = smb2_add_iovector(smb2, &pdu->out, buf, len, free);
-        if (iov == NULL) {
-                smb2_set_error(smb2, "Failed to add iovector for echo reply");
-                return -1;
-        }
-
-        smb2_set_uint16(iov, 0, SMB2_ECHO_REPLY_SIZE);
-        return 0;
-}
-
-struct smb2_pdu *
-smb2_cmd_echo_reply_async(struct smb2_context *smb2,
-                    smb2_command_cb cb, void *cb_data)
-{
-        struct smb2_pdu *pdu;
-
-        pdu = smb2_allocate_pdu(smb2, SMB2_ECHO, cb, cb_data);
-        if (pdu == NULL) {
-                return NULL;
-        }
-
-        if (smb2_encode_echo_reply(smb2, pdu)) {
-                smb2_free_pdu(smb2, pdu);
-                return NULL;
-        }
-
-        if (smb2_pad_to_64bit(smb2, &pdu->out) != 0) {
-                smb2_free_pdu(smb2, pdu);
-                return NULL;
-        }
-
-        return pdu;
-}
-
 int
 smb2_process_echo_fixed(struct smb2_context *smb2,
                         struct smb2_pdu *pdu)
@@ -171,32 +121,6 @@ smb2_process_echo_fixed(struct smb2_context *smb2,
                 return -1;
         }
 
-        return 0;
-}
-
-int
-smb2_process_echo_request_fixed(struct smb2_context *smb2,
-                        struct smb2_pdu *pdu)
-{
-        struct smb2_echo_request *req;
-        struct smb2_iovec *iov = &smb2->in.iov[smb2->in.niov - 1];
-        uint16_t struct_size;
-
-        smb2_get_uint16(iov, 0, &struct_size);
-        if (struct_size != SMB2_ECHO_REQUEST_SIZE ||
-            (struct_size & 0xfffe) != iov->len) {
-                smb2_set_error(smb2, "Unexpected size of echo "
-                               "request. Expected %d, got %d",
-                               SMB2_ECHO_REQUEST_SIZE,
-                               (int)iov->len);
-                return -1;
-        }
-        req = calloc(1, sizeof(*req));
-        if (req == NULL) {
-                smb2_set_error(smb2, "Failed to allocate echo request");
-                return -1;
-        }
-        pdu->payload = req;
         return 0;
 }
 

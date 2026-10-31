@@ -102,10 +102,6 @@ krb5_session_request(struct smb2_context *smb2,
                      struct private_auth_data *auth_data,
                      unsigned char *buf, int len);
 
-struct private_auth_data *
-krb5_init_server_client_cred(struct smb2_server *server,
-               struct smb2_context *smb2, const char *password);
-
 int
 krb5_session_reply(struct smb2_context *smb2,
                      struct private_auth_data *auth_data,
@@ -118,15 +114,6 @@ krb5_set_gss_error(struct smb2_context *smb2, char *func,
 
 int
 krb5_can_do_ntlmssp(void);
-
-int
-krb5_init_server_credentials(struct smb2_server *server, const char *keytab_path);
-
-int
-krb5_renew_server_credentials(struct smb2_server *server);
-
-void
-krb5_free_server_credentials(struct smb2_server *server);
 
 #ifdef __cplusplus
 }

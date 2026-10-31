@@ -505,7 +505,7 @@ static void
 smb2_encode_header(struct smb2_context *smb2, struct smb2_iovec *iov,
                    struct smb2_header *hdr)
 {
-        if (!smb2_is_server(smb2) && hdr->command != SMB2_CANCEL) {
+        if (hdr->command != SMB2_CANCEL) {
                 hdr->message_id = smb2->message_id++;
                 if (hdr->credit_charge > 1) {
                         smb2->message_id += (hdr->credit_charge - 1);
@@ -604,11 +604,6 @@ smb2_decode_header(struct smb2_context *smb2, struct smb2_iovec *iov,
                         }
                 }
         }
-        if (smb2_is_server(smb2)) {
-                /* remember message id to format a reply for this
-                 * request (or ack this notification) */
-                smb2->message_id = hdr->message_id;
-        }
         smb2_get_uint64(iov, 40, &hdr->session_id);
         memcpy(&hdr->signature, iov->buf + 48, 16);
 
@@ -628,82 +623,6 @@ smb2_add_to_outqueue(struct smb2_context *smb2, struct smb2_pdu *pdu)
         smb2_change_events(smb2, smb2->fd, smb2_which_events(smb2));
 }
 
-static int
-smb2_correlate_reply(struct smb2_context *smb2, struct smb2_pdu *pdu)
-{
-        struct smb2_pdu *req_pdu;
-        int ret = 0;
-
-        req_pdu = smb2_find_pdu(smb2, pdu->header.message_id);
-        if (req_pdu == NULL) {
-                if (pdu->header.command != SMB2_OPLOCK_BREAK) {
-                        smb2_set_error(smb2, "no matching request PDU "
-                                       "found for reply to cmd %d id %llu",
-                                        pdu->header.command, pdu->header.message_id);
-                        return -1;
-                } else {
-                        /* sending an unsolicited break */
-                        pdu->header.message_id = 0xffffffffffffffffULL;
-                        pdu->header.sync.tree_id = 0;
-                        pdu->header.session_id = 0;
-                }
-        }  else {
-                uint16_t credit_grant = req_pdu->header.credit_request_response;
-
-                /* some clients (lookin at you nautilus) break if their credits
-                 * increment too far (and probably wrap to 0) so limit credits
-                 * to what the client requests only and if the clients charge
-                 * is greater than ours, charge the larger amount so they cant
-                 * accumulate on the client
-                 */
-                if (credit_grant > 0xf000) {
-                        pdu->header.credit_request_response = 0xffff;
-                } else {
-                        pdu->header.credit_request_response = credit_grant;
-                }
-
-                if (req_pdu->header.credit_charge > pdu->header.credit_charge) {
-                        pdu->header.credit_charge = req_pdu->header.credit_charge;
-                }
-
-                /* replies always have to have the same message-id and tree-id as
-                 * the request we sent, so use the request from the wait queue
-                 * to make sure that is the case. (exception is tree-connect where
-                 * the reply has the new tree-id and request was 0)
-                 */
-                pdu->header.message_id = req_pdu->header.message_id;
-                if (pdu->header.command != SMB2_TREE_CONNECT) {
-                        pdu->header.sync.tree_id = req_pdu->header.sync.tree_id;
-                }
-
-                /* remove the request from the waitqueue when we get its reply
-                 * unless this is an async status-pending reply
-                */
-                if ((pdu->header.flags & SMB2_FLAGS_ASYNC_COMMAND) &&
-                               (pdu->header.status == SMB2_STATUS_PENDING)) {
-                        /* the real reply will be queued later so we leave the request
-                         * in the list to be correlated with that. we will also mark the
-                         * request as async as well so when the real reply gets here
-                         * we will know to set the async-id and flag
-                         */
-                        pdu->header.async.async_id = ++smb2->async_id;
-                        req_pdu->header.async.async_id = pdu->header.async.async_id;
-                        req_pdu->header.flags |= SMB2_FLAGS_ASYNC_COMMAND;
-               } else {
-                       /* if this is the real-reply to an async operation, also
-                        * set the async flag and id (MS-SMB2 3.2.5.1.5)
-                        */
-                       if (req_pdu->header.flags & SMB2_FLAGS_ASYNC_COMMAND) {
-                               pdu->header.flags |= SMB2_FLAGS_ASYNC_COMMAND;
-                               pdu->header.async.async_id = req_pdu->header.async.async_id;
-                       }
-                       SMB2_LIST_REMOVE(&smb2->waitqueue, req_pdu);
-                       smb2_free_pdu(smb2, req_pdu);
-                }
-        }
-        return ret;
-}
-
 void
 smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
@@ -712,46 +631,22 @@ smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
 
         /* Update all the PDU headers in this chain */
         for (p = pdu; p; p = p->next_compound) {
-                if (smb2_is_server(smb2)) {
-                        /* set reply flag, servers will only reply */
-                        pdu->header.flags |= SMB2_FLAGS_SERVER_TO_REDIR;
-
-                        /* set async flag for status==pending */
-                        if (pdu->header.status == SMB2_STATUS_PENDING) {
-                                pdu->header.flags |= SMB2_FLAGS_ASYNC_COMMAND;
-                        }
-
-                        /* the server handler functions must set message id unless this
-                         * is a negotiate request, in which case it should be 0
-                         */
-                        if (!pdu->header.message_id && pdu->header.command != SMB2_NEGOTIATE) {
-                                smb2_set_error(smb2, "Queued pdu has no message id");
-                                smb2_free_pdu(smb2, pdu);
-                                return;
-                        }
-
-                        smb2_correlate_reply(smb2, p);
-                        /* TODO - care about check reply failures? */
-                }
                 smb2_encode_header(smb2, &p->out.iov[0], &p->header);
-                if (!smb2_is_server(smb2)) {
-                        /*
-                         * Track the mid of the previous command in the chain
-                         * so we can enforce ordering on receive.
-                         *
-                         * Related compounds require replies to be processed
-                         * in order.
-                         *
-                         * Unrelated compounds do not have this dependency.
-                         */
-                        if (p->unrelated_compound) {
-                                p->prev_compound_mid = 0;
-                        } else {
-                                p->prev_compound_mid = prev_compound_mid;
-                        }
-
-                        prev_compound_mid = p->header.message_id;
+                /*
+                 * Track the mid of the previous command in the chain
+                 * so we can enforce ordering on receive.
+                 *
+                 * Related compounds require replies to be processed
+                 * in order.
+                 *
+                 * Unrelated compounds do not have this dependency.
+                 */
+                if (p->unrelated_compound) {
+                        p->prev_compound_mid = 0;
+                } else {
+                        p->prev_compound_mid = prev_compound_mid;
                 }
+                prev_compound_mid = p->header.message_id;
 
                 if (!p->never_sign && (smb2->sign || p->must_sign ||
                     (p->header.command == SMB2_TREE_CONNECT && smb2->dialect == SMB2_VERSION_0311 && !smb2->seal))) {
@@ -950,58 +845,6 @@ smb2_get_fixed_reply_size(struct smb2_context *smb2, struct smb2_pdu *pdu)
                 return SMB2_SET_INFO_REPLY_SIZE;
         case SMB2_IOCTL:
                 return SMB2_IOCTL_REPLY_SIZE;
-        case SMB2_OPLOCK_BREAK:
-                /* need to read the struct size to see what
-                 * type (oplock or lease) the pdu is */
-                return sizeof(uint16_t);
-        }
-        return -1;
-}
-
-int
-smb2_get_fixed_request_size(struct smb2_context *smb2, struct smb2_pdu *pdu)
-{
-        switch (pdu->header.command) {
-        case SMB2_NEGOTIATE:
-                return SMB2_NEGOTIATE_REQUEST_SIZE;
-        case SMB2_SESSION_SETUP:
-                return SMB2_SESSION_SETUP_REQUEST_SIZE;
-        case SMB2_LOGOFF:
-                return SMB2_LOGOFF_REQUEST_SIZE;
-        case SMB2_TREE_CONNECT:
-                return SMB2_TREE_CONNECT_REQUEST_SIZE;
-        case SMB2_TREE_DISCONNECT:
-                return SMB2_TREE_DISCONNECT_REQUEST_SIZE;
-        case SMB2_CREATE:
-                return SMB2_CREATE_REQUEST_SIZE;
-        case SMB2_CLOSE:
-                return SMB2_CLOSE_REQUEST_SIZE;
-        case SMB2_FLUSH:
-                return SMB2_FLUSH_REQUEST_SIZE;
-        case SMB2_READ:
-                return SMB2_READ_REQUEST_SIZE;
-        case SMB2_WRITE:
-                return SMB2_WRITE_REQUEST_SIZE;
-        case SMB2_LOCK:
-                return SMB2_LOCK_REQUEST_SIZE;
-        case SMB2_CANCEL:
-                return SMB2_CANCEL_REQUEST_SIZE;
-        case SMB2_ECHO:
-                return SMB2_ECHO_REQUEST_SIZE;
-        case SMB2_QUERY_DIRECTORY:
-                return SMB2_QUERY_DIRECTORY_REQUEST_SIZE;
-        case SMB2_CHANGE_NOTIFY:
-                return SMB2_CHANGE_NOTIFY_REQUEST_SIZE;
-        case SMB2_QUERY_INFO:
-                return SMB2_QUERY_INFO_REQUEST_SIZE;
-        case SMB2_SET_INFO:
-                return SMB2_SET_INFO_REQUEST_SIZE;
-        case SMB2_IOCTL:
-                return SMB2_IOCTL_REQUEST_SIZE;
-        case SMB2_OPLOCK_BREAK:
-                /* need to read the struct size to see what
-                 * type (oplock or lease) the pdu is */
-                return sizeof(uint16_t);
         }
         return -1;
 }
@@ -1009,12 +852,7 @@ smb2_get_fixed_request_size(struct smb2_context *smb2, struct smb2_pdu *pdu)
 int
 smb2_get_fixed_size(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
-        if (smb2_is_server(smb2)) {
-                return smb2_get_fixed_request_size(smb2, pdu);
-        }
-        else {
-                return smb2_get_fixed_reply_size(smb2, pdu);
-        }
+        return smb2_get_fixed_reply_size(smb2, pdu);
 }
 
 int
@@ -1059,9 +897,6 @@ smb2_process_reply_payload_fixed(struct smb2_context *smb2, struct smb2_pdu *pdu
                 return smb2_process_set_info_fixed(smb2, pdu);
         case SMB2_IOCTL:
                 return smb2_process_ioctl_fixed(smb2, pdu);
-        case SMB2_OPLOCK_BREAK:
-                /* notice that op/lease lock breaks can be notification or response here */
-                return smb2_process_oplock_break_fixed(smb2, pdu);
         }
         return 0;
 }
@@ -1110,130 +945,20 @@ smb2_process_reply_payload_variable(struct smb2_context *smb2, struct smb2_pdu *
                 return 0;
         case SMB2_IOCTL:
                 return smb2_process_ioctl_variable(smb2, pdu);
-        case SMB2_OPLOCK_BREAK:
-                return smb2_process_oplock_break_variable(smb2, pdu);
         }
         return 0;
-}
-
-int
-smb2_process_request_payload_fixed(struct smb2_context *smb2, struct smb2_pdu *pdu)
-{
-        switch (pdu->header.command) {
-        case SMB2_NEGOTIATE:
-                return smb2_process_negotiate_request_fixed(smb2, pdu);
-        case SMB2_SESSION_SETUP:
-                return smb2_process_session_setup_request_fixed(smb2, pdu);
-        case SMB2_LOGOFF:
-                return smb2_process_logoff_request_fixed(smb2, pdu);
-        case SMB2_TREE_CONNECT:
-                return smb2_process_tree_connect_request_fixed(smb2, pdu);
-        case SMB2_TREE_DISCONNECT:
-                return 0;
-        case SMB2_CREATE:
-                return smb2_process_create_request_fixed(smb2, pdu);
-        case SMB2_CLOSE:
-                return smb2_process_close_request_fixed(smb2, pdu);
-        case SMB2_FLUSH:
-                return smb2_process_flush_request_fixed(smb2, pdu);
-        case SMB2_READ:
-                return smb2_process_read_request_fixed(smb2, pdu);
-        case SMB2_WRITE:
-                return smb2_process_write_request_fixed(smb2, pdu);
-        case SMB2_ECHO:
-                return smb2_process_echo_request_fixed(smb2, pdu);
-        case SMB2_LOCK:
-                return smb2_process_lock_request_fixed(smb2, pdu);
-        case SMB2_CANCEL:
-                return 0;
-        case SMB2_QUERY_DIRECTORY:
-                return smb2_process_query_directory_request_fixed(smb2, pdu);
-        case SMB2_CHANGE_NOTIFY:
-                return smb2_process_change_notify_request_fixed(smb2, pdu);
-        case SMB2_QUERY_INFO:
-                return smb2_process_query_info_request_fixed(smb2, pdu);
-        case SMB2_SET_INFO:
-                return smb2_process_set_info_request_fixed(smb2, pdu);
-        case SMB2_IOCTL:
-                return smb2_process_ioctl_request_fixed(smb2, pdu);
-        case SMB2_OPLOCK_BREAK:
-                /* note oplock/lease break from a client is an acknowlegement here */
-                return smb2_process_oplock_break_request_fixed(smb2, pdu);
-        default:
-                smb2_set_error(smb2, "No handler for fixed request");
-                return -1;
-        }
-        return 0;
-}
-
-int
-smb2_process_request_payload_variable(struct smb2_context *smb2, struct smb2_pdu *pdu)
-{
-        switch (pdu->header.command) {
-        case SMB2_NEGOTIATE:
-                return smb2_process_negotiate_request_variable(smb2, pdu);
-        case SMB2_SESSION_SETUP:
-                return smb2_process_session_setup_request_variable(smb2, pdu);
-        case SMB2_LOGOFF:
-                return 0;
-        case SMB2_TREE_CONNECT:
-                return smb2_process_tree_connect_request_variable(smb2, pdu);
-        case SMB2_TREE_DISCONNECT:
-                return 0;
-        case SMB2_CREATE:
-                return smb2_process_create_request_variable(smb2, pdu);
-        case SMB2_CLOSE:
-                return 0;
-        case SMB2_FLUSH:
-                return 0;
-        case SMB2_READ:
-                return smb2_process_read_request_variable(smb2, pdu);
-        case SMB2_WRITE:
-                return smb2_process_write_request_variable(smb2, pdu);
-        case SMB2_LOCK:
-                return smb2_process_lock_request_variable(smb2, pdu);
-        case SMB2_CANCEL:
-                return 0;
-        case SMB2_ECHO:
-                return 0;
-        case SMB2_QUERY_DIRECTORY:
-                return smb2_process_query_directory_request_variable(smb2, pdu);
-        case SMB2_CHANGE_NOTIFY:
-                return 0;
-        case SMB2_QUERY_INFO:
-                return smb2_process_query_info_request_variable(smb2, pdu);
-        case SMB2_SET_INFO:
-                return smb2_process_set_info_request_variable(smb2, pdu);
-        case SMB2_IOCTL:
-                return smb2_process_ioctl_request_variable(smb2, pdu);
-        case SMB2_OPLOCK_BREAK:
-                return smb2_process_oplock_break_request_variable(smb2, pdu);
-        default:
-                smb2_set_error(smb2, "No handler for var request");
-        }
-        return -1;
 }
 
 int
 smb2_process_payload_fixed(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
-        if (smb2_is_server(smb2)) {
-                return smb2_process_request_payload_fixed(smb2, pdu);
-        }
-        else {
-                return smb2_process_reply_payload_fixed(smb2, pdu);
-        }
+        return smb2_process_reply_payload_fixed(smb2, pdu);
 }
 
 int
 smb2_process_payload_variable(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
-        if (smb2_is_server(smb2)) {
-                return smb2_process_request_payload_variable(smb2, pdu);
-        }
-        else {
-                return smb2_process_reply_payload_variable(smb2, pdu);
-        }
+        return smb2_process_reply_payload_variable(smb2, pdu);
 }
 
 void smb2_timeout_pdus(struct smb2_context *smb2)

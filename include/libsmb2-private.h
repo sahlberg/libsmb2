@@ -162,8 +162,6 @@ struct smb2_context {
 
         t_socket fd;
 
-        struct smb2_server *owning_server;
-
         t_socket *connecting_fds;
         size_t connecting_fds_count;
         struct addrinfo *addrinfos;
@@ -303,12 +301,6 @@ struct smb2_context {
          * de/en-coded regardless of this setting
          */
         int passthrough;
-
-        /* for oplock/lease breaks, inform the app */
-        smb2_oplock_or_lease_break_cb oplock_or_lease_break_cb;
-
-        /* oplock state, needed to discriminate between notification or response */
-        int oplock_break_count;
 
         /* last file_id in a create-reply, for "related requests" */
         smb2_file_id last_file_id;
@@ -450,8 +442,6 @@ struct smb2dir {
 };
 
 
-#define smb2_is_server(ctx) ((ctx)->owning_server != NULL)
-
 void smb2_set_nterror(struct smb2_context *smb2, int nterror,
                     const char *error_string, ...);
 
@@ -523,8 +513,6 @@ void smb2_free_iovector(struct smb2_context *smb2, struct smb2_io_vectors *v);
  */
 int smb2_random_bytes(void *buf, size_t len);
 
-void smb2_oplock_break_notify(struct smb2_context *smb2, int status, void *command_data, void *cb_data);
-
 int smb2_decode_header(struct smb2_context *smb2, struct smb2_iovec *iov,
                        struct smb2_header *hdr);
 int smb2_calc_signature(struct smb2_context *smb2, uint8_t *signature,
@@ -548,115 +536,51 @@ int smb2_process_negotiate_fixed(struct smb2_context *smb2,
                                  struct smb2_pdu *pdu);
 int smb2_process_negotiate_variable(struct smb2_context *smb2,
                                     struct smb2_pdu *pdu);
-int smb2_process_negotiate_request_fixed(struct smb2_context *smb2,
-                                     struct smb2_pdu *pdu);
-int smb2_process_negotiate_request_variable(struct smb2_context *smb2,
-                                     struct smb2_pdu *pdu);
 int smb2_process_session_setup_fixed(struct smb2_context *smb2,
                                      struct smb2_pdu *pdu);
 int smb2_process_session_setup_variable(struct smb2_context *smb2,
                                         struct smb2_pdu *pdu);
-int smb2_process_session_setup_request_fixed(struct smb2_context *smb2,
-                                        struct smb2_pdu *pdu);
-int smb2_process_session_setup_request_variable(struct smb2_context *smb2,
-                                        struct smb2_pdu *pdu);
 int smb2_process_tree_connect_fixed(struct smb2_context *smb2,
-                                        struct smb2_pdu *pdu);
-int smb2_process_tree_connect_request_fixed(struct smb2_context *smb2,
-                                        struct smb2_pdu *pdu);
-int smb2_process_tree_connect_request_variable(struct smb2_context *smb2,
                                         struct smb2_pdu *pdu);
 int smb2_process_create_fixed(struct smb2_context *smb2,
                               struct smb2_pdu *pdu);
 int smb2_process_create_variable(struct smb2_context *smb2,
                                  struct smb2_pdu *pdu);
-int smb2_process_create_request_fixed(struct smb2_context *smb2,
-                              struct smb2_pdu *pdu);
-int smb2_process_create_request_variable(struct smb2_context *smb2,
-                                 struct smb2_pdu *pdu);
 int smb2_process_query_directory_fixed(struct smb2_context *smb2,
                                        struct smb2_pdu *pdu);
 int smb2_process_query_directory_variable(struct smb2_context *smb2,
-                                          struct smb2_pdu *pdu);
-int smb2_process_query_directory_request_fixed(struct smb2_context *smb2,
-                                       struct smb2_pdu *pdu);
-int smb2_process_query_directory_request_variable(struct smb2_context *smb2,
                                           struct smb2_pdu *pdu);
 int smb2_process_change_notify_fixed(struct smb2_context *smb2,
                              struct smb2_pdu *pdu);
 int smb2_process_change_notify_variable(struct smb2_context *smb2,
                              struct smb2_pdu *pdu);
-int smb2_process_change_notify_request_fixed(struct smb2_context *smb2,
-                             struct smb2_pdu *pdu);
 int smb2_process_query_info_fixed(struct smb2_context *smb2,
                                   struct smb2_pdu *pdu);
 int smb2_process_query_info_variable(struct smb2_context *smb2,
                                      struct smb2_pdu *pdu);
-int smb2_process_query_info_request_fixed(struct smb2_context *smb2,
-                                  struct smb2_pdu *pdu);
-int smb2_process_query_info_request_variable(struct smb2_context *smb2,
-                                     struct smb2_pdu *pdu);
 int smb2_process_close_fixed(struct smb2_context *smb2,
-                             struct smb2_pdu *pdu);
-int smb2_process_close_request_fixed(struct smb2_context *smb2,
                              struct smb2_pdu *pdu);
 int smb2_process_set_info_fixed(struct smb2_context *smb2,
                                 struct smb2_pdu *pdu);
-int smb2_process_set_info_request_fixed(struct smb2_context *smb2,
-                                struct smb2_pdu *pdu);
-int smb2_process_set_info_request_variable(struct smb2_context *smb2,
-                                struct smb2_pdu *pdu);
 int smb2_process_tree_disconnect_fixed(struct smb2_context *smb2,
-                                       struct smb2_pdu *pdu);
-int smb2_process_tree_disconnect_request_fixed(struct smb2_context *smb2,
                                        struct smb2_pdu *pdu);
 int smb2_process_logoff_fixed(struct smb2_context *smb2,
                               struct smb2_pdu *pdu);
-int smb2_process_logoff_request_fixed(struct smb2_context *smb2,
-                              struct smb2_pdu *pdu);
 int smb2_process_lock_fixed(struct smb2_context *smb2,
                             struct smb2_pdu *pdu);
-int smb2_process_lock_request_fixed(struct smb2_context *smb2,
-                            struct smb2_pdu *pdu);
-int smb2_process_lock_request_variable(struct smb2_context *smb2,
-                            struct smb2_pdu *pdu);
-int smb2_process_oplock_break_fixed(struct smb2_context *smb2,
-                             struct smb2_pdu *pdu);
-int smb2_process_oplock_break_variable(struct smb2_context *smb2,
-                             struct smb2_pdu *pdu);
-int smb2_process_oplock_break_request_fixed(struct smb2_context *smb2,
-                             struct smb2_pdu *pdu);
-int smb2_process_oplock_break_request_variable(struct smb2_context *smb2,
-                             struct smb2_pdu *pdu);
 int smb2_process_echo_fixed(struct smb2_context *smb2,
                             struct smb2_pdu *pdu);
-int smb2_process_echo_request_fixed(struct smb2_context *smb2,
-                            struct smb2_pdu *pdu);
 int smb2_process_flush_fixed(struct smb2_context *smb2,
-                             struct smb2_pdu *pdu);
-int smb2_process_flush_request_fixed(struct smb2_context *smb2,
                              struct smb2_pdu *pdu);
 int smb2_process_read_fixed(struct smb2_context *smb2,
                             struct smb2_pdu *pdu);
 int smb2_process_read_variable(struct smb2_context *smb2,
                             struct smb2_pdu *pdu);
-int smb2_process_read_request_fixed(struct smb2_context *smb2,
-                            struct smb2_pdu *pdu);
-int smb2_process_read_request_variable(struct smb2_context *smb2,
-                            struct smb2_pdu *pdu);
 int smb2_process_write_fixed(struct smb2_context *smb2,
-                             struct smb2_pdu *pdu);
-int smb2_process_write_request_fixed(struct smb2_context *smb2,
-                             struct smb2_pdu *pdu);
-int smb2_process_write_request_variable(struct smb2_context *smb2,
                              struct smb2_pdu *pdu);
 int smb2_process_ioctl_fixed(struct smb2_context *smb2,
                              struct smb2_pdu *pdu);
 int smb2_process_ioctl_variable(struct smb2_context *smb2,
-                                struct smb2_pdu *pdu);
-int smb2_process_ioctl_request_fixed(struct smb2_context *smb2,
-                             struct smb2_pdu *pdu);
-int smb2_process_ioctl_request_variable(struct smb2_context *smb2,
                                 struct smb2_pdu *pdu);
 int smb2_ioctl_status_uses_reply_format(uint32_t ctl_code, uint32_t status);
 

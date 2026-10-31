@@ -48,30 +48,6 @@ typedef void (*smb2_command_cb)(struct smb2_context *smb2, int status,
 typedef void (*smb2_error_cb)(struct smb2_context *smb2,
                                 const char *error_string);
 
-/*
- * callback for server accepting a new connection
- */
-typedef int (*smb2_accepted_cb)(const int fd, void *cb_data);
-
-/*
- * callback when a new connection is made to setup context
- */
-typedef void (*smb2_client_connection)(struct smb2_context *smb2, void *cb_data);
-
-/*
- * callback when a server notifies of an oplock or lease break
- * the type of break is determined from the stuct_size in the request
- * (notification) passed in.  the app can set the new oplock level
- * or new lease state for the acknowledgement that will be sent back
- */
-struct smb2_oplock_or_lease_break_reply;
-
-typedef void (*smb2_oplock_or_lease_break_cb)(struct smb2_context *smb2,
-           int status,
-           struct smb2_oplock_or_lease_break_reply *rep,
-           uint8_t *new_oplock_level,
-           uint32_t *new_lease_state);
-
 /* Stat structure */
 #define SMB2_TYPE_FILE      0x00000000
 #define SMB2_TYPE_DIRECTORY 0x00000001
@@ -148,20 +124,6 @@ typedef SOCKET t_socket;
 #ifndef T_SOCKET_DEFINED
 #define T_SOCKET_DEFINED
 typedef int t_socket;
-#endif
-/*
- * fd_set is used by the smb2_server extra_fdset/extra_service hooks below.
- * Not every toolchain we support has <sys/select.h>; the PS2 IOP one
- * declares fd_set in <ps2ip.h> instead.
- */
-#if defined(__PS2__) && !defined(_EE)
-#include <ps2ip.h>
-#elif defined(__has_include)
-#if __has_include(<sys/select.h>)
-#include <sys/select.h>
-#endif
-#else
-#include <sys/select.h>
 #endif
 #endif
 
@@ -478,12 +440,6 @@ void smb2_set_error(struct smb2_context *smb2,
  */
 void smb2_register_error_callback(struct smb2_context *smb,
                     smb2_error_cb error_cb);
-
-/*
- * register for oplock or lease break callbacks
- */
-void smb2_set_oplock_or_lease_break_callback(struct smb2_context *smb2,
-                    smb2_oplock_or_lease_break_cb cb);
 
 /*
  * Set the smb2 context passworkd from a file (see NTLM_USER_FILE)
@@ -878,17 +834,6 @@ struct smb2fh;
 struct smb2_pdu *
 smb2_open_async_pdu(struct smb2_context *smb2, const char *path, int flags,
                     smb2_command_cb cb, void *cb_data, void (*free_cb)(void *));
-
-/*
- * Returns
- *  0     : The operation was initiated. Result of the operation will be
- *          reported through the callback function.
- * -errno : There was an error. The callback function will not be invoked.
- *
- */
-int smb2_open_async_with_oplock_or_lease(struct smb2_context *smb2, const char *path, int flags,
-                    uint8_t oplock_level, uint32_t lease_state, smb2_lease_key lease_key,
-                    smb2_command_cb cb, void *cb_data);
 
 int smb2_open_async(struct smb2_context *smb2, const char *path, int flags,
                     smb2_command_cb cb, void *cb_data);
@@ -1560,154 +1505,6 @@ struct smb2_utf16 *smb2_utf8_to_utf16(const char *utf8);
  * the utf8 string.
  */
 const char *smb2_utf16_to_utf8(const uint16_t *str, size_t len);
-
-/************* Server-side API **********************************************/
-struct smb2_server;
-
-/* pdu handlers in general take the request from the client, and return
- * < 0  on error, and the library replies with STATUS_NOT_IMPLEMENTED
- * == 0 on OK, and the library should use the reply struct (if needed) to create a reply
- * > 0  if the handler created and queued a reply itself
- *
- * A handler that queues its own reply has to give it the request's
- * message id, smb2_set_pdu_message_id(smb2, pdu,
- * smb2_get_last_request_message_id(smb2)), or the reply is dropped.
- * Queueing the reply frees the request: the handler must not touch req,
- * or anything it points to, after that. A handler that replies later
- * keeps req valid until then, but has to save that message id now.
- * Pointers into the received data (a create's create_context, an
- * ioctl's input outside FSCTL_VALIDATE_NEGOTIATE_INFO) are only valid
- * during the call.
- *
- * Ioctl input and output buffers are only passed through for
- * FSCTL_PIPE_TRANSCEIVE, or for any ioctl when the context runs in
- * passthrough mode (smb2_set_passthrough()).
- *
- * cancel_cmd is told of a CANCEL (smb2_get_last_request_message_id()
- * is the id of the request to cancel). A CANCEL has no reply of its
- * own, and the library frees it once cancel_cmd returns.
- */
-struct smb2_server_request_handlers {
-        int (*destruction_event)(struct smb2_server *srvr, struct smb2_context *smb2);
-        int (*authorize_user)(struct smb2_server *srvr, struct smb2_context *smb2,
-                            const char *user,
-                            const char *domain,
-                            const char *workstation);
-        int (*session_established)(struct smb2_server *srvr, struct smb2_context *smb2);
-        int (*logoff_cmd)(struct smb2_server *srvr, struct smb2_context *smb2);
-        int (*tree_connect_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
-                            struct smb2_tree_connect_request *req,
-                            struct smb2_tree_connect_reply *rep);
-        int (*tree_disconnect_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
-                            const uint32_t tree_id);
-        int (*create_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
-                            struct smb2_create_request *req,
-                            struct smb2_create_reply *rep);
-        int (*close_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
-                            struct smb2_close_request *req,
-                            struct smb2_close_reply *rep);
-        int (*flush_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
-                            struct smb2_flush_request *req);
-        int (*read_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
-                            struct smb2_read_request *req,
-                            struct smb2_read_reply *rep);
-        int (*write_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
-                            struct smb2_write_request *req,
-                            struct smb2_write_reply *rep);
-        int (*oplock_break_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
-                            struct smb2_oplock_break_acknowledgement *req);
-        int (*lease_break_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
-                            struct smb2_lease_break_acknowledgement *req);
-        int (*lock_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
-                            struct smb2_lock_request *req);
-        /*
-         * Return 0 on success (rep filled), <0 on error, >0 to defer the
-         * reply (handler will later queue smb2_cmd_*_reply_async itself
-         * with the original request message id).
-         */
-        int (*ioctl_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
-                            struct smb2_ioctl_request *req,
-                            struct smb2_ioctl_reply *rep);
-        int (*cancel_cmd)(struct smb2_server *srvr, struct smb2_context *smb2);
-        int (*echo_cmd)(struct smb2_server *srvr, struct smb2_context *smb2);
-        int (*query_directory_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
-                            struct smb2_query_directory_request *req,
-                            struct smb2_query_directory_reply *rep);
-        int (*change_notify_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
-                            struct smb2_change_notify_request *req,
-                            struct smb2_change_notify_reply *rep);
-        int (*query_info_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
-                            struct smb2_query_info_request *req,
-                            struct smb2_query_info_reply *rep);
-        int (*set_info_cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
-                            struct smb2_set_info_request *req);
-        /*
-        int (*oplock_break cmd)(struct smb2_server *srvr, struct smb2_context *smb2,
-                            struct smb2_oplock_break_request *req);
-        */
-};
-
-struct smb2_server {
-        uint8_t guid[16];
-        char hostname[128];
-        char domain[128];
-        int fd;
-        uint16_t port;
-        uint64_t session_counter;
-        struct smb2_server_request_handlers *handlers;
-        uint32_t max_transact_size;
-        uint32_t max_read_size;
-        uint32_t max_write_size;
-        int signing_enabled;
-        int allow_anonymous;
-        /* this can be set non-0 to delegate client authentication to
-         * another client and allow any authentication to this server */
-        int proxy_authentication;
-        /* saved from negotiate to be used in validate negotiate info */
-        uint32_t capabilities;
-        uint32_t security_mode;
-        /* for kerberos, credential context */
-        char keytab_path[256];
-        char error[128];
-        void *auth_data;
-        /*
-         * Optional hooks so applications can fold extra sockets into
-         * smb2_serve_port()'s select loop (e.g. dcerpcd control UDS).
-         * extra_fdset: add FDs to rfds/wfds and update *maxfd.
-         * extra_service: handle ready FDs after the SMB clients.
-         */
-        void (*extra_fdset)(struct smb2_server *server,
-                            fd_set *rfds, fd_set *wfds, int *maxfd);
-        void (*extra_service)(struct smb2_server *server,
-                              fd_set *rfds, fd_set *wfds);
-        /*
-         * Set this from another thread, an RTOS task or a signal handler
-         * to make smb2_serve_port() finish its current pass through the
-         * loop, tear the connections down and return 0. Without it there
-         * is no way to stop the server short of killing the process.
-         */
-        volatile int stop_requested;
-        /*
-         * Set by smb2_serve_port() once the listening socket is bound and
-         * listening, and cleared again when it returns, so that whoever
-         * started the server can tell when it is actually reachable
-         * instead of having to sleep and hope.
-         */
-        volatile int listener_ready;
-};
-
-int smb2_bind_and_listen(const uint16_t port, const int max_connections, int *out_fd);
-int smb2_accept_connection_async(const int fd, const int to_msecs, smb2_accepted_cb cb, void *cb_data);
-int smb2_serve_port_async(const int fd, const int to_msecs, struct smb2_context **out_smb2);
-
-/*
- * Sync serve port()
- *
- * Returns
- *  0     : The server is complete by exiting its loop normally (shouldnt happen)
- * -errno : There was an error causing server loop to exit
- */
-int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_client_connection cb, void *cb_data);
 
 /*
  * Share enum (NetrShareEnum levels 0/1/2) is provided by libsmb2.

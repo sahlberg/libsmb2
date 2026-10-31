@@ -36,7 +36,6 @@ set(SMB2_CORE_SOURCES
     smb2-cmd-logoff.c
     smb2-cmd-negotiate.c
     smb2-cmd-notify-change.c
-    smb2-cmd-oplock-break.c
     smb2-cmd-query-directory.c
     smb2-cmd-query-info.c
     smb2-cmd-read.c

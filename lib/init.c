@@ -1026,12 +1026,6 @@ void smb2_get_passthrough(struct smb2_context *smb2,
         *passthrough = smb2->passthrough;
 }
 
-void smb2_set_oplock_or_lease_break_callback(struct smb2_context *smb2,
-                    smb2_oplock_or_lease_break_cb cb)
-{
-        smb2->oplock_or_lease_break_cb = cb;
-}
-
 #ifdef HAVE_LIBKRB5
 int smb2_delegate_credentials(struct smb2_context *in, struct smb2_context *out)
 {

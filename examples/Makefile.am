@@ -17,7 +17,6 @@ noinst_PROGRAMS = smb2-cat-async smb2-cat-sync \
 	smb2-truncate-sync \
 	smb2-rename-sync \
 	smb2-CMD-FIND	\
-	smb2-server-sync \
 	smb2-notify \
 	smb2-set-security-info \
 	smb2-compound
