@@ -179,13 +179,17 @@ static int smb2_aesni_available(void)
 #ifdef __AES__
         return 1;
 #else
+        /* contexts on several threads ask at once: every one finds the same
+         * answer, but the cache still has to be atomic */
         static int known = -1;
+        int v = __atomic_load_n(&known, __ATOMIC_RELAXED);
         unsigned int a, b, c, d;
 
-        if (known < 0) {
-                known = __get_cpuid(1, &a, &b, &c, &d) && (c & bit_AES) != 0;
+        if (v < 0) {
+                v = __get_cpuid(1, &a, &b, &c, &d) && (c & bit_AES) != 0;
+                __atomic_store_n(&known, v, __ATOMIC_RELAXED);
         }
-        return known;
+        return v;
 #endif
 }
 
