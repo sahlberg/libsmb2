@@ -1,3 +1,16 @@
+wLaunchELF branch
+=================
+This branch is a special, stripped-down build of libsmb2 for wLaunchELF's
+smb2man.irx, the IOP module behind wLaunchELF's smb: device. It carries
+changes that make the IRX smaller to fit next to wLaunchELF's other IOP
+drivers, and that are not suitable for master. For everything else, use
+master.
+
+Build the IRX with:
+  $ make -f Makefile.platform ps2_irx_all
+and copy build/lib/smb2man.irx into wLaunchELF's iop/__precompiled/.
+
+
 Libsmb2 is a userspace client/server library for accessing or serving
 SMB2/SMB3 shares on a network.
 It is high performance and fully async. It supports both zero-copy
