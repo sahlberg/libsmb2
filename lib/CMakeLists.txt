@@ -81,7 +81,7 @@ elseif(IOP AND BUILD_IRX)
   # as ps2sdk's IOP_IETABLE_CFLAGS: each import table's header is an unused
   # static, which GCC drops or moves away from its stubs otherwise
   set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/ps2/imports.c
-          PROPERTIES COMPILE_FLAGS -fno-toplevel-reorder)
+          PROPERTIES COMPILE_FLAGS "-fno-toplevel-reorder -fno-function-sections -fno-data-sections")
 
 else()
   set(SOURCES ${SMB2_CORE_SOURCES})
@@ -118,7 +118,11 @@ target_link_libraries(smb2man.elf
         PRIVATE
         gcc)
 target_include_directories(smb2man.elf PRIVATE ${_SMB2_PRIVATE_INCLUDES})
-set_target_properties(smb2man.elf PROPERTIES LINK_FLAGS "-nostdlib -dc -r")
+# Each function and object in its own section, so that the link drops all
+# that _start does not reach: most of libsmb2's API is unused by smb2man.
+target_compile_options(smb2man.elf PRIVATE -ffunction-sections -fdata-sections)
+set_target_properties(smb2man.elf PROPERTIES LINK_FLAGS
+        "-nostdlib -dc -r -Wl,--gc-sections -Wl,-e,_start -Wl,-u,_irx_id -T ${CMAKE_CURRENT_SOURCE_DIR}/ps2/irx.ld")
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/smb2man.irx
         COMMAND mipsel-none-elf-strip --strip-unneeded --remove-section=.pdr
                 --remove-section=.comment --remove-section=.mdebug.abi32
