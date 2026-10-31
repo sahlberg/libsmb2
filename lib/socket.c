@@ -106,6 +106,10 @@
 
 #include "compat.h"
 
+#if defined(__PS2__) && defined(_EE)
+#include <ps2sdkapi.h>
+#endif
+
 #include "slist.h"
 #include "smb2.h"
 #include "libsmb2.h"
@@ -1461,6 +1465,11 @@ set_nonblocking(t_socket fd)
 #elif (defined(__AMIGA__) || defined(__AROS__)) && !defined(__amigaos4__) && !defined(__amigaos3__)
         unsigned long opt = 0;
         IoctlSocket(fd, FIONBIO, (char *)&opt);
+#elif defined(__PS2__) && defined(_EE)
+        /* fcntl(F_SETFL, O_NONBLOCK) leaves a socket blocking here, and the
+         * EE has no ioctl(): the call ps2sdk's glue does have takes FIONBIO */
+        int one = 1;
+        _ps2sdk_ioctl(fd, FIONBIO, &one);
 #elif defined(__wii__) || defined(__gamecube__)
         /* net_fcntl(F_SETFL, O_NONBLOCK) is a dead end on this platform:
          * IOS's SO_FCNTL only recognises its own internal IOS_O_NONBLOCK
