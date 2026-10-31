@@ -454,7 +454,7 @@ struct sockaddr_storage {
 
 #ifdef _IOP
 typedef uint32_t UWORD32;
-typedef size_t ssize_t;
+typedef int ssize_t;
 #include <tcpip.h>
 #endif
 
@@ -515,8 +515,10 @@ struct iovec {
 #define connect(a,b,c) iop_connect(a,b,c)
 int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen);
 
-#define write(a,b,c) lwip_send(a,b,c,MSG_DONTWAIT)
-#define read(a,b,c) lwip_recv(a,b,c,MSG_DONTWAIT)
+#define write(a,b,c) iop_write(a,b,c)
+#define read(a,b,c) iop_read(a,b,c)
+int iop_write(int sockfd, const void *buf, size_t len);
+int iop_read(int sockfd, void *buf, size_t len);
 #endif
 
 #ifdef __ps2sdk_iop__

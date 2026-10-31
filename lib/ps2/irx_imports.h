@@ -16,7 +16,7 @@
 #include <irx.h>
 
 #include <intrman.h>
-#include <ioman.h>
+#include <iomanX.h>
 #include <ps2ip.h>
 #include <sifman.h>
 #include <stdio.h>

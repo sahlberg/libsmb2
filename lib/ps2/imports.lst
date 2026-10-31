@@ -1,7 +1,7 @@
-ioman_IMPORTS_start
+iomanX_IMPORTS_start
 I_AddDrv
 I_DelDrv
-ioman_IMPORTS_end
+iomanX_IMPORTS_end
 
 ps2ip_IMPORTS_start
 I_lwip_recv
@@ -76,6 +76,7 @@ I_strcmp
 I_strlen
 I_strtol
 I_sprintf
+I_prnt
 I_toupper
 sysclib_IMPORTS_end
 

@@ -142,35 +142,91 @@ time_t time(time_t *tloc)
         return sec;
 }
 
+struct prnt_buf {
+        char *str;
+        int len;
+};
+
+/* prnt() also calls this with 0x200 before the first character and 0x201 after the last */
+static void prnt_char(void *context, int c)
+{
+        struct prnt_buf *buf = context;
+
+        if (c == 0x200 || c == 0x201) {
+                return;
+        }
+        if (buf->str) {
+                buf->str[buf->len] = c;
+        }
+        buf->len++;
+}
+
 int asprintf(char **strp, const char *fmt, ...)
 {
-        int len;
-        char *str;
-        va_list args;        
+        struct prnt_buf buf = { NULL, 0 };
+        va_list args;
 
         va_start(args, fmt);
-        str = malloc(256);
-        len = sprintf(str, fmt, args);
+        prnt(prnt_char, &buf, fmt, args);
         va_end(args);
-        *strp = str;
-        return len;
+        buf.str = malloc(buf.len + 1);
+        if (buf.str == NULL) {
+                return -1;
+        }
+        buf.len = 0;
+        va_start(args, fmt);
+        prnt(prnt_char, &buf, fmt, args);
+        va_end(args);
+        buf.str[buf.len] = '\0';
+        *strp = buf.str;
+        return buf.len;
 }
 
 int errno;
 
-int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
+/*
+ * lwIP's errno is ps2ip's own and not ours, and SO_ERROR is 0 when a
+ * non-blocking call would have blocked.
+ */
+static int iop_errno(int sockfd, int would_block)
 {
-        int rc;
         int err = 0;
         socklen_t err_size = sizeof(err);
 
-        if ((rc = lwip_connect(sockfd, addr, addrlen)) < 0) {
-                if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR,
-			       (char *)&err, &err_size) != 0 || err != 0) {
-                        errno = err;
-                }
+        if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR,
+                       (char *)&err, &err_size) != 0) {
+                return EIO;
         }
+        return err ? err : would_block;
+}
 
+int iop_connect(int sockfd, struct sockaddr *addr, socklen_t addrlen)
+{
+        int rc;
+
+        if ((rc = lwip_connect(sockfd, addr, addrlen)) < 0) {
+                errno = iop_errno(sockfd, EINPROGRESS);
+        }
+        return rc;
+}
+
+int iop_read(int sockfd, void *buf, size_t len)
+{
+        int rc;
+
+        if ((rc = lwip_recv(sockfd, buf, len, MSG_DONTWAIT)) < 0) {
+                errno = iop_errno(sockfd, EAGAIN);
+        }
+        return rc;
+}
+
+int iop_write(int sockfd, const void *buf, size_t len)
+{
+        int rc;
+
+        if ((rc = lwip_send(sockfd, (void *)buf, len, MSG_DONTWAIT)) < 0) {
+                errno = iop_errno(sockfd, EAGAIN);
+        }
         return rc;
 }
 

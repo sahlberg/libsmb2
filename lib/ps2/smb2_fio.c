@@ -76,32 +76,47 @@ struct smb2_share_list *shares;
 #define smb2_io_unlock() SignalSema(smb2man_io_sema)
 
 /*
- * Takes a path of the form <share>/<path> and returns the context that
- * represents <share> and return the path within that share as **remainder.
+ * Takes a path of the form [/]<share>[/<path>] and returns the context that
+ * represents <share>, and the path within that share as *remainder ("" for
+ * the share's own root).
  */
 static struct smb2_context *find_context(char *path, char **remainder)
 {
     char *tmp;
-    struct smb2_share_list *share = shares;
+    struct smb2_share_list *share;
 
-    tmp = strchr(path, '/');
-    if (tmp == NULL) {
-        return NULL;
+    while (*path == '/') {
+        path++;
     }
-
-    *tmp++ = 0;
-    if (*remainder) {
+    tmp = strchr(path, '/');
+    if (tmp != NULL) {
+        *tmp++ = 0;
+        while (*tmp == '/') {
+            tmp++;
+        }
+    } else {
+        tmp = path + strlen(path);
+    }
+    if (remainder) {
         *remainder = tmp;
     }
 
-    while (share) {
-        if (strcmp(share->name, path)) {
+    for (share = shares; share; share = share->next) {
+        if (!strcmp(share->name, path)) {
             return share->smb2;
         }
-        share = share->next;
     }
 
     return NULL;
+}
+
+/* the device's own root, above the shares: "", "/" */
+static int is_device_root(const char *path)
+{
+    while (*path == '/') {
+        path++;
+    }
+    return *path == 0;
 }
 
 static char *prepare_path(const char *path)
@@ -180,6 +195,11 @@ static int smb2_Connect(smb2Connect_in_t *in, smb2Connect_out_t *out)
 #endif
 
     SMB2LOG("smb2_Connect: Try to connect %s as smb:/%s\n", in->url, in->name);
+    for (share = shares; share; share = share->next) {
+        if (!strncmp(share->name, in->name, sizeof(share->name) - 1)) {
+            return -EEXIST;
+        }
+    }
     share = malloc(sizeof(struct smb2_share_list));
     if (share == NULL) {
         SMB2LOG("Failed to malloc share\n");
@@ -187,17 +207,19 @@ static int smb2_Connect(smb2Connect_in_t *in, smb2Connect_out_t *out)
     }
     memset(share, 0, sizeof(struct smb2_share_list));
     share->next = shares;
-    strcpy(share->name, in->name);
+    memcpy(share->name, in->name, sizeof(share->name));
+    share->name[sizeof(share->name) - 1] = '\0';
     share->smb2 = smb2_init_context();
-    smb2_set_timeout(share->smb2, 30);
     if (share->smb2 == NULL) {
         SMB2LOG("Failed to initialize smb2 context\n");
         free(share);
         return -ENOMEM;
     }
+    smb2_set_timeout(share->smb2, 30);
     url = smb2_parse_url(share->smb2, in->url);
     if (url == NULL) {
         SMB2LOG("Failed to parse URL: %s\n", in->url);
+        smb2_destroy_context(share->smb2);
         free(share);
         return -EINVAL;
     }
@@ -205,9 +227,9 @@ static int smb2_Connect(smb2Connect_in_t *in, smb2Connect_out_t *out)
     rc = smb2_connect_share(share->smb2, url->server, url->share, in->username);
     smb2_destroy_url(url);
     if (rc) {
+        SMB2LOG("Failed to connect to share: %s %s\n", in->url, smb2_get_error(share->smb2));
         smb2_destroy_context(share->smb2);
         free(share);
-        SMB2LOG("Failed to connect to share: %s %s\n", in->url, smb2_get_error(share->smb2));
         return -EIO;
     }
     shares = share;
@@ -215,6 +237,20 @@ static int smb2_Connect(smb2Connect_in_t *in, smb2Connect_out_t *out)
         out->ctx = share->smb2;
     }
     SMB2LOG("Connected to share %s\n", in->url);
+    return 0;
+}
+
+static int smb2_DisconnectAll(void)
+{
+    struct smb2_share_list *share;
+
+    while (shares) {
+        share  = shares;
+        shares = share->next;
+        smb2_disconnect_share(share->smb2);
+        smb2_destroy_context(share->smb2);
+        free(share);
+    }
     return 0;
 }
 
@@ -231,6 +267,10 @@ int SMB2_devctl(iop_file_t *f, const char *devname, int cmd,
     switch (cmd) {
         case SMB2_DEVCTL_CONNECT:
             r = smb2_Connect((smb2Connect_in_t *)arg, (smb2Connect_out_t *)bufp);
+            break;
+
+        case SMB2_DEVCTL_DISCONNECT_ALL:
+            r = smb2_DisconnectAll();
             break;
 
         default:
@@ -265,11 +305,6 @@ int SMB2_open(iop_file_t *f, const char *filename, int flags, int mode)
 
     SMB2LOG("SMB2_OPEN %s flags:%x\n", filename, flags);
 
-    /* no writing, yet */
-    if (flags != O_RDONLY) {
-        return -EROFS;
-    }
-
     if (!filename)
         return -ENOENT;
 
@@ -290,12 +325,13 @@ int SMB2_open(iop_file_t *f, const char *filename, int flags, int mode)
         goto out;
     }
 
+    /* iomanX's FIO_O_ flags are the IOP's O_ flags, which libsmb2 takes */
     smb2_io_lock();
     ffh->smb2 = smb2;
     ffh->fh = smb2_open(smb2, p, flags);
     smb2_io_unlock();
     if (ffh->fh == NULL) {
-        rc = -EINVAL;
+        rc = (flags & O_CREAT) ? -EIO : -ENOENT;
         goto out;
     }
 
@@ -345,10 +381,20 @@ int SMB2_dopen(iop_file_t *f, const char *dirname)
     if (path == NULL) {
         return -ENOMEM;
     }
-    /* TODO:
-     * If path[0] == 0 then we are at the virtual root and should return
-     * all the shares that are mounted.
-     */
+    dfh = malloc(sizeof(struct dir_fh));
+    if (dfh == NULL) {
+        rc = -ENOMEM;
+        goto out;
+    }
+    memset(dfh, 0, sizeof(struct dir_fh));
+
+    /* the device's root lists the shares that are connected */
+    if (is_device_root(path)) {
+        dfh->is_root = true;
+        dfh->shares  = shares;
+        f->privdata  = dfh;
+        goto out;
+    }
 
     smb2 = find_context(path, &p);
     if (smb2 == NULL) {
@@ -356,24 +402,12 @@ int SMB2_dopen(iop_file_t *f, const char *dirname)
         goto out;
     }
 
-    dfh = malloc(sizeof(struct dir_fh));
-    if (dfh == NULL) {
-        rc = -ENOMEM;
-        goto out;
-    }
-
     dfh->smb2 = smb2;
-    if (p[0]) {
-        dfh->is_root = false;
-        smb2_io_lock();
-        dfh->fh = smb2_opendir(smb2, p);
-        smb2_io_unlock();
-    } else {
-        dfh->is_root = true;
-        dfh->shares  = shares;
-    }
+    smb2_io_lock();
+    dfh->fh = smb2_opendir(smb2, p);
+    smb2_io_unlock();
     if (dfh->fh == NULL) {
-        rc = -EINVAL;
+        rc = -ENOENT;
         goto out;
     }
 
@@ -396,7 +430,9 @@ int SMB2_dclose(iop_file_t *f)
     }
 
     if (!dfh->is_root) {
+        smb2_io_lock();
         smb2_closedir(dfh->smb2, dfh->fh);
+        smb2_io_unlock();
     }
 
     free(dfh);
@@ -480,7 +516,9 @@ int SMB2_dread(iop_file_t *f, iox_dirent_t *dirent)
     }
 
     if (!dfh->is_root) {
+        smb2_io_lock();
         de = smb2_readdir(dfh->smb2, dfh->fh);
+        smb2_io_unlock();
         if (de == NULL) {
             return 0;
         }
@@ -489,14 +527,16 @@ int SMB2_dread(iop_file_t *f, iox_dirent_t *dirent)
             return 0;
         }
         memset(&dirent->stat, 0, sizeof(iox_stat_t));
-        strncpy(dirent->name, dfh->shares->name, 256);
+        strncpy(dirent->name, dfh->shares->name, sizeof(dirent->name) - 1);
+        dirent->name[sizeof(dirent->name) - 1] = '\0';
         dirent->stat.mode = FIO_S_IFDIR;
         dfh->shares       = dfh->shares->next;
         return 1;
     }
 
     SMB2LOG("SMB2_DREAD %s\n", de->name);
-    strncpy(dirent->name, de->name, 256);
+    strncpy(dirent->name, de->name, sizeof(dirent->name) - 1);
+    dirent->name[sizeof(dirent->name) - 1] = '\0';
     smb2_statFiller(&de->st, &dirent->stat);
 
     return 1;
@@ -544,11 +584,16 @@ out:
 s64 SMB2_lseek64(iop_file_t *f, s64 pos, int whence)
 {
     struct file_fh *ffh = f->privdata;
-    int rc = 0;
+    s64 rc;
 
     SMB2LOG("SMB2_LSEEK64 pos:%d whence:%d\n", (int)pos, whence);
+    if (ffh == NULL) {
+        return -EBADF;
+    }
 
+    smb2_io_lock();
     rc = smb2_lseek(ffh->smb2, ffh->fh, pos, whence, NULL);
+    smb2_io_unlock();
 
     return rc;
 }
@@ -581,6 +626,9 @@ int SMB2_write(iop_file_t *f, void *buf, int size)
     int rc;
 
     SMB2LOG("SMB2_write %d\n", size);
+    if (ffh == NULL) {
+        return -EBADF;
+    }
 
     smb2_io_lock();
     rc = smb2_write(ffh->smb2, ffh->fh, buf, size);

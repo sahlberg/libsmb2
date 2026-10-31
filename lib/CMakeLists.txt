@@ -77,6 +77,10 @@ elseif(IOP AND BUILD_IRX)
             ${SMB2_CORE_SOURCES})
 
   BUILD_IOP_IMPORTS(${CMAKE_CURRENT_SOURCE_DIR}/ps2/imports.c ${CMAKE_CURRENT_SOURCE_DIR}/ps2/imports.lst)
+  # as ps2sdk's IOP_IETABLE_CFLAGS: each import table's header is an unused
+  # static, which GCC drops or moves away from its stubs otherwise
+  set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/ps2/imports.c
+          PROPERTIES COMPILE_FLAGS -fno-toplevel-reorder)
 
 else()
   set(SOURCES ${SMB2_CORE_SOURCES})
@@ -104,15 +108,26 @@ set_target_properties(smb2_rpc PROPERTIES
                            VERSION ${PROJECT_VERSION}
                            SOVERSION ${SOVERSION})
 elseif(IOP AND BUILD_IRX)
-add_executable(smb2man.irx ${SOURCES})
-target_link_libraries(smb2man.irx
+# An IRX is a relocatable object, stripped and then converted by iopfixup,
+# as ps2sdk's Makefile.iopglobal builds one: linked as an executable it is
+# not a module the IOP can load. No --rb: it turns jal into bal, which
+# reaches only 128 KB, and smb2man's .text is larger than that.
+add_executable(smb2man.elf ${SOURCES})
+target_link_libraries(smb2man.elf
         PRIVATE
         gcc)
-target_include_directories(smb2man.irx PRIVATE ${_SMB2_PRIVATE_INCLUDES})
-set_target_properties(smb2man.irx PROPERTIES
-        VERSION ${PROJECT_VERSION}
-        SOVERSION ${SOVERSION})
-add_custom_command(TARGET smb2man.irx POST_BUILD COMMAND md5sum ARGS smb2man.irx)
+target_include_directories(smb2man.elf PRIVATE ${_SMB2_PRIVATE_INCLUDES})
+set_target_properties(smb2man.elf PROPERTIES LINK_FLAGS "-nostdlib -dc -r")
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/smb2man.irx
+        COMMAND mipsel-none-elf-strip --strip-unneeded --remove-section=.pdr
+                --remove-section=.comment --remove-section=.mdebug.abi32
+                --remove-section=.gnu.attributes
+                -o smb2man-stripped.elf $<TARGET_FILE:smb2man.elf>
+        COMMAND iopfixup --irx1 --allow-zero-text -o smb2man.irx smb2man-stripped.elf
+        COMMAND md5sum smb2man.irx
+        DEPENDS smb2man.elf
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+add_custom_target(smb2man_irx ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/smb2man.irx)
 elseif(PICO_BOARD)
 add_library(libsmb2 STATIC ${SOURCES})
 target_include_directories(libsmb2 PRIVATE ${_SMB2_PRIVATE_INCLUDES})
@@ -152,10 +167,8 @@ install(TARGETS smb2_rpc EXPORT smb2_rpc
 elseif(IOP AND BUILD_IRX)
 install(FILES ps2/ps2smb2.h
 DESTINATION ${PS2SDK}/common/include)
-install(TARGETS smb2man.irx EXPORT smb2man.irx
-                            RUNTIME DESTINATION ${PS2SDK}/ports_iop/irx
-                            ARCHIVE DESTINATION smb2man.irx
-                            LIBRARY DESTINATION smb2man.irx)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/smb2man.irx
+        DESTINATION ${PS2SDK}/ports_iop/irx)
 else()
 install(TARGETS smb2 EXPORT smb2
                      RUNTIME DESTINATION bin
