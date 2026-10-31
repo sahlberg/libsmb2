@@ -244,6 +244,8 @@ struct smb2_context {
         uint8_t salt[SMB2_SALT_SIZE];
         uint16_t cypher;
         uint8_t preauthhash[SMB2_PREAUTH_HASH_SIZE];
+        /* on the list smb2_active_contexts() returns: a server's context */
+        int on_active_list;
         /* server: the hash after the negotiate, where every session's starts */
         uint8_t negotiate_preauthhash[SMB2_PREAUTH_HASH_SIZE];
 
@@ -510,6 +512,7 @@ int smb2_process_payload_variable(struct smb2_context *smb2,
 int smb2_get_fixed_size(struct smb2_context *smb2, struct smb2_pdu *pdu);
 
 struct smb2_pdu *smb2_find_pdu(struct smb2_context *smb2, uint64_t message_id);
+void smb2_add_active_context(struct smb2_context *smb2);
 void smb2_free_iovector(struct smb2_context *smb2, struct smb2_io_vectors *v);
 
 /*

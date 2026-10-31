@@ -194,13 +194,15 @@ void smb2_close_context(struct smb2_context *smb2);
 void smb2_destroy_context(struct smb2_context *smb2);
 
 /*
- * Get the list of currently allocated contexts
+ * Get the list of the contexts smb2_serve_port() has accepted and not yet
+ * destroyed. Client contexts are not on it.
  */
 struct smb2_context *smb2_active_contexts(void);
 
 /*
- * Determine of the context is currently active.  This lets
- * code know if the context was destroyed in a callback for example
+ * Is this context on the smb2_active_contexts() list, i.e. a context
+ * smb2_serve_port() accepted that has not been destroyed yet? Always 0 for
+ * a client context.
  */
 int smb2_context_active(struct smb2_context *smb2);
 

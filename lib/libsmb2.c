@@ -5722,6 +5722,7 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
                                 smb2 = NULL;
                                 err = smb2_serve_port_async(server->fd, 10, &smb2);
                                 if (!err && smb2) {
+                                        smb2_add_active_context(smb2);
                                         c_data = calloc(1, sizeof(struct connect_data));
                                         if (c_data == NULL) {
                                                 smb2_set_error(smb2, "Failed to allocate connect_data");

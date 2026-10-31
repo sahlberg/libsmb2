@@ -411,15 +411,15 @@ struct smb2_context *smb2_init_context(void)
         struct smb2_context *smb2;
         char buf[1024] _U_;
         int ret;
-        static int ctr;
-
-        /* Only seeds the fallback path in smb2_random_bytes(). */
-        srandom((unsigned)time(NULL) ^ getpid() ^ ctr++);
 
         smb2 = calloc(1, sizeof(struct smb2_context));
         if (smb2 == NULL) {
                 return NULL;
         }
+        /* Only seeds the fallback path in smb2_random_bytes(). The context's
+         * address tells contexts apart without a counter that threads
+         * creating contexts at once would race on. */
+        srandom((unsigned)time(NULL) ^ getpid() ^ (unsigned)(uintptr_t)smb2);
 
         ret = getlogin_r(buf, sizeof(buf));
         smb2_set_user(smb2, ret == 0 ? buf : "Guest");
@@ -439,9 +439,18 @@ struct smb2_context *smb2_init_context(void)
 
         smb2->session_key = NULL;
 
-        SMB2_LIST_ADD(&active_contexts, smb2);
-
         return smb2;
+}
+
+/*
+ * Only the contexts a server accepts are on the list, from the server's own
+ * loop: client contexts never touch it, so threads that each create and
+ * destroy their own contexts do not race on it.
+ */
+void smb2_add_active_context(struct smb2_context *smb2)
+{
+        SMB2_LIST_ADD(&active_contexts, smb2);
+        smb2->on_active_list = 1;
 }
 
 void smb2_destroy_context(struct smb2_context *smb2)
@@ -550,7 +559,9 @@ void smb2_destroy_context(struct smb2_context *smb2)
             free_c_data(smb2, smb2->connect_data);  /* sets smb2->connect_data to NULL */
         }
 
-        SMB2_LIST_REMOVE(&active_contexts, smb2);
+        if (smb2->on_active_list) {
+                SMB2_LIST_REMOVE(&active_contexts, smb2);
+        }
         free(smb2);
 }
 
