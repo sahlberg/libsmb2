@@ -1088,6 +1088,9 @@ read_more_data:
             (smb2->hdr.command != SMB2_NEGOTIATE) &&
             (smb2->hdr.command != SMB2_SESSION_SETUP) &&
             !(smb2_is_server(smb2) && smb2->hdr.session_id != smb2->session_id) &&
+            /* a server that no longer has the session has no key to sign
+             * this with: the status is passed on (Samba does the same) */
+            !(!smb2_is_server(smb2) && smb2->hdr.status == SMB2_STATUS_USER_SESSION_DELETED) &&
             !smb2->enc) {
                 uint8_t signature[16] _U_;
 
