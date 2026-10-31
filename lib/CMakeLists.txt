@@ -75,6 +75,8 @@ elseif(IOP AND BUILD_IRX)
             ps2/smb2man.c
             ps2/imports.c
             ${SMB2_CORE_SOURCES})
+  list(REMOVE_ITEM SOURCES smb2-share-enum.c)
+  add_definitions(-DSMB2_NO_SHARE_ENUM)
 
   BUILD_IOP_IMPORTS(${CMAKE_CURRENT_SOURCE_DIR}/ps2/imports.c ${CMAKE_CURRENT_SOURCE_DIR}/ps2/imports.lst)
   # as ps2sdk's IOP_IETABLE_CFLAGS: each import table's header is an unused

@@ -1205,6 +1205,7 @@ struct smb2_file_notify_change_information *smb2_notify_change(struct smb2_conte
         return ptr;
 }
 
+#ifndef SMB2_NO_SHARE_ENUM
 static void sync_share_enum_cb(struct smb2_context *smb2, int status,
                     void *command_data, void *private_data)
 {
@@ -1272,3 +1273,4 @@ smb2_share_enum_sync(struct smb2_context *smb2,
 
 	return rep;
 }
+#endif /* !SMB2_NO_SHARE_ENUM */
