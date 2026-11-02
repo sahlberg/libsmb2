@@ -79,7 +79,10 @@ int gethostname(char *name, size_t len)
 #define select(nfds, readfds, writefds, exceptfds, timeout) WaitSelect(nfds, readfds, writefds, exceptfds, timeout, NULL)
 #endif
 #ifdef libnix
-StdFileDes *_lx_fhfromfd(int d) { return NULL; }
+/* stdlib.h used to include stdio.h. It no longer does, so StdFileDes
+   is not declared until stdio.h itself is included. */
+#include <stdio.h>
+__stdargs StdFileDes *_lx_fhfromfd(int d) { return NULL; }
 struct MinList __filelist = { (struct MinNode *) &__filelist.mlh_Tail, NULL, (struct MinNode *) &__filelist.mlh_Head };
 #endif
 #endif
