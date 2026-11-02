@@ -990,39 +990,40 @@ encode_ntlm_challenge(struct smb2_context *smb2, struct auth_data *auth_data)
                 encoder(utf16_workstation_upper->val,
                                 utf16_workstation_upper->len * 2, auth_data);
         }
-        /* target info fields */
+        /* target info fields. AvId, AvLen and the timestamp are little-endian.
+           Host order makes the list unreadable to a little-endian client. */
         target_info_pos = auth_data->len;
         if (utf16_workstation) {
-                u16 = 0x0002; /* netbios domain */
+                u16 = htole16(0x0002); /* netbios domain */
                 encoder(&u16, 2, auth_data);
-                u16 = utf16_workstation_upper->len * 2;
-                encoder(&u16, 2, auth_data);
-                encoder(utf16_workstation_upper->val,
-                               utf16_workstation_upper->len * 2, auth_data);
-                u16 = 0x0001;  /* netbios computer name */
-                encoder(&u16, 2, auth_data);
-                u16 = utf16_workstation->len * 2;
+                u16 = htole16(utf16_workstation_upper->len * 2);
                 encoder(&u16, 2, auth_data);
                 encoder(utf16_workstation_upper->val,
                                utf16_workstation_upper->len * 2, auth_data);
-                u16 = 0x0004;  /* dns domain name */
+                u16 = htole16(0x0001);  /* netbios computer name */
                 encoder(&u16, 2, auth_data);
-                u16 = 0;
+                u16 = htole16(utf16_workstation->len * 2);
                 encoder(&u16, 2, auth_data);
-                u16 = 0x0003;  /* dns computer name */
+                encoder(utf16_workstation_upper->val,
+                               utf16_workstation_upper->len * 2, auth_data);
+                u16 = htole16(0x0004);  /* dns domain name */
                 encoder(&u16, 2, auth_data);
-                u16 = utf16_workstation->len * 2;
+                u16 = htole16(0);
+                encoder(&u16, 2, auth_data);
+                u16 = htole16(0x0003);  /* dns computer name */
+                encoder(&u16, 2, auth_data);
+                u16 = htole16(utf16_workstation->len * 2);
                 encoder(&u16, 2, auth_data);
                 encoder(utf16_workstation->val,
                                utf16_workstation->len * 2, auth_data);
         }
 
         /*  target info timestamp */
-        u16 = 0x0007;
+        u16 = htole16(0x0007);
         encoder(&u16, 2, auth_data);
-        u16 = 8;
+        u16 = htole16(8);
         encoder(&u16, 2, auth_data);
-        u64 =  auth_data->wintime;
+        u64 = htole64(auth_data->wintime);
         encoder(&u64, 8, auth_data);
 
         /* end of info */
