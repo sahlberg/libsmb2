@@ -93,6 +93,15 @@ development libraries for LibSMB2
 %{_libdir}/pkgconfig/libsmb2.pc
 
 %changelog
+* Tue Nov 03 2026 : Version 6.3.2
+ - Security fixes for malformed or hostile server replies:
+   CVE-2026-110713: bound the volume label and filesystem name
+   lengths in FS_VOLUME/FS_ATTRIBUTE info replies (heap over-read).
+   CVE-2026-110714: reject ACL sizes and descriptor offsets that
+   underflow or wrap in security descriptors (heap over-read).
+   A malformed SID inside an ACE now fails decoding instead of
+   leaving a NULL sid behind.
+ - Build fix for -Werror with newer glibc.
 * Sun Oct 25 2026 : Version 6.3.1
  - Security fix for a malformed or hostile server reply:
    a directory entry that fails to decode no longer leaves two
