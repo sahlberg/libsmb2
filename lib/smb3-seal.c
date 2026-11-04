@@ -127,11 +127,16 @@ smb3_encrypt_pdu(struct smb2_context *smb2,
                 }
         }
 
-        aes128ccm_encrypt(smb2->serverin_key,
-                          &pdu->crypt[20], 11,
-                          &pdu->crypt[20], 32,
-                          &pdu->crypt[52], spl - 52,
-                          &pdu->crypt[4], 16);
+        if (aes128ccm_encrypt(smb2->serverin_key,
+                              &pdu->crypt[20], 11,
+                              &pdu->crypt[20], 32,
+                              &pdu->crypt[52], spl - 52,
+                              &pdu->crypt[4], 16)) {
+                smb2_set_error(smb2, "Failed to encrypt PDU");
+                free(pdu->crypt);
+                pdu->crypt = NULL;
+                return -1;
+        }
         pdu->crypt_len = spl;
 
         return 0;

@@ -34,6 +34,9 @@
 
 #include "portable-endian.h"
 #include "aes.h"
+#include "aes128ccm.h"
+
+#ifndef HAVE_OPENSSL
 
 static void aes_ccm_generate_b0(unsigned char *nonce, size_t nlen,
                                 size_t alen, size_t plen, size_t mlen,
@@ -151,7 +154,7 @@ static void aes_ccm_crypt(unsigned char *key,
         }
 }
 
-void aes128ccm_encrypt(unsigned char *key,
+int aes128ccm_encrypt(unsigned char *key,
                        unsigned char *nonce, size_t nlen,
                        unsigned char *aad, size_t alen,
                        unsigned char *p, size_t plen,
@@ -164,6 +167,8 @@ void aes128ccm_encrypt(unsigned char *key,
         bxory(m, &s[0], mlen);
 
         aes_ccm_crypt(key, nonce, nlen, p, plen);
+
+        return 0;
 }
 
 int aes128ccm_decrypt(unsigned char *key,
@@ -183,3 +188,63 @@ int aes128ccm_decrypt(unsigned char *key,
 
         return memcmp(tmp, m, mlen);
 }
+
+#else /* HAVE_OPENSSL */
+
+#include <limits.h>
+#include <openssl/evp.h>
+
+static int aes128ccm_openssl(int enc, unsigned char *key,
+                             unsigned char *nonce, size_t nlen,
+                             unsigned char *aad, size_t alen,
+                             unsigned char *p, size_t plen,
+                             unsigned char *m, size_t mlen)
+{
+        EVP_CIPHER_CTX *ctx;
+        int outl, rc = -1;
+
+        if (plen > INT_MAX || alen > INT_MAX) {
+                return -1;
+        }
+        ctx = EVP_CIPHER_CTX_new();
+        if (ctx == NULL) {
+                return -1;
+        }
+        if (EVP_CipherInit_ex(ctx, EVP_aes_128_ccm(), NULL, NULL, NULL, enc) != 1 ||
+            EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_IVLEN, (int)nlen, NULL) != 1 ||
+            EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG, (int)mlen, enc ? NULL : m) != 1 ||
+            EVP_CipherInit_ex(ctx, NULL, NULL, key, nonce, enc) != 1 ||
+            EVP_CipherUpdate(ctx, NULL, &outl, NULL, (int)plen) != 1 ||
+            EVP_CipherUpdate(ctx, NULL, &outl, aad, (int)alen) != 1 ||
+            EVP_CipherUpdate(ctx, p, &outl, p, (int)plen) != 1) {
+                goto out;
+        }
+        if (enc && (EVP_CipherFinal_ex(ctx, p + outl, &outl) != 1 ||
+                    EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG, (int)mlen, m) != 1)) {
+                goto out;
+        }
+        rc = 0;
+ out:
+        EVP_CIPHER_CTX_free(ctx);
+        return rc;
+}
+
+int aes128ccm_encrypt(unsigned char *key,
+                      unsigned char *nonce, size_t nlen,
+                      unsigned char *aad, size_t alen,
+                      unsigned char *p, size_t plen,
+                      unsigned char *m, size_t mlen)
+{
+        return aes128ccm_openssl(1, key, nonce, nlen, aad, alen, p, plen, m, mlen);
+}
+
+int aes128ccm_decrypt(unsigned char *key,
+                      unsigned char *nonce, size_t nlen,
+                      unsigned char *aad, size_t alen,
+                      unsigned char *p, size_t plen,
+                      unsigned char *m, size_t mlen)
+{
+        return aes128ccm_openssl(0, key, nonce, nlen, aad, alen, p, plen, m, mlen);
+}
+
+#endif /* HAVE_OPENSSL */

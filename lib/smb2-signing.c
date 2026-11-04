@@ -240,6 +240,7 @@ SMB2_AESNI static void smb2_aesni_cmac(const uint8_t key[16], const uint8_t *msg
         _mm_storeu_si128((__m128i *)(void *)mac, x);
 }
 
+#ifndef HAVE_OPENSSL
 /* Copies want bytes of the message from iovec *v at offset *at onwards, crossing into the next iovecs. */
 static void smb2_iov_gather(const struct smb2_iovec *iov, size_t niov, size_t *v, size_t *at, uint8_t *out,
                             size_t want)
@@ -311,6 +312,7 @@ SMB2_AESNI static void smb2_aesni_cmac_iov(const uint8_t key[16], const struct s
         x = smb2_aesni_encrypt(_mm_xor_si128(x, _mm_loadu_si128((const __m128i *)(const void *)last)), rk);
         _mm_storeu_si128((__m128i *)(void *)mac, x);
 }
+#endif /* !HAVE_OPENSSL */
 #endif
 
 void smb3_aes_cmac_128(uint8_t key[AES128_KEY_LEN],
@@ -362,6 +364,49 @@ void smb3_aes_cmac_128(uint8_t key[AES128_KEY_LEN],
         memcpy(mac, scratch, AES128_KEY_LEN);
 }
 
+#ifdef HAVE_OPENSSL
+#include <openssl/core_names.h>
+#include <openssl/evp.h>
+
+static int smb2_openssl_mac(const char *name, const char *param, const char *value,
+                            const uint8_t key[SMB2_KEY_SIZE], const struct smb2_iovec *iov,
+                            size_t niov, uint8_t mac[32])
+{
+        EVP_MAC *m;
+        EVP_MAC_CTX *ctx = NULL;
+        OSSL_PARAM params[2];
+        size_t i, len;
+        int rc = -1;
+
+        m = EVP_MAC_fetch(NULL, name, NULL);
+        if (m == NULL) {
+                return -1;
+        }
+        ctx = EVP_MAC_CTX_new(m);
+        if (ctx == NULL) {
+                goto out;
+        }
+        params[0] = OSSL_PARAM_construct_utf8_string(param, (char *)value, 0);
+        params[1] = OSSL_PARAM_construct_end();
+        if (EVP_MAC_init(ctx, key, SMB2_KEY_SIZE, params) != 1) {
+                goto out;
+        }
+        for (i = 0; i < niov; i++) {
+                if (iov[i].len && EVP_MAC_update(ctx, iov[i].buf, iov[i].len) != 1) {
+                        goto out;
+                }
+        }
+        if (EVP_MAC_final(ctx, mac, &len, 32) != 1) {
+                goto out;
+        }
+        rc = 0;
+ out:
+        EVP_MAC_CTX_free(ctx);
+        EVP_MAC_free(m);
+        return rc;
+}
+#endif
+
 int
 smb2_calc_signature(struct smb2_context *smb2, uint8_t *signature,
                     struct smb2_iovec *iov, size_t niov)
@@ -370,6 +415,26 @@ smb2_calc_signature(struct smb2_context *smb2, uint8_t *signature,
         /* Clear the smb2 header signature field field */
         memset(iov[0].buf + 48, 0, 16);
 
+#ifdef HAVE_OPENSSL
+        {
+                uint8_t mac[32];
+                int rc;
+
+                if (smb2->dialect > SMB2_VERSION_0210) {
+                        rc = smb2_openssl_mac(OSSL_MAC_NAME_CMAC, OSSL_MAC_PARAM_CIPHER, "AES-128-CBC",
+                                              smb2->signing_key, iov, niov, mac);
+                } else {
+                        rc = smb2_openssl_mac(OSSL_MAC_NAME_HMAC, OSSL_MAC_PARAM_DIGEST, "SHA256",
+                                              smb2->signing_key, iov, niov, mac);
+                }
+                if (rc) {
+                        smb2_set_error(smb2, "Failed to calculate the signature");
+                        return -1;
+                }
+                memcpy(&signature[0], mac, SMB2_SIGNATURE_SIZE);
+                return 0;
+        }
+#else
         if (smb2->dialect > SMB2_VERSION_0210) {
                 size_t i = 0;
                 size_t len = 0, offset = 0;
@@ -415,6 +480,7 @@ smb2_calc_signature(struct smb2_context *smb2, uint8_t *signature,
         }
 
         return 0;
+#endif
 }
 
 int
