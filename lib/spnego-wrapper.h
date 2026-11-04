@@ -65,6 +65,12 @@ int smb2_spnego_find_mech_list_mic(struct smb2_context *smb2,
                 const int spnego_len,
                 const uint8_t **mic);
 
+/* negState of a negTokenResp, -ENOENT if it has none, -EINVAL if it
+ * is malformed. */
+int smb2_spnego_get_neg_state(struct smb2_context *smb2,
+                const uint8_t *spnego,
+                const int spnego_len);
+
 /* Initiator negTokenResp carrying only the mechListMIC. */
 int smb2_spnego_wrap_mic_resp(struct smb2_context *smb2,
                 const uint8_t *mic,

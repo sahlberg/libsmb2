@@ -1106,6 +1106,15 @@ krb5_session_reply(struct smb2_context *smb2,
                         if (iakerb_server_verify_mic(smb2, auth_data, client_mic, mic_len) < 0) {
                                 return -1;
                         }
+                        /*
+                         * A Windows initiator says accept-completed itself
+                         * here, and fails with SEC_E_INVALID_HANDLE if it
+                         * is then given another SPNEGO token.
+                         */
+                        if (smb2_spnego_get_neg_state(smb2, buf, len) ==
+                            SPNEGO_ACCEPT_COMPLETED) {
+                                return 0;
+                        }
                         return iakerb_server_wrap(smb2, auth_data,
                                                   SPNEGO_ACCEPT_COMPLETED, 0, NULL);
                 }
