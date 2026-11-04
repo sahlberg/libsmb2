@@ -5622,6 +5622,10 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
         rep.max_read_size      = smb2->max_read_size;
         rep.max_write_size     = smb2->max_write_size;
         rep.dialect_revision   = smb2->dialect;
+        /* only 3.1.1 negotiates a cipher, 3.0 and 3.0.2 always use AES-128-CCM */
+        if (smb2->dialect != SMB2_VERSION_0311) {
+                smb2->cypher = 0;
+        }
         rep.cypher             = smb2->cypher;
 
         /* remember negotiated capabilites and security mode */

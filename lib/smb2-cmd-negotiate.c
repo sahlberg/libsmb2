@@ -98,13 +98,16 @@ smb2_encode_encryption_context(struct smb2_context *smb2, struct smb2_pdu *pdu, 
         struct smb2_iovec *iov;
         uint16_t ciphers[3];
 
+        if (reply) {
+                /* the one we chose, 0 if we have none in common */
+                ciphers[n++] = smb2->cypher;
+        } else {
 #ifdef HAVE_OPENSSL
-        if (!reply) {
                 ciphers[n++] = SMB2_ENCRYPTION_AES_256_GCM;
                 ciphers[n++] = SMB2_ENCRYPTION_AES_128_GCM;
-        }
 #endif
-        ciphers[n++] = SMB2_ENCRYPTION_AES_128_CCM;
+                ciphers[n++] = SMB2_ENCRYPTION_AES_128_CCM;
+        }
 
         data_len = PAD_TO_64BIT(2 + 2 * n);
         len = 8 + data_len;
@@ -300,10 +303,12 @@ smb2_encode_negotiate_reply(struct smb2_context *smb2,
                 }
                 rep->negotiate_context_count++;
 
-                if (smb2_encode_encryption_context(smb2, pdu, 1)) {
-                        return -1;
+                if (smb2->enc_cap_offered) {
+                        if (smb2_encode_encryption_context(smb2, pdu, 1)) {
+                                return -1;
+                        }
+                        rep->negotiate_context_count++;
                 }
-                rep->negotiate_context_count++;
         }
 
         smb2_set_uint16(iov, 0, SMB2_NEGOTIATE_REPLY_SIZE);
@@ -623,11 +628,49 @@ smb2_process_negotiate_request_fixed(struct smb2_context *smb2,
 }
 
 static int
+smb2_cipher_supported(uint16_t cipher)
+{
+        switch (cipher) {
+        case SMB2_ENCRYPTION_AES_128_CCM:
+#ifdef HAVE_OPENSSL
+        case SMB2_ENCRYPTION_AES_128_GCM:
+        case SMB2_ENCRYPTION_AES_256_GCM:
+#endif
+                return 1;
+        }
+        return 0;
+}
+
+/* Take the first cipher in the client's order that we support, or 0
+ * when there is none, which the reply reports as no common cipher. */
+static int
 smb2_parse_encryption_request_context(struct smb2_context *smb2,
                               struct smb2_negotiate_request *req,
                               struct smb2_iovec *iov,
                               int offset, int len)
 {
+        uint16_t count, cipher;
+        int i;
+
+        smb2->cypher = 0;
+        smb2->enc_cap_offered = 1;
+        if (len < 2) {
+                smb2_set_error(smb2, "Encryption context too short");
+                return -1;
+        }
+        smb2_get_uint16(iov, offset, &count);
+        if (2 + 2 * (int)count > len) {
+                smb2_set_error(smb2, "Encryption context cipher count %d "
+                               "does not fit in %d bytes", count, len);
+                return -1;
+        }
+        for (i = 0; i < count; i++) {
+                smb2_get_uint16(iov, offset + 2 + 2 * i, &cipher);
+                if (smb2_cipher_supported(cipher)) {
+                        smb2->cypher = cipher;
+                        break;
+                }
+        }
         return 0;
 }
 

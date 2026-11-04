@@ -241,6 +241,8 @@ struct smb2_context {
         uint8_t sign:1;
         /* SMB3 encryption keys derived; sealed clients refuse plaintext from here on */
         uint8_t enc_keys_ready:1;
+        /* server: the client's NEGOTIATE had an encryption context */
+        uint8_t enc_cap_offered:1;
         uint8_t signing_key[SMB2_KEY_SIZE];
         uint8_t application_key[SMB2_KEY_SIZE];
         uint8_t serverin_key[SMB2_ENC_KEY_SIZE_MAX];
