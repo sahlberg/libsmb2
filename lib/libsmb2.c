@@ -5313,9 +5313,9 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                 smb2_create_signing_key(smb2);
         }
 
-        if (server->allow_anonymous && smb2->sec == SMB2_SEC_NTLMSSP &&
-                         ((smb2->user == NULL || smb2->user[0] == '\0')||
-                         (smb2->password == NULL || smb2->password[0] == '\0'))) {
+        if (!more_processing_needed && server->allow_anonymous &&
+            smb2->sec == SMB2_SEC_NTLMSSP &&
+            (smb2->user == NULL || smb2->user[0] == '\0')) {
                 rep.session_flags |= SMB2_SESSION_FLAG_IS_GUEST;
         }
 
