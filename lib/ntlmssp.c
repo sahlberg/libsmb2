@@ -616,7 +616,7 @@ static int
 NTOWFv2(const char *user, const char *password, const char *domain,
         unsigned char ntlmv2_hash[16])
 {
-        int64_t i;
+        size_t i;
         size_t len;
         char *userdomain;
         struct smb2_utf16 *utf16_userdomain = NULL;
@@ -647,7 +647,7 @@ NTOWFv2(const char *user, const char *password, const char *domain,
         }
 
         strcpy(userdomain, user);
-        for (i = strlen(userdomain) - 1; i >= 0; i--) {
+        for (i = 0; userdomain[i] != '\0'; i++) {
                 if (islower((unsigned int) userdomain[i])) {
                         userdomain[i] = toupper((unsigned int) userdomain[i]);
                 }
