@@ -456,15 +456,17 @@ struct smb2_server_request_handlers test_handlers = {
 };
 
 struct smb2_server server;
+static int ntlmssp_only;
 
 int usage(void)
 {
     fprintf(stderr, "Usage:\n"
-            "smb2-server-sync [-C cert.pem -K key.pem] <port> [hostname]\n\n"
+            "smb2-server-sync [-N] [-C cert.pem -K key.pem] <port> [hostname]\n\n"
             "hostname is the Kerberos service host (cifs/<hostname>),\n"
             "defaults to gethostname().\n"
             "-C/-K serve SMB2 over QUIC with this PEM certificate and key\n"
-            "instead of TCP, port 0 means 443.\n\n");
+            "instead of TCP, port 0 means 443.\n"
+            "-N only NTLMSSP, no Kerberos.\n\n");
     exit(1);
 }
 
@@ -486,6 +488,9 @@ void on_new_client(struct smb2_context *smb2, void *cb_data)
 //  smb2_set_version(smb2, SMB2_VERSION_0210);
 
     smb2_register_error_callback(smb2, on_smb2_error);
+    if (ntlmssp_only) {
+        smb2_set_authentication(smb2, SMB2_SEC_NTLMSSP);
+    }
     *pctx = smb2;
 }
 
@@ -496,8 +501,11 @@ int main(int argc, char **argv)
     int err, c;
 
     memset(&server, 0, sizeof(server));
-    while ((c = getopt(argc, argv, "C:K:")) != -1) {
+    while ((c = getopt(argc, argv, "C:K:N")) != -1) {
         switch (c) {
+        case 'N':
+            ntlmssp_only = 1;
+            break;
         case 'C':
             cert = optarg;
             break;
