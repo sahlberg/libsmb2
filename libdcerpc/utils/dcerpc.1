@@ -156,6 +156,9 @@ An empty line ends the file.
 With Kerberos
 .RB ( sec=krb5 )
 the credentials come from the Kerberos credential cache instead.
+.B sec=iakerb
+uses the password file, like NTLMSSP. The domain is the Kerberos realm.
+The SMB server proxies the Kerberos exchange to the KDC.
 .SH PLACEHOLDERS
 A request can use values from the replies to the requests before it,
 for example the handle returned by an open call.
