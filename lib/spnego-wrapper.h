@@ -34,6 +34,7 @@ extern "C" {
 #define SPNEGO_MECHANISM_KRB5       (0x0001)
 #define SPNEGO_MECHANISM_NTLMSSP    (0x0002)
 #define SPNEGO_MECHANISM_OTHER      (0x0004)
+#define SPNEGO_MECHANISM_IAKERB     (0x0008)
 
 int smb2_spnego_create_negotiate_reply_blob(struct smb2_context *smb2,
                 int allow_ntlmssp,
@@ -69,6 +70,28 @@ int smb2_spnego_wrap_mic_resp(struct smb2_context *smb2,
                 const uint8_t *mic,
                 const int mic_len,
                 void **blob);
+
+/* Acceptor negTokenResp: negState, then supportedMech IAKerb, the
+ * responseToken and the mechListMIC when given. */
+int smb2_spnego_wrap_acceptor_resp(struct smb2_context *smb2,
+                const int neg_state,
+                const int supported_mech_iakerb,
+                const uint8_t *mech_token, const int token_len,
+                const uint8_t *mic, const int mic_len,
+                void **blob);
+
+/* If the negTokenInit's preferred mech is IAKerb, points *token at its
+ * mechToken and returns the length. *mech_types is the DER MechTypeList
+ * the mechListMIC covers. Returns 0 if IAKerb is not preferred or there
+ * is no mechToken, -EINVAL on a malformed token. */
+int smb2_spnego_unwrap_iakerb_init(struct smb2_context *smb2,
+                const uint8_t *spnego, const int spnego_len,
+                const uint8_t **mech_types, int *mech_types_len,
+                const uint8_t **token);
+
+int smb2_spnego_unwrap_targ(struct smb2_context *smb2,
+                const uint8_t *spnego, const int spnego_len,
+                uint8_t **token, uint32_t *mechanisms);
 
 int smb2_spnego_wrap_ntlmssp_challenge(struct smb2_context *smb2,
                 const uint8_t *ntlmssp_token,

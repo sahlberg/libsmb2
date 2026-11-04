@@ -5209,7 +5209,8 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                          */
                         if (first_mech != SPNEGO_MECHANISM_NTLMSSP &&
                             (mechs & SPNEGO_MECHANISM_NTLMSSP) &&
-                            !(krb5_usable && (mechs & SPNEGO_MECHANISM_KRB5))) {
+                            !(krb5_usable && (mechs & (SPNEGO_MECHANISM_KRB5 |
+                                                       SPNEGO_MECHANISM_IAKERB)))) {
                                 int len;
 
                                 free(c_data->select_ntlmssp);
