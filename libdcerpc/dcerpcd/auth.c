@@ -247,21 +247,25 @@ dcerpcd_auth_session_established(struct smb2_server *srvr _U_,
          * NTLMSSP sets auth_kind through authorize_user() above.
          * Kerberos/GSSAPI never calls that path; libsmb2 sets smb2
          * user/domain from the ticket principal (user@REALM → user +
-         * domain). Map that to a local uid.
+         * domain) and maps the principal to a local account.
          */
         if (conn->auth_kind != DCERPCD_AUTH_USER) {
                 user = smb2_get_user(smb2);
                 if (user != NULL && user[0] != '\0' &&
                     strcasecmp(user, "guest") != 0) {
-                        struct passwd *pw = getpwnam(user);
+                        const char *local = smb2_get_local_user(smb2);
+                        struct passwd *pw = local ? getpwnam(local) : NULL;
                         const char *realm = dcerpcd_config_get()->domain;
                         const char *domain = smb2_get_domain(smb2);
 
                         if (pw == NULL) {
                                 fprintf(stderr,
                                         "session: session=%u Kerberos user "
-                                        "\"%s\" has no local account\n",
-                                        conn->session_id, user);
+                                        "\"%s@%s\" has no local account%s%s\n",
+                                        conn->session_id, user,
+                                        domain ? domain : "",
+                                        local ? " " : "",
+                                        local ? local : "");
                                 return -1;
                         }
                         if (realm != NULL && realm[0] != '\0' &&
@@ -281,16 +285,18 @@ dcerpcd_auth_session_established(struct smb2_server *srvr _U_,
                                 return -1;
                         }
                         free(conn->username);
-                        conn->username = strdup(user);
+                        conn->username = strdup(pw->pw_name);
                         if (conn->username == NULL) {
                                 return -1;
                         }
                         conn->auth_kind = DCERPCD_AUTH_USER;
                         conn->uid = pw->pw_uid;
                         printf("session established: session=%u user=%s "
-                               "uid=%u dialect=0x%04x (kerberos)\n",
+                               "uid=%u principal=%s@%s dialect=0x%04x "
+                               "(kerberos)\n",
                                conn->session_id, conn->username,
-                               (unsigned)conn->uid,
+                               (unsigned)conn->uid, user,
+                               domain ? domain : "",
                                smb2_get_dialect(smb2));
                         return 0;
                 }

@@ -51,12 +51,16 @@ NTLM and Kereberos is supported.
 
 For NTLM the usernames must map to a local user with the same name.
 
-For kerberos, the incoming SPN, of the form <username>/fqdn@REALM
-is mapped straight to <username> locally. When domain is set in the
-config only principals from that realm are accepted, and a principal
-is never mapped to root.
-
-Other mappings are planned for later.
+For kerberos, the incoming principal is mapped to a local user the same
+way as for krb5 logins: by the auth_to_local rules and localauth plugins
+in krb5.conf. Without either, a principal from the default realm maps to
+its first component, <username>@REALM to <username>. On a host joined
+with sssd or winbind their localauth plugin gives the name the system
+uses, e.g. administrator@ad.example.com with sssd's fully qualified names.
+sssd's plugin is enabled by
+    includedir /var/lib/sss/pubconf/krb5.include.d/
+in krb5.conf. When domain is set in the config only principals from that
+realm are accepted, and a principal is never mapped to root.
 
 
 idl-compiler
