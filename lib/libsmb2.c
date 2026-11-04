@@ -138,6 +138,9 @@ const smb2_file_id compound_file_id = {
         0xff, 0xff, 0xff, 0xff,  0xff, 0xff, 0xff, 0xff
 };
 
+/* NTLMSSP takes 2 or 3, Kerberos 1 or 2 */
+#define SMB2_MAX_SESSION_SETUP_LEGS 16
+
 struct connect_data {
         smb2_command_cb cb;
         void *cb_data;
@@ -161,6 +164,8 @@ struct connect_data {
         int mech_types_len;
         int ntlm_counter_proposed;
         void *select_ntlmssp;
+        /* Server: SESSION_SETUP requests in the session setup going on */
+        int session_setup_legs;
 };
 
 struct smb2fh {
@@ -4978,6 +4983,7 @@ smb2_server_retire_session(struct smb2_server *server, struct smb2_context *smb2
         c_data->mech_types = NULL;
         c_data->mech_types_len = 0;
         c_data->ntlm_counter_proposed = 0;
+        c_data->session_setup_legs = 0;
         free(smb2->session_key);
         smb2->session_key = NULL;
         smb2->session_key_size = 0;
@@ -5152,6 +5158,15 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                         return;
                 }
                 smb2_set_error(smb2, "request %d before a session setup", smb2->hdr.command);
+                smb2_close_context(smb2);
+                return;
+        }
+
+        /* Every leg can make the server work, NTLMSSP and Kerberos keep
+         * state that grows, so a client gets a bounded number of them. */
+        if (++c_data->session_setup_legs > SMB2_MAX_SESSION_SETUP_LEGS) {
+                smb2_set_error(smb2, "session setup needs more than %d legs",
+                               SMB2_MAX_SESSION_SETUP_LEGS);
                 smb2_close_context(smb2);
                 return;
         }
@@ -5394,6 +5409,10 @@ reply:
             smb2->sec == SMB2_SEC_NTLMSSP &&
             (smb2->user == NULL || smb2->user[0] == '\0')) {
                 rep.session_flags |= SMB2_SESSION_FLAG_IS_GUEST;
+        }
+
+        if (!more_processing_needed) {
+                c_data->session_setup_legs = 0;
         }
 
         if (!pdu) {
