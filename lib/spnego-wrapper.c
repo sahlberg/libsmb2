@@ -721,6 +721,55 @@ fail:
 }
 
 int
+smb2_spnego_find_mech_list_mic(struct smb2_context *smb2, const uint8_t *spnego,
+               const int spnego_len, const uint8_t **mic)
+{
+        struct asn1ber_context asn_decoder;
+        uint32_t typecode;
+        uint32_t typelen;
+        uint32_t end;
+        int fail_line = 0;
+        int ret;
+
+        *mic = NULL;
+        memset(&asn_decoder, 0, sizeof(asn_decoder));
+        asn_decoder.src = discard_const(spnego);
+        asn_decoder.src_count = spnego_len;
+        asn_decoder.src_tail = 0;
+
+        require_typeandlen(&asn_decoder, ASN1_CONTEXT(1), 2, fail);
+        require_typeandlen(&asn_decoder, ASN1_SEQUENCE(0), 0, fail);
+        end = asn_decoder.src_tail + typelen;
+        if (end > (uint32_t)spnego_len) {
+                fail_line = __LINE__;
+                goto fail;
+        }
+        while (asn_decoder.src_tail < end) {
+                ret = ber_typelen_from_ber(&asn_decoder, (ber_type_t *)&typecode, &typelen);
+                require_noerr(ret, fail);
+                if (typelen > end - asn_decoder.src_tail) {
+                        fail_line = __LINE__;
+                        goto fail;
+                }
+                if (typecode == ASN1_CONTEXT(3)) {
+                        require_typeandlen(&asn_decoder, asnOCTET_STRING, 1, fail);
+                        if (typelen > end - asn_decoder.src_tail) {
+                                fail_line = __LINE__;
+                                goto fail;
+                        }
+                        *mic = asn_decoder.src + asn_decoder.src_tail;
+                        return typelen;
+                }
+                asn_decoder.src_tail += typelen;
+        }
+        return 0;
+
+fail:
+        smb2_set_error(smb2, "bad spnego mechListMIC at line %d, offset %d", fail_line, asn_decoder.src_tail);
+        return -EINVAL;
+}
+
+int
 smb2_spnego_unwrap_gssapi(struct smb2_context *smb2, const uint8_t *spnego,
                         const int spnego_len, const int suppress_errors,
                         uint8_t **token, uint32_t *mechanisms)

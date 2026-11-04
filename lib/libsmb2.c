@@ -912,9 +912,16 @@ session_setup_cb(struct smb2_context *smb2, int status,
                  * At this point SMB2 layer reported success already, so we
                  * ignore krb5 errors.
                  */
-                krb5_session_request(smb2, c_data->auth_data,
+                if (krb5_session_request(smb2, c_data->auth_data,
                                          rep->security_buffer,
-                                         rep->security_buffer_length);
+                                         rep->security_buffer_length) < 0 &&
+                    smb2->sec == SMB2_SEC_IAKERB) {
+                        /* the acceptor's SPNEGO mechListMIC did not verify */
+                        smb2_close_context(smb2);
+                        c_data->cb(smb2, -EACCES, NULL, c_data->cb_data);
+                        free_c_data(smb2, c_data);
+                        return;
+                }
        }
 #endif
 

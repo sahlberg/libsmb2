@@ -84,6 +84,11 @@ static unsigned char smb2_iakerb_oid[] = { 0x2b, 0x06, 0x01, 0x05, 0x02, 0x05 };
 #if !(defined(__APPLE__) && defined(HAVE_GSS_GSS_H))
 static gss_OID_desc smb2_mech_iakerb = { sizeof(smb2_iakerb_oid), smb2_iakerb_oid };
 #endif
+/* DER mechTypes of our NegTokenInit, the input to SPNEGO's mechListMIC */
+static unsigned char iakerb_mech_types[] = {
+        0x30, 0x08, 0x06, 0x06, 0x2b, 0x06, 0x01, 0x05, 0x02, 0x05
+};
+
 /* 1.2.840.113554.1.2.2 */
 static const unsigned char smb2_krb5_oid[] = { 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x01, 0x02, 0x02 };
 
@@ -529,6 +534,36 @@ krb5_session_get_session_key(struct smb2_context *smb2,
         return 0;
 }
 
+/* RFC 4178: a mechListMIC from the acceptor must verify. */
+static int
+iakerb_verify_acceptor_mic(struct smb2_context *smb2,
+                           struct private_auth_data *auth_data,
+                           const unsigned char *buf, int len)
+{
+        gss_buffer_desc msg = { sizeof(iakerb_mech_types), iakerb_mech_types };
+        gss_buffer_desc mic;
+        const uint8_t *p;
+        uint32_t maj, min;
+        int n;
+
+        if (buf == NULL || auth_data->iakerb_mic_verified) {
+                return 0;
+        }
+        n = smb2_spnego_find_mech_list_mic(smb2, buf, len, &p);
+        if (n <= 0) {
+                return n;
+        }
+        mic.value = discard_const(p);
+        mic.length = n;
+        maj = gss_verify_mic(&min, auth_data->context, &msg, &mic, NULL);
+        if (GSS_ERROR(maj)) {
+                krb5_set_gss_error(smb2, "SPNEGO mechListMIC", maj, min);
+                return -1;
+        }
+        auth_data->iakerb_mic_verified = 1;
+        return 0;
+}
+
 int
 krb5_session_request(struct smb2_context *smb2,
                      struct private_auth_data *auth_data,
@@ -548,7 +583,7 @@ krb5_session_request(struct smb2_context *smb2,
 
         /* The final SPNEGO reply only carries the acceptor's mechListMIC. */
         if (auth_data->iakerb_complete) {
-                return 0;
+                return iakerb_verify_acceptor_mic(smb2, auth_data, buf, len);
         }
 
         if (buf) {
@@ -625,15 +660,15 @@ krb5_session_request(struct smb2_context *smb2,
          */
         if (smb2->sec == SMB2_SEC_IAKERB && maj == GSS_S_COMPLETE &&
             auth_data->output_token.length == 0) {
-                static unsigned char mech_types[] = {
-                        0x30, 0x08, 0x06, 0x06, 0x2b, 0x06, 0x01, 0x05, 0x02, 0x05
-                };
-                gss_buffer_desc msg = { sizeof(mech_types), mech_types };
+                gss_buffer_desc msg = { sizeof(iakerb_mech_types), iakerb_mech_types };
                 gss_buffer_desc mic = GSS_C_EMPTY_BUFFER;
                 void *wrapped = NULL;
                 int wlen;
 
                 auth_data->iakerb_complete = 1;
+                if (iakerb_verify_acceptor_mic(smb2, auth_data, buf, len) < 0) {
+                        return -1;
+                }
                 maj = gss_get_mic(&min, auth_data->context, GSS_C_QOP_DEFAULT, &msg, &mic);
                 if (GSS_ERROR(maj)) {
                         krb5_set_gss_error(smb2, "gss_get_mic", maj, min);

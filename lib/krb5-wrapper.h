@@ -69,6 +69,7 @@ struct private_auth_data {
         unsigned char *spnego_buf;
         int spnego_len;
         int iakerb_complete;
+        int iakerb_mic_verified;
         int get_proxy_cred;
         int use_spnego;
         char *g_server;

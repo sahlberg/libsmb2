@@ -56,6 +56,13 @@ int smb2_spnego_wrap_iakerb_resp(struct smb2_context *smb2,
                 const int token_len,
                 void **blob);
 
+/* Points *mic at the mechListMIC of a negTokenResp. Returns its length,
+ * 0 if there is none, or -EINVAL. */
+int smb2_spnego_find_mech_list_mic(struct smb2_context *smb2,
+                const uint8_t *spnego,
+                const int spnego_len,
+                const uint8_t **mic);
+
 /* Initiator negTokenResp carrying only the mechListMIC. */
 int smb2_spnego_wrap_mic_resp(struct smb2_context *smb2,
                 const uint8_t *mic,
