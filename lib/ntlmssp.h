@@ -49,6 +49,12 @@ ntlmssp_destroy_context(struct auth_data *auth);
 void
 ntlmssp_set_spnego_wrapping(struct auth_data *auth, int wrap);
 
+/* Server: the initiator's SPNEGO MechTypeList, and whether NTLMSSP was
+ * chosen over its preferred mech. */
+int
+ntlmssp_set_spnego_mech_types(struct auth_data *auth, const uint8_t *mech_types,
+                              int len, int counter_proposed);
+
 int
 ntlmssp_get_spnego_wrapping(struct auth_data *auth);
 

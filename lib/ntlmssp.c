@@ -104,6 +104,13 @@ struct auth_data {
         int is_authenticated;
         uint64_t wintime;
         uint8_t exported_session_key[SMB2_KEY_SIZE];
+
+        /* Server: the initiator's SPNEGO MechTypeList, which the
+         * mechListMICs cover, and whether we chose NTLMSSP over its
+         * preferred mech, which makes the MICs mandatory (RFC 4178). */
+        uint8_t *mech_types;
+        int mech_types_len;
+        int counter_proposed;
 };
 
 #define NTLMSSP_NEGOTIATE_56                               0x80000000
@@ -134,7 +141,63 @@ ntlmssp_destroy_context(struct auth_data *auth)
         free(auth->target_name);
         free(auth->client_challenge);
         free(auth->target_info);
+        free(auth->mech_types);
         free(auth);
+}
+
+int
+ntlmssp_set_spnego_mech_types(struct auth_data *auth, const uint8_t *mech_types,
+                              int len, int counter_proposed)
+{
+        free(auth->mech_types);
+        auth->mech_types = NULL;
+        auth->mech_types_len = 0;
+        auth->counter_proposed = counter_proposed;
+        if (mech_types == NULL || len <= 0) {
+                return 0;
+        }
+        auth->mech_types = malloc(len);
+        if (auth->mech_types == NULL) {
+                return -1;
+        }
+        memcpy(auth->mech_types, mech_types, len);
+        auth->mech_types_len = len;
+        return 0;
+}
+
+/*
+ * NTLMSSP_MESSAGE_SIGNATURE over msg with extended session security and
+ * no key exchange, which is all our CHALLENGE offers (MS-NLMP 3.4.4.2),
+ * for the first message in a direction: sequence number 0.
+ */
+static void
+ntlmssp_mic(const uint8_t *exported_session_key, int server_to_client,
+            const uint8_t *msg, int len, uint8_t sig[16])
+{
+        static const char s2c[] = "session key to server-to-client signing key magic constant";
+        static const char c2s[] = "session key to client-to-server signing key magic constant";
+        const char *magic = server_to_client ? s2c : c2s;
+        struct MD5Context ctx;
+        uint8_t sign_key[16];
+        uint8_t mac[16];
+        uint8_t *data;
+
+        MD5Init(&ctx);
+        MD5Update(&ctx, exported_session_key, 16);
+        MD5Update(&ctx, (const md5byte *)magic, strlen(magic) + 1);
+        MD5Final(sign_key, &ctx);
+
+        data = calloc(1, 4 + len);
+        if (data != NULL) {
+                memcpy(data + 4, msg, len);
+                smb2_hmac_md5(data, 4 + len, sign_key, 16, mac);
+                free(data);
+        } else {
+                memset(mac, 0, sizeof(mac));
+        }
+        memset(sig, 0, 16);
+        sig[0] = 1;
+        memcpy(sig + 4, mac, 8);
 }
 
 static int
@@ -1124,7 +1187,9 @@ ntlmssp_generate_blob(struct smb2_server *server, struct smb2_context *smb2, tim
                                 if (auth_data->spnego_wrap) {
                                         spnego_len = smb2_spnego_wrap_ntlmssp_challenge(smb2,
                                                         auth_data->buf,
-                                                         auth_data->len, (void*)&spnego_buf);
+                                                        auth_data->len,
+                                                        !auth_data->counter_proposed,
+                                                        (void*)&spnego_buf);
                                         if (spnego_len < 0) {
                                                 smb2_set_error(smb2, "can not wrap challenge");
                                                 return -1;
@@ -1135,12 +1200,58 @@ ntlmssp_generate_blob(struct smb2_server *server, struct smb2_context *smb2, tim
                                 }
                         }
                         else if (cmd == AUTHENTICATION_MESSAGE) {
+                                const uint8_t *client_mic = NULL;
+                                uint8_t mic[16];
+                                int mic_len = 0;
+
                                 auth_data->is_authenticated = !ntlmssp_authenticate_blob(server,
                                                         smb2, auth_data,
                                                         ntlmssp, ntlmssp_len);
+                                if (auth_data->spnego_wrap && input_buf[0] != 'N') {
+                                        mic_len = smb2_spnego_find_mech_list_mic(smb2,
+                                                        input_buf, input_len, &client_mic);
+                                        if (mic_len < 0) {
+                                                mic_len = 0;
+                                                auth_data->is_authenticated = 0;
+                                        }
+                                }
+                                /*
+                                 * RFC 4178: the MICs are mandatory when we chose NTLMSSP over
+                                 * the initiator's preferred mech, and an acceptor that gets one
+                                 * must check it and send its own.
+                                 */
+                                if (auth_data->is_authenticated &&
+                                    (mic_len || auth_data->counter_proposed)) {
+                                        if (auth_data->mech_types == NULL || mic_len != 16) {
+                                                smb2_set_error(smb2, "NTLMSSP: no usable SPNEGO "
+                                                               "mechListMIC from the client");
+                                                auth_data->is_authenticated = 0;
+                                        } else {
+                                                ntlmssp_mic(auth_data->exported_session_key, 0,
+                                                            auth_data->mech_types,
+                                                            auth_data->mech_types_len, mic);
+                                                if (memcmp(mic, client_mic, 16)) {
+                                                        smb2_set_error(smb2, "NTLMSSP: SPNEGO "
+                                                                       "mechListMIC does not verify");
+                                                        auth_data->is_authenticated = 0;
+                                                } else {
+                                                        ntlmssp_mic(auth_data->exported_session_key, 1,
+                                                                    auth_data->mech_types,
+                                                                    auth_data->mech_types_len, mic);
+                                                        mic_len = 16;
+                                                }
+                                        }
+                                } else {
+                                        mic_len = 0;
+                                }
+                                if (!auth_data->is_authenticated) {
+                                        mic_len = 0;
+                                }
                                 if (auth_data->spnego_wrap) {
                                         spnego_len = smb2_spnego_wrap_authenticate_result(smb2,
-                                                                auth_data->is_authenticated, (void*)&spnego_buf);
+                                                                auth_data->is_authenticated,
+                                                                mic_len ? mic : NULL, mic_len,
+                                                                (void*)&spnego_buf);
                                         if (spnego_len < 0) {
                                                 smb2_set_error(smb2, "can not wrap auth result");
                                                 return -1;

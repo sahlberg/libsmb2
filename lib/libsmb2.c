@@ -154,6 +154,13 @@ struct connect_data {
 
         /* if context is being served by our server */
         struct smb2_server *server_context;
+
+        /* Server: the initiator's SPNEGO MechTypeList, and the
+         * negTokenResp choosing NTLMSSP over its preferred mech. */
+        uint8_t *mech_types;
+        int mech_types_len;
+        int ntlm_counter_proposed;
+        void *select_ntlmssp;
 };
 
 struct smb2fh {
@@ -675,6 +682,8 @@ free_c_data(struct smb2_context *smb2, struct connect_data *c_data)
         free(discard_const(c_data->server));
         free(discard_const(c_data->share));
         free(discard_const(c_data->user));
+        free(c_data->mech_types);
+        free(c_data->select_ntlmssp);
         free(c_data);
 }
 
@@ -4965,6 +4974,10 @@ smb2_server_retire_session(struct smb2_server *server, struct smb2_context *smb2
 #endif
                 c_data->auth_data = NULL;
         }
+        free(c_data->mech_types);
+        c_data->mech_types = NULL;
+        c_data->mech_types_len = 0;
+        c_data->ntlm_counter_proposed = 0;
         free(smb2->session_key);
         smb2->session_key = NULL;
         smb2->session_key_size = 0;
@@ -5153,6 +5166,60 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
 
         pdu = NULL;
 
+        if ((smb2->sec == SMB2_SEC_UNDEFINED || smb2->sec == SMB2_SEC_NTLMSSP) &&
+            c_data->mech_types == NULL) {
+                uint32_t first_mech, mechs;
+                const uint8_t *types;
+                int types_len, krb5_usable = 0;
+
+                if (smb2_spnego_parse_mech_types(smb2, req->security_buffer,
+                                                 req->security_buffer_length,
+                                                 &first_mech, &mechs,
+                                                 &types, &types_len) == 0) {
+                        c_data->mech_types = malloc(types_len);
+                        if (c_data->mech_types == NULL) {
+                                smb2_set_error(smb2, "Failed to allocate mechTypes");
+                                smb2_close_context(smb2);
+                                return;
+                        }
+                        memcpy(c_data->mech_types, types, types_len);
+                        c_data->mech_types_len = types_len;
+#ifdef HAVE_LIBKRB5
+                        krb5_usable = smb2->sec != SMB2_SEC_NTLMSSP;
+#endif
+                        /*
+                         * MIT's SPNEGO handles any list with krb5 in it.
+                         * Otherwise, if the preferred mech is one we lack,
+                         * choose NTLMSSP and wait for its NEGOTIATE.
+                         */
+                        if (first_mech != SPNEGO_MECHANISM_NTLMSSP &&
+                            (mechs & SPNEGO_MECHANISM_NTLMSSP) &&
+                            !(krb5_usable && (mechs & SPNEGO_MECHANISM_KRB5))) {
+                                int len;
+
+                                free(c_data->select_ntlmssp);
+                                c_data->select_ntlmssp = NULL;
+                                len = smb2_spnego_select_ntlmssp(smb2, &c_data->select_ntlmssp);
+                                if (len < 0) {
+                                        smb2_close_context(smb2);
+                                        return;
+                                }
+                                smb2->sec = SMB2_SEC_NTLMSSP;
+                                c_data->ntlm_counter_proposed = 1;
+                                rep.security_buffer = c_data->select_ntlmssp;
+                                rep.security_buffer_length = len;
+                                if (!smb2->session_id) {
+                                        smb2->session_id = server->session_counter++;
+                                }
+                                smb2->connect_data = c_data;
+                                smb2->next_pdu = smb2_allocate_pdu(smb2, SMB2_SESSION_SETUP,
+                                               smb2_session_setup_request_cb, cb_data);
+                                more_processing_needed = 1;
+                                goto reply;
+                        }
+                }
+        }
+
         if (smb2->sec == SMB2_SEC_UNDEFINED || smb2->sec == SMB2_SEC_NTLMSSP) {
                 /* if we haven't set sec type yet, and the blob contains
                  * valid ntlmssp, use our ntlmssp implementation, but supress
@@ -5193,7 +5260,11 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                                         server->hostname,
                                         smb2->client_challenge
                                         );
-                        if (!c_data->auth_data) {
+                        if (!c_data->auth_data ||
+                            ntlmssp_set_spnego_mech_types(c_data->auth_data,
+                                                          c_data->mech_types,
+                                                          c_data->mech_types_len,
+                                                          c_data->ntlm_counter_proposed) < 0) {
                                 smb2_set_error(smb2, "can not init auth data %s", smb2_get_error(smb2));
                                 smb2_close_context(smb2);
                                 return;
@@ -5204,7 +5275,9 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                         smb2->next_pdu = smb2_allocate_pdu(smb2, SMB2_SESSION_SETUP,
                                        smb2_session_setup_request_cb, cb_data);
                         more_processing_needed = 1;
-                        smb2->session_id = server->session_counter++;
+                        if (!smb2->session_id) {
+                                smb2->session_id = server->session_counter++;
+                        }
                 }
                 else if (message_type == AUTHENTICATION_MESSAGE) {
                         if (c_data->auth_data == NULL) {
@@ -5294,6 +5367,7 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                 }
         }
 #endif
+reply:
         if (smb2->sign && have_valid_session_key == 0) {
                 smb2_close_context(smb2);
                 smb2_set_error(smb2, "Signing required by server. Session "
