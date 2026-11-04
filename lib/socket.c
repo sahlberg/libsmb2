@@ -418,6 +418,9 @@ smb2_pdu_bytes_left(struct smb2_context *smb2)
 typedef ssize_t (*read_func)(struct smb2_context *smb2,
                              const struct iovec *iov, int iovcnt);
 
+/* SMB1 header, WordCount and ByteCount */
+#define SMB1_NEGOTIATE_MIN_SIZE 35
+
 static int smb2_read_data(struct smb2_context *smb2, read_func func,
                           int has_xfrmhdr)
 {
@@ -427,8 +430,10 @@ static int smb2_read_data(struct smb2_context *smb2, read_func func,
         size_t num_done;
         size_t iov_offset = 0;
         static char smb3tfrm[4] = {0xFD, 'S', 'M', 'B'};
+        static char smb1_magic[4] = {0xFF, 'S', 'M', 'B'};
         struct smb2_pdu *pdu = smb2->pdu;
         ssize_t count;
+        uint32_t hdr_len;
         int len;
 
 read_more_data:
@@ -512,7 +517,17 @@ read_more_data:
                  * bare SMB2 header, or that is large enough to be a memory
                  * exhaustion vector, before we act on it.
                  */
-                if (smb2->spl < SMB2_HEADER_SIZE ||
+                /*
+                 * A server must also take an SMB1 NEGOTIATE, which can be
+                 * shorter than an SMB2 header: a Windows client offering
+                 * only SMB2 dialects sends 58 bytes.
+                 */
+                hdr_len = SMB2_HEADER_SIZE;
+                if (smb2_is_server(smb2) && smb2->spl >= SMB1_NEGOTIATE_MIN_SIZE &&
+                    smb2->spl < SMB2_HEADER_SIZE) {
+                        hdr_len = smb2->spl;
+                }
+                if (smb2->spl < hdr_len ||
                     smb2->spl > smb2_recv_pdu_cap(smb2)) {
                         smb2_set_error(smb2, "Invalid session packet length "
                                        "%u in PDU", smb2->spl);
@@ -520,12 +535,18 @@ read_more_data:
                 }
                 smb2->recv_state = SMB2_RECV_HEADER;
                 if (smb2_add_iovector(smb2, &smb2->in, &smb2->header[0],
-                                  SMB2_HEADER_SIZE, NULL) == NULL) {
+                                  hdr_len, NULL) == NULL) {
                         smb2_set_error(smb2, "Too many I/O vectors when adding header");
                         return -1;
                 }
                 goto read_more_data;
         case SMB2_RECV_HEADER:
+                if (smb2->in.iov[smb2->in.niov - 1].len < SMB2_HEADER_SIZE &&
+                    memcmp(smb2->in.iov[smb2->in.niov - 1].buf, smb1_magic, 4)) {
+                        smb2_set_error(smb2, "Invalid session packet length "
+                                       "%u in PDU", smb2->spl);
+                        return -1;
+                }
                 if (!memcmp(smb2->in.iov[smb2->in.niov - 1].buf, smb3tfrm, 4)) {
                         {
                                 /* validate the transform header before allocating for its payload */
@@ -623,7 +644,8 @@ read_more_data:
                         uint8_t flusher[32];
                         struct iovec fiov;
 
-                        if (smb2->in.num_done != SMB2_SPL_SIZE + SMB2_HEADER_SIZE) {
+                        if (smb2->in.num_done != SMB2_SPL_SIZE +
+                            smb2->in.iov[smb2->in.niov - 1].len) {
                                 smb2_set_error(smb2, "SMB1 NEGOTIATE inside a "
                                                "compound");
                                 return -1;

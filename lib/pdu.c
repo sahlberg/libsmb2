@@ -545,11 +545,7 @@ smb2_decode_header(struct smb2_context *smb2, struct smb2_iovec *iov,
         static char smb1sign[4] = {0xFF, 'S', 'M', 'B'};
         static char smb2sign[4] = {0xFE, 'S', 'M', 'B'};
 
-        if (iov->len < SMB2_HEADER_SIZE) {
-                smb2_set_error(smb2, "io vector for header is too small");
-                return -1;
-        }
-        if (!memcmp(iov->buf, smb1sign, 4)) {
+        if (iov->len >= 5 && !memcmp(iov->buf, smb1sign, 4)) {
                 /* an SMBv1 request. if it is a negotiate request
                  * allow it through, else ingore */
                 if (iov->buf[4] == SMB1_NEGOTIATE) {
@@ -559,6 +555,10 @@ smb2_decode_header(struct smb2_context *smb2, struct smb2_iovec *iov,
                         return 0;
                 }
                 smb2_set_error(smb2, "not handling SMBv1 request");
+                return -1;
+        }
+        if (iov->len < SMB2_HEADER_SIZE) {
+                smb2_set_error(smb2, "io vector for header is too small");
                 return -1;
         }
         if (memcmp(iov->buf, smb2sign, 4)) {
