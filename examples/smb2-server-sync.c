@@ -459,7 +459,9 @@ struct smb2_server server;
 int usage(void)
 {
     fprintf(stderr, "Usage:\n"
-            "smbsever [port]\n\n");
+            "smb2-server-sync <port> [hostname]\n\n"
+            "hostname is the Kerberos service host (cifs/<hostname>),\n"
+            "defaults to gethostname().\n\n");
     exit(1);
 }
 
@@ -500,6 +502,9 @@ int main(int argc, char **argv)
     server.allow_anonymous = 1;
 
     server.port = strtoul(argv[1], NULL, 0);
+    if (argc > 2) {
+        snprintf(server.hostname, sizeof(server.hostname), "%s", argv[2]);
+    }
 
     err = smb2_serve_port(&server, 1, on_new_client, (void *)&smb2);
     if (err) {
