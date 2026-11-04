@@ -23,6 +23,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <string.h>
 #include <time.h>
 #include <errno.h>
+#include <unistd.h>
 
 #include "smb2.h"
 #include "libsmb2.h"
@@ -459,9 +460,11 @@ struct smb2_server server;
 int usage(void)
 {
     fprintf(stderr, "Usage:\n"
-            "smb2-server-sync <port> [hostname]\n\n"
+            "smb2-server-sync [-C cert.pem -K key.pem] <port> [hostname]\n\n"
             "hostname is the Kerberos service host (cifs/<hostname>),\n"
-            "defaults to gethostname().\n\n");
+            "defaults to gethostname().\n"
+            "-C/-K serve SMB2 over QUIC with this PEM certificate and key\n"
+            "instead of TCP, port 0 means 443.\n\n");
     exit(1);
 }
 
@@ -489,26 +492,44 @@ void on_new_client(struct smb2_context *smb2, void *cb_data)
 int main(int argc, char **argv)
 {
     struct smb2_context *smb2 = NULL;
-    int err;
-
-    if (argc < 2) {
-        usage();
-    }
+    const char *cert = NULL, *key = NULL;
+    int err, c;
 
     memset(&server, 0, sizeof(server));
+    while ((c = getopt(argc, argv, "C:K:")) != -1) {
+        switch (c) {
+        case 'C':
+            cert = optarg;
+            break;
+        case 'K':
+            key = optarg;
+            break;
+        default:
+            usage();
+        }
+    }
+    if (optind >= argc || !cert != !key) {
+        usage();
+    }
+    if (cert) {
+        server.quic = 1;
+        snprintf(server.quic_cert_file, sizeof(server.quic_cert_file), "%s", cert);
+        snprintf(server.quic_key_file, sizeof(server.quic_key_file), "%s", key);
+    }
+
     server.handlers = &test_handlers;
 
     server.signing_enabled = 1;
     server.allow_anonymous = 1;
 
-    server.port = strtoul(argv[1], NULL, 0);
-    if (argc > 2) {
-        snprintf(server.hostname, sizeof(server.hostname), "%s", argv[2]);
+    server.port = strtoul(argv[optind], NULL, 0);
+    if (optind + 1 < argc) {
+        snprintf(server.hostname, sizeof(server.hostname), "%s", argv[optind + 1]);
     }
 
     err = smb2_serve_port(&server, 1, on_new_client, (void *)&smb2);
     if (err) {
-        fprintf(stderr, "smb2_serv_port failed %d\n", err);
+        fprintf(stderr, "smb2_serve_port failed %d %s\n", err, server.error);
         exit(err);
     }
 
