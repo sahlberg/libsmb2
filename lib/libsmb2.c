@@ -5333,6 +5333,15 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                         pdu->header.status = SMB2_STATUS_MORE_PROCESSING_REQUIRED;
                 }
                 else {
+                        /* 3.1.1 always signs the final response of an
+                         * authenticated session, so the client can check
+                         * the preauth integrity hash (MS-SMB2 3.3.5.5.3) */
+                        if (smb2->dialect == SMB2_VERSION_0311 &&
+                            smb2->session_key_size &&
+                            !(rep.session_flags & (SMB2_SESSION_FLAG_IS_GUEST |
+                                                   SMB2_SESSION_FLAG_IS_NULL))) {
+                                pdu->must_sign = 1;
+                        }
                         if (server->handlers && server->handlers->session_established) {
                                 ret = server->handlers->session_established(server, smb2);
                                 if (ret) {
