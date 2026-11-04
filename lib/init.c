@@ -546,6 +546,7 @@ void smb2_destroy_context(struct smb2_context *smb2)
         smb2->session_key = NULL;
 
         free(discard_const(smb2->user));
+        free(smb2->local_user);
         free(discard_const(smb2->server));
         free(discard_const(smb2->share));
         free(discard_const(smb2->password));
@@ -918,6 +919,14 @@ const char *smb2_get_user(struct smb2_context *smb2)
 {
         if (smb2 && smb2->user) {
                 return smb2->user;
+        }
+        return NULL;
+}
+
+const char *smb2_get_local_user(struct smb2_context *smb2)
+{
+        if (smb2 && smb2->local_user) {
+                return smb2->local_user;
         }
         return NULL;
 }

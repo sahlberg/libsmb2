@@ -95,6 +95,7 @@ smb2_get_file_id
 smb2_get_last_request_async_id
 smb2_get_last_request_message_id
 smb2_get_last_reply_message_id
+smb2_get_local_user
 smb2_get_last_request_tree_id
 smb2_get_max_read_size
 smb2_get_max_write_size

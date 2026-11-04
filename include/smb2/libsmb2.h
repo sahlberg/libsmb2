@@ -459,6 +459,13 @@ void smb2_set_user(struct smb2_context *smb2, const char *user);
 const char *smb2_get_user(struct smb2_context *smb2);
 
 /*
+ * Server: the local account a Kerberos client's principal maps to, as
+ * krb5's auth_to_local rules and localauth plugins (sssd, winbind) say.
+ * returns NULL for NTLMSSP sessions or when the principal has no mapping.
+ */
+const char *smb2_get_local_user(struct smb2_context *smb2);
+
+/*
  * Set the password that we will try to authenticate as.
  * This function is only needed when libsmb2 is built --without-libkrb5
  */

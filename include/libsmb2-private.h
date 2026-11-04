@@ -206,6 +206,8 @@ struct smb2_context {
         const char *server;
         const char *share;
         const char *user;
+        /* Server: local account of the Kerberos client, from gss_localname */
+        char *local_user;
 
         /* Only used with --without-libkrb5 */
         const char *password;

@@ -1003,6 +1003,21 @@ krb5_session_reply(struct smb2_context *smb2,
                 return -1;
         }
 
+#if !defined(__APPLE__) || !defined(HAVE_GSS_GSS_H)
+        free(smb2->local_user);
+        smb2->local_user = NULL;
+        {
+                gss_buffer_desc lname = GSS_C_EMPTY_BUFFER;
+                OM_uint32 lmin;
+
+                if (gss_localname(&lmin, auth_data->user_name, GSS_C_NO_OID,
+                                  &lname) == GSS_S_COMPLETE) {
+                        smb2->local_user = strndup(lname.value, lname.length);
+                        gss_release_buffer(&lmin, &lname);
+                }
+        }
+#endif
+
         if (token.length && (char*)token.value) {
                 char *user;
                 char *dpos;
