@@ -469,6 +469,10 @@ void smb2_close_connecting_fds(struct smb2_context *smb2);
 #endif
 struct iovec;
 int smb2_quic_handshake_start(struct smb2_context *smb2);
+int smb2_quic_server_handshake_start(struct smb2_context *smb2,
+                                     const char *cert_file,
+                                     const char *key_file);
+int smb2_quic_listen(uint16_t port, int max_connections, int *out_fd);
 int smb2_quic_handshake_service(struct smb2_context *smb2);
 int smb2_quic_events(struct smb2_context *smb2);
 ssize_t smb2_quic_writev(struct smb2_context *smb2,

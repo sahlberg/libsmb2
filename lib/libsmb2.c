@@ -5767,7 +5767,24 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
                 return err;
         }
 #endif
-        err = smb2_bind_and_listen(server->port, max_connections, &server->fd);
+        if (server->quic) {
+#ifdef HAVE_LIBQUIC
+                err = smb2_quic_listen(server->port, max_connections, &server->fd);
+                if (err != 0) {
+                        snprintf(server->error, sizeof(server->error),
+                                 "QUIC listen on port %u failed: %s, is the "
+                                 "quic kernel module loaded?",
+                                 server->port ? server->port : 443,
+                                 strerror(-err));
+                }
+#else
+                snprintf(server->error, sizeof(server->error),
+                         "built without libquic");
+                err = -EINVAL;
+#endif
+        } else {
+                err = smb2_bind_and_listen(server->port, max_connections, &server->fd);
+        }
         if (err != 0) {
                 return err;
         }
@@ -5880,6 +5897,14 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
                                         if (cb) {
                                                 cb(smb2, cb_data);
                                         }
+#ifdef HAVE_LIBQUIC
+                                        if (server->quic &&
+                                            smb2_quic_server_handshake_start(smb2,
+                                                        server->quic_cert_file,
+                                                        server->quic_key_file) < 0) {
+                                                smb2_close_context(smb2);
+                                        }
+#endif
                                 }
                                 else if (err) {
                                         break;

@@ -1709,6 +1709,15 @@ struct smb2_server {
          * instead of having to sleep and hope.
          */
         volatile int listener_ready;
+        /*
+         * SMB2 over QUIC instead of TCP, when built with libquic: listen
+         * on UDP port "port", 443 if 0. quic_cert_file is the PEM
+         * certificate chain the server presents, quic_key_file its PEM
+         * private key.
+         */
+        int quic;
+        char quic_cert_file[256];
+        char quic_key_file[256];
 };
 
 int smb2_bind_and_listen(const uint16_t port, const int max_connections, int *out_fd);

@@ -40,6 +40,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/uio.h>
+#include <unistd.h>
 #include <netinet/quic.h>
 
 #include "compat.h"
@@ -111,12 +112,9 @@ smb2_quic_set_server_name(struct smb2_context *smb2, gnutls_session_t session)
         return ret;
 }
 
-/*
- * Called once the QUIC socket is connected. Returns 0 while the
- * handshake is in progress, 1 when it has completed and -1 on error.
- */
-int
-smb2_quic_handshake_start(struct smb2_context *smb2)
+static int
+smb2_quic_handshake_setup(struct smb2_context *smb2, const char *cert_file,
+                          const char *key_file)
 {
         struct smb2_quic_handshake *hs;
         int ret;
@@ -128,14 +126,26 @@ smb2_quic_handshake_start(struct smb2_context *smb2)
         }
         smb2->quic_hs = hs;
 
-        /* The server certificate is not verified, same as libquic's own
-         * quic_client_handshake(). SMB authentication, signing and
-         * sealing still run on top. */
         ret = gnutls_certificate_allocate_credentials(&hs->cred);
         if (ret) {
                 goto err;
         }
-        ret = gnutls_init(&hs->session, GNUTLS_CLIENT);
+        if (cert_file) {
+                ret = gnutls_certificate_set_x509_key_file(hs->cred, cert_file,
+                                                           key_file,
+                                                           GNUTLS_X509_FMT_PEM);
+                if (ret) {
+                        smb2_set_error(smb2, "QUIC: can not load certificate "
+                                       "%s and key %s: %s", cert_file,
+                                       key_file, gnutls_strerror(ret));
+                        smb2_quic_handshake_free(smb2);
+                        return -1;
+                }
+                ret = gnutls_init(&hs->session, GNUTLS_SERVER |
+                                  GNUTLS_NO_AUTO_SEND_TICKET);
+        } else {
+                ret = gnutls_init(&hs->session, GNUTLS_CLIENT);
+        }
         if (ret) {
                 goto err;
         }
@@ -153,9 +163,11 @@ smb2_quic_handshake_start(struct smb2_context *smb2)
         if (ret) {
                 goto err;
         }
-        ret = smb2_quic_set_server_name(smb2, hs->session);
-        if (ret) {
-                goto err;
+        if (!cert_file) {
+                ret = smb2_quic_set_server_name(smb2, hs->session);
+                if (ret) {
+                        goto err;
+                }
         }
         gnutls_transport_set_int(hs->session, smb2->fd);
 
@@ -170,6 +182,68 @@ smb2_quic_handshake_start(struct smb2_context *smb2)
         smb2_set_error(smb2, "QUIC handshake setup failed: %d", ret);
         smb2_quic_handshake_free(smb2);
         return -1;
+}
+
+/*
+ * Called once the QUIC socket is connected. Returns 0 while the
+ * handshake is in progress, 1 when it has completed and -1 on error.
+ */
+int
+smb2_quic_handshake_start(struct smb2_context *smb2)
+{
+        /* The server certificate is not verified, same as libquic's own
+         * quic_client_handshake(). SMB authentication, signing and
+         * sealing still run on top. */
+        return smb2_quic_handshake_setup(smb2, NULL, NULL);
+}
+
+/*
+ * Called for a connection accepted on a QUIC listener. The client opens
+ * the stream, so the server never sends with MSG_QUIC_STREAM_NEW.
+ */
+int
+smb2_quic_server_handshake_start(struct smb2_context *smb2,
+                                 const char *cert_file, const char *key_file)
+{
+        smb2->quic = 1;
+        smb2->quic_stream_open = 1;
+        return smb2_quic_handshake_setup(smb2, cert_file, key_file);
+}
+
+/* A QUIC listener only accepts connections that offer the "smb" ALPN. */
+int
+smb2_quic_listen(uint16_t port, int max_connections, int *out_fd)
+{
+        struct sockaddr_in sin;
+        int fd;
+
+        *out_fd = -1;
+        fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_QUIC);
+        if (fd < 0) {
+                return -errno;
+        }
+        if (setsockopt(fd, SOL_QUIC, QUIC_SOCKOPT_ALPN, SMB2_QUIC_ALPN,
+                       strlen(SMB2_QUIC_ALPN)) < 0) {
+                goto err;
+        }
+        memset(&sin, 0, sizeof(sin));
+        sin.sin_family = AF_INET;
+        sin.sin_port = htons(port ? port : 443);
+        sin.sin_addr.s_addr = INADDR_ANY;
+        if (bind(fd, (struct sockaddr *)&sin, sizeof(sin)) < 0 ||
+            listen(fd, max_connections) < 0) {
+                goto err;
+        }
+        *out_fd = fd;
+        return 0;
+
+ err:
+        {
+                int err = -errno;
+
+                close(fd);
+                return err;
+        }
 }
 
 /*
