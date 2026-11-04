@@ -205,6 +205,26 @@ AS_IF([test "x$MAYBE_LIBRDMACM" != "x"], [
     AC_MSG_NOTICE([Build WITHOUT SMB Direct support])
 ])
 AC_SUBST([MAYBE_LIBRDMACM])
+
+AC_ARG_WITH([openssl],
+            [AS_HELP_STRING([--with-openssl],
+                            [Use OpenSSL 3 libcrypto for signing and encryption (default: no)])])
+MAYBE_LIBCRYPTO=""
+AS_IF([test "x$with_openssl" = "xyes"], [
+    AC_CHECK_HEADER([openssl/core_names.h], [
+        AC_CHECK_LIB([crypto], [EVP_MAC_fetch], [
+            AC_DEFINE([HAVE_OPENSSL], [1], [Whether we use OpenSSL's libcrypto])
+            MAYBE_LIBCRYPTO="-lcrypto"
+        ])
+    ])
+    AS_IF([test "x$MAYBE_LIBCRYPTO" = "x"], [
+        AC_MSG_ERROR([OpenSSL 3.0 or later libcrypto not found])
+    ])
+    AC_MSG_NOTICE([Build with OpenSSL])
+], [
+    AC_MSG_NOTICE([Build WITHOUT OpenSSL])
+])
+AC_SUBST([MAYBE_LIBCRYPTO])
 AC_SUBST([LIBSOCKET])
 
 AC_CHECK_LIB([dl], [dlsym], [], [AC_MSG_ERROR([dlsym not found, libdl is required])])
