@@ -105,6 +105,13 @@ static int smb3_aesgcm(int enc, uint16_t cypher, uint8_t *key, uint8_t nonce[12]
 #define SMB3_GCM(smb2) 0
 #endif
 
+/* serverin_key protects what the client sends, serverout_key what the
+ * server sends. */
+#define SEAL_KEY(smb2) (smb2_is_server(smb2) ? \
+                        (smb2)->serverout_key : (smb2)->serverin_key)
+#define UNSEAL_KEY(smb2) (smb2_is_server(smb2) ? \
+                          (smb2)->serverin_key : (smb2)->serverout_key)
+
 int
 smb3_encrypt_pdu(struct smb2_context *smb2,
                  struct smb2_pdu *pdu)
@@ -168,11 +175,11 @@ smb3_encrypt_pdu(struct smb2_context *smb2,
 
 #ifdef HAVE_OPENSSL
         if (SMB3_GCM(smb2)) {
-                rc = smb3_aesgcm(1, smb2->cypher, smb2->serverin_key, &pdu->crypt[20],
+                rc = smb3_aesgcm(1, smb2->cypher, SEAL_KEY(smb2), &pdu->crypt[20],
                                  &pdu->crypt[20], &pdu->crypt[52], spl - 52, &pdu->crypt[4]);
         } else
 #endif
-        rc = aes128ccm_encrypt(smb2->serverin_key,
+        rc = aes128ccm_encrypt(SEAL_KEY(smb2),
                                &pdu->crypt[20], 11,
                                &pdu->crypt[20], 32,
                                &pdu->crypt[52], spl - 52,
@@ -197,11 +204,11 @@ smb3_do_decrypt_pdu(struct smb2_context *smb2)
 
 #ifdef HAVE_OPENSSL
         if (SMB3_GCM(smb2)) {
-                rc = smb3_aesgcm(0, smb2->cypher, smb2->serverout_key, &hdr[20], &hdr[20],
+                rc = smb3_aesgcm(0, smb2->cypher, UNSEAL_KEY(smb2), &hdr[20], &hdr[20],
                                  data->buf, data->len, &hdr[4]);
         } else
 #endif
-        rc = aes128ccm_decrypt(smb2->serverout_key, &hdr[20], 11, &hdr[20], 32,
+        rc = aes128ccm_decrypt(UNSEAL_KEY(smb2), &hdr[20], 11, &hdr[20], 32,
                                data->buf, data->len, &hdr[4], 16);
         if (rc) {
                 smb2_set_error(smb2, "Failed to decrypt PDU");

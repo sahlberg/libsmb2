@@ -607,6 +607,10 @@ read_more_data:
                                        "encrypted session");
                         return -1;
                 }
+                /* a server encrypts its responses once the client encrypts */
+                if (smb2_is_server(smb2) && smb2->enc != NULL) {
+                        smb2->seal = 1;
+                }
                 if (smb2_decode_header(smb2, &smb2->in.iov[smb2->in.niov - 1],
                                        &smb2->hdr) != 0) {
                         smb2_set_error(smb2, "Failed to decode smb2 "

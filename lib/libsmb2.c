@@ -5311,6 +5311,9 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
         if (!more_processing_needed && have_valid_session_key &&
             smb2->session_key_size) {
                 smb2_create_signing_key(smb2);
+                if (smb2->dialect >= SMB2_VERSION_0300) {
+                        smb2->enc_keys_ready = 1;
+                }
         }
 
         if (!more_processing_needed && server->allow_anonymous &&
