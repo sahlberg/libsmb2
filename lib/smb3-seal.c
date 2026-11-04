@@ -71,8 +71,8 @@ static const char xfer[4] = {0xFD, 'S', 'M', 'B'};
 #include <limits.h>
 #include <openssl/evp.h>
 
-static int smb3_aes128gcm(int enc, uint8_t *key, uint8_t nonce[12], uint8_t aad[32],
-                          uint8_t *p, size_t plen, uint8_t tag[16])
+static int smb3_aesgcm(int enc, uint16_t cypher, uint8_t *key, uint8_t nonce[12], uint8_t aad[32],
+                       uint8_t *p, size_t plen, uint8_t tag[16])
 {
         EVP_CIPHER_CTX *ctx;
         int outl, rc = -1;
@@ -84,7 +84,8 @@ static int smb3_aes128gcm(int enc, uint8_t *key, uint8_t nonce[12], uint8_t aad[
         if (ctx == NULL) {
                 return -1;
         }
-        if (EVP_CipherInit_ex(ctx, EVP_aes_128_gcm(), NULL, key, nonce, enc) != 1 ||
+        if (EVP_CipherInit_ex(ctx, cypher == SMB2_ENCRYPTION_AES_256_GCM ? EVP_aes_256_gcm() : EVP_aes_128_gcm(),
+                              NULL, key, nonce, enc) != 1 ||
             EVP_CipherUpdate(ctx, NULL, &outl, aad, 32) != 1 ||
             EVP_CipherUpdate(ctx, p, &outl, p, (int)plen) != 1 ||
             (!enc && EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG, 16, tag) != 1) ||
@@ -98,7 +99,8 @@ static int smb3_aes128gcm(int enc, uint8_t *key, uint8_t nonce[12], uint8_t aad[
         return rc;
 }
 
-#define SMB3_GCM(smb2) ((smb2)->cypher == SMB2_ENCRYPTION_AES_128_GCM)
+#define SMB3_GCM(smb2) ((smb2)->cypher == SMB2_ENCRYPTION_AES_128_GCM || \
+                        (smb2)->cypher == SMB2_ENCRYPTION_AES_256_GCM)
 #else
 #define SMB3_GCM(smb2) 0
 #endif
@@ -166,8 +168,8 @@ smb3_encrypt_pdu(struct smb2_context *smb2,
 
 #ifdef HAVE_OPENSSL
         if (SMB3_GCM(smb2)) {
-                rc = smb3_aes128gcm(1, smb2->serverin_key, &pdu->crypt[20], &pdu->crypt[20],
-                                    &pdu->crypt[52], spl - 52, &pdu->crypt[4]);
+                rc = smb3_aesgcm(1, smb2->cypher, smb2->serverin_key, &pdu->crypt[20],
+                                 &pdu->crypt[20], &pdu->crypt[52], spl - 52, &pdu->crypt[4]);
         } else
 #endif
         rc = aes128ccm_encrypt(smb2->serverin_key,
@@ -195,8 +197,8 @@ smb3_do_decrypt_pdu(struct smb2_context *smb2)
 
 #ifdef HAVE_OPENSSL
         if (SMB3_GCM(smb2)) {
-                rc = smb3_aes128gcm(0, smb2->serverout_key, &hdr[20], &hdr[20],
-                                    data->buf, data->len, &hdr[4]);
+                rc = smb3_aesgcm(0, smb2->cypher, smb2->serverout_key, &hdr[20], &hdr[20],
+                                 data->buf, data->len, &hdr[4]);
         } else
 #endif
         rc = aes128ccm_decrypt(smb2->serverout_key, &hdr[20], 11, &hdr[20], 32,

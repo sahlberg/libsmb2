@@ -698,6 +698,34 @@ tree_connect_cb(struct smb2_context *smb2, int status,
         free_c_data(smb2, c_data);
 }
 
+/* SP800-108 counter mode KDF with HMAC-SHA256. ki_len bytes of the
+ * derivation key are used, zero padded to at least 16, and out_len (16 or
+ * 32) bytes are derived. */
+static void smb2_kdf(const uint8_t *derivation_key, uint32_t derivation_key_len, uint32_t ki_len,
+                     const char *label, uint32_t label_len, const char *context, uint32_t context_len,
+                     uint8_t *derived_key, uint32_t out_len)
+{
+        unsigned char nul = 0;
+        const uint32_t counter = htobe32(1);
+        const uint32_t keylen = htobe32(out_len * 8);
+        uint8_t input_key[SMB2_ENC_KEY_SIZE_MAX] = {0};
+        HMACContext ctx;
+        uint8_t digest[USHAMaxHashSize];
+
+        if (ki_len < SMB2_KEY_SIZE) {
+                ki_len = SMB2_KEY_SIZE;
+        }
+        memcpy(input_key, derivation_key, MIN(ki_len, derivation_key_len));
+        hmacReset(&ctx, SHA256, input_key, ki_len);
+        hmacInput(&ctx, (unsigned char *)&counter, sizeof(counter));
+        hmacInput(&ctx, (unsigned char *)label, label_len);
+        hmacInput(&ctx, &nul, 1);
+        hmacInput(&ctx, (unsigned char *)context, context_len);
+        hmacInput(&ctx, (unsigned char *)&keylen, sizeof(keylen));
+        hmacResult(&ctx, digest);
+        memcpy(derived_key, digest, out_len);
+}
+
 void smb2_derive_key(
     uint8_t     *derivation_key,
     uint32_t    derivation_key_len,
@@ -708,23 +736,8 @@ void smb2_derive_key(
     uint8_t     derived_key[SMB2_KEY_SIZE]
     )
 {
-        unsigned char nul = 0;
-        const uint32_t counter = htobe32(1);
-        const uint32_t keylen = htobe32(SMB2_KEY_SIZE * 8);
-        uint8_t input_key[SMB2_KEY_SIZE] = {0};
-        HMACContext ctx;
-        uint8_t digest[USHAMaxHashSize];
-
-        memcpy(input_key, derivation_key, MIN(sizeof(input_key),
-                                              derivation_key_len));
-        hmacReset(&ctx, SHA256, input_key, sizeof(input_key));
-        hmacInput(&ctx, (unsigned char *)&counter, sizeof(counter));
-        hmacInput(&ctx, (unsigned char *)label, label_len);
-        hmacInput(&ctx, &nul, 1);
-        hmacInput(&ctx, (unsigned char *)context, context_len);
-        hmacInput(&ctx, (unsigned char *)&keylen, sizeof(keylen));
-        hmacResult(&ctx, digest);
-        memcpy(derived_key, digest, SMB2_KEY_SIZE);
+        smb2_kdf(derivation_key, derivation_key_len, SMB2_KEY_SIZE, label, label_len,
+                 context, context_len, derived_key, SMB2_KEY_SIZE);
 }
 
 /* MS-SMB2 3.2.5.2 */
@@ -808,6 +821,13 @@ static void smb2_create_signing_key(struct smb2_context *smb2)
                                 sizeof(ServerOut),
                                 smb2->serverout_key);
         } else if (smb2->dialect > SMB2_VERSION_0302) {
+                /* MS-SMB2 3.2.5.3.1: AES-256 keys come from the full session key */
+                uint32_t ki_len = SMB2_KEY_SIZE, out_len = SMB2_KEY_SIZE;
+
+                if (smb2->cypher == SMB2_ENCRYPTION_AES_256_GCM) {
+                        ki_len = MIN(smb2->session_key_size, SMB2_ENC_KEY_SIZE_MAX);
+                        out_len = SMB2_ENC_KEY_SIZE_MAX;
+                }
                 smb2_derive_key(smb2->session_key,
                                 smb2->session_key_size,
                                 SMBSigningKey,
@@ -822,20 +842,14 @@ static void smb2_create_signing_key(struct smb2_context *smb2)
                                 (char *)smb2->preauthhash,
                                 SMB2_PREAUTH_HASH_SIZE,
                                 smb2->application_key);
-                smb2_derive_key(smb2->session_key,
-                                smb2->session_key_size,
-                                SMBC2SCipherKey,
-                                sizeof(SMBC2SCipherKey),
-                                (char *)smb2->preauthhash,
-                                SMB2_PREAUTH_HASH_SIZE,
-                                smb2->serverin_key);
-                smb2_derive_key(smb2->session_key,
-                                smb2->session_key_size,
-                                SMBS2CCipherKey,
-                                sizeof(SMBS2CCipherKey),
-                                (char *)smb2->preauthhash,
-                                SMB2_PREAUTH_HASH_SIZE,
-                                smb2->serverout_key);
+                smb2_kdf(smb2->session_key, smb2->session_key_size, ki_len,
+                         SMBC2SCipherKey, sizeof(SMBC2SCipherKey),
+                         (char *)smb2->preauthhash, SMB2_PREAUTH_HASH_SIZE,
+                         smb2->serverin_key, out_len);
+                smb2_kdf(smb2->session_key, smb2->session_key_size, ki_len,
+                         SMBS2CCipherKey, sizeof(SMBS2CCipherKey),
+                         (char *)smb2->preauthhash, SMB2_PREAUTH_HASH_SIZE,
+                         smb2->serverout_key, out_len);
         }
 }
 
@@ -4947,8 +4961,8 @@ smb2_server_retire_session(struct smb2_server *server, struct smb2_context *smb2
         smb2->session_key_size = 0;
         memset(smb2->signing_key, 0, SMB2_KEY_SIZE);
         memset(smb2->application_key, 0, SMB2_KEY_SIZE);
-        memset(smb2->serverin_key, 0, SMB2_KEY_SIZE);
-        memset(smb2->serverout_key, 0, SMB2_KEY_SIZE);
+        memset(smb2->serverin_key, 0, sizeof(smb2->serverin_key));
+        memset(smb2->serverout_key, 0, sizeof(smb2->serverout_key));
         smb2->enc_keys_ready = 0;
         smb2->session_id = 0;
         memcpy(smb2->preauthhash, smb2->negotiate_preauthhash, SMB2_PREAUTH_HASH_SIZE);

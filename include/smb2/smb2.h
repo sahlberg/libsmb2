@@ -106,6 +106,7 @@ enum smb2_command {
 
 #define SMB2_ENCRYPTION_AES_128_CCM        0x0001
 #define SMB2_ENCRYPTION_AES_128_GCM        0x0002
+#define SMB2_ENCRYPTION_AES_256_GCM        0x0004
 
 #define SMB2_NEGOTIATE_MAX_DIALECTS 10
 

@@ -96,10 +96,11 @@ smb2_encode_encryption_context(struct smb2_context *smb2, struct smb2_pdu *pdu, 
         uint8_t *buf;
         int len, data_len, i, n = 0;
         struct smb2_iovec *iov;
-        uint16_t ciphers[2];
+        uint16_t ciphers[3];
 
 #ifdef HAVE_OPENSSL
         if (!reply) {
+                ciphers[n++] = SMB2_ENCRYPTION_AES_256_GCM;
                 ciphers[n++] = SMB2_ENCRYPTION_AES_128_GCM;
         }
 #endif
@@ -377,6 +378,7 @@ smb2_parse_encryption_context(struct smb2_context *smb2,
         case SMB2_ENCRYPTION_AES_128_CCM:
 #ifdef HAVE_OPENSSL
         case SMB2_ENCRYPTION_AES_128_GCM:
+        case SMB2_ENCRYPTION_AES_256_GCM:
 #endif
                 return 0;
         }
