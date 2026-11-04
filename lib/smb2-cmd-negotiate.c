@@ -91,13 +91,21 @@ smb2_encode_preauth_context(struct smb2_context *smb2, struct smb2_pdu *pdu)
 }
 
 static int
-smb2_encode_encryption_context(struct smb2_context *smb2, struct smb2_pdu *pdu)
+smb2_encode_encryption_context(struct smb2_context *smb2, struct smb2_pdu *pdu, int reply)
 {
         uint8_t *buf;
-        int len, data_len;
+        int len, data_len, i, n = 0;
         struct smb2_iovec *iov;
+        uint16_t ciphers[2];
 
-        data_len = PAD_TO_64BIT(4);
+#ifdef HAVE_OPENSSL
+        if (!reply) {
+                ciphers[n++] = SMB2_ENCRYPTION_AES_128_GCM;
+        }
+#endif
+        ciphers[n++] = SMB2_ENCRYPTION_AES_128_CCM;
+
+        data_len = PAD_TO_64BIT(2 + 2 * n);
         len = 8 + data_len;
         len = PAD_TO_64BIT(len);
         buf = malloc(len);
@@ -113,8 +121,10 @@ smb2_encode_encryption_context(struct smb2_context *smb2, struct smb2_pdu *pdu)
         }
         smb2_set_uint16(iov, 0, SMB2_ENCRYPTION_CAP);
         smb2_set_uint16(iov, 2, data_len);
-        smb2_set_uint16(iov, 8, 1);
-        smb2_set_uint16(iov, 10, SMB2_ENCRYPTION_AES_128_CCM);
+        smb2_set_uint16(iov, 8, n);
+        for (i = 0; i < n; i++) {
+                smb2_set_uint16(iov, 10 + 2 * i, ciphers[i]);
+        }
 
         return 0;
 }
@@ -172,7 +182,7 @@ smb2_encode_negotiate_request(struct smb2_context *smb2,
                 req->negotiate_context_count++;
 
                 if (req->capabilities & SMB2_GLOBAL_CAP_ENCRYPTION) {
-                        if (smb2_encode_encryption_context(smb2, pdu)) {
+                        if (smb2_encode_encryption_context(smb2, pdu, 0)) {
                                 return -1;
                         }
                         req->negotiate_context_count++;
@@ -289,7 +299,7 @@ smb2_encode_negotiate_reply(struct smb2_context *smb2,
                 }
                 rep->negotiate_context_count++;
 
-                if (smb2_encode_encryption_context(smb2, pdu)) {
+                if (smb2_encode_encryption_context(smb2, pdu, 1)) {
                         return -1;
                 }
                 rep->negotiate_context_count++;
@@ -348,10 +358,30 @@ static int
 smb2_parse_encryption_context(struct smb2_context *smb2,
                               struct smb2_negotiate_reply *rep,
                               struct smb2_iovec *iov,
-                              int offset)
+                              int offset, int len)
 {
-        smb2_get_uint16(iov, offset, &rep->cypher);
-        return 0;
+        uint16_t count;
+
+        if (len < 4) {
+                smb2_set_error(smb2, "Encryption context too short");
+                return -1;
+        }
+        smb2_get_uint16(iov, offset, &count);
+        smb2_get_uint16(iov, offset + 2, &rep->cypher);
+        if (count != 1) {
+                smb2_set_error(smb2, "Server selected %d ciphers", count);
+                return -1;
+        }
+        switch (rep->cypher) {
+        case 0: /* no common cipher */
+        case SMB2_ENCRYPTION_AES_128_CCM:
+#ifdef HAVE_OPENSSL
+        case SMB2_ENCRYPTION_AES_128_GCM:
+#endif
+                return 0;
+        }
+        smb2_set_error(smb2, "Server selected cipher 0x%04x that we did not offer", rep->cypher);
+        return -1;
 }
 
 static int
@@ -382,7 +412,7 @@ smb2_parse_negotiate_contexts(struct smb2_context *smb2,
                         break;
                 case SMB2_ENCRYPTION_CAP:
                         if (smb2_parse_encryption_context(smb2, rep,
-                                                          iov, offset + 8)) {
+                                                          iov, offset + 8, len)) {
                                 return -1;
                         }
                         break;

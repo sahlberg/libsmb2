@@ -67,13 +67,49 @@
 
 static const char xfer[4] = {0xFD, 'S', 'M', 'B'};
 
+#ifdef HAVE_OPENSSL
+#include <limits.h>
+#include <openssl/evp.h>
+
+static int smb3_aes128gcm(int enc, uint8_t *key, uint8_t nonce[12], uint8_t aad[32],
+                          uint8_t *p, size_t plen, uint8_t tag[16])
+{
+        EVP_CIPHER_CTX *ctx;
+        int outl, rc = -1;
+
+        if (plen > INT_MAX) {
+                return -1;
+        }
+        ctx = EVP_CIPHER_CTX_new();
+        if (ctx == NULL) {
+                return -1;
+        }
+        if (EVP_CipherInit_ex(ctx, EVP_aes_128_gcm(), NULL, key, nonce, enc) != 1 ||
+            EVP_CipherUpdate(ctx, NULL, &outl, aad, 32) != 1 ||
+            EVP_CipherUpdate(ctx, p, &outl, p, (int)plen) != 1 ||
+            (!enc && EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG, 16, tag) != 1) ||
+            EVP_CipherFinal_ex(ctx, p + outl, &outl) != 1 ||
+            (enc && EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG, 16, tag) != 1)) {
+                goto out;
+        }
+        rc = 0;
+ out:
+        EVP_CIPHER_CTX_free(ctx);
+        return rc;
+}
+
+#define SMB3_GCM(smb2) ((smb2)->cypher == SMB2_ENCRYPTION_AES_128_GCM)
+#else
+#define SMB3_GCM(smb2) 0
+#endif
+
 int
 smb3_encrypt_pdu(struct smb2_context *smb2,
                  struct smb2_pdu *pdu)
 {
         struct smb2_pdu *tmp_pdu;
         uint32_t spl, u32;
-        int i;
+        int i, rc;
         uint16_t u16;
 
         if (!smb2->seal) {
@@ -102,11 +138,12 @@ smb3_encrypt_pdu(struct smb2_context *smb2,
 
         memcpy(&pdu->crypt[0], xfer, 4);
         /*
-         * The 11 byte AES-CCM nonce. CCM provides no confidentiality and no
-         * integrity at all once a nonce repeats under the same key, so this
-         * has to come from the strong source and not from random().
+         * The 11 byte AES-CCM or 12 byte AES-GCM nonce. Neither provides
+         * confidentiality or integrity once a nonce repeats under the same
+         * key, so this has to come from the strong source and not from
+         * random().
          */
-        smb2_random_bytes(&pdu->crypt[20], 11);
+        smb2_random_bytes(&pdu->crypt[20], SMB3_GCM(smb2) ? 12 : 11);
         u32 = htole32(spl - 52);
         memcpy(&pdu->crypt[36], &u32, 4);
         u16 = htole16(SMB_ENCRYPTION_AES128_CCM);
@@ -127,11 +164,18 @@ smb3_encrypt_pdu(struct smb2_context *smb2,
                 }
         }
 
-        if (aes128ccm_encrypt(smb2->serverin_key,
-                              &pdu->crypt[20], 11,
-                              &pdu->crypt[20], 32,
-                              &pdu->crypt[52], spl - 52,
-                              &pdu->crypt[4], 16)) {
+#ifdef HAVE_OPENSSL
+        if (SMB3_GCM(smb2)) {
+                rc = smb3_aes128gcm(1, smb2->serverin_key, &pdu->crypt[20], &pdu->crypt[20],
+                                    &pdu->crypt[52], spl - 52, &pdu->crypt[4]);
+        } else
+#endif
+        rc = aes128ccm_encrypt(smb2->serverin_key,
+                               &pdu->crypt[20], 11,
+                               &pdu->crypt[20], 32,
+                               &pdu->crypt[52], spl - 52,
+                               &pdu->crypt[4], 16);
+        if (rc) {
                 smb2_set_error(smb2, "Failed to encrypt PDU");
                 free(pdu->crypt);
                 pdu->crypt = NULL;
@@ -145,14 +189,19 @@ smb3_encrypt_pdu(struct smb2_context *smb2,
 static int
 smb3_do_decrypt_pdu(struct smb2_context *smb2)
 {
+        uint8_t *hdr = smb2->in.iov[smb2->in.niov - 2].buf;
+        struct smb2_iovec *data = &smb2->in.iov[smb2->in.niov - 1];
         int rc;
 
-        if (aes128ccm_decrypt(smb2->serverout_key,
-                              &smb2->in.iov[smb2->in.niov - 2].buf[20], 11,
-                              &smb2->in.iov[smb2->in.niov - 2].buf[20], 32,
-                              &smb2->in.iov[smb2->in.niov - 1].buf[0],
-                              smb2->in.iov[smb2->in.niov - 1].len,
-                              &smb2->in.iov[smb2->in.niov - 2].buf[4], 16)) {
+#ifdef HAVE_OPENSSL
+        if (SMB3_GCM(smb2)) {
+                rc = smb3_aes128gcm(0, smb2->serverout_key, &hdr[20], &hdr[20],
+                                    data->buf, data->len, &hdr[4]);
+        } else
+#endif
+        rc = aes128ccm_decrypt(smb2->serverout_key, &hdr[20], 11, &hdr[20], 32,
+                               data->buf, data->len, &hdr[4], 16);
+        if (rc) {
                 smb2_set_error(smb2, "Failed to decrypt PDU");
                 return -1;
         }
