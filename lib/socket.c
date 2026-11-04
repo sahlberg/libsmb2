@@ -241,6 +241,39 @@ smb2_get_fds(struct smb2_context *smb2, size_t *fd_count, int *timeout)
         }
 }
 
+/* A QUIC socket reports the peer closing as ENOTCONN or EPIPE where TCP
+ * returns 0 from a read. */
+static int
+smb2_peer_closed(int err)
+{
+#ifdef EPIPE
+        if (err == EPIPE) {
+                return 1;
+        }
+#endif
+#ifdef ENOTCONN
+        if (err == ENOTCONN) {
+                return 1;
+        }
+#endif
+#ifdef ECONNRESET
+        if (err == ECONNRESET) {
+                return 1;
+        }
+#endif
+#ifdef WSAENOTCONN
+        if (err == WSAENOTCONN) {
+                return 1;
+        }
+#endif
+#ifdef WSAECONNRESET
+        if (err == WSAECONNRESET) {
+                return 1;
+        }
+#endif
+        return 0;
+}
+
 int
 smb2_write_to_socket(struct smb2_context *smb2)
 {
@@ -325,9 +358,13 @@ smb2_write_to_socket(struct smb2_context *smb2)
                         if (errno == EAGAIN || errno == EWOULDBLOCK) {
                                 return 0;
                         }
+                        if (smb2_peer_closed(errno)) {
+                                smb2_set_error(smb2, "Write to socket failed, "
+                                               "remote closed connection.");
+                                return -1;
+                        }
                         smb2_set_error(smb2, "Error when writing to "
-                                       "socket :%d %s", errno,
-                                       smb2_get_error(smb2));
+                                       "socket :%d", errno);
                         return -1;
                 }
 
@@ -489,6 +526,11 @@ read_more_data:
                 if (err == EINTR || err == EAGAIN || err == EWOULDBLOCK) {
 #endif
                         return -EAGAIN;
+                }
+                if (smb2_peer_closed(err)) {
+                        smb2_set_error(smb2, "Read from socket failed, "
+                                       "remote closed connection.");
+                        return -1;
                 }
                 smb2_set_error(smb2, "Read from socket failed, "
                                "errno:%d. Closing socket.", err);
