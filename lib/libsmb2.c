@@ -5279,7 +5279,6 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                 if (more_processing_needed) {
                         smb2->next_pdu = smb2_allocate_pdu(smb2, SMB2_SESSION_SETUP,
                                                 smb2_session_setup_request_cb, cb_data);
-                        smb2->session_id = server->session_counter++;
                 } else {
                         smb2->next_pdu = smb2_allocate_pdu(smb2, SMB2_TREE_CONNECT,
                                                 smb2_general_client_request_cb, cb_data);
@@ -5289,7 +5288,8 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                 rep.security_buffer =
                         krb5_get_output_token_buffer(c_data->auth_data);
 
-                if (!krb5_session_get_session_key(smb2, c_data->auth_data)) {
+                if (!more_processing_needed &&
+                    !krb5_session_get_session_key(smb2, c_data->auth_data)) {
                         have_valid_session_key = 1;
                 }
         }
