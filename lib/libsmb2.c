@@ -901,7 +901,8 @@ session_setup_cb(struct smb2_context *smb2, int status,
         }
 
 #ifdef HAVE_LIBKRB5
-       if (smb2->sec == SMB2_SEC_KRB5) {
+       if (smb2->sec == SMB2_SEC_KRB5 ||
+           smb2->sec == SMB2_SEC_IAKERB) {
                 /* For NTLM the status will be
                  * SMB2_STATUS_MORE_PROCESSING_REQUIRED and a second call to
                  * gss_init_sec_context will complete the gss session.
@@ -1205,6 +1206,7 @@ negotiate_cb(struct smb2_context *smb2, int status,
                  * after negotiate and never sends SessionSetup.
                  */
                 if (c_data->auth_data == NULL &&
+                    smb2->sec != SMB2_SEC_IAKERB &&
                     (spnego_mechs & SPNEGO_MECHANISM_NTLMSSP)) {
                         smb2_set_error(smb2, "");
                         smb2->sec = SMB2_SEC_NTLMSSP;

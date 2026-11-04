@@ -43,6 +43,25 @@ int smb2_spnego_wrap_gssapi(struct smb2_context *smb2,
                 const int token_len,
                 void **blob);
 
+/* NegTokenInit whose only mech is IAKerb (1.3.6.1.5.2.5). mech_token is
+ * the GSS initial context token from gss_mech_iakerb. */
+int smb2_spnego_wrap_iakerb_init(struct smb2_context *smb2,
+                const uint8_t *mech_token,
+                const int token_len,
+                void **blob);
+
+/* Initiator negTokenResp carrying the next IAKerb mechanism token. */
+int smb2_spnego_wrap_iakerb_resp(struct smb2_context *smb2,
+                const uint8_t *mech_token,
+                const int token_len,
+                void **blob);
+
+/* Initiator negTokenResp carrying only the mechListMIC. */
+int smb2_spnego_wrap_mic_resp(struct smb2_context *smb2,
+                const uint8_t *mic,
+                const int mic_len,
+                void **blob);
+
 int smb2_spnego_wrap_ntlmssp_challenge(struct smb2_context *smb2,
                 const uint8_t *ntlmssp_token,
                 const int token_len, void **neg_targ_token);

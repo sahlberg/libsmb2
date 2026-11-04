@@ -145,6 +145,11 @@ smb2_parse_args(struct smb2_context *smb2, char *args)
                         } else if(!strcmp(value, "krb5cc")) {
                                 smb2->sec = SMB2_SEC_KRB5;
                                 smb2->use_cached_creds = 1;
+                        } else if(!strcmp(value, "iakerb")) {
+                                /* Password is required: the AS-REQ is built
+                                 * locally and the server proxies it. */
+                                smb2->sec = SMB2_SEC_IAKERB;
+                                smb2->use_cached_creds = 1;
                         } else if (!strcmp(value, "ntlmssp")) {
                                 smb2->sec = SMB2_SEC_NTLMSSP;
                         } else {
@@ -994,6 +999,10 @@ void smb2_set_sign(struct smb2_context *smb2, int val)
 void smb2_set_authentication(struct smb2_context *smb2, int val)
 {
         smb2->sec = (enum smb2_sec)val;
+        if (smb2->sec == SMB2_SEC_IAKERB) {
+                /* Same password path as sec=iakerb in the URL. */
+                smb2->use_cached_creds = 1;
+        }
 }
 
 void smb2_set_timeout(struct smb2_context *smb2, int seconds)

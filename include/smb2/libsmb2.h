@@ -428,6 +428,7 @@ enum smb2_sec {
         SMB2_SEC_UNDEFINED = 0,
         SMB2_SEC_NTLMSSP,
         SMB2_SEC_KRB5,
+        SMB2_SEC_IAKERB,
 };
 
 /*
@@ -435,6 +436,13 @@ enum smb2_sec {
  * SMB2_SEC_UNDEFINED (use KRB if available or NTLM if not)
  * SMB2_SEC_NTLMSSP
  * SMB2_SEC_KRB5
+ * SMB2_SEC_IAKERB
+ *     IAKerb (Initial and Pass-Through Authentication Using Kerberos).
+ *     The client builds the Kerberos exchange locally and the SMB server
+ *     proxies it to a KDC the client cannot reach. The domain is the
+ *     Kerberos realm. The password is required, as for sec=krb5cc.
+ *     URL query: sec=iakerb
+ *     smb2_set_authentication(SMB2_SEC_IAKERB) selects the same path.
  */
 void smb2_set_authentication(struct smb2_context *smb2, int val);
 

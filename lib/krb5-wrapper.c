@@ -77,6 +77,91 @@
 #include "libsmb2-private.h"
 
 #include "krb5-wrapper.h"
+#include "spnego-wrapper.h"
+
+/* 1.3.6.1.5.2.5. gss_mech_iakerb is MIT only. */
+static unsigned char smb2_iakerb_oid[] = { 0x2b, 0x06, 0x01, 0x05, 0x02, 0x05 };
+#if !(defined(__APPLE__) && defined(HAVE_GSS_GSS_H))
+static gss_OID_desc smb2_mech_iakerb = { sizeof(smb2_iakerb_oid), smb2_iakerb_oid };
+#endif
+/* 1.2.840.113554.1.2.2 */
+static const unsigned char smb2_krb5_oid[] = { 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x01, 0x02, 0x02 };
+
+/*
+ * Windows runs the IAKerb proxy messages under the IAKerb OID but the AP
+ * exchange that follows under the krb5 OID, while MIT keeps the IAKerb OID
+ * throughout. The OID in the GSS token header is not covered by any
+ * checksum, so swap it. Returns a new token, or NULL if tok is not framed
+ * with from, or if it is an IAKerb proxy message (TOK_ID 05 01) and
+ * keep_proxy is set.
+ */
+static unsigned char *
+iakerb_reframe(const unsigned char *tok, size_t len,
+               const unsigned char *from, size_t from_len,
+               const unsigned char *to, size_t to_len,
+               int keep_proxy, size_t *out_len)
+{
+        size_t pos = 2, body, rest_len, inner_len, i;
+        const unsigned char *rest;
+        unsigned char *out;
+
+        if (len < 2 || tok[0] != 0x60) {
+                return NULL;
+        }
+        if (tok[1] < 0x80) {
+                body = tok[1];
+        } else {
+                size_t n = tok[1] & 0x7f;
+
+                if (n == 0 || n > 3 || len < 2 + n) {
+                        return NULL;
+                }
+                for (body = 0, i = 0; i < n; i++) {
+                        body = (body << 8) | tok[2 + i];
+                }
+                pos += n;
+        }
+        if (pos + body != len || body < 2 + from_len ||
+            tok[pos] != 0x06 || tok[pos + 1] != from_len ||
+            memcmp(&tok[pos + 2], from, from_len)) {
+                return NULL;
+        }
+        rest = &tok[pos + 2 + from_len];
+        rest_len = len - (pos + 2 + from_len);
+        if (keep_proxy && rest_len >= 2 && rest[0] == 0x05 && rest[1] == 0x01) {
+                return NULL;
+        }
+
+        inner_len = 2 + to_len + rest_len;
+        out = malloc(inner_len + 5);
+        if (out == NULL) {
+                return NULL;
+        }
+        pos = 0;
+        out[pos++] = 0x60;
+        if (inner_len < 0x80) {
+                out[pos++] = (unsigned char)inner_len;
+        } else if (inner_len < 0x100) {
+                out[pos++] = 0x81;
+                out[pos++] = (unsigned char)inner_len;
+        } else if (inner_len < 0x10000) {
+                out[pos++] = 0x82;
+                out[pos++] = (unsigned char)(inner_len >> 8);
+                out[pos++] = (unsigned char)inner_len;
+        } else {
+                out[pos++] = 0x83;
+                out[pos++] = (unsigned char)(inner_len >> 16);
+                out[pos++] = (unsigned char)(inner_len >> 8);
+                out[pos++] = (unsigned char)inner_len;
+        }
+        out[pos++] = 0x06;
+        out[pos++] = (unsigned char)to_len;
+        memcpy(&out[pos], to, to_len);
+        pos += to_len;
+        memcpy(&out[pos], rest, rest_len);
+        *out_len = pos + rest_len;
+        return out;
+}
 
 void
 krb5_free_auth_data(struct private_auth_data *auth)
@@ -84,6 +169,8 @@ krb5_free_auth_data(struct private_auth_data *auth)
         uint32_t maj, min;
 
         gss_release_buffer(&min, &auth->output_token);
+        free(auth->spnego_buf);
+        auth->spnego_buf = NULL;
 
         if (auth->krb5_Ccache) {
                 krb5_cc_destroy(auth->krb5_cctx, auth->krb5_Ccache);
@@ -187,11 +274,19 @@ krb5_negotiate_reply(struct smb2_context *smb2,
         char *spos;
         gss_buffer_desc passwd;
         gss_OID_set_desc mechOidSet;
+        gss_OID name_type = GSS_C_NT_HOSTBASED_SERVICE;
+
+        /* IAKerb builds the AS-REQ locally from the password. A ccache
+         * primed by kinit cannot be obtained while the KDC is unreachable. */
+        if (smb2->sec == SMB2_SEC_IAKERB) {
+                smb2->use_cached_creds = 1;
+        }
 
         if (smb2->use_cached_creds) {
                 /* Validate the parameters */
                 if (domain == NULL || password == NULL) {
-                        smb2_set_error(smb2, "domain and password must be set while using krb5cc mode");
+                        smb2_set_error(smb2, "domain and password must be set "
+                                       "for krb5cc and iakerb");
                         return NULL;
                 }
         }
@@ -211,8 +306,32 @@ krb5_negotiate_reply(struct smb2_context *smb2,
         if (spos) {
                 *spos = '\0';
         }
-        /* form spn cifs/hostname.domain */
-        if (asprintf(&auth_data->g_server, "cifs@%s", user_principal) < 0) {
+        /* form spn cifs/hostname.domain.
+         * IAKerb puts the target realm in the proxy header. A host-based
+         * name takes that realm from krb5.conf, which this client may not
+         * have, because it never talks to the KDC itself. Use the domain
+         * from the URL as the realm: cifs/host@REALM. */
+        if (smb2->sec == SMB2_SEC_IAKERB) {
+#if defined(__APPLE__) && defined(HAVE_GSS_GSS_H)
+                smb2_set_error(smb2, "IAKerb is not supported with Apple GSS");
+                krb5_free_auth_data(auth_data);
+                return NULL;
+#else
+                if (domain[0] == '\0') {
+                        smb2_set_error(smb2, "IAKerb requires a Kerberos realm "
+                                       "in the domain");
+                        krb5_free_auth_data(auth_data);
+                        return NULL;
+                }
+                if (asprintf(&auth_data->g_server, "cifs/%s@%s",
+                             user_principal, domain) < 0) {
+                        smb2_set_error(smb2, "Failed to allocate server string");
+                        krb5_free_auth_data(auth_data);
+                        return NULL;
+                }
+                name_type = (gss_OID)GSS_KRB5_NT_PRINCIPAL_NAME;
+#endif
+        } else if (asprintf(&auth_data->g_server, "cifs@%s", user_principal) < 0) {
                 smb2_set_error(smb2, "Failed to allocate server string");
                 krb5_free_auth_data(auth_data);
                 return NULL;
@@ -221,7 +340,7 @@ krb5_negotiate_reply(struct smb2_context *smb2,
         target.value = auth_data->g_server;
         target.length = strlen(auth_data->g_server);
 
-        maj = gss_import_name(&min, &target, GSS_C_NT_HOSTBASED_SERVICE,
+        maj = gss_import_name(&min, &target, name_type,
                               &auth_data->target_name);
 
         if (maj != GSS_S_COMPLETE) {
@@ -271,7 +390,14 @@ krb5_negotiate_reply(struct smb2_context *smb2,
         #if defined(__APPLE__) && defined(HAVE_GSS_GSS_H)
         auth_data->mech_type = auth_data->use_spnego ? GSS_SPNEGO_MECHANISM : GSS_KRB5_MECHANISM;
         #else
-        auth_data->mech_type = auth_data->use_spnego ? &gss_mech_spnego : gss_mech_krb5;
+        /* IAKerb is GSS_C_MA_NOT_DFLT_MECH, so a SPNEGO password cred does
+         * not carry it. Acquire the IAKerb mech directly; the session
+         * request wraps the tokens in SPNEGO for Windows Negotiate. */
+        if (smb2->sec == SMB2_SEC_IAKERB) {
+                auth_data->mech_type = &smb2_mech_iakerb;
+        } else {
+                auth_data->mech_type = auth_data->use_spnego ? &gss_mech_spnego : gss_mech_krb5;
+        }
         #endif
 
         /* Create creds for the user */
@@ -411,6 +537,19 @@ krb5_session_request(struct smb2_context *smb2,
         uint32_t maj, min;
         gss_buffer_desc *input_token = NULL;
         gss_buffer_desc token = GSS_C_EMPTY_BUFFER;
+        unsigned char *reframed = NULL, *out_tok;
+        size_t reframed_len, out_len;
+        int initial;
+
+        initial = (auth_data->context == GSS_C_NO_CONTEXT);
+        free(auth_data->spnego_buf);
+        auth_data->spnego_buf = NULL;
+        auth_data->spnego_len = 0;
+
+        /* The final SPNEGO reply only carries the acceptor's mechListMIC. */
+        if (auth_data->iakerb_complete) {
+                return 0;
+        }
 
         if (buf) {
                 /* release the previous token */
@@ -420,6 +559,29 @@ krb5_session_request(struct smb2_context *smb2,
 
                 token.value = buf;
                 token.length = len;
+                if (smb2->sec == SMB2_SEC_IAKERB) {
+                        uint8_t *inner = NULL;
+                        uint32_t mechs = 0;
+                        int inner_len;
+
+                        /* Server replies are SPNEGO negTokenResp. The
+                         * mechanism only understands its own token. */
+                        inner_len = smb2_spnego_unwrap_blob(smb2, buf, len, 0,
+                                                            &inner, &mechs);
+                        if (inner_len < 0) {
+                                return -1;
+                        }
+                        token.value = inner;
+                        token.length = inner_len;
+                        reframed = iakerb_reframe(inner, inner_len,
+                                                  smb2_krb5_oid, sizeof(smb2_krb5_oid),
+                                                  smb2_iakerb_oid, sizeof(smb2_iakerb_oid),
+                                                  0, &reframed_len);
+                        if (reframed) {
+                                token.value = reframed;
+                                token.length = reframed_len;
+                        }
+                }
                 input_token = &token;
         }
 
@@ -445,17 +607,82 @@ krb5_session_request(struct smb2_context *smb2,
                                    &auth_data->output_token,
                                    NULL,
                                    NULL);
+        free(reframed);
 
         /* GSS_C_MUTUAL_FLAG expects the acceptor to send a token so
          * a second call to gss_init_sec_context is required to complete the session.
          * A second call is required even if the first call returns GSS_S_COMPLETE
          */
-        if (maj & GSS_S_CONTINUE_NEEDED) {
-            return 0;
-        }
         if (GSS_ERROR(maj)) {
                 krb5_set_gss_error(smb2, "gss_init_sec_context", maj, min);
                 return -1;
+        }
+
+        /*
+         * The AP-REP completed the context and there is no mechanism token
+         * left, but the acceptor still wants SPNEGO's mechListMIC: a MIC
+         * over the DER mechTypes list we offered, which is IAKerb alone.
+         */
+        if (smb2->sec == SMB2_SEC_IAKERB && maj == GSS_S_COMPLETE &&
+            auth_data->output_token.length == 0) {
+                static unsigned char mech_types[] = {
+                        0x30, 0x08, 0x06, 0x06, 0x2b, 0x06, 0x01, 0x05, 0x02, 0x05
+                };
+                gss_buffer_desc msg = { sizeof(mech_types), mech_types };
+                gss_buffer_desc mic = GSS_C_EMPTY_BUFFER;
+                void *wrapped = NULL;
+                int wlen;
+
+                auth_data->iakerb_complete = 1;
+                maj = gss_get_mic(&min, auth_data->context, GSS_C_QOP_DEFAULT, &msg, &mic);
+                if (GSS_ERROR(maj)) {
+                        krb5_set_gss_error(smb2, "gss_get_mic", maj, min);
+                        return -1;
+                }
+                wlen = smb2_spnego_wrap_mic_resp(smb2, mic.value, (int)mic.length, &wrapped);
+                gss_release_buffer(&min, &mic);
+                if (wlen <= 0 || wrapped == NULL) {
+                        free(wrapped);
+                        return -1;
+                }
+                auth_data->spnego_buf = wrapped;
+                auth_data->spnego_len = wlen;
+                return 0;
+        }
+
+        /* Windows Negotiate accepts IAKerb as a SPNEGO mech, not as a raw
+         * GSS token. The optimistic mech list is IAKerb alone. */
+        if (smb2->sec == SMB2_SEC_IAKERB &&
+            auth_data->output_token.length > 0) {
+                void *wrapped = NULL;
+                int wlen;
+
+                out_tok = auth_data->output_token.value;
+                out_len = auth_data->output_token.length;
+                reframed = iakerb_reframe(out_tok, out_len,
+                                          smb2_iakerb_oid, sizeof(smb2_iakerb_oid),
+                                          smb2_krb5_oid, sizeof(smb2_krb5_oid),
+                                          1, &reframed_len);
+                if (reframed) {
+                        out_tok = reframed;
+                        out_len = reframed_len;
+                }
+                if (initial) {
+                        wlen = smb2_spnego_wrap_iakerb_init(smb2, out_tok, (int)out_len, &wrapped);
+                } else {
+                        wlen = smb2_spnego_wrap_iakerb_resp(smb2, out_tok, (int)out_len, &wrapped);
+                }
+                free(reframed);
+                if (wlen <= 0 || wrapped == NULL) {
+                        free(wrapped);
+                        if (wlen <= 0) {
+                                smb2_set_error(smb2, "Failed to wrap IAKerb "
+                                               "token in SPNEGO");
+                        }
+                        return -1;
+                }
+                auth_data->spnego_buf = wrapped;
+                auth_data->spnego_len = wlen;
         }
 
         return 0;
@@ -1050,12 +1277,18 @@ krb5_free_server_credentials(struct smb2_server *server)
 int
 krb5_get_output_token_length(struct private_auth_data *auth_data)
 {
+        if (auth_data->spnego_buf) {
+                return auth_data->spnego_len;
+        }
         return auth_data->output_token.length;
 }
 
 unsigned char *
 krb5_get_output_token_buffer(struct private_auth_data *auth_data)
 {
+        if (auth_data->spnego_buf) {
+                return auth_data->spnego_buf;
+        }
         return auth_data->output_token.value;
 }
 

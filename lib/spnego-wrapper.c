@@ -87,6 +87,13 @@ static const struct asn1ber_oid_value oid_spnego_mech_ntlmssp = {
         10, { 1, 3, 6, 1, 4, 1, 311, 2, 2, 10 }
 };
 
+/* 1.3.6.1.5.2.5 — IAKerb GSS mechanism.
+ * length is the number of arcs, not the DER size. 1 and 3 pack into
+ * one byte, so the encoding is 6 bytes for these 7 arcs. */
+static const struct asn1ber_oid_value oid_spnego_mech_iakerb = {
+        7, { 1, 3, 6, 1, 5, 2, 5 }
+};
+
 static int
 oid_compare(const struct asn1ber_oid_value *a, const struct asn1ber_oid_value *b)
 {
@@ -398,6 +405,182 @@ smb2_spnego_wrap_ntlmssp_auth(struct smb2_context *smb2, const uint8_t *ntlmssp_
         asn1ber_annotate_length(&asn_encoder, pos[0], 5);
 
         *neg_targ_token = neg_token;
+        return asn_encoder.dst_head;
+}
+
+int
+smb2_spnego_wrap_iakerb_init(struct smb2_context *smb2,
+                const uint8_t *mech_token, const int token_len, void **blob)
+{
+        struct asn1ber_context asn_encoder;
+        uint8_t *neg_init;
+        int alloc_len;
+        int pos[8];
+
+        alloc_len = 256 + 2 * token_len;
+        neg_init = calloc(1, alloc_len);
+        if (neg_init == NULL) {
+                smb2_set_error(smb2, "Failed to allocate spnego wrapper");
+                return 0;
+        }
+
+        memset(&asn_encoder, 0, sizeof(asn_encoder));
+        asn_encoder.dst = neg_init;
+        asn_encoder.dst_size = alloc_len;
+        asn_encoder.dst_head = 0;
+
+        /* GSS InitialContextToken, thisMech = SPNEGO */
+        asn1ber_ber_from_typecode(&asn_encoder, asnCONSTRUCTOR | asnAPPLICATION);
+        asn1ber_save_out_state(&asn_encoder, &pos[0]);
+        asn1ber_ber_reserve_length(&asn_encoder, 5);
+        asn1ber_ber_from_oid(&asn_encoder, &oid_gss_mech_spnego);
+
+        /* NegotiationToken negTokenInit [0] */
+        asn1ber_ber_from_typecode(&asn_encoder, ASN1_CONTEXT(0));
+        asn1ber_save_out_state(&asn_encoder, &pos[1]);
+        asn1ber_ber_reserve_length(&asn_encoder, 5);
+
+        asn1ber_ber_from_typecode(&asn_encoder, ASN1_SEQUENCE(0));
+        asn1ber_save_out_state(&asn_encoder, &pos[2]);
+        asn1ber_ber_reserve_length(&asn_encoder, 5);
+
+        /* mechTypes [0], IAKerb only. Offering krb5 or NTLM here would let
+         * the acceptor pick a mech whose optimistic token we did not send. */
+        asn1ber_ber_from_typecode(&asn_encoder, ASN1_CONTEXT(0));
+        asn1ber_save_out_state(&asn_encoder, &pos[3]);
+        asn1ber_ber_reserve_length(&asn_encoder, 5);
+
+        asn1ber_ber_from_typecode(&asn_encoder, ASN1_SEQUENCE(0));
+        asn1ber_save_out_state(&asn_encoder, &pos[4]);
+        asn1ber_ber_reserve_length(&asn_encoder, 5);
+        asn1ber_ber_from_oid(&asn_encoder, &oid_spnego_mech_iakerb);
+        asn1ber_annotate_length(&asn_encoder, pos[4], 5);
+        asn1ber_annotate_length(&asn_encoder, pos[3], 5);
+
+        if (mech_token && token_len) {
+                asn1ber_ber_from_typecode(&asn_encoder, ASN1_CONTEXT(2));
+                asn1ber_save_out_state(&asn_encoder, &pos[3]);
+                asn1ber_ber_reserve_length(&asn_encoder, 5);
+
+                asn1ber_ber_from_typecode(&asn_encoder, asnOCTET_STRING);
+                asn1ber_save_out_state(&asn_encoder, &pos[4]);
+                asn1ber_ber_reserve_length(&asn_encoder, 5);
+                memcpy(asn_encoder.dst + asn_encoder.dst_head, mech_token,
+                       token_len);
+                asn_encoder.dst_head += token_len;
+                asn1ber_annotate_length(&asn_encoder, pos[4], 5);
+                asn1ber_annotate_length(&asn_encoder, pos[3], 5);
+        }
+
+        asn1ber_annotate_length(&asn_encoder, pos[2], 5);
+        asn1ber_annotate_length(&asn_encoder, pos[1], 5);
+        asn1ber_annotate_length(&asn_encoder, pos[0], 5);
+
+        *blob = neg_init;
+        return asn_encoder.dst_head;
+}
+
+int
+smb2_spnego_wrap_iakerb_resp(struct smb2_context *smb2,
+                const uint8_t *mech_token, const int token_len, void **blob)
+{
+        struct asn1ber_context asn_encoder;
+        uint8_t *neg_token;
+        int alloc_len;
+        int pos[6];
+
+        alloc_len = 64 + 2 * token_len;
+        neg_token = calloc(1, alloc_len);
+        if (neg_token == NULL) {
+                smb2_set_error(smb2, "Failed to allocate spnego wrapper");
+                return 0;
+        }
+
+        memset(&asn_encoder, 0, sizeof(asn_encoder));
+        asn_encoder.dst = neg_token;
+        asn_encoder.dst_size = alloc_len;
+        asn_encoder.dst_head = 0;
+
+        /* NegotiationToken negTokenResp [1], responseToken only.
+         * Same shape as the NTLM authenticate leg, which Windows accepts
+         * without a negState. */
+        asn1ber_ber_from_typecode(&asn_encoder, ASN1_CONTEXT(1));
+        asn1ber_save_out_state(&asn_encoder, &pos[0]);
+        asn1ber_ber_reserve_length(&asn_encoder, 5);
+
+        asn1ber_ber_from_typecode(&asn_encoder, ASN1_SEQUENCE(0));
+        asn1ber_save_out_state(&asn_encoder, &pos[1]);
+        asn1ber_ber_reserve_length(&asn_encoder, 5);
+
+        asn1ber_ber_from_typecode(&asn_encoder, ASN1_CONTEXT(2));
+        asn1ber_save_out_state(&asn_encoder, &pos[2]);
+        asn1ber_ber_reserve_length(&asn_encoder, 5);
+
+        asn1ber_ber_from_typecode(&asn_encoder, asnOCTET_STRING);
+        asn1ber_save_out_state(&asn_encoder, &pos[3]);
+        asn1ber_ber_reserve_length(&asn_encoder, 5);
+
+        if (mech_token && token_len) {
+                memcpy(asn_encoder.dst + asn_encoder.dst_head, mech_token,
+                       token_len);
+                asn_encoder.dst_head += token_len;
+        }
+
+        asn1ber_annotate_length(&asn_encoder, pos[3], 5);
+        asn1ber_annotate_length(&asn_encoder, pos[2], 5);
+        asn1ber_annotate_length(&asn_encoder, pos[1], 5);
+        asn1ber_annotate_length(&asn_encoder, pos[0], 5);
+
+        *blob = neg_token;
+        return asn_encoder.dst_head;
+}
+
+int
+smb2_spnego_wrap_mic_resp(struct smb2_context *smb2,
+                const uint8_t *mic, const int mic_len, void **blob)
+{
+        struct asn1ber_context asn_encoder;
+        uint8_t *neg_token;
+        int alloc_len;
+        int pos[4];
+
+        alloc_len = 64 + 2 * mic_len;
+        neg_token = calloc(1, alloc_len);
+        if (neg_token == NULL) {
+                smb2_set_error(smb2, "Failed to allocate spnego wrapper");
+                return 0;
+        }
+
+        memset(&asn_encoder, 0, sizeof(asn_encoder));
+        asn_encoder.dst = neg_token;
+        asn_encoder.dst_size = alloc_len;
+        asn_encoder.dst_head = 0;
+
+        /* negTokenResp [1] { mechListMIC [3] } */
+        asn1ber_ber_from_typecode(&asn_encoder, ASN1_CONTEXT(1));
+        asn1ber_save_out_state(&asn_encoder, &pos[0]);
+        asn1ber_ber_reserve_length(&asn_encoder, 5);
+
+        asn1ber_ber_from_typecode(&asn_encoder, ASN1_SEQUENCE(0));
+        asn1ber_save_out_state(&asn_encoder, &pos[1]);
+        asn1ber_ber_reserve_length(&asn_encoder, 5);
+
+        asn1ber_ber_from_typecode(&asn_encoder, ASN1_CONTEXT(3));
+        asn1ber_save_out_state(&asn_encoder, &pos[2]);
+        asn1ber_ber_reserve_length(&asn_encoder, 5);
+
+        asn1ber_ber_from_typecode(&asn_encoder, asnOCTET_STRING);
+        asn1ber_save_out_state(&asn_encoder, &pos[3]);
+        asn1ber_ber_reserve_length(&asn_encoder, 5);
+        memcpy(asn_encoder.dst + asn_encoder.dst_head, mic, mic_len);
+        asn_encoder.dst_head += mic_len;
+
+        asn1ber_annotate_length(&asn_encoder, pos[3], 5);
+        asn1ber_annotate_length(&asn_encoder, pos[2], 5);
+        asn1ber_annotate_length(&asn_encoder, pos[1], 5);
+        asn1ber_annotate_length(&asn_encoder, pos[0], 5);
+
+        *blob = neg_token;
         return asn_encoder.dst_head;
 }
 

@@ -71,6 +71,9 @@ Arguments supported by libsmb2 are :
 		 krb5: Use Kerberos using credentials from kinit.
 		 krb5cc: Use Kerberos using credentials from credentials
 	                 cache.
+		 iakerb: Use Kerberos through the server (IAKerb), for
+		         clients that can not reach the KDC. The domain
+		         is the Kerberos realm and the password is required.
 		 ntlmssp : Only use NTLMSSP
  vers=<version> : Which SMB version to negotiate:
                   2: Negotiate any version of SMB2
