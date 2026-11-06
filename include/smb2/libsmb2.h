@@ -66,6 +66,14 @@ typedef void (*smb2_client_connection)(struct smb2_context *smb2, void *cb_data)
  */
 struct smb2_oplock_or_lease_break_reply;
 
+/*
+ * An smb2_oplock_or_lease_break_cb callback can store this in
+ * *new_lease_state to stop libsmb2 acknowledging a lease break itself.
+ * The app must then send the acknowledgement explicitly with
+ * smb2_cmd_lease_break_async().
+ */
+#define SMB2_LEASE_STATE_NO_AUTO_ACK 0xFFFFFFFFu
+
 typedef void (*smb2_oplock_or_lease_break_cb)(struct smb2_context *smb2,
            int status,
            struct smb2_oplock_or_lease_break_reply *rep,

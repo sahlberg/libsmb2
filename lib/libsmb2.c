@@ -4144,8 +4144,8 @@ smb2_oplock_break_notify(struct smb2_context *smb2, int status, void *command_da
         struct smb2_oplock_break_reply rep_oplock;
         struct smb2_lease_break_reply rep_lease;
         struct smb2_pdu *pdu = NULL;
-        uint8_t new_oplock_level;
-        uint32_t new_lease_state;
+        uint8_t new_oplock_level = 0;
+        uint32_t new_lease_state = 0;
 
         rep= command_data;
 
@@ -4169,6 +4169,10 @@ smb2_oplock_break_notify(struct smb2_context *smb2, int status, void *command_da
                         case SMB2_BREAK_TYPE_OPLOCK_RESPONSE:
                                 break;
                         case SMB2_BREAK_TYPE_LEASE_NOTIFICATION:
+                                if (new_lease_state == SMB2_LEASE_STATE_NO_AUTO_ACK) {
+                                        /* the app acknowledges explicitly */
+                                        break;
+                                }
                                 memset(&rep_lease, 0, sizeof(rep_lease));
                                 rep_lease.flags = rep->lock.lease.flags;
                                 rep_lease.lease_state = new_lease_state;
