@@ -69,7 +69,10 @@ smb2_ioctl_status_uses_reply_format(uint32_t ctl_code, uint32_t status)
         switch (ctl_code) {
         case SMB2_FSCTL_SRV_COPYCHUNK:
         case SMB2_FSCTL_SRV_COPYCHUNK_WRITE:
-                return status == SMB2_STATUS_INVALID_PARAMETER;
+                return status == SMB2_STATUS_INVALID_PARAMETER ||
+                       status == SMB2_STATUS_ACCESS_DENIED ||
+                       status == SMB2_STATUS_FILE_LOCK_CONFLICT ||
+                       status ==  SMB2_STATUS_DISK_FULL;
         default:
                 return 0;
         }
