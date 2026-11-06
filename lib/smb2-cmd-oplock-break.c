@@ -242,8 +242,8 @@ smb2_encode_lease_break_acknowledgement(struct smb2_context *smb2,
         smb2_set_uint16(iov, 0, SMB2_LEASE_BREAK_ACKNOWLEDGE_SIZE);
         smb2_set_uint32(iov, 4, req->flags);
         memcpy(iov->buf + 8, req->lease_key, SMB2_LEASE_KEY_SIZE);
-        smb2_set_uint32(iov, 4, req->lease_state);
-        smb2_set_uint32(iov, 4, req->lease_duration);
+        smb2_set_uint32(iov, 24, req->lease_state);
+        smb2_set_uint64(iov, 28, req->lease_duration);
 
         return 0;
 }
@@ -300,7 +300,7 @@ smb2_encode_lease_break_reply(struct smb2_context *smb2,
         smb2_set_uint32(iov, 4, rep->flags);
         memcpy(iov->buf + 8, rep->lease_key, SMB2_LEASE_KEY_SIZE);
         smb2_set_uint32(iov, 24, rep->lease_state);
-        smb2_set_uint32(iov, 28, rep->lease_duration);
+        smb2_set_uint64(iov, 28, rep->lease_duration);
 
         return 0;
 }
@@ -356,11 +356,11 @@ smb2_encode_lease_break_notification(struct smb2_context *smb2,
         smb2_set_uint16(iov, 2, req->new_epoch);
         smb2_set_uint32(iov, 4, req->flags);
         memcpy(iov->buf + 8, req->lease_key, SMB2_LEASE_KEY_SIZE);
-        smb2_set_uint32(iov, 4, req->current_lease_state);
-        smb2_set_uint32(iov, 4, req->new_lease_state);
-        smb2_set_uint32(iov, 4, req->break_reason);
-        smb2_set_uint32(iov, 4, req->access_mask_hint);
-        smb2_set_uint32(iov, 4, req->share_mask_hint);
+        smb2_set_uint32(iov, 24, req->current_lease_state);
+        smb2_set_uint32(iov, 28, req->new_lease_state);
+        smb2_set_uint32(iov, 32, req->break_reason);
+        smb2_set_uint32(iov, 36, req->access_mask_hint);
+        smb2_set_uint32(iov, 40, req->share_mask_hint);
 
         return 0;
 }
@@ -466,7 +466,7 @@ smb2_process_oplock_break_variable(struct smb2_context *smb2,
         else if (rep->struct_size == SMB2_LEASE_BREAK_REPLY_SIZE) {
                 rep->break_type = SMB2_BREAK_TYPE_LEASE_RESPONSE;
                 smb2_get_uint32(iov, 2, &rep->lock.leaserep.flags);
-                memcpy(rep->lock.lease.lease_key, iov->buf + 6, SMB2_LEASE_KEY_SIZE);
+                memcpy(rep->lock.leaserep.lease_key, iov->buf + 6, SMB2_LEASE_KEY_SIZE);
                 smb2_get_uint32(iov, 22, &rep->lock.leaserep.lease_state);
                 smb2_get_uint64(iov, 26, &rep->lock.leaserep.lease_duration);
         }
