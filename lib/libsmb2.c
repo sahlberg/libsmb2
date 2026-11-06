@@ -4659,13 +4659,17 @@ smb2_oplock_break_request_cb(struct smb2_server *server, struct smb2_context *sm
                         }
                 }
         }
-        else if ((req->struct_size == SMB2_LEASE_BREAK_NOTIFICATION_SIZE) |
+        else if ((req->struct_size == SMB2_LEASE_BREAK_NOTIFICATION_SIZE) ||
                         (req->struct_size == SMB2_LEASE_BREAK_REPLY_SIZE)) {
                 if (server->handlers && server->handlers->lease_break_cmd) {
                         ret = server->handlers->lease_break_cmd(server, smb2,
                                        &req->lock.lease);
                         if (!ret) {
                                 memset(&rep_lease, 0, sizeof(rep_lease));
+                                rep_lease.flags = req->lock.lease.flags;
+                                rep_lease.lease_state = req->lock.lease.lease_state;
+                                memcpy(rep_lease.lease_key, req->lock.lease.lease_key,
+                                       SMB2_LEASE_KEY_SIZE);
                                 pdu = smb2_cmd_lease_break_reply_async(smb2,
                                         &rep_lease, NULL, cb_data);
                         }
