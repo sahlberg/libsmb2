@@ -242,8 +242,8 @@ smb2_encode_lease_break_acknowledgement(struct smb2_context *smb2,
         smb2_set_uint16(iov, 0, SMB2_LEASE_BREAK_ACKNOWLEDGE_SIZE);
         smb2_set_uint32(iov, 4, req->flags);
         memcpy(iov->buf + 8, req->lease_key, SMB2_LEASE_KEY_SIZE);
-        smb2_set_uint32(iov, 4, req->lease_state);
-        smb2_set_uint32(iov, 4, req->lease_duration);
+        smb2_set_uint32(iov, 24, req->lease_state);
+        smb2_set_uint64(iov, 28, req->lease_duration);
 
         return 0;
 }
@@ -300,7 +300,7 @@ smb2_encode_lease_break_reply(struct smb2_context *smb2,
         smb2_set_uint32(iov, 4, rep->flags);
         memcpy(iov->buf + 8, rep->lease_key, SMB2_LEASE_KEY_SIZE);
         smb2_set_uint32(iov, 24, rep->lease_state);
-        smb2_set_uint32(iov, 28, rep->lease_duration);
+        smb2_set_uint64(iov, 28, rep->lease_duration);
 
         return 0;
 }
