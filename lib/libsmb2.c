@@ -4674,7 +4674,7 @@ smb2_oplock_break_request_cb(struct smb2_server *server, struct smb2_context *sm
         if(ret < 0) {
                 memset(&err, 0, sizeof(err));
                 pdu = smb2_cmd_error_reply_async(smb2,
-                                &err, SMB2_LOCK, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
+                                &err, SMB2_OPLOCK_BREAK, SMB2_STATUS_NOT_IMPLEMENTED, NULL, cb_data);
         }
         if (pdu != NULL) {
                 smb2_set_pdu_message_id(smb2, pdu, smb2->message_id);
