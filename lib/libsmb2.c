@@ -3655,7 +3655,7 @@ struct smb2_ioctl_cb_data {
         smb2_command_cb cb;
         void *cb_data;
         uint8_t *input;
-        uint32_t ctl_code;
+        struct smb2_pdu *pdu;
 };
 
 static void
@@ -3672,14 +3672,12 @@ smb2_ioctl_output_cb(struct smb2_context *smb2, int status,
         /*
          * command_data is only a valid struct smb2_ioctl_reply* when the
          * reply used the IOCTL reply format. On success that is always the
-         * case; on error it is only true for the ctl codes/statuses that
-         * smb2_ioctl_status_uses_reply_format() recognizes (see
-         * smb2_is_error_response() in pdu.c, which decides the same thing
-         * when picking how to decode the reply). Any other error reply is
+         * case; on error only when pdu->ioctl_reply_format is set (see
+         * smb2_is_error_response() in pdu.c). Any other error reply is
          * struct smb2_error_reply* and must not be read as an ioctl reply.
          */
         if (status == SMB2_STATUS_SUCCESS ||
-            smb2_ioctl_status_uses_reply_format(ioctl_data->ctl_code, status)) {
+            ioctl_data->pdu->ioctl_reply_format) {
                 struct smb2_ioctl_reply *rep = command_data;
 
                 if (rep != NULL) {
@@ -3793,7 +3791,6 @@ smb2_copychunk_submit_async(struct smb2_context *smb2,
 
         ioctl_data->cb = cb;
         ioctl_data->cb_data = cb_data;
-        ioctl_data->ctl_code = ctl_code;
 
         memset(&req, 0, sizeof(req));
         req.ctl_code = ctl_code;
@@ -3809,6 +3806,7 @@ smb2_copychunk_submit_async(struct smb2_context *smb2,
                 free(ioctl_data);
                 return -EINVAL;
         }
+        ioctl_data->pdu = pdu;
         smb2_queue_pdu(smb2, pdu);
 
         return 0;
@@ -3837,7 +3835,6 @@ smb2_request_resume_key_async(struct smb2_context *smb2, struct smb2fh *fh,
         }
         ioctl_data->cb = cb;
         ioctl_data->cb_data = cb_data;
-        ioctl_data->ctl_code = SMB2_FSCTL_SRV_REQUEST_RESUME_KEY;
 
         memset(&req, 0, sizeof(req));
         req.ctl_code = SMB2_FSCTL_SRV_REQUEST_RESUME_KEY;
@@ -3850,6 +3847,7 @@ smb2_request_resume_key_async(struct smb2_context *smb2, struct smb2fh *fh,
                 free(ioctl_data);
                 return -EINVAL;
         }
+        ioctl_data->pdu = pdu;
         smb2_queue_pdu(smb2, pdu);
 
         return 0;

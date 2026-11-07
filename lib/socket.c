@@ -918,6 +918,22 @@ read_more_data:
                         }
                 }
 
+                /*
+                 * Servers differ in which copychunk errors they send in the
+                 * IOCTL reply format: Windows and chimera send
+                 * STATUS_ACCESS_DENIED as a plain error reply, Samba as an
+                 * IOCTL reply, and ksmbd uses STATUS_UNEXPECTED_IO_ERROR.
+                 * Only the size of the body tells them apart.
+                 */
+                if (!smb2_is_server(smb2) &&
+                    pdu->header.command == SMB2_IOCTL) {
+                        pdu->ioctl_reply_format =
+                                smb2_ioctl_errors_may_use_reply_format(
+                                        pdu->ctl_code) &&
+                                smb2_pdu_bytes_left(smb2) >=
+                                        (SMB2_IOCTL_REPLY_SIZE & 0xfffe);
+                }
+
                 len = smb2_get_fixed_size(smb2, pdu);
                 if (((int)len) < 0) {
                         smb2_set_error(smb2, "can not determine fixed size");

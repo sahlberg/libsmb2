@@ -423,6 +423,8 @@ struct smb2_pdu {
          * instead of the generic SMB2 error format.
          */
         uint32_t ctl_code;
+        /* this error reply uses the IOCTL reply format */
+        int ioctl_reply_format;
 
         /* For encrypted PDUs */
         uint8_t seal:1;
@@ -668,7 +670,7 @@ int smb2_process_ioctl_request_fixed(struct smb2_context *smb2,
                              struct smb2_pdu *pdu);
 int smb2_process_ioctl_request_variable(struct smb2_context *smb2,
                                 struct smb2_pdu *pdu);
-int smb2_ioctl_status_uses_reply_format(uint32_t ctl_code, uint32_t status);
+int smb2_ioctl_errors_may_use_reply_format(uint32_t ctl_code);
 
 int smb2_decode_file_basic_info(struct smb2_context *smb2,
                                 void *memctx,

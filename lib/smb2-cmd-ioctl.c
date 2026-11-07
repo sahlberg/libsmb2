@@ -57,19 +57,17 @@
 #include "libsmb2-private.h"
 
 /*
- * Some ctl codes report certain errors using the normal IOCTL reply
- * format (struct smb2_ioctl_reply, with an output buffer) instead of the
- * generic SMB2 error format. FSCTL_SRV_COPYCHUNK/_WRITE do this for
- * STATUS_INVALID_PARAMETER, using the output buffer to carry a
- * SRV_COPYCHUNK_RESPONSE with the server's copy limits.
+ * FSCTL_SRV_COPYCHUNK/_WRITE errors may come back in the normal IOCTL
+ * reply format, with a SRV_COPYCHUNK_RESPONSE in the output buffer,
+ * instead of the generic SMB2 error format.
  */
 int
-smb2_ioctl_status_uses_reply_format(uint32_t ctl_code, uint32_t status)
+smb2_ioctl_errors_may_use_reply_format(uint32_t ctl_code)
 {
         switch (ctl_code) {
         case SMB2_FSCTL_SRV_COPYCHUNK:
         case SMB2_FSCTL_SRV_COPYCHUNK_WRITE:
-                return status == SMB2_STATUS_INVALID_PARAMETER;
+                return 1;
         default:
                 return 0;
         }
