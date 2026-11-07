@@ -2011,25 +2011,27 @@ smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
         rd->read_cb_data.count = count;
         rd->read_cb_data.offset = offset;
 
-        if (count > smb2->max_read_size) {
-                count = smb2->max_read_size;
-        }
-        needed_credits = (count - 1) / 65536 + 1;
-
-        if (smb2->dialect > SMB2_VERSION_0202) {
-                if (needed_credits > MAX_CREDITS - 16) {
-                        count =  (MAX_CREDITS - 16) * 65536;
+        if (count > 0) {
+                if (count > smb2->max_read_size) {
+                        count = smb2->max_read_size;
                 }
                 needed_credits = (count - 1) / 65536 + 1;
-                if (needed_credits > smb2->credits) {
-                        count = smb2->credits * 65536;
+
+                if (smb2->dialect > SMB2_VERSION_0202) {
+                        if (needed_credits > MAX_CREDITS - 16) {
+                                count =  (MAX_CREDITS - 16) * 65536;
+                        }
+                        needed_credits = (count - 1) / 65536 + 1;
+                        if (needed_credits > smb2->credits) {
+                                count = smb2->credits * 65536;
+                        }
+                } else {
+                        if (count > 65536) {
+                                count = 65536;
+                        }
                 }
-        } else {
-                if (count > 65536) {
-                        count = 65536;
-                }
+                needed_credits = (count - 1) / 65536 + 1;
         }
-        needed_credits = (count - 1) / 65536 + 1;
 
         memset(&req, 0, sizeof(struct smb2_read_request));
         req.flags = 0;
@@ -2130,25 +2132,27 @@ smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
         wr->write_cb_data.count = count;
         wr->write_cb_data.offset = offset;
 
-        if (count > smb2->max_write_size) {
-                count = smb2->max_write_size;
-        }
-        needed_credits = (count - 1) / 65536 + 1;
-
-        if (smb2->dialect > SMB2_VERSION_0202) {
-                if (needed_credits > MAX_CREDITS - 16) {
-                        count =  (MAX_CREDITS - 16) * 65536;
+        if (count > 0) {
+                if (count > smb2->max_write_size) {
+                        count = smb2->max_write_size;
                 }
                 needed_credits = (count - 1) / 65536 + 1;
-                if (needed_credits > smb2->credits) {
-                        count = smb2->credits * 65536;
+
+                if (smb2->dialect > SMB2_VERSION_0202) {
+                        if (needed_credits > MAX_CREDITS - 16) {
+                                count =  (MAX_CREDITS - 16) * 65536;
+                        }
+                        needed_credits = (count - 1) / 65536 + 1;
+                        if (needed_credits > smb2->credits) {
+                                count = smb2->credits * 65536;
+                        }
+                } else {
+                        if (count > 65536) {
+                                count = 65536;
+                        }
                 }
-        } else {
-                if (count > 65536) {
-                        count = 65536;
-                }
+                needed_credits = (count - 1) / 65536 + 1;
         }
-        needed_credits = (count - 1) / 65536 + 1;
 
         memset(&req, 0, sizeof(struct smb2_write_request));
         req.length = count;
