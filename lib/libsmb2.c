@@ -4666,7 +4666,6 @@ smb2_oplock_break_request_cb(struct smb2_server *server, struct smb2_context *sm
                                        &req->lock.lease);
                         if (!ret) {
                                 memset(&rep_lease, 0, sizeof(rep_lease));
-                                rep_lease.flags = req->lock.lease.flags;
                                 rep_lease.lease_state = req->lock.lease.lease_state;
                                 memcpy(rep_lease.lease_key, req->lock.lease.lease_key,
                                        SMB2_LEASE_KEY_SIZE);
