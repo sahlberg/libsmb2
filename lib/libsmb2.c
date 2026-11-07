@@ -4651,6 +4651,9 @@ smb2_oplock_break_request_cb(struct smb2_server *server, struct smb2_context *sm
                                        &req->lock.oplock);
                         if (!ret) {
                                 memset(&rep_oplock, 0, sizeof(rep_oplock));
+                                rep_oplock.oplock_level = req->lock.oplock.oplock_level;
+                                memcpy(rep_oplock.file_id, req->lock.oplock.file_id,
+                                       SMB2_FD_SIZE);
                                 pdu = smb2_cmd_oplock_break_reply_async(smb2,
                                         &rep_oplock, NULL, cb_data);
                         }
