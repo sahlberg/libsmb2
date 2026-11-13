@@ -1247,9 +1247,23 @@ void smb2_timeout_pdus(struct smb2_context *smb2)
         while (pdu) {
                 next = pdu->next;
                 if (pdu->timeout && pdu->timeout < t) {
+                        struct smb2_pdu *p;
+
                         SMB2_LIST_REMOVE(&smb2->outqueue, pdu);
-                        pdu->cb(smb2, SMB2_STATUS_IO_TIMEOUT, NULL,
-                                pdu->cb_data);
+                        /*
+                         * An unsent compound is still chained: like
+                         * smb2_destroy_context(), fire every member's
+                         * callback so shared compound callback state sees
+                         * each holder go away, then free the whole chain
+                         * once. Firing only the head would strand the
+                         * siblings' references.
+                         */
+                        for (p = pdu; p; p = p->next_compound) {
+                                if (p->cb) {
+                                        p->cb(smb2, SMB2_STATUS_IO_TIMEOUT,
+                                              NULL, p->cb_data);
+                                }
+                        }
                         if (!pdu->caller_frees_pdu) {
                                 smb2_free_pdu(smb2, pdu);
                         }
@@ -1257,13 +1271,20 @@ void smb2_timeout_pdus(struct smb2_context *smb2)
                 pdu = next;
         }
 
+        /*
+         * Waitqueue entries are always individual PDUs: the write path
+         * clears next_compound as it moves each chain member onto the
+         * waitqueue.
+         */
         pdu = smb2->waitqueue;
         while (pdu) {
                 next = pdu->next;
                 if (pdu->timeout && pdu->timeout < t) {
                         SMB2_LIST_REMOVE(&smb2->waitqueue, pdu);
-                        pdu->cb(smb2, SMB2_STATUS_IO_TIMEOUT, NULL,
-                                pdu->cb_data);
+                        if (pdu->cb) {
+                                pdu->cb(smb2, SMB2_STATUS_IO_TIMEOUT, NULL,
+                                        pdu->cb_data);
+                        }
                         if (!pdu->caller_frees_pdu) {
                                 smb2_free_pdu(smb2, pdu);
                         }
