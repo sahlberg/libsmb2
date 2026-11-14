@@ -2154,7 +2154,12 @@ smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
         rd->read_cb_data.offset = offset;
 
         if (count > 0) {
-                if (count > smb2->max_read_size) {
+                /* A zero negotiated limit means "not negotiated" (raw or
+                 * hostile-server context), not "nothing may be read":
+                 * clamping to it would zero count, and (count - 1) below
+                 * would then wrap to a multi-gigabyte credit computation
+                 * that reads far past the caller's buffer. */
+                if (smb2->max_read_size > 0 && count > smb2->max_read_size) {
                         count = smb2->max_read_size;
                 }
                 needed_credits = (count - 1) / 65536 + 1;
@@ -2302,7 +2307,10 @@ smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
         wr->write_cb_data.offset = offset;
 
         if (count > 0) {
-                if (count > smb2->max_write_size) {
+                /* Same guard as the read path: a zero max_write_size must
+                 * not zero count, or (count - 1) below wraps and the write
+                 * sends tens of KiB read past the caller's buffer. */
+                if (smb2->max_write_size > 0 && count > smb2->max_write_size) {
                         count = smb2->max_write_size;
                 }
                 needed_credits = (count - 1) / 65536 + 1;
