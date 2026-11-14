@@ -1477,6 +1477,54 @@ smb2_service_fd(struct smb2_context *smb2, t_socket fd, int revents)
                 goto out;
         }
         if (revents & POLLHUP) {
+                /*
+                 * macOS reports a refused non-blocking connect as POLLHUP
+                 * without POLLERR/POLLOUT. Complete a pending connect with
+                 * the real socket error, like the POLLERR branch —
+                 * including trying the next resolved address — instead of
+                 * leaving it for context teardown, which can only report
+                 * a generic cancellation.
+                 */
+                if (smb2->connect_cb) {
+                        int err = 0;
+                        socklen_t err_size = sizeof(err);
+
+                        if (getsockopt(fd, SOL_SOCKET, SO_ERROR,
+                                       (char *)&err, &err_size) != 0 && err == 0) {
+                                err = errno;
+                        }
+                        if (err != 0) {
+                                if (!SMB2_VALID_SOCKET(smb2->fd) &&
+                                    smb2->next_addrinfo != NULL) {
+                                        smb2_close_connecting_fd(smb2, fd);
+                                        err = smb2_connect_async_next_addr(
+                                                smb2, smb2->next_addrinfo);
+                                        if (err == 0) {
+                                                return 0;
+                                        }
+                                }
+                                smb2_set_error(smb2, "smb2_service: socket error "
+                                                "%s(%d).",
+                                                strerror(err), err);
+                                smb2->connect_cb(smb2, err, NULL,
+                                                 smb2->connect_data);
+                                smb2->connect_cb = NULL;
+                                ret = -1;
+                                goto out;
+                        }
+                }
+                /*
+                 * POLLIN may be set together with POLLHUP when a final
+                 * reply is still sitting in the socket buffer: process it
+                 * first so already-delivered replies complete their
+                 * callers before the failure is reported.
+                 */
+                if (revents & POLLIN && SMB2_VALID_SOCKET(smb2->fd)) {
+                        if (smb2_read_from_socket(smb2) != 0) {
+                                ret = -1;
+                                goto out;
+                        }
+                }
                 smb2_set_error(smb2, "smb2_service: POLLHUP, "
                                 "socket error.");
                 ret = -1;
