@@ -1204,8 +1204,13 @@ negotiate_cb(struct smb2_context *smb2, int status,
         }
 
         smb2->max_transact_size = rep->max_transact_size;
-        smb2->max_read_size     = rep->max_read_size;
-        smb2->max_write_size    = rep->max_write_size;
+        /* A forged negotiate reply should not turn into 4 GiB caller
+         * buffers; clamp to the largest multi-credit charge (128 credits
+         * of 64 KiB). */
+        smb2->max_read_size     = rep->max_read_size < 8 * 1024 * 1024 ?
+                rep->max_read_size : 8 * 1024 * 1024;
+        smb2->max_write_size    = rep->max_write_size < 8 * 1024 * 1024 ?
+                rep->max_write_size : 8 * 1024 * 1024;
 #ifdef HAVE_LIBRDMACM
         if (smb2->rdma) {
                 smb2_rdma_cap_io_sizes(smb2);
@@ -2238,6 +2243,20 @@ write_cb(struct smb2_context *smb2, int status,
         if (status == SMB2_STATUS_END_OF_FILE) {
                 /* The payload is an error reply, not a write reply */
                 wd->cb(smb2, 0, &wd->write_cb_data, wd->cb_data);
+                free(wd);
+                return;
+        }
+
+        /*
+         * The count is what callers are told was written and what the file
+         * offset advances by; more than was asked for would corrupt
+         * sequential writes and overflow the caller's progress math.
+         */
+        if (rep != NULL && rep->count > wd->write_cb_data.count) {
+                smb2_set_error(smb2, "Write reply counted %u bytes, "
+                               "%u were sent", rep->count,
+                               wd->write_cb_data.count);
+                wd->cb(smb2, -EIO, &wd->write_cb_data, wd->cb_data);
                 free(wd);
                 return;
         }
@@ -4716,8 +4735,14 @@ notify_change_cb(struct smb2_context *smb2, int status,
                  * the unconditional rep->output dereference below SEGVs whenever a watcher
                  * is torn down with a notify request still outstanding. */
                 if (notify_change_data->cb) {
-                        notify_change_data->cb(smb2, status ? status : -EIO,
-                                               NULL, notify_change_data->cb_data);
+                        /* status arrives NT-shaped (e.g. raw 0xffffffff for
+                         * teardown); hand the caller an errno, not a status
+                         * that decodes as a bogus EPERM. */
+                        notify_change_data->cb(
+                                smb2,
+                                status ? -nterror_to_errno((uint32_t)status)
+                                       : -EIO,
+                                NULL, notify_change_data->cb_data);
                 }
                 free(fnc);
                 if (notify_change_data->owns_fh) {
