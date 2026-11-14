@@ -773,14 +773,29 @@ smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
                  * state sees each holder go away — otherwise the state never
                  * completes and the user callback is lost.
                  */
+                if (smb2->in_queue_abort) {
+                        /*
+                         * A callback fired by the outer abort synchronously
+                         * queued this. Firing its callbacks could recurse
+                         * again without bound, so free the chain as-is: the
+                         * caller learns of the failure from the error state
+                         * (its command never completed on the wire).
+                         */
+                        smb2_set_error(smb2, "Cannot queue a command while "
+                                       "another one is being aborted.");
+                        if (!pdu->caller_frees_pdu) {
+                                smb2_free_pdu(smb2, pdu);
+                        }
+                        return;
+                }
+                smb2->in_queue_abort = 1;
                 for (p = pdu; p; p = p->next_compound) {
                         if (p->cb) {
                                 p->cb(smb2, SMB2_STATUS_SHUTDOWN,
                                       NULL, p->cb_data);
                         }
                 }
-                /* The chain is caller-owned for the _pdu() variants; the
-                 * synchronous wrappers free it themselves. */
+                smb2->in_queue_abort = 0;
                 if (!pdu->caller_frees_pdu) {
                         smb2_free_pdu(smb2, pdu);
                 }

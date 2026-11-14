@@ -278,7 +278,17 @@ struct smb2_context {
         struct smb2_pdu *outqueue;
         struct smb2_pdu *waitqueue;
 
-        /* Handles the caller has not closed yet. */
+        /* Set while the encryption-abort path in smb2_queue_pdu() fires
+         * the aborted chain's callbacks: a callback that synchronously
+         * queues another sealed command would re-enter the abort and
+         * recurse without bound, so re-entered aborts fail the new chain
+         * without firing it again. */
+        int in_queue_abort;
+
+        /*
+         * Handles the caller has not closed yet; swept by
+         * smb2_destroy_context().
+         */
         struct smb2fh *fhs;
         struct smb2dir *dirs;
 
@@ -460,9 +470,10 @@ struct smb2dir {
         struct smb2_dirent_internal *current_entry;
         int index;
 
-        /* Tracked on the context so smb2_destroy_context() can free
-         * unclosed dirs; doubly linked so cancellation can unlink
-         * without a context. */
+        /* All open smb2dir are tracked on their context, so
+         * smb2_destroy_context() can free the ones the caller did not
+         * close, as its contract promises. Doubly linked: opendir
+         * cancellation frees the dir without a context to look it up. */
         struct smb2dir *next, **prev;
 };
 
@@ -836,7 +847,9 @@ void free_c_data(struct smb2_context*, struct connect_data*);  /* defined in lib
 
 int smb2_write_to_socket(struct smb2_context *smb2);
 
-/* Unlink from the context's sweep list; smb2 may be NULL. */
+/* Free a handle/dir and unlink it from its context's sweep list.
+ * smb2 may be NULL (cancellation paths unlink through the embedded
+ * back-pointers). Defined in libsmb2.c. */
 void free_smb2fh(struct smb2_context *smb2, struct smb2fh *fh);
 void free_smb2dir(struct smb2_context *smb2, struct smb2dir *dir);
         
