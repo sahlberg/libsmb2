@@ -278,6 +278,10 @@ struct smb2_context {
         struct smb2_pdu *outqueue;
         struct smb2_pdu *waitqueue;
 
+        /* Handles the caller has not closed yet. */
+        struct smb2fh *fhs;
+        struct smb2dir *dirs;
+
         /*
          * For receiving PDUs
          */
@@ -455,6 +459,11 @@ struct smb2dir {
         struct smb2_dirent_internal *entries;
         struct smb2_dirent_internal *current_entry;
         int index;
+
+        /* Tracked on the context so smb2_destroy_context() can free
+         * unclosed dirs; doubly linked so cancellation can unlink
+         * without a context. */
+        struct smb2dir *next, **prev;
 };
 
 
@@ -826,6 +835,10 @@ struct connect_data;                                           /* defined in lib
 void free_c_data(struct smb2_context*, struct connect_data*);  /* defined in libsmb2.c */
 
 int smb2_write_to_socket(struct smb2_context *smb2);
+
+/* Unlink from the context's sweep list; smb2 may be NULL. */
+void free_smb2fh(struct smb2_context *smb2, struct smb2fh *fh);
+void free_smb2dir(struct smb2_context *smb2, struct smb2dir *dir);
         
 #ifdef __cplusplus
 }
