@@ -137,3 +137,15 @@
 
 /* Version number of package */
 #define VERSION "4.0.0"
+
+/* arc4random_buf() is the CSPRNG smb2_random_bytes() prefers. Darwin libc
+ * has it since 10.7 and glibc since 2.36; the upstream autoconf and CMake
+ * builds probe for it on the same platforms. Without it the NTLMv2 client
+ * challenge, SMB 3.1.1 preauth salt, client GUID and per-PDU nonces all
+ * fall back to random() seeded with ~32 bits of guessable material. This
+ * shim config is also the header search path on Linux (see the
+ * smb2-module/apple symlink), so gate by libc feature, not platform. */
+#if defined(__APPLE__) || (defined(__GLIBC__) && defined(__GLIBC_MINOR__) && \
+    (__GLIBC__ > 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 36)))
+#define HAVE_ARC4RANDOM_BUF 1
+#endif
