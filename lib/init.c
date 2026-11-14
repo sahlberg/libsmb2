@@ -535,6 +535,17 @@ void smb2_destroy_context(struct smb2_context *smb2)
                         smb2_free_pdu(smb2, pdu);
                 }
         }
+        /*
+         * Free any handles the caller did not close, as documented.
+         * Callbacks above (e.g. a close racing the teardown) already
+         * unlinked theirs.
+         */
+        while (smb2->fhs) {
+                free_smb2fh(smb2, smb2->fhs);
+        }
+        while (smb2->dirs) {
+                free_smb2dir(smb2, smb2->dirs);
+        }
         smb2_free_iovector(smb2, &smb2->in);
 
         if (smb2->connect_cb) {
