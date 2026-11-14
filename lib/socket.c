@@ -308,6 +308,13 @@ smb2_write_to_socket(struct smb2_context *smb2)
                          */
                         for (tmp_pdu = pdu; tmp_pdu;
                              tmp_pdu = tmp_pdu->next_compound) {
+                                if (niov + tmp_pdu->out.niov > SMB2_MAX_VECTORS) {
+                                        smb2_set_error(smb2, "Compound too "
+                                                       "large: more than %d "
+                                                       "io vectors.",
+                                                       SMB2_MAX_VECTORS);
+                                        return -1;
+                                }
                                 for (i = 0; i < tmp_pdu->out.niov;
                                      i++, niov++) {
                                         iov[niov].iov_base = tmp_pdu->out.iov[i].buf;
