@@ -764,7 +764,11 @@ smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
         }
 
         if (smb3_encrypt_pdu(smb2, pdu) < 0) {
-                smb2_free_pdu(smb2, pdu);
+                /* The chain is caller-owned for the _pdu() variants; the
+                 * synchronous wrappers free it themselves. */
+                if (!pdu->caller_frees_pdu) {
+                        smb2_free_pdu(smb2, pdu);
+                }
                 smb2_close_context(smb2);
                 return;
         }
