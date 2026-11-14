@@ -65,6 +65,13 @@ smb2_timeval_to_win(struct smb2_timeval *tv)
 void
 smb2_win_to_timeval(uint64_t smb2_time, struct smb2_timeval *tv)
 {
+        const uint64_t epoch = 116444736000000000;
+
         tv->tv_usec = (smb2_time / 10) % 1000000;
-        tv->tv_sec  = (smb2_time - 116444736000000000) / 10000000;
+        if (smb2_time >= epoch) {
+                tv->tv_sec = (smb2_time - epoch) / 10000000;
+        } else {
+                /* Before 1970: round towards -inf so tv_usec stays >= 0. */
+                tv->tv_sec = -(time_t)((epoch - smb2_time + 9999999) / 10000000);
+        }
 }
