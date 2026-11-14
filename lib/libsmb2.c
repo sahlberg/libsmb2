@@ -4249,11 +4249,15 @@ smb2_decode_filenotifychangeinformation(
 void
 free_smb2_file_notify_change_information(struct smb2_context *smb2, struct smb2_file_notify_change_information *fnc)
 {
-        if (fnc->next) {
-                free_smb2_file_notify_change_information(smb2, fnc->next);
+        /* Iterative: a server can chain enough entries to overflow the
+         * thread stack with one frame per entry. */
+        while (fnc) {
+                struct smb2_file_notify_change_information *next = fnc->next;
+
+                free(discard_const(fnc->name));
+                free(fnc);
+                fnc = next;
         }
-        free(discard_const(fnc->name));
-        free(fnc);
 }
 
 struct notify_change_cb_data {
