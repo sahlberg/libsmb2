@@ -2561,6 +2561,21 @@ struct stat_cb_data {
 static void
 stat_complete(struct smb2_context *smb2, struct stat_cb_data *stat_data)
 {
+        /*
+         * The attribute-tag query can complete after the info query: the
+         * fstat compound is unrelated, so the server may reorder the
+         * replies. Apply the final tag before reporting — reclassifying
+         * here is idempotent when the tag was already known at decode
+         * time.
+         */
+        if (stat_data->status == SMB2_STATUS_SUCCESS &&
+            stat_data->info_type == SMB2_0_INFO_FILE &&
+            stat_data->file_info_class == SMB2_FILE_ALL_INFORMATION) {
+                struct smb2_stat_64 *st = stat_data->st;
+
+                smb2_set_stat_type(st, st->smb2_attributes,
+                                   stat_data->reparse_tag);
+        }
         if (stat_data->status != SMB2_STATUS_SUCCESS) {
                 smb2_set_nterror(smb2, stat_data->status, "Query info failed with "
                                  "(0x%08x) %s", stat_data->status,
@@ -2687,6 +2702,8 @@ smb2_fstat_async(struct smb2_context *smb2, struct smb2fh *fh,
         stat_data->cb = cb;
         stat_data->cb_data = cb_data;
         stat_data->st = st;
+        stat_data->info_type = SMB2_0_INFO_FILE;
+        stat_data->file_info_class = SMB2_FILE_ALL_INFORMATION;
 
         memset(&req, 0, sizeof(struct smb2_query_info_request));
         req.info_type = SMB2_0_INFO_FILE;
