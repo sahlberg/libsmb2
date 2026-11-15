@@ -164,7 +164,7 @@ struct connect_data {
         int mech_types_len;
         int ntlm_counter_proposed;
         void *select_ntlmssp;
-        /* Server: SESSION_SETUP requests in the session setup going on */
+        /* SESSION_SETUP legs in the session setup going on */
         int session_setup_legs;
 };
 
@@ -919,6 +919,16 @@ session_setup_cb(struct smb2_context *smb2, int status,
 
         if (status == SMB2_STATUS_MORE_PROCESSING_REQUIRED &&
             rep->security_buffer) {
+                /* Every leg has a timeout of its own, so a server that
+                 * always wants another one would keep us here forever. */
+                if (++c_data->session_setup_legs > SMB2_MAX_SESSION_SETUP_LEGS) {
+                        smb2_close_context(smb2);
+                        smb2_set_error(smb2, "session setup needs more than %d legs",
+                                       SMB2_MAX_SESSION_SETUP_LEGS);
+                        c_data->cb(smb2, -EACCES, NULL, c_data->cb_data);
+                        free_c_data(smb2, c_data);
+                        return;
+                }
                 smb3_update_preauth_hash(smb2, smb2->in.niov - 1, &smb2->in.iov[1]);
                 if ((ret = send_session_setup_request(
                                 smb2, c_data, rep->security_buffer,
