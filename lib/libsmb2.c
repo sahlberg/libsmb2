@@ -2354,7 +2354,8 @@ create_cb_1(struct smb2_context *smb2, int status,
             void *command_data, void *private_data)
 {
         if (status != SMB2_STATUS_SUCCESS) {
-                smb2_set_error(smb2, "Create failed with status %s.", nterror_to_str(status));
+                smb2_set_nterror(smb2, status, "Create failed with status %s.",
+                                 nterror_to_str(status));
                 return;
         }
 }
