@@ -4139,6 +4139,14 @@ smb2_fd_event_callbacks(struct smb2_context *smb2,
         smb2->change_events = change_events;
 }
 
+/* The server answers the acknowledgement of a break (MS-SMB2 3.3.5.22)
+ * and nobody waits for that answer. */
+static void
+oplock_break_ack_cb(struct smb2_context *smb2 _U_, int status _U_,
+                    void *command_data _U_, void *private_data _U_)
+{
+}
+
 void
 smb2_oplock_break_notify(struct smb2_context *smb2, int status, void *command_data, void *cb_data)
 {
@@ -4166,7 +4174,7 @@ smb2_oplock_break_notify(struct smb2_context *smb2, int status, void *command_da
                                 memset(&rep_oplock, 0, sizeof(rep_oplock));
                                 rep_oplock.oplock_level = new_oplock_level;
                                 memcpy(rep_oplock.file_id, rep->lock.oplock.file_id, SMB2_FD_SIZE);
-                                pdu = smb2_cmd_oplock_break_reply_async(smb2, &rep_oplock, NULL, cb_data);
+                                pdu = smb2_cmd_oplock_break_reply_async(smb2, &rep_oplock, oplock_break_ack_cb, cb_data);
                                 break;
                         case SMB2_BREAK_TYPE_OPLOCK_RESPONSE:
                                 break;
@@ -4179,7 +4187,7 @@ smb2_oplock_break_notify(struct smb2_context *smb2, int status, void *command_da
                                 rep_lease.flags = rep->lock.lease.flags;
                                 rep_lease.lease_state = new_lease_state;
                                 memcpy(rep_lease.lease_key, rep->lock.lease.lease_key, SMB2_LEASE_KEY_SIZE);
-                                pdu = smb2_cmd_lease_break_reply_async(smb2, &rep_lease, NULL, cb_data);
+                                pdu = smb2_cmd_lease_break_reply_async(smb2, &rep_lease, oplock_break_ack_cb, cb_data);
                                 break;
                         case SMB2_BREAK_TYPE_LEASE_RESPONSE:
                                 break;
