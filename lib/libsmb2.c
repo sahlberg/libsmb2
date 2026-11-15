@@ -4168,16 +4168,14 @@ smb2_fh_from_file_id(struct smb2_context *smb2, smb2_file_id *fileid)
 {
         struct smb2fh *fh;
 
-        if (smb2 == NULL) {
-                return NULL;
-        }
-
         fh = calloc(1, sizeof(struct smb2fh));
         if (fh == NULL) {
                 return NULL;
         }
         memcpy(fh->file_id, fileid, SMB2_FD_SIZE);
-        smb2_track_fh(smb2, fh);
+        if (smb2) {
+                smb2_track_fh(smb2, fh);
+        }
 
         return fh;
 }
