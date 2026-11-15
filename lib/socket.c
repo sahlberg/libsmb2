@@ -898,13 +898,18 @@ read_more_data:
                                  * Unrelated compound requests are independent and
                                  * may receive replies in any order.
                                  */
+                                /* On these errors the pdu is still on the
+                                 * waitqueue, so leave it to be completed
+                                 * from there with the rest of its compound. */
                                 if (!pdu->unrelated_compound &&
                                     pdu->prev_compound_mid &&
                                     smb2_find_pdu(smb2, pdu->prev_compound_mid)) {
                                         smb2_set_error(smb2, "compound reply received out of order");
+                                        smb2->pdu = NULL;
                                         return -1;
                                 }
                                 if (smb2_reply_matches_request(smb2, pdu)) {
+                                        smb2->pdu = NULL;
                                         return -1;
                                 }
 
