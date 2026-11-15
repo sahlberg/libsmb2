@@ -257,7 +257,13 @@ smb2_encode_query_directory_reply(struct smb2_context *smb2,
                         rep->output_buffer_length = 0;
                         in_offset = 0;
                         in_remain = fslen;
-                        do {
+                        /* sizeof() is unsigned: comparing a negative
+                         * in_remain against it promoted the int and kept
+                         * the loop walking past the buffer. Check against
+                         * the signed stride, before the first iteration
+                         * too (do-while entered it unconditionally even
+                         * for buffers shorter than one entry). */
+                        while (in_remain >= (int)sizeof(struct smb2_fileidbothdirectoryinformation)) {
                                 fs = (struct smb2_fileidbothdirectoryinformation*)(void *)(rep->output_buffer + in_offset);
                                 fname_len = 0;
                                 if (fs->name && fs->name[0]) {
@@ -274,7 +280,6 @@ smb2_encode_query_directory_reply(struct smb2_context *smb2,
                                 in_offset += PAD_TO_64BIT(sizeof(struct smb2_fileidbothdirectoryinformation));
                                 in_remain -= PAD_TO_64BIT(sizeof(struct smb2_fileidbothdirectoryinformation));
                         }
-                        while (in_remain >= sizeof(struct smb2_fileidbothdirectoryinformation));
                 }
         }
 
@@ -314,7 +319,7 @@ smb2_encode_query_directory_reply(struct smb2_context *smb2,
         }
         else {
 
-                do {
+                while (in_remain >= (int)sizeof(struct smb2_fileidbothdirectoryinformation)) {
                         fs = (struct smb2_fileidbothdirectoryinformation*)(void *)(rep->output_buffer + in_offset);
                         fname_len = 0;
                         name = NULL;
@@ -382,7 +387,6 @@ smb2_encode_query_directory_reply(struct smb2_context *smb2,
 
                         offset += fs_size;
                 }
-                while (in_remain >= sizeof(struct smb2_fileidbothdirectoryinformation));
         }
         return 0;
 }

@@ -91,6 +91,15 @@ smb2_encode_create_request(struct smb2_context *smb2,
                         return -1;
                 }
                 name_byte_len = 2 * name->len;
+                /* The wire field is 16 bit: a longer name would silently
+                 * wrap and open a different path (modulo 64 KiB, possibly
+                 * the share root) than the caller asked for. */
+                if (name_byte_len > 0xffff) {
+                        smb2_set_error(smb2, "Name is too long; the SMB2 "
+                                       "CREATE NameLength field is 16 bit.");
+                        free(name);
+                        return -1;
+                }
                 /* name length */
                 req->name_length = name_byte_len;
                 smb2_set_uint16(iov, 46, req->name_length);

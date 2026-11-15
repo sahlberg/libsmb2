@@ -527,7 +527,9 @@ query_cb(struct smb2_context *smb2, int status,
                 vec.len = rep->output_buffer_length;
 
                 if (decode_dirents(smb2, dir, &vec) < 0) {
-                        dir->cb(smb2, -ENOMEM, NULL, dir->cb_data);
+                        /* decode_dirents() already set the real reason
+                         * (malformed reply); ENOMEM misled diagnosis. */
+                        dir->cb(smb2, -EIO, NULL, dir->cb_data);
                         free_smb2dir(smb2, dir);
                         return;
                 }
@@ -4925,7 +4927,7 @@ smb2_query_directory_request_cb(struct smb2_server *server, struct smb2_context 
                         pdu = smb2_cmd_error_reply_async(smb2,
                                         &err, SMB2_QUERY_DIRECTORY, SMB2_STATUS_NO_MORE_FILES, NULL, cb_data);
                 }
-                else if (rep.output_buffer_length < 0) {
+                else if (rep.output_buffer_length == (uint32_t)-1) {
                         pdu = smb2_cmd_error_reply_async(smb2,
                                         &err, SMB2_QUERY_DIRECTORY, SMB2_STATUS_NOT_SUPPORTED, NULL, cb_data);
                 }
@@ -4991,7 +4993,7 @@ smb2_query_info_request_cb(struct smb2_server *server, struct smb2_context *smb2
                         pdu = smb2_cmd_error_reply_async(smb2,
                                         &err, SMB2_QUERY_INFO, SMB2_STATUS_NOT_SUPPORTED, NULL, cb_data);
                 }
-                else if (rep.output_buffer_length < 0) {
+                else if (rep.output_buffer_length == (uint32_t)-1) {
                         pdu = smb2_cmd_error_reply_async(smb2,
                                         &err, SMB2_QUERY_INFO, SMB2_STATUS_INVALID_INFO_CLASS, NULL, cb_data);
                 }
