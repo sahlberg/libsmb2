@@ -2019,6 +2019,13 @@ read_cb(struct smb2_context *smb2, int status,
                 return;
         }
 
+        if (status == SMB2_STATUS_END_OF_FILE) {
+                /* The payload is an error reply, not a read reply */
+                rd->cb(smb2, 0, &rd->read_cb_data, rd->cb_data);
+                free(rd);
+                return;
+        }
+
         if (status == SMB2_STATUS_SUCCESS) {
                 rd->read_cb_data.fh->offset = rd->read_cb_data.offset + rep->data_length;
         }
@@ -2136,6 +2143,13 @@ write_cb(struct smb2_context *smb2, int status,
                 smb2_set_nterror(smb2, status, "Read/Write failed with (0x%08x) %s",
                                status, nterror_to_str(status));
                 wd->cb(smb2, -nterror_to_errno(status), &wd->write_cb_data, wd->cb_data);
+                free(wd);
+                return;
+        }
+
+        if (status == SMB2_STATUS_END_OF_FILE) {
+                /* The payload is an error reply, not a write reply */
+                wd->cb(smb2, 0, &wd->write_cb_data, wd->cb_data);
                 free(wd);
                 return;
         }
