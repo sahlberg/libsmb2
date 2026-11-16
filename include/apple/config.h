@@ -148,8 +148,11 @@
  * version test (__GLIBC__ comes from <features.h>) is always false at this
  * point, and pulling <features.h> in early would freeze the feature-test
  * macros before the sources define _GNU_SOURCE. */
-#if defined(__APPLE__)
-/* Darwin libc has arc4random_buf() since 10.7. */
+#if defined(__APPLE__) || defined(__OpenBSD__) || defined(__FreeBSD__) || \
+    defined(__NetBSD__) || defined(__DragonFly__)
+/* These libcs all provide arc4random_buf(). (Darwin since 10.7; the BSDs
+ * forever. Their compilers predefine these macros, so the test works even
+ * though this file is the first include of every translation unit.) */
 #define HAVE_ARC4RANDOM_BUF 1
 #elif defined(__linux__)
 /* getrandom(2) needs no libc version probe on anything a Swift toolchain
