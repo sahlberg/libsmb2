@@ -138,14 +138,27 @@
 /* Version number of package */
 #define VERSION "4.0.0"
 
-/* arc4random_buf() is the CSPRNG smb2_random_bytes() prefers. Darwin libc
- * has it since 10.7 and glibc since 2.36; the upstream autoconf and CMake
- * builds probe for it on the same platforms. Without it the NTLMv2 client
+/* Pick a CSPRNG for smb2_random_bytes(). Without one the NTLMv2 client
  * challenge, SMB 3.1.1 preauth salt, client GUID and per-PDU nonces all
- * fall back to random() seeded with ~32 bits of guessable material. This
- * shim config is also the header search path on Linux (see the
- * smb2-module/apple symlink), so gate by libc feature, not platform. */
-#if defined(__APPLE__) || (defined(__GLIBC__) && defined(__GLIBC_MINOR__) && \
-    (__GLIBC__ > 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 36)))
+ * fall back to random() seeded with ~32 bits of guessable material.
+ *
+ * This shim config is the first include of every translation unit and is
+ * also the header search path on Linux (see the smb2-module/apple
+ * symlink), so only compiler-predefined macros can be tested here: a libc
+ * version test (__GLIBC__ comes from <features.h>) is always false at this
+ * point, and pulling <features.h> in early would freeze the feature-test
+ * macros before the sources define _GNU_SOURCE. */
+#if defined(__APPLE__)
+/* Darwin libc has arc4random_buf() since 10.7. */
 #define HAVE_ARC4RANDOM_BUF 1
+#elif defined(__linux__)
+/* getrandom(2) needs no libc version probe on anything a Swift toolchain
+ * ships for (glibc >= 2.25, musl >= 1.1.20); /dev/urandom stays as the
+ * fallback for seccomp filters and old kernels. Bionic only gained the
+ * wrapper in API 28, so Android relies on /dev/urandom alone. */
+#ifndef __ANDROID__
+#define HAVE_SYS_RANDOM_H 1
+#define HAVE_GETRANDOM 1
+#endif
+#define HAVE_DEV_URANDOM 1
 #endif
