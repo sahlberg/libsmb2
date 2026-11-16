@@ -257,12 +257,8 @@ smb2_encode_query_directory_reply(struct smb2_context *smb2,
                         rep->output_buffer_length = 0;
                         in_offset = 0;
                         in_remain = fslen;
-                        /* sizeof() is unsigned: comparing a negative
-                         * in_remain against it promoted the int and kept
-                         * the loop walking past the buffer. Check against
-                         * the signed stride, before the first iteration
-                         * too (do-while entered it unconditionally even
-                         * for buffers shorter than one entry). */
+                        /* in_remain is signed; sizeof() is size_t, so
+                         * compare against a signed stride. */
                         while (in_remain >= (int)sizeof(struct smb2_fileidbothdirectoryinformation)) {
                                 fs = (struct smb2_fileidbothdirectoryinformation*)(void *)(rep->output_buffer + in_offset);
                                 fname_len = 0;

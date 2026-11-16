@@ -425,14 +425,14 @@ decode_dirents(struct smb2_context *smb2, struct smb2dir *dir,
                 /* Make sure we do not go beyond end of vector */
                 if (offset >= vec->len) {
                         smb2_set_error(smb2, "Malformed query reply.");
-                        return -1;
+                        return -EIO;
                 }
 
                 ent = calloc(1, sizeof(struct smb2_dirent_internal));
                 if (ent == NULL) {
                         smb2_set_error(smb2, "Failed to allocate "
                                        "dirent_internal");
-                        return -1;
+                        return -ENOMEM;
                 }
                 SMB2_LIST_ADD(&dir->entries, ent);
 
@@ -446,7 +446,7 @@ decode_dirents(struct smb2_context *smb2, struct smb2dir *dir,
                         /* fs holds nothing from this entry (or stale data
                          * from the previous one): do not let two entries
                          * own the same name, and stop the walk here. */
-                        return -1;
+                        return -EIO;
                 }
                 /* steal the name */
                 ent->dirent.name = fs.name;
@@ -481,7 +481,7 @@ decode_dirents(struct smb2_context *smb2, struct smb2dir *dir,
                 if ((fs.next_entry_offset != 0 && fs.next_entry_offset < 80)
                     || fs.next_entry_offset > vec->len - offset) {
                         smb2_set_error(smb2, "Malformed query reply.");
-                        return -1;
+                        return -EIO;
                 }
                 offset += fs.next_entry_offset;
         } while (fs.next_entry_offset);
@@ -522,14 +522,14 @@ query_cb(struct smb2_context *smb2, int status,
                 struct smb2_iovec vec _U_;
                 struct smb2_query_directory_request req;
                 struct smb2_pdu *pdu;
+                int ret;
 
                 vec.buf = rep->output_buffer;
                 vec.len = rep->output_buffer_length;
 
-                if (decode_dirents(smb2, dir, &vec) < 0) {
-                        /* decode_dirents() already set the real reason
-                         * (malformed reply); ENOMEM misled diagnosis. */
-                        dir->cb(smb2, -EIO, NULL, dir->cb_data);
+                ret = decode_dirents(smb2, dir, &vec);
+                if (ret < 0) {
+                        dir->cb(smb2, ret, NULL, dir->cb_data);
                         free_smb2dir(smb2, dir);
                         return;
                 }
