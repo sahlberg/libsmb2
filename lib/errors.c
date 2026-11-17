@@ -50,6 +50,10 @@ const char *nterror_to_str(uint32_t status) {
                 return "STATUS_SHUTDOWN";
         case SMB2_STATUS_PENDING:
                 return "STATUS_PENDING";
+        case SMB2_STATUS_NOTIFY_CLEANUP:
+                return "STATUS_NOTIFY_CLEANUP";
+        case SMB2_STATUS_NOTIFY_ENUM_DIR:
+                return "STATUS_NOTIFY_ENUM_DIR";
         case SMB2_STATUS_NO_MORE_FILES:
                 return "STATUS_NO_MORE_FILES";
         case SMB2_STATUS_UNSUCCESSFUL:

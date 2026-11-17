@@ -36,6 +36,8 @@
 #define SMB2_STATUS_SUCCESS                            0x00000000
 #define SMB2_STATUS_SHUTDOWN                           0xffffffff
 #define SMB2_STATUS_PENDING                            0x00000103
+#define SMB2_STATUS_NOTIFY_CLEANUP                     0x0000010B
+#define SMB2_STATUS_NOTIFY_ENUM_DIR                    0x0000010C
 #define SMB2_STATUS_SMB_BAD_FID                        0x00060001
 #define SMB2_STATUS_NO_MORE_FILES                      0x80000006
 #define SMB2_STATUS_UNSUCCESSFUL                       0xC0000001

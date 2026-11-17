@@ -2223,6 +2223,8 @@ struct write_data {
         void *cb_data;
 
         struct smb2_write_cb_data write_cb_data;
+        /* Bytes queued. write_cb_data.count stays the caller's length. */
+        uint32_t sent;
 };
 
 static void
@@ -2248,14 +2250,13 @@ write_cb(struct smb2_context *smb2, int status,
         }
 
         /*
-         * The count is what callers are told was written and what the file
-         * offset advances by; more than was asked for would corrupt
-         * sequential writes and overflow the caller's progress math.
+         * rep->count advances the file offset. A reply above the bytes
+         * queued skips the tail of a sequential write.
          */
-        if (rep != NULL && rep->count > wd->write_cb_data.count) {
+        if (rep != NULL && rep->count > wd->sent) {
                 smb2_set_error(smb2, "Write reply counted %u bytes, "
                                "%u were sent", rep->count,
-                               wd->write_cb_data.count);
+                               wd->sent);
                 wd->cb(smb2, -EIO, &wd->write_cb_data, wd->cb_data);
                 free(wd);
                 return;
@@ -2297,6 +2298,7 @@ smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
         wr->cb_data = cb_data;
         wr->write_cb_data.fh = fh;
         wr->write_cb_data.buf = buf;
+        wr->write_cb_data.count = count;
         wr->write_cb_data.offset = offset;
 
         if (count > 0) {
@@ -2329,11 +2331,7 @@ smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
                 needed_credits = (count - 1) / 65536 + 1;
         }
 
-        /* The amount actually sent (the reduced count), not what the caller
-         * asked for: a forged reply claiming more than was on the wire
-         * would pass a clamp against the original and silently skip bytes
-         * in sequential writes. */
-        wr->write_cb_data.count = count;
+        wr->sent = count;
 
         memset(&req, 0, sizeof(struct smb2_write_request));
         req.length = count;
@@ -4736,9 +4734,11 @@ notify_change_cb(struct smb2_context *smb2, int status,
         struct smb2_file_notify_change_information *fnc = calloc(1, sizeof(struct smb2_file_notify_change_information));
         int decode_status = 0;
 
-        if (status) {
+        if (status && (uint32_t)status != SMB2_STATUS_NOTIFY_ENUM_DIR &&
+            (uint32_t)status != SMB2_STATUS_NOTIFY_CLEANUP) {
                 smb2_set_error(smb2, "notify_change_cb failed (%s) %s\n",
-                               strerror(-status), smb2_get_error(smb2));
+                               nterror_to_str((uint32_t)status),
+                               smb2_get_error(smb2));
         }
 
         if (status || rep == NULL) {
@@ -4748,14 +4748,23 @@ notify_change_cb(struct smb2_context *smb2, int status,
                  * the unconditional rep->output dereference below SEGVs whenever a watcher
                  * is torn down with a notify request still outstanding. */
                 if (notify_change_data->cb) {
-                        /* status arrives NT-shaped (e.g. raw 0xffffffff for
-                         * teardown); hand the caller an errno, not a status
-                         * that decodes as a bogus EPERM. */
-                        notify_change_data->cb(
-                                smb2,
-                                status ? -nterror_to_errno((uint32_t)status)
-                                       : -EIO,
-                                NULL, notify_change_data->cb_data);
+                        uint32_t nt = (uint32_t)status;
+                        int cb_status;
+
+                        /* ENUM_DIR and CLEANUP are success-severity. Mapping
+                         * them through nterror_to_errno hides them as EIO.
+                         * Other statuses are NTSTATUS, including 0xffffffff
+                         * on teardown, which strerror() reported as EPERM. */
+                        if (nt == SMB2_STATUS_NOTIFY_ENUM_DIR ||
+                            nt == SMB2_STATUS_NOTIFY_CLEANUP) {
+                                cb_status = status;
+                        } else if (status) {
+                                cb_status = -nterror_to_errno(nt);
+                        } else {
+                                cb_status = -EIO;
+                        }
+                        notify_change_data->cb(smb2, cb_status,
+                                               NULL, notify_change_data->cb_data);
                 }
                 free(fnc);
                 if (notify_change_data->owns_fh) {
