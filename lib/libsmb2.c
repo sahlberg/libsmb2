@@ -2318,6 +2318,14 @@ smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
                                 count = 65536;
                         }
                 }
+                /*
+                 * smb2_encode_write_request() clamps !multi_credit
+                 * requests to 64 KiB; match it here so the reply
+                 * ceiling equals the on-wire amount.
+                 */
+                if (!smb2->supports_multi_credit && count > 65536) {
+                        count = 65536;
+                }
                 needed_credits = (count - 1) / 65536 + 1;
         }
 
