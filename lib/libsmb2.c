@@ -2297,7 +2297,6 @@ smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
         wr->cb_data = cb_data;
         wr->write_cb_data.fh = fh;
         wr->write_cb_data.buf = buf;
-        wr->write_cb_data.count = count;
         wr->write_cb_data.offset = offset;
 
         if (count > 0) {
@@ -2321,6 +2320,12 @@ smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
                 }
                 needed_credits = (count - 1) / 65536 + 1;
         }
+
+        /* The amount actually sent (the reduced count), not what the caller
+         * asked for: a forged reply claiming more than was on the wire
+         * would pass a clamp against the original and silently skip bytes
+         * in sequential writes. */
+        wr->write_cb_data.count = count;
 
         memset(&req, 0, sizeof(struct smb2_write_request));
         req.length = count;
