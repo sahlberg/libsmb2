@@ -337,23 +337,35 @@ void smb2_destroy_url(struct smb2_url *url)
  * source is optional and we always fall back to the random() based
  * sequence rather than failing. Returns 0 when the bytes came from a
  * strong source and -1 when the fallback was used.
+ *
+ * On Linux, getrandom() with flags 0 blocks until the CRNG is seeded,
+ * and glibc arc4random_buf() calls it that way. smb2_init_context()
+ * would then hang at early boot, and the /dev/urandom fallback below
+ * would never run. Use GRND_NONBLOCK there, and prefer that chain over
+ * arc4random_buf().
  */
 int
 smb2_random_bytes(void *buf, size_t len)
 {
         uint8_t *p = buf;
 
-#ifdef HAVE_ARC4RANDOM_BUF
+#if defined(HAVE_ARC4RANDOM_BUF) && \
+        !(defined(__linux__) && (defined(HAVE_GETRANDOM) || \
+                                 defined(HAVE_DEV_URANDOM)))
         arc4random_buf(p, len);
         return 0;
-#else /* !HAVE_ARC4RANDOM_BUF */
+#else /* !HAVE_ARC4RANDOM_BUF, or Linux with getrandom or urandom */
 
 #ifdef HAVE_GETRANDOM
         {
                 size_t done = 0;
+                unsigned int flags = 0;
 
+#ifdef GRND_NONBLOCK
+                flags = GRND_NONBLOCK;
+#endif
                 while (done < len) {
-                        ssize_t count = getrandom(p + done, len - done, 0);
+                        ssize_t count = getrandom(p + done, len - done, flags);
 
                         if (count < 0) {
                                 if (errno == EINTR) {
@@ -408,7 +420,7 @@ smb2_random_bytes(void *buf, size_t len)
                 }
         }
         return -1;
-#endif /* !HAVE_ARC4RANDOM_BUF */
+#endif /* !HAVE_ARC4RANDOM_BUF, or Linux with getrandom or urandom */
 }
 
 struct smb2_context *smb2_init_context(void)
