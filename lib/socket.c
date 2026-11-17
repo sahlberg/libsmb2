@@ -293,7 +293,9 @@ smb2_write_to_socket(struct smb2_context *smb2)
                 uint32_t spl = 0, tmp_spl, credit_charge;
 
                 credit_charge = smb2_get_credit_charge(smb2, pdu);
-                if (credit_charge > (uint32_t)smb2->credits) {
+                /* A negative balance would pass the unsigned comparison. */
+                if (smb2->credits < 0 ||
+                    credit_charge > (uint32_t)smb2->credits) {
                         return 0;
                 }
 
@@ -732,6 +734,19 @@ read_more_data:
 
                 if (!smb2_is_server(smb2)) {
                         smb2->credits += smb2->hdr.credit_request_response;
+                        /*
+                         * A server granting 65535 per reply walks this int
+                         * past INT_MAX in ~32k replies; a negative balance
+                         * then turns the read/write credit clamp into a
+                         * multi-GiB request length (and passes the unsigned
+                         * send gate). The client never asks for more than
+                         * MAX_CREDITS in total (pdu.c), so a larger balance
+                         * is unusable anyway; it would also make that
+                         * request field wrap.
+                         */
+                        if (smb2->credits > MAX_CREDITS) {
+                                smb2->credits = MAX_CREDITS;
+                        }
                         /* Got credit, recheck if there are pending pdu to be sent. */
                         smb2_change_events(smb2, smb2->fd, smb2_which_events(smb2));
                 }
