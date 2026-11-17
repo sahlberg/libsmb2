@@ -710,6 +710,11 @@ smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
         struct smb2_pdu *p;
         uint64_t prev_compound_mid = 0;
 
+        /* Report only this call. The caller reads queue_rejected before
+         * it returns, so the next call may clear it. The outer abort
+         * clears it again after its own callbacks, which did run. */
+        smb2->queue_rejected = 0;
+
         /* Update all the PDU headers in this chain */
         for (p = pdu; p; p = p->next_compound) {
                 if (smb2_is_server(smb2)) {
@@ -764,8 +769,6 @@ smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
         }
 
         if (smb3_encrypt_pdu(smb2, pdu) < 0) {
-                struct smb2_pdu *p;
-
                 /*
                  * The whole chain is about to be freed without ever being
                  * sent. Fire every member's callback first, the way
@@ -776,11 +779,12 @@ smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
                 if (smb2->in_queue_abort) {
                         /*
                          * A callback fired by the outer abort synchronously
-                         * queued this. Firing its callbacks could recurse
-                         * again without bound, so free the chain as-is: the
-                         * caller learns of the failure from the error state
-                         * (its command never completed on the wire).
+                         * queued this. Firing it now would recurse without
+                         * bound, so leave the chain unfired. The caller
+                         * still owns a caller_frees pdu and must not wait
+                         * for a callback.
                          */
+                        smb2->queue_rejected = 1;
                         smb2_set_error(smb2, "Cannot queue a command while "
                                        "another one is being aborted.");
                         if (!pdu->caller_frees_pdu) {
@@ -796,6 +800,9 @@ smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
                         }
                 }
                 smb2->in_queue_abort = 0;
+                /* Nested queues set this. This call did fire its own
+                 * callbacks, so its caller must not treat it as rejected. */
+                smb2->queue_rejected = 0;
                 if (!pdu->caller_frees_pdu) {
                         smb2_free_pdu(smb2, pdu);
                 }

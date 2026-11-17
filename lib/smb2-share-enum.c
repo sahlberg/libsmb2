@@ -712,6 +712,9 @@ share_enum_read_more(struct share_enum *se)
                 return -1;
         }
         smb2_queue_pdu(se->smb2, pdu);
+        if (se->smb2->queue_rejected) {
+                return -EIO;
+        }
         return 0;
 }
 
@@ -830,6 +833,9 @@ share_enum_send_request(struct share_enum *se)
                 return -ENOMEM;
         }
         smb2_queue_pdu(smb2, pdu);
+        if (smb2->queue_rejected) {
+                return -EIO;
+        }
         return 0;
 }
 
@@ -919,6 +925,9 @@ share_enum_send_bind(struct share_enum *se)
                 return -ENOMEM;
         }
         smb2_queue_pdu(se->smb2, pdu);
+        if (se->smb2->queue_rejected) {
+                return -EIO;
+        }
         return 0;
 }
 
@@ -1001,5 +1010,9 @@ smb2_share_enum_async(struct smb2_context *smb2,
                 return -ENOMEM;
         }
         smb2_queue_pdu(smb2, pdu);
+        if (smb2->queue_rejected) {
+                share_enum_free(se);
+                return -EIO;
+        }
         return 0;
 }

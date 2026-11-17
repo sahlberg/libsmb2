@@ -110,17 +110,17 @@ stat_cb_2(struct smb2_context *smb2, int status,
 {
         struct stat_cb_data *stat_data = private_data;
         struct smb2_query_info_reply *rep = command_data;
-        struct smb2_file_all_info *fs = rep->output_buffer;
 
         if (stat_data->status == SMB2_STATUS_SUCCESS) {
                 stat_data->status = status;
         }
-        if (stat_data->status != SMB2_STATUS_SUCCESS) {
+        /* Timeout and encrypt-abort deliver command_data == NULL. */
+        if (stat_data->status != SMB2_STATUS_SUCCESS || rep == NULL) {
                 return;
         }
 
         /* Remember the fs structure so we can pass it back to the caller */
-        stat_data->fs = fs;
+        stat_data->fs = rep->output_buffer;
 }
 
 static void

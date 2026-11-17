@@ -549,6 +549,11 @@ query_cb(struct smb2_context *smb2, int status,
                         return;
                 }
                 smb2_queue_pdu(smb2, pdu);
+                if (smb2->queue_rejected) {
+                        dir->cb(smb2, -EIO, NULL, dir->cb_data);
+                        free_smb2dir(smb2, dir);
+                        return;
+                }
 
                 return;
         }
@@ -569,6 +574,11 @@ query_cb(struct smb2_context *smb2, int status,
                         return;
                 }
                 smb2_queue_pdu(smb2, pdu);
+                if (smb2->queue_rejected) {
+                        dir->cb(smb2, -EIO, NULL, dir->cb_data);
+                        free_smb2dir(smb2, dir);
+                        return;
+                }
 
                 return;
         }
@@ -632,6 +642,10 @@ opendir_cb(struct smb2_context *smb2, int status,
                 return;
         }
         smb2_queue_pdu(smb2, pdu);
+        if (smb2->queue_rejected) {
+                dir->cb(smb2, -EIO, NULL, dir->cb_data);
+                free_smb2dir(smb2, dir);
+        }
 }
 
 static struct smb2_pdu *
@@ -683,6 +697,16 @@ _smb2_opendir_async(struct smb2_context *smb2, const char *path,
         }
         pdu->caller_frees_pdu = caller_frees_pdu;
         smb2_queue_pdu(smb2, pdu);
+        if (smb2->queue_rejected) {
+                /* Same as a failed create: the callback does not run, and
+                 * free_cb is only for an explicit cancel of a returned pdu. */
+                if (caller_frees_pdu) {
+                        pdu->free_cb = NULL;
+                        smb2_free_pdu(smb2, pdu);
+                }
+                free_smb2dir(smb2, dir);
+                return NULL;
+        }
 
         return pdu;
 }
@@ -1082,6 +1106,12 @@ session_setup_cb(struct smb2_context *smb2, int status,
                         return;
                 }
                 smb2_queue_pdu(smb2, pdu);
+                if (smb2->queue_rejected) {
+                        smb2_close_context(smb2);
+                        c_data->cb(smb2, -EIO, NULL, c_data->cb_data);
+                        free_c_data(smb2, c_data);
+                        return;
+                }
         }
         else {
                 /* if user wants raw data she probably doesnt want us to
@@ -1136,6 +1166,9 @@ send_session_setup_request(struct smb2_context *smb2,
         }
         pdu->update_preauth_hash = 1;
         smb2_queue_pdu(smb2, pdu);
+        if (smb2->queue_rejected) {
+                return -EIO;
+        }
 
         return 0;
 }
@@ -1394,6 +1427,10 @@ connect_cb(struct smb2_context *smb2, int status,
         }
         pdu->update_preauth_hash = 1;
         smb2_queue_pdu(smb2, pdu);
+        if (smb2->queue_rejected) {
+                c_data->cb(smb2, -EIO, NULL, c_data->cb_data);
+                free_c_data(smb2, c_data);
+        }
 }
 
 int
@@ -1725,6 +1762,9 @@ open_retry(struct smb2_context *smb2, struct smb2fh *fh)
                 return -1;
         }
         smb2_queue_pdu(smb2, pdu);
+        if (smb2->queue_rejected) {
+                return -1;
+        }
 
         return 0;
 }
@@ -1873,6 +1913,16 @@ _smb2_open_async_with_oplock_or_lease(struct smb2_context *smb2, const char *pat
         }
         pdu->caller_frees_pdu = caller_frees_pdu;
         smb2_queue_pdu(smb2, pdu);
+        if (smb2->queue_rejected) {
+                /* Same as a failed create: the callback does not run, and
+                 * free_cb is only for an explicit cancel of a returned pdu. */
+                if (caller_frees_pdu) {
+                        pdu->free_cb = NULL;
+                        smb2_free_pdu(smb2, pdu);
+                }
+                free_smb2fh(smb2, fh);
+                return NULL;
+        }
 
         return pdu;
 }
@@ -1958,6 +2008,9 @@ smb2_close_async(struct smb2_context *smb2, struct smb2fh *fh,
                 return -ENOMEM;
         }
         smb2_queue_pdu(smb2, pdu);
+        if (smb2->queue_rejected) {
+                return -EIO;
+        }
 
         return 0;
 }
@@ -2019,6 +2072,10 @@ smb2_fsync_async(struct smb2_context *smb2, struct smb2fh *fh,
                 return -ENOMEM;
         }
         smb2_queue_pdu(smb2, pdu);
+        if (smb2->queue_rejected) {
+                free(fsd);
+                return -EIO;
+        }
 
         return 0;
 }
@@ -2131,6 +2188,10 @@ smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
         }
 
         smb2_queue_pdu(smb2, pdu);
+        if (smb2->queue_rejected) {
+                free(rd);
+                return -EIO;
+        }
 
         return 0;
 }
@@ -2258,6 +2319,10 @@ smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
                 return -EINVAL;
         }
         smb2_queue_pdu(smb2, pdu);
+        if (smb2->queue_rejected) {
+                free(wr);
+                return -EIO;
+        }
 
         return 0;
 }
@@ -2464,6 +2529,10 @@ smb2_unlink_internal(struct smb2_context *smb2, const char *path,
 
         create_data->pending = 2;
         smb2_queue_pdu(smb2, pdu);
+        if (smb2->queue_rejected) {
+                free(create_data);
+                return -EIO;
+        }
 
         return 0;
 }
@@ -2536,6 +2605,10 @@ smb2_mkdir_async(struct smb2_context *smb2, const char *path,
 
         create_data->pending = 2;
         smb2_queue_pdu(smb2, pdu);
+        if (smb2->queue_rejected) {
+                free(create_data);
+                return -EIO;
+        }
 
         return 0;
 }
@@ -2732,7 +2805,6 @@ smb2_fstat_async(struct smb2_context *smb2, struct smb2fh *fh,
         next_pdu = smb2_cmd_query_info_async(smb2, &req, fstat_cb_1, stat_data);
         if (next_pdu == NULL) {
                 smb2_set_error(smb2, "Failed to create query command");
-                stat_data->cb(smb2, -ENOMEM, NULL, stat_data->cb_data);
                 free(stat_data);
                 smb2_free_pdu(smb2, pdu);
                 return -ENOMEM;
@@ -2742,6 +2814,10 @@ smb2_fstat_async(struct smb2_context *smb2, struct smb2fh *fh,
         /* attribute tag query + info query */
         stat_data->pending = 2;
         smb2_queue_pdu(smb2, pdu);
+        if (smb2->queue_rejected) {
+                free(stat_data);
+                return -EIO;
+        }
 
         return 0;
 }
@@ -2892,7 +2968,6 @@ smb2_getinfo_async(struct smb2_context *smb2, const char *path,
                                                      stat_data);
                 if (next_pdu == NULL) {
                         smb2_set_error(smb2, "Failed to create query command");
-                        stat_data->cb(smb2, -ENOMEM, NULL, stat_data->cb_data);
                         free(stat_data);
                         smb2_free_pdu(smb2, pdu);
                         return -1;
@@ -2913,7 +2988,6 @@ smb2_getinfo_async(struct smb2_context *smb2, const char *path,
                                              getinfo_cb_2, stat_data);
         if (next_pdu == NULL) {
                 smb2_set_error(smb2, "Failed to create query command");
-                stat_data->cb(smb2, -ENOMEM, NULL, stat_data->cb_data);
                 free(stat_data);
                 smb2_free_pdu(smb2, pdu);
                 return -1;
@@ -2927,7 +3001,6 @@ smb2_getinfo_async(struct smb2_context *smb2, const char *path,
 
         next_pdu = smb2_cmd_close_async(smb2, &cl_req, getinfo_cb_3, stat_data);
         if (next_pdu == NULL) {
-                stat_data->cb(smb2, -ENOMEM, NULL, stat_data->cb_data);
                 free(stat_data);
                 smb2_free_pdu(smb2, pdu);
                 return -1;
@@ -2939,6 +3012,10 @@ smb2_getinfo_async(struct smb2_context *smb2, const char *path,
                 (info_type == SMB2_0_INFO_FILE &&
                  file_info_class == SMB2_FILE_ALL_INFORMATION) ? 4 : 3;
         smb2_queue_pdu(smb2, pdu);
+        if (smb2->queue_rejected) {
+                free(stat_data);
+                return -EIO;
+        }
 
         return 0;
 }
@@ -3094,7 +3171,6 @@ smb2_truncate_async(struct smb2_context *smb2, const char *path,
         if (next_pdu == NULL) {
                 smb2_set_error(smb2, "Failed to create set command. %s",
                                smb2_get_error(smb2));
-                trunc_data->cb(smb2, -ENOMEM, NULL, trunc_data->cb_data);
                 free(trunc_data);
                 smb2_free_pdu(smb2, pdu);
                 return -EINVAL;
@@ -3108,7 +3184,6 @@ smb2_truncate_async(struct smb2_context *smb2, const char *path,
 
         next_pdu = smb2_cmd_close_async(smb2, &cl_req, trunc_cb_3, trunc_data);
         if (next_pdu == NULL) {
-                trunc_data->cb(smb2, -ENOMEM, NULL, trunc_data->cb_data);
                 free(trunc_data);
                 smb2_free_pdu(smb2, pdu);
                 return -EINVAL;
@@ -3118,6 +3193,10 @@ smb2_truncate_async(struct smb2_context *smb2, const char *path,
         /* create + set info + close */
         trunc_data->pending = 3;
         smb2_queue_pdu(smb2, pdu);
+        if (smb2->queue_rejected) {
+                free(trunc_data);
+                return -EIO;
+        }
 
         return 0;
 }
@@ -3279,7 +3358,6 @@ smb2_new_name_async(struct smb2_context *smb2, const char *oldpath,
         if (next_pdu == NULL) {
                 smb2_set_error(smb2, "Failed to create set command. %s",
                                smb2_get_error(smb2));
-                new_name_data->cb(smb2, -ENOMEM, NULL, new_name_data->cb_data);
                 free_new_name_data(new_name_data);
                 smb2_free_pdu(smb2, pdu);
                 return -EINVAL;
@@ -3293,7 +3371,6 @@ smb2_new_name_async(struct smb2_context *smb2, const char *oldpath,
 
         next_pdu = smb2_cmd_close_async(smb2, &cl_req, new_name_cb_3, new_name_data);
         if (next_pdu == NULL) {
-                new_name_data->cb(smb2, -ENOMEM, NULL, new_name_data->cb_data);
                 free_new_name_data(new_name_data);
                 smb2_free_pdu(smb2, pdu);
                 return -EINVAL;
@@ -3303,6 +3380,10 @@ smb2_new_name_async(struct smb2_context *smb2, const char *oldpath,
         /* create + set info + close */
         new_name_data->pending = 3;
         smb2_queue_pdu(smb2, pdu);
+        if (smb2->queue_rejected) {
+                free_new_name_data(new_name_data);
+                return -EIO;
+        }
 
         return 0;
 }
@@ -3388,6 +3469,10 @@ smb2_ftruncate_async(struct smb2_context *smb2, struct smb2fh *fh,
                 return -ENOMEM;
         }
         smb2_queue_pdu(smb2, pdu);
+        if (smb2->queue_rejected) {
+                free(create_data);
+                return -EIO;
+        }
 
         return 0;
 }
@@ -3723,6 +3808,10 @@ smb2_symlink_async(struct smb2_context *smb2, const char *target,
         /* create + ioctl + close */
         symlink_data->pending = 3;
         smb2_queue_pdu(smb2, pdu);
+        if (smb2->queue_rejected) {
+                free_symlink_data(symlink_data);
+                return -EIO;
+        }
 
         return 0;
 }
@@ -3933,6 +4022,10 @@ smb2_readlink_async(struct smb2_context *smb2, const char *path,
         /* create + ioctl + close */
         readlink_data->pending = 3;
         smb2_queue_pdu(smb2, pdu);
+        if (smb2->queue_rejected) {
+                free(readlink_data);
+                return -EIO;
+        }
 
         return 0;
 }
@@ -4094,6 +4187,11 @@ smb2_copychunk_submit_async(struct smb2_context *smb2,
         }
         ioctl_data->pdu = pdu;
         smb2_queue_pdu(smb2, pdu);
+        if (smb2->queue_rejected) {
+                free(ioctl_data->input);
+                free(ioctl_data);
+                return -EIO;
+        }
 
         return 0;
 }
@@ -4135,6 +4233,10 @@ smb2_request_resume_key_async(struct smb2_context *smb2, struct smb2fh *fh,
         }
         ioctl_data->pdu = pdu;
         smb2_queue_pdu(smb2, pdu);
+        if (smb2->queue_rejected) {
+                free(ioctl_data);
+                return -EIO;
+        }
 
         return 0;
 }
@@ -4297,6 +4399,10 @@ disconnect_cb_1(struct smb2_context *smb2, int status,
                 return;
         }
         smb2_queue_pdu(smb2, pdu);
+        if (smb2->queue_rejected) {
+                dc_data->cb(smb2, -EIO, NULL, dc_data->cb_data);
+                free(dc_data);
+        }
 }
 
 int
@@ -4330,6 +4436,10 @@ smb2_disconnect_share_async(struct smb2_context *smb2,
                 return -ENOMEM;
         }
         smb2_queue_pdu(smb2, pdu);
+        if (smb2->queue_rejected) {
+                free(dc_data);
+                return -EIO;
+        }
 
         return 0;
 }
@@ -4380,6 +4490,10 @@ smb2_echo_async(struct smb2_context *smb2,
                 return -ENOMEM;
         }
         smb2_queue_pdu(smb2, pdu);
+        if (smb2->queue_rejected) {
+                free(echo_data);
+                return -EIO;
+        }
 
         return 0;
 }
@@ -4691,6 +4805,10 @@ notify_change_fh_async(struct smb2_context *smb2, struct smb2fh *smb2_dir_fh,
                 return -1;
         }
         smb2_queue_pdu(smb2, pdu);
+        if (smb2->queue_rejected) {
+                free(notify_change_cb_data);
+                return -EIO;
+        }
 
         return 0;
 }

@@ -279,11 +279,12 @@ struct smb2_context {
         struct smb2_pdu *waitqueue;
 
         /* Set while the encryption-abort path in smb2_queue_pdu() fires
-         * the aborted chain's callbacks: a callback that synchronously
-         * queues another sealed command would re-enter the abort and
-         * recurse without bound, so re-entered aborts fail the new chain
-         * without firing it again. */
+         * the aborted chain's callbacks. A callback that queues another
+         * command must not re-enter that path: the new chain is not
+         * fired, and queue_rejected is set so the caller can free its
+         * state and return an error instead of promising a callback. */
         int in_queue_abort;
+        int queue_rejected;
 
         /*
          * Handles the caller has not closed yet; swept by
