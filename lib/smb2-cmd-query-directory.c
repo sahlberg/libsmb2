@@ -458,7 +458,7 @@ smb2_process_query_directory_fixed(struct smb2_context *smb2,
         }
 
         if (rep->output_buffer_offset < SMB2_HEADER_SIZE +
-            (SMB2_QUERY_INFO_REPLY_SIZE & 0xfffe)) {
+            (SMB2_QUERY_DIRECTORY_REPLY_SIZE & 0xfffe)) {
                 smb2_set_error(smb2, "Output buffer overlaps with "
                                "Query Dir reply header");
                 pdu->payload = NULL;
