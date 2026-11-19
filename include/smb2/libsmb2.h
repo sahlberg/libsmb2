@@ -311,9 +311,9 @@ void smb2_set_version(struct smb2_context *smb2,
 /*
  * Sets which version libsmb2 uses.
 */
-#define LIBSMB2_MAJOR_VERSION 4
-#define LIBSMB2_MINOR_VERSION 0
-#define LIBSMB2_PATCH_VERSION 0
+#define LIBSMB2_MAJOR_VERSION 6
+#define LIBSMB2_MINOR_VERSION 3
+#define LIBSMB2_PATCH_VERSION 2
 
 struct smb2_libversion
 {
