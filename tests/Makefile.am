@@ -11,6 +11,8 @@ noinst_PROGRAMS += metastat-0202-censored utf8-unit timestamps-unit lseek-unit
 
 noinst_PROGRAMS += sync-stat-unit
 
+noinst_PROGRAMS += set-info-unit
+
 EXTRA_PROGRAMS = ld_sockerr
 CLEANFILES = ld_sockerr.o ld_sockerr.so
 
