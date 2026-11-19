@@ -1,6 +1,6 @@
 #!/bin/sh
 
-. ./functions.sh
+. "${srcdir:-.}/functions.sh"
 
 echo "Basic server side copy tests"
 

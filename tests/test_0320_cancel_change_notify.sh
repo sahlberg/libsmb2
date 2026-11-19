@@ -1,6 +1,6 @@
 #!/bin/sh
 
-. ./functions.sh
+. "${srcdir:-.}/functions.sh"
 
 echo "test that smb2_cmd_cancel_async() can cancel a pending CHANGE_NOTIFY"
 

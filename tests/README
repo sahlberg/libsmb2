@@ -13,6 +13,9 @@ $
 
 2, tests/setup.local
 ====================
+For an out-of-tree build, place setup.local and NTLM in the build tree's
+tests directory. Run make test from the build tree.
+
 This file sets two environment variables the tests need, NTLM_USER_FILE
 and TESTURL.
 

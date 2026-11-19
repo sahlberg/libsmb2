@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. ./functions.sh
+. "${srcdir:-.}/functions.sh"
 
 echo "test credits with SMB2 v2.0.2"
 

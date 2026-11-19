@@ -1,10 +1,10 @@
 #!/bin/sh
 
-. ./functions.sh
+. "${srcdir:-.}/functions.sh"
 
 echo "basic set-security-info test"
 
-../utils/smb2-cp ./prog_setsd.c "${TESTURL}/SETSD"
+../utils/smb2-cp "${srcdir:-.}/prog_setsd.c" "${TESTURL}/SETSD"
 
 echo -n "Testing prog_setsd on root of share/SETSD ... "
 ./prog_setsd "${TESTURL}/SETSD" > /dev/null || failure
