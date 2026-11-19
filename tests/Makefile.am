@@ -9,6 +9,12 @@ noinst_PROGRAMS = prog_ls prog_mkdir prog_rmdir prog_cat \
 	prog_lock_cancel prog_setsd prog_ssc prog_unrelated_compound
 noinst_PROGRAMS += metastat-0202-censored utf8-unit timestamps-unit
 
+noinst_PROGRAMS += aes128ccm-test
+aes128ccm_test_SOURCES = aes128ccm-test.c ../lib/aes128ccm.c ../lib/aes.c \
+        ../lib/aes_apple.c ../lib/aes_reference.c
+aes128ccm_test_CFLAGS = $(AM_CFLAGS)
+aes128ccm_test_LDADD = $(MAYBE_LIBCRYPTO)
+
 EXTRA_PROGRAMS = ld_sockerr
 CLEANFILES = ld_sockerr.o ld_sockerr.so
 

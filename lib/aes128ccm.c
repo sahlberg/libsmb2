@@ -32,7 +32,6 @@
 
 #include "compat.h"
 
-#include "portable-endian.h"
 #include "aes.h"
 #include "aes128ccm.h"
 
@@ -42,18 +41,9 @@ static void aes_ccm_generate_b0(unsigned char *nonce, size_t nlen,
                                 size_t alen, size_t plen, size_t mlen,
                                 unsigned char *buf)
 {
-        uint32_t len;
+        unsigned char flags = (unsigned char)(((mlen - 2) / 2) << 3);
 
-        memset(buf, 0, 16);
-        if (alen) {
-                buf[0] |= 0x40;                   /* Adata */
-        }
-        buf[0] |= (((mlen - 2) / 2) << 3) & 0x38; /* M' */
-        buf[0] |= (15 - nlen - 1) & 0x07;         /* L' */
-
-        len = htobe32((uint32_t)plen);
-        memcpy(&buf[12], &len, 4);
-        memcpy(&buf[1], nonce, nlen);
+        ccm_format_block(buf, nonce, nlen, flags | (alen ? 0x40 : 0), plen);
 }
 
 static inline void bxory(unsigned char *b, unsigned char *y, size_t num)
@@ -72,20 +62,18 @@ static void ccm_generate_T(unsigned char *key,
                            unsigned char *m, size_t mlen)
 {
         unsigned char b[16] _U_, y[16]_U_;
-        uint16_t l;
+        size_t l;
 
         aes_ccm_generate_b0(nonce, nlen, alen, plen, mlen, &b[0]);
         AES128_ECB_encrypt(b, key, y);
 
         /* Create Aad */
         if (alen) {
-                /* First block */
-                memset(b, 0, 16);
-                l = htobe16((uint16_t)alen);
-                memcpy(b, &l, 2);
+                size_t prefix = ccm_encode_aad_length(b, alen);
 
-                l = (alen > 14) ? 14 : (uint16_t)alen;
-                memcpy(&b[2], aad, l);
+                l = alen < 16 - prefix ? alen : 16 - prefix;
+                memcpy(b + prefix, aad, l);
+                memset(b + prefix + l, 0, 16 - prefix - l);
                 aad  += l;
                 alen -= l;
 
@@ -94,7 +82,7 @@ static void ccm_generate_T(unsigned char *key,
 
                 while (alen) {
                         memset(b, 0, 16);
-                        l = (alen > 16) ? 16 : (uint16_t)alen;
+                        l = (alen > 16) ? 16 : alen;
                         memcpy(b, aad, l);
                         aad  += l;
                         alen -= l;
@@ -107,7 +95,7 @@ static void ccm_generate_T(unsigned char *key,
         /* Create Payload */
         while (plen) {
                 memset(b, 0, 16);
-                l = (plen > 16) ? 16 : (uint16_t)plen;
+                l = (plen > 16) ? 16 : plen;
                 memcpy(b, p, l);
                 p    += l;
                 plen -= l;
@@ -120,17 +108,9 @@ static void ccm_generate_T(unsigned char *key,
 }
 
 static void ccm_generate_s(unsigned char *key, unsigned char *nonce, size_t nlen,
-                           size_t plen, int i, unsigned char *s)
+                           uint64_t counter, unsigned char *s)
 {
-        uint32_t l;
-
-        memset(s, 0, 16);
-        s[0] |= (15 - nlen - 1) & 0x07;
-
-        l = htobe32(i);
-        memcpy(&s[12], &l, 4);
-
-        memcpy(&s[1], nonce, nlen);
+        ccm_format_block(s, nonce, nlen, 0, counter);
 
         AES128_ECB_encrypt(s, key, s);
 }
@@ -139,17 +119,17 @@ static void aes_ccm_crypt(unsigned char *key,
                           unsigned char *nonce, size_t nlen,
                           unsigned char *p, size_t plen)
 {
-        int j;
+        uint64_t counter = 1;
         size_t l;
         unsigned char s[16] _U_;
 
-        j = 0;
         while (plen) {
                 l = (plen > 16) ? 16 : plen;
-                ccm_generate_s(key, nonce, nlen, plen, j + 1, &s[0]);
-                bxory(&p[j * 16], &s[0], l);
+                ccm_generate_s(key, nonce, nlen, counter, &s[0]);
+                bxory(p, &s[0], l);
 
-                j++;
+                counter++;
+                p += l;
                 plen -= l;
         }
 }
@@ -162,8 +142,11 @@ int aes128ccm_encrypt(unsigned char *key,
 {
         unsigned char s[16] _U_;
 
+        if (!ccm_valid_lengths(nlen, plen, mlen)) {
+                return -1;
+        }
         ccm_generate_T(key, nonce, nlen, aad, alen, p, plen, m, mlen);
-        ccm_generate_s(key, nonce, nlen, plen, 0, &s[0]);
+        ccm_generate_s(key, nonce, nlen, 0, &s[0]);
         bxory(m, &s[0], mlen);
 
         aes_ccm_crypt(key, nonce, nlen, p, plen);
@@ -180,10 +163,13 @@ int aes128ccm_decrypt(unsigned char *key,
         unsigned char s[16] _U_;
         unsigned char tmp[16];
 
+        if (!ccm_valid_lengths(nlen, plen, mlen)) {
+                return -1;
+        }
         aes_ccm_crypt(key, nonce, nlen, p, plen);
 
         ccm_generate_T(key, nonce, nlen, aad, alen, p, plen, tmp, mlen);
-        ccm_generate_s(key, nonce, nlen, plen, 0, &s[0]);
+        ccm_generate_s(key, nonce, nlen, 0, &s[0]);
         bxory(tmp, &s[0], mlen);
 
         return memcmp(tmp, m, mlen);
