@@ -15,8 +15,8 @@ Public headers are installed under <dcerpc/>.
 
 Platforms
 =========
-libdcerpc is Linux only for now. It can not be built on Windows since its
-symbols collide with Microsoft's own RPC libraries.
+libdcerpc is Linux and FreeBSD only for now. It can not be built on Windows
+since its symbols collide with Microsoft's own RPC libraries.
 
 Releases
 ========

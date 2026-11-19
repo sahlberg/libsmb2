@@ -47,9 +47,9 @@ see libsmb2-share-enum.h). It has its own small implementation of that one
 call and does not contain or depend on libdcerpc, so applications can link
 both libraries without symbol conflicts.
 
-libdcerpc is Linux only for now. It is never built on Windows (native or
-MinGW): its symbols collide with Microsoft's own RPC libraries. On other
-platforms, only share enumeration in libsmb2 is available.
+libdcerpc is Linux and FreeBSD only for now. It is never built on Windows
+(native or MinGW): its symbols collide with Microsoft's own RPC libraries. On
+other platforms, only share enumeration in libsmb2 is available.
 
 Libsmb2 implements a synchronous API for running an SMB server. You could
 run an async server if you implement the main loop yourself however

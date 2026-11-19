@@ -9,8 +9,8 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   cmake_minimum_required(VERSION 3.10)
   project(libdcerpc VERSION ${LIBDCERPC_VERSION} LANGUAGES C)
 
-  if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    message(FATAL_ERROR "libdcerpc is only supported on Linux")
+  if(NOT CMAKE_SYSTEM_NAME MATCHES "^(Linux|FreeBSD)$")
+    message(FATAL_ERROR "libdcerpc is only supported on Linux and FreeBSD")
   endif()
 
   option(BUILD_SHARED_LIBS "Build shared libraries" ON)

@@ -19,13 +19,13 @@ AM_PROG_CC_C_O
 dnl  Match libsmb2: we always want 64 bit file offsets
 CFLAGS="${CFLAGS} -D_FILE_OFFSET_BITS=64"
 
-dnl  libdcerpc is Linux only for now. It can never be built on Windows
-dnl  since its symbols collide with Microsoft RPC.
+dnl  libdcerpc is Linux and FreeBSD only for now. It can never be built on
+dnl  Windows since its symbols collide with Microsoft RPC.
 case $host in
-  *linux*)
+  *linux*|*freebsd*)
     ;;
   *)
-    AC_MSG_ERROR([libdcerpc is only supported on Linux])
+    AC_MSG_ERROR([libdcerpc is only supported on Linux and FreeBSD])
     ;;
 esac
 

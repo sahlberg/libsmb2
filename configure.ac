@@ -119,19 +119,19 @@ esac
 AM_CONDITIONAL([HAVE_WIN32], [test "${SYS}" = "mingw32"])
 dnl  libdcerpc (full DCE/RPC) is a separate project in the libdcerpc/
 dnl  subdirectory with its own configure, version and releases. It is
-dnl  Linux only for now, and can never be built on Windows since its
+dnl  Linux and FreeBSD only for now, and can never be built on Windows since its
 dnl  symbols collide with Microsoft RPC. When enabled, it is configured
 dnl  against this uninstalled libsmb2.
 AC_ARG_ENABLE([libdcerpc],
               [AS_HELP_STRING([--disable-libdcerpc],
-                              [Do not build libdcerpc (Linux only)])])
+                              [Do not build libdcerpc (Linux and FreeBSD only)])])
 
 case $host in
-  *linux*)
+  *linux*|*freebsd*)
     ;;
   *)
     AS_IF([test "x$enable_libdcerpc" = "xyes"], [
-        AC_MSG_ERROR([libdcerpc is only supported on Linux])
+        AC_MSG_ERROR([libdcerpc is only supported on Linux and FreeBSD])
     ])
     enable_libdcerpc=no
     ;;

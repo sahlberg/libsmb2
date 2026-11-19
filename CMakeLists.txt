@@ -73,9 +73,9 @@ endif()
   endif()
 
   # Full DCE/RPC is a separate project (libdcerpc/) with its own version
-  # and releases. It is Linux only for now, and can never be built on
-  # Windows since its symbols collide with Microsoft RPC.
-  if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" OR ESP_PLATFORM OR PICO_BOARD OR IOP OR BUILD_IRX)
+  # and releases. It is Linux and FreeBSD only for now, and can never be
+  # built on Windows since its symbols collide with Microsoft RPC.
+  if(NOT CMAKE_SYSTEM_NAME MATCHES "^(Linux|FreeBSD)$" OR ESP_PLATFORM OR PICO_BOARD OR IOP OR BUILD_IRX)
     set(ENABLE_LIBDCERPC OFF)
   else()
     option(ENABLE_LIBDCERPC "Build libdcerpc (full DCE/RPC; depends on libsmb2)" ON)
