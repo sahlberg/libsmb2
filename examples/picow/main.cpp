@@ -1,3 +1,5 @@
+#include <stdio.h>
+#include <stdlib.h>
 #include "pico/cyw43_arch.h"
 #include "pico/stdio.h"
 #include "pico/stdlib.h"
@@ -5,6 +7,8 @@
 #include "task.h"
 #include "smb2.h"
 #include "libsmb2.h"
+
+extern "C" int picow_smb2_random(void *buf, size_t len);
 
 int smb2_ls_sync(char* user_url)
 {
@@ -16,8 +20,8 @@ int smb2_ls_sync(char* user_url)
 
 	smb2 = smb2_init_context();
         if (smb2 == NULL) {
-                printf("Failed to init context\n");
-                exit(0);
+                perror("smb2_init_context");
+                exit(EXIT_FAILURE);
         }
 
         url = smb2_parse_url(smb2, user_url);
@@ -115,6 +119,7 @@ int main(void)
     TaskHandle_t task;
 
     stdio_init_all();
+    smb2_set_random_provider(picow_smb2_random);
 
     xTaskCreate(main_task, "MainThread", configMINIMAL_STACK_SIZE, NULL, 1, &task);
     vTaskStartScheduler();

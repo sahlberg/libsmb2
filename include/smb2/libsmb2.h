@@ -174,9 +174,21 @@ typedef int t_socket;
 #endif
 
 /*
+ * Supply a process-wide cryptographic random source for ports without a
+ * native one. The provider fills the entire buffer and returns 0 on success,
+ * or a positive errno value on failure (EAGAIN if entropy is not ready).
+ * Register it during single-threaded startup, before using libsmb2.
+ * The provider must support concurrent calls if the application uses threads.
+ * NULL selects the built-in system source.
+ */
+typedef int (*smb2_random_provider)(void *buf, size_t len);
+void smb2_set_random_provider(smb2_random_provider provider);
+
+/*
  * Create an SMB2 context.
  * Function returns
- *  NULL  : Failed to create a context.
+ *  NULL  : Failed to create a context; errno indicates the cause, including
+ *          EAGAIN if the random source is still seeding.
  *  *smb2 : A pointer to an smb2 context.
  */
 struct smb2_context *smb2_init_context(void);

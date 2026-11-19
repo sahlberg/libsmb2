@@ -145,9 +145,8 @@
 /* Version number of package */
 #define VERSION "4.0.0"
 
-/* Pick a CSPRNG for smb2_random_bytes(). Without one the NTLMv2 client
- * challenge, SMB 3.1.1 preauth salt, client GUID and per-PDU nonces all
- * fall back to random() seeded with ~32 bits of guessable material.
+/* Pick a CSPRNG for the NTLMv2 client challenge, SMB 3.1.1 preauth
+ * salt, client GUID and per-PDU nonces.
  *
  * This shim config is the first include of every translation unit and is
  * also the header search path on Linux (see the smb2-module/apple

@@ -18,6 +18,13 @@ aes128ccm_test_SOURCES = aes128ccm-test.c ../lib/aes128ccm.c ../lib/aes-armv8.c 
         ../lib/aes.c ../lib/aes_apple.c ../lib/aes_reference.c
 aes128ccm_test_LDADD = $(MAYBE_LIBCRYPTO)
 
+noinst_PROGRAMS += entropy-unit iop-entropy-unit
+
+iop_entropy_unit_SOURCES = iop-entropy-unit.c ../lib/ps2/entropy.c \
+        ../lib/hmac.c ../lib/usha.c ../lib/sha224-256.c
+iop_entropy_unit_CFLAGS = $(AM_CFLAGS) -DUSE_SHA384_SHA512=0
+iop_entropy_unit_LDADD =
+
 EXTRA_PROGRAMS = ld_sockerr
 CLEANFILES = ld_sockerr.o ld_sockerr.so
 

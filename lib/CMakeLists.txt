@@ -63,11 +63,13 @@ endif()
 
 if(ESP_PLATFORM)
   set(COMPONENT_SRCS ${SMB2_CORE_SOURCES})
+  set(COMPONENT_PRIV_REQUIRES esp_wifi lwip)
   set(COMPONENT_NAME ".")
   register_component()
 
 elseif(IOP AND BUILD_IRX)
   set(SOURCES
+            ps2/entropy.c
             ps2/smb2_fio.c
             ps2/smb2man.c
             ps2/imports.c
