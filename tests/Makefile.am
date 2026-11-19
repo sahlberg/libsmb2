@@ -27,13 +27,14 @@ ld_sockerr.o: ld_sockerr-ld_sockerr.o
 ld_sockerr.so: ld_sockerr.o
 	$(CC) -shared -o ld_sockerr.so ld_sockerr.o -ldl
 
-T = `ls test_*.sh`
+T = "$(srcdir)"/test_*.sh
 
 test: $(noinst_PROGRAMS) $(bin_SCRIPTS)
-	for TEST in $(T); do \
+	srcdir="$(srcdir)"; export srcdir; for TEST in $(T); do \
 		echo "Running $$TEST"; \
 		echo "--------------"; \
-		sh $$TEST || exit 1; \
+		case "$$TEST" in */*) ;; *) TEST="$(srcdir)/$$TEST";; esac; \
+		"$$TEST" || exit 1; \
 		echo "--------------"; \
 		echo; \
 	done

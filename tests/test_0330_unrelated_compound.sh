@@ -1,6 +1,6 @@
 #!/bin/sh
 
-. ./functions.sh
+. "${srcdir:-.}/functions.sh"
 
 echo "test that smb2_add_unrelated_compound_pdu() does not tangle up independent requests"
 

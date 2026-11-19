@@ -1,10 +1,10 @@
 #!/bin/sh
 
-. ./functions.sh
+. "${srcdir:-.}/functions.sh"
 
 echo "basic cat test with valgrind and session errors"
 
-../utils/smb2-cp ./prog_cat.c "${TESTURL}/CAT"
+../utils/smb2-cp "${srcdir:-.}/prog_cat.c" "${TESTURL}/CAT"
 
 NUM_CALLS=`libtool --mode=execute strace ./prog_cat "${TESTURL}/CAT" 2>&1 >/dev/null | grep readv |wc -l`
 
