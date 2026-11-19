@@ -253,6 +253,44 @@ If you want build libraries with Kerberos support, execute this script instead:
 	./build-with-krb5.sh
 
 
+Randomness on embedded targets
+------------------------------
+Authentication and encryption require a cryptographically secure random source.
+On targets without a built-in source, register a provider with
+smb2_set_random_provider() during single-threaded startup, before creating a
+context or starting the server. The provider must fill the entire buffer on
+success and return a positive errno value on failure. Use EAGAIN while a
+source is still seeding. A failure rejects the operation that needs randomness.
+
+When ESP-IDF provides a Wi-Fi RF wake lock (4.4.7+, 5.0.6+, 5.1.2+),
+libsmb2 takes it around each esp_fill_random() call. Start Wi-Fi first.
+On older SDKs, a provider can call esp_fill_random() while the application
+keeps a documented hardware entropy source active. Ethernet-only deployments
+can supply a CSPRNG seeded while hardware entropy is available.
+See https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/random.html
+
+On the RP2040 Pico W, supply a cryptographic generator seeded from hardware
+entropy, or a secure element. The SDK's pico_rand uses a non-cryptographic
+PRNG with configurable entropy inputs. AmigaOS 3, AROS and other ports
+without a native source can use the same callback to integrate a system or
+application cryptography provider. Context creation fails with ENOSYS until
+one is available. For example, an application using a seeded OpenSSL or
+AmiSSL provider can install the following wrapper during startup:
+
+    #include <errno.h>
+    #include <limits.h>
+    #include <openssl/rand.h>
+    #include <smb2/smb2.h>
+    #include <smb2/libsmb2.h>
+
+    static int application_random(void *buf, size_t len)
+    {
+        return len <= INT_MAX && RAND_bytes(buf, (int)len) == 1 ? 0 : EIO;
+    }
+
+    /* After initializing the cryptography provider, before creating contexts. */
+    smb2_set_random_provider(application_random);
+
 ESP32
 -----
 libsmb2 is pre-configured for the ESP32 micro-controller using the esp-idf
@@ -299,6 +337,13 @@ Then to build libsmb2, run
   $ make -f Makefile.platform ps2_iop_install
   $ make -f Makefile.platform clean  
   $ make -f Makefile.platform ps2_irx_install
+
+Before SMB2_DEVCTL_CONNECT, seed the smb2man.irx driver's SHA-256 HMAC_DRBG
+from the EE. Generate SMB2_ENTROPY_SEED_SIZE fresh cryptographically random
+bytes (32 bytes of entropy and a 16-byte nonce), then call
+fileXioDevctl("smb:", SMB2_DEVCTL_SET_ENTROPY, seed, sizeof(seed), NULL, 0).
+Repeat after reloading the driver. The same command can reseed a running
+driver with fresh input. A connection attempted before seeding returns -EAGAIN.
 
 PlayStation 3
 -------------
