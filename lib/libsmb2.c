@@ -2377,6 +2377,8 @@ int64_t
 smb2_lseek(struct smb2_context *smb2, struct smb2fh *fh,
            int64_t offset, int whence, uint64_t *current_offset)
 {
+        int64_t base;
+
         if (smb2 == NULL) {
                 return -EINVAL;
         }
@@ -2384,47 +2386,29 @@ smb2_lseek(struct smb2_context *smb2, struct smb2fh *fh,
                 smb2_set_error(smb2, "File handle was NULL");
                 return -EINVAL;
         }
-
-        switch(whence) {
+        switch (whence) {
         case SEEK_SET:
-                if (offset < 0) {
-                        smb2_set_error(smb2, "Lseek() offset would become"
-                                        "negative");
-                        return -EINVAL;
-                }
-                fh->offset = offset;
-                if (current_offset) {
-                        *current_offset = fh->offset;
-                }
-                return fh->offset;
+                base = 0;
+                break;
         case SEEK_CUR:
-                if (fh->offset + offset < 0) {
-                        smb2_set_error(smb2, "Lseek() offset would become"
-                                        "negative");
-                        return -EINVAL;
-                }
-                fh->offset += offset;
-                if (current_offset) {
-                        *current_offset = fh->offset;
-                }
-                return fh->offset;
+                base = fh->offset;
+                break;
         case SEEK_END:
-                fh->offset = fh->end_of_file;
-                if (fh->offset + offset < 0) {
-                        smb2_set_error(smb2, "Lseek() offset would become"
-                                        "negative");
-                        return -EINVAL;
-                }
-                fh->offset += offset;
-                if (current_offset) {
-                        *current_offset = fh->offset;
-                }
-                return fh->offset;
+                base = fh->end_of_file;
+                break;
         default:
-                smb2_set_error(smb2, "Invalid whence(%d) for lseek",
-                                    whence);
+                smb2_set_error(smb2, "Invalid whence(%d) for lseek", whence);
                 return -EINVAL;
         }
+        if (base < 0 || offset < -base || (offset > 0 && base > INT64_MAX - offset)) {
+                smb2_set_error(smb2, "Lseek offset is outside the supported range");
+                return -EINVAL;
+        }
+        fh->offset = base + offset;
+        if (current_offset) {
+                *current_offset = fh->offset;
+        }
+        return fh->offset;
 }
 
 struct create_cb_data {
