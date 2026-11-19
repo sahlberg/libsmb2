@@ -21,11 +21,13 @@
 
 #include <smb2/smb2-errors.h>
 
-#ifdef HAVE_STDINT_H
+#include <stddef.h>
+#ifndef XBOX_PLATFORM
 #include <stdint.h>
 #endif
-
-#ifdef HAVE_TIME_H
+#if defined(__PS2__) && !defined(_EE)
+#include <ps2ip.h>  /* The IOP toolchain declares time_t in the network headers. */
+#else
 #include <time.h>
 #endif
 
