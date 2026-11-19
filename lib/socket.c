@@ -472,7 +472,6 @@ static int smb2_read_data(struct smb2_context *smb2, read_func func,
         struct iovec *tmpiov;
         int i, niov, is_chained;
         size_t num_done;
-        size_t iov_offset = 0;
         static char smb3tfrm[4] = {0xFD, 'S', 'M', 'B'};
         static char smb1_magic[4] = {0xFF, 'S', 'M', 'B'};
         struct smb2_pdu *pdu = smb2->pdu;
@@ -590,6 +589,7 @@ read_more_data:
                 }
                 goto read_more_data;
         case SMB2_RECV_HEADER:
+                smb2->header_iov = smb2->in.niov - 1;
                 if (smb2->in.iov[smb2->in.niov - 1].len < SMB2_HEADER_SIZE &&
                     memcmp(smb2->in.iov[smb2->in.niov - 1].buf, smb1_magic, 4)) {
                         smb2_set_error(smb2, "Invalid session packet length "
@@ -1188,6 +1188,7 @@ read_more_data:
              * this with: the status is passed on (Samba does the same) */
             !(!smb2_is_server(smb2) && smb2->hdr.status == SMB2_STATUS_USER_SESSION_DELETED) &&
             !smb2->enc) {
+                struct smb2_iovec *header = &smb2->in.iov[smb2->header_iov];
                 uint8_t signature[16] _U_;
 
                 if (!(smb2->hdr.flags & SMB2_FLAGS_SIGNED)) {
@@ -1196,14 +1197,14 @@ read_more_data:
                                        smb2->hdr.command);
                         return -1;
                 }
-                memcpy(&signature[0], &smb2->in.iov[1 + iov_offset].buf[48], 16);
-                if (smb2_calc_signature(smb2, &smb2->in.iov[1 + iov_offset].buf[48],
-                                        &smb2->in.iov[1 + iov_offset],
-                                        smb2->in.niov - 1 - iov_offset) < 0) {
+                memcpy(&signature[0], header->buf + 48, 16);
+                if (smb2_calc_signature(smb2, header->buf + 48,
+                                        header,
+                                        smb2->in.niov - smb2->header_iov) < 0) {
                         smb2_set_error(smb2, "Signature calc failed.");
                         return -1;
                 }
-                if (memcmp(&signature[0], &smb2->in.iov[1 + iov_offset].buf[48], 16)) {
+                if (memcmp(&signature[0], header->buf + 48, 16)) {
                         smb2_set_error(smb2, "Wrong signature in received "
                                        "PDU");
                         return -1;
@@ -1229,8 +1230,6 @@ read_more_data:
         }
 
         if (is_chained) {
-                /* Record at which iov we ended in this loop so we know where to start in the next */
-                iov_offset = smb2->in.niov - 1;
                 smb2->recv_state = SMB2_RECV_HEADER;
                 if (smb2_add_iovector(smb2, &smb2->in, &smb2->header[0],
                                   SMB2_HEADER_SIZE, NULL) == NULL) {

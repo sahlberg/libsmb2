@@ -305,6 +305,7 @@ struct smb2_context {
         struct smb2_header hdr;
         /* Offset into smb2->in where the payload for the current PDU starts */
         size_t payload_offset;
+        size_t header_iov; /* first vector of the current compound member */
 
         /* Pointer to the current PDU that we are receiving the reply for.
          * Only valid once the full smb2 header has been received.
