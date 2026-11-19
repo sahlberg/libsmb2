@@ -50,7 +50,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <sys/unistd.h>
 #endif
 
-#include <endian.h>
 #include <errno.h>
 #ifdef HAVE_INTTYPES_H
 #include <inttypes.h>
@@ -825,15 +824,17 @@ static int
 dcerpc_set_uint16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                   struct dcerpc_iovec *iov, uint16_t value)
 {
+        uint8_t *p;
+        int i;
+
         iov->offset = (iov->offset + 1) & ~1;
         
         if (dcerpc_iov_reserve(ctx, iov, sizeof(uint16_t))) {
                 return -1;
         }
-        if (!dcerpc_pdu_little_endian(pdu)) {
-                *(uint16_t *)(void *)(iov->buf + iov->offset) = htobe16(value);
-        } else {
-                *(uint16_t *)(void *)(iov->buf + iov->offset) = htole16(value);
+        p = iov->buf + iov->offset;
+        for (i = 0; i < 2; i++) {
+                p[dcerpc_pdu_little_endian(pdu) ? i : 1 - i] = (uint8_t)(value >> (8 * i));
         }
         iov->offset += 2;
 
@@ -844,15 +845,17 @@ static int
 dcerpc_set_uint32(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                   struct dcerpc_iovec *iov, uint32_t value)
 {
+        uint8_t *p;
+        int i;
+
         iov->offset = (iov->offset + 3) & ~3;
         
         if (dcerpc_iov_reserve(ctx, iov, sizeof(uint32_t))) {
                 return -1;
         }
-        if (!dcerpc_pdu_little_endian(pdu)) {
-                *(uint32_t *)(void *)(iov->buf + iov->offset) = htobe32(value);
-        } else {
-                *(uint32_t *)(void *)(iov->buf + iov->offset) = htole32(value);
+        p = iov->buf + iov->offset;
+        for (i = 0; i < 4; i++) {
+                p[dcerpc_pdu_little_endian(pdu) ? i : 3 - i] = (uint8_t)(value >> (8 * i));
         }
         iov->offset += 4;
         return 0;
@@ -862,15 +865,17 @@ static int
 dcerpc_set_uint64(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                   struct dcerpc_iovec *iov, uint64_t value)
 {
+        uint8_t *p;
+        int i;
+
         iov->offset = (iov->offset + 7) & ~7;
 
         if (dcerpc_iov_reserve(ctx, iov, sizeof(uint64_t))) {
                 return -1;
         }
-        if (!dcerpc_pdu_little_endian(pdu)) {
-                *(uint64_t *)(void *)(iov->buf + iov->offset) = htobe64(value);
-        } else {
-                *(uint64_t *)(void *)(iov->buf + iov->offset) = htole64(value);
+        p = iov->buf + iov->offset;
+        for (i = 0; i < 8; i++) {
+                p[dcerpc_pdu_little_endian(pdu) ? i : 7 - i] = (uint8_t)(value >> (8 * i));
         }
         iov->offset += 8;
         return 0;
@@ -892,16 +897,18 @@ dcerpc_get_uint16(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                   struct dcerpc_iovec *iov, uint16_t *value)
 {
         uint16_t val;
+        uint8_t *p;
+        int i;
 
         iov->offset = (iov->offset + 1) & ~1;
         
         if (iov->offset + sizeof(uint16_t) > iov->max_offset) {
                 return -1;
         }
-        if (!dcerpc_pdu_little_endian(pdu)) {
-                val = be16toh(*(uint16_t *)(void *)(iov->buf + iov->offset));
-        } else {
-                val = le16toh(*(uint16_t *)(void *)(iov->buf + iov->offset));
+        p = iov->buf + iov->offset;
+        val = 0;
+        for (i = 0; i < 2; i++) {
+                val |= (uint16_t)p[dcerpc_pdu_little_endian(pdu) ? i : 1 - i] << (8 * i);
         }
         *value = val;
         iov->offset += 2;
@@ -913,6 +920,8 @@ dcerpc_get_uint32(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                   struct dcerpc_iovec *iov, uint32_t *value)
 {
         uint32_t val;
+        uint8_t *p;
+        int i;
         
         iov->offset = (iov->offset + 3) & ~3;
         
@@ -920,10 +929,10 @@ dcerpc_get_uint32(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                 return -1;
         }
         
-        if (!dcerpc_pdu_little_endian(pdu)) {
-                val = be32toh(*(uint32_t *)(void *)(iov->buf + iov->offset));
-        } else {
-                val = le32toh(*(uint32_t *)(void *)(iov->buf + iov->offset));
+        p = iov->buf + iov->offset;
+        val = 0;
+        for (i = 0; i < 4; i++) {
+                val |= (uint32_t)p[dcerpc_pdu_little_endian(pdu) ? i : 3 - i] << (8 * i);
         }
         *value = val;
         iov->offset += 4;
@@ -935,16 +944,18 @@ dcerpc_get_uint64(struct dcerpc_context *ctx, struct dcerpc_pdu *pdu,
                   struct dcerpc_iovec *iov, uint64_t *value)
 {
         uint64_t val;
+        uint8_t *p;
+        int i;
 
         iov->offset = (iov->offset + 7) & ~7;
 
         if (iov->offset + sizeof(uint64_t) > iov->max_offset) {
                 return -1;
         }
-        if (!dcerpc_pdu_little_endian(pdu)) {
-                val = be64toh(*(uint64_t *)(void *)(iov->buf + iov->offset));
-        } else {
-                val = le64toh(*(uint64_t *)(void *)(iov->buf + iov->offset));
+        p = iov->buf + iov->offset;
+        val = 0;
+        for (i = 0; i < 8; i++) {
+                val |= (uint64_t)p[dcerpc_pdu_little_endian(pdu) ? i : 7 - i] << (8 * i);
         }
         *value = val;
         iov->offset += 8;

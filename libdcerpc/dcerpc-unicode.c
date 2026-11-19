@@ -18,7 +18,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "config.h"
 #endif
 
-#include <endian.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -26,6 +25,23 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 #include <dcerpc/dcerpc.h>
 #include "dcerpc-private.h"
+
+static void
+put_le16(uint16_t *unit, uint32_t v)
+{
+        uint8_t *p = (uint8_t *)unit;
+
+        p[0] = (uint8_t)v;
+        p[1] = (uint8_t)(v >> 8);
+}
+
+static uint32_t
+get_le16(const uint16_t *unit)
+{
+        const uint8_t *p = (const uint8_t *)unit;
+
+        return p[0] | ((uint32_t)p[1] << 8);
+}
 
 /*
  * Decode one code point from *s and advance *s past it.
@@ -102,11 +118,11 @@ dcerpc_utf8_to_utf16(const char *utf8)
         while (*s) {
                 cp = utf8_next(&s);
                 if (cp < 0x10000) {
-                        buf->val[len++] = htole16((uint16_t)cp);
+                        put_le16(&buf->val[len++], cp);
                 } else {
                         cp -= 0x10000;
-                        buf->val[len++] = htole16(0xd800 | (cp >> 10));
-                        buf->val[len++] = htole16(0xdc00 | (cp & 0x3ff));
+                        put_le16(&buf->val[len++], 0xd800 | (cp >> 10));
+                        put_le16(&buf->val[len++], 0xdc00 | (cp & 0x3ff));
                 }
         }
         return buf;
@@ -157,14 +173,10 @@ utf16_convert(char *out, const uint16_t *utf16, size_t len)
         uint32_t cp, lo;
 
         for (i = 0; i < len; i++) {
-                uint16_t unit;
-
                 /* the units may be unaligned when they point into a buffer */
-                memcpy(&unit, &utf16[i], sizeof(unit));
-                cp = le16toh(unit);
+                cp = get_le16(&utf16[i]);
                 if (cp >= 0xd800 && cp < 0xdc00 && i + 1 < len) {
-                        memcpy(&unit, &utf16[i + 1], sizeof(unit));
-                        lo = le16toh(unit);
+                        lo = get_le16(&utf16[i + 1]);
                         if (lo >= 0xdc00 && lo < 0xe000) {
                                 cp = 0x10000 + ((cp & 0x3ff) << 10) +
                                         (lo & 0x3ff);
