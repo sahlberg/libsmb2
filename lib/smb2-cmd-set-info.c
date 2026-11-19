@@ -49,6 +49,7 @@
 
 #include <errno.h>
 
+#include <limits.h>
 #include "compat.h"
 
 #include "smb2.h"
@@ -135,13 +136,18 @@ smb2_encode_set_info_request(struct smb2_context *smb2,
         smb2_set_uint16(iov, 0, SMB2_SET_INFO_REQUEST_SIZE);
         smb2_set_uint8(iov, 2, req->info_type);
         smb2_set_uint8(iov, 3, req->file_info_class);
-        smb2_set_uint16(iov,8, SMB2_HEADER_SIZE + 32); /* buffer offset */
+        smb2_set_uint16(iov, 8, SMB2_HEADER_SIZE + len);
         smb2_set_uint32(iov,12, req->additional_information);
         memcpy(iov->buf + 16, req->file_id, SMB2_FD_SIZE);
 
         if (smb2->passthrough) {
+                smb2_set_uint32(iov, 4, req->buffer_length);
                 if (req->buffer_length) {
-                        buf = malloc(PAD_TO_32BIT(req->buffer_length));
+                        if (req->input_data == NULL || req->buffer_length > INT_MAX - len - SMB2_HEADER_SIZE) {
+                                smb2_set_error(smb2, "Invalid set-info payload");
+                                return -1;
+                        }
+                        buf = malloc(req->buffer_length);
                         if (buf == NULL) {
                                 smb2_set_error(smb2, "Failed to allocate set "
                                                         "info data buffer");
@@ -154,8 +160,6 @@ smb2_encode_set_info_request(struct smb2_context *smb2,
                                 return -1;
                         }
                 }
-                smb2_set_uint32(iov, 4, req->buffer_length);
-                smb2_set_uint16(iov, 8, req->buffer_offset);
                 return 0;
         }
 
@@ -391,7 +395,19 @@ smb2_process_set_info_request_fixed(struct smb2_context *smb2,
         smb2_get_uint32(iov, 12, &req->additional_information);
         memcpy(req->file_id, iov->buf + 16, SMB2_FD_SIZE);
 
-        return req->buffer_length;
+        if (req->buffer_length == 0) {
+                return 0;
+        }
+        if (req->buffer_offset < SMB2_HEADER_SIZE + iov->len) {
+                smb2_set_error(smb2, "Set-info data overlaps the request header");
+                return -1;
+        }
+        size_t padding = req->buffer_offset - SMB2_HEADER_SIZE - iov->len;
+        if (req->buffer_length > INT_MAX - padding) {
+                smb2_set_error(smb2, "Set-info payload is too large");
+                return -1;
+        }
+        return (int)(padding + req->buffer_length);
 }
 
 int
@@ -411,12 +427,13 @@ smb2_process_set_info_request_variable(struct smb2_context *smb2,
          * structure it is from info_type and file_info_class, and how much
          * of it there is from buffer_length.
          */
-        if (iov->len < req->buffer_length) {
+        size_t padding = req->buffer_offset - SMB2_HEADER_SIZE - (SMB2_SET_INFO_REQUEST_SIZE & ~1u);
+        if (padding > iov->len || req->buffer_length > iov->len - padding) {
                 smb2_set_error(smb2, "Set-info buffer is shorter than the "
                                "advertised length");
                 return -1;
         }
-        req->input_data = iov->buf;
+        req->input_data = iov->buf + padding;
         return 0;
 }
 
