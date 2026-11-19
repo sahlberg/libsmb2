@@ -58,15 +58,26 @@ void usage(void)
 	exit(0);
 }
 
+static int
+close_file(struct file_context *fc)
+{
+	if (fc->smb2fh != NULL) {
+		struct smb2fh *fh = fc->smb2fh;
+		fc->smb2fh = NULL;
+		return smb2_close(fc->smb2, fh);
+	}
+	if (fc->fd != -1) {
+		int fd = fc->fd;
+		fc->fd = -1;
+		return close(fd);
+	}
+	return 0;
+}
+
 static void
 free_file_context(struct file_context *file_context)
 {
-	if (file_context->fd != -1) {
-		close(file_context->fd);
-	}
-	if (file_context->smb2fh != NULL) {
-		smb2_close(file_context->smb2, file_context->smb2fh);
-	}
+	close_file(file_context);
 	if (file_context->smb2 != NULL) {
 		smb2_destroy_context(file_context->smb2);
 	}
@@ -83,58 +94,45 @@ file_error(struct file_context *fc)
 	return strerror(errno);
 }
 
+/* SMB file indices alone do not identify a file across volumes. For
+ * unrecognized aliases the copy loop preserves the source through EOF. */
 static int
-fstat_file(struct file_context *fc, struct stat *st)
+same_file(struct file_context *src, struct file_context *dst, uint64_t *dst_size)
 {
-	if (fc->is_smb2 == 0) {
-		return fstat(fc->fd, st);
-	} else {
-		int res;
-		struct smb2_stat_64 smb2_st;
-		res = smb2_fstat(fc->smb2, fc->smb2fh, &smb2_st);
-		if (res < 0) {
-			return res;
+	struct stat src_st, dst_st;
+
+	if (dst->is_smb2) {
+		const char *src_domain, *dst_domain;
+		const char *src_user, *dst_user;
+
+		/* SEEK_END uses the size already returned by CREATE. */
+		if (smb2_lseek(dst->smb2, dst->smb2fh, 0, SEEK_END, dst_size) < 0) {
+			return -1;
 		}
-		st->st_dev          = 0;
-		st->st_ino          = (ino_t)smb2_st.smb2_ino;
-#ifndef WIN32
-		st->st_mode         = 0;
-		st->st_nlink        = (nlink_t)smb2_st.smb2_nlink;
-		st->st_blksize      = 4096;
-		st->st_blocks       = (smb2_st.smb2_size + 4096 - 1) % 4096;
-#endif
-		st->st_uid          = 0;
-		st->st_gid          = 0;
-		st->st_rdev         = 0;
-		st->st_size         = (off_t)smb2_st.smb2_size;
-		st->st_atime        = smb2_st.smb2_atime;
-		st->st_mtime        = smb2_st.smb2_mtime;
-		st->st_ctime        = smb2_st.smb2_ctime;
-
-		return res;
+		if (!src->is_smb2) {
+			return 0;
+		}
+		src_user = smb2_get_user(src->smb2);
+		dst_user = smb2_get_user(dst->smb2);
+		src_domain = smb2_get_domain(src->smb2);
+		dst_domain = smb2_get_domain(dst->smb2);
+		return src_user && dst_user && !strcmp(src_user, dst_user) &&
+		       !strcmp(src_domain ? src_domain : "", dst_domain ? dst_domain : "") &&
+		       !strcmp(src->url->server, dst->url->server) &&
+		       !strcmp(src->url->share, dst->url->share) &&
+		       src->url->path && dst->url->path && !strcmp(src->url->path, dst->url->path);
 	}
-}
-
-static ssize_t
-file_pread(struct file_context *fc, uint8_t *buf, size_t count, off_t off)
-{
-	if (fc->is_smb2 == 0) {
-		lseek(fc->fd, off, SEEK_SET);
-		return read(fc->fd, buf, count);
-	} else {
-		return smb2_pread(fc->smb2, fc->smb2fh, buf, count, off);
+	if (fstat(dst->fd, &dst_st) < 0) {
+		return -1;
 	}
-}
-
-static ssize_t
-file_pwrite(struct file_context *fc, uint8_t *buf, size_t count, off_t off)
-{
-	if (fc->is_smb2 == 0) {
-		lseek(fc->fd, off, SEEK_SET);
-		return write(fc->fd, buf, count);
-	} else {
-		return smb2_pwrite(fc->smb2, fc->smb2fh, buf, count, off);
+	*dst_size = S_ISREG(dst_st.st_mode) && dst_st.st_size > 0 ? (uint64_t)dst_st.st_size : 0;
+	if (src->is_smb2) {
+		return 0;
 	}
+	if (fstat(src->fd, &src_st) < 0) {
+		return -1;
+	}
+	return src_st.st_dev == dst_st.st_dev && src_st.st_ino == dst_st.st_ino;
 }
 
 static struct file_context *
@@ -208,11 +206,13 @@ static uint8_t buf[BUFSIZE];
 
 int main(int argc, char *argv[])
 {
-	struct stat st;
+	uint64_t dst_size;
+	int same;
 	struct file_context *src;
 	struct file_context *dst;
-	off_t off;
+	uint64_t off = 0;
 	ssize_t count;
+	int result = 10;
 	
 #ifdef WIN32
 	if (WSAStartup(MAKEWORD(2,2), &wsaData) != 0) {
@@ -235,50 +235,71 @@ int main(int argc, char *argv[])
 		return 10;
 	}
 
-	dst = open_file(argv[2], O_WRONLY|O_CREAT|O_TRUNC);
+	dst = open_file(argv[2], O_WRONLY|O_CREAT);
 	if (dst == NULL) {
 		fprintf(stderr, "Failed to open %s\n", argv[2]);
 		free_file_context(src);
 		return 10;
 	}
 
-	if (fstat_file(src, &st) != 0) {
-		fprintf(stderr, "Failed to fstat source file: %s\n",
-			file_error(src));
-		free_file_context(src);
-		free_file_context(dst);
-		return 10;
+	same = same_file(src, dst, &dst_size);
+	if (same < 0) {
+		fprintf(stderr, "Failed to inspect file: %s\n", file_error(dst));
+		goto out;
+	}
+	if (same) {
+		fprintf(stderr, "Source and destination are the same file\n");
+		goto out;
 	}
 
-	off = 0;
-	while (off < st.st_size) {
-		count = (size_t)(st.st_size - off);
-		if (count > BUFSIZE) {
-			count = BUFSIZE;
-		}
-		count = file_pread(src, buf, count, off);
-		if (count < 0) {
-			fprintf(stderr, "Failed to read from source file: %s\n",
-				file_error(src));
-			free_file_context(src);
-			free_file_context(dst);
-			return 10;
-		}
-		count = file_pwrite(dst, buf, count, off);
-		if (count < 0) {
-			fprintf(stderr, "Failed to write to dest file: %s\n",
-				file_error(dst));
-			free_file_context(src);
-			free_file_context(dst);
-			return 10;
-		}
+	for (;;) {
+		ssize_t written = 0;
 
-		off += count;
+		count = src->is_smb2 ? smb2_pread(src->smb2, src->smb2fh, buf, sizeof(buf), off)
+		                     : read(src->fd, buf, sizeof(buf));
+		if (count < 0) {
+			if (!src->is_smb2 && errno == EINTR) {
+				continue;
+			}
+			fprintf(stderr, "Failed to read source: %s\n", file_error(src));
+			goto out;
+		}
+		if (count == 0) {
+			break;
+		}
+		while (written < count) {
+			size_t left = (size_t)(count - written);
+			ssize_t n = dst->is_smb2
+				? smb2_pwrite(dst->smb2, dst->smb2fh, buf + written, left, off)
+				: write(dst->fd, buf + written, left);
+			if (n <= 0) {
+				if (n < 0 && !dst->is_smb2 && errno == EINTR) {
+					continue;
+				}
+				fprintf(stderr, "Failed to write destination: %s\n",
+				        n == 0 ? "no progress" : file_error(dst));
+				goto out;
+			}
+			written += n;
+			off += n;
+		}
 	}
-	printf("copied %d bytes\n", (int)off);
-
+	/* Trim the old tail only after reading the source to EOF. Even a
+	 * local path and a share URL can refer to the same underlying file. */
+	if (off < dst_size &&
+	    (dst->is_smb2 ? smb2_ftruncate(dst->smb2, dst->smb2fh, off)
+	                  : ftruncate(dst->fd, (off_t)off)) < 0) {
+		fprintf(stderr, "Failed to truncate destination: %s\n", file_error(dst));
+		goto out;
+	}
+	if (close_file(dst) < 0) {
+		fprintf(stderr, "Failed to close destination: %s\n", file_error(dst));
+		goto out;
+	}
+	printf("copied %" PRIu64 " bytes\n", off);
+	result = 0;
+ out:
 	free_file_context(src);
 	free_file_context(dst);
-
-	return 0;
+	return result;
 }
