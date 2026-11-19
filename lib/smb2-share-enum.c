@@ -690,17 +690,10 @@ share_enum_read_cb(struct smb2_context *smb2, int status,
         share_enum_got_data(se, se->readbuf, rep->data_length);
 }
 
-/* Queueing may complete inline and release the enumeration. */
-static int
-share_enum_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
-{
-        smb2_queue_pdu(smb2, pdu);
-        return smb2->queue_rejected ? -EIO : 0;
-}
-
 static int
 share_enum_read_more(struct share_enum *se)
 {
+        struct smb2_context *smb2 = se->smb2;
         struct smb2_read_request req;
         struct smb2_pdu *pdu;
 
@@ -715,11 +708,16 @@ share_enum_read_more(struct share_enum *se)
         req.length = SE_FRAG_READ_SIZE;
         req.buf = se->readbuf;
         req.channel = SMB2_CHANNEL_NONE;
-        pdu = smb2_cmd_read_async(se->smb2, &req, share_enum_read_cb, se);
+        pdu = smb2_cmd_read_async(smb2, &req, share_enum_read_cb, se);
         if (pdu == NULL) {
                 return -1;
         }
-        return share_enum_queue_pdu(se->smb2, pdu);
+        /* this can complete inline and free se */
+        smb2_queue_pdu(smb2, pdu);
+        if (smb2->queue_rejected) {
+                return -EIO;
+        }
+        return 0;
 }
 
 static void
@@ -895,6 +893,7 @@ share_enum_bind_cb(struct smb2_context *smb2, int status,
 static int
 share_enum_send_bind(struct share_enum *se)
 {
+        struct smb2_context *smb2 = se->smb2;
         struct smb2_ioctl_request req;
         struct smb2_pdu *pdu;
         uint8_t data[128];
@@ -924,11 +923,16 @@ share_enum_send_bind(struct share_enum *se)
         req.input_count = (uint32_t)b.len;
         req.input = b.buf;
         req.flags = SMB2_0_IOCTL_IS_FSCTL;
-        pdu = smb2_cmd_ioctl_async(se->smb2, &req, share_enum_bind_cb, se);
+        pdu = smb2_cmd_ioctl_async(smb2, &req, share_enum_bind_cb, se);
         if (pdu == NULL) {
                 return -ENOMEM;
         }
-        return share_enum_queue_pdu(se->smb2, pdu);
+        /* this can complete inline and free se */
+        smb2_queue_pdu(smb2, pdu);
+        if (smb2->queue_rejected) {
+                return -EIO;
+        }
+        return 0;
 }
 
 static void
