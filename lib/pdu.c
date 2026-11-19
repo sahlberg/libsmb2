@@ -36,7 +36,6 @@
 #endif
 
 #ifdef HAVE_STRING_H
-#include <errno.h>
 #include <string.h>
 #endif
 
@@ -49,10 +48,10 @@
 #endif
 
 #include "compat.h"
+#include <errno.h>
 
 #include "portable-endian.h"
 
-#include "slist.h"
 #include "smb2.h"
 #include "libsmb2.h"
 #include "libsmb2-private.h"
@@ -180,6 +179,9 @@ smb2_allocate_pdu(struct smb2_context *smb2, enum smb2_command command,
 
         if (smb2->timeout) {
                 pdu->timeout = time(NULL) + smb2->timeout;
+                if (command == SMB2_CREATE) {
+                        pdu->cleanup_timeout = smb2->timeout > 0 ? smb2->timeout : 1;
+                }
         }
 
         return pdu;
@@ -389,8 +391,21 @@ smb2_add_unrelated_compound_pdu(struct smb2_context *smb2,
 void
 smb2_free_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
-        SMB2_LIST_REMOVE(&smb2->outqueue, pdu);
-        SMB2_LIST_REMOVE(&smb2->waitqueue, pdu);
+        if (pdu->dispatching_create ||
+            (pdu->cancel_in_flight && (pdu->out.num_done || smb2->pdu == pdu))) {
+                /* Finish transmitting/receiving this CREATE and close the
+                 * server handle if it succeeded. The transport now owns it. */
+                void (*cancel)(void *) = pdu->dispatching_create ?
+                        pdu->free_cb : pdu->cancel_in_flight;
+                pdu->cancel_in_flight = NULL;
+                pdu->free_cb = NULL;
+                pdu->caller_frees_pdu = 0;
+                if (cancel) {
+                        cancel(pdu->cb_data);
+                }
+                return;
+        }
+        smb2_unlink_pdu(smb2, pdu);
 
         if (pdu->next_compound) {
                 smb2_free_pdu(smb2, pdu->next_compound);
@@ -619,7 +634,7 @@ smb2_decode_header(struct smb2_context *smb2, struct smb2_iovec *iov,
 static void
 smb2_add_to_outqueue(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
-        SMB2_LIST_ADD_END(&smb2->outqueue, pdu);
+        smb2_append_pdu(smb2, &smb2->outqueue, pdu);
 
         /* opportunistically try to write it to the socket right away */
         if (smb2->outqueue == pdu) {
@@ -698,7 +713,7 @@ smb2_correlate_reply(struct smb2_context *smb2, struct smb2_pdu *pdu)
                                pdu->header.flags |= SMB2_FLAGS_ASYNC_COMMAND;
                                pdu->header.async.async_id = req_pdu->header.async.async_id;
                        }
-                       SMB2_LIST_REMOVE(&smb2->waitqueue, req_pdu);
+                       smb2_unlink_pdu(smb2, req_pdu);
                        smb2_free_pdu(smb2, req_pdu);
                 }
         }
@@ -706,15 +721,17 @@ smb2_correlate_reply(struct smb2_context *smb2, struct smb2_pdu *pdu)
 }
 
 static int
-queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu, int report_pending)
+queue_pdu_inner(struct smb2_context *smb2, struct smb2_pdu *pdu, int report_pending)
 {
         struct smb2_pdu *p;
         uint64_t prev_compound_mid = 0;
 
-        /* Report only this call. The caller reads queue_rejected before
-         * it returns, so the next call may clear it. The outer abort
-         * clears it again after its own callbacks, which did run. */
-        smb2->queue_rejected = 0;
+        if (smb2->lifetime != SMB2_CONTEXT_LIVE) {
+                /* The shutdown sweep completes accepted requests without encoding
+                 * borrowed buffers or sending another operation on the wire. */
+                smb2_append_pdu(smb2, &smb2->outqueue, pdu);
+                return 0;
+        }
 
         /* Update all the PDU headers in this chain */
         for (p = pdu; p; p = p->next_compound) {
@@ -733,7 +750,10 @@ queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu, int report_pending)
                          */
                         if (!pdu->header.message_id && pdu->header.command != SMB2_NEGOTIATE) {
                                 smb2_set_error(smb2, "Queued pdu has no message id");
-                                smb2_free_pdu(smb2, pdu);
+
+                                if (!pdu->caller_frees_pdu) {
+                                        smb2_free_pdu(smb2, pdu);
+                                }
                                 return -EINVAL;
                         }
 
@@ -786,7 +806,7 @@ queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu, int report_pending)
                          * still owns a caller_frees pdu and must not wait
                          * for a callback.
                          */
-                        smb2->queue_rejected = 1;
+
                         smb2_set_error(smb2, "Cannot queue a command while "
                                        "another one is being aborted.");
                         if (!pdu->caller_frees_pdu) {
@@ -802,9 +822,6 @@ queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu, int report_pending)
                         }
                 }
                 smb2->in_queue_abort = 0;
-                /* Nested queues set this. This call did fire its own
-                 * callbacks, so its caller must not treat it as rejected. */
-                smb2->queue_rejected = 0;
                 if (!pdu->caller_frees_pdu) {
                         smb2_free_pdu(smb2, pdu);
                 }
@@ -828,18 +845,39 @@ queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu, int report_pending)
         return 0;
 }
 
-/* High-level operations complete on the final reply. Raw applications may
- * opt into interim STATUS_PENDING callbacks through passthrough mode. */
+/* Queueing may complete a request before returning, including a successful
+ * CANCEL on a writable socket. Keep the transport alive for the entire call. */
+static int
+queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu, int report_pending)
+{
+        int servicing = smb2->servicing;
+        int rc;
+
+        smb2->servicing = 1;
+        rc = queue_pdu_inner(smb2, pdu, report_pending);
+        smb2->servicing = servicing;
+        smb2_finish_dispatch(smb2);
+        return rc;
+}
+
+/* Library operations complete once. Raw passthrough clients can also
+ * observe intermediate replies, for example to relay a pending AsyncId. */
 int
 smb2_queue_pdu_final(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
         return queue_pdu(smb2, pdu, 0);
 }
 
+int
+smb2_queue_pdu_checked(struct smb2_context *smb2, struct smb2_pdu *pdu)
+{
+        return queue_pdu(smb2, pdu, 1);
+}
+
 void
 smb2_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
-        (void)queue_pdu(smb2, pdu, 1);
+        (void)smb2_queue_pdu_checked(smb2, pdu);
 }
 
 struct smb2_pdu *
@@ -1292,18 +1330,77 @@ smb2_process_payload_variable(struct smb2_context *smb2, struct smb2_pdu *pdu)
         }
 }
 
-void smb2_timeout_pdus(struct smb2_context *smb2)
+/* Until a header is readable (or a transform decrypted), a partial reply
+ * cannot be associated with one request. Give the frame its own deadline.
+ * If timeouts were disabled after queueing, preserve the pending requests'
+ * budgets, including the grace interval for a cancelled CREATE. */
+static time_t
+unmatched_frame_deadline(struct smb2_context *smb2, time_t now)
 {
-        struct smb2_pdu *pdu, *next;
-        time_t t = time(NULL);
+        struct smb2_pdu *pdu;
+        time_t deadline = 0;
 
-        pdu = smb2->outqueue;
-        while (pdu) {
-                next = pdu->next;
+        if (smb2->timeout) {
+                return now + smb2->timeout;
+        }
+        for (pdu = smb2->waitqueue; pdu; pdu = pdu->next) {
+                time_t end = pdu->timeout;
+                if (!pdu->cleanup_pending && pdu->cleanup_timeout && smb2_waiting_for_create_cleanup(pdu)) {
+                        end = now + pdu->cleanup_timeout;
+                }
+                if (end > deadline) {
+                        deadline = end;
+                }
+        }
+        return deadline;
+}
+
+int smb2_timeout_pdus(struct smb2_context *smb2)
+{
+        struct smb2_pdu *pdu;
+        struct smb2_pdu *receiving = smb2_is_server(smb2) ? NULL : smb2->pdu;
+        time_t t;
+        int servicing = smb2->servicing;
+        int unmatched = !smb2_is_server(smb2) && !receiving &&
+                SMB2_VALID_SOCKET(smb2->fd) && smb2->in.num_done;
+
+        if (!smb2->num_timed_pdus && !smb2->io_timers &&
+            !(receiving && receiving->timeout) && !smb2->frame_deadline &&
+            !(unmatched && smb2->timeout)) {
+                return 0;
+        }
+        t = time(NULL);
+        if (unmatched && !smb2->frame_deadline) {
+                smb2->frame_deadline = unmatched_frame_deadline(smb2, t);
+        }
+        smb2->servicing = 1;
+
+        /* Matching the reply header removes this request from the waitqueue.
+         * The receiver still owns it until the entire reply has arrived. */
+        if (receiving && receiving->timeout && receiving->timeout < t) {
+                receiving->timed_out = 1;
+                smb2_set_error(smb2, "Timed out receiving a partial SMB frame");
+                goto retire_connection;
+        }
+
+        for (pdu = smb2->outqueue; pdu; pdu = smb2->next_timeout_pdu) {
+                smb2->next_timeout_pdu = pdu->next;
                 if (pdu->timeout && pdu->timeout < t) {
                         struct smb2_pdu *p;
 
-                        SMB2_LIST_REMOVE(&smb2->outqueue, pdu);
+                        if (pdu->out.num_done) {
+                                pdu->timed_out = 1;
+                                smb2_set_error(smb2, "Timed out sending a partial SMB frame");
+                                goto retire_connection;
+                        }
+                        if (pdu->cleanup_pending) {
+                                smb2_set_error(smb2, "Timed out sending a cleanup CLOSE");
+                                goto retire_connection;
+                        }
+                        if (smb2_expire_unsent_close(smb2, pdu)) {
+                                continue;
+                        }
+                        smb2_unlink_pdu(smb2, pdu);
                         /*
                          * An unsent compound is still chained: like
                          * smb2_destroy_context(), fire every member's
@@ -1322,7 +1419,6 @@ void smb2_timeout_pdus(struct smb2_context *smb2)
                                 smb2_free_pdu(smb2, pdu);
                         }
                 }
-                pdu = next;
         }
 
         /*
@@ -1330,11 +1426,19 @@ void smb2_timeout_pdus(struct smb2_context *smb2)
          * clears next_compound as it moves each chain member onto the
          * waitqueue.
          */
-        pdu = smb2->waitqueue;
-        while (pdu) {
-                next = pdu->next;
+        for (pdu = smb2->waitqueue; pdu; pdu = smb2->next_timeout_pdu) {
+                smb2->next_timeout_pdu = pdu->next;
                 if (pdu->timeout && pdu->timeout < t) {
-                        SMB2_LIST_REMOVE(&smb2->waitqueue, pdu);
+                        if (pdu->cleanup_pending) {
+                                smb2_set_error(smb2, "Timed out waiting for handle cleanup");
+                                goto retire_connection;
+                        }
+                        if (smb2_waiting_for_create_cleanup(pdu) || smb2_expire_sent_create(smb2, pdu)) {
+                                pdu->cleanup_pending = 1;
+                                pdu->timeout = t + pdu->cleanup_timeout;
+                                continue;
+                        }
+                        smb2_unlink_pdu(smb2, pdu);
                         if (pdu->cb) {
                                 pdu->cb(smb2, SMB2_STATUS_IO_TIMEOUT, NULL,
                                         pdu->cb_data);
@@ -1343,7 +1447,24 @@ void smb2_timeout_pdus(struct smb2_context *smb2)
                                 smb2_free_pdu(smb2, pdu);
                         }
                 }
-                pdu = next;
         }
+        if (smb2->frame_deadline && smb2->frame_deadline < t) {
+                smb2_set_error(smb2, "Timed out receiving a partial SMB frame");
+                goto retire_connection;
+        }
+        if (smb2_timeout_file_io(smb2, t) < 0) {
+                goto retire_connection;
+        }
+        smb2->servicing = servicing;
+        smb2_finish_dispatch(smb2);
+        return 0;
+
+retire_connection:
+        smb2->next_timeout_pdu = NULL;
+        /* Teardown completes outstanding requests and releases remote handles. */
+        smb2_close_context(smb2);
+        smb2->servicing = servicing;
+        smb2_finish_dispatch(smb2);
+        return -ETIMEDOUT;
 }
 

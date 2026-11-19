@@ -62,44 +62,33 @@
 #include "libsmb2-raw.h"
 #include "libsmb2-private.h"
 
-static int pdu_on_list(struct smb2_pdu *list, struct smb2_pdu *pdu)
+static int sync_in_service(struct smb2_context *smb2)
 {
-        for (; list; list = list->next) {
-                if (list == pdu) {
-                        return 1;
-                }
+        if (smb2_is_dispatching(smb2)) {
+                /* Preserve the dispatch error and avoid reentering its error callback. */
+                errno = EDEADLK;
+                return 1;
         }
         return 0;
 }
 
-/*
- * Free a PDU that a sync call owns (caller_frees_pdu) after waiting for it
- * failed, e.g. because the connection dropped. If it has not completed, its
- * callback still owns state such as the smb2dir or smb2fh, so complete it
- * with SMB2_STATUS_SHUTDOWN first, as smb2_destroy_context() does for the
- * PDUs it finds. The sync callback's cb_data must still be valid.
- */
-static void sync_free_pending_pdu(struct smb2_context *smb2,
-                                  struct smb2_pdu *pdu)
+static void *alloc_sync_cb_data(struct smb2_context *smb2, size_t size)
 {
-        int pending = 0;
+        void *data = calloc(1, size);
 
-        if (smb2->pdu == pdu) {
-                smb2->pdu = NULL;
-                pending = 1;
+        if (!data) {
+                smb2_set_error(smb2, "Failed to allocate sync_cb_data");
+                errno = ENOMEM;
         }
-        if (smb2->next_pdu == pdu) {
-                smb2->next_pdu = NULL;
-                pending = 1;
+        return data;
+}
+
+static struct sync_cb_data *new_sync_cb_data(struct smb2_context *smb2)
+{
+        if (sync_in_service(smb2)) {
+                return NULL;
         }
-        if (pdu_on_list(smb2->outqueue, pdu) ||
-            pdu_on_list(smb2->waitqueue, pdu)) {
-                pending = 1;
-        }
-        if (pending && pdu->cb) {
-                pdu->cb(smb2, SMB2_STATUS_SHUTDOWN, NULL, pdu->cb_data);
-        }
-        smb2_free_pdu(smb2, pdu);
+        return alloc_sync_cb_data(smb2, sizeof(struct sync_cb_data));
 }
 
 static int wait_for_reply(struct smb2_context *smb2,
@@ -108,7 +97,12 @@ static int wait_for_reply(struct smb2_context *smb2,
         time_t t = time(NULL);
 
         while (!cb_data->is_finished) {
-		struct pollfd pfd;
+                struct pollfd pfd;
+                int rc;
+
+                if (smb2->lifetime != SMB2_CONTEXT_LIVE) {
+                        return -ECANCELED;
+                }
 		memset(&pfd, 0, sizeof(struct pollfd));
 		pfd.fd = smb2_get_fd(smb2);
 		pfd.events = smb2_which_events(smb2);
@@ -122,8 +116,12 @@ static int wait_for_reply(struct smb2_context *smb2,
 			 * timeouts are still checked below. */
 			pfd.revents = 0;
 		}
-                if (smb2->timeout) {
-                        smb2_timeout_pdus(smb2);
+                rc = smb2_timeout_pdus(smb2);
+                if (cb_data->is_finished) {
+                        break;
+                }
+                if (rc < 0) {
+                        return rc;
                 }
 		if (!SMB2_VALID_SOCKET(smb2->fd) && ((time(NULL) - t) > (smb2->timeout)))
 		{
@@ -133,7 +131,8 @@ static int wait_for_reply(struct smb2_context *smb2,
                 if (pfd.revents == 0) {
                         continue;
                 }
-		if (smb2_service(smb2, pfd.revents) < 0) {
+		rc = smb2_service(smb2, pfd.revents);
+		if (rc < 0) {
                         /*
                          * Our reply was processed before the error: the
                          * call completed, so return its result. The
@@ -141,6 +140,9 @@ static int wait_for_reply(struct smb2_context *smb2,
                          */
                         if (cb_data->is_finished) {
                                 break;
+                        }
+                        if (rc == -ETIMEDOUT) {
+                                return rc;
                         }
 			smb2_set_error(smb2, "smb2_service failed with : "
                                         "%s\n", smb2_get_error(smb2));
@@ -151,20 +153,35 @@ static int wait_for_reply(struct smb2_context *smb2,
         return 0;
 }
 
-static void sync_connect_cb(struct smb2_context *smb2, int status,
+static void sync_generic_status_cb(struct smb2_context *smb2, int status,
                        void *command_data, void *private_data)
 {
         struct sync_cb_data *cb_data = private_data;
 
         if (cb_data->status == SMB2_STATUS_CANCELLED) {
-                if (cb_data != &smb2->connect_cb_data) {
-                        free(cb_data);
-                }
+                free(cb_data);
                 return;
         }
 
         cb_data->is_finished = 1;
         cb_data->status = status;
+}
+
+static int finish_sync_status(struct smb2_context *smb2,
+                              struct sync_cb_data *data, int rc)
+{
+        if (rc >= 0) {
+                rc = wait_for_reply(smb2, data);
+                if (rc < 0 && !data->is_finished) {
+                        data->status = SMB2_STATUS_CANCELLED;
+                        return rc;
+                }
+                if (rc == 0) {
+                        rc = data->status;
+                }
+        }
+        free(data);
+        return rc;
 }
 
 /*
@@ -176,24 +193,14 @@ int smb2_connect_share(struct smb2_context *smb2,
                        const char *user)
 {
         struct sync_cb_data *cb_data;
-        int rc = 0;
+        int rc;
 
-        cb_data = &smb2->connect_cb_data;
-	rc = smb2_connect_share_async(smb2, server, share, user, sync_connect_cb, cb_data);
-        if (rc < 0) {
-                goto out;
-	}
-
-	rc = wait_for_reply(smb2, cb_data);
-        if (rc < 0) {
-                cb_data->status = SMB2_STATUS_CANCELLED;
-                return rc;
-	}
-
-        rc = cb_data->status;
- out:
-
-	return rc;
+        cb_data = new_sync_cb_data(smb2);
+        if (cb_data == NULL) {
+                return -errno;
+        }
+	rc = smb2_connect_share_async(smb2, server, share, user, sync_generic_status_cb, cb_data);
+        return finish_sync_status(smb2, cb_data, rc);
 }
 
 /*
@@ -202,447 +209,221 @@ int smb2_connect_share(struct smb2_context *smb2,
 int smb2_disconnect_share(struct smb2_context *smb2)
 {
         struct sync_cb_data *cb_data;
-        int rc = 0;
+        int rc;
 
-        cb_data = &smb2->connect_cb_data;
+        cb_data = new_sync_cb_data(smb2);
+        if (cb_data == NULL) {
+                return -errno;
+        }
 
-	rc = smb2_disconnect_share_async(smb2, sync_connect_cb, cb_data);
-        if (rc < 0) {
-                goto out;
-	}
-
-	rc = wait_for_reply(smb2, cb_data);
-        if (rc < 0) {
-                cb_data->status = SMB2_STATUS_CANCELLED;
-                return rc;
-	}
-
-        rc = cb_data->status;
- out:
-
-	return rc;
+	rc = smb2_disconnect_share_async(smb2, sync_generic_status_cb, cb_data);
+        return finish_sync_status(smb2, cb_data, rc);
 }
 
 /*
  * opendir()
  */
-static void sync_opendir_cb(struct smb2_context *smb2, int status,
-                       void *command_data, void *private_data)
+static void sync_open_cb(struct smb2_context *smb2, int status,
+                         void *command_data, void *private_data)
 {
         struct sync_cb_data *cb_data = private_data;
 
-        if (status) {
-                cb_data->status = status;
-        }
         cb_data->is_finished = 1;
         cb_data->ptr = command_data;
+}
+
+static void *
+finish_sync_open(struct smb2_context *smb2, struct smb2_pdu *pdu,
+                 struct sync_cb_data *cb_data)
+{
+        if (pdu) {
+                wait_for_reply(smb2, cb_data);
+                smb2_free_pdu(smb2, pdu);
+        }
+        if (smb2->lifetime != SMB2_CONTEXT_LIVE) {
+                cb_data->ptr = NULL;
+        }
+        smb2->sync_open_wait--;
+        smb2_finish_dispatch(smb2);
+        return cb_data->ptr;
 }
 
 struct smb2dir *smb2_opendir(struct smb2_context *smb2, const char *path)
 {
+        struct sync_cb_data cb_data = {0};
         struct smb2_pdu *pdu;
-        struct sync_cb_data *cb_data;
-        struct smb2dir *dir;
 
-        cb_data = calloc(1, sizeof(struct sync_cb_data));
-        if (cb_data == NULL) {
-                smb2_set_error(smb2, "Failed to allocate sync_cb_data");
+        if (smb2 == NULL || sync_in_service(smb2)) {
                 return NULL;
         }
-
-	pdu = smb2_opendir_async_pdu(smb2, path, sync_opendir_cb, cb_data, NULL);
-        if (pdu == NULL) {
-		smb2_set_error(smb2, "smb2_opendir_async failed");
-                free(cb_data);
-		return NULL;
-	}
-
-	if (wait_for_reply(smb2, cb_data) < 0) {
-                sync_free_pending_pdu(smb2, pdu);
-                free(cb_data);
-                return NULL;
-        }
-
-	dir = cb_data->ptr;
-        if (dir) {
-                /* Give ownership of cb_data to dir. It will be freed when dir is freed */
-                dir->free_cb_data = free;
-        } else {
-                free(cb_data);
-        }
-        smb2_free_pdu(smb2, pdu);
-        return dir;
-}
-
-/*
- * open()
- */
-static void sync_open_cb(struct smb2_context *smb2, int status,
-                    void *command_data, void *private_data)
-{
-        struct sync_cb_data *cb_data = private_data;
-
-        cb_data->is_finished = 1;
-        cb_data->ptr = command_data;
+        smb2->sync_open_wait++;
+        pdu = smb2_opendir_async_pdu(smb2, path, sync_open_cb, &cb_data, NULL);
+        return finish_sync_open(smb2, pdu, &cb_data);
 }
 
 struct smb2fh *smb2_open(struct smb2_context *smb2, const char *path, int flags)
 {
+        struct sync_cb_data cb_data = {0};
         struct smb2_pdu *pdu;
-        struct sync_cb_data *cb_data;
-        void *ptr;
 
-        cb_data = calloc(1, sizeof(struct sync_cb_data));
-        if (cb_data == NULL) {
-                smb2_set_error(smb2, "Failed to allocate sync_cb_data");
+        if (smb2 == NULL || sync_in_service(smb2)) {
                 return NULL;
         }
-
-	pdu = smb2_open_async_pdu(smb2, path, flags, sync_open_cb, cb_data, NULL);
-        if (pdu == NULL) {
-		smb2_set_error(smb2, "smb2_open_async failed");
-                free(cb_data);
-		return NULL;
-	}
-
-	if (wait_for_reply(smb2, cb_data) < 0) {
-                sync_free_pending_pdu(smb2, pdu);
-                free(cb_data);
-                return NULL;
-        }
-
-	ptr = cb_data->ptr;
-        smb2_free_pdu(smb2, pdu);
-        free(cb_data);
-        return ptr;
+        smb2->sync_open_wait++;
+        pdu = smb2_open_async_pdu(smb2, path, flags, sync_open_cb, &cb_data, NULL);
+        return finish_sync_open(smb2, pdu, &cb_data);
 }
 
 /*
  * close()
  */
-static void sync_close_cb(struct smb2_context *smb2, int status,
-                    void *command_data, void *private_data)
-{
-        struct sync_cb_data *cb_data = private_data;
-
-        if (cb_data->status == SMB2_STATUS_CANCELLED) {
-                free(cb_data);
-                return;
-        }
-
-        cb_data->is_finished = 1;
-        cb_data->status = status;
-}
-
 int smb2_close(struct smb2_context *smb2, struct smb2fh *fh)
 {
         struct sync_cb_data *cb_data;
-        int rc = 0;
+        int rc;
 
-        cb_data = calloc(1, sizeof(struct sync_cb_data));
+        cb_data = new_sync_cb_data(smb2);
         if (cb_data == NULL) {
-                smb2_set_error(smb2, "Failed to allocate sync_cb_data");
-                return -ENOMEM;
+                return -errno;
         }
 
-	rc = smb2_close_async(smb2, fh, sync_close_cb, cb_data);
-        if (rc < 0) {
-                goto out;
-	}
-
-	rc = wait_for_reply(smb2, cb_data);
-        if (rc < 0) {
-                if (cb_data->is_finished) {
-                        goto out;
-                }
-                /* the CLOSE is still queued: sync_close_cb() owns and
-                 * frees cb_data when its reply (or SHUTDOWN) arrives */
-                cb_data->status = SMB2_STATUS_CANCELLED;
-                return rc;
-	}
-
-        rc = cb_data->status;
- out:
-        free(cb_data);
-
-	return rc;
+	rc = smb2_close_async(smb2, fh, sync_generic_status_cb, cb_data);
+        return finish_sync_status(smb2, cb_data, rc);
 }
 
 /*
  * fsync()
  */
-static void sync_fsync_cb(struct smb2_context *smb2, int status,
-                     void *command_data, void *private_data)
-{
-        struct sync_cb_data *cb_data = private_data;
-
-        if (cb_data->status == SMB2_STATUS_CANCELLED) {
-                free(cb_data);
-                return;
-        }
-
-        cb_data->is_finished = 1;
-        cb_data->status = status;
-}
-
 int smb2_fsync(struct smb2_context *smb2, struct smb2fh *fh)
 {
         struct sync_cb_data *cb_data;
-        int rc = 0;
+        int rc;
 
-        cb_data = calloc(1, sizeof(struct sync_cb_data));
+        cb_data = new_sync_cb_data(smb2);
         if (cb_data == NULL) {
-                smb2_set_error(smb2, "Failed to allocate sync_cb_data");
-                return -ENOMEM;
+                return -errno;
         }
 
-	rc = smb2_fsync_async(smb2, fh, sync_fsync_cb, cb_data);
-        if (rc < 0) {
-                goto out;
-	}
-
-	rc = wait_for_reply(smb2, cb_data);
-        if (rc < 0) {
-                cb_data->status = SMB2_STATUS_CANCELLED;
-                return rc;
-	}
-
-        rc = cb_data->status;
- out:
-        free(cb_data);
-
-	return rc;
+	rc = smb2_fsync_async(smb2, fh, sync_generic_status_cb, cb_data);
+        return finish_sync_status(smb2, cb_data, rc);
 }
 
-/*
- * pread()
- */
-static void sync_generic_status_cb(struct smb2_context *smb2, int status,
-                    void *command_data, void *private_data)
+/* A failed wait can leave the PDU in flight or behind an earlier file
+ * operation. Its buffer must live until the asynchronous completion. */
+static int sync_file_io(struct smb2_context *smb2, struct smb2fh *fh,
+                        enum smb2_command command, void *buf, uint32_t count,
+                        const uint64_t *position)
 {
-        struct sync_cb_data *cb_data = private_data;
+        struct sync_cb_data *data;
+        uint8_t *buffer;
+        int rc;
 
-        if (cb_data->status == SMB2_STATUS_CANCELLED) {
-                free(cb_data);
-                return;
+        if (sync_in_service(smb2)) {
+                return -EDEADLK;
         }
-
-        cb_data->is_finished = 1;
-        cb_data->status = status;
+        if (!smb2) {
+                return -EINVAL;
+        }
+        if (!fh || (count && !buf)) {
+                smb2_set_error(smb2, !fh ? "File handle was NULL" : "Missing buffer for file I/O");
+                return -EINVAL;
+        }
+        count = smb2_file_io_length(smb2, command, count);
+        data = malloc(sizeof(*data) + count);
+        if (!data) {
+                smb2_set_error(smb2, "Failed to allocate synchronous I/O buffer");
+                return -ENOMEM;
+        }
+        memset(data, 0, sizeof(*data));
+        buffer = (uint8_t *)(data + 1);
+        if (command == SMB2_WRITE && count) {
+                memcpy(buffer, buf, count);
+        }
+        rc = smb2_start_file_io(smb2, fh, command, buffer, count,
+                                position ? *position : 0, position != NULL,
+                                sync_generic_status_cb, data);
+        if (rc == 0) {
+                rc = wait_for_reply(smb2, data);
+                if (rc < 0 && !data->is_finished) {
+                        data->status = SMB2_STATUS_CANCELLED;
+                        return rc;
+                }
+                rc = data->status;
+                if (command == SMB2_READ && rc > 0) {
+                        memcpy(buf, buffer, rc);
+                }
+        }
+        free(data);
+        return rc;
 }
 
 int smb2_pread(struct smb2_context *smb2, struct smb2fh *fh,
                uint8_t *buf, uint32_t count, uint64_t offset)
 {
-        struct sync_cb_data *cb_data;
-        int rc = 0;
-
-        cb_data = calloc(1, sizeof(struct sync_cb_data));
-        if (cb_data == NULL) {
-                smb2_set_error(smb2, "Failed to allocate sync_cb_data");
-                return -ENOMEM;
-        }
-
-	rc = smb2_pread_async(smb2, fh, buf, count, offset,
-                              sync_generic_status_cb, cb_data);
-        if (rc < 0) {
-                goto out;
-	}
-
-	rc = wait_for_reply(smb2, cb_data);
-        if (rc < 0) {
-                cb_data->status = SMB2_STATUS_CANCELLED;
-                return rc;
-	}
-
-        rc = cb_data->status;
- out:
-        free(cb_data);
-
-	return rc;
+        return sync_file_io(smb2, fh, SMB2_READ, buf, count, &offset);
 }
 
 int smb2_pwrite(struct smb2_context *smb2, struct smb2fh *fh,
                 const uint8_t *buf, uint32_t count, uint64_t offset)
 {
-        struct sync_cb_data *cb_data;
-        int rc = 0;
-
-        cb_data = calloc(1, sizeof(struct sync_cb_data));
-        if (cb_data == NULL) {
-                smb2_set_error(smb2, "Failed to allocate sync_cb_data");
-                return -ENOMEM;
-        }
-
-	rc = smb2_pwrite_async(smb2, fh, buf, count, offset,
-                               sync_generic_status_cb, cb_data);
-        if (rc < 0) {
-                goto out;
-	}
-
-        rc = wait_for_reply(smb2, cb_data);
-        if (rc < 0) {
-                cb_data->status = SMB2_STATUS_CANCELLED;
-                return rc;
-	}
-
-        rc = cb_data->status;
- out:
-        free(cb_data);
-
-	return rc;
+        return sync_file_io(smb2, fh, SMB2_WRITE, discard_const(buf), count, &offset);
 }
 
 int smb2_read(struct smb2_context *smb2, struct smb2fh *fh,
               uint8_t *buf, uint32_t count)
 {
-        struct sync_cb_data *cb_data;
-        int rc = 0;
-
-        cb_data = calloc(1, sizeof(struct sync_cb_data));
-        if (cb_data == NULL) {
-                smb2_set_error(smb2, "Failed to allocate sync_cb_data");
-                return -ENOMEM;
-        }
-
-	rc = smb2_read_async(smb2, fh, buf, count,
-                             sync_generic_status_cb, cb_data);
-        if (rc < 0) {
-                goto out;
-	}
-
-        rc = wait_for_reply(smb2, cb_data);
-        if (rc < 0) {
-                cb_data->status = SMB2_STATUS_CANCELLED;
-                return rc;
-	}
-
-        rc = cb_data->status;
- out:
-        free(cb_data);
-
-	return rc;
+        return sync_file_io(smb2, fh, SMB2_READ, buf, count, NULL);
 }
 
 int smb2_write(struct smb2_context *smb2, struct smb2fh *fh,
                const uint8_t *buf, uint32_t count)
 {
-        struct sync_cb_data *cb_data;
-        int rc = 0;
-
-        cb_data = calloc(1, sizeof(struct sync_cb_data));
-        if (cb_data == NULL) {
-                smb2_set_error(smb2, "Failed to allocate sync_cb_data");
-                return -ENOMEM;
-        }
-
-	rc = smb2_write_async(smb2, fh, buf, count,
-                              sync_generic_status_cb, cb_data);
-        if (rc < 0) {
-                goto out;
-	}
-
-	rc = wait_for_reply(smb2, cb_data);
-        if (rc < 0) {
-                cb_data->status = SMB2_STATUS_CANCELLED;
-                return rc;
-	}
-
-        rc = cb_data->status;
- out:
-        free(cb_data);
-
-	return rc;
+        return sync_file_io(smb2, fh, SMB2_WRITE, discard_const(buf), count, NULL);
 }
 
 int smb2_unlink(struct smb2_context *smb2, const char *path)
 {
         struct sync_cb_data *cb_data;
-        int rc = 0;
+        int rc;
 
-        cb_data = calloc(1, sizeof(struct sync_cb_data));
+        cb_data = new_sync_cb_data(smb2);
         if (cb_data == NULL) {
-                smb2_set_error(smb2, "Failed to allocate sync_cb_data");
-                return -ENOMEM;
+                return -errno;
         }
 
 	rc = smb2_unlink_async(smb2, path,
                                sync_generic_status_cb, cb_data);
-        if (rc < 0) {
-                goto out;
-	}
-
-	rc = wait_for_reply(smb2, cb_data);
-        if (rc < 0) {
-                cb_data->status = SMB2_STATUS_CANCELLED;
-                return rc;
-	}
-
-        rc = cb_data->status;
- out:
-        free(cb_data);
-
-	return rc;
+        return finish_sync_status(smb2, cb_data, rc);
 }
 
 int smb2_rmdir(struct smb2_context *smb2, const char *path)
 {
         struct sync_cb_data *cb_data;
-        int rc = 0;
+        int rc;
 
-        cb_data = calloc(1, sizeof(struct sync_cb_data));
+        cb_data = new_sync_cb_data(smb2);
         if (cb_data == NULL) {
-                smb2_set_error(smb2, "Failed to allocate sync_cb_data");
-                return -ENOMEM;
+                return -errno;
         }
 
 	rc = smb2_rmdir_async(smb2, path,
                               sync_generic_status_cb, cb_data);
-        if (rc < 0) {
-                goto out;
-	}
-
-	rc = wait_for_reply(smb2, cb_data);
-        if (rc < 0) {
-                cb_data->status = SMB2_STATUS_CANCELLED;
-                return rc;
-	}
-
-        rc = cb_data->status;
- out:
-        free(cb_data);
-
-	return rc;
+        return finish_sync_status(smb2, cb_data, rc);
 }
 
 int smb2_mkdir(struct smb2_context *smb2, const char *path)
 {
         struct sync_cb_data *cb_data;
-        int rc = 0;
+        int rc;
 
-        cb_data = calloc(1, sizeof(struct sync_cb_data));
+        cb_data = new_sync_cb_data(smb2);
         if (cb_data == NULL) {
-                smb2_set_error(smb2, "Failed to allocate sync_cb_data");
-                return -ENOMEM;
+                return -errno;
         }
 
 	rc = smb2_mkdir_async(smb2, path,
                               sync_generic_status_cb, cb_data);
-        if (rc < 0) {
-                goto out;
-	}
-
-	rc = wait_for_reply(smb2, cb_data);
-        if (rc < 0) {
-                cb_data->status = SMB2_STATUS_CANCELLED;
-                return rc;
-	}
-
-        rc = cb_data->status;
- out:
-        free(cb_data);
-
-	return rc;
+        return finish_sync_status(smb2, cb_data, rc);
 }
 
 /*
@@ -660,6 +441,12 @@ int smb2_fstat(struct smb2_context *smb2, struct smb2fh *fh,
         struct sync_stat_cb_data *cb_data;
         int rc = 0;
 
+        if (sync_in_service(smb2)) {
+                return -EDEADLK;
+        }
+        if (!st) {
+                return -EINVAL;
+        }
         cb_data = calloc(1, sizeof(struct sync_stat_cb_data));
         if (cb_data == NULL) {
                 smb2_set_error(smb2, "Failed to allocate sync_cb_data");
@@ -693,6 +480,12 @@ int smb2_stat(struct smb2_context *smb2, const char *path,
         struct sync_stat_cb_data *cb_data;
         int rc = 0;
 
+        if (sync_in_service(smb2)) {
+                return -EDEADLK;
+        }
+        if (!st) {
+                return -EINVAL;
+        }
         cb_data = calloc(1, sizeof(struct sync_stat_cb_data));
         if (cb_data == NULL) {
                 smb2_set_error(smb2, "Failed to allocate sync_cb_data");
@@ -724,93 +517,48 @@ int smb2_rename(struct smb2_context *smb2, const char *oldpath,
                 const char *newpath)
 {
         struct sync_cb_data *cb_data;
-        int rc = 0;
+        int rc;
 
-        cb_data = calloc(1, sizeof(struct sync_cb_data));
+        cb_data = new_sync_cb_data(smb2);
         if (cb_data == NULL) {
-                smb2_set_error(smb2, "Failed to allocate sync_cb_data");
-                return -ENOMEM;
+                return -errno;
         }
 
 	rc = smb2_rename_async(smb2, oldpath, newpath,
                                sync_generic_status_cb, cb_data);
-        if (rc < 0) {
-                goto out;
-	}
-
-	rc = wait_for_reply(smb2, cb_data);
-        if (rc < 0) {
-                cb_data->status = SMB2_STATUS_CANCELLED;
-                return rc;
-	}
-
-        rc = cb_data->status;
- out:
-        free(cb_data);
-
-	return rc;
+        return finish_sync_status(smb2, cb_data, rc);
 }
 
 int smb2_symlink(struct smb2_context *smb2, const char *target,
                  const char *linkpath, uint32_t flags)
 {
         struct sync_cb_data *cb_data;
-        int rc = 0;
+        int rc;
 
-        cb_data = calloc(1, sizeof(struct sync_cb_data));
+        cb_data = new_sync_cb_data(smb2);
         if (cb_data == NULL) {
-                smb2_set_error(smb2, "Failed to allocate sync_cb_data");
-                return -ENOMEM;
+                return -errno;
         }
 
         rc = smb2_symlink_async(smb2, target, linkpath, flags,
                                 sync_generic_status_cb, cb_data);
-        if (rc < 0) {
-                goto out;
-        }
-
-        rc = wait_for_reply(smb2, cb_data);
-        if (rc < 0) {
-                cb_data->status = SMB2_STATUS_CANCELLED;
-                return rc;
-        }
-
-        rc = cb_data->status;
- out:
-        free(cb_data);
-
-        return rc;
+        return finish_sync_status(smb2, cb_data, rc);
 }
 
 int smb2_link(struct smb2_context *smb2, const char *oldpath,
                 const char *newpath)
 {
         struct sync_cb_data *cb_data;
-        int rc = 0;
+        int rc;
 
-        cb_data = calloc(1, sizeof(struct sync_cb_data));
+        cb_data = new_sync_cb_data(smb2);
         if (cb_data == NULL) {
-                smb2_set_error(smb2, "Failed to allocate sync_cb_data");
-                return -ENOMEM;
+                return -errno;
         }
 
 	rc = smb2_link_async(smb2, oldpath, newpath,
                                sync_generic_status_cb, cb_data);
-        if (rc < 0) {
-                goto out;
-	}
-
-	rc = wait_for_reply(smb2, cb_data);
-        if (rc < 0) {
-                cb_data->status = SMB2_STATUS_CANCELLED;
-                return rc;
-	}
-
-        rc = cb_data->status;
- out:
-        free(cb_data);
-
-	return rc;
+        return finish_sync_status(smb2, cb_data, rc);
 }
 
 struct sync_statvfs_cb_data {
@@ -824,6 +572,12 @@ int smb2_statvfs(struct smb2_context *smb2, const char *path,
         struct sync_statvfs_cb_data *cb_data;
         int rc = 0;
 
+        if (sync_in_service(smb2)) {
+                return -EDEADLK;
+        }
+        if (!st) {
+                return -EINVAL;
+        }
         cb_data = calloc(1, sizeof(struct sync_statvfs_cb_data));
         if (cb_data == NULL) {
                 smb2_set_error(smb2, "Failed to allocate sync_cb_data");
@@ -855,62 +609,32 @@ int smb2_truncate(struct smb2_context *smb2, const char *path,
                   uint64_t length)
 {
         struct sync_cb_data *cb_data;
-        int rc = 0;
+        int rc;
 
-        cb_data = calloc(1, sizeof(struct sync_cb_data));
+        cb_data = new_sync_cb_data(smb2);
         if (cb_data == NULL) {
-                smb2_set_error(smb2, "Failed to allocate sync_cb_data");
-                return -ENOMEM;
+                return -errno;
         }
 
 	rc = smb2_truncate_async(smb2, path, length,
                                  sync_generic_status_cb, cb_data);
-        if (rc < 0) {
-                goto out;
-	}
-
-	rc = wait_for_reply(smb2, cb_data);
-        if (rc < 0) {
-                cb_data->status = SMB2_STATUS_CANCELLED;
-                return rc;
-	}
-
-        rc = cb_data->status;
- out:
-        free(cb_data);
-
-	return rc;
+        return finish_sync_status(smb2, cb_data, rc);
 }
 
 int smb2_ftruncate(struct smb2_context *smb2, struct smb2fh *fh,
                    uint64_t length)
 {
         struct sync_cb_data *cb_data;
-        int rc = 0;
+        int rc;
 
-        cb_data = calloc(1, sizeof(struct sync_cb_data));
+        cb_data = new_sync_cb_data(smb2);
         if (cb_data == NULL) {
-                smb2_set_error(smb2, "Failed to allocate sync_cb_data");
-                return -ENOMEM;
+                return -errno;
         }
 
 	rc = smb2_ftruncate_async(smb2, fh, length,
                                   sync_generic_status_cb, cb_data);
-        if (rc < 0) {
-                goto out;
-	}
-
-	rc = wait_for_reply(smb2, cb_data);
-        if (rc < 0) {
-                cb_data->status = SMB2_STATUS_CANCELLED;
-                return rc;
-	}
-
-        rc = cb_data->status;
- out:
-        free(cb_data);
-
-	return rc;
+        return finish_sync_status(smb2, cb_data, rc);
 }
 
 struct sync_readlink_cb_data {
@@ -947,10 +671,9 @@ int smb2_readlink(struct smb2_context *smb2, const char *path,
         struct sync_readlink_cb_data rl_data _U_;
         int rc = 0;
 
-        cb_data = calloc(1, sizeof(struct sync_cb_data));
+        cb_data = new_sync_cb_data(smb2);
         if (cb_data == NULL) {
-                smb2_set_error(smb2, "Failed to allocate sync_cb_data");
-                return -ENOMEM;
+                return -errno;
         }
 
         rl_data.buf = buf;
@@ -982,6 +705,7 @@ static void sync_copy_ioctl_cb(struct smb2_context *smb2, int status,
         struct sync_cb_data *cb_data = private_data;
 
         if (cb_data->status == SMB2_STATUS_CANCELLED) {
+                smb2_free_data(smb2, command_data);
                 free(cb_data);
                 return;
         }
@@ -997,10 +721,9 @@ int smb2_request_resume_key(struct smb2_context *smb2, struct smb2fh *fh,
         struct sync_cb_data *cb_data;
         int rc = 0;
 
-        cb_data = calloc(1, sizeof(struct sync_cb_data));
+        cb_data = new_sync_cb_data(smb2);
         if (cb_data == NULL) {
-                smb2_set_error(smb2, "Failed to allocate sync_cb_data");
-                return -ENOMEM;
+                return -errno;
         }
 
         rc = smb2_request_resume_key_async(smb2, fh, sync_copy_ioctl_cb,
@@ -1012,16 +735,15 @@ int smb2_request_resume_key(struct smb2_context *smb2, struct smb2fh *fh,
         rc = wait_for_reply(smb2, cb_data);
         if (rc < 0) {
                 cb_data->status = SMB2_STATUS_CANCELLED;
-                goto out;
+                return rc;
         }
 
         rc = cb_data->status;
-        if (rc == 0 && cb_data->ptr != NULL) {
+        if (cb_data->ptr != NULL) {
                 if (resume_key != NULL) {
                         memcpy(resume_key, cb_data->ptr, sizeof(*resume_key));
                 }
                 smb2_free_data(smb2, cb_data->ptr);
-                cb_data->ptr = NULL;
         }
  out:
         free(cb_data);
@@ -1040,10 +762,9 @@ int smb2_copychunk(struct smb2_context *smb2,
         struct sync_cb_data *cb_data;
         int rc = 0;
 
-        cb_data = calloc(1, sizeof(struct sync_cb_data));
+        cb_data = new_sync_cb_data(smb2);
         if (cb_data == NULL) {
-                smb2_set_error(smb2, "Failed to allocate sync_cb_data");
-                return -ENOMEM;
+                return -errno;
         }
 
         rc = smb2_copychunk_async(smb2, ctl_code, resume_key, dstfh, chunks,
@@ -1055,7 +776,7 @@ int smb2_copychunk(struct smb2_context *smb2,
         rc = wait_for_reply(smb2, cb_data);
         if (rc < 0) {
                 cb_data->status = SMB2_STATUS_CANCELLED;
-                goto out;
+                return rc;
         }
 
         rc = cb_data->status;
@@ -1082,10 +803,9 @@ int smb2_server_side_copy(struct smb2_context *smb2,
         struct sync_cb_data *cb_data;
         int rc = 0;
 
-        cb_data = calloc(1, sizeof(struct sync_cb_data));
+        cb_data = new_sync_cb_data(smb2);
         if (cb_data == NULL) {
-                smb2_set_error(smb2, "Failed to allocate sync_cb_data");
-                return -ENOMEM;
+                return -errno;
         }
 
         rc = smb2_server_side_copy_async(smb2, ctl_code, srcfh, dstfh,
@@ -1098,7 +818,7 @@ int smb2_server_side_copy(struct smb2_context *smb2,
         rc = wait_for_reply(smb2, cb_data);
         if (rc < 0) {
                 cb_data->status = SMB2_STATUS_CANCELLED;
-                goto out;
+                return rc;
         }
 
         rc = cb_data->status;
@@ -1115,55 +835,27 @@ int smb2_server_side_copy(struct smb2_context *smb2,
         return rc;
 }
 
-static void sync_echo_cb(struct smb2_context *smb2, int status,
-                    void *command_data, void *private_data)
-{
-        struct sync_cb_data *cb_data = private_data;
-
-        if (cb_data->status == SMB2_STATUS_CANCELLED) {
-                free(cb_data);
-                return;
-        }
-
-        cb_data->is_finished = 1;
-        cb_data->status = status;
-}
-
 /*
  * Send SMB2_ECHO command to the server
  */
 int smb2_echo(struct smb2_context *smb2)
 {
         struct sync_cb_data *cb_data;
-        int rc = 0;
+        int rc;
+
+        cb_data = new_sync_cb_data(smb2);
+        if (cb_data == NULL) {
+                return -errno;
+        }
 
         if (!SMB2_VALID_SOCKET(smb2->fd)) {
+                free(cb_data);
                 smb2_set_error(smb2, "Not Connected to Server");
                 return -ENOMEM;
         }
 
-        cb_data = calloc(1, sizeof(struct sync_cb_data));
-        if (cb_data == NULL) {
-                smb2_set_error(smb2, "Failed to allocate sync_cb_data");
-                return -ENOMEM;
-        }
-
-        rc = smb2_echo_async(smb2, sync_echo_cb, cb_data);
-        if (rc < 0) {
-                goto out;
-	}
-
-	rc = wait_for_reply(smb2, cb_data);
-        if (rc < 0) {
-                cb_data->status = SMB2_STATUS_CANCELLED;
-                return rc;
-	}
-
-        rc = cb_data->status;
- out:
-        free(cb_data);
-
-	return rc;
+        rc = smb2_echo_async(smb2, sync_generic_status_cb, cb_data);
+        return finish_sync_status(smb2, cb_data, rc);
 }
 
 static void sync_notify_change_cb(struct smb2_context *smb2, int status,
@@ -1193,9 +885,8 @@ struct smb2_file_notify_change_information *smb2_notify_change(struct smb2_conte
         struct sync_cb_data *cb_data;
         void *ptr;
 
-        cb_data = calloc(1, sizeof(struct sync_cb_data));
+        cb_data = new_sync_cb_data(smb2);
         if (cb_data == NULL) {
-                smb2_set_error(smb2, "Failed to allocate sync_cb_data");
                 return NULL;
         }
 
@@ -1245,14 +936,14 @@ smb2_share_enum_sync(struct smb2_context *smb2,
         struct sync_cb_data *cb_data;
         int rc = 0;
 
-        if (!SMB2_VALID_SOCKET(smb2->fd)) {
-                smb2_set_error(smb2, "Not Connected to Server");
+        cb_data = new_sync_cb_data(smb2);
+        if (cb_data == NULL) {
                 return NULL;
         }
 
-        cb_data = calloc(1, sizeof(struct sync_cb_data));
-        if (cb_data == NULL) {
-                smb2_set_error(smb2, "Failed to allocate sync_cb_data");
+        if (!SMB2_VALID_SOCKET(smb2->fd)) {
+                free(cb_data);
+                smb2_set_error(smb2, "Not Connected to Server");
                 return NULL;
         }
 
