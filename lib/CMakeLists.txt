@@ -1,7 +1,3 @@
-if(GSSAPI_FOUND OR LIBKRB5_FOUND)
-  set(KRB5_SOURCE krb5-wrapper.c)
-endif()
-
 # Core SMB2 sources. The DCE/RPC library is built separately in ../libdcerpc.
 set(SMB2_CORE_SOURCES
     aes.c
@@ -14,7 +10,7 @@ set(SMB2_CORE_SOURCES
     hmac.c
     hmac-md5.c
     init.c
-    ${KRB5_SOURCE}
+    krb5-wrapper.c
     libsmb2.c
     md4c.c
     md5.c
