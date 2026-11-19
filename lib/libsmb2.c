@@ -5712,6 +5712,10 @@ smb2_session_setup_request_cb(struct smb2_context *smb2, int status, void *comma
                                 &response_token, &response_length,
                                 &is_spnego_wrapped) >= 0) {
                         smb2->sec = SMB2_SEC_NTLMSSP;
+                } else if (smb2->sec == SMB2_SEC_NTLMSSP) {
+                        smb2_set_error(smb2, "Invalid NTLMSSP message");
+                        smb2_close_context(smb2);
+                        return;
                 } else {
 
 #ifdef HAVE_LIBKRB5
