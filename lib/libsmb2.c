@@ -4750,8 +4750,7 @@ static int
 queue_change_notify(struct smb2_context *smb2, struct smb2_pdu *pdu, uint32_t tree_id)
 {
         smb2_set_tree_id_for_pdu(smb2, pdu, tree_id);
-        smb2_queue_pdu(smb2, pdu);
-        return smb2->queue_rejected ? -EIO : 0;
+        return smb2_queue_pdu_final(smb2, pdu);
 }
 
 static void

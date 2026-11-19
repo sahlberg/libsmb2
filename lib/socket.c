@@ -806,7 +806,7 @@ read_more_data:
                                                 pdu->header.flags |= SMB2_FLAGS_ASYNC_COMMAND;
                                                 pdu->header.async.async_id = smb2->hdr.async.async_id;
                                         }
-                                        if (smb2->passthrough && pdu) {
+                                        if (smb2->passthrough && pdu && pdu->report_pending && pdu->cb) {
                                                 pdu->cb(smb2, smb2->hdr.status,
                                                         pdu->payload,
                                                         pdu->cb_data);
@@ -1151,11 +1151,8 @@ read_more_data:
                         if (smb2->passthrough) {
                                 if (pdu == NULL) {
                                         smb2_set_error(smb2, "no matching PDU found");
-                                }
-                                else
-                                {
-                                        /* need to pass all pdus through note we do not free
-                                        * the pdu or delist the request */
+                                } else if (pdu->report_pending && pdu->cb) {
+                                        /* The final reply still needs the queued request. */
                                         pdu->cb(smb2, smb2->hdr.status, pdu->payload, pdu->cb_data);
                                 }
                         }
