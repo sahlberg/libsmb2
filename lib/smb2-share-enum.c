@@ -690,6 +690,14 @@ share_enum_read_cb(struct smb2_context *smb2, int status,
         share_enum_got_data(se, se->readbuf, rep->data_length);
 }
 
+/* Queueing may complete inline and release the enumeration. */
+static int
+share_enum_queue_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
+{
+        smb2_queue_pdu(smb2, pdu);
+        return smb2->queue_rejected ? -EIO : 0;
+}
+
 static int
 share_enum_read_more(struct share_enum *se)
 {
@@ -711,11 +719,7 @@ share_enum_read_more(struct share_enum *se)
         if (pdu == NULL) {
                 return -1;
         }
-        smb2_queue_pdu(se->smb2, pdu);
-        if (se->smb2->queue_rejected) {
-                return -EIO;
-        }
-        return 0;
+        return share_enum_queue_pdu(se->smb2, pdu);
 }
 
 static void
@@ -924,11 +928,7 @@ share_enum_send_bind(struct share_enum *se)
         if (pdu == NULL) {
                 return -ENOMEM;
         }
-        smb2_queue_pdu(se->smb2, pdu);
-        if (se->smb2->queue_rejected) {
-                return -EIO;
-        }
-        return 0;
+        return share_enum_queue_pdu(se->smb2, pdu);
 }
 
 static void
