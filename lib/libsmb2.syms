@@ -168,6 +168,7 @@ smb2_set_password_from_file
 smb2_set_pdu_message_id
 smb2_set_pdu_status
 smb2_set_seal
+smb2_set_random_provider
 smb2_set_security_mode
 smb2_set_sign
 smb2_set_timeout

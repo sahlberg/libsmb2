@@ -12,6 +12,9 @@
  */
 #define SMB2_DEVCTL_CONNECT		0xC0DE0001
 #define SMB2_DEVCTL_DISCONNECT_ALL	0xC0DE0002
+/* Supply a fresh 32-byte entropy input and 16-byte nonce from the EE. */
+#define SMB2_DEVCTL_SET_ENTROPY         0xC0DE0003
+#define SMB2_ENTROPY_SEED_SIZE          48
 
 /*
  * I/O structures for DEVCTL commands

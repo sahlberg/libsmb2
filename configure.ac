@@ -124,9 +124,24 @@ case $host in
     LIBSOCKET='-lws2_32'
     case $host in
       *mingw32*)
-        AC_DEFINE([NEED_RANDOM], [1], [Provide random on Windows])
-        AC_DEFINE([NEED_SRANDOM], [1], [Provide srandom on Windows])
         AC_DEFINE([NEED_GETLOGIN_R], [1], [Provide getlogin_r on Windows])
+        dnl  The 32-bit import name includes the stdcall argument size.
+        dnl  Compile against the SDK prototype instead of AC_CHECK_LIB's
+        dnl  argument-less declaration.
+        LIBSOCKET="$LIBSOCKET -lbcrypt"
+        smb2_saved_LIBS=$LIBS
+        LIBS="$LIBSOCKET $LIBS"
+        AC_MSG_CHECKING([for Windows CNG BCryptGenRandom])
+        AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+#include <windows.h>
+#include <bcrypt.h>
+        ]], [[
+          UCHAR byte;
+          return BCryptGenRandom(NULL, &byte, sizeof(byte),
+                                 BCRYPT_USE_SYSTEM_PREFERRED_RNG);
+        ]])], [AC_MSG_RESULT([yes])],
+              [AC_MSG_FAILURE([Windows CNG (bcrypt) is required])])
+        LIBS=$smb2_saved_LIBS
         ;;
     esac
     SYS=mingw32
@@ -325,7 +340,7 @@ dnl  Check for a cryptographically strong source of random bytes.
 dnl  The NTLMv2 client challenge, the SMB 3.1.1 preauth salt and the
 dnl  AES-CCM nonce all need to be unpredictable. Not every platform we
 dnl  build for has such a source, so all of these are optional and
-dnl  smb2_random_bytes() falls back to random() when none is present.
+dnl  applications on other ports can register a cryptographic random provider.
 AC_CHECK_HEADERS([sys/random.h])
 AC_CHECK_FUNCS([arc4random_buf getrandom])
 

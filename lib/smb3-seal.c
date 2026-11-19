@@ -152,7 +152,11 @@ smb3_encrypt_pdu(struct smb2_context *smb2,
          * key, so this has to come from the strong source and not from
          * random().
          */
-        smb2_random_bytes(&pdu->crypt[20], SMB3_GCM(smb2) ? 12 : 11);
+        if (smb2_random_nonce(smb2, &pdu->crypt[20], SMB3_GCM(smb2))) {
+                smb2_set_error(smb2, "Failed to draw the encryption nonce: "
+                               "the random source is not ready yet");
+                return -1;
+        }
         u32 = htole32(spl - 52);
         memcpy(&pdu->crypt[36], &u32, 4);
         u16 = htole16(SMB_ENCRYPTION_AES128_CCM);

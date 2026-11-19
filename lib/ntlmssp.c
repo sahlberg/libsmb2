@@ -1006,8 +1006,12 @@ encode_ntlm_challenge(struct smb2_context *smb2, struct auth_data *auth_data)
          * can be precomputed offline. We used to send 01 02 03 04 05 06 07
          * 08 every single time.
          */
-        smb2_random_bytes(auth_data->server_challenge,
-                          sizeof(auth_data->server_challenge));
+        if (smb2_random_bytes(auth_data->server_challenge,
+                              sizeof(auth_data->server_challenge))) {
+                smb2_set_error(smb2, "Failed to draw the server challenge: "
+                               "the random source is not ready yet");
+                return -1;
+        }
         encoder(auth_data->server_challenge, 8, auth_data);
 
         /* reserved */
