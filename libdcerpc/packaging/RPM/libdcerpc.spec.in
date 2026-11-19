@@ -77,5 +77,5 @@ development libraries for libdcerpc
 %{_libdir}/pkgconfig/libdcerpc.pc
 
 %changelog
-* Sat Oct 03 2026 : Version 1.0.0
+* Thu Nov 19 2026 : Version 1.0.0
  - Initial release as a separate library from libsmb2

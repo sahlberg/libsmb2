@@ -104,6 +104,49 @@ development libraries for LibSMB2
 %{_libdir}/pkgconfig/libsmb2.pc
 
 %changelog
+* Thu Nov 19 2026 : Version 7.0.0
+ - New soname 7. Full DCE/RPC moved out to the separate libdcerpc
+   library; libsmb2 keeps a small flat smb2_share_enum_*() API.
+ - SMB2 over QUIC ("quic" URL argument) and over SMB Direct ("rdma"),
+   Linux only, built in when libquic or rdma-core is found.
+ - IAKerb authentication (sec=iakerb).
+ - Optional OpenSSL 3 libcrypto: AES-128-GCM and AES-256-GCM for
+   SMB 3.1.1, and signing and sealing through OpenSSL.
+ - AES-CMAC signing with AES-NI over the iovecs, without a copy.
+ - smb2_symlink(), smb2_link(), server-side copy (FSCTL_SRV_COPYCHUNK),
+   setting security descriptors, change notify, SMB2 CANCEL, unrelated
+   compound requests and the *_async_pdu() calls.
+ - smb2_set_seal() takes NONE/MAYBE/MUST, and sealed replies are
+   enforced when sealing is required.
+ - Server: encrypted sessions, SMB 3.1.1 cipher negotiation, Kerberos
+   and IAKerb, SMB over QUIC, oplock and lease breaks, every directory
+   information class, getters for the current request's tree id and
+   async id, and many fixes from embedded servers (issues #474, #500).
+ - Bounds checks throughout the PDU, NTLMSSP, SPNEGO and share
+   enumeration decoders, including all fixes in 6.3.0 to 6.3.2.
+ - Contexts used on different threads no longer share any state.
+ - New platforms and fixes: Haiku, the PS2 IOP (smb2man.irx),
+   GameCube/Wii, macOS.
+* Tue Nov 03 2026 : Version 6.3.2
+ - Security fixes for malformed or hostile server replies:
+   CVE-2026-110713: bound the volume label and filesystem name
+   lengths in FS_VOLUME/FS_ATTRIBUTE info replies (heap over-read).
+   CVE-2026-110714: reject ACL sizes and descriptor offsets that
+   underflow or wrap in security descriptors (heap over-read).
+   A malformed SID inside an ACE now fails decoding instead of
+   leaving a NULL sid behind.
+ - Build fix for -Werror with newer glibc.
+* Sun Oct 25 2026 : Version 6.3.1
+ - Security fix for a malformed or hostile server reply:
+   a directory entry that fails to decode no longer leaves two
+   entries owning the same name (double free), and a wrapping
+   NextEntryOffset no longer loops until memory runs out.
+* Thu Oct 22 2026 : Version 6.3.0
+ - Security fixes for malformed or hostile server replies:
+   bounds checks on lengths and offsets in the PDU, NTLMSSP and
+   SPNEGO decoders, the FILE_ALL_INFORMATION name, header-only
+   replies, QUERY_INFO replies without data and the DCE/RPC
+   array and string counts used by share enumeration.
 * Mon Dec 16 2024 : Version 6.1.0
  - Fix return code for smb2-ls on failure
  - Fix memory errors in smb2_opendir()
