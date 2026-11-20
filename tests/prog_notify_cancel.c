@@ -517,13 +517,8 @@ int main(int argc, char *argv[])
          * The root of the share is opened with an empty name, not ".";
          * SMB2 servers reject "." as an invalid path component.
          */
-#ifdef O_DIRECTORY
-        dir_fh = smb2_open(smb2, "", O_DIRECTORY);
-        dir_fh_2 = smb2_open(smb2, "", O_DIRECTORY);
-#else
-        dir_fh = smb2_open(smb2, "", 0);
-        dir_fh_2 = smb2_open(smb2, "", 0);
-#endif
+        dir_fh = smb2_open(smb2, "", SMB2_O_DIRECTORY);
+        dir_fh_2 = smb2_open(smb2, "", SMB2_O_DIRECTORY);
         if (dir_fh == NULL || dir_fh_2 == NULL) {
                 printf("Failed to open share root. %s\n", smb2_get_error(smb2));
                 goto out;
