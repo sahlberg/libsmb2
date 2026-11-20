@@ -172,6 +172,8 @@ struct smb2fh {
         smb2_command_cb cb;
         void *cb_data;
 
+        struct smb2_context *open_context;
+        uint32_t open_tree_id;
         smb2_file_id file_id;
         int64_t offset;
         int64_t end_of_file;
@@ -199,6 +201,13 @@ struct smb2fh {
          * without a context. */
         struct smb2fh *next, **prev;
 };
+
+/* A raw FileId may have been wrapped before a tree was connected. */
+static uint32_t
+file_handle_tree_id(struct smb2_context *smb2, const struct smb2fh *fh)
+{
+        return fh->open_context ? fh->open_tree_id : smb2_tree_id(smb2);
+}
 
 void
 smb2_close_context(struct smb2_context *smb2)
@@ -1766,6 +1775,7 @@ open_retry(struct smb2_context *smb2, struct smb2fh *fh)
                 smb2_set_error(smb2, "Failed to create create command");
                 return -1;
         }
+        smb2_set_tree_id_for_pdu(smb2, pdu, file_handle_tree_id(smb2, fh));
         smb2_queue_pdu(smb2, pdu);
         if (smb2->queue_rejected) {
                 return -1;
@@ -1793,6 +1803,9 @@ open_cb(struct smb2_context *smb2, int status,
         struct smb2fh *fh = private_data;
         struct smb2_create_reply *rep = command_data;
 
+        if (status == SMB2_STATUS_PENDING) {
+                return;
+        }
         /* Completed: freeing the caller's pdu no longer cancels */
         if (fh->cancel_pdu) {
                 fh->cancel_pdu->free_cb = NULL;
@@ -1916,6 +1929,8 @@ _smb2_open_async_with_oplock_or_lease(struct smb2_context *smb2, const char *pat
                 fh->cancel_free_cb = free_cb;
                 pdu->free_cb = open_cancelled;
         }
+        fh->open_context = smb2;
+        fh->open_tree_id = pdu->header.sync.tree_id;
         pdu->caller_frees_pdu = caller_frees_pdu;
         smb2_queue_pdu(smb2, pdu);
         if (smb2->queue_rejected) {
@@ -1973,6 +1988,9 @@ close_cb(struct smb2_context *smb2, int status,
 {
         struct smb2fh *fh = private_data;
 
+        if (status == SMB2_STATUS_PENDING) {
+                return;
+        }
         if (status != SMB2_STATUS_SUCCESS) {
                 smb2_set_nterror(smb2, status, "Close failed with (0x%08x) %s",
                                status, nterror_to_str(status));
@@ -2012,6 +2030,7 @@ smb2_close_async(struct smb2_context *smb2, struct smb2fh *fh,
                 smb2_set_error(smb2, "Failed to create close command");
                 return -ENOMEM;
         }
+        smb2_set_tree_id_for_pdu(smb2, pdu, file_handle_tree_id(smb2, fh));
         smb2_queue_pdu(smb2, pdu);
         if (smb2->queue_rejected) {
                 return -EIO;
@@ -4562,6 +4581,10 @@ smb2_fh_from_file_id(struct smb2_context *smb2, smb2_file_id *fileid)
                 return NULL;
         }
         memcpy(fh->file_id, fileid, SMB2_FD_SIZE);
+        if (smb2 && smb2->tree_id_top > 0) {
+                fh->open_context = smb2;
+                fh->open_tree_id = smb2_tree_id(smb2);
+        }
         if (smb2) {
                 smb2_track_fh(smb2, fh);
         }
@@ -4723,6 +4746,14 @@ notify_change_fh_async(struct smb2_context *smb2, struct smb2fh *smb2_dir_fh,
                        uint16_t flags, uint32_t filter, int loop, int owns_fh,
                        smb2_command_cb cb, void *cb_data);
 
+static int
+queue_change_notify(struct smb2_context *smb2, struct smb2_pdu *pdu, uint32_t tree_id)
+{
+        smb2_set_tree_id_for_pdu(smb2, pdu, tree_id);
+        smb2_queue_pdu(smb2, pdu);
+        return smb2->queue_rejected ? -EIO : 0;
+}
+
 static void
 notify_close_cb(struct smb2_context *smb2 _U_, int status _U_,
                 void *command_data _U_, void *private_data _U_)
@@ -4857,8 +4888,7 @@ notify_change_fh_async(struct smb2_context *smb2, struct smb2fh *smb2_dir_fh,
                 free(notify_change_cb_data);
                 return -1;
         }
-        smb2_queue_pdu(smb2, pdu);
-        if (smb2->queue_rejected) {
+        if (queue_change_notify(smb2, pdu, file_handle_tree_id(smb2, smb2_dir_fh)) < 0) {
                 free(notify_change_cb_data);
                 return -EIO;
         }
