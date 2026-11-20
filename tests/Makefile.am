@@ -11,7 +11,7 @@ noinst_PROGRAMS += metastat-0202-censored utf8-unit timestamps-unit lseek-unit
 
 noinst_PROGRAMS += sync-stat-unit
 
-noinst_PROGRAMS += set-info-unit io-limits-unit
+noinst_PROGRAMS += set-info-unit io-limits-unit notify-handle-unit
 
 noinst_PROGRAMS += aes128ccm-test
 aes128ccm_test_SOURCES = aes128ccm-test.c ../lib/aes128ccm.c ../lib/aes-armv8.c \
@@ -37,6 +37,7 @@ T = "$(srcdir)"/test_*.sh
 test: $(noinst_PROGRAMS) $(bin_SCRIPTS)
 	./aes128ccm-test
 	./io-limits-unit
+	./notify-handle-unit
 	srcdir="$(srcdir)"; export srcdir; for TEST in $(T); do \
 		echo "Running $$TEST"; \
 		echo "--------------"; \

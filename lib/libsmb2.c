@@ -172,6 +172,8 @@ struct smb2fh {
         smb2_command_cb cb;
         void *cb_data;
 
+        struct smb2_context *open_context;
+        uint32_t open_tree_id;
         smb2_file_id file_id;
         int64_t offset;
         int64_t end_of_file;
@@ -199,6 +201,13 @@ struct smb2fh {
          * without a context. */
         struct smb2fh *next, **prev;
 };
+
+/* A raw FileId may have been wrapped before a tree was connected. */
+static uint32_t
+file_handle_tree_id(struct smb2_context *smb2, const struct smb2fh *fh)
+{
+        return fh->open_context ? fh->open_tree_id : smb2_tree_id(smb2);
+}
 
 void
 smb2_close_context(struct smb2_context *smb2)
@@ -1594,15 +1603,11 @@ open_flags_to_create_request(struct smb2_create_request *req,
 
 #ifdef O_DIRECTORY
         if (flags & O_DIRECTORY) {
-                /* must be directory */
-                create_options |= SMB2_FILE_DIRECTORY_FILE;
-        } else {
-                /* must not be directory */
-                create_options |= SMB2_FILE_NON_DIRECTORY_FILE;
+                flags |= SMB2_O_DIRECTORY;
         }
-#else
-        create_options |= SMB2_FILE_NON_DIRECTORY_FILE;
 #endif
+        create_options |= (flags & SMB2_O_DIRECTORY) ?
+                SMB2_FILE_DIRECTORY_FILE : SMB2_FILE_NON_DIRECTORY_FILE;
 
         if (flags & O_SYNC) {
                 desired_access |= SMB2_SYNCHRONIZE;
@@ -1766,6 +1771,7 @@ open_retry(struct smb2_context *smb2, struct smb2fh *fh)
                 smb2_set_error(smb2, "Failed to create create command");
                 return -1;
         }
+        smb2_set_tree_id_for_pdu(smb2, pdu, file_handle_tree_id(smb2, fh));
         smb2_queue_pdu(smb2, pdu);
         if (smb2->queue_rejected) {
                 return -1;
@@ -1793,6 +1799,9 @@ open_cb(struct smb2_context *smb2, int status,
         struct smb2fh *fh = private_data;
         struct smb2_create_reply *rep = command_data;
 
+        if (status == SMB2_STATUS_PENDING) {
+                return;
+        }
         /* Completed: freeing the caller's pdu no longer cancels */
         if (fh->cancel_pdu) {
                 fh->cancel_pdu->free_cb = NULL;
@@ -1916,6 +1925,8 @@ _smb2_open_async_with_oplock_or_lease(struct smb2_context *smb2, const char *pat
                 fh->cancel_free_cb = free_cb;
                 pdu->free_cb = open_cancelled;
         }
+        fh->open_context = smb2;
+        fh->open_tree_id = pdu->header.sync.tree_id;
         pdu->caller_frees_pdu = caller_frees_pdu;
         smb2_queue_pdu(smb2, pdu);
         if (smb2->queue_rejected) {
@@ -1973,6 +1984,9 @@ close_cb(struct smb2_context *smb2, int status,
 {
         struct smb2fh *fh = private_data;
 
+        if (status == SMB2_STATUS_PENDING) {
+                return;
+        }
         if (status != SMB2_STATUS_SUCCESS) {
                 smb2_set_nterror(smb2, status, "Close failed with (0x%08x) %s",
                                status, nterror_to_str(status));
@@ -2012,6 +2026,7 @@ smb2_close_async(struct smb2_context *smb2, struct smb2fh *fh,
                 smb2_set_error(smb2, "Failed to create close command");
                 return -ENOMEM;
         }
+        smb2_set_tree_id_for_pdu(smb2, pdu, file_handle_tree_id(smb2, fh));
         smb2_queue_pdu(smb2, pdu);
         if (smb2->queue_rejected) {
                 return -EIO;
@@ -4562,6 +4577,10 @@ smb2_fh_from_file_id(struct smb2_context *smb2, smb2_file_id *fileid)
                 return NULL;
         }
         memcpy(fh->file_id, fileid, SMB2_FD_SIZE);
+        if (smb2 && smb2->tree_id_top > 0) {
+                fh->open_context = smb2;
+                fh->open_tree_id = smb2_tree_id(smb2);
+        }
         if (smb2) {
                 smb2_track_fh(smb2, fh);
         }
@@ -4705,23 +4724,23 @@ free_smb2_file_notify_change_information(struct smb2_context *smb2, struct smb2_
 struct notify_change_cb_data {
         smb2_command_cb cb;
         void *cb_data;
-        // smb2fh file handle of the directory to get notified
         struct smb2fh *fh;
-        // filter of SMB2_CHANGE_NOTIFY_FILE_NOTIFY_CHANGE_* flags
-        uint16_t filter;
-        // flags such as SMB2_CHANGE_NOTIFY_WATCH_TREE
-        uint32_t flags;
-        // do a new notify_change request after each response if 1
-        uint32_t loop;
-        uint32_t status;
-        // fh was opened by smb2_notify_change_async() and is ours to close
+        uint32_t tree_id;
+        uint32_t filter;
+        uint16_t flags;
+        int loop;
         int owns_fh;
 };
 
+static int submit_notify(struct smb2_context *, struct notify_change_cb_data *);
+
 static int
-notify_change_fh_async(struct smb2_context *smb2, struct smb2fh *smb2_dir_fh,
-                       uint16_t flags, uint32_t filter, int loop, int owns_fh,
-                       smb2_command_cb cb, void *cb_data);
+queue_change_notify(struct smb2_context *smb2, struct smb2_pdu *pdu, uint32_t tree_id)
+{
+        smb2_set_tree_id_for_pdu(smb2, pdu, tree_id);
+        smb2_queue_pdu(smb2, pdu);
+        return smb2->queue_rejected ? -EIO : 0;
+}
 
 static void
 notify_close_cb(struct smb2_context *smb2 _U_, int status _U_,
@@ -4730,167 +4749,134 @@ notify_close_cb(struct smb2_context *smb2 _U_, int status _U_,
 }
 
 static void
-notify_change_cb(struct smb2_context *smb2, int status,
-          void *command_data _U_, void *private_data)
+finish_notify(struct smb2_context *smb2, struct notify_change_cb_data *watch, int shutdown)
 {
-        struct notify_change_cb_data *notify_change_data = private_data;
-
-        struct smb2_change_notify_reply *rep = command_data;
-        struct smb2_iovec vec;
-        struct smb2_file_notify_change_information *fnc = calloc(1, sizeof(struct smb2_file_notify_change_information));
-        int decode_status = 0;
-
-        if (status && (uint32_t)status != SMB2_STATUS_NOTIFY_ENUM_DIR &&
-            (uint32_t)status != SMB2_STATUS_NOTIFY_CLEANUP) {
-                smb2_set_error(smb2, "notify_change_cb failed (%s) %s\n",
-                               nterror_to_str((uint32_t)status),
-                               smb2_get_error(smb2));
+        if (watch->owns_fh && watch->fh &&
+            (shutdown || smb2_close_async(smb2, watch->fh, notify_close_cb, NULL) < 0)) {
+                free_smb2fh(smb2, watch->fh);
         }
+        free(watch);
+}
 
-        if (status || rep == NULL) {
-                /* Error or cancellation -- e.g. smb2_destroy_context() flushing the pending
-                 * watch request with command_data == NULL. There is no reply to decode, so
-                 * signal the failure to the callback, do not re-arm, and free. Without this
-                 * the unconditional rep->output dereference below SEGVs whenever a watcher
-                 * is torn down with a notify request still outstanding. */
-                if (notify_change_data->cb) {
-                        uint32_t nt = (uint32_t)status;
-                        int cb_status;
+static void
+notify_change_cb(struct smb2_context *smb2, int status, void *command_data, void *private_data)
+{
+        struct notify_change_cb_data *watch = private_data;
+        struct smb2_change_notify_reply *rep = command_data;
+        struct smb2_file_notify_change_information *changes = NULL;
+        int rc = 0;
 
-                        /* ENUM_DIR and CLEANUP are success-severity. Mapping
-                         * them through nterror_to_errno hides them as EIO.
-                         * Other statuses are NTSTATUS, including 0xffffffff
-                         * on teardown, which strerror() reported as EPERM. */
-                        if (nt == SMB2_STATUS_NOTIFY_ENUM_DIR ||
-                            nt == SMB2_STATUS_NOTIFY_CLEANUP) {
-                                cb_status = status;
-                        } else if (status) {
-                                cb_status = -nterror_to_errno(nt);
-                        } else {
-                                cb_status = -EIO;
-                        }
-                        notify_change_data->cb(smb2, cb_status,
-                                               NULL, notify_change_data->cb_data);
-                }
-                free(fnc);
-                if (notify_change_data->owns_fh) {
-                        free_smb2fh(smb2, notify_change_data->fh);
-                }
-                free(notify_change_data);
+        if (status == SMB2_STATUS_PENDING) {
                 return;
         }
-
-        vec.buf = rep->output;
-        vec.len = rep->output_buffer_length;
-
-        /* An empty buffer carries no entries; that is not malformed */
-        if (fnc == NULL) {
-                decode_status = -ENOMEM;
-        } else if (vec.len &&
-                   smb2_decode_filenotifychangeinformation(smb2, fnc, &vec, 0)) {
-                decode_status = -EIO;
-                free_smb2_file_notify_change_information(smb2, fnc);
-                fnc = NULL;
-        }
-
-        if (notify_change_data->cb) {
-                notify_change_data->cb(
-                        smb2,
-                        decode_status ? decode_status :
-                        -nterror_to_errno(notify_change_data->status),
-                        fnc,
-                        notify_change_data->cb_data
-                );
-        }
-        if (notify_change_data->loop && !decode_status &&
-            notify_change_fh_async(smb2, notify_change_data->fh, notify_change_data->flags, notify_change_data->filter,
-                        notify_change_data->loop, notify_change_data->owns_fh,
-                        notify_change_data->cb, notify_change_data->cb_data) == 0) {
-                /* re-armed, the new request has the handle now */
-        } else if (notify_change_data->owns_fh) {
-                /* we are inside smb2_service(): never block in the sync
-                 * smb2_close() here, it re-enters the receive path */
-                if (smb2_close_async(smb2, notify_change_data->fh,
-                                     notify_close_cb, NULL) < 0) {
-                        free_smb2fh(smb2, notify_change_data->fh);
+        if ((uint32_t)status == SMB2_STATUS_NOTIFY_ENUM_DIR ||
+            (uint32_t)status == SMB2_STATUS_NOTIFY_CLEANUP) {
+                rc = status;
+        } else if (status) {
+                smb2_set_nterror(smb2, status, "Change notify failed: %s", nterror_to_str(status));
+                rc = -nterror_to_errno(status);
+                if (!rc) {
+                        rc = -EIO;
+                }
+        } else if (!rep) {
+                rc = -EIO;
+        } else {
+                struct smb2_iovec vec = {rep->output, rep->output_buffer_length, NULL};
+                changes = calloc(1, sizeof(*changes));
+                if (!changes) {
+                        rc = -ENOMEM;
+                } else if (vec.len && smb2_decode_filenotifychangeinformation(smb2, changes, &vec, 0)) {
+                        free_smb2_file_notify_change_information(smb2, changes);
+                        changes = NULL;
+                        rc = -EIO;
                 }
         }
-        free(notify_change_data);
+        if (watch->cb) {
+                watch->cb(smb2, rc, changes, watch->cb_data);
+        } else {
+                free_smb2_file_notify_change_information(smb2, changes);
+        }
+        if (!rc && watch->loop && !submit_notify(smb2, watch)) {
+                return;
+        }
+        finish_notify(smb2, watch, (uint32_t)status == SMB2_STATUS_SHUTDOWN);
 }
 
 static int
-notify_change_fh_async(struct smb2_context *smb2, struct smb2fh *smb2_dir_fh,
-                       uint16_t flags, uint32_t filter, int loop, int owns_fh,
-                       smb2_command_cb cb, void *cb_data)
+submit_notify(struct smb2_context *smb2, struct notify_change_cb_data *watch)
 {
-        struct notify_change_cb_data *notify_change_cb_data;
-        struct smb2_change_notify_request ch_req;
+        struct smb2_change_notify_request req = {0};
         struct smb2_pdu *pdu;
 
-        notify_change_cb_data = calloc(1, sizeof(struct notify_change_cb_data));
-        if (notify_change_cb_data == NULL) {
-                smb2_set_error(smb2, "Failed to allocate notify_change_data");
-                return -1;
+        req.flags = watch->flags;
+        req.output_buffer_length = DEFAULT_OUTPUT_BUFFER_LENGTH;
+        memcpy(req.file_id, watch->fh->file_id, SMB2_FD_SIZE);
+        req.completion_filter = watch->filter;
+        pdu = smb2_cmd_change_notify_async(smb2, &req, notify_change_cb, watch);
+        if (!pdu) {
+                return -ENOMEM;
         }
-        memset(notify_change_cb_data, 0, sizeof(struct notify_change_cb_data));
-        notify_change_cb_data->cb = cb;
-        notify_change_cb_data->cb_data = cb_data;
-        notify_change_cb_data->fh = smb2_dir_fh;
-
-        notify_change_cb_data->flags = flags;
-        notify_change_cb_data->filter = filter;
-        notify_change_cb_data->loop = loop;
-        notify_change_cb_data->owns_fh = owns_fh;
-
-        /* CHANGE NOTIFY command */
-        memset(&ch_req, 0, sizeof(struct smb2_change_notify_request));
-        ch_req.flags = flags;
-        ch_req.output_buffer_length = DEFAULT_OUTPUT_BUFFER_LENGTH;
-        const smb2_file_id *file_id = smb2_get_file_id(smb2_dir_fh);
-        memcpy(ch_req.file_id, file_id, SMB2_FD_SIZE);
-        ch_req.completion_filter = filter;
-
-        pdu = smb2_cmd_change_notify_async(smb2, &ch_req,
-                                             notify_change_cb, notify_change_cb_data);
-        if (pdu == NULL) {
-                smb2_set_error(smb2, "Failed to create change_notify command\n");
-                free(notify_change_cb_data);
-                return -1;
-        }
-        smb2_queue_pdu(smb2, pdu);
-        if (smb2->queue_rejected) {
-                free(notify_change_cb_data);
-                return -EIO;
-        }
-
-        return 0;
+        return queue_change_notify(smb2, pdu, watch->tree_id);
 }
 
-int smb2_notify_change_filehandle_async(struct smb2_context *smb2, struct smb2fh *smb2_dir_fh, uint16_t flags, uint32_t filter, int loop,
-                       smb2_command_cb cb, void *cb_data)
+static void
+notify_open_cb(struct smb2_context *smb2, int status, void *fh, void *private_data)
 {
-        return notify_change_fh_async(smb2, smb2_dir_fh, flags, filter, loop, 0, cb, cb_data);
+        struct notify_change_cb_data *watch = private_data;
+
+        if (!status) {
+                watch->fh = fh;
+                status = submit_notify(smb2, watch);
+                if (!status) {
+                        return;
+                }
+        }
+        if (watch->cb) {
+                watch->cb(smb2, status, NULL, watch->cb_data);
+        }
+        finish_notify(smb2, watch, 0);
 }
 
-int smb2_notify_change_async(struct smb2_context *smb2, const char *path, uint16_t flags, uint32_t filter, int loop,
-                       smb2_command_cb cb, void *cb_data)
+static int
+start_notify(struct smb2_context *smb2, const char *path, struct smb2fh *fh, uint16_t flags,
+             uint32_t filter, int loop, smb2_command_cb cb, void *cb_data)
 {
-        struct smb2fh *fh;
-#ifdef O_DIRECTORY
-        fh = smb2_open(smb2, path, O_DIRECTORY);
-#else
-        fh = smb2_open(smb2, path, 0);
-#endif
-        if (fh == NULL) {
-                smb2_set_error(smb2, "smb2_open failed. %s\n", smb2_get_error(smb2));
-                return -1;
-        }
-        if (notify_change_fh_async(smb2, fh, flags, filter, loop, 1, cb, cb_data) < 0) {
-                smb2_close(smb2, fh);
-                return -1;
-        }
-        return 0;
+        struct notify_change_cb_data *watch;
+        int rc;
 
+        if (!smb2 || (!path && !fh)) {
+                return -EINVAL;
+        }
+        watch = calloc(1, sizeof(*watch));
+        if (!watch) {
+                return -ENOMEM;
+        }
+        watch->cb = cb;
+        watch->cb_data = cb_data;
+        watch->fh = fh;
+        watch->tree_id = fh ? file_handle_tree_id(smb2, fh) : smb2_tree_id(smb2);
+        watch->filter = filter;
+        watch->flags = flags;
+        watch->loop = loop;
+        watch->owns_fh = !fh;
+        rc = fh ? submit_notify(smb2, watch) :
+                  smb2_open_async(smb2, path, SMB2_O_DIRECTORY, notify_open_cb, watch);
+        if (rc < 0) {
+                free(watch);
+        }
+        return rc;
+}
+
+int smb2_notify_change_filehandle_async(struct smb2_context *smb2, struct smb2fh *fh, uint16_t flags,
+                                        uint32_t filter, int loop, smb2_command_cb cb, void *cb_data)
+{
+        return start_notify(smb2, NULL, fh, flags, filter, loop, cb, cb_data);
+}
+
+int smb2_notify_change_async(struct smb2_context *smb2, const char *path, uint16_t flags,
+                             uint32_t filter, int loop, smb2_command_cb cb, void *cb_data)
+{
+        return start_notify(smb2, path, NULL, flags, filter, loop, cb, cb_data);
 }
 
 /*************************** server handlers *************************************************************/
