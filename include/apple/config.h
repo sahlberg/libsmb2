@@ -7,6 +7,13 @@
 /* Define to 1 if you have the <arpa/inet.h> header file. */
 #define HAVE_ARPA_INET_H 1
 
+/* Define to 1 if you have the <CommonCrypto/CommonCryptor.h> header file. */
+#if defined(__APPLE__) && defined(__has_include)
+#if __has_include(<CommonCrypto/CommonCryptor.h>)
+#define HAVE_COMMONCRYPTO_COMMONCRYPTOR_H 1
+#endif
+#endif
+
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #define HAVE_DLFCN_H 1
 
