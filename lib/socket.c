@@ -125,7 +125,7 @@
  * Since the smb is most likely used on local network, use an aggressive
  * timeout of 100ms. */
 #define HAPPY_EYEBALLS_TIMEOUT 100
-#if !defined(HAVE_LINGER)
+#if !defined(HAVE_LINGER) && !defined(_WIN32)
 struct linger
 {
         int     l_onoff;    /* Linger active        */
@@ -1934,7 +1934,7 @@ smb2_connect_async(struct smb2_context *smb2, const char *server,
         err = getaddrinfo(host, port, NULL, &smb2->addrinfos);
         if (err != 0) {
                 free(addr);
-#if defined(_WINDOWS) || defined(_XBOX)
+#if defined(_WINDOWS) || defined(__MINGW32__) || defined(_XBOX)
                 if (err == WSANOTINITIALISED)
                 {
                         smb2_set_error(smb2, "Winsock was not initialized. "

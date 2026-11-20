@@ -56,7 +56,6 @@
 #endif
 
 #include <ctype.h>
-#include "portable-endian.h"
 #include <stdio.h>
 
 #ifdef HAVE_TIME_H
@@ -68,6 +67,7 @@
 #endif
 
 #include "compat.h"
+#include "portable-endian.h"
 
 #include "slist.h"
 #include "smb2.h"

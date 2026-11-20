@@ -138,19 +138,19 @@ struct smb2dirent {
         struct smb2_stat_64 st;
 };
 
-#if defined(_WINDOWS)
+#if defined(_WINDOWS) || defined(__MINGW32__)
 #ifdef __USE_WINSOCK__
 #include <winsock.h>
 #else
-#include <ws2tcpip.h>
 #include <winsock2.h>
+#include <ws2tcpip.h>
 #endif
 #elif defined(_XBOX)
 #include <xtl.h>
 #include <winsockx.h>
 #endif
 
-#if defined(_WINDOWS) || defined(_XBOX)
+#if defined(_WINDOWS) || defined(__MINGW32__) || defined(_XBOX)
 typedef SOCKET t_socket;
 #else
 #ifndef T_SOCKET_DEFINED

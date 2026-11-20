@@ -16,13 +16,16 @@
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 #include "compat.h"
 
-#if defined(_WINDOWS) || defined(_XBOX)
+#if defined(_WINDOWS) || defined(__MINGW32__) || defined(_XBOX)
 #include <errno.h>
 #include <stdlib.h>
 
-#ifdef _WINDOWS
+#if defined(_WINDOWS) || defined(__MINGW32__)
 #define login_num ENXIO
 #define getpid_num() GetCurrentProcessId()
 #else
@@ -532,7 +535,7 @@ void srandom(unsigned int seed)
 #endif
 
 #ifdef NEED_GETPID
-int getpid()
+int getpid(void)
 {
      return getpid_num();
 };

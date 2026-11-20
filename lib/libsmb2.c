@@ -88,7 +88,7 @@
 #include <sys/socket.h>
 #endif
 
-#if defined(_WIN32) || defined(_XBOX) || defined(__AROS__)
+#if (defined(_WIN32) && !defined(__MINGW32__)) || defined(_XBOX) || defined(__AROS__)
 #include "asprintf.h"
 #endif
 
