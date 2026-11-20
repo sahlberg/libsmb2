@@ -32,127 +32,31 @@
 
 #include "compat.h"
 
-#include "portable-endian.h"
 #include "aes.h"
 #include "aes128ccm.h"
+#include "aes-armv8.h"
 
 #ifndef HAVE_OPENSSL
 
-static void aes_ccm_generate_b0(unsigned char *nonce, size_t nlen,
-                                size_t alen, size_t plen, size_t mlen,
-                                unsigned char *buf)
+typedef uint8_t ccm_key;
+
+static inline void ccm_encrypt_block(const ccm_key *key, uint8_t in[16], uint8_t out[16])
 {
-        uint32_t len;
-
-        memset(buf, 0, 16);
-        if (alen) {
-                buf[0] |= 0x40;                   /* Adata */
-        }
-        buf[0] |= (((mlen - 2) / 2) << 3) & 0x38; /* M' */
-        buf[0] |= (15 - nlen - 1) & 0x07;         /* L' */
-
-        len = htobe32((uint32_t)plen);
-        memcpy(&buf[12], &len, 4);
-        memcpy(&buf[1], nonce, nlen);
+        AES128_ECB_encrypt(in, key, out);
 }
 
-static inline void bxory(unsigned char *b, unsigned char *y, size_t num)
+static inline void ccm_mac_block(const ccm_key *key, const uint8_t b[16], uint8_t y[16])
 {
-        int i;
+        unsigned i;
 
-        for(i = 0; i < (int)num; i++) {
-                b[i] = b[i] ^ y[i];
+        for (i = 0; i < 16; i++) {
+                y[i] ^= b[i];
         }
+        AES128_ECB_encrypt(y, key, y);
 }
 
-static void ccm_generate_T(unsigned char *key,
-                           unsigned char *nonce, size_t nlen,
-                           unsigned char *aad, size_t alen,
-                           unsigned char *p, size_t plen,
-                           unsigned char *m, size_t mlen)
-{
-        unsigned char b[16] _U_, y[16]_U_;
-        uint16_t l;
-
-        aes_ccm_generate_b0(nonce, nlen, alen, plen, mlen, &b[0]);
-        AES128_ECB_encrypt(b, key, y);
-
-        /* Create Aad */
-        if (alen) {
-                /* First block */
-                memset(b, 0, 16);
-                l = htobe16((uint16_t)alen);
-                memcpy(b, &l, 2);
-
-                l = (alen > 14) ? 14 : (uint16_t)alen;
-                memcpy(&b[2], aad, l);
-                aad  += l;
-                alen -= l;
-
-                bxory(b, y, 16);
-                AES128_ECB_encrypt(b, key, y);
-
-                while (alen) {
-                        memset(b, 0, 16);
-                        l = (alen > 16) ? 16 : (uint16_t)alen;
-                        memcpy(b, aad, l);
-                        aad  += l;
-                        alen -= l;
-
-                        bxory(b, y, 16);
-                        AES128_ECB_encrypt(b, key, y);
-                }
-        }
-
-        /* Create Payload */
-        while (plen) {
-                memset(b, 0, 16);
-                l = (plen > 16) ? 16 : (uint16_t)plen;
-                memcpy(b, p, l);
-                p    += l;
-                plen -= l;
-
-                bxory(b, y, 16);
-                AES128_ECB_encrypt(b, key, y);
-        }
-
-        memcpy(m, y, mlen);
-}
-
-static void ccm_generate_s(unsigned char *key, unsigned char *nonce, size_t nlen,
-                           size_t plen, int i, unsigned char *s)
-{
-        uint32_t l;
-
-        memset(s, 0, 16);
-        s[0] |= (15 - nlen - 1) & 0x07;
-
-        l = htobe32(i);
-        memcpy(&s[12], &l, 4);
-
-        memcpy(&s[1], nonce, nlen);
-
-        AES128_ECB_encrypt(s, key, s);
-}
-
-static void aes_ccm_crypt(unsigned char *key,
-                          unsigned char *nonce, size_t nlen,
-                          unsigned char *p, size_t plen)
-{
-        int j;
-        size_t l;
-        unsigned char s[16] _U_;
-
-        j = 0;
-        while (plen) {
-                l = (plen > 16) ? 16 : plen;
-                ccm_generate_s(key, nonce, nlen, plen, j + 1, &s[0]);
-                bxory(&p[j * 16], &s[0], l);
-
-                j++;
-                plen -= l;
-        }
-}
+#define CCM_TARGET
+#include "aes128ccm-private.h"
 
 int aes128ccm_encrypt(unsigned char *key,
                        unsigned char *nonce, size_t nlen,
@@ -160,15 +64,12 @@ int aes128ccm_encrypt(unsigned char *key,
                        unsigned char *p, size_t plen,
                        unsigned char *m, size_t mlen)
 {
-        unsigned char s[16] _U_;
-
-        ccm_generate_T(key, nonce, nlen, aad, alen, p, plen, m, mlen);
-        ccm_generate_s(key, nonce, nlen, plen, 0, &s[0]);
-        bxory(m, &s[0], mlen);
-
-        aes_ccm_crypt(key, nonce, nlen, p, plen);
-
-        return 0;
+#if SMB2_ARMV8_AES
+        if (smb2_armv8_available()) {
+                return aes128ccm_armv8_encrypt(key, nonce, nlen, aad, alen, p, plen, m, mlen);
+        }
+#endif
+        return ccm_encrypt(key, nonce, nlen, aad, alen, p, plen, m, mlen);
 }
 
 int aes128ccm_decrypt(unsigned char *key,
@@ -177,16 +78,12 @@ int aes128ccm_decrypt(unsigned char *key,
                       unsigned char *p, size_t plen,
                       unsigned char *m, size_t mlen)
 {
-        unsigned char s[16] _U_;
-        unsigned char tmp[16];
-
-        aes_ccm_crypt(key, nonce, nlen, p, plen);
-
-        ccm_generate_T(key, nonce, nlen, aad, alen, p, plen, tmp, mlen);
-        ccm_generate_s(key, nonce, nlen, plen, 0, &s[0]);
-        bxory(tmp, &s[0], mlen);
-
-        return memcmp(tmp, m, mlen);
+#if SMB2_ARMV8_AES
+        if (smb2_armv8_available()) {
+                return aes128ccm_armv8_decrypt(key, nonce, nlen, aad, alen, p, plen, m, mlen);
+        }
+#endif
+        return ccm_decrypt(key, nonce, nlen, aad, alen, p, plen, m, mlen);
 }
 
 #else /* HAVE_OPENSSL */

@@ -14,7 +14,7 @@ noinst_PROGRAMS += sync-stat-unit
 noinst_PROGRAMS += set-info-unit
 
 noinst_PROGRAMS += aes128ccm-test
-aes128ccm_test_SOURCES = aes128ccm-test.c ../lib/aes128ccm.c \
+aes128ccm_test_SOURCES = aes128ccm-test.c ../lib/aes128ccm.c ../lib/aes-armv8.c \
         ../lib/aes.c ../lib/aes_apple.c ../lib/aes_reference.c
 aes128ccm_test_LDADD = $(MAYBE_LIBCRYPTO)
 

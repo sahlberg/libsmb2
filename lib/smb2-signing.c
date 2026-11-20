@@ -66,6 +66,7 @@
 #endif
 
 #include "aes.h"
+#include "aes-armv8.h"
 #include "sha.h"
 #include "sha-private.h"
 
@@ -123,7 +124,34 @@ void aes_cmac_sub_keys(
         }
 }
 
-#if defined(__x86_64__) && (defined(__clang__) || defined(__GNUC__))
+#if ((defined(__x86_64__) && (defined(__clang__) || defined(__GNUC__))) || \
+     SMB2_ARMV8_AES) && !defined(HAVE_OPENSSL)
+/* Gather bytes across iovec boundaries. */
+static void smb2_iov_gather(const struct smb2_iovec *iov, size_t niov, size_t *v, size_t *at, uint8_t *out,
+                            size_t want)
+{
+        while (want > 0 && *v < niov) {
+                size_t take = iov[*v].len - *at;
+
+                if (take > want) {
+                        take = want;
+                }
+                if (take > 0) { /* an empty iovec may have no buffer */
+                        memcpy(out, iov[*v].buf + *at, take);
+                }
+                out += take;
+                want -= take;
+                *at += take;
+                if (*at == iov[*v].len) {
+                        (*v)++;
+                        *at = 0;
+                }
+        }
+}
+#endif /* !HAVE_OPENSSL */
+
+#if defined(__x86_64__) && (defined(__clang__) || defined(__GNUC__)) && \
+    !defined(HAVE_OPENSSL)
 /* AES-CMAC with the CPU's AES instructions: the key expanded once per message, each block ten
  * instructions. The portable code below expands the key again for every 16-byte block and runs AES a
  * byte at a time, which limited a signed SMB3 transfer to a few MB/s on a PS5. Results are the same
@@ -240,29 +268,6 @@ SMB2_AESNI static void smb2_aesni_cmac(const uint8_t key[16], const uint8_t *msg
         _mm_storeu_si128((__m128i *)(void *)mac, x);
 }
 
-#ifndef HAVE_OPENSSL
-/* Copies want bytes of the message from iovec *v at offset *at onwards, crossing into the next iovecs. */
-static void smb2_iov_gather(const struct smb2_iovec *iov, size_t niov, size_t *v, size_t *at, uint8_t *out,
-                            size_t want)
-{
-        while (want > 0 && *v < niov) {
-                size_t take = iov[*v].len - *at;
-
-                if (take > want) {
-                        take = want;
-                }
-                if (take > 0) { /* an empty iovec may have no buffer */
-                        memcpy(out, iov[*v].buf + *at, take);
-                }
-                out += take;
-                want -= take;
-                *at += take;
-                if (*at == iov[*v].len) {
-                        (*v)++;
-                        *at = 0;
-                }
-        }
-}
 
 /* The same CMAC over a message in pieces, without first copying it into one buffer: a signed 1 MB read
  * or write allocated and copied the whole message for every signature. */
@@ -312,8 +317,69 @@ SMB2_AESNI static void smb2_aesni_cmac_iov(const uint8_t key[16], const struct s
         x = smb2_aesni_encrypt(_mm_xor_si128(x, _mm_loadu_si128((const __m128i *)(const void *)last)), rk);
         _mm_storeu_si128((__m128i *)(void *)mac, x);
 }
-#endif /* !HAVE_OPENSSL */
 #endif
+
+#if SMB2_ARMV8_AES
+#define SMB2_ARMV8 __attribute__((target("+crypto")))
+
+#include <arm_neon.h>
+
+SMB2_ARMV8 static void smb2_armv8_setup(const uint8_t key[16], struct smb2_aes128_keys *rk,
+                                        uint8_t sub_key1[16], uint8_t sub_key2[16])
+{
+        smb2_armv8_aes128_expand_key(key, rk);
+        memset(sub_key1, 0, 16);
+        smb2_armv8_aes128_encrypt_block(sub_key1, rk, sub_key1);
+        if (aes_cmac_shift_left(sub_key1)) {
+                sub_key1[15] ^= 0x87;
+        }
+        memcpy(sub_key2, sub_key1, 16);
+        if (aes_cmac_shift_left(sub_key2)) {
+                sub_key2[15] ^= 0x87;
+        }
+}
+
+SMB2_ARMV8 static void smb2_armv8_cmac_iov(const uint8_t key[16], const struct smb2_iovec *iov, size_t niov,
+                                           uint64_t msg_len, uint8_t mac[16])
+{
+        struct smb2_aes128_keys rk;
+        uint8_t sub_key1[16], sub_key2[16], last[16];
+        size_t v = 0, at = 0;
+        uint8x16_t x = vdupq_n_u8(0);
+
+        smb2_armv8_setup(key, &rk, sub_key1, sub_key2);
+        while (msg_len > 16) {
+                uint8x16_t m;
+
+                while (v < niov && at == iov[v].len) {
+                        v++;
+                        at = 0;
+                }
+                if (v < niov && iov[v].len - at >= 16) {
+                        m = vld1q_u8(iov[v].buf + at);
+                        at += 16;
+                } else {
+                        uint8_t block[16];
+
+                        smb2_iov_gather(iov, niov, &v, &at, block, 16);
+                        m = vld1q_u8(block);
+                }
+                x = smb2_armv8_aes128_encrypt(veorq_u8(x, m), &rk);
+                msg_len -= 16;
+        }
+        memset(last, 0, 16);
+        if (msg_len == 16) {
+                smb2_iov_gather(iov, niov, &v, &at, last, 16);
+                aes_cmac_xor(last, sub_key1);
+        } else {
+                smb2_iov_gather(iov, niov, &v, &at, last, (size_t)msg_len);
+                last[msg_len] = 0x80;
+                aes_cmac_xor(last, sub_key2);
+        }
+        x = smb2_armv8_aes128_encrypt(veorq_u8(x, vld1q_u8(last)), &rk);
+        vst1q_u8(mac, x);
+}
+#endif /* SMB2_ARMV8_AES */
 
 void smb3_aes_cmac_128(uint8_t key[AES128_KEY_LEN],
                    uint8_t * msg,
@@ -321,7 +387,7 @@ void smb3_aes_cmac_128(uint8_t key[AES128_KEY_LEN],
                    uint8_t mac[AES128_KEY_LEN]
                   )
 {
-#if defined(__x86_64__) && (defined(__clang__) || defined(__GNUC__))
+#if defined(__x86_64__) && (defined(__clang__) || defined(__GNUC__)) && !defined(HAVE_OPENSSL)
         if (smb2_aesni_available()) {
                 smb2_aesni_cmac(key, msg, msg_len, mac);
                 return;
@@ -448,6 +514,13 @@ smb2_calc_signature(struct smb2_context *smb2, uint8_t *signature,
 #if defined(__x86_64__) && (defined(__clang__) || defined(__GNUC__))
                 if (smb2_aesni_available()) {
                         smb2_aesni_cmac_iov(smb2->signing_key, iov, niov, len, aes_mac);
+                        memcpy(&signature[0], aes_mac, SMB2_SIGNATURE_SIZE);
+                        return 0;
+                }
+#endif
+#if SMB2_ARMV8_AES
+                if (smb2_armv8_available()) {
+                        smb2_armv8_cmac_iov(smb2->signing_key, iov, niov, len, aes_mac);
                         memcpy(&signature[0], aes_mac, SMB2_SIGNATURE_SIZE);
                         return 0;
                 }

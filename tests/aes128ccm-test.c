@@ -4,6 +4,7 @@
 #include <stdlib.h>
 
 #include "../lib/aes128ccm.h"
+#include "../lib/aes-armv8.h"
 
 static void check_vector(unsigned char *key, unsigned char *nonce, size_t nlen,
                          unsigned char *aad, size_t alen, const unsigned char *plain,
@@ -59,8 +60,18 @@ static void test_2(void)
   check_vector(key, nonce, sizeof(nonce), aad, sizeof(aad), p, sizeof(p), mlen, exp);
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
+        if (argc == 2 && !strcmp(argv[1], "--require-armv8")) {
+                int available = 0;
+#if SMB2_ARMV8_AES
+                available = smb2_armv8_available();
+#endif
+                if (!available) {
+                        fprintf(stderr, "ARMv8 AES backend unavailable\n");
+                        return 1;
+                }
+        }
         test_1();
         test_2();
         return 0;

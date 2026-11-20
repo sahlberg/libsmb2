@@ -3,6 +3,7 @@ set(SMB2_CORE_SOURCES
     aes.c
     aes_reference.c
     aes128ccm.c
+    aes-armv8.c
     alloc.c
     asn1-ber.c
     compat.c

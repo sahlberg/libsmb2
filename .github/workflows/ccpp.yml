@@ -22,6 +22,18 @@ jobs:
     - name: Build (Linux)
       run: cmake --build build
 
+  test-arm64-aes:
+    name: ARM64 AES-128-CCM
+    runs-on: ubuntu-24.04-arm
+    steps:
+    - uses: actions/checkout@v5
+    - name: Run CCM known-answer tests with ARM crypto instructions
+      run: |
+        sh bootstrap
+        ./configure --without-libkrb5 --without-openssl
+        make -C tests aes128ccm-test
+        ./tests/aes128ccm-test --require-armv8
+
   build-windows:
     name: Windows build
 
