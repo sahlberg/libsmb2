@@ -234,6 +234,7 @@ struct dcerpc_context {
         char *auth_domain;
         char *auth_computer;
         int header_sign;
+        int pipe_failed;
         char error_string[1024];
 };
 
@@ -580,6 +581,7 @@ struct dcerpc_pdu {
         uint8_t *reasm_buf;
         size_t reasm_len;
         size_t reasm_cap;
+        int awaiting_verifier; /* The request has consumed a Schannel sequence number. */
 
         int top_level;
         /*
@@ -2725,6 +2727,7 @@ dce_unfragment_auth(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
         if (out <= 0xffff) {
                 first.frag_length = (uint16_t)out;
         }
+        pdu->awaiting_verifier = 0;
         first.auth_length = 0;
         first.pfc_flags |= PFC_LAST_FRAG;
         pdu->direction = DCERPC_ENCODE;
@@ -2967,6 +2970,13 @@ dcerpc_send_pdu_cb_and_free(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
         dcerpc_cb pdu_cb = pdu->cb;
         void *pdu_cb_data = pdu->cb_data;
 
+        if (pdu->awaiting_verifier) {
+                dce->pipe_failed = 1;
+                if (status == 0) {
+                        dcerpc_set_error(dce, "Schannel exchange ended without a verified reply");
+                        status = -EIO;
+                }
+        }
         dcerpc_untrack(dce, &pdu->pending);
         pdu_cb(dce, status, command_data, pdu_cb_data);
         dcerpc_free_pdu(dce, pdu);
@@ -3269,6 +3279,7 @@ dcerpc_fragment_request_auth(struct dcerpc_context *dce,
                                          "protect the request");
                         return -1;
                 }
+                pdu->awaiting_verifier = 1;
                 o += flen;
                 off += chunk;
         } while (off < stub_len);
@@ -3343,6 +3354,9 @@ dcerpc_send_request_frag(struct dcerpc_context *dce, struct dcerpc_pdu *pdu)
                                                 dcerpc_frag_write_cb, pdu);
         }
         if (smb2_pdu == NULL) {
+                if (pdu->awaiting_verifier) {
+                        dce->pipe_failed = 1;
+                }
                 return -ENOMEM;
         }
         smb2_queue_pdu(dce->smb2, smb2_pdu);
@@ -3379,6 +3393,10 @@ dcerpc_call_async(struct dcerpc_context *dce,
         struct dcerpc_iovec iov = {0};
         size_t max_frag, len;
 
+        if (dce->pipe_failed) {
+                dcerpc_set_error(dce, "Schannel exchange failed; open a new RPC association");
+                return -EIO;
+        }
         if (dce->destroying) {
                 return -ECANCELED;
         }
@@ -3405,6 +3423,9 @@ dcerpc_call_async(struct dcerpc_context *dce,
         if (dce->sch != NULL) {
                 if (dcerpc_fragment_request_auth(dce, pdu, iov.buf, len,
                                                  max_frag)) {
+                        if (pdu->awaiting_verifier) {
+                                dce->pipe_failed = 1;
+                        }
                         dcerpc_free_iovec(&iov);
                         dcerpc_free_pdu(dce, pdu);
                         return -1;
