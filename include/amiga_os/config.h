@@ -71,7 +71,9 @@
 #define HAVE_SYS_ERRNO_H 1
 
 /* Define to 1 if you have the <sys/fcntl.h> header file. */
+#ifndef __AROS__
 #define HAVE_SYS_FCNTL_H 1
+#endif
 
 /* Define to 1 if you have the <sys/ioctl.h> header file. */
 #define HAVE_SYS_IOCTL_H 1
@@ -95,7 +97,9 @@
 #define HAVE_SYS_UIO_H 1
 
 /* Define to 1 if you have the <sys/unistd.h> header file. */
+#ifndef __AROS__
 #define HAVE_SYS_UNISTD_H 1
+#endif
 
 /* Define to 1 if you have the <sys/_iovec.h> header file. */
 /* #undef HAVE_SYS__IOVEC_H */

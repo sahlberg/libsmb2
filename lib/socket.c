@@ -2009,7 +2009,7 @@ smb2_bind_and_listen(const uint16_t port, const int max_connections, int *out_fd
         socklen_t socksize;
         struct sockaddr_in serv_addr;
 #if defined(SO_REUSEADDR) && !defined(_WIN32) && !defined(_MSC_VER)
-        int const yes = 1;
+        int yes = 1;
 #endif
 
              *out_fd = -1;
@@ -2032,7 +2032,7 @@ smb2_bind_and_listen(const uint16_t port, const int max_connections, int *out_fd
          * process take over a port we are already listening on.
          */
         setsockopt(fd, SOL_SOCKET, SO_REUSEADDR,
-                   (const void *)&yes, sizeof(yes));
+                   &yes, sizeof(yes));
 #endif
 
         memset(&serv_addr, 0, sizeof(serv_addr));
