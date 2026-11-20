@@ -106,6 +106,7 @@ SYS=
 
 case $host in
   *solaris*)
+    LIBSOCKET="-lsocket -lnsl"
     AC_CHECK_LIB([socket], [main], , [AC_MSG_ERROR([Can not find required library])])
     AC_CHECK_LIB([nsl],    [main], , [AC_MSG_ERROR([Can not find required library])])
     ;;
@@ -224,6 +225,7 @@ AS_IF([test "x$with_openssl" = "xyes"], [
 ], [
     AC_MSG_NOTICE([Build WITHOUT OpenSSL])
 ])
+AC_SUBST([SMB2_PC_PRIVATE_LIBS], ["$MAYBE_LIBKRB5 $MAYBE_LIBQUIC $MAYBE_LIBRDMACM $MAYBE_LIBCRYPTO $LIBSOCKET"])
 AC_SUBST([MAYBE_LIBCRYPTO])
 AC_SUBST([LIBSOCKET])
 
