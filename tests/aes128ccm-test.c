@@ -1,13 +1,32 @@
 /* -*-  mode:c; tab-width:8; c-basic-offset:8; indent-tabs-mode:nil;  -*- */
-#include <arpa/inet.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
-#include "lib/aes128ccm.h"
+#include "../lib/aes128ccm.h"
 
-void test_1(void)
+static void check_vector(unsigned char *key, unsigned char *nonce, size_t nlen,
+                         unsigned char *aad, size_t alen, const unsigned char *plain,
+                         size_t plen, size_t tag_len, const unsigned char *expected)
+{
+        unsigned char buf[64];
+        if (plen + tag_len > sizeof(buf)) {
+                exit(1);
+        }
+        memcpy(buf, plain, plen);
+        if (aes128ccm_encrypt(key, nonce, nlen, aad, alen, buf, plen, buf + plen, tag_len) ||
+            memcmp(buf, expected, plen + tag_len)) {
+                fprintf(stderr, "CCM ciphertext or tag differs from the test vector\n");
+                exit(1);
+        }
+        if (aes128ccm_decrypt(key, nonce, nlen, aad, alen, buf, plen, buf + plen, tag_len) ||
+            memcmp(buf, plain, plen)) {
+                fprintf(stderr, "CCM decryption failed the test vector\n");
+                exit(1);
+        }
+}
+
+static void test_1(void)
 {
   unsigned char key[16]  = {0x40, 0x41, 0x42, 0x43,  0x44, 0x45, 0x46, 0x47,
 			    0x48, 0x49, 0x4a, 0x4b,  0x4c, 0x4d, 0x4e, 0x4f};
@@ -17,46 +36,10 @@ void test_1(void)
   int mlen = 4;
   unsigned char exp[8]   = {0x71, 0x62, 0x01, 0x5b, 0x4d, 0xac, 0x25, 0x5d};
 
-  unsigned char buf[1024];
-  int i, rc;
-
-  memcpy(buf, p, sizeof(p));
-
-  aes128ccm_encrypt(key,
-                    nonce, sizeof(nonce),
-                    aad, sizeof(aad),
-                    buf, sizeof(p),
-                    &buf[sizeof(p)], mlen);
-  printf("Expected:\n");
-  for (i = 0; i < sizeof(p) + mlen; i++) {
-          printf("%02x ", exp[i]);
-  }
-  printf("\n");
-  printf("Got:\n");
-  for (i = 0; i < sizeof(p) + mlen; i++) {
-          printf("%02x ", buf[i]);
-  }
-  printf("\n");
-
-  rc = aes128ccm_decrypt(key,
-                         nonce, sizeof(nonce),
-                         aad, sizeof(aad),
-                         buf, sizeof(p),
-                         &buf[sizeof(p)], mlen);
-  
-  printf("it ran rc : %d\n", rc);
-  if (rc) exit(10);
-  printf("Got:\n");
-  for (i = 0; i < sizeof(p); i++) {
-          printf("%02x ", buf[i]);
-  }
-  printf("\n");
-
-  printf("Decrypted correct: %d\n", memcmp(p, &buf[0], sizeof(p)));
-  if (memcmp(p, &buf[0], sizeof(p))) exit(10);
+  check_vector(key, nonce, sizeof(nonce), aad, sizeof(aad), p, sizeof(p), mlen, exp);
 }
 
-void test_2(void)
+static void test_2(void)
 {
   unsigned char key[16]  = {0x40, 0x41, 0x42, 0x43,  0x44, 0x45, 0x46, 0x47,
 			    0x48, 0x49, 0x4a, 0x4b,  0x4c, 0x4d, 0x4e, 0x4f};
@@ -73,45 +56,10 @@ void test_2(void)
                            0x9b, 0x1c, 0xea, 0xec,  0xcd, 0x97, 0xe7, 0x0b,
                            0x61, 0x76, 0xaa, 0xd9,  0xa4, 0x42, 0x8a, 0xa5,
                            0x48, 0x43, 0x92, 0xfb,  0xc1, 0xb0, 0x99, 0x51};
-  unsigned char buf[1024];
-  int i, rc;
-
-  memcpy(buf, p, sizeof(p));
-
-  aes128ccm_encrypt(key,
-                    nonce, sizeof(nonce),
-                    aad, sizeof(aad),
-                    buf, sizeof(p),
-                    &buf[sizeof(p)], mlen);
-  printf("Expected:\n");
-  for (i = 0; i < sizeof(p) + mlen; i++) {
-          printf("%02x ", exp[i]);
-  }
-  printf("\n");
-  printf("Got:\n");
-  for (i = 0; i < sizeof(p) + mlen; i++) {
-          printf("%02x ", buf[i]);
-  }
-  printf("\n");
-  rc = aes128ccm_decrypt(key,
-                         nonce, sizeof(nonce),
-                         aad, sizeof(aad),
-                         buf, sizeof(p),
-                         &buf[sizeof(p)], mlen);
-  
-  printf("it ran rc : %d\n", rc);
-  if (rc) exit(10);
-  printf("Got:\n");
-  for (i = 0; i < sizeof(p); i++) {
-          printf("%02x ", buf[i]);
-  }
-  printf("\n");
-
-  printf("Decrypted correct: %d\n", memcmp(p, &buf[0], sizeof(p)));
-  if (memcmp(p, &buf[0], sizeof(p))) exit(10);
+  check_vector(key, nonce, sizeof(nonce), aad, sizeof(aad), p, sizeof(p), mlen, exp);
 }
 
-int main(int argc, char *argv[])
+int main(void)
 {
         test_1();
         test_2();

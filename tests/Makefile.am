@@ -13,6 +13,11 @@ noinst_PROGRAMS += sync-stat-unit
 
 noinst_PROGRAMS += set-info-unit
 
+noinst_PROGRAMS += aes128ccm-test
+aes128ccm_test_SOURCES = aes128ccm-test.c ../lib/aes128ccm.c \
+        ../lib/aes.c ../lib/aes_apple.c ../lib/aes_reference.c
+aes128ccm_test_LDADD = $(MAYBE_LIBCRYPTO)
+
 EXTRA_PROGRAMS = ld_sockerr
 CLEANFILES = ld_sockerr.o ld_sockerr.so
 
@@ -30,6 +35,7 @@ ld_sockerr.so: ld_sockerr.o
 T = "$(srcdir)"/test_*.sh
 
 test: $(noinst_PROGRAMS) $(bin_SCRIPTS)
+	./aes128ccm-test
 	srcdir="$(srcdir)"; export srcdir; for TEST in $(T); do \
 		echo "Running $$TEST"; \
 		echo "--------------"; \
