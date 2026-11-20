@@ -55,6 +55,12 @@
 #include "libsmb2.h"
 #include "libsmb2-private.h"
 
+void
+smb2_set_close_file_id(struct smb2_pdu *pdu, const smb2_file_id file_id)
+{
+        memcpy(pdu->out.iov[1].buf + 8, file_id, SMB2_FD_SIZE);
+}
+
 static int
 smb2_encode_close_request(struct smb2_context *smb2,
                           struct smb2_pdu *pdu,
@@ -79,7 +85,7 @@ smb2_encode_close_request(struct smb2_context *smb2,
 
         smb2_set_uint16(iov, 0, SMB2_CLOSE_REQUEST_SIZE);
         smb2_set_uint16(iov, 2, req->flags);
-        memcpy(iov->buf + 8, req->file_id, SMB2_FD_SIZE);
+        smb2_set_close_file_id(pdu, req->file_id);
 
         return 0;
 }

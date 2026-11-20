@@ -197,7 +197,10 @@ int main(int argc, char *argv[])
         rc = 0;
 
  out_disconnect:
-        smb2_disconnect_share(smb2);
+        if (smb2_disconnect_share(smb2) < 0 || smb2_get_fd(smb2) >= 0) {
+                fprintf(stderr, "synchronous disconnect did not finish\n");
+                rc = 1;
+        }
  out:
         smb2_destroy_url(url);
         smb2_destroy_context(smb2);

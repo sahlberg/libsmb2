@@ -7,6 +7,9 @@
 #define smb2_fstat_async capture_fstat
 #define smb2_statvfs_async capture_statvfs
 #define smb2_timeout_pdus unexpected_timeout
+#define smb2_finish_dispatch unexpected_finish_dispatch
+#define smb2_file_io_length unexpected_file_io_length
+#define smb2_start_file_io unexpected_start_file_io
 #define poll fail_poll
 #include "../lib/sync.c"
 
@@ -20,7 +23,26 @@ int fail_poll(struct pollfd *fds _U_, nfds_t n _U_, int timeout _U_)
         return -1;
 }
 
-void unexpected_timeout(struct smb2_context *smb2 _U_)
+int unexpected_timeout(struct smb2_context *smb2 _U_)
+{
+        abort();
+}
+
+void unexpected_finish_dispatch(struct smb2_context *smb2 _U_)
+{
+        abort();
+}
+
+uint32_t unexpected_file_io_length(struct smb2_context *smb2 _U_,
+                                   enum smb2_command command _U_, uint32_t count _U_)
+{
+        abort();
+}
+
+int unexpected_start_file_io(struct smb2_context *smb2 _U_, struct smb2fh *fh _U_,
+                             enum smb2_command command _U_, void *buf _U_,
+                             uint32_t count _U_, uint64_t offset _U_, int positioned _U_,
+                             smb2_command_cb cb _U_, void *data _U_)
 {
         abort();
 }

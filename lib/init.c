@@ -470,12 +470,33 @@ void smb2_add_active_context(struct smb2_context *smb2)
         smb2->on_active_list = 1;
 }
 
+/* A final callback may release the owner of this transport. The receiving
+ * frame and its PDU still belong to the dispatcher until it unwinds. */
+void smb2_finish_dispatch(struct smb2_context *smb2)
+{
+        if (smb2->lifetime == SMB2_CONTEXT_CLOSING && !smb2_is_dispatching(smb2) && !smb2->sync_open_wait) {
+                if (smb2->on_active_list) {
+                        /* The server loop owns its iterator and culls closed sockets. */
+                        smb2_close_context(smb2);
+                } else {
+                        smb2_destroy_context(smb2);
+                }
+        }
+}
+
 void smb2_destroy_context(struct smb2_context *smb2)
 {
-        if (smb2 == NULL) {
+        if (smb2 == NULL || smb2->lifetime == SMB2_CONTEXT_DESTROYING) {
                 return;
         }
 
+        if (smb2_is_dispatching(smb2) || smb2->sync_open_wait) {
+                smb2->lifetime = SMB2_CONTEXT_CLOSING;
+                return;
+        }
+        /* Shutdown completions cannot wait for more network events. */
+        smb2->lifetime = SMB2_CONTEXT_DESTROYING;
+        smb2->servicing = 1;
         smb2_close_connecting_fds(smb2);
 
         if (SMB2_VALID_SOCKET(smb2->fd)) {
@@ -489,7 +510,8 @@ void smb2_destroy_context(struct smb2_context *smb2)
         smb2_rdma_reset(smb2);
 
         /*
-         * Complete every PDU that is still queued with SMB2_STATUS_SHUTDOWN.
+         * Complete outstanding PDUs with SMB2_STATUS_SHUTDOWN, preserving
+         * the timeout on a partial frame that caused the connection to close.
          * A callback may queue another PDU (e.g. close a file when its read
          * fails), so repeat until all the queues are empty.
          */
@@ -498,8 +520,10 @@ void smb2_destroy_context(struct smb2_context *smb2)
                 while (smb2->outqueue) {
                         struct smb2_pdu *pdu = smb2->outqueue;
                         struct smb2_pdu *p;
+                        uint32_t status = pdu->timed_out ? SMB2_STATUS_IO_TIMEOUT
+                                                        : SMB2_STATUS_SHUTDOWN;
 
-                        smb2->outqueue = pdu->next;
+                        smb2_unlink_pdu(smb2, pdu);
                         /*
                          * An unsent compound is still chained: every PDU
                          * in it has its own callback, and smb2_free_pdu()
@@ -507,8 +531,7 @@ void smb2_destroy_context(struct smb2_context *smb2)
                          */
                         for (p = pdu; p; p = p->next_compound) {
                                 if (p->cb) {
-                                        p->cb(smb2, SMB2_STATUS_SHUTDOWN,
-                                              NULL, p->cb_data);
+                                        p->cb(smb2, status, NULL, p->cb_data);
                                 }
                         }
                         smb2_free_pdu(smb2, pdu);
@@ -518,8 +541,9 @@ void smb2_destroy_context(struct smb2_context *smb2)
 
                         smb2->pdu = NULL;
                         if (pdu->cb) {
-                                pdu->cb(smb2, SMB2_STATUS_SHUTDOWN, NULL,
-                                        pdu->cb_data);
+                                pdu->cb(smb2, pdu->timed_out ? SMB2_STATUS_IO_TIMEOUT
+                                                            : SMB2_STATUS_SHUTDOWN,
+                                        NULL, pdu->cb_data);
                         }
                         smb2_free_pdu(smb2, pdu);
                 }
@@ -536,7 +560,7 @@ void smb2_destroy_context(struct smb2_context *smb2)
                 while (smb2->waitqueue) {
                         struct smb2_pdu *pdu = smb2->waitqueue;
 
-                        smb2->waitqueue = pdu->next;
+                        smb2_unlink_pdu(smb2, pdu);
                         if (pdu->cb) {
                                 pdu->cb(smb2, SMB2_STATUS_SHUTDOWN, NULL,
                                         pdu->cb_data);
