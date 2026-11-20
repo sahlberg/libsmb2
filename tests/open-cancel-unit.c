@@ -736,6 +736,55 @@ static void sync_stat_after_failed_wait(void)
         close(pair[1]);
 }
 
+static void echo_status(struct smb2_context *smb2, int status, void *reply, void *data)
+{
+        int *calls = data;
+        assert(status == SMB2_STATUS_PENDING || status == SMB2_STATUS_SUCCESS);
+        calls[status == SMB2_STATUS_PENDING]++;
+}
+
+static void passthrough_echo(int raw)
+{
+        struct smb2_context *smb2 = smb2_init_context();
+        struct smb2_pdu *pdu;
+        uint8_t packet[SMB2_SPL_SIZE + SMB2_HEADER_SIZE + 8] = {0};
+        uint8_t *header = packet + SMB2_SPL_SIZE;
+        int pair[2], calls[2] = {0};
+
+        assert(smb2 && !socketpair(AF_UNIX, SOCK_STREAM, 0, pair));
+        assert(!fcntl(pair[0], F_SETFL, O_NONBLOCK));
+        smb2->fd = pair[0];
+        smb2->dialect = SMB2_VERSION_0311;
+        smb2->credits = 1;
+        smb2_set_passthrough(smb2, 1);
+        if (raw) {
+                pdu = smb2_cmd_echo_async(smb2, echo_status, calls);
+                assert(pdu);
+                smb2_queue_pdu(smb2, pdu);
+        } else {
+                assert(!smb2_echo_async(smb2, echo_status, calls));
+        }
+        pdu = smb2->waitqueue;
+        assert(pdu && pdu->header.command == SMB2_ECHO);
+        memcpy(header, pdu->hdr, SMB2_HEADER_SIZE);
+        header[16] = SMB2_FLAGS_SERVER_TO_REDIR | SMB2_FLAGS_ASYNC_COMMAND;
+        packet[3] = sizeof(packet) - SMB2_SPL_SIZE;
+        header[8] = SMB2_STATUS_PENDING & 0xff;
+        header[9] = SMB2_STATUS_PENDING >> 8;
+        header[SMB2_HEADER_SIZE] = SMB2_ERROR_REPLY_SIZE;
+        assert(write(pair[1], packet, sizeof(packet)) == sizeof(packet));
+        assert(!smb2_service(smb2, POLLIN));
+        assert(smb2->waitqueue == pdu && calls[0] == 0 && calls[1] == raw);
+
+        header[8] = header[9] = 0;
+        header[SMB2_HEADER_SIZE] = SMB2_ECHO_REPLY_SIZE;
+        assert(write(pair[1], packet, sizeof(packet)) == sizeof(packet));
+        assert(!smb2_service(smb2, POLLIN));
+        assert(!smb2->waitqueue && calls[0] == 1 && calls[1] == raw);
+        smb2_destroy_context(smb2);
+        close(pair[1]);
+}
+
 static void partial_reply_timeout(int sync_wait)
 {
         struct smb2_context *smb2 = smb2_init_context();
@@ -970,6 +1019,8 @@ int main(void)
         partial_unmatched_reply(0);
         partial_unmatched_reply(1);
         partial_send_timeout();
+        passthrough_echo(0);
+        passthrough_echo(1);
         partial_reply_timeout(0);
         partial_reply_timeout(1);
         release_from_cancel();
