@@ -6,7 +6,11 @@ if BUILD_LIBDCERPC
     MAYBE_LIBDCERPC = libdcerpc
 endif
 
-SUBDIRS = include lib $(MAYBE_LIBDCERPC) utils . $(MAYBE_EXAMPLES)
+if BUILD_POSIX_UTILS
+    MAYBE_UTILS = utils
+endif
+
+SUBDIRS = include lib $(MAYBE_LIBDCERPC) $(MAYBE_UTILS) . $(MAYBE_EXAMPLES)
 ACLOCAL_AMFLAGS = -I m4
 
 pkgconfigdir = $(libdir)/pkgconfig

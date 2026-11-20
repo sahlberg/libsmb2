@@ -85,6 +85,7 @@ libsmb2_la_LDFLAGS = \
 	-version-info $(SOCURRENT):$(SOREVISION):$(SOAGE) -bindir $(bindir) \
 	-no-undefined -export-symbols $(srcdir)/libsmb2.syms $(MAYBE_LIBKRB5) \
 	$(MAYBE_LIBQUIC) $(MAYBE_LIBRDMACM) $(MAYBE_LIBCRYPTO)
+libsmb2_la_LIBADD = $(LIBSOCKET)
 libsmb2_la_DEPENDENCIES = $(srcdir)/libsmb2.syms
 
 dist_noinst_DATA = libsmb2.syms

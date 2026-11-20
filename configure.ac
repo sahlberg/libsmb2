@@ -30,6 +30,16 @@ AC_ARG_WITH([libkrb5],
                             [Do not link with libkrb5 and use builtin
                              NTLMSSP module for authentication instead.])])
 
+dnl  Native Windows SDKs normally provide Winsock and CNG but no GSSAPI.
+dnl  Honour an explicit --with-libkrb5 and use it by default if installed.
+case $host in
+  *mingw* | *wince*)
+    AS_IF([test -z "$with_libkrb5"], [
+        AC_CHECK_HEADER([gssapi/gssapi.h], [], [with_libkrb5=no])
+    ])
+    ;;
+esac
+
 AS_IF([test "x$with_libkrb5" != "xno"], [
     AC_DEFINE([HAVE_LIBKRB5], [1], [Whether we use gssapi_krb5 or not])
     AC_MSG_NOTICE([Build with gssapi_krb5 support])
@@ -112,12 +122,24 @@ case $host in
     ;;
   *mingw32* | *cygwin* | *wince* | *mingwce*)
     LIBSOCKET='-lws2_32'
+    case $host in
+      *mingw32*)
+        AC_DEFINE([NEED_RANDOM], [1], [Provide random on Windows])
+        AC_DEFINE([NEED_SRANDOM], [1], [Provide srandom on Windows])
+        AC_DEFINE([NEED_GETLOGIN_R], [1], [Provide getlogin_r on Windows])
+        ;;
+    esac
     SYS=mingw32
     ;;
   *)
     ;;
 esac
 AM_CONDITIONAL([HAVE_WIN32], [test "${SYS}" = "mingw32"])
+case $host in
+  *mingw* | *wince*) build_posix_utils=no ;;
+  *) build_posix_utils=yes ;;
+esac
+AM_CONDITIONAL([BUILD_POSIX_UTILS], [test "$build_posix_utils" = yes])
 dnl  libdcerpc (full DCE/RPC) is a separate project in the libdcerpc/
 dnl  subdirectory with its own configure, version and releases. It is
 dnl  Linux and FreeBSD only for now, and can never be built on Windows since its
@@ -229,7 +251,8 @@ AC_SUBST([SMB2_PC_PRIVATE_LIBS], ["$MAYBE_LIBKRB5 $MAYBE_LIBQUIC $MAYBE_LIBRDMAC
 AC_SUBST([MAYBE_LIBCRYPTO])
 AC_SUBST([LIBSOCKET])
 
-AC_CHECK_LIB([dl], [dlsym], [], [AC_MSG_ERROR([dlsym not found, libdl is required])])
+dnl  Some of the Unix test helpers use dlsym. The core has no libdl dependency.
+AC_SEARCH_LIBS([dlsym], [dl])
 
 dnl  CommonCrypto.framework is not always reachable on Apple platforms
 dnl  (e.g. a toolchain that doesn't see Apple's framework headers at
