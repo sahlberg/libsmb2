@@ -3429,11 +3429,13 @@ dcerpc_call_async(struct dcerpc_context *dce,
         }
         dcerpc_free_iovec(&iov);
 
+        /* Queueing may complete the call inline. */
+        dcerpc_track(dce, &pdu->pending, cb, cb_data);
         if (dcerpc_send_request_frag(dce, pdu)) {
+                dcerpc_untrack(dce, &pdu->pending);
                 dcerpc_free_pdu(dce, pdu);
                 return -ENOMEM;
         }
-        dcerpc_track(dce, &pdu->pending, cb, cb_data);
         return 0;
 }
 
