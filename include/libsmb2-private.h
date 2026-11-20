@@ -214,6 +214,11 @@ struct smb2_context {
         const char *domain;
         const char *workstation;
         char client_challenge[8];
+#if defined(__amigaos4__) || defined(__SWITCH__) || defined(__3DS__)
+#define SMB2_BATCH_NONCES 1
+        uint8_t nonce_bytes[12 * 16];
+        size_t nonce_bytes_left;
+#endif
 
         void *opaque;
 
@@ -549,13 +554,9 @@ struct smb2_pdu *smb2_find_pdu(struct smb2_context *smb2, uint64_t message_id);
 void smb2_add_active_context(struct smb2_context *smb2);
 void smb2_free_iovector(struct smb2_context *smb2, struct smb2_io_vectors *v);
 
-/*
- * Fill buf with len random bytes, using the strongest source this platform
- * offers. Always fills the buffer. Returns 0 if the bytes came from a
- * cryptographically strong source and -1 if it had to fall back to
- * random(), for callers that want to know.
- */
-int smb2_random_bytes(void *buf, size_t len);
+/* Fill the entire buffer from a cryptographic source or return -1 with errno set. */
+int smb2_random_bytes(void *buf, uint32_t len);
+int smb2_random_nonce(struct smb2_context *smb2, void *buf, int use_gcm);
 
 void smb2_oplock_break_notify(struct smb2_context *smb2, int status, void *command_data, void *cb_data);
 

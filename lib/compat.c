@@ -32,8 +32,19 @@
 #define login_num 0
 #define getpid_num() 0	
 #endif
-#define smb2_random rand
-#define smb2_srandom srand
+
+/* Existing MinGW DLLs export these libc shims. */
+#if defined(__MINGW32__) && defined(smb2_EXPORTS)
+int random(void)
+{
+        return rand();
+}
+
+void srandom(unsigned int seed)
+{
+        srand(seed);
+}
+#endif
 
 #ifdef _XBOX
 int gethostname(char *name, size_t len)
@@ -66,9 +77,60 @@ int gethostname(char *name, size_t len)
 #include <errno.h>
 
 #define login_num ENXIO
-#define smb2_random esp_random
-#define smb2_srandom(seed)
 
+#endif
+
+#ifdef __amigaos4__
+#include <devices/timer.h>
+#include <proto/exec.h>
+#include <errno.h>
+
+int smb2_amiga_random_bytes(void *buf, size_t len)
+{
+        unsigned char *p = buf;
+        struct MsgPort *port;
+        struct IOStdReq *req;
+        int err = ENOMEM;
+
+        port = IExec->AllocSysObjectTags(ASOT_PORT, TAG_END);
+        if (!port) {
+                errno = ENOMEM;
+                return -1;
+        }
+        req = IExec->AllocSysObjectTags(ASOT_IOREQUEST, ASOIOR_Size, sizeof(*req),
+                                        ASOIOR_ReplyPort, port, TAG_END);
+        if (!req) {
+                goto free_port;
+        }
+        err = EIO;
+        if (IExec->OpenDevice(TIMERNAME, UNIT_ENTROPY, (struct IORequest *)req, 0)) {
+                goto free_request;
+        }
+        req->io_Command = TR_READENTROPY;
+        while (len) {
+                req->io_Data = p;
+                req->io_Length = len;
+                if (IExec->DoIO((struct IORequest *)req) ||
+                    !req->io_Actual || req->io_Actual > len) {
+                        break;
+                }
+                p += req->io_Actual;
+                len -= req->io_Actual;
+        }
+        if (!len) {
+                err = 0;
+        }
+        IExec->CloseDevice((struct IORequest *)req);
+free_request:
+        IExec->FreeSysObject(ASOT_IOREQUEST, req);
+free_port:
+        IExec->FreeSysObject(ASOT_PORT, port);
+        if (err) {
+                errno = err;
+                return -1;
+        }
+        return 0;
+}
 #endif
 
 #if defined(__amigaos4__) || defined(__AMIGA__) || defined(__AROS__)
@@ -129,7 +191,6 @@ int gethostname(char *name, size_t len)
 #ifdef _IOP
 #define getpid_num() 27
 
-static unsigned long int next = 1; 
 time_t time(time_t *tloc)
 {
         u32 sec, usec;
@@ -250,8 +311,6 @@ int iop_write(int sockfd, const void *buf, size_t len)
 #include <errno.h>
 
 #define login_num ENXIO
-#define smb2_random rand
-#define smb2_srandom srand
 
 #endif /* PS3_PPU_PLATFORM */
 
@@ -497,33 +556,6 @@ void smb2_freeaddrinfo(struct addrinfo *res)
 {
         free(res->ai_addr);
         free(res);
-}
-#endif
-
-#ifdef NEED_RANDOM
-#ifdef ESP_PLATFORM
-long random(void)
-#else
-int random(void)
-#endif
-{ 
-#ifdef _IOP
-    next = next * 1103515245 + 12345; 
-    return (unsigned int)(next/65536) % 32768; 
-#else
-    return smb2_random();
-#endif
-} 
-#endif
-
-#ifdef NEED_SRANDOM
-void srandom(unsigned int seed) 
-{ 
-#ifdef _IOP
-    next = seed; 
-#else
-    smb2_srandom(seed);
-#endif
 }
 #endif
 

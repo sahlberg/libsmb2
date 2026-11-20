@@ -17,6 +17,11 @@ set(WIFI_PASSWORD wifi_name)
 # Put in the URL of the server/share you want to see the directory of
 set(SMB2_URL smb://myserver.lan/myshare)
 
+set(SMB2_RANDOM_PROVIDER_SOURCE "" CACHE FILEPATH "C source implementing picow_smb2_random")
+if(NOT EXISTS "${SMB2_RANDOM_PROVIDER_SOURCE}" OR IS_DIRECTORY "${SMB2_RANDOM_PROVIDER_SOURCE}")
+    message(FATAL_ERROR "Set SMB2_RANDOM_PROVIDER_SOURCE to a board-specific secure random provider (see README.md)")
+endif()
+
 # No other configuration needed, below this
 # Name the project and prepare it to be a pico_w project, using FreeRTOS and lwip
 set(PROJECT_NAME libsmb2-picow-ls)
@@ -39,7 +44,7 @@ set(PROJECT_NAME smb2-ls-sync)
 project(${PROJECT_NAME} C CXX ASM)
 
 # Application, including in the FreeRTOS-Kernel
-add_executable(${PROJECT_NAME} main.cpp)
+add_executable(${PROJECT_NAME} main.cpp "${SMB2_RANDOM_PROVIDER_SOURCE}")
 
 # Build the app
 include_directories(

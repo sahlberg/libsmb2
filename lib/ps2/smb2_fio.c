@@ -22,6 +22,7 @@
 #include "thsemap.h"
 #include "errno.h"
 #include "ps2smb2.h"
+#include "entropy.h"
 #include "smb2_fio.h"
 #include "loadcore.h"
 #include <stdint.h>
@@ -59,6 +60,18 @@ void *malloc(int);
 int smb2man_io_sema;
 static char *smb2_curdir;
 
+
+static struct iop_rng rng;
+static int rng_sema;
+
+static int iop_random_bytes(void *buf, size_t len)
+{
+    int rc;
+    WaitSema(rng_sema);
+    rc = iop_rng_generate(&rng, buf, len);
+    SignalSema(rng_sema);
+    return rc;
+}
 
 /*
  * Linked list of all connected shares.
@@ -181,6 +194,9 @@ static int smb2_Connect(smb2Connect_in_t *in, smb2Connect_out_t *out)
 #ifdef DEBUG
     if (log_smb2 == NULL) {
         log_smb2 = smb2_init_context();
+        if (!log_smb2) {
+            return -errno;
+        }
         smb2_set_timeout(log_smb2, 30);
         url = smb2_parse_url(log_smb2, SMB2_LOG_URL);
         smb2_set_password(log_smb2, SMB2_LOG_PASSWORD);
@@ -211,9 +227,10 @@ static int smb2_Connect(smb2Connect_in_t *in, smb2Connect_out_t *out)
     share->name[sizeof(share->name) - 1] = '\0';
     share->smb2 = smb2_init_context();
     if (share->smb2 == NULL) {
+        rc = -errno;
         SMB2LOG("Failed to initialize smb2 context\n");
         free(share);
-        return -ENOMEM;
+        return rc;
     }
     smb2_set_timeout(share->smb2, 30);
     url = smb2_parse_url(share->smb2, in->url);
@@ -265,6 +282,12 @@ int SMB2_devctl(iop_file_t *f, const char *devname, int cmd,
     smb2_io_lock();
 
     switch (cmd) {
+        case SMB2_DEVCTL_SET_ENTROPY:
+            WaitSema(rng_sema);
+            r = -iop_rng_seed(&rng, arg, arglen);
+            SignalSema(rng_sema);
+            break;
+
         case SMB2_DEVCTL_CONNECT:
             r = smb2_Connect((smb2Connect_in_t *)arg, (smb2Connect_out_t *)bufp);
             break;
@@ -804,6 +827,8 @@ int SMB2_deinit(iop_device_t *dev)
     SMB2LOG("SMB2_deinit\n");
 
     DeleteSema(smb2man_io_sema);
+    DeleteSema(rng_sema);
+    memset(&rng, 0, sizeof(rng));
 
     return 0;
 }
@@ -813,7 +838,14 @@ int SMB2_init(iop_device_t *dev)
     SMB2LOG("SMB2_init\n");
 
     smb2man_io_sema = CreateMutex(IOP_MUTEX_UNLOCKED);
-
+    if (smb2man_io_sema < 0) {
+        return smb2man_io_sema;
+    }
+    rng_sema = CreateMutex(IOP_MUTEX_UNLOCKED);
+    if (rng_sema < 0) {
+        DeleteSema(smb2man_io_sema);
+        return rng_sema;
+    }
     return 0;
 }
 
@@ -857,6 +889,7 @@ static iop_device_t smb2dev = {
 int SMB2_initdev(void)
 {
     DelDrv(smb2dev.name);
+    smb2_set_random_provider(iop_random_bytes);
     if (AddDrv((iop_device_t *)&smb2dev))
         return MODULE_NO_RESIDENT_END;
 
