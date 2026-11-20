@@ -3723,7 +3723,18 @@ smb2_symlink_async(struct smb2_context *smb2, const char *target,
          * target has to be given as an object manager path.
          */
         if (absolute) {
-                subname = malloc(strlen(printname) + 5);
+                const char *prefix = "\\??\\";
+                const char *tail = printname;
+                size_t size;
+
+                if (!strncmp(tail, "\\\\?\\", 4) || !strncmp(tail, "\\\\.\\", 4)) {
+                        tail += 4;
+                } else if (!strncmp(tail, "\\\\", 2)) {
+                        prefix = "\\??\\UNC\\";
+                        tail += 2;
+                }
+                size = strlen(prefix) + strlen(tail) + 1;
+                subname = malloc(size);
                 if (subname == NULL) {
                         smb2_set_error(smb2, "Failed to allocate "
                                        "substitute name");
@@ -3731,7 +3742,7 @@ smb2_symlink_async(struct smb2_context *smb2, const char *target,
                         free_symlink_data(symlink_data);
                         return -ENOMEM;
                 }
-                sprintf(subname, "\\??\\%s", printname);
+                snprintf(subname, size, "%s%s", prefix, tail);
         } else {
                 subname = strdup(printname);
                 if (subname == NULL) {
