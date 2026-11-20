@@ -2154,7 +2154,9 @@ smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
         rd->read_cb_data.offset = offset;
 
         if (count > 0) {
-                if (count > smb2->max_read_size) {
+                /* A zero limit means "not negotiated": clamping to it
+                 * would wrap the (count - 1) credit computation. */
+                if (smb2->max_read_size > 0 && count > smb2->max_read_size) {
                         count = smb2->max_read_size;
                 }
                 needed_credits = (count - 1) / 65536 + 1;
@@ -2164,7 +2166,12 @@ smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
                                 count =  (MAX_CREDITS - 16) * 65536;
                         }
                         needed_credits = (count - 1) / 65536 + 1;
-                        if (needed_credits > smb2->credits) {
+                        /* Queue up to one credit of data until credits arrive. */
+                        if (smb2->credits == 0) {
+                                if (count > 65536) {
+                                        count = 65536;
+                                }
+                        } else if (needed_credits > smb2->credits) {
                                 count = smb2->credits * 65536;
                         }
                 } else {
@@ -2302,7 +2309,7 @@ smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
         wr->write_cb_data.offset = offset;
 
         if (count > 0) {
-                if (count > smb2->max_write_size) {
+                if (smb2->max_write_size > 0 && count > smb2->max_write_size) {
                         count = smb2->max_write_size;
                 }
                 needed_credits = (count - 1) / 65536 + 1;
@@ -2312,7 +2319,11 @@ smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
                                 count =  (MAX_CREDITS - 16) * 65536;
                         }
                         needed_credits = (count - 1) / 65536 + 1;
-                        if (needed_credits > smb2->credits) {
+                        if (smb2->credits == 0) {
+                                if (count > 65536) {
+                                        count = 65536;
+                                }
+                        } else if (needed_credits > smb2->credits) {
                                 count = smb2->credits * 65536;
                         }
                 } else {
