@@ -732,6 +732,10 @@ read_more_data:
 
                 if (!smb2_is_server(smb2)) {
                         smb2->credits += smb2->hdr.credit_request_response;
+                        /* Keep the balance within the credit window we can request. */
+                        if (smb2->credits > MAX_CREDITS) {
+                                smb2->credits = MAX_CREDITS;
+                        }
                         /* Got credit, recheck if there are pending pdu to be sent. */
                         smb2_change_events(smb2, smb2->fd, smb2_which_events(smb2));
                 }
