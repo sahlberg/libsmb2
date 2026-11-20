@@ -1124,7 +1124,6 @@ int nterror_to_errno(uint32_t status) {
         case SMB2_STATUS_PORT_CONNECTION_REFUSED:
         case SMB2_STATUS_THREAD_IS_TERMINATING:
         case SMB2_STATUS_PRIVILEGE_NOT_HELD:
-        case SMB2_STATUS_FILE_IS_A_DIRECTORY:
         case SMB2_STATUS_FILE_RENAMED:
         case SMB2_STATUS_PROCESS_IS_TERMINATING:
         case SMB2_STATUS_CANNOT_DELETE:
@@ -1151,6 +1150,7 @@ int nterror_to_errno(uint32_t status) {
         case SMB2_STATUS_IO_REPARSE_TAG_NOT_HANDLED:
         case SMB2_STATUS_REPARSE_POINT_NOT_RESOLVED:
                 return ENOLINK;
+        case SMB2_STATUS_FILE_IS_A_DIRECTORY:
         case SMB2_STATUS_DIRECTORY_IS_A_REPARSE_POINT:
                 return EISDIR;
         case SMB2_STATUS_STOPPED_ON_SYMLINK:
