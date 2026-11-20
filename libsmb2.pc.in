@@ -10,5 +10,6 @@ Description: libsmb2 is a client library for accessing SMB shares over a network
 Version: @VERSION@
 Requires:
 Conflicts:
-Libs: -L${libdir} -lsmb2
-Cflags: -I${includedir}
+Libs: -L"${libdir}" -lsmb2
+Libs.private: @SMB2_PC_PRIVATE_LIBS@
+Cflags: -I"${includedir}"
