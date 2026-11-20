@@ -871,6 +871,8 @@ void smb2_seekdir(struct smb2_context *smb2, struct smb2dir *smb2dir,
  * OPEN
  */
 struct smb2fh;
+/* Open a directory handle, including on hosts without O_DIRECTORY. */
+#define SMB2_O_DIRECTORY 0x10000000
 /*
  * Async open()
  *
@@ -890,6 +892,7 @@ struct smb2fh;
  * O_SYNC
  * O_CREAT
  * O_EXCL
+ * SMB2_O_DIRECTORY (native O_DIRECTORY is also accepted when available)
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
