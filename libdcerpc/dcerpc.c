@@ -575,6 +575,7 @@ struct dcerpc_pdu {
         uint8_t *frag_buf;
         size_t frag_len;
         size_t frag_pos;
+        uint16_t write_length;
 
         /* Multi-fragment response reassembly (named-pipe / IOCTL) */
         uint8_t *reasm_buf;
@@ -3282,10 +3283,11 @@ static int dcerpc_send_request_frag(struct dcerpc_context *dce,
 
 static void
 dcerpc_frag_write_cb(struct smb2_context *smb2 _U_, int status,
-                     void *command_data _U_, void *private_data)
+                     void *command_data, void *private_data)
 {
         struct dcerpc_pdu *pdu = private_data;
         struct dcerpc_context *dce = pdu->dce;
+        struct smb2_write_reply *rep = command_data;
         int rc;
 
         if (pdu->pending.orphaned) {
@@ -3299,6 +3301,12 @@ dcerpc_frag_write_cb(struct smb2_context *smb2 _U_, int status,
                                             -nterror_to_errno(status), NULL);
                 return;
         }
+        if (rep == NULL || rep->count != pdu->write_length) {
+                dcerpc_set_error(dce, "Incomplete DCERPC fragment WRITE");
+                dcerpc_send_pdu_cb_and_free(dce, pdu, -EIO, NULL);
+                return;
+        }
+        pdu->frag_pos += rep->count;
         rc = dcerpc_send_request_frag(dce, pdu);
         if (rc) {
                 dcerpc_send_pdu_cb_and_free(dce, pdu, rc, NULL);
@@ -3319,7 +3327,6 @@ dcerpc_send_request_frag(struct dcerpc_context *dce, struct dcerpc_pdu *pdu)
         if (!(pdu->hdr.packed_drep[0] & DCERPC_DR_LITTLE_ENDIAN)) {
                 flen = (frag[8] << 8) | frag[9];
         }
-        pdu->frag_pos += flen;
 
         if (frag[3] & PFC_LAST_FRAG) {
                 struct smb2_ioctl_request req;
@@ -3337,6 +3344,7 @@ dcerpc_send_request_frag(struct dcerpc_context *dce, struct dcerpc_pdu *pdu)
 
                 memset(&req, 0, sizeof(req));
                 memcpy(req.file_id, dce->file_id, SMB2_FD_SIZE);
+                pdu->write_length = flen;
                 req.length = flen;
                 req.buf = frag;
                 smb2_pdu = smb2_cmd_write_async(dce->smb2, &req, 0,
