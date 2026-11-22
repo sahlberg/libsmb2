@@ -83,9 +83,17 @@ struct dcerpc_uint32_pretty_printer_bitfield {
         uint32_t value;
 };
 
+/*
+ * bitfields is terminated by an entry with a NULL name. It is a pointer
+ * rather than a flexible array member so that the tables can be static
+ * initializers on every compiler (MSVC cannot initialize a flexible array
+ * member); define them with a compound literal:
+ *   .bitfields = (const struct dcerpc_uint32_pretty_printer_bitfield []) {
+ *           { "NAME", mask, value }, ..., { NULL, 0, 0 } }
+ */
 struct dcerpc_uint32_pretty_printer {
         char *fmt;
-        struct dcerpc_uint32_pretty_printer_bitfield bitfields[];
+        const struct dcerpc_uint32_pretty_printer_bitfield *bitfields;
 };
 
 /* Encoder/Decoder for a DCERPC object with a pretty-printer*/

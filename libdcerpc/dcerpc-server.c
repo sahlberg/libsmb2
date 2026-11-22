@@ -20,6 +20,10 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "config.h"
 #endif
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE     /* strdup() under strict -std= modes */
+#endif
+
 #include <errno.h>
 #include <stdarg.h>
 #include <stdint.h>
@@ -292,7 +296,7 @@ log_on(struct dcerpc_server *srv, int level)
 
 static void
 srv_log(struct dcerpc_server *srv, int level, const char *fmt, ...)
-        __attribute__((format(printf, 3, 4)));
+        DCERPC_PRINTF(3, 4);
 
 static void
 srv_log(struct dcerpc_server *srv, int level, const char *fmt, ...)

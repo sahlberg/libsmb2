@@ -94,9 +94,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 struct dcerpc_service *dcerpc_services = NULL;
 
-#define container_of(ptr, type, member) ({                      \
-        const typeof( ((type *)0)->member ) *__mptr = (ptr);    \
-        (type *)(void *)( (char *)__mptr - offsetof(type,member) );})
+#define container_of(ptr, type, member)                         \
+        ((type *)(void *)((char *)(ptr) - offsetof(type, member)))
 
 /*
  * PDU-local memory allocator (no libsmb2 dependency).
@@ -107,12 +106,12 @@ struct dcerpc_service *dcerpc_services = NULL;
  */
 struct dcerpc_alloc_entry {
         struct dcerpc_alloc_entry *next;
-        char buf[0];
+        char buf[];
 };
 
 struct dcerpc_mem_header {
         struct dcerpc_alloc_entry *mem;
-        char buf[0];
+        char buf[];
 };
 
 static void *
@@ -239,7 +238,7 @@ struct dcerpc_context {
 
 static void dcerpc_set_error(struct dcerpc_context *dce,
                              const char *error_string, ...)
-        __attribute__((format(printf, 2, 3)));
+        DCERPC_PRINTF(2, 3);
 
 /*
  * Errors are kept in the dcerpc context, and are also copied to the
@@ -4196,17 +4195,16 @@ dcerpc_read_yaml_file(const char *filename,
         struct dcerpc_context *dce = NULL;
         struct dcerpc_pdu *pdu = NULL;
         struct dcerpc_iovec iov;
-        struct stat st;
         void *payload = NULL;
         char *filebuf = NULL;
         char root_key[256];
         const char *p;
         const char *start;
         size_t key_len;
-        int fd = -1;
-        ssize_t n;
+        FILE *fp = NULL;
+        size_t n;
         size_t total = 0;
-        size_t file_size;
+        size_t cap = 0;
 
         if (filename == NULL || coder == NULL || decode_size <= 0) {
                 return NULL;
@@ -4217,22 +4215,13 @@ dcerpc_read_yaml_file(const char *filename,
                 goto out;
         }
 
-        fd = open(filename, O_RDONLY);
-        if (fd < 0) {
+        /* stdio rather than open()/read(), so this builds everywhere */
+        fp = fopen(filename, "rb");
+        if (fp == NULL) {
                 dcerpc_set_error(dce, "Failed to open %s: %s",
                                  filename, strerror(errno));
                 goto out;
         }
-        if (fstat(fd, &st) < 0) {
-                dcerpc_set_error(dce, "Failed to stat %s: %s",
-                                 filename, strerror(errno));
-                goto out;
-        }
-        if (st.st_size < 0) {
-                dcerpc_set_error(dce, "Invalid size for %s", filename);
-                goto out;
-        }
-        file_size = (size_t)st.st_size;
 
         pdu = dcerpc_allocate_pdu(dce, DCERPC_DECODE | ENCODING_YAML,
                                   decode_size);
@@ -4240,28 +4229,36 @@ dcerpc_read_yaml_file(const char *filename,
                 goto out;
         }
 
-        /* Decoding copies what it keeps, so the file buffer is temporary */
-        filebuf = malloc(file_size + 1);
-        if (filebuf == NULL) {
-                dcerpc_set_error(dce, "Failed to allocate buffer for %s",
-                                 filename);
-                goto out;
-        }
+        /*
+         * Read it all, growing the buffer as needed and keeping a byte for
+         * the terminator. Decoding copies what it keeps, so the file
+         * buffer is temporary.
+         */
+        for (;;) {
+                if (cap - total < 4096 + 1) {
+                        char *nbuf;
 
-        while (total < file_size) {
-                n = read(fd, filebuf + total, file_size - total);
-                if (n < 0) {
-                        dcerpc_set_error(dce, "Failed to read %s: %s",
-                                         filename, strerror(errno));
-                        goto out;
+                        cap = cap ? cap * 2 : 8192;
+                        nbuf = realloc(filebuf, cap);
+                        if (nbuf == NULL) {
+                                dcerpc_set_error(dce, "Failed to allocate "
+                                                 "buffer for %s", filename);
+                                goto out;
+                        }
+                        filebuf = nbuf;
                 }
+                n = fread(filebuf + total, 1, cap - total - 1, fp);
+                total += n;
                 if (n == 0) {
                         break;
                 }
-                total += (size_t)n;
         }
-        close(fd);
-        fd = -1;
+        if (ferror(fp)) {
+                dcerpc_set_error(dce, "Failed to read %s", filename);
+                goto out;
+        }
+        fclose(fp);
+        fp = NULL;
         filebuf[total] = '\0';
 
         /*
@@ -4319,8 +4316,8 @@ dcerpc_read_yaml_file(const char *filename,
 
 out:
         free(filebuf);
-        if (fd >= 0) {
-                close(fd);
+        if (fp) {
+                fclose(fp);
         }
         if (pdu) {
                 dcerpc_free_pdu(dce, pdu);

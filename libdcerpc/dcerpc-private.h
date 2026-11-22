@@ -21,6 +21,13 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #define discard_const(ptr) ((void *)((intptr_t)(ptr)))
 #endif
 
+/* printf-style format checking where the compiler has it (not MSVC) */
+#if defined(__GNUC__) || defined(__clang__)
+#define DCERPC_PRINTF(fmt, args) __attribute__((format(printf, fmt, args)))
+#else
+#define DCERPC_PRINTF(fmt, args)
+#endif
+
 /* A UTF-16LE string; val[] holds len code units in little-endian order */
 struct dcerpc_utf16_buf {
         int len;

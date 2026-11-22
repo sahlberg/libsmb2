@@ -2292,7 +2292,7 @@ def gen_u32_enum_coder(env: TypeEnv, t: TypeDef) -> str:
     lines.append(f"/* {t.name}: NDR uint32; YAML/JSON show the {'flag' if bitmap else 'value'} names */")
     lines.append(f"static struct dcerpc_uint32_pretty_printer {pp} = {{")
     lines.append(f'        .fmt = "{"0x%08x" if bitmap else "%u"}",')
-    lines.append("        .bitfields = {")
+    lines.append("        .bitfields = (const struct dcerpc_uint32_pretty_printer_bitfield []) {")
     for m in t.enum_members:
         cn = env.const_name(m.name)
         if not bitmap:
@@ -2352,7 +2352,7 @@ def gen_enum_coder(env: TypeEnv, t: TypeDef) -> str:
 
     lines.append(f"static struct dcerpc_uint32_pretty_printer {pp} = {{")
     lines.append('        .fmt = "%u",')
-    lines.append("        .bitfields = {")
+    lines.append("        .bitfields = (const struct dcerpc_uint32_pretty_printer_bitfield []) {")
     for m in t.enum_members:
         # Exclusive match (same pattern as PLATFORM_ID_* in srvsvc/srvsvc_coder.c).
         lines.append(

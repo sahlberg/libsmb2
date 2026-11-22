@@ -70,7 +70,7 @@ unsigned char NT_SID_AUTHORITY[6] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x05 };
 /* AceType is an exclusive enum (mask 0xffffffff matches a single value). */
 static struct dcerpc_uint32_pretty_printer ace_type_pp = {
         .fmt = "0x%02x",
-        .bitfields = {
+        .bitfields = (const struct dcerpc_uint32_pretty_printer_bitfield []) {
                 { "ACCESS_ALLOWED_ACE_TYPE", 0xffffffff,
                   ACCESS_ALLOWED_ACE_TYPE },
                 { "ACCESS_DENIED_ACE_TYPE", 0xffffffff,
@@ -118,7 +118,7 @@ static struct dcerpc_uint32_pretty_printer ace_type_pp = {
 /* AceFlags is a bitfield; each flag is its own mask bit. */
 static struct dcerpc_uint32_pretty_printer ace_flags_pp = {
         .fmt = "0x%02x",
-        .bitfields = {
+        .bitfields = (const struct dcerpc_uint32_pretty_printer_bitfield []) {
                 { "OBJECT_INHERIT_ACE",
                   OBJECT_INHERIT_ACE, OBJECT_INHERIT_ACE },
                 { "CONTAINER_INHERIT_ACE",
@@ -217,7 +217,7 @@ dcerpc_ACE_HEADER_coder(char *name, struct dcerpc_context *dce,
  */
 static struct dcerpc_uint32_pretty_printer access_mask_pp = {
         .fmt = "0x%08x",
-        .bitfields = {
+        .bitfields = (const struct dcerpc_uint32_pretty_printer_bitfield []) {
                 { "GENERIC_READ",
                   GENERIC_READ, GENERIC_READ },
                 { "GENERIC_WRITE",
@@ -682,7 +682,7 @@ dcerpc_SYSTEM_SCOPED_POLICY_ID_ACE_coder(char *name, struct dcerpc_context *dce,
 
 static struct dcerpc_uint32_pretty_printer acl_revision_pp = {
         .fmt = "0x%02x",
-        .bitfields = {
+        .bitfields = (const struct dcerpc_uint32_pretty_printer_bitfield []) {
                 { "ACL_REVISION", 0xffffffff, ACL_REVISION },
                 { "ACL_REVISION_DS", 0xffffffff, ACL_REVISION_DS },
                 { NULL, 0, 0 },
@@ -932,7 +932,7 @@ dcerpc_ACL_coder(char *name, struct dcerpc_context *dce,
 
 static struct dcerpc_uint32_pretty_printer sd_control_pp = {
         .fmt = "0x%04x",
-        .bitfields = {
+        .bitfields = (const struct dcerpc_uint32_pretty_printer_bitfield []) {
                 { "SE_OWNER_DEFAULTED",
                   SE_OWNER_DEFAULTED, SE_OWNER_DEFAULTED },
                 { "SE_GROUP_DEFAULTED",
@@ -1267,7 +1267,7 @@ sd_ndr_decode(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
 
 static struct dcerpc_uint32_pretty_printer sd_revision_pp = {
         .fmt = "%u",
-        .bitfields = {
+        .bitfields = (const struct dcerpc_uint32_pretty_printer_bitfield []) {
                 { "SECURITY_DESCRIPTOR_REVISION", 0xffffffff, 1 },
                 { NULL, 0, 0 },
         },
