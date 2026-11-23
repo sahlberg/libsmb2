@@ -42,6 +42,11 @@ if(NOT ESP_PLATFORM)
   endif()
 endif()
 
+  # Names used by CMake for hosted Unix targets with the POSIX utilities.
+  if(CMAKE_SYSTEM_NAME MATCHES "^(Linux|GNU|Darwin|.*BSD|DragonFly|SunOS|Solaris|Android)$")
+    set(SMB2_HOSTED_UNIX ON)
+  endif()
+
   if(NOT ESP_PLATFORM)
     set(SOVERSION 7 CACHE STRING "" FORCE)
     if(NOT IOP AND NOT BUILD_IRX)
@@ -59,8 +64,7 @@ endif()
       # The utilities need a hosted POSIX system (poll.h, a full libc), so
       # only build them by default there: not on Windows, the consoles or
       # the embedded targets.
-      if(CMAKE_SYSTEM_NAME MATCHES "^(Linux|Darwin|.*BSD|DragonFly|SunOS|Solaris|Android)$"
-         AND NOT PS4 AND NOT PICO_BOARD)
+      if(SMB2_HOSTED_UNIX AND NOT PS4 AND NOT PICO_BOARD)
         set(ENABLE_UTILS_DEFAULT ON)
       else()
         set(ENABLE_UTILS_DEFAULT OFF)
@@ -98,7 +102,7 @@ endif()
   set(core_DEPENDS "")
   # The Apple GSS and Kerberos APIs must come from the same SDK.
   # Other platforms use the matching GSSAPI and krb5 libraries found below.
-  if(APPLE OR CMAKE_SYSTEM_NAME MATCHES "Linux|.*BSD|Solaris|Android")
+  if(APPLE OR SMB2_HOSTED_UNIX)
     if(ENABLE_LIBKRB5 OR ENABLE_GSSAPI)
       if(APPLE)
         include(CheckIncludeFile)
@@ -283,7 +287,7 @@ endif()
     # smb2_random_bytes(). Only probed on the host-like systems: anything we
     # do not positively identify here simply falls back to the random()
     # based path, so the console and embedded toolchains are left alone.
-    if(CMAKE_SYSTEM_NAME MATCHES "Linux|Darwin|.*BSD|Solaris|Android|Haiku")
+    if(APPLE OR SMB2_HOSTED_UNIX OR CMAKE_SYSTEM_NAME STREQUAL "Haiku")
       include(CheckSymbolExists)
       check_symbol_exists(arc4random_buf "stdlib.h" HAVE_ARC4RANDOM_BUF)
       check_symbol_exists(getrandom "sys/random.h" HAVE_GETRANDOM)
