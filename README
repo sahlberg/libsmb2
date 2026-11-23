@@ -269,6 +269,8 @@ keeps a documented hardware entropy source active. Ethernet-only deployments
 can supply a CSPRNG seeded while hardware entropy is available.
 See https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/random.html
 
+Vita, PlayStation 3 PPU and PlayStation 4 use their system random services.
+
 On the RP2040 Pico W, supply a cryptographic generator seeded from hardware
 entropy, or a secure element. The SDK's pico_rand uses a non-cryptographic
 PRNG with configurable entropy inputs. AmigaOS 3, AROS and other ports
@@ -344,6 +346,7 @@ bytes (32 bytes of entropy and a 16-byte nonce), then call
 fileXioDevctl("smb:", SMB2_DEVCTL_SET_ENTROPY, seed, sizeof(seed), NULL, 0).
 Repeat after reloading the driver. The same command can reseed a running
 driver with fresh input. A connection attempted before seeding returns -EAGAIN.
+Existing EE clients must add this initialization before using the updated IRX.
 
 PlayStation 3
 -------------
