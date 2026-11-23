@@ -2649,7 +2649,10 @@ dce_unfragment_auth(struct dcerpc_context *dce, struct dcerpc_pdu *pdu,
                 }
                 if (hdr.auth_length == 0) {
                         if (offset == 0 && hdr.PTYPE == PDU_TYPE_FAULT &&
-                            hdr.frag_length == iov->max_offset) {
+                            hdr.frag_length >= 32 && hdr.frag_length == iov->max_offset) {
+                                /* An unsigned FAULT completes this call without
+                                 * consuming a reply verifier sequence number. */
+                                pdu->awaiting_verifier = 0;
                                 iov->offset = 0;
                                 pdu->direction = saved_dir;
                                 return 0;

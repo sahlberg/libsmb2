@@ -497,7 +497,12 @@ test_refused(void)
         put32(fault + 12, 3);
         put32(fault + 24, 0x1c010003);
         reply(s.smb2, 0, fault, sizeof(fault));
-        CHECK(cb_done && cb_status != 0);
+        CHECK(cb_done && cb_status == -EACCES);
+        /* The next call uses the same association and receives its own reply. */
+        CHECK(session_call(&s) == 0 && sent_len > 0);
+        put32(fault + 12, 4);
+        reply(s.smb2, 0, fault, sizeof(fault));
+        CHECK(cb_done && cb_status == -EACCES);
         session_close(&s);
 }
 
