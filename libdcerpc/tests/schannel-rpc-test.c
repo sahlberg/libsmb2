@@ -445,6 +445,19 @@ test_sealed(void)
 }
 
 static void
+test_lost_reply(uint32_t status)
+{
+        struct session s;
+
+        CHECK(session_open(&s, DCERPC_AUTH_LEVEL_INTEGRITY, 1, 1) == 0);
+        CHECK(session_call(&s) == 0);
+        last_cb(s.smb2, status, NULL, last_priv);
+        CHECK(cb_done && cb_status < 0);
+        CHECK(session_call(&s) == -EIO && sent_len == 0);
+        session_close(&s);
+}
+
+static void
 test_refused(void)
 {
         uint8_t bad[sizeof(rep_l5_hsign)];
@@ -484,7 +497,12 @@ test_refused(void)
         put32(fault + 12, 3);
         put32(fault + 24, 0x1c010003);
         reply(s.smb2, 0, fault, sizeof(fault));
-        CHECK(cb_done && cb_status != 0);
+        CHECK(cb_done && cb_status == -EACCES);
+        /* The next call uses the same association and receives its own reply. */
+        CHECK(session_call(&s) == 0 && sent_len > 0);
+        put32(fault + 12, 4);
+        reply(s.smb2, 0, fault, sizeof(fault));
+        CHECK(cb_done && cb_status == -EACCES);
         session_close(&s);
 }
 
@@ -500,6 +518,8 @@ main(void)
         test_signed(0, req_l5_nohsign, sizeof(req_l5_nohsign),
                     rep_l5_nohsign, sizeof(rep_l5_nohsign));
         test_sealed();
+        test_lost_reply(SMB2_STATUS_IO_TIMEOUT);
+        test_lost_reply(SMB2_STATUS_END_OF_FILE);
         test_refused();
         if (failures) {
                 printf("%d failures\n", failures);
