@@ -6180,36 +6180,34 @@ smb2_negotiate_request_cb(struct smb2_context *smb2, int status, void *command_d
 static int
 accept_cb(const int fd, void *cb_data)
 {
-        int err = -1;
-        struct smb2_context **psmb2 = (struct smb2_context**)cb_data;
-        struct smb2_context *smb2;
+        struct smb2_context **psmb2 = cb_data;
+        struct smb2_context *smb2 = smb2_init_context();
 
-        if (!psmb2) {
-                return -EINVAL;
-        }
-
-        *psmb2 = NULL;
-
-        smb2 = smb2_init_context();
         if (smb2 == NULL) {
-                err = -ENOMEM;
+                int err = errno;
+                close(fd);
+                return -err;
         }
-        else {
-                *psmb2 = smb2;
-                /* put client fd into connecting fd array (todo? for now just set fd) */
-                smb2->fd = fd;
-                err = 0;
-        }
+        smb2->fd = fd;
+        *psmb2 = smb2;
+        return 0;
+}
 
-        return err;
+/* A rejected client must not stop the synchronous listener or its other sessions. */
+static int
+server_accept_cb(const int fd, void *cb_data)
+{
+        accept_cb(fd, cb_data);
+        return 0;
 }
 
 int smb2_serve_port_async(const int fd, const int to_msecs, struct smb2_context **smb2)
 {
-        int err = -1;
-
-        err = smb2_accept_connection_async(fd, to_msecs, accept_cb, smb2);
-        return err;
+        if (!smb2) {
+                return -EINVAL;
+        }
+        *smb2 = NULL;
+        return smb2_accept_connection_async(fd, to_msecs, accept_cb, smb2);
 }
 
 int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_client_connection cb, void *cb_data)
@@ -6352,7 +6350,8 @@ int smb2_serve_port(struct smb2_server *server, const int max_connections, smb2_
 
                         if (FD_ISSET(server->fd, &rfds)) {
                                 smb2 = NULL;
-                                err = smb2_serve_port_async(server->fd, 10, &smb2);
+                                err = smb2_accept_connection_async(server->fd, 10,
+                                                                   server_accept_cb, &smb2);
                                 if (!err && smb2) {
                                         smb2_add_active_context(smb2);
                                         c_data = calloc(1, sizeof(struct connect_data));
