@@ -75,6 +75,10 @@ static void notify_async_test_cb(struct smb2_context *smb2, int status,
         struct sync_cb_data *cb_data = private_data;
 
         cb_data->status = status;
+        if (status != 0) {
+                cb_data->is_finished = 1;
+                return;
+        }
 
         cb_data->ptr = command_data;
 
