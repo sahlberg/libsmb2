@@ -2102,7 +2102,7 @@ int smb2_accept_connection_async(const int fd, const int to_msec, smb2_accepted_
                         return 0;
                 }
 #endif
-                if (clientfd >= 0) {
+                if (SMB2_VALID_SOCKET(clientfd)) {
                         set_nonblocking(clientfd);
                         set_tcp_sockopt(clientfd, TCP_NODELAY, 1);
 #if 0 == CONFIGURE_OPTION_TCP_LINGER
