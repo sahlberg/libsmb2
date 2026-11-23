@@ -172,7 +172,7 @@ struct smb2fh {
         smb2_command_cb cb;
         void *cb_data;
 
-        struct smb2_context *open_context;
+        int has_open_tree_id;
         uint32_t open_tree_id;
         smb2_file_id file_id;
         int64_t offset;
@@ -206,7 +206,7 @@ struct smb2fh {
 static uint32_t
 file_handle_tree_id(struct smb2_context *smb2, const struct smb2fh *fh)
 {
-        return fh->open_context ? fh->open_tree_id : smb2_tree_id(smb2);
+        return fh->has_open_tree_id ? fh->open_tree_id : smb2_tree_id(smb2);
 }
 
 void
@@ -1925,7 +1925,7 @@ _smb2_open_async_with_oplock_or_lease(struct smb2_context *smb2, const char *pat
                 fh->cancel_free_cb = free_cb;
                 pdu->free_cb = open_cancelled;
         }
-        fh->open_context = smb2;
+        fh->has_open_tree_id = 1;
         fh->open_tree_id = pdu->header.sync.tree_id;
         pdu->caller_frees_pdu = caller_frees_pdu;
         smb2_queue_pdu(smb2, pdu);
@@ -2022,11 +2022,11 @@ smb2_close_async(struct smb2_context *smb2, struct smb2fh *fh,
         memcpy(req.file_id, fh->file_id, SMB2_FD_SIZE);
 
         pdu = smb2_cmd_close_async(smb2, &req, close_cb, fh);
+        smb2_set_tree_id_for_pdu(smb2, pdu, file_handle_tree_id(smb2, fh));
         if (pdu == NULL) {
                 smb2_set_error(smb2, "Failed to create close command");
                 return -ENOMEM;
         }
-        smb2_set_tree_id_for_pdu(smb2, pdu, file_handle_tree_id(smb2, fh));
         smb2_queue_pdu(smb2, pdu);
         if (smb2->queue_rejected) {
                 return -EIO;
@@ -2086,6 +2086,7 @@ smb2_fsync_async(struct smb2_context *smb2, struct smb2fh *fh,
         memcpy(req.file_id, fh->file_id, SMB2_FD_SIZE);
 
         pdu = smb2_cmd_flush_async(smb2, &req, fsync_cb, fsd);
+        smb2_set_tree_id_for_pdu(smb2, pdu, file_handle_tree_id(smb2, fh));
         if (pdu == NULL) {
                 smb2_set_error(smb2, "Failed to create flush command");
                 free(fsd);
@@ -2208,6 +2209,7 @@ smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
         req.remaining_bytes = 0;
 
         pdu = smb2_cmd_read_async(smb2, &req, read_cb, rd);
+        smb2_set_tree_id_for_pdu(smb2, pdu, file_handle_tree_id(smb2, fh));
         if (pdu == NULL) {
                 smb2_set_error(smb2, "Failed to create read command");
                 free(rd);
@@ -2369,6 +2371,7 @@ smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
         req.flags = 0;
 
         pdu = smb2_cmd_write_async(smb2, &req, 0, write_cb, wr);
+        smb2_set_tree_id_for_pdu(smb2, pdu, file_handle_tree_id(smb2, fh));
         if (pdu == NULL) {
                 smb2_set_error(smb2, "Failed to create write command");
                 free(wr);
@@ -2849,6 +2852,8 @@ smb2_fstat_async(struct smb2_context *smb2, struct smb2fh *fh,
                 smb2_free_pdu(smb2, pdu);
                 return -ENOMEM;
         }
+        smb2_set_tree_id_for_pdu(smb2, pdu, file_handle_tree_id(smb2, fh));
+        smb2_set_tree_id_for_pdu(smb2, next_pdu, file_handle_tree_id(smb2, fh));
         smb2_add_unrelated_compound_pdu(smb2, pdu, next_pdu);
 
         /* attribute tag query + info query */
@@ -3503,6 +3508,7 @@ smb2_ftruncate_async(struct smb2_context *smb2, struct smb2fh *fh,
         req.input_data = &eofi;
 
         pdu = smb2_cmd_set_info_async(smb2, &req, ftrunc_cb_1, create_data);
+        smb2_set_tree_id_for_pdu(smb2, pdu, file_handle_tree_id(smb2, fh));
         if (pdu == NULL) {
                 smb2_set_error(smb2, "Failed to create set info command");
                 free(create_data);
@@ -4237,6 +4243,7 @@ smb2_copychunk_submit_async(struct smb2_context *smb2,
                 return -EINVAL;
         }
         ioctl_data->pdu = pdu;
+        smb2_set_tree_id_for_pdu(smb2, pdu, file_handle_tree_id(smb2, dstfh));
         smb2_queue_pdu(smb2, pdu);
         if (smb2->queue_rejected) {
                 free(ioctl_data->input);
@@ -4283,6 +4290,7 @@ smb2_request_resume_key_async(struct smb2_context *smb2, struct smb2fh *fh,
                 return -EINVAL;
         }
         ioctl_data->pdu = pdu;
+        smb2_set_tree_id_for_pdu(smb2, pdu, file_handle_tree_id(smb2, fh));
         smb2_queue_pdu(smb2, pdu);
         if (smb2->queue_rejected) {
                 free(ioctl_data);
@@ -4578,7 +4586,7 @@ smb2_fh_from_file_id(struct smb2_context *smb2, smb2_file_id *fileid)
         }
         memcpy(fh->file_id, fileid, SMB2_FD_SIZE);
         if (smb2 && smb2->tree_id_top > 0) {
-                fh->open_context = smb2;
+                fh->has_open_tree_id = 1;
                 fh->open_tree_id = smb2_tree_id(smb2);
         }
         if (smb2) {

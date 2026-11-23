@@ -114,6 +114,50 @@ static void watch_path(struct smb2_context *smb2, int peer)
         assert(calls == 1);
 }
 
+static void ignore_result(struct smb2_context *smb2, int status, void *reply, void *data)
+{
+}
+
+static void handle_io_across_tree_switch(void)
+{
+        const enum smb2_command commands[] = {SMB2_READ, SMB2_WRITE, SMB2_FLUSH,
+                SMB2_SET_INFO, SMB2_QUERY_INFO, SMB2_IOCTL, SMB2_IOCTL};
+        struct smb2_context *smb2 = smb2_init_context();
+        struct smb2_srv_copychunk_resume_key key = {0};
+        struct smb2_srv_copychunk chunk = {0};
+        struct smb2_stat_64 st;
+        struct smb2_pdu *pdu;
+        smb2_file_id id = {1};
+        struct smb2fh *fh;
+        uint8_t byte = 0;
+        size_t i;
+
+        assert(smb2 && !smb2_connect_tree_id(smb2, 1));
+        fh = smb2_fh_from_file_id(smb2, &id);
+        assert(fh && !smb2_connect_tree_id(smb2, 2));
+        assert(!smb2_select_tree_id(smb2, 2));
+        assert(!smb2_pread_async(smb2, fh, &byte, 1, 0, ignore_result, NULL));
+        assert(!smb2_pwrite_async(smb2, fh, &byte, 1, 0, ignore_result, NULL));
+        assert(!smb2_fsync_async(smb2, fh, ignore_result, NULL));
+        assert(!smb2_ftruncate_async(smb2, fh, 0, ignore_result, NULL));
+        assert(!smb2_fstat_async(smb2, fh, &st, ignore_result, NULL));
+        assert(!smb2_request_resume_key_async(smb2, fh, ignore_result, NULL));
+        chunk.length = 1;
+        assert(!smb2_copychunk_async(smb2, SMB2_FSCTL_SRV_COPYCHUNK, &key, fh,
+                                     &chunk, 1, ignore_result, NULL));
+        pdu = smb2->outqueue;
+        for (i = 0; i < sizeof(commands) / sizeof(commands[0]); i++) {
+                assert(pdu && pdu->header.command == commands[i]);
+                assert(pdu->header.sync.tree_id == 1);
+                if (commands[i] == SMB2_QUERY_INFO) {
+                        assert(pdu->next_compound && pdu->next_compound->header.sync.tree_id == 1);
+                }
+                pdu = pdu->next;
+        }
+        assert(!pdu);
+        smb2_destroy_context(smb2);
+}
+
 int main(void)
 {
         struct smb2_context *smb2 = smb2_init_context();
@@ -126,6 +170,7 @@ int main(void)
         smb2->credits = 8;
         assert(!smb2_connect_tree_id(smb2, 1));
         assert(!smb2_connect_tree_id(smb2, 2));
+        handle_io_across_tree_switch();
         watch_across_tree_switch(smb2, sockets[1]);
         watch_path(smb2, sockets[1]);
         smb2_destroy_context(smb2);
