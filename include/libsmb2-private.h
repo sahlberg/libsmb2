@@ -842,6 +842,24 @@ int smb2_decode_reparse_data_buffer(struct smb2_context *smb2,
 
 int smb2_read_from_buf(struct smb2_context *smb2);
 void smb2_change_events(struct smb2_context *smb2, t_socket fd, int events);
+static inline uint32_t
+smb2_file_io_length(struct smb2_context *smb2, enum smb2_command command, uint32_t count)
+{
+        uint32_t credits = 1;
+        uint32_t negotiated_max = command == SMB2_READ ? smb2->max_read_size : smb2->max_write_size;
+
+        if (negotiated_max) {
+                count = MIN(count, negotiated_max);
+        }
+        /* A single-credit request can proceed as soon as the server grants
+         * a credit, even when the current balance is zero. */
+        if (smb2->dialect > SMB2_VERSION_0202 && smb2->supports_multi_credit &&
+            smb2->credits > 0) {
+                credits = MIN(smb2->credits, MAX_CREDITS - 16);
+        }
+        return MIN(count, credits * 65536U);
+}
+
 void smb2_timeout_pdus(struct smb2_context *smb2);
 
 struct connect_data;                                           /* defined in libsmb2.c */

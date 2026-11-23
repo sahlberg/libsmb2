@@ -2130,7 +2130,6 @@ smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
         struct smb2_read_request req;
         struct read_data *rd;
         struct smb2_pdu *pdu;
-        int needed_credits;
 
         if (smb2 == NULL) {
                 return -EINVAL;
@@ -2153,34 +2152,7 @@ smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
         rd->read_cb_data.count = count;
         rd->read_cb_data.offset = offset;
 
-        if (count > 0) {
-                /* A zero limit means "not negotiated": clamping to it
-                 * would wrap the (count - 1) credit computation. */
-                if (smb2->max_read_size > 0 && count > smb2->max_read_size) {
-                        count = smb2->max_read_size;
-                }
-                needed_credits = (count - 1) / 65536 + 1;
-
-                if (smb2->dialect > SMB2_VERSION_0202) {
-                        if (needed_credits > MAX_CREDITS - 16) {
-                                count =  (MAX_CREDITS - 16) * 65536;
-                        }
-                        needed_credits = (count - 1) / 65536 + 1;
-                        /* Queue up to one credit of data until credits arrive. */
-                        if (smb2->credits == 0) {
-                                if (count > 65536) {
-                                        count = 65536;
-                                }
-                        } else if (needed_credits > smb2->credits) {
-                                count = smb2->credits * 65536;
-                        }
-                } else {
-                        if (count > 65536) {
-                                count = 65536;
-                        }
-                }
-                needed_credits = (count - 1) / 65536 + 1;
-        }
+        count = smb2_file_io_length(smb2, SMB2_READ, count);
 
         memset(&req, 0, sizeof(struct smb2_read_request));
         req.flags = 0;
@@ -2285,7 +2257,6 @@ smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
         struct smb2_write_request req;
         struct write_data *wr;
         struct smb2_pdu *pdu;
-        int needed_credits;
 
         if (smb2 == NULL) {
                 return -EINVAL;
@@ -2308,39 +2279,7 @@ smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
         wr->write_cb_data.count = count;
         wr->write_cb_data.offset = offset;
 
-        if (count > 0) {
-                if (smb2->max_write_size > 0 && count > smb2->max_write_size) {
-                        count = smb2->max_write_size;
-                }
-                needed_credits = (count - 1) / 65536 + 1;
-
-                if (smb2->dialect > SMB2_VERSION_0202) {
-                        if (needed_credits > MAX_CREDITS - 16) {
-                                count =  (MAX_CREDITS - 16) * 65536;
-                        }
-                        needed_credits = (count - 1) / 65536 + 1;
-                        if (smb2->credits == 0) {
-                                if (count > 65536) {
-                                        count = 65536;
-                                }
-                        } else if (needed_credits > smb2->credits) {
-                                count = smb2->credits * 65536;
-                        }
-                } else {
-                        if (count > 65536) {
-                                count = 65536;
-                        }
-                }
-                /*
-                 * smb2_encode_write_request() clamps !multi_credit
-                 * requests to 64 KiB; match it here so the reply
-                 * ceiling equals the on-wire amount.
-                 */
-                if (!smb2->supports_multi_credit && count > 65536) {
-                        count = 65536;
-                }
-                needed_credits = (count - 1) / 65536 + 1;
-        }
+        count = smb2_file_io_length(smb2, SMB2_WRITE, count);
 
         wr->sent = count;
 

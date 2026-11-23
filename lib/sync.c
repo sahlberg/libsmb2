@@ -431,128 +431,79 @@ static void sync_generic_status_cb(struct smb2_context *smb2, int status,
         cb_data->status = status;
 }
 
+/* A failed wait can leave the PDU in flight. Keep its buffer until completion. */
+static int sync_file_io(struct smb2_context *smb2, struct smb2fh *fh,
+                        enum smb2_command command, void *buf, uint32_t count,
+                        const uint64_t *position)
+{
+        struct sync_cb_data *data;
+        uint8_t *buffer;
+        int rc;
+
+        if (!smb2) {
+                return -EINVAL;
+        }
+        if (!fh || (count && !buf)) {
+                smb2_set_error(smb2, !fh ? "File handle was NULL" : "Missing buffer for file I/O");
+                return -EINVAL;
+        }
+        count = smb2_file_io_length(smb2, command, count);
+        data = malloc(sizeof(*data) + count);
+        if (!data) {
+                smb2_set_error(smb2, "Failed to allocate synchronous I/O buffer");
+                return -ENOMEM;
+        }
+        memset(data, 0, sizeof(*data));
+        buffer = (uint8_t *)(data + 1);
+        if (command == SMB2_WRITE && count) {
+                memcpy(buffer, buf, count);
+        }
+        if (command == SMB2_READ) {
+                rc = position ? smb2_pread_async(smb2, fh, buffer, count, *position,
+                                                 sync_generic_status_cb, data)
+                              : smb2_read_async(smb2, fh, buffer, count, sync_generic_status_cb, data);
+        } else {
+                rc = position ? smb2_pwrite_async(smb2, fh, buffer, count, *position,
+                                                  sync_generic_status_cb, data)
+                              : smb2_write_async(smb2, fh, buffer, count, sync_generic_status_cb, data);
+        }
+        if (rc == 0) {
+                rc = wait_for_reply(smb2, data);
+                if (rc < 0 && !data->is_finished) {
+                        data->status = SMB2_STATUS_CANCELLED;
+                        return rc;
+                }
+                rc = data->status;
+                if (command == SMB2_READ && rc > 0) {
+                        memcpy(buf, buffer, rc);
+                }
+        }
+        free(data);
+        return rc;
+}
+
 int smb2_pread(struct smb2_context *smb2, struct smb2fh *fh,
                uint8_t *buf, uint32_t count, uint64_t offset)
 {
-        struct sync_cb_data *cb_data;
-        int rc = 0;
-
-        cb_data = calloc(1, sizeof(struct sync_cb_data));
-        if (cb_data == NULL) {
-                smb2_set_error(smb2, "Failed to allocate sync_cb_data");
-                return -ENOMEM;
-        }
-
-	rc = smb2_pread_async(smb2, fh, buf, count, offset,
-                              sync_generic_status_cb, cb_data);
-        if (rc < 0) {
-                goto out;
-	}
-
-	rc = wait_for_reply(smb2, cb_data);
-        if (rc < 0) {
-                cb_data->status = SMB2_STATUS_CANCELLED;
-                return rc;
-	}
-
-        rc = cb_data->status;
- out:
-        free(cb_data);
-
-	return rc;
+        return sync_file_io(smb2, fh, SMB2_READ, buf, count, &offset);
 }
 
 int smb2_pwrite(struct smb2_context *smb2, struct smb2fh *fh,
                 const uint8_t *buf, uint32_t count, uint64_t offset)
 {
-        struct sync_cb_data *cb_data;
-        int rc = 0;
-
-        cb_data = calloc(1, sizeof(struct sync_cb_data));
-        if (cb_data == NULL) {
-                smb2_set_error(smb2, "Failed to allocate sync_cb_data");
-                return -ENOMEM;
-        }
-
-	rc = smb2_pwrite_async(smb2, fh, buf, count, offset,
-                               sync_generic_status_cb, cb_data);
-        if (rc < 0) {
-                goto out;
-	}
-
-        rc = wait_for_reply(smb2, cb_data);
-        if (rc < 0) {
-                cb_data->status = SMB2_STATUS_CANCELLED;
-                return rc;
-	}
-
-        rc = cb_data->status;
- out:
-        free(cb_data);
-
-	return rc;
+        return sync_file_io(smb2, fh, SMB2_WRITE, discard_const(buf), count, &offset);
 }
 
 int smb2_read(struct smb2_context *smb2, struct smb2fh *fh,
               uint8_t *buf, uint32_t count)
 {
-        struct sync_cb_data *cb_data;
-        int rc = 0;
-
-        cb_data = calloc(1, sizeof(struct sync_cb_data));
-        if (cb_data == NULL) {
-                smb2_set_error(smb2, "Failed to allocate sync_cb_data");
-                return -ENOMEM;
-        }
-
-	rc = smb2_read_async(smb2, fh, buf, count,
-                             sync_generic_status_cb, cb_data);
-        if (rc < 0) {
-                goto out;
-	}
-
-        rc = wait_for_reply(smb2, cb_data);
-        if (rc < 0) {
-                cb_data->status = SMB2_STATUS_CANCELLED;
-                return rc;
-	}
-
-        rc = cb_data->status;
- out:
-        free(cb_data);
-
-	return rc;
+        return sync_file_io(smb2, fh, SMB2_READ, buf, count, NULL);
 }
 
 int smb2_write(struct smb2_context *smb2, struct smb2fh *fh,
                const uint8_t *buf, uint32_t count)
 {
-        struct sync_cb_data *cb_data;
-        int rc = 0;
-
-        cb_data = calloc(1, sizeof(struct sync_cb_data));
-        if (cb_data == NULL) {
-                smb2_set_error(smb2, "Failed to allocate sync_cb_data");
-                return -ENOMEM;
-        }
-
-	rc = smb2_write_async(smb2, fh, buf, count,
-                              sync_generic_status_cb, cb_data);
-        if (rc < 0) {
-                goto out;
-	}
-
-	rc = wait_for_reply(smb2, cb_data);
-        if (rc < 0) {
-                cb_data->status = SMB2_STATUS_CANCELLED;
-                return rc;
-	}
-
-        rc = cb_data->status;
- out:
-        free(cb_data);
-
-	return rc;
+        return sync_file_io(smb2, fh, SMB2_WRITE, discard_const(buf), count, NULL);
 }
 
 int smb2_unlink(struct smb2_context *smb2, const char *path)
