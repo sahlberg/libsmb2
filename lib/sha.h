@@ -315,7 +315,7 @@ extern int hmac (SHAversion whichSha,	/* which SHA algorithm to use */
 		 size_t text_len,	/* length of data stream */
 		 const unsigned char *key,	/* pointer to authentication key */
 		 size_t key_len,	/* length of authentication key */
-		 uint8_t digest[USHAMaxHashSize]);	/* caller digest to fill in */
+		 uint8_t *digest);	/* USHAHashSize(whichSha) output bytes */
 
 /*
  * HMAC Keyed-Hashing for Message Authentication, RFC2104,
