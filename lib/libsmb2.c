@@ -169,6 +169,9 @@ struct connect_data {
 };
 
 struct smb2fh {
+        struct ordered_pdu *ordered_tail;
+        uint64_t seek_generation;
+        int closing;
         smb2_command_cb cb;
         void *cb_data;
 
@@ -1967,6 +1970,120 @@ smb2_open_async(struct smb2_context *smb2, const char *path, int flags,
         return pdu ? 0 : -1;
 }
 
+/* Only operations that consume the shared offset need to wait for a reply.
+ * A flush, truncate or close submitted behind them must not overtake them.
+ * Build the PDU immediately to retain its tree, arguments and callback. */
+struct ordered_pdu {
+        struct ordered_pdu *next;
+        struct smb2fh *fh;
+        struct smb2_pdu *pdu;
+        smb2_command_cb cb;
+        void *cb_data;
+        uint64_t offset, generation;
+        uint64_t *callback_offset;
+        uint32_t length;
+        enum smb2_command command;
+};
+
+static int
+send_ordered_pdu(struct smb2_context *smb2, struct ordered_pdu *op)
+{
+        if (op->callback_offset) {
+                *op->callback_offset = op->offset;
+                /* READ and WRITE carry Offset at byte 8 of their fixed body. */
+                smb2_set_uint64(&op->pdu->out.iov[1], 8, op->offset);
+        }
+        smb2_queue_pdu(smb2, op->pdu);
+        return smb2->queue_rejected ? -EIO : 0;
+}
+
+static void
+ordered_reply(struct smb2_context *smb2, int status, void *reply, void *data)
+{
+        struct ordered_pdu *op = data;
+        struct smb2fh *fh = op->fh;
+
+        if (status == SMB2_STATUS_PENDING) {
+                return;
+        }
+        for (;;) {
+                struct ordered_pdu *next = op->next;
+                uint32_t bytes = 0;
+                if (status == SMB2_STATUS_SUCCESS && op->callback_offset) {
+                        if (op->command == SMB2_READ) {
+                                bytes = ((struct smb2_read_reply *)reply)->data_length;
+                        } else {
+                                bytes = ((struct smb2_write_reply *)reply)->count;
+                        }
+                        if (bytes <= op->length) {
+                                op->offset += bytes;
+                                if (op->generation == fh->seek_generation) {
+                                        fh->offset = op->offset;
+                                }
+                        }
+                }
+                if (next && next->generation == op->generation) {
+                        next->offset = op->offset;
+                }
+                if (!next) {
+                        fh->ordered_tail = NULL;
+                }
+                op->cb(smb2, status, reply, op->cb_data);
+                free(op);
+                if (!next) {
+                        return;
+                }
+                op = next;
+                if (status == SMB2_STATUS_SHUTDOWN) {
+                        smb2_free_pdu(smb2, op->pdu);
+                } else if (send_ordered_pdu(smb2, op) == 0) {
+                        return;
+                }
+                status = SMB2_STATUS_SHUTDOWN;
+                reply = NULL;
+        }
+}
+
+static int
+queue_ordered_pdu(struct smb2_context *smb2, struct smb2fh *fh,
+                  struct smb2_pdu *pdu, uint64_t *callback_offset, uint32_t length)
+{
+        struct ordered_pdu *op;
+
+        if (!callback_offset && !fh->ordered_tail) {
+                smb2_queue_pdu(smb2, pdu);
+                return smb2->queue_rejected ? -EIO : 0;
+        }
+        op = calloc(1, sizeof(*op));
+        if (!op) {
+                smb2_free_pdu(smb2, pdu);
+                return -ENOMEM;
+        }
+        op->pdu = pdu;
+        op->command = pdu->header.command;
+        op->fh = fh;
+        op->offset = fh->offset;
+        op->generation = fh->seek_generation;
+        op->callback_offset = callback_offset;
+        op->length = length;
+        op->cb = pdu->cb;
+        op->cb_data = pdu->cb_data;
+        pdu->cb = ordered_reply;
+        pdu->cb_data = op;
+        if (fh->ordered_tail) {
+                fh->ordered_tail->next = op;
+                fh->ordered_tail = op;
+                return 0;
+        }
+        fh->ordered_tail = op;
+        if (send_ordered_pdu(smb2, op) < 0) {
+                fh->ordered_tail = NULL;
+                free(op);
+                return -EIO;
+        }
+        return 0;
+}
+
 static void
 close_cb(struct smb2_context *smb2, int status,
          void *command_data, void *private_data)
@@ -1991,6 +2108,7 @@ smb2_close_async(struct smb2_context *smb2, struct smb2fh *fh,
 {
         struct smb2_close_request req;
         struct smb2_pdu *pdu;
+        int rc;
 
         if (smb2 == NULL) {
             return -EINVAL;
@@ -1998,6 +2116,9 @@ smb2_close_async(struct smb2_context *smb2, struct smb2fh *fh,
         if (fh == NULL) {
             smb2_set_error(smb2, "File handle was NULL");
             return -EINVAL;
+        }
+        if (fh->closing) {
+                return -EBADF;
         }
 
         fh->cb = cb;
@@ -2012,9 +2133,11 @@ smb2_close_async(struct smb2_context *smb2, struct smb2fh *fh,
                 smb2_set_error(smb2, "Failed to create close command");
                 return -ENOMEM;
         }
-        smb2_queue_pdu(smb2, pdu);
-        if (smb2->queue_rejected) {
-                return -EIO;
+        fh->closing = 1;
+        rc = queue_ordered_pdu(smb2, fh, pdu, NULL, 0);
+        if (rc < 0) {
+                fh->closing = 0;
+                return rc;
         }
 
         return 0;
@@ -2050,6 +2173,7 @@ smb2_fsync_async(struct smb2_context *smb2, struct smb2fh *fh,
         struct smb2_flush_request req;
         struct fsync_data *fsd;
         struct smb2_pdu *pdu;
+        int rc;
 
         if (smb2 == NULL) {
             return -EINVAL;
@@ -2057,6 +2181,9 @@ smb2_fsync_async(struct smb2_context *smb2, struct smb2fh *fh,
         if (fh == NULL) {
             smb2_set_error(smb2, "File handle was NULL");
             return -EINVAL;
+        }
+        if (fh->closing) {
+                return -EBADF;
         }
 
         fsd = calloc(1, sizeof(struct fsync_data));
@@ -2076,16 +2203,17 @@ smb2_fsync_async(struct smb2_context *smb2, struct smb2fh *fh,
                 free(fsd);
                 return -ENOMEM;
         }
-        smb2_queue_pdu(smb2, pdu);
-        if (smb2->queue_rejected) {
+        rc = queue_ordered_pdu(smb2, fh, pdu, NULL, 0);
+        if (rc < 0) {
                 free(fsd);
-                return -EIO;
+                return rc;
         }
 
         return 0;
 }
 
 struct read_data {
+        int sequential;
         smb2_command_cb cb;
         void *cb_data;
 
@@ -2114,7 +2242,7 @@ read_cb(struct smb2_context *smb2, int status,
                 return;
         }
 
-        if (status == SMB2_STATUS_SUCCESS) {
+        if (!rd->sequential && status == SMB2_STATUS_SUCCESS) {
                 rd->read_cb_data.fh->offset = rd->read_cb_data.offset + rep->data_length;
         }
 
@@ -2122,10 +2250,10 @@ read_cb(struct smb2_context *smb2, int status,
         free(rd);
 }
 
-int
-smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
+static int
+submit_read(struct smb2_context *smb2, struct smb2fh *fh,
                  uint8_t *buf, uint32_t count, uint64_t offset,
-                 smb2_command_cb cb, void *cb_data)
+                 int sequential, smb2_command_cb cb, void *cb_data)
 {
         struct smb2_read_request req;
         struct read_data *rd;
@@ -2140,12 +2268,16 @@ smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
                 return -EINVAL;
         }
 
+        if (fh->closing) {
+                return -EBADF;
+        }
         rd = calloc(1, sizeof(struct read_data));
         if (rd == NULL) {
                 smb2_set_error(smb2, "Failed to allocate read_data");
                 return -ENOMEM;
         }
 
+        rd->sequential = sequential;
         rd->cb = cb;
         rd->cb_data = cb_data;
         rd->read_cb_data.fh = fh;
@@ -2199,6 +2331,13 @@ smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
                 return -EINVAL;
         }
 
+        if (sequential) {
+                int rc = queue_ordered_pdu(smb2, fh, pdu, &rd->read_cb_data.offset, count);
+                if (rc < 0) {
+                        free(rd);
+                }
+                return rc;
+        }
         smb2_queue_pdu(smb2, pdu);
         if (smb2->queue_rejected) {
                 free(rd);
@@ -2206,6 +2345,14 @@ smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
         }
 
         return 0;
+}
+
+int
+smb2_pread_async(struct smb2_context *smb2, struct smb2fh *fh,
+                 uint8_t *buf, uint32_t count, uint64_t offset,
+                 smb2_command_cb cb, void *cb_data)
+{
+        return submit_read(smb2, fh, buf, count, offset, 0, cb, cb_data);
 }
 
 int
@@ -2221,11 +2368,11 @@ smb2_read_async(struct smb2_context *smb2, struct smb2fh *fh,
                 return -EINVAL;
         }
 
-        return smb2_pread_async(smb2, fh, buf, count, fh->offset,
-                                cb, cb_data);
+        return submit_read(smb2, fh, buf, count, fh->offset, 1, cb, cb_data);
 }
 
 struct write_data {
+        int sequential;
         smb2_command_cb cb;
         void *cb_data;
 
@@ -2269,7 +2416,7 @@ write_cb(struct smb2_context *smb2, int status,
                 return;
         }
 
-        if (status == SMB2_STATUS_SUCCESS) {
+        if (!wd->sequential && status == SMB2_STATUS_SUCCESS) {
                 wd->write_cb_data.fh->offset = wd->write_cb_data.offset + rep->count;
         }
 
@@ -2277,10 +2424,10 @@ write_cb(struct smb2_context *smb2, int status,
         free(wd);
 }
 
-int
-smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
+static int
+submit_write(struct smb2_context *smb2, struct smb2fh *fh,
                   const uint8_t *buf, uint32_t count, uint64_t offset,
-                  smb2_command_cb cb, void *cb_data)
+                  int sequential, smb2_command_cb cb, void *cb_data)
 {
         struct smb2_write_request req;
         struct write_data *wr;
@@ -2295,12 +2442,16 @@ smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
                 return -EINVAL;
         }
 
+        if (fh->closing) {
+                return -EBADF;
+        }
         wr = calloc(1, sizeof(struct write_data));
         if (wr == NULL) {
                 smb2_set_error(smb2, "Failed to allocate write_data");
                 return -ENOMEM;
         }
 
+        wr->sequential = sequential;
         wr->cb = cb;
         wr->cb_data = cb_data;
         wr->write_cb_data.fh = fh;
@@ -2359,6 +2510,13 @@ smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
                 free(wr);
                 return -EINVAL;
         }
+        if (sequential) {
+                int rc = queue_ordered_pdu(smb2, fh, pdu, &wr->write_cb_data.offset, count);
+                if (rc < 0) {
+                        free(wr);
+                }
+                return rc;
+        }
         smb2_queue_pdu(smb2, pdu);
         if (smb2->queue_rejected) {
                 free(wr);
@@ -2366,6 +2524,14 @@ smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
         }
 
         return 0;
+}
+
+int
+smb2_pwrite_async(struct smb2_context *smb2, struct smb2fh *fh,
+                  const uint8_t *buf, uint32_t count, uint64_t offset,
+                  smb2_command_cb cb, void *cb_data)
+{
+        return submit_write(smb2, fh, buf, count, offset, 0, cb, cb_data);
 }
 
 int
@@ -2380,8 +2546,7 @@ smb2_write_async(struct smb2_context *smb2, struct smb2fh *fh,
                 smb2_set_error(smb2, "File handle was NULL");
                 return -EINVAL;
         }
-        return smb2_pwrite_async(smb2, fh, buf, count, fh->offset,
-                                 cb, cb_data);
+        return submit_write(smb2, fh, buf, count, fh->offset, 1, cb, cb_data);
 }
 
 int64_t
@@ -2414,6 +2579,9 @@ smb2_lseek(struct smb2_context *smb2, struct smb2fh *fh,
         if (base < 0 || offset < -base || (offset > 0 && base > INT64_MAX - offset)) {
                 smb2_set_error(smb2, "Lseek offset is outside the supported range");
                 return -EINVAL;
+        }
+        if (whence != SEEK_CUR || offset != 0) {
+                fh->seek_generation++;
         }
         fh->offset = base + offset;
         if (current_offset) {
@@ -3460,6 +3628,7 @@ smb2_ftruncate_async(struct smb2_context *smb2, struct smb2fh *fh,
         struct smb2_set_info_request req;
         struct smb2_file_end_of_file_info eofi _U_;
         struct smb2_pdu *pdu;
+        int rc;
 
         if (smb2 == NULL) {
                 return -EINVAL;
@@ -3467,6 +3636,9 @@ smb2_ftruncate_async(struct smb2_context *smb2, struct smb2fh *fh,
         if (fh == NULL) {
                 smb2_set_error(smb2, "File handle was NULL");
                 return -EINVAL;
+        }
+        if (fh->closing) {
+                return -EBADF;
         }
 
         create_data = calloc(1, sizeof(struct create_cb_data));
@@ -3493,10 +3665,10 @@ smb2_ftruncate_async(struct smb2_context *smb2, struct smb2fh *fh,
                 free(create_data);
                 return -ENOMEM;
         }
-        smb2_queue_pdu(smb2, pdu);
-        if (smb2->queue_rejected) {
+        rc = queue_ordered_pdu(smb2, fh, pdu, NULL, 0);
+        if (rc < 0) {
                 free(create_data);
-                return -EIO;
+                return rc;
         }
 
         return 0;
