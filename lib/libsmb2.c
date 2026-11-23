@@ -611,6 +611,9 @@ opendir_cb(struct smb2_context *smb2, int status,
         struct smb2_query_directory_request req;
         struct smb2_pdu *pdu;
 
+        if (status == SMB2_STATUS_PENDING) {
+                return;
+        }
         /* Completed: freeing the caller's pdu no longer cancels */
         if (dir->cancel_pdu) {
                 dir->cancel_pdu->free_cb = NULL;
@@ -1793,6 +1796,9 @@ open_cb(struct smb2_context *smb2, int status,
         struct smb2fh *fh = private_data;
         struct smb2_create_reply *rep = command_data;
 
+        if (status == SMB2_STATUS_PENDING) {
+                return;
+        }
         /* Completed: freeing the caller's pdu no longer cancels */
         if (fh->cancel_pdu) {
                 fh->cancel_pdu->free_cb = NULL;
@@ -1841,6 +1847,82 @@ open_cb(struct smb2_context *smb2, int status,
         memcpy(fh->file_id, rep->file_id, SMB2_FD_SIZE);
         fh->end_of_file = rep->end_of_file;
         fh->cb(smb2, 0, fh, fh->cb_data);
+}
+
+static void
+cleanup_close_cb(struct smb2_context *smb2 _U_, int status _U_,
+                 void *reply _U_, void *data _U_)
+{
+}
+
+static void
+late_create_cb(struct smb2_context *smb2, int status, void *reply, void *data)
+{
+        struct smb2_pdu *create = data;
+        struct smb2_create_reply *rep = reply;
+        struct smb2_close_request req = {0};
+        struct smb2_pdu *close_pdu;
+        uint32_t tree;
+
+        if (status == SMB2_STATUS_PENDING) {
+                return;
+        }
+        create->cb = NULL;
+        if (status != SMB2_STATUS_SUCCESS) {
+                return;
+        }
+        /* An interim reply may have replaced header.sync with an AsyncId.
+         * The original request header still carries its opening TreeId. */
+        smb2_get_uint32(&create->out.iov[0], 36, &tree);
+        memcpy(req.file_id, rep->file_id, SMB2_FD_SIZE);
+        close_pdu = smb2_cmd_close_async(smb2, &req, cleanup_close_cb, NULL);
+        if (close_pdu == NULL) {
+                smb2_close_context(smb2);
+                return;
+        }
+        smb2_set_tree_id_for_pdu(smb2, close_pdu, tree);
+        smb2_queue_pdu(smb2, close_pdu);
+        if (smb2->queue_rejected) {
+                smb2_close_context(smb2);
+        }
+}
+
+/* Keep the transport's copy of a sent CREATE until its final response.
+ * An explicit release drops the caller's ownership. A timeout delivers the
+ * ordinary completion and leaves a caller-owned PDU releasable as usual. */
+int
+smb2_abandon_create(struct smb2_context *smb2, struct smb2_pdu *pdu, int timed_out)
+{
+        smb2_command_cb cb = pdu->cb;
+        void *data = pdu->cb_data;
+        void (*release)(void *) = pdu->free_cb;
+
+        if (cb == late_create_cb) {
+                if (!timed_out && pdu->caller_frees_pdu) {
+                        pdu->caller_frees_pdu = 0;
+                        return 1;
+                }
+                return 0;
+        }
+        if ((cb != open_cb && cb != opendir_cb) ||
+            (!timed_out && (!pdu->caller_frees_pdu || !release))) {
+                return 0;
+        }
+        if (!pdu->out.num_done && smb2->pdu != pdu &&
+            smb2_find_pdu(smb2, pdu->header.message_id) != pdu) {
+                return 0;
+        }
+        pdu->cb = late_create_cb;
+        pdu->cb_data = pdu;
+        pdu->free_cb = NULL;
+        pdu->timeout = 0;
+        if (timed_out) {
+                cb(smb2, SMB2_STATUS_IO_TIMEOUT, NULL, data);
+        } else {
+                pdu->caller_frees_pdu = 0;
+                release(data);
+        }
+        return 1;
 }
 
 static struct smb2_pdu *

@@ -9,7 +9,7 @@ noinst_PROGRAMS = prog_ls prog_mkdir prog_rmdir prog_cat \
 	prog_lock_cancel prog_setsd prog_ssc prog_unrelated_compound
 noinst_PROGRAMS += metastat-0202-censored utf8-unit timestamps-unit lseek-unit
 
-noinst_PROGRAMS += sync-stat-unit
+noinst_PROGRAMS += sync-stat-unit open-cancel-unit
 
 noinst_PROGRAMS += set-info-unit io-limits-unit
 

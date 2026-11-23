@@ -536,6 +536,7 @@ int smb2_pad_to_64bit(struct smb2_context *smb2, struct smb2_io_vectors *v);
 int smb2_connect_tree_id(struct smb2_context *smb2, uint32_t tree_id);
 int smb2_disconnect_tree_id(struct smb2_context *smb2, uint32_t tree_id);
 
+int smb2_abandon_create(struct smb2_context *smb2, struct smb2_pdu *pdu, int timed_out);
 struct smb2_pdu *smb2_allocate_pdu(struct smb2_context *smb2,
                                    enum smb2_command command,
                                    smb2_command_cb cb, void *cb_data);

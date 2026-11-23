@@ -84,6 +84,11 @@ static void sync_free_pending_pdu(struct smb2_context *smb2,
 {
         int pending = 0;
 
+        if (pdu->free_cb) {
+                smb2_free_pdu(smb2, pdu);
+                return;
+        }
+
         if (smb2->pdu == pdu) {
                 smb2->pdu = NULL;
                 pending = 1;

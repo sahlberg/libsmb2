@@ -388,6 +388,9 @@ smb2_add_unrelated_compound_pdu(struct smb2_context *smb2,
 void
 smb2_free_pdu(struct smb2_context *smb2, struct smb2_pdu *pdu)
 {
+        if (pdu->header.command == SMB2_CREATE && smb2_abandon_create(smb2, pdu, 0)) {
+                return;
+        }
         SMB2_LIST_REMOVE(&smb2->outqueue, pdu);
         SMB2_LIST_REMOVE(&smb2->waitqueue, pdu);
 
@@ -1286,6 +1289,10 @@ void smb2_timeout_pdus(struct smb2_context *smb2)
                 if (pdu->timeout && pdu->timeout < t) {
                         struct smb2_pdu *p;
 
+                        if (pdu->header.command == SMB2_CREATE && smb2_abandon_create(smb2, pdu, 1)) {
+                                pdu = next;
+                                continue;
+                        }
                         SMB2_LIST_REMOVE(&smb2->outqueue, pdu);
                         /*
                          * An unsent compound is still chained: like
@@ -1317,6 +1324,10 @@ void smb2_timeout_pdus(struct smb2_context *smb2)
         while (pdu) {
                 next = pdu->next;
                 if (pdu->timeout && pdu->timeout < t) {
+                        if (pdu->header.command == SMB2_CREATE && smb2_abandon_create(smb2, pdu, 1)) {
+                                pdu = next;
+                                continue;
+                        }
                         SMB2_LIST_REMOVE(&smb2->waitqueue, pdu);
                         if (pdu->cb) {
                                 pdu->cb(smb2, SMB2_STATUS_IO_TIMEOUT, NULL,

@@ -1224,10 +1224,11 @@ read_more_data:
                 smb2->pdu = smb2->next_pdu;
                 smb2->next_pdu = NULL;
         } else {
+                int caller_frees = pdu->caller_frees_pdu;
                 if (pdu->cb) {
                         pdu->cb(smb2, smb2->hdr.status, pdu->payload, pdu->cb_data);
                 }
-                if (!pdu->caller_frees_pdu) {
+                if (!caller_frees) {
                         smb2_free_pdu(smb2, pdu);
                 }
                 smb2->pdu = NULL;
