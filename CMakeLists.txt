@@ -1,3 +1,19 @@
+# ESP-IDF first evaluates components in CMake script mode to collect their
+# dependencies. Register the component before configuring a standalone build.
+if(ESP_PLATFORM)
+  include("${CMAKE_CURRENT_LIST_DIR}/lib/sources.cmake")
+  list(TRANSFORM SMB2_CORE_SOURCES PREPEND "lib/")
+  idf_component_register(SRCS ${SMB2_CORE_SOURCES}
+                         INCLUDE_DIRS include include/smb2
+                         PRIV_INCLUDE_DIRS lib include/esp
+                         PRIV_REQUIRES esp_wifi lwip)
+  if(NOT CMAKE_BUILD_EARLY_EXPANSION)
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE HAVE_CONFIG_H NEED_READV
+                               NEED_WRITEV NEED_GETLOGIN_R "_U_=__attribute__((unused))")
+  endif()
+  return()
+endif()
+
 if(NOT ESP_PLATFORM)
   
   if(CMAKE_SYSTEM_NAME MATCHES NintendoSwitch OR CMAKE_SYSTEM_NAME MATCHES Nintendo3DS OR CMAKE_SYSTEM_NAME MATCHES dreamcast OR CMAKE_SYSTEM_NAME MATCHES NintendoGameCube OR CMAKE_SYSTEM_NAME MATCHES NintendoDS OR CMAKE_SYSTEM_NAME MATCHES NintendoWii OR CMAKE_SYSTEM_NAME MATCHES CafeOS)
@@ -197,13 +213,6 @@ endif()
             include/smb2
             include/picow
     )
-    elseif(ESP_PLATFORM)
-      set(COMPONENT_ADD_INCLUDEDIRS
-      "lib"
-      include
-      include/smb2
-      include/esp
-     )
     else()
       include_directories(${CMAKE_CURRENT_BINARY_DIR}
                         include
@@ -268,11 +277,6 @@ endif()
       add_definitions(-DNEED_READV -DNEED_WRITEV -DNEED_GETLOGIN_R)  
     elseif(PICO_BOARD)
       add_definitions(-DNEED_BE64TOH -DNEED_POLL -DNEED_GETLOGIN_R)
-    elseif(ESP_PLATFORM)    
-      if(NOT CMAKE_BUILD_EARLY_EXPANSION)
-        add_definitions(-DHAVE_CONFIG_H)
-      endif()
-      add_definitions(-DNEED_READV -DNEED_WRITEV -DNEED_GETLOGIN_R)
     elseif(CMAKE_SYSTEM_NAME MATCHES dreamcast)
       add_definitions(-DNEED_WRITEV -DNEED_READV -DHAVE_CONFIG_H -DNEED_GETLOGIN_R)             
     elseif(CMAKE_SYSTEM_NAME MATCHES "^(SunOS|Solaris)$")
