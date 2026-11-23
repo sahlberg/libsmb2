@@ -813,6 +813,9 @@ int SMB2_init(iop_device_t *dev)
     SMB2LOG("SMB2_init\n");
 
     smb2man_io_sema = CreateMutex(IOP_MUTEX_UNLOCKED);
+    if (smb2man_io_sema < 0) {
+        return smb2man_io_sema;
+    }
 
     return 0;
 }
