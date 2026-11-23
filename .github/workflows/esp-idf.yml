@@ -1,0 +1,52 @@
+name: ESP-IDF component
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/esp-idf.yml'
+      - 'CMakeLists.txt'
+      - 'lib/CMakeLists.txt'
+      - 'lib/sources.cmake'
+      - 'include/esp/**'
+      - 'lib/init.c'
+      - 'idf_component.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        sdk: ['4.4.7', '5.0.6', '5.1.2']
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build and link the component with Wi-Fi enabled
+        run: |
+          docker run --rm -i -v "$PWD:/src/libsmb2:ro" "espressif/idf:v${{ matrix.sdk }}" bash -se <<'BUILD'
+          project=/tmp/smb2-idf
+          mkdir -p "$project/components" "$project/main"
+          ln -s /src/libsmb2 "$project/components/libsmb2"
+          cd "$project"
+          cat > CMakeLists.txt <<'CMAKE'
+          cmake_minimum_required(VERSION 3.16)
+          include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+          project(smb2_idf_test)
+          CMAKE
+          echo 'idf_component_register(SRCS main.c REQUIRES libsmb2)' > main/CMakeLists.txt
+          cat > main/main.c <<'C'
+          #include <stdint.h>
+          #include <time.h>
+          #include <smb2/smb2.h>
+          #include <smb2/libsmb2.h>
+          void app_main(void)
+          {
+                  struct smb2_context *smb2 = smb2_init_context();
+                  if (smb2) {
+                          smb2_destroy_context(smb2);
+                  }
+          }
+          C
+          idf.py build
+          xtensa-esp32-elf-nm build/esp-idf/libsmb2/liblibsmb2.a |
+            grep ' U esp_wifi_force_wakeup_acquire$'
+          BUILD
