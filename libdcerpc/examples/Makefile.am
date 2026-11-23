@@ -1,4 +1,5 @@
-noinst_PROGRAMS = epm-srvsvc \
+noinst_PROGRAMS = dcerpc-schannel \
+	epm-srvsvc \
 	smb2-lsa-lookupsids \
 	smb2-share-info \
 	smb2-winreg-enum
