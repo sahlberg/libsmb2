@@ -83,11 +83,23 @@
 #include "compat.h"
 
 #ifdef HAVE_OPENSSL
+#include <limits.h>
 #include <openssl/rand.h>
 #endif
 
 #if defined(_WIN32) && !defined(_XBOX) && !defined(_WIN32_WCE)
 #include <bcrypt.h>
+#elif defined(__vita__)
+#include <psp2/kernel/rng.h>
+#elif defined(PS3_PPU_PLATFORM)
+#include <lv2/system.h>
+#elif defined(PS4_PLATFORM)
+/* The packaged OpenOrbis toolchains differ in their high-level headers.
+ * Use the public libSceSysmodule and libSceRandom export signatures. */
+#define SMB2_PS4_RANDOM_MODULE 0x00ba
+extern int32_t sceSysmoduleIsLoaded(int module);
+extern int32_t sceSysmoduleLoadModule(int module);
+extern int32_t sceRandomGetRandomNumber(uint8_t *buf, size_t size);
 #elif defined(__SWITCH__)
 #include <switch/result.h>
 #include <switch/services/csrng.h>
@@ -381,6 +393,33 @@ smb2_random_bytes(void *buf, uint32_t len)
                 return -1;
         }
         return 0;
+#elif defined(__vita__) || defined(PS3_PPU_PLATFORM) || defined(PS4_PLATFORM)
+#ifdef PS4_PLATFORM
+        if (sceSysmoduleIsLoaded(SMB2_PS4_RANDOM_MODULE) != 0 &&
+            sceSysmoduleLoadModule(SMB2_PS4_RANDOM_MODULE) != 0 &&
+            sceSysmoduleIsLoaded(SMB2_PS4_RANDOM_MODULE) != 0) {
+                errno = EIO;
+                return -1;
+        }
+#endif
+        /* Both the Vita and PS4 services accept at most 64 bytes per call. */
+        while (len) {
+                size_t chunk = MIN(len, 64);
+#ifdef __vita__
+                int failed = sceKernelGetRandomNumber(p, chunk) != 0;
+#elif defined(PS3_PPU_PLATFORM)
+                int failed = sysGetRandomNumber(p, chunk) != 0;
+#else
+                int failed = sceRandomGetRandomNumber(p, chunk) != 0;
+#endif
+                if (failed) {
+                        errno = EIO;
+                        return -1;
+                }
+                p += chunk;
+                len -= chunk;
+        }
+        return 0;
 #elif defined(SMB2_ESP_WIFI_RANDOM)
         /* Keep RF entropy enabled for the entire hardware RNG read. */
         if (esp_wifi_force_wakeup_acquire() != ESP_OK) {
@@ -480,11 +519,16 @@ smb2_random_bytes(void *buf, uint32_t len)
                 return 0;
         }
 #elif defined(HAVE_OPENSSL)
-        if (RAND_bytes_ex(NULL, p, len, 0) == 1) {
-                return 0;
+        while (len) {
+                int chunk = len > INT_MAX ? INT_MAX : (int)len;
+                if (RAND_bytes(p, chunk) != 1) {
+                        errno = EIO;
+                        return -1;
+                }
+                p += chunk;
+                len -= chunk;
         }
-        errno = EIO;
-        return -1;
+        return 0;
 #else
         errno = ENOSYS;
         return -1;
